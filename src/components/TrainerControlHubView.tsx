@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateTrainerModal } from './CreateTrainerModal';
 import { TrainerMachineEditor } from './TrainerMachineEditor';
-import { Machine, Client, Trainer, WorkoutSession, ScheduleEntry } from '../types';
+import { Machine, Client, Trainer, WorkoutSession, ScheduleEntry, Studio } from '../types';
 import { findMatchingTrainer, normalizeName } from '../lib/sync-utils';
 
 export function TrainerControlHubView({ 
@@ -39,7 +39,8 @@ export function TrainerControlHubView({
   onRestoreMachines,
   onLogout,
   onReorderTrainers,
-  setView
+  setView,
+  studios
 }: { 
   trainers: Trainer[], 
   machines: Machine[], 
@@ -51,7 +52,8 @@ export function TrainerControlHubView({
   onRestoreMachines: () => void,
   onLogout?: () => void,
   onReorderTrainers?: () => void,
-  setView?: (v: string) => void
+  setView?: (v: string) => void,
+  studios: Studio[]
 }) {
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [syncingTrainerId, setSyncingTrainerId] = useState<string | null>(null);
@@ -79,6 +81,33 @@ export function TrainerControlHubView({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [trainerToDelete, setTrainerToDelete] = useState<Trainer | null>(null);
   
+  const [newStudioName, setNewStudioName] = useState('');
+  const [isAddingStudio, setIsAddingStudio] = useState(false);
+
+  const handleAddStudio = async () => {
+    if (!newStudioName.trim()) return;
+    setIsAddingStudio(true);
+    try {
+      await addDoc(collection(db, 'studios'), {
+        name: newStudioName.trim(),
+        createdAt: serverTimestamp()
+      });
+      setNewStudioName('');
+    } catch (e: any) {
+      alert("Error adding studio: " + e.message);
+    } finally {
+      setIsAddingStudio(false);
+    }
+  };
+
+  const handleDeleteStudio = async (studioId: string) => {
+    try {
+      await deleteDoc(doc(db, 'studios', studioId));
+    } catch (e: any) {
+      alert("Error deleting studio: " + e.message);
+    }
+  };
+
   const handleCreateTrainer = async (data: any) => {
     try {
       await addDoc(collection(db, 'trainers'), {
@@ -786,22 +815,56 @@ export function TrainerControlHubView({
                   </div>
                   <div>
                     <CardTitle className="text-2xl font-black text-white italic tracking-tight">Studio Configuration</CardTitle>
-                    <CardDescription className="text-slate-400 font-medium uppercase text-[10px] tracking-widest">General information and display settings.</CardDescription>
+                    <CardDescription className="text-slate-400 font-medium uppercase text-[10px] tracking-widest">Manage available home studios for clients.</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="p-8 space-y-6">
                 <div className="space-y-4">
-                  <div className="flex flex-col gap-3 p-5 bg-slate-900/50 rounded-2xl border border-slate-700">
+                  <div className="flex flex-col gap-4 p-5 bg-slate-900/50 rounded-2xl border border-slate-700">
                     <div className="space-y-1">
-                      <Label className="text-sm font-bold text-white">Active Location Name</Label>
-                      <p className="text-[10px] text-slate-400 font-medium leading-relaxed">The name of your studio/facility.</p>
+                      <Label className="text-sm font-bold text-white">Studios</Label>
+                      <p className="text-[10px] text-slate-400 font-medium leading-relaxed">Add multiple studios to support franchise locations.</p>
                     </div>
-                    <Input 
-                      value={locationName}
-                      onChange={e => setLocationName(e.target.value)}
-                      className="h-10 bg-slate-800 border-slate-600 text-white font-medium focus-visible:ring-[#F06C22]"
-                    />
+                    
+                    {studios.length > 0 ? (
+                      <div className="space-y-2">
+                        {studios.map(studio => (
+                          <div key={studio.id} className="flex items-center justify-between p-3 bg-slate-800 border border-slate-700 rounded-xl">
+                            <span className="text-sm font-medium text-white">{studio.name}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-slate-400 hover:text-red-400"
+                              onClick={() => handleDeleteStudio(studio.id!)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-6 text-center text-slate-400 text-sm italic bg-slate-800/50 rounded-xl border border-slate-700 border-dashed">
+                        No studios added yet.
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-3">
+                      <Input 
+                        value={newStudioName}
+                        onChange={e => setNewStudioName(e.target.value)}
+                        placeholder="Enter studio name (e.g. Solon, Ohio)"
+                        className="h-10 bg-slate-800 border-slate-600 text-white font-medium focus-visible:ring-[#F06C22]"
+                      />
+                      <Button 
+                        onClick={handleAddStudio} 
+                        disabled={!newStudioName.trim() || isAddingStudio}
+                        className="bg-[#115E8D] hover:bg-[#115E8D]/90 text-white rounded-xl h-10 px-4 whitespace-nowrap"
+                      >
+                        {isAddingStudio ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                        Add Studio
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between p-5 bg-slate-900/50 rounded-2xl border border-slate-700 cursor-pointer" onClick={() => setShowRawBioData(!showRawBioData)}>

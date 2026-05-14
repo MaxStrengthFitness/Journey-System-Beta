@@ -224,6 +224,16 @@
         "dateUpdated": { "type": "string", "format": "date-time" }
       },
       "required": ["clientId", "category", "clinicalNotes", "status", "assignedBy", "trainerId"]
+    },
+    "Studio": {
+      "title": "Studio",
+      "description": "A physical studio location.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
     }
   },
   "firestore": {
@@ -267,9 +277,13 @@
       "schema": "TrainerFocus",
       "description": "Collection of trainer-specific client focuses"
     },
-    "/focusRecords/{focusId}": {
+    "focusRecords/{focusId}": {
       "schema": "FocusRecord",
       "description": "Collection of individual focus records for clients"
+    },
+    "/studios/{studioId}": {
+      "schema": "Studio",
+      "description": "Collection of physical studio locations"
     }
   }
 }

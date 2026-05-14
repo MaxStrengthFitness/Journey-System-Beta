@@ -239,6 +239,7 @@ export default function App() {
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [trainerFocuses, setTrainerFocuses] = useState<TrainerFocus[]>([]);
   const [focusRecords, setFocusRecords] = useState<FocusRecord[]>([]);
+  const [studios, setStudios] = useState<Studio[]>([]);
   const [isAddingTrainer, setIsAddingTrainer] = useState(false);
   const [showNewClientsDialog, setShowNewClientsDialog] = useState(false);
   const [isReorderingTrainers, setIsReorderingTrainers] = useState(false);
@@ -314,6 +315,22 @@ export default function App() {
     return sessions.find(s => s.status === 'In-Progress' && s.clientId === selectedClientId);
   }, [sessions, selectedClientId]);
   const [hasQuotaError, setHasQuotaError] = useState(false);
+  const [lastQuotaErrorMessage, setLastQuotaErrorMessage] = useState("");
+
+  const triggerQuotaError = (msg: string) => {
+    setHasQuotaError(true);
+    setLastQuotaErrorMessage(msg);
+  };
+
+  useEffect(() => {
+    const handleGlobalQuotaError = (e: any) => {
+      if (e.message?.toLowerCase().includes('quota')) {
+        triggerQuotaError(e.message);
+      }
+    };
+    window.addEventListener('error', handleGlobalQuotaError);
+    return () => window.removeEventListener('error', handleGlobalQuotaError);
+  }, []);
   const [clientFormData, setClientFormData] = useState({ 
     firstName: '', 
     lastName: '', 
@@ -821,7 +838,7 @@ export default function App() {
               // Delete session
               await deleteDoc(docRef.ref);
             } catch (err: any) {
-               if (err.message?.toLowerCase().includes('quota')) setHasQuotaError(true);
+               if (err.message?.toLowerCase().includes('quota')) triggerQuotaError(err.message);
             }
           });
           
@@ -860,16 +877,16 @@ export default function App() {
       setTrainers(trainersData);
       sessionStorage.setItem('msf_trainers_cache', JSON.stringify(trainersData));
     }, (error) => {
-      if (error.message?.toLowerCase().includes('quota')) { setHasQuotaError(true); return; }
+      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
       handleFirestoreError(error, OperationType.GET, 'trainers');
     });
 
-    const clientsQuery = query(collection(db, 'clients'), orderBy('createdAt', 'desc'));
+    const clientsQuery = query(collection(db, 'clients'), orderBy('createdAt', 'desc'), limit(100));
     const unsubscribeClients = onSnapshot(clientsQuery, (snapshot) => {
       const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
       setClients(clientsData);
     }, (error) => {
-      if (error.message?.toLowerCase().includes('quota')) { setHasQuotaError(true); return; }
+      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
       handleFirestoreError(error, OperationType.GET, 'clients');
     });
 
@@ -908,7 +925,7 @@ export default function App() {
       setMachines(finalMachines);
       sessionStorage.setItem('msf_machines_cache', JSON.stringify(finalMachines));
     }, (error) => {
-      if (error.message?.toLowerCase().includes('quota')) { setHasQuotaError(true); return; }
+      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
       handleFirestoreError(error, OperationType.GET, 'machines');
     });
 
@@ -926,7 +943,7 @@ export default function App() {
       const schedulesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setSchedules(schedulesData);
     }, (error) => {
-      if (error.message?.toLowerCase().includes('quota')) { setHasQuotaError(true); return; }
+      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
       handleFirestoreError(error, OperationType.GET, 'schedules');
     });
 
@@ -939,7 +956,7 @@ export default function App() {
       const sessionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkoutSession));
       setSessions(sessionsData);
     }, (error) => {
-      if (error.message?.toLowerCase().includes('quota')) { setHasQuotaError(true); return; }
+      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
       handleFirestoreError(error, OperationType.GET, 'sessions');
     });
 
@@ -947,16 +964,25 @@ export default function App() {
       const focusData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TrainerFocus));
       setTrainerFocuses(focusData);
     }, (error) => {
-      if (error.message?.toLowerCase().includes('quota')) { setHasQuotaError(true); return; }
+      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
       handleFirestoreError(error, OperationType.GET, 'trainerFocuses');
     });
 
-    const unsubscribeFocusRecords = onSnapshot(collection(db, 'focusRecords'), (snapshot) => {
+    const focusRecordsQuery = query(collection(db, 'focusRecords'), orderBy('createdAt', 'desc'), limit(100));
+    const unsubscribeFocusRecords = onSnapshot(focusRecordsQuery, (snapshot) => {
       const focusData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FocusRecord));
       setFocusRecords(focusData);
     }, (error) => {
-      if (error.message?.toLowerCase().includes('quota')) { setHasQuotaError(true); return; }
+      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
       handleFirestoreError(error, OperationType.GET, 'focusRecords');
+    });
+
+    const unsubscribeStudios = onSnapshot(collection(db, 'studios'), (snapshot) => {
+      const studiosData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Studio));
+      setStudios(studiosData);
+    }, (error) => {
+      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
+      handleFirestoreError(error, OperationType.GET, 'studios');
     });
 
     return () => {
@@ -967,6 +993,7 @@ export default function App() {
       unsubscribeSessions();
       unsubscribeTrainerFocuses();
       unsubscribeFocusRecords();
+      unsubscribeStudios();
     };
   }, [isAuthReady, user?.uid]);
 
@@ -993,34 +1020,77 @@ export default function App() {
 
   const handleLogout = () => signOut(auth);
 
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+
   if (hasQuotaError) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background p-6">
-        <Card className="w-full max-w-md border-none shadow-2xl bg-card/50 backdrop-blur-xl rounded-[40px] overflow-hidden text-center">
-          <CardHeader className="p-8 pb-4">
+        <Card className="w-full max-w-xl border-none shadow-2xl bg-card/50 backdrop-blur-xl rounded-[40px] overflow-hidden">
+          <CardHeader className="p-8 pb-4 text-center">
             <div className="mx-auto w-20 h-20 bg-amber-500/10 rounded-3xl flex items-center justify-center mb-6">
               <AlertCircle className="w-10 h-10 text-amber-500" />
             </div>
-            <CardTitle className="text-3xl font-black uppercase italic tracking-tighter">Capacity Reached</CardTitle>
+            <CardTitle className="text-3xl font-black uppercase italic tracking-tighter">Database Capacity Reached</CardTitle>
             <CardDescription className="text-xs font-bold uppercase tracking-widest leading-relaxed mt-2 text-muted-foreground/60">
-              The daily data limit for the free tier has been reached. 
+              Your Firestore project has reached its daily data limit.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-8 pt-4 space-y-6">
-            <p className="text-sm font-medium text-muted-foreground leading-relaxed">
-              To keep costs at $0, we use Google's free tier. The system will automatically reset and become available again in a few hours (at midnight).
-            </p>
-            <div className="p-4 bg-muted/30 rounded-2xl border border-border/50">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Estimate Reset Time</p>
-              <p className="text-lg font-black italic uppercase tracking-tight text-primary mt-1">~12:00 AM Pacific</p>
+            <div className="space-y-4">
+              <p className="text-sm font-medium text-muted-foreground leading-relaxed text-center">
+                To continue using the app immediately and remove these limits, you must upgrade your Firebase project to a <strong className="text-primary italic">paid plan (Blaze)</strong>. If you are already on a paid plan, ensure no budget caps or billing issues are active.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-5 bg-muted/30 rounded-2xl border border-border/50">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Current State</p>
+                  <p className="text-sm font-bold text-white leading-tight">Blocked by Google Cloud Quota Enforcement</p>
+                </div>
+                <div className="p-5 bg-muted/30 rounded-2xl border border-border/50">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Recommended Action</p>
+                  <p className="text-sm font-bold text-primary leading-tight">Upgrade to Blaze Plan</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 pt-2">
+                <Button 
+                  onClick={() => window.open(`https://console.firebase.google.com/project/${process.env.FIREBASE_PROJECT_ID}/usage/details`, '_blank')}
+                  className="w-full h-14 rounded-2xl font-black uppercase tracking-widest bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
+                >
+                  Open Firebase Usage Dashboard
+                </Button>
+                <div className="flex gap-3">
+                  <Button 
+                    onClick={() => window.location.reload()} 
+                    variant="outline" 
+                    className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest border-2"
+                  >
+                    Refresh App
+                  </Button>
+                  <Button 
+                    onClick={() => setShowTechnicalDetails(!showTechnicalDetails)} 
+                    variant="ghost" 
+                    className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-muted-foreground"
+                  >
+                    {showTechnicalDetails ? 'Hide Details' : 'Show Details'}
+                  </Button>
+                </div>
+              </div>
+
+              {showTechnicalDetails && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="p-4 bg-black/40 rounded-xl border border-white/5 font-mono text-[10px] text-zinc-500 overflow-hidden"
+                >
+                  <p className="mb-2 uppercase tracking-widest font-black text-zinc-400">Diagnostic Info</p>
+                  <p>Project ID: {process.env.FIREBASE_PROJECT_ID || 'Unknown'}</p>
+                  <p>Timestamp: {new Date().toISOString()}</p>
+                  <p>User UID: {user?.uid || 'Not Authenticated'}</p>
+                  <p className="mt-2 text-amber-500/80">Message: {lastQuotaErrorMessage || "The Firestore Enterprise Free Tier allows for 50,000 reads and 20,000 writes per day. Once exceeded, all requests are rejected with a 429 Resource Exhausted error."}</p>
+                </motion.div>
+              )}
             </div>
-            <Button 
-              onClick={() => window.location.reload()} 
-              variant="outline" 
-              className="w-full h-14 rounded-2xl font-black uppercase tracking-widest border-2"
-            >
-              Check Again
-            </Button>
           </CardContent>
         </Card>
       </div>
@@ -1121,6 +1191,7 @@ export default function App() {
     return (
       <CreateClientModal 
         clients={clients}
+        studios={studios}
         initialName={newClientOnboardingName}
         onClientCreated={(clientId, routeToImporter) => {
           setSelectedClientId(clientId);
@@ -1388,6 +1459,7 @@ export default function App() {
                 setView={setView}
                 hasQuotaError={hasQuotaError}
                 user={user}
+                studios={studios}
               />
             )}
             {currentView === 'progress-report' && selectedClientId && authTrainer && (
@@ -1428,6 +1500,7 @@ export default function App() {
                   if (view === 'leaderboard') setLeaderboardReturnView('trainer-hub');
                   setCurrentView(view as any);
                 }}
+                studios={studios}
               />
             )}
             {currentView === 'dashboard' && (

@@ -7,18 +7,23 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Client } from '../types';
+import { Client, Studio } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { cn } from '@/lib/utils';
+
+// Reusing Select component since it's already implemented in other files or can be imported.
+// If it's not imported here, we'll do native select.
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface CreateClientModalProps {
   clients: Client[];
   initialName?: string;
   onClose: () => void;
   onClientCreated: (clientId: string, routeToImporter?: boolean) => void;
+  studios: Studio[];
 }
 
-export function CreateClientModal({ clients, initialName = '', onClose, onClientCreated }: CreateClientModalProps) {
+export function CreateClientModal({ clients, initialName = '', onClose, onClientCreated, studios }: CreateClientModalProps) {
   const nameParts = initialName.trim().split(' ');
   const [firstName, setFirstName] = useState(nameParts[0] || '');
   const [lastName, setLastName] = useState(nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
@@ -26,6 +31,7 @@ export function CreateClientModal({ clients, initialName = '', onClose, onClient
   const [email, setEmail] = useState('');
   const [gender, setGender] = useState<string>('');
   const [age, setAge] = useState<string>('');
+  const [homeStudioId, setHomeStudioId] = useState<string>('');
   const [discoveryNotes, setDiscoveryNotes] = useState('');
   
   const [activeTab, setActiveTab] = useState<'prospect' | 'existing'>('prospect');
@@ -65,6 +71,7 @@ export function CreateClientModal({ clients, initialName = '', onClose, onClient
         gender: gender || null,
         age: age ? parseInt(age, 10) : null,
         height: "5'10\"", // Default, to be updated in Stage 2
+        homeStudioId: homeStudioId || null,
         consultationCompleted: activeTab === 'existing',
         requiresConsultation: activeTab === 'prospect',
       };
@@ -227,6 +234,21 @@ export function CreateClientModal({ clients, initialName = '', onClose, onClient
                   className="h-12 bg-slate-800 border-slate-700 text-white placeholder:text-slate-600 focus:border-[#F06C22] rounded-xl font-bold"
                   placeholder="e.g. 40" type="number" min="0" max="120"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Home Studio (Optional)</Label>
+                <select
+                  value={homeStudioId} onChange={e => setHomeStudioId(e.target.value)}
+                  className="w-full h-12 bg-slate-800 border border-slate-700 text-white focus:border-[#F06C22] focus:ring-0 rounded-xl font-bold px-3"
+                >
+                  <option value="">Select Studio</option>
+                  {studios.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>

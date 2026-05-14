@@ -99,6 +99,7 @@ export interface Client {
   requiresConsultation?: boolean;
   firstSessionDate?: any;
   discoveryNotes?: string;
+  homeStudioId?: string;
   currentMachineMetrics?: Record<string, CurrentMachineMetric>;
   createdAt?: any;
 }
@@ -404,6 +405,12 @@ export interface TrainerFocus {
   category: FocusCategory;
   notes: string;
   updatedAt: any;
+}
+
+export interface Studio {
+  id?: string;
+  name: string;
+  createdAt?: any;
 }
 
 export type View = 'trainers' | 'clients' | 'machines' | 'workouts' | 'history' | 'calendar' | 'trainer-hub' | 'dashboard' | 'profile' | 'chart' | 'trainer-profile' | 'progress-report' | 'consultation-wizard' | 'machine-knowledge' | 'client-directory' | 'chart-importer' | 'leaderboard';

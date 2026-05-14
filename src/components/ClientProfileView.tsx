@@ -93,6 +93,7 @@ import {
   ProgressReport,
   FocusRecord,
   ClinicalSafetyFlag,
+  Studio,
 } from "../types";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { WorkoutChartGrid } from "./WorkoutChartGrid";
@@ -115,6 +116,7 @@ export function ClientProfileView({
   setView,
   hasQuotaError,
   user,
+  studios,
 }: {
   clientId: string | null;
   clients: Client[];
@@ -126,6 +128,7 @@ export function ClientProfileView({
   setView: (v: View, data?: { isIntroSession?: boolean }) => void;
   hasQuotaError?: boolean;
   user?: any;
+  studios?: Studio[];
 }) {
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [allLogs, setAllLogs] = useState<ExerciseLog[]>([]);
@@ -1077,6 +1080,12 @@ export function ClientProfileView({
               {client.isRetired && (
                 <div className="px-2 py-0.5 text-[9px] font-black uppercase tracking-widest rounded border bg-purple-500/10 text-purple-400 border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
                   RETIRED
+                </div>
+              )}
+              {client.homeStudioId && studios?.find(s => s.id === client.homeStudioId) && (
+                <div className="px-2 py-0.5 text-[9px] font-black uppercase tracking-widest rounded border bg-teal-500/10 text-teal-400 border-teal-500/30 shadow-[0_0_15px_rgba(20,184,166,0.2)] flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  {studios.find(s => s.id === client.homeStudioId)?.name}
                 </div>
               )}
               {false ? (
@@ -2843,6 +2852,27 @@ export function ClientProfileView({
                       }
                       className="h-12 rounded-2xl font-black px-4 bg-slate-900 border-slate-700 text-white focus-visible:ring-[#38BDF8]"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                      Home Studio
+                    </Label>
+                    <Select
+                      value={infoForm.homeStudioId || "none"}
+                      onValueChange={(v) =>
+                        setInfoForm((f) => ({ ...f, homeStudioId: v === "none" ? undefined : v }))
+                      }
+                    >
+                      <SelectTrigger className="h-12 rounded-2xl font-black px-4 bg-slate-900 border-slate-700 text-white focus-visible:ring-[#38BDF8]">
+                        <SelectValue placeholder="Select Studio" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700 text-white rounded-xl">
+                        <SelectItem value="none">No Home Studio Assigned</SelectItem>
+                        {studios?.map(s => (
+                          <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">

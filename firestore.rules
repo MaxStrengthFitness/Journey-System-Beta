@@ -262,6 +262,12 @@ service cloud.firestore {
              (!('dateUpdated' in data) || data.dateUpdated is timestamp);
     }
 
+    function isValidStudio(data) {
+      return hasRequiredFields(['name']) &&
+             data.name is string && data.name.size() > 0 &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -357,6 +363,11 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create, update: if (isAdmin() || isTrainer()) && isValidFocusRecord(request.resource.data);
       allow delete: if isAdmin();
+    }
+    match /studios/{studioId} {
+      allow read: if isAuthenticated();
+      allow create, update: if (isAdmin() || isTrainer()) && isValidStudio(request.resource.data);
+      allow delete: if isAdmin() || isTrainer();
     }
     match /aggregations/{aggId} {
       allow read: if isAuthenticated();
