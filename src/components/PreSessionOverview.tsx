@@ -27,6 +27,7 @@ interface PreSessionOverviewProps {
   focusRecords?: FocusRecord[]; // Added optional FocusRecords
   sessionNotes: SessionNote[];
   logs?: ExerciseLog[];
+  isIntroSession?: boolean;
 }
 
 export function PreSessionOverview({ 
@@ -41,7 +42,8 @@ export function PreSessionOverview({
   trainerFocuses,
   focusRecords = [], // Default to empty array
   sessionNotes,
-  logs = []
+  logs = [],
+  isIntroSession = false
 }: PreSessionOverviewProps & { machines: Machine[] }) {
   const [selectedRoutineType, setSelectedRoutineType] = useState<'A' | 'B' | 'Free' | 'Create_A' | 'Create_B'>('A');
   const [adjustedMachineIds, setAdjustedMachineIds] = useState<string[]>([]);
@@ -58,6 +60,16 @@ export function PreSessionOverview({
   const routineB = routines.find(r => r.name.includes('Routine B'));
 
   useEffect(() => {
+    if (isIntroSession) {
+      const demoRoutine = routines.find(r => r.name === 'Demo Routine');
+      if (demoRoutine && demoRoutine.machineIds && demoRoutine.machineIds.length > 0) {
+         setSelectedRoutineType(routineA ? 'A' : 'Create_A');
+         setAdjustedMachineIds(demoRoutine.machineIds);
+         setIsAdjusting(true);
+         return;
+      }
+    }
+
     let type: 'A' | 'B' | 'Free' | 'Create_A' | 'Create_B' = 'Create_A';
     if (targetRoutine) {
       if (targetRoutine.name.includes('Routine A')) type = 'A';

@@ -1,21 +1,22 @@
-if (mode === "view") {
+  if (mode === "view") {
     return (
       <div className="min-h-screen bg-[#0A2E46] text-[#FAF9F6] selection:bg-[#F06C22]/30 selection:text-white">
         <style>{`
           @media print {
             @page { size: letter; margin: 0.4in; }
-            body, .print-area {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
+            body, html { 
+               background-color: #0A2E46 !important; 
+               -webkit-print-color-adjust: exact !important; 
+               print-color-adjust: exact !important; 
             }
-            .print-area {
-              width: 100% !important;
-              max-width: none !important;
+            .print-area { 
+               width: 100% !important; 
+               max-width: none !important;
             }
             .no-print { display: none !important; }
-            header, section {
-              break-inside: avoid;
-              page-break-inside: avoid;
+            header, section, .break-inside-avoid {
+               break-inside: avoid !important;
+               page-break-inside: avoid !important;
             }
           }
         `}</style>
@@ -53,24 +54,24 @@ if (mode === "view") {
             className="report-card space-y-3"
           >
             {/* 1. HERO HEADER: ATTENDANCE & DEDICATION */}
-            <header className="space-y-3">
+            <header className="space-y-3 break-inside-avoid">
               <div className="flex flex-col md:flex-row md:items-end justify-between border-b-2 border-[#F06C22] pb-4 gap-4">
                 <div>
-                  <h1 className="text-4xl font-black uppercase italic tracking-tighter leading-none mb-3]">
+                  <h1 className="text-4xl font-black uppercase italic tracking-tighter leading-none mb-3 print:text-[#0A2E46]">
                     Performance <br />
                     <span className="text-[#F06C22]">Report Card</span>
                   </h1>
                   <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 text-[8px] font-black uppercase tracking-[0.25em] text-[#68717A]">
                     <div className="flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5 text-[#F06C22]" />
-                      <span className="text-white]">
+                      <span className="text-white print:text-[#0A2E46]">
                         {client.firstName} {client.lastName}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-[#F06C22]" />
                       Report:{" "}
-                      <span className="text-white]">
+                      <span className="text-white print:text-[#0A2E46]">
                         {new Date(report.date + "T12:00:00").toLocaleDateString(
                           "en-US",
                           { month: "short", day: "numeric", year: "numeric" },
@@ -97,7 +98,7 @@ if (mode === "view") {
                   <p className="text-[7px] font-black uppercase tracking-[0.4em] text-[#68717A] mb-1">
                     Authenticated By
                   </p>
-                  <p className="text-base font-black uppercase italic tracking-tight] leading-none mb-1">
+                  <p className="text-base font-black uppercase italic tracking-tight print:text-[#0A2E46] leading-none mb-1">
                     {trainer.fullName}
                   </p>
                   <div className="bg-[#F06C22] px-2 py-0.5 rounded-md">
@@ -139,7 +140,7 @@ if (mode === "view") {
 
                   <div className="flex-1 bg-white/5 backdrop-blur-md p-6 rounded-[25px] border border-white/10 flex flex-col justify-center relative">
                     <Quote className="w-12 h-12 text-[#F06C22] absolute top-4 right-4 opacity-10" />
-                    <p className="text-lg md:text-xl font-black italic uppercase tracking-tight leading-tight text-white] max-w-[90%]">
+                    <p className="text-lg md:text-xl font-black italic uppercase tracking-tight leading-tight text-white print:text-[#0A2E46] max-w-[90%]">
                       "
                       {report.attendance.narrative ||
                         `Incredible work, ${client.firstName}. Your dedication to this clinical protocol is exactly what drives meaningful biological change.`}
@@ -216,11 +217,11 @@ if (mode === "view") {
             </header>
 
             {/* 2. THE TROPHIES: HIGHLIGHTED MOVEMENTS */}
-            <section className="space-y-3">
+            <section className="space-y-3 break-inside-avoid">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                   <TrendingUp className="w-3.5 h-3.5 text-[#F06C22]" />
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#FAF9F6]]">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#FAF9F6] print:text-[#0A2E46]">
                     Elite Strength Progress
                   </h3>
                 </div>
@@ -300,7 +301,7 @@ if (mode === "view") {
             </section>
 
             {/* 3. REINSTATED 4 P'S MATRIX - THE CENTERPIECE */}
-            <section className="space-y-4">
+            <section className="space-y-4 break-inside-avoid">
               <div className="flex items-center gap-2">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
                   Methodology Mastery: The 4 P's
@@ -325,7 +326,7 @@ if (mode === "view") {
                       className="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 flex flex-col justify-between shadow-xl"
                     >
                       <div>
-                        <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-white]">
+                        <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-white print:text-[#0A2E46]">
                           {data.title}
                         </h4>
                         
@@ -386,7 +387,7 @@ if (mode === "view") {
             </section>
 
             {/* 4. STRATEGIC ROADMAP */}
-            <section className=" space-y-4">
+            <section className=" break-inside-avoid space-y-4">
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4 text-[#F06C22]" />
                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F06C22] shrink-0">Strategic Road Map</h3>
@@ -403,7 +404,7 @@ if (mode === "view") {
                       {/* Step 1 */}
                       <div className="bg-[#0A2E46] p-5 rounded-2xl border border-white/10 shadow-lg">
                         <div className="text-[9px] font-black uppercase tracking-[0.2em] text-[#F06C22] mb-2 flex items-center gap-1.5"><Quote className="w-3 h-3" /> Step 1: Your Motivation</div>
-                        <p className="text-white] italic font-medium leading-relaxed">
+                        <p className="text-white print:text-[#0A2E46] italic font-medium leading-relaxed">
                           "{report.roadmap.emotionalAnchor}"
                         </p>
                       </div>
@@ -488,7 +489,7 @@ if (mode === "view") {
             </section>
 
             {/* 5. NOTES & FOOTER */}
-            <div className="grid grid-cols-3 gap-4 items-stretch">
+            <div className="grid grid-cols-3 gap-4 items-stretch break-inside-avoid">
               <div className="col-span-2 bg-[#FAF9F6] p-3 rounded-[20px] border border-slate-100 relative">
                 <div className="flex items-center gap-2 mb-1">
                   <FileText className="w-3 h-3 text-[#F06C22]" />
@@ -522,3 +523,4 @@ if (mode === "view") {
       </div>
     );
   }
+

@@ -5939,6 +5939,7 @@ function WorkoutTrackerView({
         focusRecords={focusRecords}
         sessionNotes={sessionNotes}
         logs={Object.values(logs).filter((l: any) => l.clientId === clientId) as any}
+        isIntroSession={isIntroSession}
       />
     );
   }

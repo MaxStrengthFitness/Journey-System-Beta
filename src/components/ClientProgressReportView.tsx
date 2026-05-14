@@ -605,64 +605,48 @@ export function ClientProgressReportView({
 
   if (mode === "view") {
     return (
-      <div className="min-h-screen bg-[#0A2E46] text-[#FAF9F6] selection:bg-[#F06C22]/30 selection:text-white print:bg-white">
+      <div className="min-h-screen bg-[#0A2E46] text-[#FAF9F6] selection:bg-[#F06C22]/30 selection:text-white">
         <style>{`
           @media print {
-            @page { size: portrait; margin: 0.5cm; }
-            body { background: white !important; color: black !important; font-size: 11px !important; }
-            .print-area { padding: 0 !important; margin: 0 !important; max-width: none !important; background: white !important; width: 100% !important; zoom: 0.8; }
+            @page { size: letter; margin: 0.4in; }
+            body, html { 
+               background-color: #0A2E46 !important; 
+               -webkit-print-color-adjust: exact !important; 
+               print-color-adjust: exact !important; 
+            }
+            .print-area { 
+               width: 100% !important; 
+               max-width: none !important;
+            }
             .no-print { display: none !important; }
-            .report-card { border: none !important; box-shadow: none !important; background: white !important; color: black !important; padding: 0 !important; border-radius: 0 !important; }
-            .bg-[#0A2E46] { background: white !important; }
-            .text-[#FAF9F6], .text-white { color: #0A2E46 !important; }
-            .text-[#68717A] { color: #666 !important; }
-            .bg-white\\/5 { background: #fdfdfd !important; border: 1px solid #eee !important; }
-            .shadow-2xl, .shadow-xl, .shadow-lg { box-shadow: none !important; }
-            .border-white\\/10 { border-color: #eee !important; }
-            .text-[#F06C22] { color: #D95B16 !important; font-weight: 900 !important; }
-            .bg-[#F06C22] { background: #D95B16 !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .bg-emerald-500 { background-color: #10B981 !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .bg-amber-400 { background-color: #FBBF24 !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .bg-rose-500 { background-color: #F43F5E !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .rounded-[30px], .rounded-[40px] { border-radius: 0.5rem !important; }
-            h1 { font-size: 1.8rem !important; margin-bottom: 0.25rem !important; }
-            h2 { font-size: 1.1rem !important; margin-bottom: 0.25rem !important; }
-            h3 { font-size: 0.9rem !important; margin-bottom: 0.25rem !important; }
-            h4 { font-size: 0.75rem !important; margin-bottom: 0.25rem !important; }
-            p, span { font-size: 0.7rem !important; }
-            .space-y-4 > * + * { margin-top: 0.5rem !important; }
-            .space-y-6 > * + * { margin-top: 0.75rem !important; }
-            .scale-indicator { gap: 2px !important; }
-            .scale-block { height: 6px !important; border-radius: 2px !important; }
-            .gap-3 { gap: 0.5rem !important; }
-            .gap-4 { gap: 0.75rem !important; }
-            .p-4 { padding: 0.5rem !important; }
-            .p-5, .p-6 { padding: 0.75rem !important; }
-            .pb-4 { padding-bottom: 0.5rem !important; }
+            header, section, .break-inside-avoid {
+               break-inside: avoid !important;
+               page-break-inside: avoid !important;
+            }
           }
         `}</style>
 
-        <div className="max-w-4xl mx-auto px-6 py-4 space-y-4 print-area print:m-0 print:p-0">
+        <div className="max-w-4xl mx-auto px-6 py-4 space-y-4 print-area">
           {/* Controls */}
-          <div className="flex justify-between items-center no-print print:hidden">
+          <div className="flex justify-between items-center no-print">
             <Button
               variant="ghost"
               onClick={onBack}
-              className="text-white hover:bg-white/10 rounded-2xl gap-2 font-black uppercase italic tracking-widest px-6 print:hidden"
+              className="text-white hover:bg-white/10 rounded-2xl gap-2 font-black uppercase italic tracking-widest px-6"
             >
               <ArrowLeft className="w-5 h-5" /> Back
             </Button>
-            <div className="flex gap-3 print:hidden">
+            <div className="flex gap-3">
               <Button
                 onClick={() => setMode("editing")}
                 variant="outline"
-                className="text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-black uppercase italic tracking-widest px-6 print:hidden"
+                className="text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-black uppercase italic tracking-widest px-6"
               >
                 Edit Data
               </Button>
               <Button
                 onClick={() => window.print()}
-                className="bg-[#F06C22] hover:bg-[#D95B16] text-white rounded-2xl gap-2 font-black uppercase italic tracking-widest px-8 shadow-lg shadow-[#F06C22]/20 print:hidden"
+                className="bg-[#F06C22] hover:bg-[#D95B16] text-white rounded-2xl gap-2 font-black uppercase italic tracking-widest px-8 shadow-lg shadow-[#F06C22]/20"
               >
                 <Printer className="w-5 h-5" /> Print Report
               </Button>
@@ -675,7 +659,7 @@ export function ClientProgressReportView({
             className="report-card space-y-3"
           >
             {/* 1. HERO HEADER: ATTENDANCE & DEDICATION */}
-            <header className="space-y-3 print:break-inside-avoid">
+            <header className="space-y-3 break-inside-avoid">
               <div className="flex flex-col md:flex-row md:items-end justify-between border-b-2 border-[#F06C22] pb-4 gap-4">
                 <div>
                   <h1 className="text-4xl font-black uppercase italic tracking-tighter leading-none mb-3 print:text-[#0A2E46]">
@@ -702,14 +686,14 @@ export function ClientProgressReportView({
                     <div className="flex items-center gap-1.5 opacity-80">
                       <CheckCircle2 className="w-3 h-3 text-[#F06C22]/60" />
                       Joined:{" "}
-                      <span className="text-white/60 print:text-slate-500">
+                      <span className="text-white/60">
                         Jan 15, 2026
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 opacity-80">
                       <CheckCircle2 className="w-3 h-3 text-[#F06C22]/60" />
                       Prev Report:{" "}
-                      <span className="text-white/60 print:text-slate-500">
+                      <span className="text-white/60">
                         Mar 01, 2026
                       </span>
                     </div>
@@ -759,7 +743,7 @@ export function ClientProgressReportView({
                     </div>
                   )}
 
-                  <div className="flex-1 bg-white/5 backdrop-blur-md p-6 rounded-[25px] border border-white/10 flex flex-col justify-center print:bg-slate-50 relative">
+                  <div className="flex-1 bg-white/5 backdrop-blur-md p-6 rounded-[25px] border border-white/10 flex flex-col justify-center relative">
                     <Quote className="w-12 h-12 text-[#F06C22] absolute top-4 right-4 opacity-10" />
                     <p className="text-lg md:text-xl font-black italic uppercase tracking-tight leading-tight text-white print:text-[#0A2E46] max-w-[90%]">
                       "
@@ -773,7 +757,7 @@ export function ClientProgressReportView({
                 {/* Secondary Toggled Metrics */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   {report.attendance.toggles?.totalVolume !== false && (
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center print:border-slate-200">
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
                       <h4 className="text-[8px] font-black uppercase tracking-widest text-[#68717A] mb-1">
                         Total Volume Lifted
                       </h4>
@@ -786,7 +770,7 @@ export function ClientProgressReportView({
                     </div>
                   )}
                   {report.attendance.toggles?.totalReps !== false && (
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center print:border-slate-200">
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
                       <h4 className="text-[8px] font-black uppercase tracking-widest text-[#68717A] mb-1">
                         Total Reps
                       </h4>
@@ -796,7 +780,7 @@ export function ClientProgressReportView({
                     </div>
                   )}
                   {report.attendance.toggles?.totalGoodReps !== false && (
-                    <div className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-sm text-center print:border-slate-200 bg-emerald-50/10">
+                    <div className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-sm text-center bg-emerald-50/10">
                       <h4 className="text-[8px] font-black uppercase tracking-widest text-emerald-700 mb-1">
                         Green Quality Reps
                       </h4>
@@ -808,7 +792,7 @@ export function ClientProgressReportView({
                     </div>
                   )}
                   {report.attendance.toggles?.avgRestDays !== false && (
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center print:border-slate-200">
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
                       <h4 className="text-[8px] font-black uppercase tracking-widest text-[#68717A] mb-1">
                         Average Rest
                       </h4>
@@ -821,7 +805,7 @@ export function ClientProgressReportView({
                     </div>
                   )}
                   {report.attendance.toggles?.avgDuration !== false && (
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center print:border-slate-200">
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
                       <h4 className="text-[8px] font-black uppercase tracking-widest text-[#68717A] mb-1">
                         Avg Session Length
                       </h4>
@@ -838,7 +822,7 @@ export function ClientProgressReportView({
             </header>
 
             {/* 2. THE TROPHIES: HIGHLIGHTED MOVEMENTS */}
-            <section className="space-y-3 print:break-inside-avoid">
+            <section className="space-y-3 break-inside-avoid">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                   <TrendingUp className="w-3.5 h-3.5 text-[#F06C22]" />
@@ -846,7 +830,7 @@ export function ClientProgressReportView({
                     Elite Strength Progress
                   </h3>
                 </div>
-                <div className="h-px bg-white/10 flex-1 print:bg-slate-100"></div>
+                <div className="h-px bg-white/10 flex-1"></div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {report.highlights.map((h, i) => {
@@ -889,7 +873,7 @@ export function ClientProgressReportView({
                   return (
                     <div
                       key={i}
-                      className="bg-slate-800/50 p-6 rounded-[25px] shadow-xl flex flex-col justify-between min-h-[160px] border border-white/5 relative group overflow-hidden print:bg-slate-50 print:border-slate-200"
+                      className="bg-slate-800/50 p-6 rounded-[25px] shadow-xl flex flex-col justify-between min-h-[160px] border border-white/5 relative group overflow-hidden"
                     >
                       <div className="absolute top-0 right-0 p-3 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity">
                         <Award className="w-24 h-24 text-white" />
@@ -910,8 +894,8 @@ export function ClientProgressReportView({
                         </p>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-white/10 w-full relative z-10 print:border-slate-200">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest print:text-slate-500">
+                      <div className="mt-4 pt-3 border-t border-white/10 w-full relative z-10">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
                           {contextText}
                         </p>
                       </div>
@@ -922,12 +906,12 @@ export function ClientProgressReportView({
             </section>
 
             {/* 3. REINSTATED 4 P'S MATRIX - THE CENTERPIECE */}
-            <section className="space-y-4 print:break-inside-avoid">
+            <section className="space-y-4 break-inside-avoid">
               <div className="flex items-center gap-2">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
                   Methodology Mastery: The 4 P's
                 </h3>
-                <div className="h-px bg-[#F06C22]/20 flex-1 print:bg-slate-100"></div>
+                <div className="h-px bg-[#F06C22]/20 flex-1"></div>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -944,7 +928,7 @@ export function ClientProgressReportView({
                   return (
                     <div
                       key={p}
-                      className="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 flex flex-col justify-between print:bg-white print:border-slate-100 shadow-xl print:shadow-none"
+                      className="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 flex flex-col justify-between shadow-xl"
                     >
                       <div>
                         <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-white print:text-[#0A2E46]">
@@ -960,10 +944,10 @@ export function ClientProgressReportView({
                               <div
                                 key={step}
                                 className={cn(
-                                  "w-full h-1.5 rounded-[1px] transition-all print:border print:border-slate-200",
+                                  "w-full h-1.5 rounded-[1px] transition-all",
                                   step <= rank
                                     ? colorClasses.bg
-                                    : "bg-white/5 print:bg-transparent",
+                                    : "bg-white/5",
                                 )}
                               />
                             ))}
@@ -972,8 +956,8 @@ export function ClientProgressReportView({
                       </div>
                       
                       {matrixItem?.note && (
-                        <div className="mt-3 bg-black/20 p-2 rounded-lg border border-white/5 print:bg-slate-50 print:border-slate-100">
-                          <p className="text-[8px] font-bold text-white/80 leading-relaxed italic print:text-slate-600">
+                        <div className="mt-3 bg-black/20 p-2 rounded-lg border border-white/5">
+                          <p className="text-[8px] font-bold text-white/80 leading-relaxed italic">
                             "{matrixItem.note}"
                           </p>
                         </div>
@@ -984,7 +968,7 @@ export function ClientProgressReportView({
               </div>
 
               {(report.performanceMatrix.includedNotes || []).length > 0 && (
-                <div className="bg-[#FAF9F6] p-5 rounded-3xl border border-slate-100 shadow-inner mt-4 print:border-slate-200">
+                <div className="bg-[#FAF9F6] p-5 rounded-3xl border border-slate-100 shadow-inner mt-4">
                   <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-[#68717A] mb-3">
                     Clinical Highlights
                   </h4>
@@ -1008,11 +992,11 @@ export function ClientProgressReportView({
             </section>
 
             {/* 4. STRATEGIC ROADMAP */}
-            <section className="print:break-inside-avoid space-y-4">
+            <section className=" break-inside-avoid space-y-4">
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4 text-[#F06C22]" />
                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F06C22] shrink-0">Strategic Road Map</h3>
-                <div className="h-px bg-[#F06C22]/20 flex-1 print:bg-slate-100"></div>
+                <div className="h-px bg-[#F06C22]/20 flex-1"></div>
               </div>
 
               {report.roadmap && (
@@ -1023,7 +1007,7 @@ export function ClientProgressReportView({
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
                       {/* Step 1 */}
-                      <div className="bg-[#0A2E46] p-5 rounded-2xl border border-white/10 shadow-lg print:bg-slate-50 print:border-slate-100">
+                      <div className="bg-[#0A2E46] p-5 rounded-2xl border border-white/10 shadow-lg">
                         <div className="text-[9px] font-black uppercase tracking-[0.2em] text-[#F06C22] mb-2 flex items-center gap-1.5"><Quote className="w-3 h-3" /> Step 1: Your Motivation</div>
                         <p className="text-white print:text-[#0A2E46] italic font-medium leading-relaxed">
                           "{report.roadmap.emotionalAnchor}"
@@ -1031,7 +1015,7 @@ export function ClientProgressReportView({
                       </div>
 
                       {/* Step 2 */}
-                      <div className="bg-[#FAF9F6] p-5 rounded-2xl border border-slate-200 shadow-lg print:border-slate-100">
+                      <div className="bg-[#FAF9F6] p-5 rounded-2xl border border-slate-200 shadow-lg">
                         <div className="text-[9px] font-black uppercase tracking-[0.2em] text-[#68717A] mb-2 flex items-center gap-1.5"><MapIcon className="w-3 h-3" /> Step 2: The Milestone</div>
                         <p className="text-[#0A2E46] font-bold leading-relaxed">
                           {report.roadmap.smartGoal}
@@ -1069,7 +1053,7 @@ export function ClientProgressReportView({
 
                   {/* Auto-Generated Educational Snippets */}
                   <div className={cn(
-                    "mt-4 p-4 rounded-xl border-l-4 shadow-sm relative overflow-hidden print:bg-slate-50 print:border-slate-300",
+                    "mt-4 p-4 rounded-xl border-l-4 shadow-sm relative overflow-hidden",
                     report.roadmap.anchorCategory === 'weight_loss' ? "bg-slate-900 border-[#38BDF8]" :
                     report.roadmap.anchorCategory === 'eih_management' ? "bg-slate-900 border-amber-500" :
                     "bg-slate-900 border-slate-500"
@@ -1088,17 +1072,17 @@ export function ClientProgressReportView({
                         )}>Clinical Insight</p>
                         
                         {report.roadmap.anchorCategory === 'weight_loss' && (
-                          <p className="text-xs text-white/90 leading-relaxed print:text-slate-700">
+                          <p className="text-xs text-white/90 leading-relaxed">
                             Physical conditioning is 80% exercise and 20% nutrition. However, fat loss is 80% nutrition and 20% exercise. We will maximize your metabolic engine in the studio, but your kitchen habits will dictate the scale.
                           </p>
                         )}
                         {report.roadmap.anchorCategory === 'eih_management' && (
-                          <p className="text-xs text-white/90 leading-relaxed print:text-slate-700">
+                          <p className="text-xs text-white/90 leading-relaxed">
                             Due to your history of Exercise Induced Headaches, your 'failure' point is redefined. Your set ends the instant you perceive head discomfort, not at muscular failure. Safety is our only priority.
                           </p>
                         )}
                         {report.roadmap.anchorCategory !== 'weight_loss' && report.roadmap.anchorCategory !== 'eih_management' && (
-                          <p className="text-xs text-white/90 leading-relaxed print:text-slate-700">
+                          <p className="text-xs text-white/90 leading-relaxed">
                             The assumed goal of exercise is to lift heavier weights. The REAL objective is to increase Motor Unit Recruitment by pushing your muscles to deep fatigue safely. Do not chase numbers; chase the quality of the effort.
                           </p>
                         )}
@@ -1110,16 +1094,16 @@ export function ClientProgressReportView({
             </section>
 
             {/* 5. NOTES & FOOTER */}
-            <div className="grid grid-cols-3 gap-4 items-stretch print:break-inside-avoid">
-              <div className="col-span-2 bg-[#FAF9F6] p-3 rounded-[20px] border border-slate-100 print:border-slate-200 relative">
+            <div className="grid grid-cols-3 gap-4 items-stretch break-inside-avoid">
+              <div className="col-span-2 bg-[#FAF9F6] p-3 rounded-[20px] border border-slate-100 relative">
                 <div className="flex items-center gap-2 mb-1">
                   <FileText className="w-3 h-3 text-[#F06C22]" />
                   <h4 className="text-[8px] font-black uppercase tracking-[0.3em] text-[#0A2E46]">
                     Summative Analysis
                   </h4>
                 </div>
-                <div className="bg-white rounded-xl p-2 shadow-inner min-h-[50px] print:p-0 print:bg-transparent print:shadow-none">
-                  <p className="text-[10px] font-medium italic text-[#0A2E46] leading-relaxed print:text-black">
+                <div className="bg-white rounded-xl p-2 shadow-inner min-h-[50px]">
+                  <p className="text-[10px] font-medium italic text-[#0A2E46] leading-relaxed">
                     {report.trainerNotes ||
                       "Incredible work this quarter. Your neurological adaptations are now clearly visible in the data. Your force output is reaching peak clinical efficiency. Keep showing up."}
                   </p>
