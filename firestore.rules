@@ -1,0 +1,367 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: trainers
+// Document ID: trainerId
+// Fields:
+//   - fullName: string (required)
+//   - initials: string (required)
+//   - pin: string (required, 4-6 digits)
+//   - createdAt: timestamp
+//
+// Collection: clients
+// Document ID: clientId
+// Fields:
+//   - firstName: string (required)
+//   - lastName: string (required)
+//   - isActive: boolean (required)
+//   - globalNotes: string (optional)
+//   - remainingSessions: number (required)
+//   - createdAt: timestamp
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Updating these legacy functions just in case they are called elsewhere
+    function isHardcodedAdmin() {
+      return isAdmin();
+    }
+
+    function getRole() {
+      return isAdmin() ? 'admin' : (isTrainer() ? 'trainer' : 'none');
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.email != null && (
+        request.auth.token.email.lower() == "jurgensaj@gmail.com"
+      );
+    }
+
+    function isTrainer() {
+      return isAuthenticated();
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidTrainer(data) {
+      return hasRequiredFields(['fullName', 'initials', 'pin']) &&
+             data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
+             data.initials is string && data.initials.size() >= 2 && data.initials.size() <= 4 &&
+             data.pin is string && data.pin.matches('^[0-9]{4,6}$') &&
+             (!('mindbody_ical_url' in data) || (data.mindbody_ical_url is string && data.mindbody_ical_url.size() < 500)) &&
+             (!('legacy_filemaker_id' in data) || (data.legacy_filemaker_id is string && data.legacy_filemaker_id.size() < 100));
+    }
+
+    function isValidClient(data) {
+      return hasRequiredFields(['firstName', 'lastName', 'isActive', 'remainingSessions']) &&
+             data.firstName is string && data.firstName.size() > 0 && data.firstName.size() < 50 &&
+             data.lastName is string && data.lastName.size() > 0 && data.lastName.size() < 50 &&
+             data.isActive is bool &&
+             data.remainingSessions is number && data.remainingSessions >= 0 &&
+             (!('gender' in data) || data.gender == null || data.gender in ['Male', 'Female', 'Other']) &&
+             (!('height' in data) || data.height == null || data.height is string) &&
+             (!('weight' in data) || data.weight == null || data.weight is string) &&
+             (!('age' in data) || data.age == null || data.age is number) &&
+             (!('phone' in data) || data.phone == null || data.phone is string) &&
+             (!('email' in data) || data.email == null || data.email is string) &&
+             (!('address' in data) || data.address == null || data.address is string) &&
+             (!('emergencyContactName' in data) || data.emergencyContactName == null || data.emergencyContactName is string) &&
+             (!('emergencyContactPhone' in data) || data.emergencyContactPhone == null || data.emergencyContactPhone is string) &&
+             (!('medicalHistory' in data) || data.medicalHistory == null || data.medicalHistory is string) &&
+             (!('occupation' in data) || data.occupation == null || data.occupation is string) &&
+             (!('isRetired' in data) || data.isRetired == null || data.isRetired is bool) &&
+             (!('clinicalProfile' in data) || data.clinicalProfile == null || data.clinicalProfile is list) &&
+             (!('clinicalNotes' in data) || data.clinicalNotes == null || data.clinicalNotes is string) &&
+             (!('activityLevel' in data) || data.activityLevel == null || data.activityLevel is string) &&
+             (!('trainingPedigree' in data) || data.trainingPedigree == null || data.trainingPedigree is string) &&
+             (!('recoveryMetric' in data) || data.recoveryMetric == null || data.recoveryMetric is string) &&
+             (!('activity' in data) || data.activity == null || data.activity is string) &&
+             (!('goals' in data) || data.goals == null || data.goals is string) &&
+             (!('globalNotes' in data) || data.globalNotes == null || (data.globalNotes is string && data.globalNotes.size() < 2000)) &&
+             (!('isRoutineBActive' in data) || data.isRoutineBActive == null || data.isRoutineBActive is bool) &&
+             (!('sessionCount' in data) || data.sessionCount == null || data.sessionCount is number) &&
+             (!('packageTier' in data) || data.packageTier == null || data.packageTier in ['6-Month', '12-Month', '18-Month', 'None']) &&
+             (!('consultationCompleted' in data) || data.consultationCompleted == null || data.consultationCompleted is bool) &&
+             (!('requiresConsultation' in data) || data.requiresConsultation == null || data.requiresConsultation is bool) &&
+             (!('events' in data) || data.events == null || data.events is list) &&
+             (!('updatedAt' in data) || data.updatedAt == null || data.updatedAt is timestamp);
+    }
+
+    function isValidMachine(data) {
+      return hasRequiredFields(['name', 'order']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.order is number &&
+             (!('fullName' in data) || data.fullName is string) &&
+             (!('settings' in data) || data.settings is string) &&
+             (!('settingOptions' in data) || data.settingOptions is list) &&
+             (!('guidelines' in data) || data.guidelines is map);
+    }
+
+    function isValidSession(data) {
+      return hasRequiredFields(['sessionNumber', 'date', 'trainerInitials', 'sessionType', 'status']) &&
+             (!('clientId' in data) || data.clientId == null || data.clientId is string) &&
+             (!('trainerId' in data) || data.trainerId == null || data.trainerId is string) &&
+             (!('isUnassigned' in data) || data.isUnassigned == null || data.isUnassigned is bool) &&
+             data.sessionNumber is number &&
+             data.date is string &&
+             data.trainerInitials is string &&
+             (!('trainerName' in data) || data.trainerName == null || data.trainerName is string) &&
+             data.sessionType in ['Standard', 'Onboarding', 'Reset'] &&
+             data.status in ['In-Progress', 'Completed', 'Cancelled'] &&
+             (!('routineId' in data) || data.routineId == null || data.routineId is string) &&
+             (!('routineName' in data) || data.routineName == null || data.routineName is string) &&
+             (!('notes' in data) || data.notes == null || data.notes is string) &&
+             (!('startTime' in data) || data.startTime == null || data.startTime is timestamp) &&
+             (!('endTime' in data) || data.endTime == null || data.endTime is timestamp) &&
+             (!('clientAge' in data) || data.clientAge == null || data.clientAge is number || data.clientAge is string) &&
+             (!('clientOccupation' in data) || data.clientOccupation == null || data.clientOccupation is string) &&
+             (!('clientIsRetired' in data) || data.clientIsRetired == null || data.clientIsRetired is bool || data.clientIsRetired is string) &&
+             (!('clientActivityLevel' in data) || data.clientActivityLevel == null || data.clientActivityLevel is string) &&
+             (!('clientClinicalProfile' in data) || data.clientClinicalProfile == null || data.clientClinicalProfile is list) &&
+             (!('clientFeel' in data) || data.clientFeel == null || data.clientFeel is string) &&
+             (!('createdAt' in data) || data.createdAt == null || data.createdAt is timestamp);
+    }
+
+    function isValidLog(data) {
+      return hasRequiredFields(['sessionId', 'machineId']) &&
+             data.sessionId is string &&
+             data.machineId is string &&
+             (!('clientId' in data) || data.clientId == null || data.clientId is string) &&
+             (!('suggestedOrder' in data) || data.suggestedOrder == null || data.suggestedOrder is number) &&
+             (!('weight' in data) || data.weight == null || data.weight is string) &&
+             (!('reps' in data) || data.reps == null || (data.reps is string || data.reps is number)) &&
+             (!('targetWeight' in data) || data.targetWeight == null || data.targetWeight is string) &&
+             (!('seconds' in data) || data.seconds == null || data.seconds is string) &&
+             (!('timeSpent' in data) || data.timeSpent == null || data.timeSpent is string) &&
+             (!('isStaticHold' in data) || data.isStaticHold == null || data.isStaticHold is bool) &&
+             (!('isTSC' in data) || data.isTSC == null || data.isTSC is bool) &&
+             (!('repQuality' in data) || data.repQuality == null || data.repQuality is number) &&
+             (!('side' in data) || data.side == null || data.side in ['Left', 'Right']) &&
+             (!('notes' in data) || data.notes == null || data.notes is string) &&
+             (!('machineSettings' in data) || data.machineSettings == null || data.machineSettings is map) &&
+             (!('createdAt' in data) || data.createdAt == null || data.createdAt is timestamp) &&
+             (!('updatedAt' in data) || data.updatedAt == null || data.updatedAt is timestamp);
+    }
+
+    function isValidSettingChange(data) {
+      return hasRequiredFields(['machineId', 'clientId', 'trainerId', 'previousSettings', 'newSettings', 'createdAt']) &&
+             data.machineId is string &&
+             data.clientId is string &&
+             data.trainerId is string &&
+             data.previousSettings is map &&
+             data.newSettings is map &&
+             (!('reason' in data) || data.reason is string);
+    }
+
+    function isValidClientMachineSetting(data) {
+      return hasRequiredFields(['clientId', 'machineId', 'settings', 'updatedBy', 'updatedAt']) &&
+             data.clientId is string &&
+             data.machineId is string &&
+             data.settings is map &&
+             data.updatedBy is string;
+    }
+
+    function isValidSchedule(data) {
+      return hasRequiredFields(['clientName', 'trainerName', 'startTime', 'endTime', 'status', 'serviceName', 'source', 'createdAt']) &&
+             data.clientName is string &&
+             data.trainerName is string &&
+             data.startTime is timestamp &&
+             data.endTime is timestamp &&
+             data.status in ['Scheduled', 'Completed', 'Cancelled', 'No-Show'] &&
+             data.serviceName is string &&
+             data.source in ['MindBody', 'Manual', 'Subscription'] &&
+             (!('clientId' in data) || data.clientId is string) &&
+             (!('trainerId' in data) || data.trainerId is string) &&
+             (!('importId' in data) || data.importId is string) &&
+             (!('ical_uid' in data) || (data.ical_uid is string && data.ical_uid.size() < 255)) &&
+             (!('sync_secret' in data) || data.sync_secret is string);
+    }
+
+    function isValidRoutine(data) {
+      return hasRequiredFields(['clientId', 'name', 'machineIds']) &&
+             data.clientId is string &&
+             data.name is string &&
+             data.machineIds is list &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidRoutineAdjustment(data) {
+      return hasRequiredFields(['routineId', 'clientId', 'previousMachineIds', 'newMachineIds', 'trainerId', 'createdAt']) &&
+             data.routineId is string &&
+             data.clientId is string &&
+             data.previousMachineIds is list &&
+             data.newMachineIds is list &&
+             data.trainerId is string &&
+             data.createdAt is timestamp &&
+             (!('notes' in data) || data.notes is string);
+    }
+
+    function isValidSessionNote(data) {
+      return hasRequiredFields(['sessionId', 'content', 'trainerInitials']) &&
+             data.sessionId is string &&
+             data.content is string &&
+             data.trainerInitials is string &&
+             (!('clientId' in data) || data.clientId is string) &&
+             (!('trainerId' in data) || data.trainerId is string) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidTrainerFocus(data) {
+      return hasRequiredFields(['clientId', 'trainerId', 'category', 'notes']) &&
+             data.clientId is string &&
+             data.trainerId is string &&
+             data.category in ['Path', 'Pace', 'Posture', 'Purpose'] &&
+             data.notes is string && data.notes.size() <= 1000 &&
+             (!('trainerName' in data) || data.trainerName is string) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidProgressReport(data) {
+      return hasRequiredFields(['clientId', 'trainerId', 'date']) &&
+             data.clientId is string &&
+             data.trainerId is string &&
+             data.date is string &&
+             (!('totalSessionsCompleted' in data) || data.totalSessionsCompleted is number) &&
+             (!('attendanceScore' in data) || data.attendanceScore is number) &&
+             (!('createdAt' in data) || data.createdAt == null || data.createdAt is timestamp);
+    }
+
+    function isValidFocusRecord(data) {
+      return hasRequiredFields(['clientId', 'category', 'clinicalNotes', 'status', 'assignedBy', 'trainerId']) &&
+             data.clientId is string &&
+             data.category in ['Posture', 'Pace', 'Path', 'Purpose'] &&
+             data.clinicalNotes is string && data.clinicalNotes.size() <= 2000 &&
+             data.status in ['Active', 'Achieved', 'Deleted'] &&
+             data.assignedBy is string &&
+             data.trainerId is string &&
+             (!('targetMachineId' in data) || data.targetMachineId == null || data.targetMachineId is string) &&
+             (!('dateAssigned' in data) || data.dateAssigned is timestamp) &&
+             (!('dateUpdated' in data) || data.dateUpdated is timestamp);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /trainers/{trainerId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidTrainer(request.resource.data);
+      allow update: if (isAdmin() || (isTrainer() && request.auth.uid == trainerId)) && isValidTrainer(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /clients/{clientId} {
+      allow read: if true;
+      allow create: if (isAdmin() || isTrainer()) && isValidClient(request.resource.data);
+      allow update: if (isAdmin() || isTrainer()) && isValidClient(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /clientMachineSettings/{settingId} {
+      allow read: if isAuthenticated();
+      allow create, update: if (isAdmin() || isAuthenticated()) && isValidClientMachineSetting(request.resource.data);
+    }
+
+    match /machines/{machineId} {
+      allow read: if isAuthenticated();
+      allow create: if (isAdmin() || isAuthenticated()) && isValidMachine(request.resource.data);
+      allow update: if (isAdmin() || isAuthenticated()) && isValidMachine(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /machineSettingChanges/{changeId} {
+      allow read: if isAuthenticated();
+      allow create: if (isAdmin() || isAuthenticated()) && isValidSettingChange(request.resource.data);
+    }
+
+    match /routines/{routineId} {
+      allow read: if isAuthenticated();
+      allow create: if (isAdmin() || isAuthenticated()) && isValidRoutine(request.resource.data);
+      allow update: if (isAdmin() || isAuthenticated()) && isValidRoutine(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /routineAdjustments/{adjustmentId} {
+      allow read: if isAuthenticated();
+      allow create: if (isAdmin() || isAuthenticated()) && isValidRoutineAdjustment(request.resource.data);
+    }
+
+    match /sessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create: if (isAdmin() || isAuthenticated()) && isValidSession(request.resource.data);
+      allow update: if (isAdmin() || isAuthenticated()) && isValidSession(request.resource.data);
+      allow delete: if isAdmin() || isTrainer();
+    }
+
+    match /exerciseLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if (isAdmin() || isAuthenticated()) && isValidLog(request.resource.data);
+      allow update: if (isAdmin() || isAuthenticated()) && isValidLog(request.resource.data);
+      allow delete: if isAdmin() || isTrainer();
+    }
+
+    match /schedules/{scheduleId} {
+      allow read: if true;
+      allow create: if ('sync_secret' in request.resource.data && request.resource.data.sync_secret == 'STABLE_MASTER_SYNC_TOKEN_2026') || isTrainer();
+      allow update: if ('sync_secret' in request.resource.data && request.resource.data.sync_secret == 'STABLE_MASTER_SYNC_TOKEN_2026') || isTrainer();
+      allow delete: if isAdmin() || isTrainer();
+    }
+    
+    match /sessionNotes/{noteId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidSessionNote(request.resource.data);
+      allow update: if isAuthenticated() && isValidSessionNote(request.resource.data);
+      allow delete: if isAdmin() || isTrainer();
+    }
+
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId || isAdmin();
+    }
+
+    match /trainerFocuses/{focusId} {
+      allow read: if isAuthenticated();
+      allow create, update: if (isAdmin() || isTrainer()) && isValidTrainerFocus(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /progressReports/{reportId} {
+      allow read: if isAuthenticated();
+      allow create, update: if (isAdmin() || isTrainer()) && isValidProgressReport(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /focusRecords/{focusId} {
+      allow read: if isAuthenticated();
+      allow create, update: if (isAdmin() || isTrainer()) && isValidFocusRecord(request.resource.data);
+      allow delete: if isAdmin();
+    }
+    match /aggregations/{aggId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+  }
+}
