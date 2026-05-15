@@ -27,6 +27,7 @@ import { CreateTrainerModal } from './CreateTrainerModal';
 import { TrainerMachineEditor } from './TrainerMachineEditor';
 import { Machine, Client, Trainer, WorkoutSession, ScheduleEntry, Studio } from '../types';
 import { findMatchingTrainer, normalizeName } from '../lib/sync-utils';
+import { parseMachineSettings } from '../lib/utils';
 
 export function TrainerControlHubView({ 
   trainers, 
@@ -414,21 +415,14 @@ export function TrainerControlHubView({
               weight,
               reps,
               notes,
+              machineSettings: settingsStr ? parseMachineSettings(settingsStr) : {},
               createdAt: Timestamp.fromDate(sessionDate)
             });
             logCount++;
 
             if (settingsStr) {
-              const settings: Record<string, string> = {};
-              if (settingsStr.includes(':')) {
-                settingsStr.split(',').forEach(s => {
-                  const [k, v] = s.split(':').map(x => x.trim());
-                  if (k && v) settings[k] = v;
-                });
-              } else {
-                settings['General'] = settingsStr;
-              }
-
+              const settings = parseMachineSettings(settingsStr);
+              
               await setDoc(doc(db, 'clientMachineSettings', `${clientId}_${machineId}`), {
                 clientId,
                 machineId,
@@ -581,7 +575,7 @@ export function TrainerControlHubView({
                           {isAdmin && (
                             <button 
                               onClick={() => setTrainerToDelete(t)}
-                              className="absolute top-4 right-4 p-2 text-slate-600 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                              className="absolute top-4 right-4 p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all"
                               title="Delete Trainer"
                             >
                               <Trash2 className="w-4 h-4" />

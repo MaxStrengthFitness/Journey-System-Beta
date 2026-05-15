@@ -49,7 +49,8 @@ import {
   Mic,
   Check,
   X,
-  Settings2
+  Settings2,
+  Database
 } from 'lucide-react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
@@ -82,13 +83,15 @@ import {
 } from 'firebase/auth';
 
 import { db, auth } from './firebase';
-import { Trainer, TrainerAvailability, Client, View, Machine, WorkoutSession, ExerciseLog, Routine, ClientMachineSetting, SessionType, SessionNote, TrainerFocus, FocusRecord } from './types';
+import firebaseConfig from '../firebase-applet-config.json';
+import { Trainer, TrainerAvailability, Client, View, Machine, WorkoutSession, ExerciseLog, Routine, ClientMachineSetting, SessionType, SessionNote, TrainerFocus, FocusRecord, Studio } from './types';
 import { OperationType, handleFirestoreError } from './lib/firestore-errors';
 // Removing duplicate cn import
 import { hashPin } from './lib/auth-utils';
 import { parseSessionDate, calculateExerciseVolume, safeToDate, getMillis } from './lib/utils';
 import { getLatestTargetWeight } from './lib/historical-utils';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { generateMockClientWithHistory } from './lib/mockDataGenerator';
 import { TrainerControlHubView } from './components/TrainerControlHubView';
 import { InsightsDashboardView } from './components/InsightsDashboardView';
 import { ClientProfileView } from './components/ClientProfileView';
@@ -525,11 +528,19 @@ export default function App() {
       return;
     }
 
-    if (trainers.length > 0 && !authTrainer) {
-      const savedId = localStorage.getItem('max_strength_trainer_id');
-      if (savedId) {
-        const matching = trainers.find(t => t.id === savedId);
-        if (matching) setAuthTrainer(matching);
+    if (trainers.length > 0) {
+      if (!authTrainer) {
+        const savedId = localStorage.getItem('max_strength_trainer_id');
+        if (savedId) {
+          const matching = trainers.find(t => t.id === savedId);
+          if (matching) setAuthTrainer(matching);
+        }
+      } else {
+        // Check if the current trainer was deleted
+        const stillExists = trainers.find(t => t.id === authTrainer.id);
+        if (!stillExists && authTrainer.id !== 'owner-temp') {
+          handleTrainerLock();
+        }
       }
     }
   }, [trainers, authTrainer, user]);
@@ -1054,7 +1065,7 @@ export default function App() {
 
               <div className="flex flex-col gap-3 pt-2">
                 <Button 
-                  onClick={() => window.open(`https://console.firebase.google.com/project/${process.env.FIREBASE_PROJECT_ID}/usage/details`, '_blank')}
+                  onClick={() => window.open(`https://console.firebase.google.com/project/${firebaseConfig.projectId}/usage/details`, '_blank')}
                   className="w-full h-14 rounded-2xl font-black uppercase tracking-widest bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
                 >
                   Open Firebase Usage Dashboard
@@ -1084,10 +1095,41 @@ export default function App() {
                   className="p-4 bg-black/40 rounded-xl border border-white/5 font-mono text-[10px] text-zinc-500 overflow-hidden"
                 >
                   <p className="mb-2 uppercase tracking-widest font-black text-zinc-400">Diagnostic Info</p>
-                  <p>Project ID: {process.env.FIREBASE_PROJECT_ID || 'Unknown'}</p>
+                  <p>Project ID: {firebaseConfig.projectId || 'Unknown'}</p>
                   <p>Timestamp: {new Date().toISOString()}</p>
                   <p>User UID: {user?.uid || 'Not Authenticated'}</p>
                   <p className="mt-2 text-amber-500/80">Message: {lastQuotaErrorMessage || "The Firestore Enterprise Free Tier allows for 50,000 reads and 20,000 writes per day. Once exceeded, all requests are rejected with a 429 Resource Exhausted error."}</p>
+                  {lastQuotaErrorMessage?.includes('free tier database') && (
+                    <p className="mt-2 text-red-400 font-bold">
+                      CRITICAL: Google reports this is still a "free tier database". Please ensure the project was upgraded to BLAZE and that the Firestore instance has billing enabled.
+                    </p>
+                  )}
+                  
+                  <div className="mt-4 pt-4 border-t border-white/5 space-y-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2">Internal Tools</p>
+                    <Button 
+                      onClick={async () => {
+                        if (!authTrainer) {
+                          alert("Trainer identity not loaded. Generation requires a trainer ID.");
+                          return;
+                        }
+                        if (confirm("Generate mock data for testing? This will attempt to write to Firestore.")) {
+                          try {
+                            const { clientName } = await generateMockClientWithHistory(authTrainer.id!, authTrainer.initials);
+                            alert(`Success: Created ${clientName}`);
+                            window.location.reload();
+                          } catch (err: any) {
+                            alert(`Failed: ${err.message}`);
+                          }
+                        }
+                      }}
+                      variant="outline"
+                      className="w-full h-8 rounded-lg font-black uppercase text-[9px] tracking-widest gap-2 bg-amber-500/5 border-amber-500/20 text-amber-500 hover:bg-amber-500/10"
+                    >
+                      <Database className="w-3 h-3" />
+                      Provision Mock Client Data
+                    </Button>
+                  </div>
                 </motion.div>
               )}
             </div>
@@ -3809,6 +3851,55 @@ function ClientHistoryView({
     ? machines.filter(m => routines.find(r => r.id === selectedRoutineId)?.machineIds.includes(m.id!))
     : machines.sort((a, b) => a.order - b.order);
 
+  const [isGeneratingMock, setIsGeneratingMock] = useState(false);
+
+  const generateMockHistory = async () => {
+    if (!clientId || isGeneratingMock) return;
+    setIsGeneratingMock(true);
+    try {
+      const routineAIds = ["m-hip-add", "m-hip-abd", "m-leg-press", "m-compound-row", "m-dip", "m-lumbar", "m-torso-rotation"];
+      const trainerInitials = "MD";
+      
+      for (let i = 1; i <= 8; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - (8 - i) * 3); // Every 3 days backwards
+        const dateStr = date.toISOString().split('T')[0];
+        
+        const sessionRef = await addDoc(collection(db, 'sessions'), {
+          clientId,
+          sessionNumber: i,
+          date: dateStr,
+          trainerInitials,
+          status: 'Completed',
+          sessionType: 'Standard',
+          createdAt: Timestamp.fromDate(date),
+          endTime: Timestamp.fromDate(new Date(date.getTime() + 20 * 60 * 1000))
+        });
+
+        for (const mId of routineAIds) {
+          const baseWeight = 80 + Math.floor(Math.random() * 40);
+          const weight = baseWeight + (i * 2); // Linear progression
+          await addDoc(collection(db, 'exerciseLogs'), {
+            sessionId: sessionRef.id,
+            clientId,
+            machineId: mId,
+            weight: weight.toString(),
+            reps: (8 + Math.floor(Math.random() * 4)).toString(),
+            repQuality: 2,
+            createdAt: Timestamp.fromDate(date)
+          });
+        }
+      }
+      alert("Mock history generated successfully. Reloading...");
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to generate mock history.");
+    } finally {
+      setIsGeneratingMock(false);
+    }
+  };
+
   if (!client) return <div className="p-20 text-center">Client not found.</div>;
 
   return (
@@ -3823,9 +3914,20 @@ function ClientHistoryView({
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Session History & Trends</p>
           </div>
         </div>
-        <Badge className="bg-primary/10 text-primary border-none px-4 py-1 rounded-full font-black">
-          {sessions.length} Sessions Tracked
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-8 px-2 text-[8px] font-black uppercase text-amber-500 border-amber-500/20 hover:bg-amber-500/10"
+            onClick={generateMockHistory}
+            disabled={isGeneratingMock}
+          >
+            {isGeneratingMock ? "Generating..." : "Generate Mock Data"}
+          </Button>
+          <Badge className="bg-primary/10 text-primary border-none px-4 py-1 rounded-full font-black">
+            {sessions.length} Sessions Tracked
+          </Badge>
+        </div>
       </div>
 
       {/* Trainer Stats & Client Info */}
@@ -5873,10 +5975,9 @@ function WorkoutTrackerView({
     const trainerId = user.uid;
 
     try {
-      // Update or Create Client Machine Settings
-      const settingsRef = current?.id 
-        ? doc(db, 'clientMachineSettings', current.id)
-        : doc(collection(db, 'clientMachineSettings'));
+      // Use deterministic ID to prevent duplicates (same as importer)
+      const deterministicId = `${clientId}_${machineId}`;
+      const settingsRef = doc(db, 'clientMachineSettings', deterministicId);
       
       await setDoc(settingsRef, {
         clientId,

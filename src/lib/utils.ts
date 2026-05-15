@@ -77,6 +77,72 @@ export function parseSessionDate(dateString: string | undefined): number {
 }
 
 /**
+ * Parses machine settings from a string into a structured object.
+ * Handles formats like "S4 G2 B3 H1", "Seat: 4, Gap: 2", etc.
+ */
+export function parseMachineSettings(settingsStr: string): Record<string, string> {
+  const settings: Record<string, string> = {};
+  if (!settingsStr || settingsStr === 'CONFIRM') return settings;
+
+  // Normalize: handle both commas and spaces
+  // MM/DD style dates might be in there too if extraction was messy, we'll try to ignore numbers-only shards
+  const parts = settingsStr.split(/[\s,]+/);
+  
+  const mapping: Record<string, string> = {
+    'S': 'Seat',
+    'G': 'Gap',
+    'B': 'Back Pad',
+    'H': 'Handles',
+    'A': 'Arm Pad'
+  };
+
+  parts.forEach(p => {
+    const clean = p.trim().toUpperCase();
+    if (!clean) return;
+
+    // Check for shorthand prefixes like S4, G2
+    // We match a single letter followed by numbers or a simple value
+    const shorthandMatch = clean.match(/^([SGBHA])(\d+\.?[0-9]*|NONE|MAX|MIN)$/);
+    if (shorthandMatch) {
+      const key = mapping[shorthandMatch[1]];
+      if (key) settings[key] = shorthandMatch[2];
+      return;
+    }
+
+    // Check for Key:Value pairs
+    if (clean.includes(':')) {
+      const [k, v] = clean.split(':').map(x => x.trim());
+      if (k && v) {
+        // Map shorthand keys to full names if needed
+        const fullKey = mapping[k] || k.charAt(0) + k.slice(1).toLowerCase();
+        settings[fullKey] = v;
+      }
+      return;
+    }
+  });
+
+  // If we found specific keys, return them
+  if (Object.keys(settings).length > 0) return settings;
+
+  // Fallback: Check for common patterns manually if splitting failed
+  // e.g. "S4G2B3" (no spaces)
+  const denseMatch = settingsStr.match(/S(\d+)|G(\d+)|B(\d+)|H(\d+)/g);
+  if (denseMatch) {
+    denseMatch.forEach(m => {
+      const key = mapping[m.charAt(0)];
+      if (key) settings[key] = m.substring(1);
+    });
+  }
+
+  // If still empty but we have a string, use 'General'
+  if (Object.keys(settings).length === 0 && settingsStr.trim()) {
+    settings['General'] = settingsStr.trim();
+  }
+
+  return settings;
+}
+
+/**
  * Calculate the total volume lifted during an exercise.
  * For standard exercises: Volume = Weight * Reps.
  * For Time Static Contractions (TSC): Every 30 seconds counts as 2 reps. 

@@ -41,8 +41,10 @@ import {
   Maximize2,
   Battery,
   CalendarDays,
-  Star
+  Star,
+  Database
 } from "lucide-react";
+import { generateMockClientWithHistory } from "../lib/mockDataGenerator";
 import { motion, AnimatePresence } from "motion/react";
 import { AreaChart, Area, LineChart, Line, BarChart, Bar, ReferenceLine, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
 import { MachineSettingsDashboardModal } from "./MachineSettingsDashboardModal";
@@ -3158,6 +3160,44 @@ export function ClientProfileView({
                   </div>
                 </CardContent>
               </Card>
+
+              {authTrainer?.isOwner && (
+                <Card className="rounded-[40px] shadow-sm bg-amber-500/5 border-amber-500/10 text-white">
+                  <CardHeader className="p-8 border-b border-amber-500/10 flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl font-black uppercase italic tracking-tighter">
+                        Debug Tools
+                      </CardTitle>
+                      <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-amber-500/80">
+                        Administrative Utilities
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-8 space-y-4">
+                    <Button
+                      onClick={async () => {
+                        if (!authTrainer) return;
+                        if (confirm("Generate a new mock client with 60 days of history?")) {
+                          try {
+                            const { clientName } = await generateMockClientWithHistory(authTrainer.id!, authTrainer.initials);
+                            alert(`Success: Created ${clientName}`);
+                            window.location.reload(); 
+                          } catch (err: any) {
+                            alert(err.message);
+                          }
+                        }
+                      }}
+                      className="w-full bg-amber-500 hover:bg-amber-600 text-black rounded-2xl font-black uppercase italic tracking-widest h-12 shadow-sm transition-all"
+                    >
+                      <Database className="w-4 h-4 mr-2" />
+                      Provision Mock Client Data
+                    </Button>
+                    <p className="text-[9px] text-center text-amber-500/40 font-bold uppercase tracking-widest">
+                      Creates a new test entity with full history
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         </TabsContent>

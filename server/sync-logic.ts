@@ -193,28 +193,44 @@ export async function masterSync(targetTrainerId?: string, hardReset: boolean = 
         for (const uid in existingSchedulesMap) {
           if (!sessionUidsInFetch.has(uid)) {
             const record = existingSchedulesMap[uid];
-            if (record.data.status === 'Scheduled') {
-              await updateDoc(doc(db, 'schedules', record.id), {
-                status: 'Cancelled',
-                updatedAt: serverTimestamp(),
-                cancellationReason: 'Session removed from MindBody feed',
-                sync_secret: SYNC_SECRET
-              });
+            try {
+              if (record.data.status === 'Scheduled') {
+                await updateDoc(doc(db, 'schedules', record.id), {
+                  status: 'Cancelled',
+                  updatedAt: serverTimestamp(),
+                  cancellationReason: 'Session removed from MindBody feed',
+                  sync_secret: SYNC_SECRET
+                });
+              }
+            } catch (cleanupErr: any) {
+              console.error(`[Sync-${syncId}] Cleanup error for UID ${uid}:`, cleanupErr.message);
+              // Stop entire sync if it's a quota error to save remaining cycles
+              if (cleanupErr.code === 'resource-exhausted' || cleanupErr.message?.toLowerCase().includes('quota')) {
+                throw cleanupErr;
+              }
             }
           }
         }
       } catch (innerErr: any) {
         console.error(`[Sync-${syncId}] Error processing ${trainer.fullName}:`, innerErr.message);
+        if (innerErr.code === 'resource-exhausted' || innerErr.message?.toLowerCase().includes('quota')) {
+          throw innerErr; // Re-throw to main handler to stop early
+        }
       }
     }
     console.log(`[Sync-${syncId}] Finalized.`);
   } catch (err: any) {
     console.error(`[Sync-${syncId}] Sync operation FAILED:`, err.message);
-    throw err;
+    // Don't re-throw if it's a quota error, we've logged it
+    if (!(err.code === 'resource-exhausted' || err.message?.toLowerCase().includes('quota'))) {
+       throw err; 
+    }
   }
 }
 
 // Allow direct execution
-if (import.meta.url === `file://${process.argv[1]}`) {
-  masterSync();
+if (process.argv[1] && (import.meta.url === `file://${process.argv[1]}` || process.argv[1].endsWith('sync-logic.ts') || process.argv[1].endsWith('sync-logic.js'))) {
+  masterSync().catch(err => {
+    console.error('Direct Sync execution failed:', err);
+  });
 }

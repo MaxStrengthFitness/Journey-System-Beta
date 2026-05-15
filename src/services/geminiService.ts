@@ -468,6 +468,7 @@ export interface OCRMachineSetting {
   backPad?: string;
   handles?: string;
   armPad?: string;
+  rawSettings?: Record<string, string>;
 }
 
 export interface OCRResult {
@@ -493,6 +494,10 @@ export const MACHINE_SETTINGS_OCR_SCHEMA = {
           backPad: { type: Type.STRING },
           handles: { type: Type.STRING },
           armPad: { type: Type.STRING },
+          rawSettings: {
+            type: Type.OBJECT,
+            description: "Any other key-value settings found.",
+          },
         },
         required: ["machineId"],
       },
@@ -547,26 +552,26 @@ export async function extractMachineSettingsFromImage(
   const ai = getGenaiClient();
 
   const machineDictionary = {
-    LP: "leg_press",
-    LE: "leg_extension",
-    LC: "leg_curl",
-    ABD: "abduction",
-    ADD: "adduction",
-    CP: "chest_press",
-    OP: "overhead_press",
-    SD: "seated_dip",
-    CF: "chest_flye",
-    TE: "triceps_extension",
-    LR: "lateral_raise",
-    CR: "compound_row",
-    PD: "pulldown",
-    PO: "pullover",
-    SR: "simple_row",
-    BC: "biceps_curl",
-    "LE/L": "lumbar_extension",
-    AB: "abdominals",
-    TR: "torso_rotation",
-    CE: "cervical_extension",
+    LP: "m-leg-press",
+    LE: "m-ext",
+    LC: "m-leg-curl",
+    ABD: "m-hip-abd",
+    ADD: "m-hip-add",
+    CP: "m-chest-press",
+    OP: "m-overhead-press",
+    SD: "m-dip",
+    CF: "m-chest-fly",
+    TE: "m-tricep-ext",
+    LR: "m-lateral-raise",
+    CR: "m-compound-row",
+    PD: "m-pulldown",
+    PO: "m-pullover",
+    SR: "m-simple-row",
+    BC: "m-bicep",
+    "LE/L": "m-lumbar",
+    AB: "m-abs",
+    TR: "m-torso-rotation",
+    CE: "m-neck",
   };
 
   const systemInstruction = `You are an expert at decoding messy, handwritten clinical workout charts. Your specific task is to extract historical MACHINE SETTINGS from Column 2 of the provided chart.
@@ -589,6 +594,7 @@ ${JSON.stringify(machineDictionary, null, 2)}
 - Ignore weight and rep data. ONLY focus on the static machine settings.
 - If a machine is listed multiple times, return it only once with its most recent/complete settings.
 - If a field is not found, omit it from the object.
+- CRITICAL: Process EVERY image in the array. Each image may have different settings.
 - Return ONLY valid JSON matching the requested schema.`;
 
   const imageParts = images.map((img) => ({
@@ -602,7 +608,7 @@ ${JSON.stringify(machineDictionary, null, 2)}
         parts: [
           ...imageParts,
           {
-            text: `Analyze the charts and extract all machine settings found in the second column.`,
+            text: `Analyze the charts and extract all machine settings found in the second column across all ${images.length} images.`,
           },
         ],
       },
@@ -630,32 +636,39 @@ ${JSON.stringify(machineDictionary, null, 2)}
 export async function processLegacyChart(
   images: { base64: string; mimeType: string }[],
   expectedSessions: number,
+  pageIndex?: number,
+  totalPages?: number
 ): Promise<OCRResult> {
   const ai = getGenaiClient();
 
-  const systemInstruction = `You are a high-precision clinical data extraction AI. You are receiving an array of images representing a continuous physical training chart for a single client.
+  const systemInstruction = `You are a high-precision clinical data extraction AI. You are extracting data from Page ${pageIndex !== undefined ? pageIndex + 1 : 'N'} of ${totalPages ? totalPages : images.length} training chart images.
 
-The chart has two distinct parts: The Header Row and the Data Grid.
+**CRITICAL: FULL HORIZONTAL SCAN (12 COLUMNS)**
+- Every MSF Legacy Chart page contains a grid with exactly 12 vertical columns for sessions.
+- You MUST scan across all 12 columns for EVERY machine row.
+- Even if a column looks faint or has minimal data, attempt to extract the session number, date, weight, and reps.
+- DO NOT skip any data points. If a value is present, it is critical medical/fitness history.
 
-**PASS 1: EXTRACT THE TIMELINE (HEADERS)**
-*Look at the very top of the grid. There is a blue horizontal bar.*
-*1. Inside the blue bar is the Session Number.*
-*2. Immediately below the Session Number is the Date (e.g., 5/12).*
-*3. Immediately below the Date are the Trainer Initials (e.g., AJ, CB).*
-*Extract EVERY column header into the sessionHeaders array.*
+**PASS 1: THE CHRONOLOGICAL TIMELINE (HEADERS)**
+- There is a blue header row.
+- Row 1: Session Number (1, 2, 3... up to 12 per page).
+- Row 2: Date (e.g., "5/21").
+- Row 3: Trainer Initials (e.g., "AJ").
+- Extract all 12 headers into the sessionHeaders array.
 
-**PASS 2: EXTRACT THE PERFORMANCES (GRID)**
-*Now, process the machine rows.*
-*1. Identify the Machine Name (Column 1) and Settings (Column 2). Extract the Machine Name EXACTLY as it is written on the page, even if it is abbreviated (e.g., 'cx', 'comp. Row'). Do not attempt to guess or expand the abbreviation.*
-*2. Read across the row. When you find a box with data, identify which Session Number column it belongs to.*
-*3. The top number is the weight. The bottom number is the reps.*
-*4. STATIC HOLD RULE: If the bottom text says 'SH', or if the bottom number is > 20, set isStaticHold to true.*
+**PASS 2: THE PERFORMANCE GRID**
+- Column 1: Machine Name (e.g., "Leg Press", "LP").
+- Column 2: Machine Settings (e.g., "S4", "G2").
+- Columns 3-14: Performance Data.
+- Top number in a box = Weight.
+- Bottom number in a box = Reps.
+- If bottom text includes "SH" or "sec" or is > 20, set isStaticHold to true.
 
-**DEAD END RULE:**
-*If any cell (weight, reps, settings) is completely illegible, ambiguous, or empty, DO NOT invent data. Extract it as "0" (for numbers) or "CONFIRM" (for text) so the trainer can verify.*
+**DATA INTEGRITY:**
+- If data is illegible, use "0" for numbers and "CONFIRM" for text. Do not hallucinate.
+- Ensure the sessionNumber in 'performances' matches the sessionNumber extracted in 'sessionHeaders'.
 
-Expected Sessions: ${expectedSessions}.
-
+Expected total columns in this segment: 12.
 Return ONLY valid JSON matching the requested schema.`;
 
   const imageParts = images.map((img) => ({
@@ -669,7 +682,7 @@ Return ONLY valid JSON matching the requested schema.`;
         parts: [
           ...imageParts,
           {
-            text: `Analyze these training chart images and extract data for exactly ${expectedSessions} sessions into a consolidated row-by-row structure.`,
+            text: `Analyze all ${images.length} training chart images and extract data session-by-session into a consolidated structure. Total expected columns to find: up to 12 per page.`,
           },
         ],
       },

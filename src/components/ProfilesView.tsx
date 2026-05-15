@@ -21,11 +21,13 @@ import {
   Phone,
   Briefcase,
   Plus,
+  Trash2,
   RefreshCcw,
   Link as LinkIcon,
-  Loader2
+  Loader2,
+  Database
 } from 'lucide-react';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +42,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Trainer, Client, WorkoutSession, ScheduleEntry, View } from '../types';
+import { generateMockClientWithHistory } from '../lib/mockDataGenerator';
 
 interface ProfilesViewProps {
   trainers: Trainer[];
@@ -76,6 +79,45 @@ export function ProfilesView({
   const [isEditingLink, setIsEditingLink] = useState(false);
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [isSavingLink, setIsSavingLink] = useState(false);
+
+  const [isGeneratingMock, setIsGeneratingMock] = useState(false);
+  const [isDeletingTrainer, setIsDeletingTrainer] = useState<string | null>(null);
+
+  const handleDeleteTrainer = async (trainerId: string, trainerName: string) => {
+    if (!isAdmin) return;
+    if (!confirm(`Are you absolutely sure you want to delete trainer ${trainerName}? This action cannot be undone.`)) return;
+
+    setIsDeletingTrainer(trainerId);
+    try {
+      await deleteDoc(doc(db, 'trainers', trainerId));
+      alert(`Trainer ${trainerName} deleted successfully.`);
+      // No need to manually refresh if we're using a real-time listener for trainers in App.tsx
+    } catch (err: any) {
+      alert("Failed to delete trainer: " + err.message);
+    } finally {
+      setIsDeletingTrainer(null);
+    }
+  };
+
+  const handleGenerateMock = async () => {
+    if (!authTrainer) {
+      alert("Please login as a trainer first.");
+      return;
+    }
+    
+    if (!confirm("This will create a new mock client with 60 days of session data. Continue?")) return;
+
+    setIsGeneratingMock(true);
+    try {
+      const { clientId, clientName } = await generateMockClientWithHistory(authTrainer.id!, authTrainer.initials);
+      alert(`Success! Generated client "${clientName}". Redirecting to profile...`);
+      onSelectClient(clientId);
+    } catch (err: any) {
+      alert("Generation failed: " + err.message);
+    } finally {
+      setIsGeneratingMock(false);
+    }
+  };
 
   // Sorting calculations
   const sortedClients = useMemo(() => {
@@ -386,11 +428,30 @@ export function ProfilesView({
 
             {/* Trainers Section */}
             <section className="space-y-6">
-              <div className="flex items-center gap-3 px-2">
-                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-primary" />
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-black uppercase italic tracking-tight">Trainer Roster</h3>
                 </div>
-                <h3 className="text-xl font-black uppercase italic tracking-tight">Trainer Roster</h3>
+                
+                {isAdmin && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-9 rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 bg-amber-500/5 border-amber-500/20 text-amber-600 hover:bg-amber-500/10"
+                    onClick={handleGenerateMock}
+                    disabled={isGeneratingMock}
+                  >
+                    {isGeneratingMock ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Database className="w-3.5 h-3.5" />
+                    )}
+                    {isGeneratingMock ? "Generating..." : "Generate Mock Client"}
+                  </Button>
+                )}
               </div>
               <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
                 {filteredTrainers.map(trainerItem => {
@@ -404,8 +465,36 @@ export function ProfilesView({
                       key={trainerItem.id}
                       whileHover={{ y: -4 }}
                       onClick={() => handleProfileClick('trainer', trainerItem.id!)}
-                      className="group cursor-pointer"
+                      className="group cursor-pointer relative"
                     >
+                      {isAdmin && (
+                        <div 
+                          className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white">
+                                <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="rounded-xl border-2">
+                              <DropdownMenuItem 
+                                className="text-destructive focus:text-destructive font-black uppercase text-[10px] tracking-widest p-3 gap-2"
+                                onClick={() => handleDeleteTrainer(trainerItem.id!, trainerItem.fullName)}
+                                disabled={isDeletingTrainer === trainerItem.id}
+                              >
+                                {isDeletingTrainer === trainerItem.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-3 h-3" />
+                                )}
+                                {isDeletingTrainer === trainerItem.id ? "Deleting..." : "Delete Trainer"}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
                       <Card className="rounded-[24px] sm:rounded-[28px] border-2 group-hover:border-primary group-hover:shadow-2xl group-hover:shadow-primary/10 transition-all overflow-hidden h-full">
                         <CardContent className="p-4 sm:p-6 flex flex-col items-center text-center space-y-3 sm:space-y-4 text-foreground">
                           <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[24px] bg-muted group-hover:bg-primary transition-colors flex items-center justify-center text-xl sm:text-2xl font-black group-hover:text-white">

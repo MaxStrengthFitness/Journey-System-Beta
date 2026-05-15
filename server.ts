@@ -16,18 +16,33 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Error Handling: Prevent process crash on unhandled rejections
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  });
+
   // Background Task: Run Master Sync every 60 minutes
   const SYNC_INTERVAL = 60 * 60 * 1000;
   setInterval(async () => {
     try {
       await masterSync();
-    } catch (error) {
-      console.error('Scheduled Master Sync failed:', error);
+    } catch (error: any) {
+      if (error.code === 'resource-exhausted' || error.message?.toLowerCase().includes('quota')) {
+        console.error('Scheduled Master Sync failed due to Quota Exceeded. Skipping until reset.');
+      } else {
+        console.error('Scheduled Master Sync failed:', error);
+      }
     }
   }, SYNC_INTERVAL);
 
   // Initial sync on startup (optional but recommended)
-  masterSync().catch(console.error);
+  masterSync().catch(err => {
+    if (err.code === 'resource-exhausted' || err.message?.toLowerCase().includes('quota')) {
+      console.error('Initial Master Sync skipped: Quota Limit Exceeded.');
+    } else {
+      console.error('Initial Master Sync failed:', err);
+    }
+  });
 
   // API Route for Triggering Master Sync Manually
   app.post('/api/trigger-master-sync', async (req, res) => {

@@ -19,7 +19,7 @@ import {
   Plus
 } from 'lucide-react';
 import { Client, Machine, Trainer, WorkoutSession, ExerciseLog } from '../types';
-import { processLegacyChart, extractMachineSettingsFromImage, OCRMachineSetting, ValidationSession, ValidationLog, sanitizeImportedSessions } from '../services/geminiService';
+import { processLegacyChart, extractMachineSettingsFromImage, OCRMachineSetting, ValidationSession, ValidationLog, sanitizeImportedSessions, OCRResult } from '../services/geminiService';
 import { db } from '../firebase';
 import { collection, writeBatch, doc, serverTimestamp, getDocs, query, where, increment } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { cn, parseSessionDate } from '../lib/utils';
+import { cn, parseSessionDate, parseMachineSettings } from '../lib/utils';
 
 interface ImporterProps {
   clients: Client[];
@@ -39,38 +39,51 @@ interface ImporterProps {
 
 
 
-const legacyMachineMap: Record<string, string> = {
-  "cx": "4 Way Neck",
-  "hip add": "Hip Adduction",
-  "hip abd": "Hip Abduction",
-  "leg curl": "Leg Curl",
-  "leg ext": "Leg Extension",
-  "leg ext.": "Leg Extension",
-  "leg press": "Leg Press",
-  "pull down": "Pull Down",
-  "chest press": "Chest Press",
-  "comp row": "Compound Row",
-  "comp. row": "Compound Row",
-  "overhead": "Overhead Press",
-  "pull over": "Seated Pull Over",
-  "seated dip": "Seated Dip",
-  "tricep ext": "Tricep Extension",
-  "tricep ext.": "Tricep Extension",
-  "bicep": "Biceps",
-  "chest fly": "Chest/Pec Fly",
-  "lateral raise": "Lateral Raise",
-  "lumbar": "Lumbar Extension",
-  "torso rotation": "Torso Rotation",
-  "abs": "Seated Abdominals"
+const legacyMachineMap:Record<string, string>={
+  "cx":"4 Way Neck",
+  "hip add":"Hip Adduction",
+  "hip abd":"Hip Abduction",
+  "leg curl":"Leg Curl",
+  "leg ext":"Leg Extension",
+  "leg ext.":"Leg Extension",
+  "leg press":"Leg Press",
+  "pull down":"Pull Down",
+  "chest press":"Chest Press",
+  "comp row":"Compound Row",
+  "comp. row":"Compound Row",
+  "overhead":"Overhead Press",
+  "pull over":"Seated Pull Over",
+  "seated dip":"Seated Dip",
+  "tricep ext":"Tricep Extension",
+  "tricep ext.":"Tricep Extension",
+  "bicep":"Biceps",
+  "chest fly":"Chest/Pec Fly",
+  "lateral raise":"Lateral Raise",
+  "lumbar":"Lumbar Extension",
+  "torso rotation":"Torso Rotation",
+  "abs":"Seated Abdominals",
+  "leg press/l":"Leg Press",
+  "pd":"Pull Down",
+  "cp":"Chest Press",
+  "op":"Overhead Press",
+  "sr":"Compound Row",
+  "cf":"Chest/Pec Fly",
+  "te":"Tricep Extension",
+  "lr":"Lateral Raise"
 };
 
-const normalizeMachineName = (rawName: string): string => {
-  const clean = rawName.toLowerCase().trim();
-  if (legacyMachineMap[clean]) {
-    return legacyMachineMap[clean];
+const normalizeMachineName=(rawName:string):string=>{
+  const clean=rawName.toLowerCase().trim().replace(/\s+/g,' ');
+  if(legacyMachineMap[clean])return legacyMachineMap[clean];
+  
+  // Try partial matches for common abbreviations
+  for(const [key,val] of Object.entries(legacyMachineMap)){
+    if(clean===key || (clean.length > 2 && key.includes(clean)) || (key.length > 2 && clean.includes(key))){
+      return val;
+    }
   }
-  // Fallback: capitalize properly
-  return rawName.charAt(0).toUpperCase() + rawName.slice(1);
+  
+  return rawName.charAt(0).toUpperCase()+rawName.slice(1);
 };
 
 export function LegacyChartImporter({ clients, machines, trainers, initialClientId, onComplete }: ImporterProps) {
@@ -120,120 +133,130 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
 
     setIsScanning(true);
     setScanPercentage(0);
-    setScanProgress('Waking Vision Engine...');
+    setScanProgress('Initializing Distributed OCR Engine...');
     setValidationSessions([]);
-
-    // Simulated progress increment while AI is working
-    const progressInterval = setInterval(() => {
-      setScanPercentage(prev => {
-        if (prev < 30) return prev + 2;
-        if (prev < 60) return prev + 1;
-        if (prev < 90) return prev + 0.5;
-        if (prev < 98) return prev + 0.1;
-        return prev;
-      });
-    }, 500);
+    setExtractedSettings([]); // Clear previous results
 
     try {
+      const allOcrResults: OCRResult[] = [];
       const imageFiles = files.map(f => ({ base64: f.base64, mimeType: f.mimeType }));
-      setScanProgress(`Analyzing ${files.length} images simultaneously...`);
-      const ocrResult = await processLegacyChart(imageFiles, expectedSessions);
       
-      clearInterval(progressInterval);
-      setScanPercentage(100);
-      setScanProgress('OCR Pipeline Complete');
+      // Process images one by one for maximum precision
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        setScanProgress(`Analyzing Page ${i + 1} of ${imageFiles.length}...`);
+        setScanPercentage(Math.round(((i) / imageFiles.length) * 50)); // First 50% for sessions
+        
+        const result = await processLegacyChart([file], 12, i, imageFiles.length);
+        allOcrResults.push(result);
+      }
+
+      setScanProgress('Extracting High-Precision Machine Settings...');
+      // Use the specialized settings engine for better padding/seat data
+      const settings = await extractMachineSettingsFromImage(imageFiles);
+      setExtractedSettings(settings);
+      setScanPercentage(90);
+
+      setScanProgress('Consolidating Multi-Page Data...');
 
       // Reconstructed Merge Logic
       const sessionsMap: Record<number, ValidationSession> = {};
 
-      // 1. Map over headers first to establish sessions
-      ocrResult.sessionHeaders.forEach((header, index, array) => {
-        const sNum = header.sessionNumber;
-        
-        let dateString = header.date?.trim();
-        let isInferredDate = false;
+      allOcrResults.forEach(ocrResult => {
+        // 1. Map over headers first to establish sessions
+        ocrResult.sessionHeaders.forEach((header) => {
+          const sNum = header.sessionNumber;
+          
+          let dateString = header.date?.trim();
+          let isInferredDate = false;
 
-        // Date Fallback Rule
-        if (!dateString || dateString.toLowerCase() === 'confirm' || dateString === '0') {
-            isInferredDate = true;
-            // Let's defer calculating the date until we have sorted them chronologically
-        }
-
-        // Find matching trainer initials in our database
-        const trainerMatch = trainers.find(t => 
-          t.initials.toLowerCase() === (header.trainer || '').toLowerCase()
-        );
-
-        sessionsMap[sNum] = {
-          id: `v-sess-${sNum}-${Date.now()}-${Math.random()}`,
-          sessionNumber: sNum,
-          date: dateString || '',
-          trainer: header.trainer || 'Legacy',
-          trainerId: trainerMatch?.id || 'legacy-trainer',
-          machines: [],
-          isInferredDate
-        };
-      });
-
-      // Stitch performances to headers
-      ocrResult.performances.forEach(perf => {
-        const sNum = perf.sessionNumber;
-        
-        // Ensure session exists even if header was missed
-        if (!sessionsMap[sNum]) {
-          sessionsMap[sNum] = {
-            id: `v-sess-${sNum}-${Date.now()}-${Math.random()}`,
-            sessionNumber: sNum,
-            date: '',
-            trainer: 'Legacy',
-            trainerId: 'legacy-trainer',
-            machines: [],
-            isInferredDate: true
-          };
-        }
-
-        const repStr = String(perf.reps || '').toLowerCase().trim();
-
-        // The "Ghost Rep" Rule (Skips)
-        if (repStr === '.' || repStr === '-' || repStr === '' || repStr === '0' || perf.reps === undefined) {
-          return; // Skip completely
-        }
-
-        let finalReps: number | string = Number(perf.reps) || 0;
-        let isTSC = perf.isStaticHold || false;
-        
-        // Static Hold (TSC) Detection
-        if (repStr.includes('s') || repStr.includes('sec') || repStr.includes('hold')) {
-          isTSC = true;
-          const match = repStr.match(/\d+/);
-          if (match) {
-             finalReps = parseInt(match[0], 10);
+          // Date Fallback Rule
+          if (!dateString || dateString.toLowerCase() === 'confirm' || dateString === '0') {
+              isInferredDate = true;
           }
-        } else if (Number(perf.reps) > 20 || repStr.includes('sh')) {
-          isTSC = true;
-        }
 
-        const rawMachineName = perf.machineName;
-        const normalizedName = normalizeMachineName(rawMachineName);
+          const trainerMatch = trainers.find(t => 
+            t.initials.toLowerCase() === (header.trainer || '').toLowerCase()
+          );
 
-        const machineMatch = machines.find(mach => 
-          mach.name.toLowerCase() === normalizedName.toLowerCase() ||
-          normalizedName.toLowerCase().includes(mach.name.toLowerCase())
-        );
+          if (!sessionsMap[sNum]) {
+            sessionsMap[sNum] = {
+              id: `v-sess-${sNum}-${Date.now()}-${Math.random()}`,
+              sessionNumber: sNum,
+              date: dateString || '',
+              trainer: header.trainer || 'Legacy',
+              trainerId: trainerMatch?.id || 'legacy-trainer',
+              machines: [],
+              isInferredDate
+            };
+          } else {
+            // Update header data if we find a better one
+            if (dateString && !sessionsMap[sNum].date) sessionsMap[sNum].date = dateString;
+            if (trainerMatch && sessionsMap[sNum].trainerId === 'legacy-trainer') {
+              sessionsMap[sNum].trainer = header.trainer || 'Legacy';
+              sessionsMap[sNum].trainerId = trainerMatch.id;
+            }
+          }
+        });
 
-        // Map into validation format
-        sessionsMap[sNum].machines.push({
-          id: `v-log-${sNum}-${perf.machineName}-${Date.now()}-${Math.random()}`,
-          name: normalizedName,
-          rawName: rawMachineName,
-          settings: perf.settings,
-          weight: Number(perf.weight) || 0,
-          reps: finalReps,
-          isStaticHold: isTSC,
-          timeUnderLoad: isTSC ? (Number(finalReps) || 90) : 0,
-          machineId: machineMatch?.id,
-          isAnomalous: !machineMatch,
-          anomalyReason: !machineMatch ? `Unknown Machine: ${normalizedName}` : undefined
+        // Stitch performances to headers
+        ocrResult.performances.forEach(perf => {
+          const sNum = perf.sessionNumber;
+          
+          if (!sessionsMap[sNum]) {
+            sessionsMap[sNum] = {
+              id: `v-sess-${sNum}-${Date.now()}-${Math.random()}`,
+              sessionNumber: sNum,
+              date: '',
+              trainer: 'Legacy',
+              trainerId: 'legacy-trainer',
+              machines: [],
+              isInferredDate: true
+            };
+          }
+
+          const repStr = String(perf.reps || '').toLowerCase().trim();
+          if (repStr === '.' || repStr === '-' || repStr === '' || repStr === '0' || perf.reps === undefined) {
+            return; 
+          }
+
+          let finalReps: number | string = Number(perf.reps) || 0;
+          let isTSC = perf.isStaticHold || false;
+          
+          if (repStr.includes('s') || repStr.includes('sec') || repStr.includes('hold')) {
+            isTSC = true;
+            const match = repStr.match(/\d+/);
+            if (match) finalReps = parseInt(match[0], 10);
+          } else if (Number(perf.reps) > 20 || repStr.includes('sh')) {
+            isTSC = true;
+          }
+
+          const rawMachineName = perf.machineName;
+          const normalizedName = normalizeMachineName(rawMachineName);
+
+          const machineMatch = machines.find(mach => 
+            mach.name.toLowerCase() === normalizedName.toLowerCase() ||
+            normalizedName.toLowerCase().includes(mach.name.toLowerCase()) ||
+            mach.name.toLowerCase().includes(normalizedName.toLowerCase())
+          );
+
+          // Prevent duplicate logs for same machine in same session (merging artifacts)
+          const existingMachineLog = sessionsMap[sNum].machines.find(m => m.machineId === machineMatch?.id && m.name === normalizedName);
+          if (existingMachineLog) return;
+
+          sessionsMap[sNum].machines.push({
+            id: `v-log-${sNum}-${perf.machineName}-${Date.now()}-${Math.random()}`,
+            name: normalizedName,
+            rawName: rawMachineName,
+            settings: perf.settings,
+            weight: Number(perf.weight) || 0,
+            reps: finalReps,
+            isStaticHold: isTSC,
+            timeUnderLoad: isTSC ? (Number(finalReps) || 90) : 0,
+            machineId: machineMatch?.id,
+            isAnomalous: !machineMatch,
+            anomalyReason: !machineMatch ? `Unknown Machine: ${normalizedName}` : undefined
+          });
         });
       });
 
@@ -243,10 +266,14 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
       // Apply Date Fallback and One Session Per Day Rules using Chronology Engine
       mappedSessions = sanitizeImportedSessions(mappedSessions);
 
+      // AGGREGATION: We now rely more on the specialized extractMachineSettingsFromImage call,
+      // but we can still pull strings from performances as a fallback if needed.
+      // (Skipping fallback for now to keep things clean, as the specialized call is better)
+
       setValidationSessions(mappedSessions);
+      setScanPercentage(100);
       setScanProgress('OCR Pipeline Complete');
     } catch (err) {
-      clearInterval(progressInterval);
       console.error(err);
       setScanProgress('Engine Failure: Check Logs');
     } finally {
@@ -258,7 +285,8 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
     if (!selectedClientId || files.length === 0) return;
 
     setIsScanningSettings(true);
-    setScanProgress('Scanning Settings Column...');
+    setScanProgress('Scanning Settings Column Across All Images...');
+    setValidationSessions([]); // Explicitly clear sessions if doing settings only
     
     try {
       const imageFiles = files.map(f => ({ base64: f.base64, mimeType: f.mimeType }));
@@ -316,8 +344,13 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
       // 1 for each session, 1 for each log, 1 for client update, potentially many for settings
       const totalSessions = validationSessions.length;
       const totalLogs = validationSessions.reduce((acc, s) => acc + s.machines.filter(m => m.machineId).length, 0);
-      const totalSettings = extractedSettings.length;
-      const totalOps = totalSessions + totalLogs + 1 + (totalSettings > 0 ? totalSettings : 0);
+      const allMachineIds = new Set<string>();
+      extractedSettings.forEach(s => allMachineIds.add(s.machineId));
+      for (const vSess of validationSessions) {
+        vSess.machines.forEach(m => { if (m.machineId) allMachineIds.add(m.machineId); });
+      }
+      const totalSettings = allMachineIds.size;
+      const totalOps = totalSessions + totalLogs + 1 + totalSettings;
       
       let completedOps = 0;
       const updateProgress = () => {
@@ -387,7 +420,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
             seconds: vLog.isStaticHold ? String(vLog.timeUnderLoad || '') : '',
             isTSC: vLog.isStaticHold,
             isStaticHold: vLog.isStaticHold,
-            machineSettings: vLog.settings ? { "Seat": vLog.settings } : {},
+            machineSettings: vLog.settings ? parseMachineSettings(vLog.settings) : {},
             repQuality: 2,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
@@ -414,29 +447,76 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
       updateProgress();
       await commitBatchIfNeeded();
 
-      // 3. Save Global Machine Settings
-      if (extractedSettings.length > 0) {
+      // 3. Save Global Machine Settings & Aggregated Data
+      const machineWeightEntries: Record<string, { weight: number; timestamp: number; sessionIndex: number }[]> = {};
+      
+      let sessionIndex = 0;
+      for (const vSess of validationSessions) {
+        let timestamp = Date.now();
+        if (vSess.date) {
+            const parsed = parseSessionDate(vSess.date);
+            if (parsed > 0) timestamp = parsed;
+        }
+        
+        for (const vLog of vSess.machines) {
+            if (!vLog.machineId) continue;
+            allMachineIds.add(vLog.machineId);
+            
+            const weightNum = Number(vLog.weight) || 0;
+            if (weightNum > 0) {
+                if (!machineWeightEntries[vLog.machineId]) machineWeightEntries[vLog.machineId] = [];
+                machineWeightEntries[vLog.machineId].push({ weight: weightNum, timestamp, sessionIndex });
+            }
+        }
+        sessionIndex++;
+      }
+
+      if (allMachineIds.size > 0) {
         const trainer = trainers.find(t => t.id === 'legacy-trainer') || trainers[0];
         
-        for (const setting of extractedSettings) {
-          const settingId = `${selectedClientId}_${setting.machineId}`;
+        for (const mId of Array.from(allMachineIds)) {
+          const settingId = `${selectedClientId}_${mId}`;
           const settingRef = doc(db, 'clientMachineSettings', settingId);
           
-          const finalSettings: Record<string, string> = {};
-          if (setting.seat) finalSettings['Seat'] = setting.seat;
-          if (setting.gap) finalSettings['Gap'] = setting.gap;
-          if (setting.backPad) finalSettings['Back Pad'] = setting.backPad;
-          if (setting.handles) finalSettings['Handles'] = setting.handles;
-          if (setting.armPad) finalSettings['Arm Pad'] = setting.armPad;
+          const extracted = extractedSettings.find(s => s.machineId === mId);
+          const finalSettings: Record<string, string> = (extracted && extracted.rawSettings && Object.keys(extracted.rawSettings).length > 0) 
+            ? { ...extracted.rawSettings } 
+            : {};
+          
+          if (extracted && Object.keys(finalSettings).length === 0) {
+            if (extracted.seat) finalSettings['Seat'] = extracted.seat;
+            if (extracted.gap) finalSettings['Gap'] = extracted.gap;
+            if (extracted.backPad) finalSettings['Back Pad'] = extracted.backPad;
+            if (extracted.handles) finalSettings['Handles'] = extracted.handles;
+            if (extracted.armPad) finalSettings['Arm Pad'] = extracted.armPad;
+          }
 
-          currentBatch.set(settingRef, {
+          const updateData: any = {
             clientId: selectedClientId,
-            machineId: setting.machineId,
-            settings: finalSettings,
+            machineId: mId,
             updatedBy: trainer?.initials || 'OCR',
             updatedAt: serverTimestamp(),
             notes: 'Extracted from legacy chart'
-          }, { merge: true });
+          };
+
+          if (Object.keys(finalSettings).length > 0) {
+            updateData.settings = finalSettings;
+          }
+
+          const entries = machineWeightEntries[mId] || [];
+          if (entries.length > 0) {
+            entries.sort((a, b) => {
+              if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
+              return a.sessionIndex - b.sessionIndex;
+            });
+            const oldest = entries[0];
+            const newest = entries[entries.length - 1];
+            updateData.startingWeight = oldest.weight;
+            updateData.startingWeightDate = new Date(oldest.timestamp).toISOString();
+            updateData.currentWeight = newest.weight;
+          }
+
+          currentBatch.set(settingRef, updateData, { merge: true });
           
           opCount++;
           updateProgress();
@@ -619,101 +699,106 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
         </div>
 
         {/* Right: Validation HUD */}
-        <div className="lg:col-span-8 flex flex-col">
-          <Card className="bg-[#0A2E46] border-slate-800 flex-1 flex flex-col min-h-[600px] shadow-2xl">
-            <CardHeader className="py-4 border-b border-slate-800 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-black uppercase tracking-widest text-[#F06C22]">
-                  Validation HUD
-                </CardTitle>
-                <CardDescription className="text-[10px] font-bold text-slate-400">
-                  Verify extracted patterns before database commit
-                </CardDescription>
-              </div>
-              {validationSessions.length > 0 && (
-                <div className="flex gap-4 items-center">
-                  <div className="text-right px-4 border-r border-slate-800">
-                    <p className="text-[10px] font-black text-white uppercase">Expected Sessions: {expectedSessions}</p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Trainer Bounding Box</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black text-[#F06C22] uppercase">Extracted Found: {validationSessions.length}</p>
-                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">Verified Alignment</p>
-                  </div>
+      <div className="lg:col-span-8 flex flex-col">
+        <Card className="bg-[#0A2E46] border-slate-800 flex-1 flex flex-col min-h-[600px] shadow-2xl">
+          <CardHeader className="py-4 border-b border-slate-800 flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-sm font-black uppercase tracking-widest text-[#F06C22]">
+                Validation HUD
+              </CardTitle>
+              <CardDescription className="text-[10px] font-bold text-slate-400">
+                Verify extracted patterns before database commit
+              </CardDescription>
+            </div>
+            {(validationSessions.length > 0 || extractedSettings.length > 0) && (
+              <div className="flex gap-4 items-center">
+                <div className="text-right px-4 border-r border-slate-800">
+                  <p className="text-[10px] font-black text-white uppercase">{validationSessions.length > 0 ? `Sessions: ${validationSessions.length}` : 'Settings Mode'}</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Extraction Results</p>
                 </div>
-              )}
-            </CardHeader>
-            <CardContent className="p-0 overflow-hidden flex-1 relative">
-              <AnimatePresence mode="wait">
-                {validationSessions.length === 0 ? (
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="h-full flex flex-col items-center justify-center p-12 text-center"
-                  >
-                    {isScanning ? (
-                      <div className="flex flex-col items-center space-y-6">
-                        <div className="relative">
-                          <div className="w-24 h-24 rounded-full border-4 border-[#0A2E46] border-t-[#F06C22] animate-spin"></div>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Maximize className="w-10 h-10 text-[#F06C22]" />
-                          </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-black text-[#F06C22] uppercase">Settings: {extractedSettings.length}</p>
+                  <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">Verified Alignment</p>
+                </div>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent className="p-0 overflow-hidden flex-1 relative">
+            <AnimatePresence mode="wait">
+              {validationSessions.length === 0 && extractedSettings.length === 0 ? (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full flex flex-col items-center justify-center p-12 text-center"
+                >
+                  {(isScanning || isScanningSettings) ? (
+                    <div className="flex flex-col items-center space-y-6">
+                      <div className="relative">
+                        <div className="w-24 h-24 rounded-full border-4 border-[#0A2E46] border-t-[#F06C22] animate-spin"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Maximize className="w-10 h-10 text-[#F06C22]" />
                         </div>
-                        <div className="space-y-2">
-                          <h3 className="text-lg font-black text-white uppercase tracking-widest animate-pulse">Analyzing Grid Intersections</h3>
-                          <div className="w-64 h-2 bg-white/5 border border-white/5 rounded-full overflow-hidden mx-auto mt-4 mb-2">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${scanPercentage}%` }}
-                              className="h-full bg-gradient-to-r from-[#F06C22] to-[#FF8C42] shadow-[0_0_15px_rgba(240,108,34,0.3)]"
-                            />
-                          </div>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest max-w-xs mx-auto">
-                            Performing row-by-row clinical extraction. This may take 30-60 seconds depending on data density.
-                          </p>
-                        </div>
-                        <Badge variant="outline" className="bg-[#0A2E46] text-[#F06C22] border-[#F06C22]/30 px-4 py-1">
-                          {scanProgress}
-                        </Badge>
                       </div>
-                    ) : (
-                      <>
-                        <div className="w-20 h-20 bg-slate-900/50 rounded-full flex items-center justify-center mb-6">
-                          <History className="w-10 h-10 text-slate-700" />
+                      <div className="space-y-2">
+                        <h3 className="text-lg font-black text-white uppercase tracking-widest animate-pulse">
+                          {isScanning ? 'Analyzing Grid Intersections' : 'Decoding Machine Pad Configs'}
+                        </h3>
+                        <div className="w-64 h-2 bg-white/5 border border-white/5 rounded-full overflow-hidden mx-auto mt-4 mb-2">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${scanPercentage}%` }}
+                            className="h-full bg-gradient-to-r from-[#F06C22] to-[#FF8C42] shadow-[0_0_15px_rgba(240,108,34,0.3)]"
+                          />
                         </div>
-                        <h3 className="text-lg font-black text-slate-500 uppercase tracking-widest mb-2 italic">Idle - Waiting for Feed</h3>
-                        <p className="text-xs text-slate-600 max-w-xs leading-relaxed">
-                          Enter target session count and upload high-resolution scans to initiate the multimodal clinical extraction pipeline.
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest max-w-xs mx-auto">
+                          {isScanning ? 'Performing row-by-row clinical extraction. This may take 30-60 seconds.' : 'Extracting Seat, Gap, and Pad settings from Column 2.'}
                         </p>
-                      </>
-                    )}
-                  </motion.div>
-                ) : (
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="p-4 space-y-6 overflow-y-auto max-h-[60vh] scrollbar-thin scrollbar-thumb-slate-700"
-                  >
-                    {/* Macro Summary Panel */}
-                    <div className="bg-[#0A2E46] border border-[#F06C22]/30 rounded-xl p-4 mb-4 flex items-center justify-between shadow-[0_0_20px_rgba(240,108,34,0.05)]">
-                      <div className="flex items-center gap-4">
-                        <div className="p-3 bg-[#F06C22]/10 rounded-full text-[#F06C22]">
-                          <CheckCircle2 size={24} />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-black text-white uppercase tracking-widest">Clinical History Consolidated</h3>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5">
-                            Successfully extracted {
-                              Array.from(new Set(validationSessions.flatMap(s => s.machines.map(m => m.name)))).length
-                            } unique machines spanning {validationSessions.length} total sessions.
-                          </p>
-                        </div>
                       </div>
-                      <Badge variant="outline" className="border-[#F06C22] text-[#F06C22] font-black uppercase text-[8px] px-3">
-                        CONTINUITY VERIFIED
+                      <Badge variant="outline" className="bg-[#0A2E46] text-[#F06C22] border-[#F06C22]/30 px-4 py-1">
+                        {scanProgress}
                       </Badge>
                     </div>
+                  ) : (
+                    <>
+                      <div className="w-20 h-20 bg-slate-900/50 rounded-full flex items-center justify-center mb-6">
+                        <History className="w-10 h-10 text-slate-700" />
+                      </div>
+                      <h3 className="text-lg font-black text-slate-500 uppercase tracking-widest mb-2 italic">Idle - Waiting for Feed</h3>
+                      <p className="text-xs text-slate-600 max-w-xs leading-relaxed">
+                        Enter target session count and upload high-resolution scans to initiate the multimodal clinical extraction pipeline.
+                      </p>
+                    </>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="p-4 space-y-6 overflow-y-auto max-h-[75vh] scrollbar-thin scrollbar-thumb-slate-700"
+                >
+                  {/* Macro Summary Panel */}
+                  <div className="bg-[#0A2E46] border border-[#F06C22]/30 rounded-xl p-4 mb-4 flex items-center justify-between shadow-[0_0_20px_rgba(240,108,34,0.05)]">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-[#F06C22]/10 rounded-full text-[#F06C22]">
+                        <CheckCircle2 size={24} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-white uppercase tracking-widest">
+                          {validationSessions.length > 0 ? 'Clinical History Consolidated' : 'Machine Settings Extracted'}
+                        </h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5">
+                          {validationSessions.length > 0 
+                            ? `Successfully extracted ${Array.from(new Set(validationSessions.flatMap(s => s.machines.map(m => m.name)))).length} unique machines spanning ${validationSessions.length} total sessions.`
+                            : `Successfully extracted configurations for ${extractedSettings.length} unique machines.`
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="border-[#F06C22] text-[#F06C22] font-black uppercase text-[8px] px-3">
+                      CONTINUITY VERIFIED
+                    </Badge>
+                  </div>
 
                     {/* Extraction Frequency Panel */}
                     <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 mb-4">
@@ -882,41 +967,54 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                           ))}
                         </tbody>
                       </table>
+
+                      {validationSessions.length > 0 && (
+                        <div className="mt-8 mb-4">
+                          <Button 
+                            onClick={finalizeImport}
+                            disabled={isFinalizing || validationSessions.some(s => !s.date)}
+                            className="w-full flex items-center justify-center gap-3 bg-[#F06C22] hover:bg-[#D95B16] text-white font-black text-lg h-20 tracking-widest uppercase transition-all shadow-[0_10px_40px_rgba(240,108,34,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isFinalizing ? (
+                              <div className="flex flex-col items-center gap-3 w-full max-w-md px-6">
+                                <div className="flex justify-between w-full mb-1">
+                                  <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">Database Sync Integrity</span>
+                                  <span className="text-[10px] font-black text-white uppercase">{finalizeProgress}%</span>
+                                </div>
+                                <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden border border-white/5">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${finalizeProgress}%` }}
+                                    className="h-full bg-gradient-to-r from-[#F06C22] to-[#FF8C42] shadow-[0_0_10px_rgba(240,108,34,0.5)]"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin"></div>
+                                  <p className="text-[11px] font-bold text-white uppercase tracking-tighter">Committing Clinical Records...</p>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <ArrowRight className="w-8 h-8" />
+                                [ Confirm & Write Full History ]
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+
+                      {validationSessions.length === 0 && extractedSettings.length > 0 && (
+                        <div className="mt-8 mb-4">
+                          <Button 
+                            onClick={finalizeImport}
+                            disabled={isFinalizing}
+                            className="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg h-20 tracking-widest uppercase transition-all shadow-[0_10px_40px_rgba(16,185,129,0.2)]"
+                          >
+                            {isFinalizing ? 'Saving Settings...' : '[ Save Machine Settings Only ]'}
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    {validationSessions.length > 0 && (
-                      <div className="mt-8 mb-4">
-                        <Button 
-                          onClick={finalizeImport}
-                          disabled={isFinalizing || validationSessions.some(s => !s.date)}
-                          className="w-full flex items-center justify-center gap-3 bg-[#F06C22] hover:bg-[#D95B16] text-white font-black text-lg h-20 tracking-widest uppercase transition-all shadow-[0_10px_40px_rgba(240,108,34,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isFinalizing ? (
-                            <div className="flex flex-col items-center gap-3 w-full max-w-md px-6">
-                              <div className="flex justify-between w-full mb-1">
-                                <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">Database Sync Integrity</span>
-                                <span className="text-[10px] font-black text-white uppercase">{finalizeProgress}%</span>
-                              </div>
-                              <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden border border-white/5">
-                                <motion.div 
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${finalizeProgress}%` }}
-                                  className="h-full bg-gradient-to-r from-[#F06C22] to-[#FF8C42] shadow-[0_0_10px_rgba(240,108,34,0.5)]"
-                                />
-                              </div>
-                              <div className="flex items-center gap-2 mt-2">
-                                <div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin"></div>
-                                <p className="text-[11px] font-bold text-white uppercase tracking-tighter">Committing Clinical Records...</p>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <ArrowRight className="w-8 h-8" />
-                              [ Confirm & Write to Client History ]
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
