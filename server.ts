@@ -10,18 +10,22 @@ import { masterSync } from './server/sync-logic.ts';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Error Handling: Prevent process crash on unhandled rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
 
-  // Error Handling: Prevent process crash on unhandled rejections
-  process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  });
-
   // Background Task: Run Master Sync every 60 minutes
+  /*
   const SYNC_INTERVAL = 60 * 60 * 1000;
   setInterval(async () => {
     try {
@@ -43,6 +47,7 @@ async function startServer() {
       console.error('Initial Master Sync failed:', err);
     }
   });
+  */
 
   // API Route for Triggering Master Sync Manually
   app.post('/api/trigger-master-sync', async (req, res) => {

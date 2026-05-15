@@ -1,5 +1,6 @@
 import { ActivityLevel } from './occupational-matrix';
 import { Client, WorkoutSession, ExerciseLog } from '../types';
+import { MACHINE_LIST } from './machine-database';
 
 /**
  * Defines the parameters for isolating specific demographic cohorts within the
@@ -97,15 +98,79 @@ export class InsightsAggregator {
     logs: ExerciseLog[],
     filters: InsightsFilterState
   ): DashboardAggregatedData {
-    // We compute a lightweight static map for demo purposes to prevent quota explosion
-    // In production, this would be computed server-side via Cloud Functions.
     
+    // Group logs by client & machine
+    const clientMachineLogs: Record<string, Record<string, ExerciseLog[]>> = {};
+
+    logs.forEach(log => {
+      if (log.machineId && log.clientId) {
+        if (!clientMachineLogs[log.clientId]) clientMachineLogs[log.clientId] = {};
+        if (!clientMachineLogs[log.clientId][log.machineId]) clientMachineLogs[log.clientId][log.machineId] = [];
+        clientMachineLogs[log.clientId][log.machineId].push(log);
+      }
+    });
+
+    const machineEfficacyMap: Record<string, {
+      machineId: string, 
+      machineName: string, 
+      clientGains: number[],
+    }> = {};
+
+    MACHINE_LIST.forEach(m => {
+      machineEfficacyMap[m.id] = {
+        machineId: m.id,
+        machineName: m.name,
+        clientGains: []
+      };
+    });
+
+    Object.values(clientMachineLogs).forEach(machineMap => {
+      Object.entries(machineMap).forEach(([machineId, cLogs]) => {
+        // Sort logs by date created
+        cLogs.sort((a, b) => {
+          const tA = (a.createdAt as any)?.toMillis?.() || a.createdAt || 0;
+          const tB = (b.createdAt as any)?.toMillis?.() || b.createdAt || 0;
+          return tA - tB;
+        });
+
+        const validLogs = cLogs.filter(l => l.weight && !isNaN(Number(l.weight)));
+        if (validLogs.length >= 2) {
+          const firstW = Number(validLogs[0].weight);
+          const lastW = Number(validLogs[validLogs.length - 1].weight);
+
+          if (firstW > 0) {
+            const pct = ((lastW - firstW) / firstW) * 100;
+            if (machineEfficacyMap[machineId]) {
+              machineEfficacyMap[machineId].clientGains.push(pct);
+            }
+          }
+        }
+      });
+    });
+
+    const computedMachineEfficacy: MachineEfficacyMetric[] = Object.values(machineEfficacyMap)
+      .map(entry => {
+        const avg = entry.clientGains.length ? entry.clientGains.reduce((a,b)=>a+b, 0) / entry.clientGains.length : 0;
+        return {
+          machineId: entry.machineId,
+          machineName: entry.machineName,
+          averageBaselineWeight: 0,
+          averagePeakWeight: 0, 
+          averageTimeUnderLoad: 0,
+          averageRepQuality: 0,
+          percentIncreaseOperationalLoad: Math.round(avg)
+        };
+      })
+      .filter(m => m.percentIncreaseOperationalLoad > 0)
+      .sort((a, b) => b.percentIncreaseOperationalLoad - a.percentIncreaseOperationalLoad);
+
+
     return {
       timeToTrend: [
         { machineId: 'm1', machineName: 'Leg Press', demographicCohort: 'All', averageSessionsToTrend: 6, averageWeeksToTrend: 4, baselineOperationalLoad: 200, trendOperationalLoad: 240 }
       ],
-      machineEfficacy: [
-        { machineId: 'm1', machineName: 'Leg Press', averageBaselineWeight: 200, averagePeakWeight: 250, averageTimeUnderLoad: 60, averageRepQuality: 4.5, percentIncreaseOperationalLoad: 25 }
+      machineEfficacy: computedMachineEfficacy.length > 0 ? computedMachineEfficacy : [
+        { machineId: 'm1', machineName: 'Leg Press (Demo)', averageBaselineWeight: 200, averagePeakWeight: 250, averageTimeUnderLoad: 60, averageRepQuality: 4.5, percentIncreaseOperationalLoad: 25 }
       ],
       retention: [
         { ageBracketLabel: 'All', occupationCategory: 'All', averageLifespanMonths: 12, averageSessionsCompleted: 48, cohortSize: clients.length }

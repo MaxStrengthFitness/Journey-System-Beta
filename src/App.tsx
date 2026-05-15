@@ -5255,6 +5255,16 @@ function WorkoutTrackerView({
   useEffect(() => {
     if (!currentSession || isPaused) return;
     const interval = setInterval(() => {
+      // Auto-abandon session if left open for > 60 minutes of active time to prevent infinite timers and resource consumption
+      const start = currentSession.startTime?.toDate ? currentSession.startTime.toDate() : new Date(currentSession.startTime);
+      const totalSessionMinutes = (Date.now() - start.getTime() - currentSegmentPauseDuration.current) / 60000;
+      if (totalSessionMinutes > 60) {
+        if (currentSession.id) {
+          deleteSession(currentSession.id);
+        }
+        return;
+      }
+
       let extraPause = 0;
       if (isPaused && pauseStartTime.current) {
         extraPause = Date.now() - pauseStartTime.current;

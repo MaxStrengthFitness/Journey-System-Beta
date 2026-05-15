@@ -1457,198 +1457,199 @@ export function ClientProfileView({
           </div>
         </TabsContent>
 
-        <TabsContent value="routines">
-          <div className="grid gap-6 lg:grid-cols-2">
-            {["Routine A", "Routine B"].map((routineName) => {
-              const routine = routines.find((r) => r.name === routineName);
-              const isActiveB =
-                routineName === "Routine B" && client?.isRoutineBActive;
-              const isDisabled =
-                routineName === "Routine B" && !client?.isRoutineBActive;
+      <TabsContent value="routines">
+        <div className="grid gap-4 xl:gap-6 lg:grid-cols-2">
+          {["Routine A", "Routine B"].map((routineName) => {
+            const routine = routines.find((r) => r.name === routineName);
+            const isActiveB =
+              routineName === "Routine B" && client?.isRoutineBActive;
+            const isDisabled =
+              routineName === "Routine B" && !client?.isRoutineBActive;
 
-              if (isDisabled) {
-                return (
-                  <Card
-                    key={routineName}
-                    className="rounded-[40px] border-2 border-dashed border-muted flex items-center justify-center p-12 opacity-50"
-                  >
-                    <div className="text-center space-y-4">
-                      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
-                        <Settings className="w-8 h-8 text-muted-foreground/30" />
-                      </div>
-                      <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">
-                        Routine B Inactive
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-xl font-bold text-xs"
-                        onClick={() => handleToggleRoutineB(true)}
-                      >
-                        Enable Optional Protocol
-                      </Button>
-                    </div>
-                  </Card>
-                );
-              }
-
+            if (isDisabled) {
               return (
                 <Card
                   key={routineName}
-                  className={`rounded-[40px] border-2 shadow-xl overflow-hidden ${routineName === "Routine B" ? "border-amber-500/20 bg-amber-500/[0.02]" : ""}`}
+                  className="rounded-[32px] border-2 border-dashed border-muted flex items-center justify-center p-8 lg:p-12 opacity-50"
                 >
-                  <CardHeader className="p-8 pb-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black italic shadow-lg ${routineName === "Routine B" ? "bg-amber-500 text-white shadow-amber-500/20" : "bg-primary text-white shadow-primary/20"}`}
-                        >
-                          {routineName.split(" ")[1]}
-                        </div>
-                        <div>
-                          <CardTitle className="text-xl font-black uppercase italic tracking-tighter">
-                            {routineName}
-                          </CardTitle>
-                          <CardDescription className="text-[10px] font-bold uppercase tracking-widest">
-                            Protocol Definition
-                          </CardDescription>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 rounded-xl font-black uppercase text-[9px] border-sky-500/50 text-sky-600 hover:bg-sky-50"
-                          onClick={() => setRoutineBuilderTarget(routineName)}
-                        >
-                          <Settings className="w-3 h-3 mr-1" />
-                          Launch AI Builder
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 rounded-xl font-black uppercase text-[9px] border-dashed"
-                          onClick={() =>
-                            handleApplyTemplate("STANDARD_MALE", routineName)
-                          }
-                        >
-                          Apply Template
-                        </Button>
-                      </div>
+                  <div className="text-center space-y-4">
+                    <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
+                      <Settings className="w-6 h-6 lg:w-8 lg:h-8 text-muted-foreground/30" />
                     </div>
-                  </CardHeader>
-                  <CardContent className="p-8 pt-4">
-                    <div className="max-h-[500px] sm:max-h-[600px] overflow-y-auto pr-2 custom-scrollbar py-2 space-y-6">
-                      {Object.entries(
-                        machines
-                          .sort((a, b) => (a.order || 0) - (b.order || 0))
-                          .reduce((acc, machine) => {
-                            const region = machine.anatomicalRegion || 'Other';
-                            if (!acc[region]) acc[region] = [];
-                            acc[region].push(machine);
-                            return acc;
-                          }, {} as Record<string, Machine[]>)
-                      ).map(([region, regionMachines]) => (
-                        <div key={region} className="space-y-3">
-                          <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-b border-slate-200 pb-1 sticky top-0 bg-white z-20">
-                            {region}
-                          </h4>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-                            {regionMachines.map((machine) => {
-                              const routineMachineIds =
-                                stagedMachineIds[routineName] || [];
-                              const isIn = routineMachineIds.includes(machine.id!);
-                              const seqPosition = isIn
-                                ? routineMachineIds.indexOf(machine.id!) + 1
-                                : null;
-
-                              return (
-                                <button
-                                  key={machine.id}
-                                  onClick={() =>
-                                    toggleMachineInRoutine(routineName, machine.id!)
-                                  }
-                                  className={`flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all text-left relative group
-                                  ${
-                                    isIn
-                                      ? "bg-primary/5 border-primary shadow-md z-10"
-                                      : "bg-muted/10 border-transparent opacity-40 hover:opacity-100 hover:border-muted"
-                                  }`}
-                                >
-                                  <div
-                                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-all
-                                  ${
-                                    isIn
-                                      ? "bg-primary text-white shadow-lg"
-                                      : "bg-muted text-muted-foreground border-2 border-dashed border-muted-foreground/10"
-                                  }`}
-                                  >
-                                    {isIn ? (
-                                      <span className="font-black text-[10px] sm:text-xs">
-                                        {seqPosition}
-                                      </span>
-                                    ) : (
-                                      <Plus className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100" />
-                                    )}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <span
-                                      className={`text-[10px] sm:text-[11px] font-black uppercase tracking-tight truncate block ${isIn ? "text-primary" : "text-muted-foreground"}`}
-                                    >
-                                      {machine.name}
-                                    </span>
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                  <CardFooter className="p-8 pt-0 border-t border-border/10 mt-4 flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase">
-                        {stagedMachineIds[routineName]?.length || 0} Units
-                        Assigned
-                      </p>
-                      {JSON.stringify(stagedMachineIds[routineName]) !==
-                        JSON.stringify(
-                          routines.find((r) => r.name === routineName)
-                            ?.machineIds || [],
-                        ) && (
-                        <p className="text-[8px] font-black text-amber-600 uppercase tracking-widest animate-pulse">
-                          Pending Changes
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {routineName === "Routine B" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-500 font-bold text-[10px] uppercase"
-                          onClick={() => handleToggleRoutineB(false)}
-                        >
-                          Disable
-                        </Button>
-                      )}
-                      <Button
-                        onClick={() => handleSaveRoutineConfig(routineName)}
-                        disabled={isSavingRoutine[routineName]}
-                        className="h-10 rounded-xl font-black uppercase italic text-[10px] tracking-widest px-6 bg-primary shadow-lg shadow-primary/20"
-                      >
-                        {isSavingRoutine[routineName]
-                          ? "Saving..."
-                          : "Apply Routine"}
-                      </Button>
-                    </div>
-                  </CardFooter>
+                    <p className="text-xs lg:text-sm font-black uppercase tracking-widest text-muted-foreground">
+                      Routine B Inactive
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl font-bold text-[10px] lg:text-xs h-8 lg:h-9"
+                      onClick={() => handleToggleRoutineB(true)}
+                    >
+                      Enable Optional Protocol
+                    </Button>
+                  </div>
                 </Card>
               );
-            })}
-          </div>
-        </TabsContent>
+            }
+
+            return (
+              <Card
+                key={routineName}
+                className={`rounded-[32px] border-2 shadow-xl overflow-hidden flex flex-col ${routineName === "Routine B" ? "border-amber-500/20 bg-amber-500/[0.02]" : ""}`}
+              >
+                <CardHeader className="p-5 lg:p-6 pb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-8 h-8 lg:w-10 lg:h-10 rounded-xl lg:rounded-2xl flex items-center justify-center font-black italic shadow-lg ${routineName === "Routine B" ? "bg-amber-500 text-white shadow-amber-500/20" : "bg-primary text-white shadow-primary/20"}`}
+                      >
+                        {routineName.split(" ")[1]}
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg lg:text-xl font-black uppercase italic tracking-tighter">
+                          {routineName}
+                        </CardTitle>
+                        <CardDescription className="text-[9px] lg:text-[10px] font-bold uppercase tracking-widest">
+                          Protocol Definition
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 lg:h-8 rounded-lg lg:rounded-xl font-black uppercase text-[8px] lg:text-[9px] border-sky-500/50 text-sky-600 hover:bg-sky-50 px-2 lg:px-3"
+                        onClick={() => setRoutineBuilderTarget(routineName)}
+                      >
+                        <Settings className="w-3 h-3 mr-1" />
+                        AI Builder
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 lg:h-8 rounded-lg lg:rounded-xl font-black uppercase text-[8px] lg:text-[9px] border-dashed px-2 lg:px-3"
+                        onClick={() =>
+                          handleApplyTemplate("STANDARD_MALE", routineName)
+                        }
+                      >
+                        Template
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-5 lg:p-6 pt-0 flex-1">
+                  <div className="max-h-[350px] lg:max-h-[450px] overflow-y-auto pr-2 custom-scrollbar py-2 space-y-4 lg:space-y-5">
+                    {Object.entries(
+                      machines
+                        .sort((a, b) => (a.order || 0) - (b.order || 0))
+                        .reduce((acc, machine) => {
+                          const region = machine.anatomicalRegion || 'Other';
+                          if (!acc[region]) acc[region] = [];
+                          acc[region].push(machine);
+                          return acc;
+                        }, {} as Record<string, Machine[]>)
+                    ).map(([region, regionMachines]) => (
+                      <div key={region} className="space-y-2 lg:space-y-3">
+                        <h4 className="text-[9px] lg:text-[10px] font-black uppercase text-slate-500 tracking-widest border-b border-slate-200 pb-1 sticky top-0 bg-white z-20">
+                          {region}
+                        </h4>
+                        <div className="grid grid-cols-2 min-[400px]:grid-cols-3 md:grid-cols-4 gap-1.5 lg:gap-2">
+                          {regionMachines.map((machine) => {
+                            const routineMachineIds =
+                              stagedMachineIds[routineName] || [];
+                            const isIn = routineMachineIds.includes(machine.id!);
+                            const seqPosition = isIn
+                              ? routineMachineIds.indexOf(machine.id!) + 1
+                              : null;
+
+                            return (
+                              <button
+                                key={machine.id}
+                                onClick={() =>
+                                  toggleMachineInRoutine(routineName, machine.id!)
+                                }
+                                className={`flex items-center gap-1.5 lg:gap-2 p-1.5 lg:p-2 rounded-lg lg:rounded-xl border-2 transition-all text-left relative group
+                                ${
+                                  isIn
+                                    ? "bg-primary/5 border-primary shadow-sm z-10"
+                                    : "bg-muted/10 border-transparent opacity-40 hover:opacity-100 hover:border-muted"
+                                }`}
+                                title={machine.name}
+                              >
+                                <div
+                                  className={`w-6 h-6 lg:w-7 lg:h-7 rounded-md lg:rounded-lg flex items-center justify-center shrink-0 transition-all
+                                ${
+                                  isIn
+                                    ? "bg-primary text-white shadow-sm"
+                                    : "bg-muted text-muted-foreground border-2 border-dashed border-muted-foreground/10"
+                                }`}
+                                >
+                                  {isIn ? (
+                                    <span className="font-black text-[9px] lg:text-[10px]">
+                                      {seqPosition}
+                                    </span>
+                                  ) : (
+                                    <Plus className="w-3 h-3 lg:w-3.5 lg:h-3.5 opacity-40 group-hover:opacity-100" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <span
+                                    className={`text-[8px] lg:text-[9px] font-black uppercase tracking-tight truncate block leading-tight ${isIn ? "text-primary" : "text-muted-foreground"}`}
+                                  >
+                                    {machine.name}
+                                  </span>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+                <CardFooter className="p-5 lg:p-6 pt-0 border-t border-border/10 mt-2 lg:mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+                  <div className="space-y-0.5 lg:space-y-1">
+                    <p className="text-[9px] lg:text-[10px] font-bold text-muted-foreground uppercase">
+                      {stagedMachineIds[routineName]?.length || 0} Units
+                      Assigned
+                    </p>
+                    {JSON.stringify(stagedMachineIds[routineName]) !==
+                      JSON.stringify(
+                        routines.find((r) => r.name === routineName)
+                          ?.machineIds || [],
+                      ) && (
+                      <p className="text-[7px] lg:text-[8px] font-black text-amber-600 uppercase tracking-widest animate-pulse">
+                        Pending Changes
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 lg:gap-3 w-full sm:w-auto">
+                    {routineName === "Routine B" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 font-bold text-[9px] lg:text-[10px] uppercase h-8 lg:h-9"
+                        onClick={() => handleToggleRoutineB(false)}
+                      >
+                        Disable
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => handleSaveRoutineConfig(routineName)}
+                      disabled={isSavingRoutine[routineName]}
+                      className="h-8 lg:h-10 flex-1 sm:flex-none rounded-lg lg:rounded-xl font-black uppercase italic text-[9px] lg:text-[10px] tracking-widest px-4 lg:px-6 bg-primary shadow-md lg:shadow-lg shadow-primary/20"
+                    >
+                      {isSavingRoutine[routineName]
+                        ? "Saving..."
+                        : "Apply Routine"}
+                    </Button>
+                  </div>
+                </CardFooter>
+              </Card>
+            );
+          })}
+        </div>
+      </TabsContent>
 
         <TabsContent value="focus" className="mt-0 flex-1 overflow-hidden min-h-0 bg-[#0A2E46] rounded-xl shadow-sm border border-slate-700">
           {client && authTrainer && (

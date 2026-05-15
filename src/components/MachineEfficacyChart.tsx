@@ -6,7 +6,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Cell
 } from 'recharts';
@@ -16,16 +15,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return (
       <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-2xl">
         <p className="text-white font-black uppercase tracking-tight mb-2 border-b border-slate-700 pb-2">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center justify-between gap-6 py-1">
-            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: entry.color }}>
-              {entry.name}
-            </span>
-            <span className="text-sm font-black text-white">
-              +{entry.value}% <span className="text-[10px] text-slate-400">Load</span>
-            </span>
-          </div>
-        ))}
+        <div className="flex items-center justify-between gap-4 py-1">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#F06C22]">
+            Avg Gain
+          </span>
+          <span className="text-sm font-black text-white">
+            +{payload[0].value}%
+          </span>
+        </div>
       </div>
     );
   }
@@ -37,22 +34,27 @@ export function MachineEfficacyChart({ data }: { data?: any[] }) {
     return <div className="text-slate-400 text-xs text-center flex items-center justify-center h-full font-bold uppercase tracking-widest">No Data Available</div>;
   }
 
-  const chartData = data;
+  // Use up to top 8 machines to prevent crowding
+  const chartData = data.slice(0, 8);
 
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
         data={chartData}
-        margin={{ top: 20, right: 30, left: -20, bottom: 20 }}
-        layout="horizontal"
+        margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" vertical={false} />
         <XAxis 
-          dataKey="machine" 
+          dataKey="machineName" 
           stroke="#64748B" 
-          tick={{ fill: '#64748B', fontWeight: 800, fontSize: 11 }} 
+          tick={{ fill: '#64748B', fontWeight: 800, fontSize: 10 }} 
           tickMargin={10} 
           axisLine={{ stroke: '#CBD5E1' }}
+          tickFormatter={(val) => {
+             // abbreviate if too long
+             if (val.length > 10) return val.substring(0, 10) + '...';
+             return val;
+          }}
         />
         <YAxis 
           stroke="#64748B" 
@@ -62,12 +64,11 @@ export function MachineEfficacyChart({ data }: { data?: any[] }) {
           tickFormatter={(value) => `${value}%`}
         />
         <Tooltip content={<CustomTooltip />} cursor={{ fill: '#F1F5F9' }} />
-        <Legend 
-          wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 'bold', color: '#64748B' }}
-          iconType="circle"
-        />
-        <Bar dataKey="Sedentary Desk" fill="#115E8D" radius={[6, 6, 0, 0]} barSize={24} />
-        <Bar dataKey="Manual Labor" fill="#F97316" radius={[6, 6, 0, 0]} barSize={24} />
+        <Bar dataKey="percentIncreaseOperationalLoad" radius={[6, 6, 0, 0]} barSize={40}>
+          {chartData.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#115E8D' : '#0A2E46'} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );

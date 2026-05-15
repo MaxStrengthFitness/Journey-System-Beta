@@ -6,7 +6,7 @@ import { ActivityLevel } from '../data/occupational-matrix';
 import { InsightsFilterState } from '../data/insights-logic';
 import { StrengthGainsDemographicChart } from './StrengthGainsDemographicChart';
 import { StrengthGainsMuscleGroupChart } from './StrengthGainsMuscleGroupChart';
-import { DemographicRetentionChart } from './DemographicRetentionChart';
+import { MachineEfficacyChart } from './MachineEfficacyChart';
 import { useInsightsData } from '../hooks/useInsightsData';
 import { MaxStrengthLogo } from './MaxStrengthLogo';
 
@@ -168,20 +168,20 @@ export function InsightsDashboardView(props: any) {
             </CardContent>
           </Card>
 
-          {/* Card 3: Retention */}
+          {/* Card 3: Machine Efficacy */}
           <Card className="bg-[#F8F9FA] border-slate-200/50 rounded-3xl shadow-lg flex flex-col h-[360px]">
             <CardHeader className="border-b border-slate-200 p-4 shrink-0">
               <CardTitle className="text-lg font-black uppercase text-slate-800 tracking-tight flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-[#10B981]" />
-                Demographic Retention
+                Machine Strength Gains
               </CardTitle>
               <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-[#10B981]">
-                Average LTV / Lifespan in Months
+                Average Strength Gain % Across All Clients
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 p-2 sm:p-4">
                <div className="w-full h-[240px]">
-                  <DemographicRetentionChart data={data?.retention} />
+                  <MachineEfficacyChart data={data?.machineEfficacy} />
                </div>
             </CardContent>
           </Card>
