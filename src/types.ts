@@ -13,6 +13,7 @@ export interface Trainer {
   initials: string;
   pin: string;
   isOwner?: boolean;
+  homeStudioId?: string;
   availability?: TrainerAvailability;
   mindbody_ical_url?: string;
   legacy_filemaker_id?: string;
@@ -60,6 +61,7 @@ export interface CurrentMachineMetric {
 export interface Client {
   id?: string;
   mindbodyId?: string;
+  homeStudioId?: string;
   firstName: string;
   lastName: string;
   gender?: 'Male' | 'Female' | 'Other' | string;
@@ -169,6 +171,8 @@ export interface WorkoutSession {
   id?: string;
   clientId?: string;
   routineId?: string;
+  studioId?: string;
+  isCrossTrain?: boolean;
   sessionType: SessionType;
   sessionNumber: number;
   date: string;
@@ -264,6 +268,7 @@ export interface ScheduleEntry {
   clientName: string;
   trainerId?: string;
   trainerName: string;
+  studioId?: string;
   startTime: any;
   endTime: any;
   status: 'Scheduled' | 'Completed' | 'Cancelled' | 'No-Show';
@@ -410,7 +415,8 @@ export interface TrainerFocus {
 export interface Studio {
   id?: string;
   name: string;
+  mindbodySiteId?: string;
   createdAt?: any;
 }
 
-export type View = 'trainers' | 'clients' | 'machines' | 'workouts' | 'history' | 'calendar' | 'trainer-hub' | 'dashboard' | 'profile' | 'chart' | 'trainer-profile' | 'progress-report' | 'consultation-wizard' | 'machine-knowledge' | 'client-directory' | 'chart-importer' | 'leaderboard';
+export type View = 'trainers' | 'clients' | 'machines' | 'workouts' | 'history' | 'calendar' | 'trainer-hub' | 'dashboard' | 'profile' | 'chart' | 'trainer-profile' | 'progress-report' | 'consultation-wizard' | 'machine-knowledge' | 'client-directory' | 'chart-importer' | 'leaderboard' | 'owner-dashboard';

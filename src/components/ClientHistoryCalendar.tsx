@@ -26,7 +26,8 @@ import {
   AlertCircle,
   PlusCircle,
   Trash2,
-  Maximize
+  Maximize,
+  Network
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -469,6 +470,12 @@ export function ClientHistoryCalendar({
                    }}
                    className="flex items-center gap-3 sm:gap-6 p-4 sm:p-6 rounded-[32px] bg-slate-800 border border-slate-700 cursor-pointer hover:border-white/30 transition-all hover:bg-slate-800/80 relative overflow-hidden flex-wrap sm:flex-nowrap"
                  >
+                   {session.isCrossTrain && (
+                     <div className="absolute top-0 left-0 bg-indigo-500 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-br-xl shadow-sm z-10 flex items-center gap-1">
+                       <Network className="w-3 h-3" />
+                       Cross-Train
+                     </div>
+                   )}
                    {isLegacy && (
                      <div className="absolute top-0 right-0 bg-[#F06C22] text-white text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl shadow-sm z-10">
                        Imported

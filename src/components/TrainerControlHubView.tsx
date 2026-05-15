@@ -29,6 +29,8 @@ import { Machine, Client, Trainer, WorkoutSession, ScheduleEntry, Studio } from 
 import { findMatchingTrainer, normalizeName } from '../lib/sync-utils';
 import { parseMachineSettings } from '../lib/utils';
 
+import { DataMigrationTool } from './DataMigrationTool';
+
 export function TrainerControlHubView({ 
   trainers, 
   machines, 
@@ -1026,6 +1028,8 @@ export function TrainerControlHubView({
                      </div>
                   </CardContent>
                 </Card>
+
+                <DataMigrationTool />
                 </>
               )}
             </div>

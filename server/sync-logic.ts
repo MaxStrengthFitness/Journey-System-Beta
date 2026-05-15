@@ -96,6 +96,20 @@ export async function masterSync(targetTrainerId?: string, hardReset: boolean = 
       }
     });
 
+    const studiosSnap = await getDocs(collection(db, 'studios'));
+    const studioMap: Record<string, string> = {};
+    studiosSnap.forEach(d => {
+      const data = d.data();
+      if (data.mindbodySiteId) {
+        studioMap[String(data.mindbodySiteId)] = d.id;
+      }
+    });
+
+    const resolveStudioId = (mbLocationId?: string | number): string | null => {
+      if (!mbLocationId) return null;
+      return studioMap[String(mbLocationId)] || null;
+    };
+
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const thirtyDaysAhead = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -154,6 +168,7 @@ export async function masterSync(targetTrainerId?: string, hardReset: boolean = 
               clientId,
               trainerName: trainer.fullName,
               trainerId: trainer.id,
+              studioId: resolveStudioId(ev.location) || trainer.homeStudioId || null,
               startTime: Timestamp.fromDate(new Date(ev.start)),
               endTime: Timestamp.fromDate(new Date(ev.end)),
               status: isCancelled ? 'Cancelled' as const : 'Scheduled' as const,

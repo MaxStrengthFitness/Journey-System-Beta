@@ -332,8 +332,9 @@ service cloud.firestore {
     match /schedules/{scheduleId} {
       allow read: if true;
       allow create: if ('sync_secret' in request.resource.data && request.resource.data.sync_secret == 'STABLE_MASTER_SYNC_TOKEN_2026') || isTrainer();
-      allow update: if ('sync_secret' in request.resource.data && request.resource.data.sync_secret == 'STABLE_MASTER_SYNC_TOKEN_2026') || isTrainer();
-      allow delete: if isAdmin() || isTrainer();
+      allow update: if ('sync_secret' in request.resource.data && request.resource.data.sync_secret == 'STABLE_MASTER_SYNC_TOKEN_2026') 
+        || (isTrainer() && resource.data.studioId == get(/databases/$(database)/documents/trainers/$(request.auth.uid)).data.homeStudioId);
+      allow delete: if isAdmin() || (isTrainer() && resource.data.studioId == get(/databases/$(database)/documents/trainers/$(request.auth.uid)).data.homeStudioId);
     }
     
     match /sessionNotes/{noteId} {

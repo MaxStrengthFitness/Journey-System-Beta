@@ -4,38 +4,39 @@ import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Client } from '../types';
+import { Client, Trainer } from '../types';
 
 interface Props {
   clients: Client[];
   onSelectClient: (clientId: string) => void;
   onStartOpenSession?: () => void;
+  authTrainer?: Trainer | null;
 }
 
-export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSession }: Props) {
+export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSession, authTrainer }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isGlobalSearch, setIsGlobalSearch] = useState(false);
 
   // Local, memory-based filtering to protect Firebase quota
   const filteredClients = useMemo(() => {
-    if (!searchQuery.trim()) return [];
+    let baseClients = clients;
+    if (!isGlobalSearch && authTrainer?.homeStudioId) {
+      baseClients = baseClients.filter(c => c.homeStudioId === authTrainer.homeStudioId);
+    }
+    
+    if (!searchQuery.trim()) return baseClients.slice(0, 12);
     
     const query = searchQuery.toLowerCase();
-    return clients.filter(client => {
+    return baseClients.filter(client => {
       const fullName = `${client.firstName} ${client.lastName}`.toLowerCase();
       return fullName.includes(query);
     });
-  }, [clients, searchQuery]);
+  }, [clients, searchQuery, isGlobalSearch, authTrainer?.homeStudioId]);
 
   // If no search, show a meaningful empty state (e.g. recent, or all sorted alphabetically - wait, 100+ might be too long to just render without search, but the prompt says 
   // "If the search bar is empty, do not show a blank screen. Display a grid of 'Recently Active' or 'Recently Profiled' clients so the screen immediately feels populated and useful.")
   // We'll show the top 10 most recently joined clients as a proxy for "Recently Active" if they have a createdAt, otherwise just the first 10.
-  const topRecentClients = useMemo(() => {
-    // Sort logic could use createdAt or just take the first 12 for immediate display
-    // Without 'createdAt' or 'lastActive', we'll rely on the existing list order, maybe reverse it or just slice
-    return [...clients].slice(0, 12);
-  }, [clients]);
-
-  const displayClients = searchQuery.trim() ? filteredClients : topRecentClients;
+  const displayClients = filteredClients;
 
   const renderTierBadge = (tier?: string) => {
     if (!tier) return null;
@@ -76,6 +77,20 @@ export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSessio
             className="w-full bg-slate-900 border-2 border-slate-800 text-white placeholder:text-slate-600 h-20 pl-16 rounded-3xl text-xl font-medium focus-visible:ring-0 focus-visible:border-[#F06C22] shadow-2xl transition-all"
           />
         </div>
+        
+        {authTrainer?.homeStudioId && (
+          <div className="flex items-center gap-3 mt-4 px-2">
+            <button
+              onClick={() => setIsGlobalSearch(!isGlobalSearch)}
+              className={`w-10 h-5 rounded-full transition-colors relative ${isGlobalSearch ? 'bg-[#F06C22]' : 'bg-slate-700'}`}
+            >
+              <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-transform ${isGlobalSearch ? 'left-[22px]' : 'left-0.5'}`} />
+            </button>
+            <span className="text-xs font-bold text-slate-400 tracking-widest uppercase">
+              Global Search (All Locations)
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="max-w-4xl mx-auto w-full flex-1 overflow-y-auto custom-scrollbar pr-2 pb-24">

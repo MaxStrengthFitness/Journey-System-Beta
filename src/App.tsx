@@ -50,7 +50,8 @@ import {
   Check,
   X,
   Settings2,
-  Database
+  Database,
+  Network
 } from 'lucide-react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
@@ -72,7 +73,8 @@ import {
   limit,
   Timestamp,
   writeBatch,
-  increment
+  increment,
+  QueryConstraint
 } from 'firebase/firestore';
 import { 
   GoogleAuthProvider, 
@@ -106,6 +108,7 @@ import { PreSessionOverview } from './components/PreSessionOverview';
 import { PostSessionBriefingView } from './components/PostSessionBriefingView';
 import { ConsultationSetupWizard } from './components/ConsultationSetupWizard';
 import { ConsultationWizard } from './components/ConsultationWizard';
+import { OwnerDashboardView } from './components/OwnerDashboardView';
 import { CreateClientModal } from './components/CreateClientModal';
 import { ClientProgressReportView } from './components/ClientProgressReportView';
 import { SessionRoutineManagerModal } from './components/SessionRoutineManagerModal';
@@ -269,12 +272,15 @@ export default function App() {
 
     const date = new Date().toISOString().split('T')[0];
 
+    const activeStudioId = authTrainer?.homeStudioId || null;
+
     try {
       const docRef = await addDoc(collection(db, 'sessions'), {
         isUnassigned: true,
         sessionType: 'Standard',
         sessionNumber: 0,
         date,
+        studioId: activeStudioId,
         trainerInitials: authTrainer.initials,
         trainerName: authTrainer.fullName,
         trainerId: authTrainer.id,
@@ -944,11 +950,18 @@ export default function App() {
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const thirtyDaysAhead = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    const schedulesQuery = query(
-      collection(db, 'schedules'), 
+    const queryConstraints: QueryConstraint[] = [
       where('startTime', '>=', Timestamp.fromDate(twentyFourHoursAgo)),
       where('startTime', '<=', Timestamp.fromDate(thirtyDaysAhead)),
       orderBy('startTime', 'asc')
+    ];
+    if (authTrainer?.homeStudioId) {
+      queryConstraints.push(where('studioId', '==', authTrainer.homeStudioId));
+    }
+
+    const schedulesQuery = query(
+      collection(db, 'schedules'), 
+      ...queryConstraints
     );
     const unsubscribeSchedules = onSnapshot(schedulesQuery, (snapshot) => {
       const schedulesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -1304,6 +1317,15 @@ export default function App() {
                       <Settings className="w-4 h-4" />
                       Trainer Hub
                     </DropdownMenuItem>
+                    {(authTrainer?.isOwner || user.email === "jurgensaj@gmail.com") && (
+                      <DropdownMenuItem 
+                        onClick={() => setCurrentView('owner-dashboard')}
+                        className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-white focus:bg-slate-700 focus:text-white text-[#F06C22]"
+                      >
+                        <Network className="w-4 h-4" />
+                        Owner Dashboard
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuGroup>
                   
                   <DropdownMenuSeparator className="my-2 bg-slate-700" />
@@ -1395,6 +1417,7 @@ export default function App() {
                   setCurrentView('workouts');
                 }}
                 onStartOpenSession={startUnassignedSession}
+                authTrainer={authTrainer}
               />
             )}
             {currentView === 'clients' && (
@@ -1525,6 +1548,9 @@ export default function App() {
                 onSelectClient={setSelectedClientId}
                 setView={setCurrentView}
               />
+            )}
+            {currentView === 'owner-dashboard' && (
+              <OwnerDashboardView />
             )}
             {currentView === 'trainer-hub' && (
               <TrainerControlHubView 
@@ -5577,12 +5603,23 @@ function WorkoutTrackerView({
       }
 
       // 1. Create the session
+      // STATISTICAL ROUTING & CROSS-TRAIN DETECTION
+      // The session should log where it physically happened (authTrainer's homeStudioId)
+      // but if the client belongs elsewhere, mark it as a cross-train event.
+      const activeStudioId = authTrainer?.homeStudioId || null;
+      const targetClient = clients.find(c => c.id === clientId);
+      const clientHomeStudioId = targetClient?.homeStudioId || null;
+      
+      const isCrossTrain = clientHomeStudioId !== activeStudioId && activeStudioId !== null;
+
       const docRef = await addDoc(collection(db, 'sessions'), {
         clientId,
         routineId: routineId || null,
         sessionType,
         sessionNumber: nextNum,
         date,
+        studioId: activeStudioId,
+        isCrossTrain,
         trainerInitials,
         trainerName,
         trainerId,
