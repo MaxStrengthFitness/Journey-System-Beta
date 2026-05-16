@@ -1,30 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, getDocs, onSnapshot, where } from 'firebase/firestore';
+import { collection, query, getDocs, where, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { WorkoutSession, Studio } from '../types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Network, MapPin, Activity } from 'lucide-react';
+import { Network, MapPin, Activity, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export function OwnerDashboardView() {
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [studios, setStudios] = useState<Studio[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Cross-Train Detection Logic (as requested for Phase 2)
-  // This is the function you would call right before saving a session to Firestore:
-  /*
-  export const prepareSessionPayload = (
-    clientHomeStudioId: string | null,
-    activeStudioId: string | null,
-    sessionPayload: any
-  ) => {
-    return {
-      ...sessionPayload,
-      studioId: activeStudioId, // The physical location where the workout happened
-      isCrossTrain: clientHomeStudioId !== activeStudioId && activeStudioId != null, // Flag true if mismatch
-    };
-  };
-  */
+  
+  // Date range state
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
     // 1. Fetch Studios
@@ -41,30 +28,28 @@ export function OwnerDashboardView() {
   }, []);
 
   useEffect(() => {
-    // 2. Fetch Sessions and link to Client's homeStudioId for statistical routing
-    setLoading(true);
-    const q = query(collection(db, 'sessions'));
-    
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
+    // 2. Fetch Sessions uses getDocs with date range to save reads
+    const fetchSessions = async () => {
+      setLoading(true);
       try {
+        // Calculate the first and last day of the currently selected month
+        const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
+        
+        const q = query(
+          collection(db, 'sessions'),
+          where('createdAt', '>=', Timestamp.fromDate(startOfMonth)),
+          where('createdAt', '<=', Timestamp.fromDate(endOfMonth))
+        );
+        
+        const snapshot = await getDocs(q);
         const sessionsData = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as WorkoutSession));
         
-        // To enforce strict statistical routing, we must attribute each session to the CLIENT's homeStudioId.
-        // If the session document doesn't already denormalize clientHomeStudioId upon creation (recommended), 
-        // we must fetch the client data to do the routing. For scale, denormalizing clientHomeStudioId onto 
-        // the session document is best. Assuming we can fetch clients:
-        
-        const clientsSnap = await getDocs(collection(db, 'clients'));
-        const clientHomeStudioMap: Record<string, string> = {};
-        clientsSnap.forEach(doc => {
-          clientHomeStudioMap[doc.id] = doc.data().homeStudioId;
-        });
-
+        // Remove getDocs(collection(db, 'clients')) completely.
+        // The statistical routing ID is strictly based on the denormalized clientHomeStudioId.
         const creditedSessions = sessionsData.map(session => ({
           ...session,
-          // CRITICAL ROUTING RULE: Assign statistical credit to homeStudioId, NOT the session's physical studioId
-          // If the client has no home studio assigned, it falls back to the local studioId or unassigned
-          statisticalStudioId: session.clientId ? (clientHomeStudioMap[session.clientId] || session.studioId) : session.studioId
+          statisticalStudioId: session.clientHomeStudioId || session.studioId
         }));
 
         setSessions(creditedSessions as any);
@@ -73,10 +58,19 @@ export function OwnerDashboardView() {
       } finally {
         setLoading(false);
       }
-    });
+    };
+    
+    fetchSessions();
+  }, [currentDate]);
 
-    return () => unsubscribe();
-  }, []);
+  const handlePrevMonth = () => {
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
 
   // Aggregate Data
   const totalNetworkSessions = sessions.length;
@@ -104,6 +98,21 @@ export function OwnerDashboardView() {
         <div>
           <h1 className="text-3xl font-black uppercase text-slate-800 tracking-tight">Owner Dashboard</h1>
           <p className="text-sm font-bold uppercase tracking-widest text-slate-500">Enterprise Network Overview</p>
+        </div>
+        
+        <div className="ml-auto flex items-center bg-white rounded-2xl border border-slate-200 shadow-sm p-1">
+          <button onClick={handlePrevMonth} className="p-2 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors rounded-xl outline-none">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <div className="px-4 py-2 flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-slate-400" />
+            <span className="text-sm font-bold uppercase tracking-widest text-slate-700 w-[120px] text-center">
+              {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </span>
+          </div>
+          <button onClick={handleNextMonth} className="p-2 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors rounded-xl outline-none">
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
       </div>
 

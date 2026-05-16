@@ -1,42 +1,124 @@
-import React, { useState, useMemo } from 'react';
-import { Search, User2, PlayCircle, ShieldCheck, Dumbbell, History } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, User2, PlayCircle, History, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { collection, getDocs, query, where, orderBy, limit, QueryConstraint, Query } from 'firebase/firestore';
+import { db } from '../firebase';
 import { Client, Trainer } from '../types';
 
 interface Props {
-  clients: Client[];
   onSelectClient: (clientId: string) => void;
   onStartOpenSession?: () => void;
   authTrainer?: Trainer | null;
 }
 
-export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSession, authTrainer }: Props) {
+export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTrainer }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isGlobalSearch, setIsGlobalSearch] = useState(false);
+  const [searchResults, setSearchResults] = useState<Client[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  useEffect(() => {
+    const fetchClients = async () => {
+      setIsLoading(true);
+      try {
+        let q: Query;
+        const clientsRef = collection(db, 'clients');
+        
+        if (!searchQuery.trim()) {
+          // Empty search: 'Recently Profiled'
+          const queries: QueryConstraint[] = [];
+          
+          if (!isGlobalSearch && authTrainer?.homeStudioId) {
+            queries.push(where('homeStudioId', '==', authTrainer.homeStudioId));
+          }
+          
+          q = query(
+            clientsRef,
+            ...queries,
+            orderBy('createdAt', 'desc'),
+            limit(12)
+          );
+        } else {
+          // We have a search term.
+          const term = searchQuery.toLowerCase();
+          
+          // Note: Firestore string prefix queries require exact case match by default if no lowercase fields exist. 
+          // We assume 'lastName' or 'firstName' fields. To do simple prefix match:
+          // Since we can't easily do a case-insensitive full-name contains in Firestore without an array,
+          // we will prefix search on 'firstName' and client-side filter if needed, 
+          // or properly prefix query on a known field.
+          // Due to limitations, let's prefix query 'firstName' for the first word:
+          
+          const queries: QueryConstraint[] = [];
+          if (!isGlobalSearch && authTrainer?.homeStudioId) {
+            queries.push(where('homeStudioId', '==', authTrainer.homeStudioId));
+          }
+          
+          // To implement as requested: string boundary querying for search term
+          // the prompt asked: "where('lastName', '>=', searchTerm), where('lastName', '<=', searchTerm + '\uf8ff')"
+          // However, we want them to find people... maybe we just fetch limit(20) matching the queries 
+          // and apply that boundary! But what if they type a first name? 
+          // The prompt specifies: "use Firebase's string boundary querying for the search term (e.g., where('lastName', '>=', searchTerm), where('lastName', '<=', searchTerm + '\uf8ff')) and attach a .limit(20)"
+          
+          // If we format the search term with first letter capitalized, it might work better.
+          const termCapitalized = term.charAt(0).toUpperCase() + term.slice(1);
+          
+          q = query(
+            clientsRef,
+            ...queries,
+            where('lastName', '>=', termCapitalized),
+            where('lastName', '<=', termCapitalized + '\uf8ff'),
+            limit(20)
+          );
+          
+          // If the query is empty resulting from lastName, we might miss firstName searches... 
+          // For now, adhering strictly strictly to prompt "e.g. where('lastName'..." 
+          // But I'll actually just fetch by 'firstName' prefix OR just pull recent 50 and client-side filter if this is small,
+          // Wait, the prompt explicitly said:
+          // "Use Firebase's string boundary querying for the search term (e.g., where('lastName', '>=', searchTerm), where('lastName', '<=', searchTerm + '\uf8ff')) and attach a .limit(20) to ensure we never over-fetch."
+        }
 
-  // Local, memory-based filtering to protect Firebase quota
-  const filteredClients = useMemo(() => {
-    let baseClients = clients;
-    if (!isGlobalSearch && authTrainer?.homeStudioId) {
-      baseClients = baseClients.filter(c => c.homeStudioId === authTrainer.homeStudioId);
-    }
+        const snap = await getDocs(q);
+        const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Client));
+        
+        // Let's do a fallback for firstName if lastName doesn't match and we are searching
+        if (searchQuery.trim() && fetched.length === 0) {
+          const termCapitalized = searchQuery.trim().charAt(0).toUpperCase() + searchQuery.trim().slice(1);
+          const queries: QueryConstraint[] = [];
+          if (!isGlobalSearch && authTrainer?.homeStudioId) {
+            queries.push(where('homeStudioId', '==', authTrainer.homeStudioId));
+          }
+          const q2 = query(
+            clientsRef,
+            ...queries,
+            where('firstName', '>=', termCapitalized),
+            where('firstName', '<=', termCapitalized + '\uf8ff'),
+            limit(20)
+          );
+          const snap2 = await getDocs(q2);
+          setSearchResults(snap2.docs.map(d => ({ id: d.id, ...d.data() } as Client)));
+        } else {
+          setSearchResults(fetched);
+        }
+      } catch (error) {
+        console.error("Error fetching clients:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    if (!searchQuery.trim()) return baseClients.slice(0, 12);
-    
-    const query = searchQuery.toLowerCase();
-    return baseClients.filter(client => {
-      const fullName = `${client.firstName} ${client.lastName}`.toLowerCase();
-      return fullName.includes(query);
-    });
-  }, [clients, searchQuery, isGlobalSearch, authTrainer?.homeStudioId]);
+    // Debounce the search
+    const delayDebounceFn = setTimeout(() => {
+      fetchClients();
+    }, 300);
 
-  // If no search, show a meaningful empty state (e.g. recent, or all sorted alphabetically - wait, 100+ might be too long to just render without search, but the prompt says 
-  // "If the search bar is empty, do not show a blank screen. Display a grid of 'Recently Active' or 'Recently Profiled' clients so the screen immediately feels populated and useful.")
-  // We'll show the top 10 most recently joined clients as a proxy for "Recently Active" if they have a createdAt, otherwise just the first 10.
-  const displayClients = filteredClients;
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery, isGlobalSearch, authTrainer?.homeStudioId]);
+
+  const displayClients = searchResults;
 
   const renderTierBadge = (tier?: string) => {
     if (!tier) return null;
@@ -103,7 +185,12 @@ export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSessio
           </div>
         )}
 
-        {displayClients.length > 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center h-48 text-center bg-slate-900/50 rounded-3xl border border-dashed border-slate-800">
+            <Loader2 className="w-8 h-8 text-[#F06C22] animate-spin mb-3" />
+            <p className="text-slate-400 font-medium tracking-widest uppercase text-xs">Searching database...</p>
+          </div>
+        ) : displayClients.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {displayClients.map(client => (
               <motion.div
@@ -117,7 +204,7 @@ export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSessio
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-14 h-14 rounded-full bg-[#0A2E46] border-2 border-slate-700 flex items-center justify-center shrink-0 shadow-inner group-hover:border-[#F06C22] transition-colors">
                     <span className="text-white font-black text-lg tracking-widest">
-                      {client.firstName[0]}{client.lastName[0]}
+                      {client.firstName?.[0]}{client.lastName?.[0]}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">

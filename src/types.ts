@@ -101,7 +101,6 @@ export interface Client {
   requiresConsultation?: boolean;
   firstSessionDate?: any;
   discoveryNotes?: string;
-  homeStudioId?: string;
   currentMachineMetrics?: Record<string, CurrentMachineMetric>;
   createdAt?: any;
 }
@@ -172,6 +171,7 @@ export interface WorkoutSession {
   clientId?: string;
   routineId?: string;
   studioId?: string;
+  clientHomeStudioId: string;
   isCrossTrain?: boolean;
   sessionType: SessionType;
   sessionNumber: number;
@@ -417,6 +417,19 @@ export interface Studio {
   name: string;
   mindbodySiteId?: string;
   createdAt?: any;
+}
+
+export interface HubAnnouncement {
+  id?: string;
+  title: string;
+  shortContent: string;
+  longContent: string;
+  authorId: string;
+  authorName: string;
+  studioId: string | 'all';
+  createdAt: any;
+  isActive: boolean;
+  priority: 'low' | 'medium' | 'high';
 }
 
 export type View = 'trainers' | 'clients' | 'machines' | 'workouts' | 'history' | 'calendar' | 'trainer-hub' | 'dashboard' | 'profile' | 'chart' | 'trainer-profile' | 'progress-report' | 'consultation-wizard' | 'machine-knowledge' | 'client-directory' | 'chart-importer' | 'leaderboard' | 'owner-dashboard';

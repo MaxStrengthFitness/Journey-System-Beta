@@ -118,8 +118,8 @@ export function ClientEquipmentPrescriptions({
       const sessionIds = sessionsSnap.docs.map(doc => doc.id).filter(Boolean);
 
       const chunks = [];
-      for (let i = 0; i < sessionIds.length; i += 30) {
-        chunks.push(sessionIds.slice(i, i + 30));
+      for (let i = 0; i < sessionIds.length; i += 10) {
+        chunks.push(sessionIds.slice(i, i + 10));
       }
 
       await Promise.all(

@@ -393,6 +393,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
 
         const sessionData: WorkoutSession = {
           clientId: selectedClientId,
+          clientHomeStudioId: null as any,
           sessionType: 'Standard',
           sessionNumber: vSess.sessionNumber,
           date: formattedDate || fallbackDate(),
@@ -483,7 +484,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
             ? { ...extracted.rawSettings } 
             : {};
           
-          if (extracted && Object.keys(finalSettings).length === 0) {
+          if (extracted) {
             if (extracted.seat) finalSettings['Seat'] = extracted.seat;
             if (extracted.gap) finalSettings['Gap'] = extracted.gap;
             if (extracted.backPad) finalSettings['Back Pad'] = extracted.backPad;

@@ -51,7 +51,9 @@ import {
   X,
   Settings2,
   Database,
-  Network
+  Network,
+  Building2,
+  Gift
 } from 'lucide-react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
@@ -70,6 +72,7 @@ import {
   where,
   setDoc,
   getDocs,
+  getDoc,
   limit,
   Timestamp,
   writeBatch,
@@ -86,7 +89,7 @@ import {
 
 import { db, auth } from './firebase';
 import firebaseConfig from '../firebase-applet-config.json';
-import { Trainer, TrainerAvailability, Client, View, Machine, WorkoutSession, ExerciseLog, Routine, ClientMachineSetting, SessionType, SessionNote, TrainerFocus, FocusRecord, Studio } from './types';
+import { Trainer, TrainerAvailability, Client, View, Machine, WorkoutSession, ExerciseLog, Routine, ClientMachineSetting, SessionType, SessionNote, TrainerFocus, FocusRecord, Studio, HubAnnouncement } from './types';
 import { OperationType, handleFirestoreError } from './lib/firestore-errors';
 // Removing duplicate cn import
 import { hashPin } from './lib/auth-utils';
@@ -104,6 +107,7 @@ import { MachineLeaderboardDashboard } from './components/MachineLeaderboardDash
 import { ProfilesView } from './components/ProfilesView';
 import { ClientDirectoryView } from './components/ClientDirectoryView';
 import { TrainerProfileView } from './components/TrainerProfileView';
+import { StudioSelectionView } from './components/StudioSelectionView';
 import { PreSessionOverview } from './components/PreSessionOverview';
 import { PostSessionBriefingView } from './components/PostSessionBriefingView';
 import { ConsultationSetupWizard } from './components/ConsultationSetupWizard';
@@ -222,30 +226,180 @@ const getMachineImageUrl = (machineId?: string): string => {
 
 type RoutineType = 'A' | 'B' | 'Free';
 
+const HubAnnouncementHeaderGift = ({ announcements }: { announcements: HubAnnouncement[] }) => {
+  const announcement = announcements[0];
+  const [isExpanded, setIsExpanded] = useState(false);
+  if (!announcement) return null;
+
+  return (
+    <div className="relative">
+      <motion.div 
+        layout
+        className={cn(
+          "bg-slate-900/60 backdrop-blur-md border overflow-hidden transition-all duration-500 cursor-pointer",
+          isExpanded ? "fixed inset-x-0 top-24 mx-auto max-w-lg z-[60] rounded-[32px] p-6 shadow-2xl border-sky-500/30" : "rounded-2xl p-2 border-amber-500/20 hover:border-amber-500/40 w-full"
+        )}
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-lg",
+            isExpanded ? "bg-sky-500 text-white" : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+          )}>
+            {isExpanded ? <Sparkles className="w-4 h-4" /> : <Gift className="w-4 h-4 animate-pulse" />}
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-4">
+              <h4 className={cn(
+                "font-black italic uppercase tracking-tight truncate",
+                isExpanded ? "text-xl text-white font-black" : "text-[10px] text-amber-100"
+              )}>
+                {announcement.title}
+              </h4>
+            </div>
+            
+            {!isExpanded && (
+              <p className="text-[9px] text-slate-400 font-medium truncate leading-none">
+                {announcement.shortContent}
+              </p>
+            )}
+          </div>
+
+          {isExpanded && (
+            <div className="shrink-0 p-1 rounded-full bg-slate-800 text-slate-400">
+              <ChevronUp className="w-4 h-4" />
+            </div>
+          )}
+        </div>
+
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-6 border-t border-slate-800 pt-6"
+            >
+              <div className="flex flex-col gap-4">
+                <div className="prose prose-invert prose-sm max-w-none">
+                  <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
+                    {announcement.longContent}
+                  </p>
+                </div>
+                
+                <div className="flex items-center justify-between pt-4 mt-2">
+                  <div className="flex items-center gap-2">
+                     <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[8px] font-black italic border border-slate-700">
+                      {announcement.authorName.charAt(0)}
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                      From {announcement.authorName}
+                    </p>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 rounded-lg text-[10px] font-black uppercase tracking-widest text-sky-400"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsExpanded(false);
+                    }}
+                  >
+                    Close Insight
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+      {isExpanded && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55]"
+          onClick={() => setIsExpanded(false)}
+        />
+      )}
+    </div>
+  );
+};
+
 export default function App() {
   useEffect(() => {
     (window as any).migrateClientMachineMetrics = migrateClientMachineMetrics;
   }, []);
+
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [authTrainer, setAuthTrainer] = useState<Trainer | null>(null);
+  const [activeStudioId, setActiveStudioId] = useState<string | null>(localStorage.getItem('max_strength_active_studio_id'));
   const [currentView, setCurrentView] = useState<View>('clients');
   const [newClientOnboardingName, setNewClientOnboardingName] = useState<string | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedClientDoc, setSelectedClientDoc] = useState<Client | null>(null);
+
+  // Fetch the selected client document whenever selectedClientId changes
+  useEffect(() => {
+    if (!selectedClientId) {
+      setSelectedClientDoc(null);
+      return;
+    }
+    const fetchClient = async () => {
+      try {
+        const clientRef = doc(db, 'clients', selectedClientId);
+        const snap = await getDoc(clientRef);
+        if (snap.exists()) {
+          setSelectedClientDoc({ id: snap.id, ...snap.data() } as Client);
+        } else {
+          setSelectedClientDoc(null);
+        }
+      } catch (e) {
+        console.error("Error fetching client", e);
+      }
+    };
+    fetchClient().catch(err => console.error("Unhandled rejection in fetchClient:", err));
+  }, [selectedClientId]);
+
+
   const [dashboardInitialTab, setDashboardInitialTab] = useState<'analytics' | 'importer'>('analytics');
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [selectedProfileTrainerId, setSelectedProfileTrainerId] = useState<string | null>(null);
   const [leaderboardReturnView, setLeaderboardReturnView] = useState<View>('trainer-hub');
   const [trainers, setTrainers] = useState<Trainer[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
   const [machines, setMachines] = useState<Machine[]>(DEFAULT_MACHINES);
   const [schedules, setSchedules] = useState<any[]>([]);
+  const [liveRosterClients, setLiveRosterClients] = useState<Client[]>([]);
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [trainerFocuses, setTrainerFocuses] = useState<TrainerFocus[]>([]);
   const [focusRecords, setFocusRecords] = useState<FocusRecord[]>([]);
   const [studios, setStudios] = useState<Studio[]>([]);
+  const [announcements, setAnnouncements] = useState<HubAnnouncement[]>([]);
+  
+  // Announcements fetching
+  useEffect(() => {
+    if (!authTrainer) return;
+    const q = query(collection(db, 'hub_announcements'));
+    return onSnapshot(q, (snap) => {
+      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as HubAnnouncement));
+      const filtered = data
+        .filter(a => a.isActive !== false)
+        .filter(a => a.studioId === 'all' || a.studioId === activeStudioId)
+        .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+      setAnnouncements(filtered);
+    });
+  }, [authTrainer, activeStudioId]);
+  
+  // Derived state to replace the massive global array, 
+  // satisfying components that look up the currently active client by ID,
+  // and the Live Roster that needs today's scheduled clients.
+  const clients = Array.from(new Map(
+    [
+      ...(selectedClientDoc ? [selectedClientDoc] : []),
+      ...liveRosterClients
+    ].map(c => [c.id, c])
+  ).values());
   const [isAddingTrainer, setIsAddingTrainer] = useState(false);
   const [showNewClientsDialog, setShowNewClientsDialog] = useState(false);
   const [isReorderingTrainers, setIsReorderingTrainers] = useState(false);
@@ -281,6 +435,7 @@ export default function App() {
         sessionNumber: 0,
         date,
         studioId: activeStudioId,
+        clientHomeStudioId: null as any,
         trainerInitials: authTrainer.initials,
         trainerName: authTrainer.fullName,
         trainerId: authTrainer.id,
@@ -323,6 +478,12 @@ export default function App() {
   const currentSession = useMemo(() => {
     return sessions.find(s => s.status === 'In-Progress' && s.clientId === selectedClientId);
   }, [sessions, selectedClientId]);
+  // Derived state for the active studio name
+  const activeStudioName = useMemo(() => {
+    if (!activeStudioId) return null;
+    return studios.find(s => s.id === activeStudioId)?.name || null;
+  }, [activeStudioId, studios]);
+
   const [hasQuotaError, setHasQuotaError] = useState(false);
   const [lastQuotaErrorMessage, setLastQuotaErrorMessage] = useState("");
 
@@ -804,7 +965,7 @@ export default function App() {
       }
     };
     
-    seedData();
+    seedData().catch(err => console.error("Unhandled rejection in seedData:", err));
   }, [isAuthReady, user?.uid, hasQuotaError]);
 
   // Cleanup old unassigned sessions (once daily per user session, limited to admin)
@@ -868,7 +1029,7 @@ export default function App() {
         }
       }
     };
-    cleanup();
+    cleanup().catch(err => console.error("Unhandled rejection in cleanup:", err));
   }, [isAuthReady, user?.uid, hasQuotaError]);
 
   // Data Listeners
@@ -896,15 +1057,6 @@ export default function App() {
     }, (error) => {
       if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
       handleFirestoreError(error, OperationType.GET, 'trainers');
-    });
-
-    const clientsQuery = query(collection(db, 'clients'), orderBy('createdAt', 'desc'), limit(100));
-    const unsubscribeClients = onSnapshot(clientsQuery, (snapshot) => {
-      const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
-      setClients(clientsData);
-    }, (error) => {
-      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
-      handleFirestoreError(error, OperationType.GET, 'clients');
     });
 
     const machinesQuery = query(collection(db, 'machines'), orderBy('order', 'asc'));
@@ -963,9 +1115,35 @@ export default function App() {
       collection(db, 'schedules'), 
       ...queryConstraints
     );
-    const unsubscribeSchedules = onSnapshot(schedulesQuery, (snapshot) => {
-      const schedulesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const unsubscribeSchedules = onSnapshot(schedulesQuery, async (snapshot) => {
+      const schedulesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
       setSchedules(schedulesData);
+      
+      // Extract unique clientIds from today's schedules
+      const clientIds = Array.from(new Set(schedulesData.map(s => s.clientId).filter(Boolean))) as string[];
+      if (clientIds.length > 0) {
+        // Firestore 'in' queries are limited to 10 items. We must batch them.
+        const chunkArray = (arr: string[], size: number) => {
+          const chunked = [];
+          for (let i = 0; i < arr.length; i += size) {
+            chunked.push(arr.slice(i, i + size));
+          }
+          return chunked;
+        };
+        const chunks = chunkArray(clientIds, 10);
+        try {
+          const clientPromises = chunks.map(chunk => 
+            getDocs(query(collection(db, 'clients'), where('__name__', 'in', chunk)))
+          );
+          const snaps = await Promise.all(clientPromises);
+          const rosterClients = snaps.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
+          setLiveRosterClients(rosterClients);
+        } catch (e) {
+          console.error("Error fetching live roster clients", e);
+        }
+      } else {
+        setLiveRosterClients([]);
+      }
     }, (error) => {
       if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
       handleFirestoreError(error, OperationType.GET, 'schedules');
@@ -1011,7 +1189,6 @@ export default function App() {
 
     return () => {
       unsubscribeTrainers();
-      unsubscribeClients();
       unsubscribeMachines();
       unsubscribeSchedules();
       unsubscribeSessions();
@@ -1231,6 +1408,9 @@ export default function App() {
     );
   }
 
+  // Derived state for the active studio name
+  // Moved up to avoid hook order violation
+  
   // Trainer PIN Access Screen
   if (!authTrainer) {
     return (
@@ -1238,6 +1418,20 @@ export default function App() {
         trainers={trainers} 
         user={user}
         onLogin={handleTrainerLogin} 
+      />
+    );
+  }
+
+  // Studio Selection Screen
+  if (!activeStudioId && studios.length > 0) {
+    return (
+      <StudioSelectionView 
+        studios={studios}
+        onSelect={(studioId) => {
+          setActiveStudioId(studioId);
+          localStorage.setItem('max_strength_active_studio_id', studioId);
+        }}
+        onBack={handleTrainerLock}
       />
     );
   }
@@ -1271,10 +1465,31 @@ export default function App() {
             <div className="flex items-center -ml-2">
               <MaxStrengthLogo size="sm" showText={false} className="scale-[0.8] origin-left text-white drop-shadow-md" />
               <div className="flex flex-col ml-1.5 leading-none">
-                <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Strength</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Strength</span>
+                  {activeStudioName && (
+                    <button 
+                      onClick={() => {
+                        setActiveStudioId(null);
+                        localStorage.removeItem('max_strength_active_studio_id');
+                      }}
+                      className="ml-2 px-2 py-0.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 transition-colors flex items-center gap-1 group"
+                    >
+                      <Building2 className="w-2.5 h-2.5 text-[#38BDF8]" />
+                      <span className="text-[9px] font-black text-white/80 uppercase tracking-widest">{activeStudioName}</span>
+                    </button>
+                  )}
+                </div>
                 <span className="text-[12px] font-bold text-white uppercase tracking-[0.3em]">Fitness</span>
               </div>
             </div>
+            
+            {/* Announcement "Gift" in Middle if in Hub */}
+            {currentView === 'trainer-hub' && (
+              <div className="flex-1 max-w-lg mx-auto hidden lg:block">
+                <HubAnnouncementHeaderGift announcements={announcements} />
+              </div>
+            )}
             
             <div className="flex items-center gap-4">
               <Button 
@@ -1309,6 +1524,16 @@ export default function App() {
                     >
                       <UserCircle className="w-4 h-4 text-[#38BDF8]" />
                       View Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        setActiveStudioId(null);
+                        localStorage.removeItem('max_strength_active_studio_id');
+                      }}
+                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-white focus:bg-slate-700 focus:text-white"
+                    >
+                      <Building2 className="w-4 h-4 text-amber-500" />
+                      Switch Studio
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => setCurrentView('trainer-hub')}
@@ -1388,7 +1613,7 @@ export default function App() {
                 trainers={trainers}
                 onComplete={(id) => {
                   setSelectedClientId(id);
-                  setCurrentView('workouts');
+                  setCurrentView('profile');
                 }}
                 onCancel={() => setCurrentView('profile')}
               />
@@ -1411,10 +1636,9 @@ export default function App() {
             )}
             {currentView === 'client-directory' && (
               <ClientDirectoryView
-                clients={clients}
                 onSelectClient={(id) => {
                   setSelectedClientId(id);
-                  setCurrentView('workouts');
+                  setCurrentView('profile');
                 }}
                 onStartOpenSession={startUnassignedSession}
                 authTrainer={authTrainer}
@@ -1522,6 +1746,7 @@ export default function App() {
                   setView('progress-report');
                 }}
                 setView={setView}
+                setSelectedClientId={setSelectedClientId}
                 hasQuotaError={hasQuotaError}
                 user={user}
                 studios={studios}
@@ -3805,7 +4030,7 @@ function ClientHistoryView({
       }
     };
 
-    fetchData();
+    fetchData().catch(err => console.error("Unhandled rejection in fetchData:", err));
   }, [clientId, historyLimit]);
 
   useEffect(() => {
@@ -3860,7 +4085,7 @@ function ClientHistoryView({
       }
     };
 
-    fetchLogs();
+    fetchLogs().catch(err => console.error("Unhandled rejection in fetchLogs:", err));
   }, [sessionIdsStr]);
 
   const updateSessionNote = async (sessionId: string, currentNote: string) => {
@@ -5742,6 +5967,9 @@ function WorkoutTrackerView({
         sessionType,
         sessionNumber: nextNum, 
         date, 
+        clientHomeStudioId: clientHomeStudioId as any,
+        studioId: activeStudioId,
+        isCrossTrain,
         trainerInitials,
         trainerName,
         trainerId,
@@ -6759,18 +6987,16 @@ function WorkoutTrackerView({
                                 className="tracking-widest leading-none uppercase truncate mt-[2px] cursor-pointer hover:opacity-80"
                               >
                                 {isTorso ? (
-                                  <div className="flex gap-2">
-                                    <span className={`font-black text-[9px] ${logL.weight ? 'text-[#F06C22]' : 'text-slate-400'}`}>L: {logL.weight || '--'}</span>
-                                    <span className="text-slate-300">|</span>
-                                    <span className={`font-black text-[9px] ${logR.weight ? 'text-[#F06C22]' : 'text-slate-400'}`}>R: {logR.weight || '--'}</span>
-                                  </div>
+                                  settingsDisplay
                                 ) : isCompleted ? (
                                   <span className="font-black text-[9px] text-[#F06C22]">
                                     {currentLog.weight} LBS | {
                                      currentLog.repsLeft !== undefined && currentLog.repsRight !== undefined ? (
                                        `${currentLog.repsLeft}L|${currentLog.repsRight}R`
                                      ) : (
-                                       currentLog.isStaticHold ? `${currentLog.seconds}s` : `${currentLog.reps} REPS`
+                                       currentLog.isStaticHold ? (
+                                          <>{currentLog.seconds}<span className="text-[7px] ml-0.5 lowercase">s</span></>
+                                        ) : `${currentLog.reps} REPS`
                                      )
                                    } | QUALITY: {currentLog.repQuality}
                                   </span>
@@ -6788,7 +7014,9 @@ function WorkoutTrackerView({
                                       {prevLog.repsLeft !== undefined && prevLog.repsRight !== undefined ? (
                                        `${prevLog.repsLeft}L|${prevLog.repsRight}R`
                                      ) : (
-                                       prevLog.isStaticHold ? `${prevLog.seconds}s` : `${prevLog.reps}R`
+                                       prevLog.isStaticHold ? (
+                                         <>{prevLog.seconds}<span className="text-[7px] ml-0.5 lowercase">s</span></>
+                                       ) : `${prevLog.reps}R`
                                      )}
                                     </span>
                                     {prevLog.repQuality !== undefined && prevLog.repQuality !== null && (
@@ -6860,7 +7088,9 @@ function WorkoutTrackerView({
                                     }}
                                   >
                                     <span className={`font-black text-[10px] ${logL.reps || logL.seconds ? 'text-[#115E8D]' : 'text-slate-300'}`}>
-                                      {logL.isStaticHold ? logL.seconds : logL.reps || '--'}
+                                      {logL.isStaticHold ? (
+                                        <>{logL.seconds}<span className="text-[7px] ml-0.5 lowercase opacity-70">s</span></>
+                                      ) : logL.reps || '--'}
                                     </span>
                                   </div>
                                   <div className="w-4 h-[1px] bg-slate-200" />
@@ -6873,7 +7103,9 @@ function WorkoutTrackerView({
                                     }}
                                   >
                                     <span className={`font-black text-[10px] ${logR.reps || logR.seconds ? 'text-[#115E8D]' : 'text-slate-300'}`}>
-                                      {logR.isStaticHold ? logR.seconds : logR.reps || '--'}
+                                      {logR.isStaticHold ? (
+                                        <>{logR.seconds}<span className="text-[7px] ml-0.5 lowercase opacity-70">s</span></>
+                                      ) : logR.reps || '--'}
                                     </span>
                                   </div>
                                 </div>
@@ -6887,7 +7119,9 @@ function WorkoutTrackerView({
                                       {currentLog.repsLeft !== undefined && currentLog.repsRight !== undefined ? (
                                         `${currentLog.repsLeft}L|${currentLog.repsRight}R`
                                       ) : (
-                                        currentLog.isStaticHold ? currentLog.seconds : currentLog.reps
+                                        currentLog.isStaticHold ? (
+                                          <>{currentLog.seconds}<span className="text-[9px] ml-0.5 lowercase opacity-70">s</span></>
+                                        ) : currentLog.reps
                                       )}
                                     </span>
                                   ) : (

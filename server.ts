@@ -1,4 +1,5 @@
 
+import fs from 'fs';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import ical from 'node-ical';
@@ -23,6 +24,12 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+
+  app.post('/api/log-error', (req, res) => {
+    console.log('CLIENT ERROR:', req.body);
+    fs.appendFileSync('client-errors.log', JSON.stringify(req.body) + '\n');
+    res.json({ ok: true });
+  });
 
   // Background Task: Run Master Sync every 60 minutes
   /*

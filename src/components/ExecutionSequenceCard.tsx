@@ -72,7 +72,7 @@ export function ExecutionSequenceCard({
                     {repsOrSeconds || 0}
                   </span>
                   <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-[#F06C22]">
-                    {isStaticHold ? 'sec' : 'reps'}
+                    {isStaticHold ? 's' : 'reps'}
                   </span>
                 </div>
               </div>

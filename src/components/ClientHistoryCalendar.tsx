@@ -207,6 +207,7 @@ export function ClientHistoryCalendar({
       const newSession: WorkoutSession = {
         clientId,
         date: manualDate,
+        clientHomeStudioId: null as any,
         sessionType: 'Standard',
         startTime: manualDate + 'T12:00:00.000Z',
         endTime: manualDate + 'T12:30:00.000Z',

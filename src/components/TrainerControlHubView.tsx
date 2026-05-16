@@ -8,24 +8,27 @@ import {
   query, 
   where, 
   getDocs,
+  onSnapshot,
   doc,
   setDoc,
   updateDoc,
-  deleteDoc
+  deleteDoc,
+  orderBy
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, CheckCircle2, AlertCircle, Loader2, Database, Link, RefreshCcw, ShieldCheck, LogOut, Plus, Trash2, Shield, Settings2, Building2, HardDrive, Lock, ShieldAlert, MonitorPlay, Trash, UserCog, TrendingUp, Trophy } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Upload, CheckCircle2, AlertCircle, Loader2, Database, Link, RefreshCcw, ShieldCheck, LogOut, Plus, Trash2, Shield, Settings2, Building2, HardDrive, Lock, ShieldAlert, MonitorPlay, Trash, UserCog, TrendingUp, Trophy, Sparkles, Megaphone, Gift, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateTrainerModal } from './CreateTrainerModal';
 import { TrainerMachineEditor } from './TrainerMachineEditor';
-import { Machine, Client, Trainer, WorkoutSession, ScheduleEntry, Studio } from '../types';
+import { Machine, Client, Trainer, WorkoutSession, ScheduleEntry, Studio, HubAnnouncement } from '../types';
 import { findMatchingTrainer, normalizeName } from '../lib/sync-utils';
 import { parseMachineSettings } from '../lib/utils';
 
@@ -63,8 +66,20 @@ export function TrainerControlHubView({
   const [isRestoringMachines, setIsRestoringMachines] = useState(false);
   const [isCleansingApp, setIsCleansingApp] = useState(false);
 
+  // Announcements State
+  const [announcements, setAnnouncements] = useState<HubAnnouncement[]>([]);
+  const [isCreatingAnnouncement, setIsCreatingAnnouncement] = useState(false);
+  const [newAnnouncement, setNewAnnouncement] = useState<Partial<HubAnnouncement>>({
+    title: '',
+    shortContent: '',
+    longContent: '',
+    studioId: 'all',
+    priority: 'low',
+    isActive: true
+  });
+
   // Layout State
-  const [activeTab, setActiveTab] = useState<'team'|'security'|'protocol'|'studio'|'data'|'equipment'>('team');
+  const [activeTab, setActiveTab] = useState<'team'|'security'|'protocol'|'studio'|'data'|'equipment'|'announcements'>('team');
 
   // Simulated Settings State
   const [adminPin, setAdminPin] = useState('');
@@ -129,6 +144,69 @@ export function TrainerControlHubView({
       setTrainerToDelete(null);
     } catch (e: any) {
       alert("Error deleting trainer: " + e.message);
+    }
+  };
+
+  // Fetch Announcements
+  React.useEffect(() => {
+    // Basic query to avoid composite index requirements
+    const q = query(collection(db, 'hub_announcements'));
+    
+    return onSnapshot(q, (snap) => {
+      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as HubAnnouncement));
+      
+      // Filter and sort in memory to be resilient to missing indexes
+      const filtered = data
+        .filter(a => a.isActive !== false) // Handle active only
+        .filter(a => 
+          a.studioId === 'all' || 
+          (authTrainer?.homeStudioId && a.studioId === authTrainer.homeStudioId)
+        )
+        .sort((a, b) => {
+          const timeA = a.createdAt?.toMillis?.() || 0;
+          const timeB = b.createdAt?.toMillis?.() || 0;
+          return timeB - timeA;
+        });
+        
+      setAnnouncements(filtered);
+    }, (error) => {
+      console.error("Announcements collection error:", error);
+    });
+  }, [authTrainer?.homeStudioId]);
+
+  const handleCreateAnnouncement = async () => {
+    if (!authTrainer || !newAnnouncement.title || !newAnnouncement.shortContent) return;
+    setIsCreatingAnnouncement(true);
+    try {
+      await addDoc(collection(db, 'hub_announcements'), {
+        ...newAnnouncement,
+        authorId: authTrainer.id,
+        authorName: authTrainer.fullName,
+        createdAt: serverTimestamp(),
+        isActive: true
+      });
+      setNewAnnouncement({
+        title: '',
+        shortContent: '',
+        longContent: '',
+        studioId: 'all',
+        priority: 'low',
+        isActive: true
+      });
+      alert("Announcement published!");
+    } catch (err: any) {
+      alert("Error creating announcement: " + err.message);
+    } finally {
+      setIsCreatingAnnouncement(false);
+    }
+  };
+
+  const handleDeleteAnnouncement = async (id: string) => {
+    if (!window.confirm("Delete this announcement?")) return;
+    try {
+      await deleteDoc(doc(db, 'hub_announcements', id));
+    } catch (err: any) {
+      alert("Error deleting: " + err.message);
     }
   };
 
@@ -466,7 +544,7 @@ export function TrainerControlHubView({
           </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 ml-auto">
           {isAdmin && setView && (
             <Button 
               onClick={() => setView('leaderboard')}
@@ -508,6 +586,7 @@ export function TrainerControlHubView({
             { id: 'equipment', label: 'Equipment Configuration', icon: Database },
             { id: 'studio', label: 'Studio Config', icon: Building2 },
             { id: 'data', label: 'Data & Telemetry', icon: HardDrive },
+            ...(isAdmin || authTrainer?.isOwner ? [{ id: 'announcements', label: 'Hub Announcements', icon: Megaphone }] : []),
           ].map(tab => {
             const Icon = tab.icon;
             return (
@@ -800,6 +879,155 @@ export function TrainerControlHubView({
 
           {activeTab === 'equipment' && (
             <TrainerMachineEditor machines={machines} />
+          )}
+
+          {activeTab === 'announcements' && (
+            <Card className="border border-slate-700 bg-slate-800 shadow-2xl rounded-[32px] overflow-hidden">
+              <CardHeader className="bg-slate-900/50 pb-8 border-b border-slate-700">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-sky-500/10 flex items-center justify-center border border-sky-500/20 shadow-inner">
+                    <Megaphone className="w-6 h-6 text-sky-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-2xl font-black text-white italic tracking-tight">Hub Announcements</CardTitle>
+                    <CardDescription className="text-slate-400 font-medium uppercase text-[10px] tracking-widest">Share fruitful information with your team.</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-8 space-y-8">
+                {/* Create New Announcement */}
+                <div className="p-6 bg-slate-900/50 rounded-[24px] border border-slate-700 space-y-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Sparkles className="w-5 h-5 text-amber-400" />
+                    <h3 className="text-lg font-black text-white uppercase italic">Draft New Message</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-400">Headline</Label>
+                      <Input 
+                        value={newAnnouncement.title}
+                        onChange={e => setNewAnnouncement(prev => ({ ...prev, title: e.target.value }))}
+                        placeholder="e.g. Master the Turnaround Pause"
+                        className="bg-slate-800 border-slate-700 text-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-400">Audience</Label>
+                      <Select 
+                        value={newAnnouncement.studioId} 
+                        onValueChange={v => setNewAnnouncement(prev => ({ ...prev, studioId: v }))}
+                      >
+                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white font-bold">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                          <SelectItem value="all">Company Wide (All Trainers)</SelectItem>
+                          {studios.map(s => (
+                            <SelectItem key={s.id} value={s.id!}>Just {s.name} Trainers</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase text-slate-400">Short Snippet (Viewed at Top)</Label>
+                    <Input 
+                      value={newAnnouncement.shortContent}
+                      onChange={e => setNewAnnouncement(prev => ({ ...prev, shortContent: e.target.value }))}
+                      placeholder="e.g. Quick tip on why the 3-second turnaround pause is critical for neural recruitment..."
+                      className="bg-slate-800 border-slate-700 text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase text-slate-400">Full Details (Expanded View)</Label>
+                    <Textarea 
+                      value={newAnnouncement.longContent}
+                      onChange={e => setNewAnnouncement(prev => ({ ...prev, longContent: e.target.value }))}
+                      placeholder="Share the full depth of your knowledge here..."
+                      className="bg-slate-800 border-slate-700 text-white min-h-[120px]"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-[10px] font-bold uppercase text-slate-500">Priority:</Label>
+                        <Select 
+                          value={newAnnouncement.priority} 
+                          onValueChange={(v: any) => setNewAnnouncement(prev => ({ ...prev, priority: v }))}
+                        >
+                          <SelectTrigger className="w-24 h-8 bg-slate-800 border-slate-700 text-[10px] uppercase font-black">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                            <SelectItem value="low">Standard</SelectItem>
+                            <SelectItem value="medium">Growth</SelectItem>
+                            <SelectItem value="high">Urgent</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={handleCreateAnnouncement}
+                      disabled={isCreatingAnnouncement || !newAnnouncement.title || !newAnnouncement.shortContent}
+                      className="bg-sky-600 hover:bg-sky-700 text-white font-black uppercase text-[10px] tracking-widest h-10 px-6 rounded-xl gap-2"
+                    >
+                      {isCreatingAnnouncement ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                      Publish to Hub
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Manage Active Announcements */}
+                <div className="space-y-4">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4 px-2">Active Messages</h3>
+                  {announcements.length === 0 ? (
+                    <div className="py-12 border-2 border-dashed border-slate-700 rounded-3xl flex flex-col items-center justify-center text-slate-500 italic text-sm">
+                      No active announcements found.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                      {announcements.map(a => (
+                        <div key={a.id} className="p-5 bg-slate-900 border border-slate-700 rounded-2xl flex items-center justify-between group">
+                          <div className="flex items-start gap-4">
+                            <div className={cn(
+                              "w-10 h-10 rounded-xl flex items-center justify-center border",
+                              a.priority === 'high' ? "bg-rose-500/10 border-rose-500/20 text-rose-500" :
+                              a.priority === 'medium' ? "bg-amber-500/10 border-amber-500/20 text-amber-500" :
+                              "bg-sky-500/10 border-sky-500/20 text-sky-500"
+                            )}>
+                              <Megaphone className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-black text-white italic text-base">{a.title}</h4>
+                                <span className="text-[8px] bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded uppercase font-black border border-slate-700">
+                                  {a.studioId === 'all' ? 'Universal' : 'Studio Specific'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-400 mt-1 max-w-md line-clamp-1">{a.shortContent}</p>
+                              <p className="text-[10px] text-slate-600 mt-2 font-bold uppercase tracking-widest">
+                                By {a.authorName} • {a.createdAt?.toDate?.()?.toLocaleDateString() || 'Recently'}
+                              </p>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            onClick={() => handleDeleteAnnouncement(a.id!)}
+                            className="h-10 w-10 p-0 text-slate-600 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {activeTab === 'studio' && (

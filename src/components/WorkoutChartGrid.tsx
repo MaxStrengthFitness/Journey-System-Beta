@@ -136,10 +136,10 @@ export function WorkoutChartGrid({
         if (finalSessions.length > 0 && !preloadedLogs) {
           const sessionIds = finalSessions.map(s => s.id!).filter(Boolean);
           
-          // Split into chunks if exceeds 30 due to Firestore 'in' limit
+          // Split into chunks if exceeds 10 due to Firestore 'in' limit
           const chunks = [];
-          for (let i = 0; i < sessionIds.length; i += 30) {
-            chunks.push(sessionIds.slice(i, i + 30));
+          for (let i = 0; i < sessionIds.length; i += 10) {
+            chunks.push(sessionIds.slice(i, i + 10));
           }
 
           let allFetchedLogs: ExerciseLog[] = [];
@@ -361,6 +361,7 @@ export function WorkoutChartGrid({
          </ResponsiveContainer>
          <div className="absolute top-2 left-6 sm:left-8 flex flex-col">
            <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Total Volume Trend</span>
+           <span className="text-[9px] text-slate-500 italic mt-0.5 max-w-xs truncate hidden sm:block">Charts reflect currently loaded history. Load more sessions to expand the timeline.</span>
          </div>
       </div>
 

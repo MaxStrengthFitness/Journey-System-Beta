@@ -116,6 +116,7 @@ export function ClientProfileView({
   onDelete,
   onSelectReport,
   setView,
+  setSelectedClientId,
   hasQuotaError,
   user,
   studios,
@@ -128,6 +129,7 @@ export function ClientProfileView({
   onDelete: (id: string) => void;
   onSelectReport: (id: string) => void;
   setView: (v: View, data?: { isIntroSession?: boolean }) => void;
+  setSelectedClientId: (id: string | null) => void;
   hasQuotaError?: boolean;
   user?: any;
   studios?: Studio[];
@@ -485,8 +487,8 @@ export function ClientProfileView({
   const fetchLogsForSessions = async (sessionIds: string[]) => {
     if (sessionIds.length === 0) return [];
     const chunks = [];
-    for (let i = 0; i < sessionIds.length; i += 30) {
-      chunks.push(sessionIds.slice(i, i + 30));
+    for (let i = 0; i < sessionIds.length; i += 10) {
+      chunks.push(sessionIds.slice(i, i + 10));
     }
     let fetchedLogs: ExerciseLog[] = [];
     for (const chunk of chunks) {
@@ -1006,7 +1008,10 @@ export function ClientProfileView({
       <div className="bg-gradient-to-br from-[#115E8D] to-slate-900 rounded-[16px] px-3 sm:px-4 py-3 mb-2 shadow-md relative overflow-hidden text-white flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2 sm:gap-4 z-10 shrink-[2] min-w-0">
           <Button
-            onClick={() => setView("clients")}
+            onClick={() => {
+              setSelectedClientId(null);
+              setView("client-directory");
+            }}
             variant="ghost"
             size="icon"
             className="shrink-0 text-white/70 hover:text-white hover:bg-white/10 -ml-1 sm:-ml-2 h-8 w-8 sm:h-10 sm:w-10 rounded-full"
@@ -1408,9 +1413,11 @@ export function ClientProfileView({
                                       {log.repsLeft !== undefined &&
                                       log.repsRight !== undefined
                                         ? `${log.repsLeft}L|${log.repsRight}R`
-                                        : log.isStaticHold
-                                          ? `${log.seconds}s`
-                                          : log.reps}
+                                        : log.isStaticHold ? (
+                                            <>{log.seconds}<span className="text-[7px] ml-0.5 lowercase opacity-70">s</span></>
+                                          ) : (
+                                            log.reps
+                                          )}
                                     </span>
                                   </div>
                                 </div>
@@ -1438,9 +1445,11 @@ export function ClientProfileView({
                                 {targetLog.repsLeft !== undefined &&
                                 targetLog.repsRight !== undefined
                                   ? `${targetLog.repsLeft}L|${targetLog.repsRight}R`
-                                  : targetLog.isStaticHold
-                                    ? `${targetLog.seconds}s`
-                                    : targetLog.reps}
+                                  : targetLog.isStaticHold ? (
+                                      <>{targetLog.seconds}<span className="text-[7px] ml-0.5 lowercase opacity-70">s</span></>
+                                    ) : (
+                                      targetLog.reps
+                                    )}
                               </span>
                             </div>
                           ) : (
@@ -1470,19 +1479,19 @@ export function ClientProfileView({
               return (
                 <Card
                   key={routineName}
-                  className="rounded-[32px] border-2 border-dashed border-muted flex items-center justify-center p-8 lg:p-12 opacity-50"
+                  className="rounded-3xl border border-dashed border-slate-700 bg-slate-900/40 flex items-center justify-center p-8 lg:p-12 opacity-70"
                 >
                   <div className="text-center space-y-4">
-                    <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
-                      <Settings className="w-6 h-6 lg:w-8 lg:h-8 text-muted-foreground/30" />
+                    <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto border border-slate-700">
+                      <Settings className="w-6 h-6 lg:w-8 lg:h-8 text-slate-500" />
                     </div>
-                    <p className="text-xs lg:text-sm font-black uppercase tracking-widest text-muted-foreground">
+                    <p className="text-xs lg:text-sm font-black uppercase tracking-widest text-slate-500">
                       Routine B Inactive
                     </p>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="rounded-xl font-bold text-[10px] lg:text-xs h-8 lg:h-9"
+                      className="rounded-xl font-black uppercase text-[10px] lg:text-[11px] tracking-widest h-10 px-6 border-[#38BDF8]/50 text-[#38BDF8] hover:bg-[#38BDF8]/10"
                       onClick={() => handleToggleRoutineB(true)}
                     >
                       Enable Optional Protocol
@@ -1495,21 +1504,21 @@ export function ClientProfileView({
             return (
               <Card
                 key={routineName}
-                className={`rounded-[32px] border-2 shadow-xl overflow-hidden flex flex-col ${routineName === "Routine B" ? "border-amber-500/20 bg-amber-500/[0.02]" : ""}`}
+                className={`rounded-3xl border shadow-2xl overflow-hidden flex flex-col ${routineName === "Routine B" ? "border-[#F06C22]/30 bg-slate-900/90" : "border-slate-700 bg-slate-900"}`}
               >
                 <CardHeader className="p-5 lg:p-6 pb-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div
-                        className={`w-8 h-8 lg:w-10 lg:h-10 rounded-xl lg:rounded-2xl flex items-center justify-center font-black italic shadow-lg ${routineName === "Routine B" ? "bg-amber-500 text-white shadow-amber-500/20" : "bg-primary text-white shadow-primary/20"}`}
+                        className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center text-xl font-black italic shadow-lg ${routineName === "Routine B" ? "bg-[#F06C22] text-white shadow-[#F06C22]/20" : "bg-[#115E8D] text-white shadow-[#115E8D]/20"}`}
                       >
                         {routineName.split(" ")[1]}
                       </div>
                       <div>
-                        <CardTitle className="text-lg lg:text-xl font-black uppercase italic tracking-tighter">
+                        <CardTitle className="text-lg lg:text-xl font-black uppercase italic tracking-tighter text-white">
                           {routineName}
                         </CardTitle>
-                        <CardDescription className="text-[9px] lg:text-[10px] font-bold uppercase tracking-widest">
+                        <CardDescription className="text-[9px] lg:text-[10px] font-bold uppercase tracking-widest text-[#F06C22]">
                           Protocol Definition
                         </CardDescription>
                       </div>
@@ -1518,16 +1527,16 @@ export function ClientProfileView({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 lg:h-8 rounded-lg lg:rounded-xl font-black uppercase text-[8px] lg:text-[9px] border-sky-500/50 text-sky-600 hover:bg-sky-50 px-2 lg:px-3"
+                        className="h-8 lg:h-9 rounded-xl font-black uppercase text-[9px] lg:text-[10px] tracking-widest border-[#38BDF8]/50 text-[#38BDF8] hover:bg-[#38BDF8]/10 px-3 lg:px-4"
                         onClick={() => setRoutineBuilderTarget(routineName)}
                       >
-                        <Settings className="w-3 h-3 mr-1" />
+                        <Settings className="w-3 h-3 mr-1.5" />
                         AI Builder
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 lg:h-8 rounded-lg lg:rounded-xl font-black uppercase text-[8px] lg:text-[9px] border-dashed px-2 lg:px-3"
+                        className="h-8 lg:h-9 rounded-xl font-black uppercase text-[9px] lg:text-[10px] tracking-widest border-dashed border-slate-600 text-slate-400 hover:bg-slate-800 hover:border-slate-500 px-3 lg:px-4"
                         onClick={() =>
                           handleApplyTemplate("STANDARD_MALE", routineName)
                         }
@@ -1537,8 +1546,8 @@ export function ClientProfileView({
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-5 lg:p-6 pt-0 flex-1">
-                  <div className="max-h-[350px] lg:max-h-[450px] overflow-y-auto pr-2 custom-scrollbar py-2 space-y-4 lg:space-y-5">
+                <CardContent className="p-5 lg:p-6 pt-0">
+                  <div className="py-2 space-y-4 lg:space-y-5">
                     {Object.entries(
                       machines
                         .sort((a, b) => (a.order || 0) - (b.order || 0))
@@ -1550,7 +1559,7 @@ export function ClientProfileView({
                         }, {} as Record<string, Machine[]>)
                     ).map(([region, regionMachines]) => (
                       <div key={region} className="space-y-2 lg:space-y-3">
-                        <h4 className="text-[9px] lg:text-[10px] font-black uppercase text-slate-500 tracking-widest border-b border-slate-200 pb-1 sticky top-0 bg-white z-20">
+                        <h4 className="text-[9px] lg:text-[10px] font-black uppercase text-slate-500 tracking-widest border-b border-slate-700/50 pb-1 sticky top-0 bg-slate-900 z-20">
                           {region}
                         </h4>
                         <div className="grid grid-cols-2 min-[400px]:grid-cols-3 md:grid-cols-4 gap-1.5 lg:gap-2">
@@ -1568,20 +1577,20 @@ export function ClientProfileView({
                                 onClick={() =>
                                   toggleMachineInRoutine(routineName, machine.id!)
                                 }
-                                className={`flex items-center gap-1.5 lg:gap-2 p-1.5 lg:p-2 rounded-lg lg:rounded-xl border-2 transition-all text-left relative group
+                                className={`flex items-center gap-1.5 lg:gap-2 p-1.5 lg:p-2 rounded-xl border transition-all text-left relative group
                                 ${
                                   isIn
-                                    ? "bg-primary/5 border-primary shadow-sm z-10"
-                                    : "bg-muted/10 border-transparent opacity-40 hover:opacity-100 hover:border-muted"
+                                    ? "bg-[#115E8D]/20 border-[#115E8D] shadow-sm z-10"
+                                    : "bg-slate-800/50 border-transparent opacity-60 hover:opacity-100 hover:border-slate-700"
                                 }`}
                                 title={machine.name}
                               >
                                 <div
-                                  className={`w-6 h-6 lg:w-7 lg:h-7 rounded-md lg:rounded-lg flex items-center justify-center shrink-0 transition-all
+                                  className={`w-6 h-6 lg:w-7 lg:h-7 rounded-md flex items-center justify-center shrink-0 transition-all
                                 ${
                                   isIn
-                                    ? "bg-primary text-white shadow-sm"
-                                    : "bg-muted text-muted-foreground border-2 border-dashed border-muted-foreground/10"
+                                    ? "bg-[#115E8D] text-white shadow-sm"
+                                    : "bg-slate-800 text-slate-400 border border-dashed border-slate-600"
                                 }`}
                                 >
                                   {isIn ? (
@@ -1594,7 +1603,7 @@ export function ClientProfileView({
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <span
-                                    className={`text-[8px] lg:text-[9px] font-black uppercase tracking-tight truncate block leading-tight ${isIn ? "text-primary" : "text-muted-foreground"}`}
+                                    className={`text-[8px] lg:text-[9px] font-black uppercase tracking-tight truncate block leading-tight ${isIn ? "text-[#38BDF8]" : "text-slate-400"}`}
                                   >
                                     {machine.name}
                                   </span>
@@ -1607,9 +1616,9 @@ export function ClientProfileView({
                     ))}
                   </div>
                 </CardContent>
-                <CardFooter className="p-5 lg:p-6 pt-0 border-t border-border/10 mt-2 lg:mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+                <CardFooter className="p-5 lg:p-6 pt-0 border-t border-slate-700/50 mt-2 lg:mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                   <div className="space-y-0.5 lg:space-y-1">
-                    <p className="text-[9px] lg:text-[10px] font-bold text-muted-foreground uppercase">
+                    <p className="text-[9px] lg:text-[10px] font-bold text-slate-400 uppercase">
                       {stagedMachineIds[routineName]?.length || 0} Units
                       Assigned
                     </p>
@@ -1618,7 +1627,7 @@ export function ClientProfileView({
                         routines.find((r) => r.name === routineName)
                           ?.machineIds || [],
                       ) && (
-                      <p className="text-[7px] lg:text-[8px] font-black text-amber-600 uppercase tracking-widest animate-pulse">
+                      <p className="text-[7px] lg:text-[8px] font-black text-[#F06C22] uppercase tracking-widest animate-pulse">
                         Pending Changes
                       </p>
                     )}
@@ -1628,7 +1637,7 @@ export function ClientProfileView({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-red-500 font-bold text-[9px] lg:text-[10px] uppercase h-8 lg:h-9"
+                        className="text-red-500 hover:bg-red-500/10 hover:text-red-400 font-black text-[9px] lg:text-[10px] uppercase h-8 lg:h-10 tracking-widest px-3"
                         onClick={() => handleToggleRoutineB(false)}
                       >
                         Disable
@@ -1637,7 +1646,7 @@ export function ClientProfileView({
                     <Button
                       onClick={() => handleSaveRoutineConfig(routineName)}
                       disabled={isSavingRoutine[routineName]}
-                      className="h-8 lg:h-10 flex-1 sm:flex-none rounded-lg lg:rounded-xl font-black uppercase italic text-[9px] lg:text-[10px] tracking-widest px-4 lg:px-6 bg-primary shadow-md lg:shadow-lg shadow-primary/20"
+                      className="h-8 lg:h-10 flex-1 sm:flex-none rounded-xl font-black uppercase italic text-[9px] lg:text-[10px] tracking-widest px-4 lg:px-6 bg-[#F06C22] text-white hover:bg-[#F06C22]/90 shadow-md lg:shadow-lg shadow-[#F06C22]/20"
                     >
                       {isSavingRoutine[routineName]
                         ? "Saving..."
@@ -2018,6 +2027,9 @@ export function ClientProfileView({
                       <CardDescription className="text-xs font-bold uppercase tracking-widest mt-2 text-[#F06C22]">
                         60-Day Machine Specifics (% Increase)
                       </CardDescription>
+                      <p className="text-slate-400 text-sm mt-1 italic">
+                        Charts reflect currently loaded history. Load more sessions to expand the timeline.
+                      </p>
                     </div>
                   </div>
                 </CardHeader>
@@ -2134,6 +2146,9 @@ export function ClientProfileView({
                       <CardDescription className="text-[10px] font-bold uppercase tracking-widest mt-1">
                         60-Day Work Capacity Trend
                       </CardDescription>
+                      <p className="text-slate-400 text-sm mt-1 italic">
+                        Charts reflect currently loaded history. Load more sessions to expand the timeline.
+                      </p>
                     </div>
                     <Badge variant="outline" className="text-[9px] font-black bg-[#38BDF8]/10 text-[#38BDF8] border-[#38BDF8]/20">
                       Workload

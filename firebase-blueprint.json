@@ -234,6 +234,23 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name"]
+    },
+    "HubAnnouncement": {
+      "title": "HubAnnouncement",
+      "description": "A motivational or informational message shared by leadership.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "shortContent": { "type": "string" },
+        "longContent": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "studioId": { "type": "string", "description": "'all' or a specific studioId" },
+        "isActive": { "type": "boolean" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "shortContent", "longContent", "authorId", "authorName", "studioId", "isActive", "priority"]
     }
   },
   "firestore": {
@@ -284,6 +301,10 @@
     "/studios/{studioId}": {
       "schema": "Studio",
       "description": "Collection of physical studio locations"
+    },
+    "/hub_announcements/{announcementId}": {
+      "schema": "HubAnnouncement",
+      "description": "Collection of leadership announcements"
     }
   }
 }

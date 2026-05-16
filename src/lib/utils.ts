@@ -100,12 +100,14 @@ export function parseMachineSettings(settingsStr: string): Record<string, string
     const clean = p.trim().toUpperCase();
     if (!clean) return;
 
-    // Check for shorthand prefixes like S4, G2
-    // We match a single letter followed by numbers or a simple value
-    const shorthandMatch = clean.match(/^([SGBHA])(\d+\.?[0-9]*|NONE|MAX|MIN)$/);
+    // Check for shorthand prefixes like S4, G2, S-4, B-P2, BP2
+    // We match a single letter followed by numbers or a simple value, optionally separated by a dash or containing letters
+    const shorthandMatch = clean.match(/^([SGBHA])-?([A-Z0-9\.]+|NONE|MAX|MIN)$/);
     if (shorthandMatch) {
       const key = mapping[shorthandMatch[1]];
-      if (key) settings[key] = shorthandMatch[2];
+      if (key) {
+        settings[key] = shorthandMatch[2];
+      }
       return;
     }
 
