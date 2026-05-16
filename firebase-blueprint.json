@@ -252,6 +252,20 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["title", "shortContent", "longContent", "authorId", "authorName", "studioId", "isActive", "priority"]
+    },
+    "Leaderboard": {
+      "title": "Leaderboard",
+      "description": "Materialized view of machine rankings and percentile distributions.",
+      "type": "object",
+      "properties": {
+        "lastUpdated": { "type": "string", "format": "date-time" },
+        "scope": { "type": "string", "description": "'global' or a studioId" },
+        "machineData": { 
+          "type": "object",
+          "description": "Map of machineId to LeaderboardMachineData"
+        }
+      },
+      "required": ["lastUpdated", "scope", "machineData"]
     }
   },
   "firestore": {
@@ -295,7 +309,7 @@
       "schema": "TrainerFocus",
       "description": "Collection of trainer-specific client focuses"
     },
-    "focusRecords/{focusId}": {
+    "/focusRecords/{focusId}": {
       "schema": "FocusRecord",
       "description": "Collection of individual focus records for clients"
     },
@@ -306,6 +320,10 @@
     "/hub_announcements/{announcementId}": {
       "schema": "HubAnnouncement",
       "description": "Collection of leadership announcements"
+    },
+    "/leaderboards/{docId}": {
+      "schema": "Leaderboard",
+      "description": "Pre-calculated rankings for performance dashboard"
     }
   }
 }

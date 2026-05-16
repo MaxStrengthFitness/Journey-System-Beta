@@ -106,6 +106,7 @@ import { cn, parseSessionDate, getMillis, calculateExerciseVolume, getMuscleGrou
 import { RoutineBuilderView } from "./RoutineBuilderView";
 import { CLINICAL_FLAGS_MATRIX } from "../data/clinical-matrix";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { useActiveSessionCheck } from "../hooks/useActiveSessionCheck";
 
 export function ClientProfileView({
   clientId,
@@ -120,6 +121,7 @@ export function ClientProfileView({
   hasQuotaError,
   user,
   studios,
+  activeStudioId,
 }: {
   clientId: string | null;
   clients: Client[];
@@ -133,6 +135,7 @@ export function ClientProfileView({
   hasQuotaError?: boolean;
   user?: any;
   studios?: Studio[];
+  activeStudioId: string | null;
 }) {
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [allLogs, setAllLogs] = useState<ExerciseLog[]>([]);
@@ -171,6 +174,9 @@ export function ClientProfileView({
   const [hasMoreSessions, setHasMoreSessions] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [calculatedSessionCount, setCalculatedSessionCount] = useState<number>(0);
+  
+  // Use the new soft lock handoff hook
+  const { activeInProgressSession, isCheckingActiveSession } = useActiveSessionCheck(clientId);
 
   const client = clients.find((c) => c.id === clientId);
 
@@ -1200,12 +1206,55 @@ export function ClientProfileView({
         </div>
 
         <div className="flex items-center gap-2 z-10 shrink-0 ml-auto">
-          <Button
-            onClick={() => setView("workouts")}
-            className="bg-[#F06C22] hover:bg-[#F06C22]/90 text-white rounded-lg font-black uppercase text-xs sm:text-sm tracking-widest h-9 sm:h-10 px-4 sm:px-6 shadow-[0_0_15px_rgba(240,108,34,0.5)] border-none shrink-0"
-          >
-            START SESSION
-          </Button>
+          {activeInProgressSession ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-black uppercase text-xs tracking-widest h-9 sm:h-10 px-4 sm:px-6 shadow-[0_0_15px_rgba(245,158,11,0.5)] border-none shrink-0 border-2 border-amber-300/20"
+                >
+                  <Clock className="w-4 h-4 mr-2 animate-pulse" />
+                  IN-PROGRESS ({activeInProgressSession.trainerInitials})
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[240px] rounded-2xl p-2 bg-slate-900 border-slate-800 text-white">
+                <div className="px-3 py-2 mb-2 border-b border-white/10">
+                  <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest">Active Session Detected</p>
+                  <p className="text-[11px] font-bold text-slate-400 mt-1">
+                    Started by {activeInProgressSession.trainerInitials} at {new Date(activeInProgressSession.startTime?.toMillis?.() || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    localStorage.setItem('max_strength_active_session_id', activeInProgressSession.id!);
+                    setView("workouts");
+                  }}
+                  className="rounded-xl hover:bg-amber-500 hover:text-white transition-colors cursor-pointer flex items-center gap-2 p-3"
+                >
+                  <Play className="w-4 h-4" />
+                  <span className="font-black uppercase text-xs">Take Over Session</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setView("workouts")}
+                  className="rounded-xl hover:bg-white/10 transition-colors cursor-pointer flex items-center gap-2 p-3 text-slate-400"
+                >
+                  <Maximize className="w-4 h-4" />
+                  <span className="font-black uppercase text-xs">View Current Profile</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              onClick={() => {
+                // Ensure no stale session ID is stored
+                localStorage.removeItem('max_strength_active_session_id');
+                setView("workouts");
+              }}
+              disabled={isCheckingActiveSession}
+              className="bg-[#F06C22] hover:bg-[#F06C22]/90 text-white rounded-lg font-black uppercase text-xs sm:text-sm tracking-widest h-9 sm:h-10 px-4 sm:px-6 shadow-[0_0_15px_rgba(240,108,34,0.5)] border-none shrink-0"
+            >
+              {isCheckingActiveSession ? 'Checking...' : 'START SESSION'}
+            </Button>
+          )}
         </div>
 
         <div className="absolute -right-20 -top-20 opacity-[0.03] pointer-events-none">
@@ -1243,7 +1292,15 @@ export function ClientProfileView({
         </div>
 
         <TabsContent value="equipment">
-           <ClientEquipmentPrescriptions client={client} clientId={clientId} machines={machines} clientSettings={clientSettings} clientBodyWeight={parseInt(client?.weight || '150', 10)} allLogs={allLogs} />
+           <ClientEquipmentPrescriptions 
+             client={client} 
+             clientId={clientId} 
+             machines={machines} 
+             clientSettings={clientSettings} 
+             clientBodyWeight={parseInt(client?.weight || '150', 10)} 
+             allLogs={allLogs} 
+             activeStudioId={activeStudioId}
+           />
         </TabsContent>
 
         <TabsContent

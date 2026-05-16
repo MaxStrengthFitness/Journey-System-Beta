@@ -216,6 +216,10 @@ export interface WorkoutSession {
   date: string;
   trainerInitials: string;
   trainerId?: string;
+  /** Who originally initiated the session document (Soft Lock Architecture) */
+  startedByTrainerId?: string;
+  /** Activity checkpoint updated during logs to detect abandonment (Lazy Cleanup) */
+  lastHeartbeatAt?: any;
   notes?: string; // Original notes field (deprecated in favor of sub-collection)
   clientFeel?: string;
   startTime?: any;
@@ -458,6 +462,7 @@ export interface Studio {
   id?: string;
   name: string;
   ownerId: string;
+  headTrainerId?: string;
   contactEmail?: string;
   phone?: string;
   address?: string;
@@ -478,6 +483,37 @@ export interface HubAnnouncement {
   createdAt: any;
   isActive: boolean;
   priority: 'low' | 'medium' | 'high';
+}
+
+export interface LeaderboardRank {
+  clientId: string;
+  clientName: string;
+  maxWeight: number;
+  rank: number;
+  strengthGainPercent?: number;
+  initialWeight?: number;
+  reps?: number;
+  gap?: number;
+  date: string;
+}
+
+export interface LeaderboardMachineData {
+  machineId: string;
+  topRankings: LeaderboardRank[]; // e.g. top 100
+  percentileThresholds: {
+    p90: number;
+    p75: number;
+    p50: number;
+    p25: number;
+    p10: number;
+  };
+}
+
+export interface LeaderboardDocument {
+  id?: string;
+  lastUpdated: any;
+  scope: 'global' | string; // 'global' or studioId
+  machineData: Record<string, LeaderboardMachineData>;
 }
 
 export type View = 'trainers' | 'clients' | 'machines' | 'workouts' | 'history' | 'calendar' | 'trainer-hub' | 'dashboard' | 'profile' | 'chart' | 'trainer-profile' | 'progress-report' | 'consultation-wizard' | 'machine-knowledge' | 'client-directory' | 'chart-importer' | 'leaderboard' | 'owner-dashboard' | 'owner-studio-manager';

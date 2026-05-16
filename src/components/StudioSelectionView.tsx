@@ -61,6 +61,13 @@ export function StudioSelectionView({ studios, onSelect, onBack }: StudioSelecti
               <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#38BDF8]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             </motion.button>
           ))}
+          {studios.length === 0 && (
+            <div className="col-span-full py-20 text-center bg-[#1d2736]/20 rounded-[40px] border-2 border-dashed border-slate-700/50">
+              <Building2 className="w-12 h-12 text-slate-700 mx-auto mb-4" />
+              <p className="text-sm font-bold uppercase tracking-widest text-slate-500">No Authorized Studios Found</p>
+              <p className="text-[10px] uppercase text-slate-600 mt-2">Contact your administrator for access credentials</p>
+            </div>
+          )}
         </div>
 
         <div className="mt-12 flex justify-center">

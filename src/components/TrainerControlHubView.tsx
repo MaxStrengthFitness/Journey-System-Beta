@@ -21,7 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, CheckCircle2, AlertCircle, Loader2, Database, Link, RefreshCcw, ShieldCheck, LogOut, Plus, Trash2, Shield, Settings2, Building2, HardDrive, Lock, ShieldAlert, MonitorPlay, Trash, UserCog, TrendingUp, Trophy, Sparkles, Megaphone, Gift, ChevronDown, ChevronUp } from 'lucide-react';
+import { Upload, CheckCircle2, AlertCircle, Loader2, Database, Link, RefreshCcw, ShieldCheck, LogOut, Plus, Trash2, Shield, Settings2, Building2, HardDrive, Lock, ShieldAlert, MonitorPlay, Trash, UserCog, TrendingUp, Trophy, Sparkles, Megaphone, Gift, ChevronDown, ChevronUp, Users, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -30,7 +30,7 @@ import { CreateTrainerModal } from './CreateTrainerModal';
 import { TrainerMachineEditor } from './TrainerMachineEditor';
 import { Machine, Client, Trainer, WorkoutSession, ScheduleEntry, Studio, HubAnnouncement } from '../types';
 import { findMatchingTrainer, normalizeName } from '../lib/sync-utils';
-import { parseMachineSettings } from '../lib/utils';
+import { parseMachineSettings, isSessionValid } from '../lib/utils';
 
 import { DataMigrationTool } from './DataMigrationTool';
 
@@ -38,6 +38,7 @@ export function TrainerControlHubView({
   trainers, 
   machines, 
   clients,
+  sessions = [],
   authTrainer, 
   activeStudioId,
   isAdmin, 
@@ -52,6 +53,7 @@ export function TrainerControlHubView({
   trainers: Trainer[], 
   machines: Machine[], 
   clients: Client[],
+  sessions?: WorkoutSession[],
   authTrainer: Trainer | null, 
   activeStudioId: string | null,
   isAdmin: boolean,
@@ -81,7 +83,7 @@ export function TrainerControlHubView({
   });
 
   // Layout State
-  const [activeTab, setActiveTab] = useState<'team'|'security'|'protocol'|'studio'|'data'|'equipment'|'announcements'>('team');
+  const [activeTab, setActiveTab] = useState<'team'|'security'|'protocol'|'studio'|'data'|'equipment'|'announcements'|'floor'>('team');
 
   // Simulated Settings State
   const [adminPin, setAdminPin] = useState('');
@@ -549,6 +551,15 @@ export function TrainerControlHubView({
         <div className="flex gap-2 ml-auto">
           {isAdmin && setView && (
             <Button 
+              onClick={() => setView('owner-dashboard')}
+              className="rounded-2xl bg-indigo-900/50 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500 hover:text-white h-12 px-6 font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(99,102,241,0.2)]"
+            >
+              <Building2 className="w-4 h-4 mr-2" />
+              Owner Portal
+            </Button>
+          )}
+          {isAdmin && setView && (
+            <Button 
               onClick={() => setView('leaderboard')}
               className="rounded-2xl bg-[#0A2E46] text-[#F06C22] border border-[#F06C22]/30 hover:bg-[#F06C22] hover:text-white h-12 px-6 font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(240,108,34,0.2)]"
             >
@@ -586,6 +597,7 @@ export function TrainerControlHubView({
             { id: 'security', label: 'System Security', icon: ShieldAlert },
             { id: 'protocol', label: 'Protocol Defaults', icon: Settings2 },
             { id: 'equipment', label: 'Equipment Configuration', icon: Database },
+            { id: 'floor', label: 'Live Floor Status', icon: MonitorPlay },
             { id: 'studio', label: 'Studio Config', icon: Building2 },
             { id: 'data', label: 'Data & Telemetry', icon: HardDrive },
             ...(isAdmin || authTrainer?.role === 'Owner' ? [{ id: 'announcements', label: 'Hub Announcements', icon: Megaphone }] : []),
@@ -666,16 +678,17 @@ export function TrainerControlHubView({
                           )}
                         
                           <div className="flex items-start gap-4">
-                            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl italic mt-1 shrink-0", t.role === 'Owner' ? 'bg-[#F06C22]/20 text-[#F06C22]' : 'bg-slate-800 text-slate-300 border border-slate-700')}>
-                              {t.initials}
+                            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl italic mt-1 shrink-0", t.role === 'Owner' || (t.fullName === 'Austin Jurgens' && isAdmin) ? 'bg-[#F06C22]/20 text-[#F06C22]' : 'bg-slate-800 text-slate-300 border border-slate-700')}>
+                               {t.initials}
                             </div>
                             <div className="flex flex-col flex-1 pr-8">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="text-lg font-black text-white uppercase italic leading-none">{t.fullName}</p>
                                 {t.role === 'Owner' && <span className="bg-[#F06C22]/10 text-[#F06C22] border border-[#F06C22]/20 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">Owner</span>}
+                                {t.fullName === 'Austin Jurgens' && isAdmin && t.role !== 'Owner' && <span className="bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">System Admin</span>}
                               </div>
                               <p className="text-[10px] font-bold uppercase tracking-widest text-[#38BDF8] leading-none mt-2">
-                                {t.role === 'Owner' ? 'System Admin' : 'Performance Trainer'}
+                                {t.role === 'Owner' || (t.fullName === 'Austin Jurgens' && isAdmin) ? 'System Admin' : 'Performance Trainer'}
                               </p>
                             </div>
                           </div>
@@ -1027,6 +1040,100 @@ export function TrainerControlHubView({
                       ))}
                     </div>
                   )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {activeTab === 'floor' && (
+            <Card className="border border-slate-700 bg-slate-800 shadow-2xl rounded-[32px] overflow-hidden">
+              <CardHeader className="bg-slate-900/50 pb-8 border-b border-slate-700">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shadow-inner">
+                      <MonitorPlay className="w-6 h-6 text-emerald-400" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl font-black text-white italic tracking-tight">Live Floor Status</CardTitle>
+                      <CardDescription className="text-slate-400 font-medium uppercase text-[10px] tracking-widest">Active sessions and concurrency monitoring.</CardDescription>
+                    </div>
+                  </div>
+                  <div className="px-4 py-2 bg-slate-900 rounded-xl border border-slate-700">
+                    <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest animate-pulse">● System Live</span>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-8 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="p-6 bg-slate-900/50 rounded-3xl border border-slate-700">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Total Active</p>
+                    <p className="text-3xl font-black text-white italic">{sessions.filter(s => s.status === 'In-Progress' && isSessionValid(s)).length}</p>
+                  </div>
+                  <div className="p-6 bg-slate-900/50 rounded-3xl border border-slate-700">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Stale/Expired</p>
+                    <p className="text-3xl font-black text-amber-500 italic">{sessions.filter(s => s.status === 'In-Progress' && !isSessionValid(s)).length}</p>
+                  </div>
+                  <div className="p-6 bg-slate-900/50 rounded-3xl border border-slate-700">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Current Sync</p>
+                    <p className="text-3xl font-black text-[#38BDF8] italic">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 px-2">Active Sessions (Lazy Cleanup Applied)</h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    {sessions.filter(s => s.status === 'In-Progress').map(session => {
+                      const isValid = isSessionValid(session);
+                      const client = clients.find(c => c.id === session.clientId);
+                      return (
+                        <div key={session.id} className={cn(
+                          "p-4 rounded-2xl border transition-all flex items-center justify-between group",
+                          isValid ? "bg-slate-900 border-slate-700" : "bg-slate-900/40 border-amber-500/30 opacity-60 grayscale"
+                        )}>
+                          <div className="flex items-center gap-4">
+                            <div className={cn(
+                              "w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm border",
+                              isValid ? "bg-[#0A2E46] text-[#38BDF8] border-[#114B72]" : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                            )}>
+                              {client ? `${client.firstName[0]}${client.lastName[0]}` : "UN"}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-bold text-white text-sm">{client ? `${client.firstName} ${client.lastName}` : "Unassigned Session"}</h4>
+                                {!isValid && <span className="bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded-[4px] text-[8px] font-black uppercase">Abandoned</span>}
+                              </div>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-2 mt-0.5">
+                                <Users className="w-3 h-3" /> TR: {session.trainerInitials || "---"} 
+                                <span className="text-slate-600">•</span>
+                                <Clock className="w-3 h-3" /> Last Active: {session.lastHeartbeatAt ? (session.lastHeartbeatAt.toDate?.() || new Date(session.lastHeartbeatAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Recently Started"}
+                              </p>
+                            </div>
+                          </div>
+                          {!isValid && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={async () => {
+                                if (window.confirm("Manually terminate this abandoned session?")) {
+                                  try {
+                                    await updateDoc(doc(db, 'sessions', session.id!), { status: 'Completed', updatedAt: serverTimestamp() });
+                                  } catch (e: any) { alert(e.message); }
+                                }
+                              }}
+                              className="h-9 px-4 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 font-black uppercase text-[9px] tracking-widest border border-amber-500/20 opacity-0 group-hover:opacity-100"
+                            >
+                              Sweep Session
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {sessions.filter(s => s.status === 'In-Progress').length === 0 && (
+                      <div className="py-12 border-2 border-dashed border-slate-700 rounded-3xl flex flex-col items-center justify-center text-slate-500 italic text-sm">
+                        Floor is currently empty.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

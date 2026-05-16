@@ -93,7 +93,7 @@ import { Trainer, TrainerAvailability, Client, View, Machine, WorkoutSession, Ex
 import { OperationType, handleFirestoreError } from './lib/firestore-errors';
 // Removing duplicate cn import
 import { hashPin } from './lib/auth-utils';
-import { parseSessionDate, calculateExerciseVolume, safeToDate, getMillis } from './lib/utils';
+import { parseSessionDate, calculateExerciseVolume, safeToDate, getMillis, isSessionValid } from './lib/utils';
 import { getLatestTargetWeight } from './lib/historical-utils';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { generateMockClientWithHistory } from './lib/mockDataGenerator';
@@ -345,9 +345,29 @@ export default function App() {
         // Fetch base data needed for provider
         const trainerRef = doc(db, 'trainers', u.uid);
         const trainerSnap = await getDoc(trainerRef);
+        
+        let trainerData: Trainer | null = null;
+        // System Admin Identification
+        const isSystemAdmin = u.email === 'jurgensaj@gmail.com';
+
         if (trainerSnap.exists()) {
-          setAuthTrainer({ id: trainerSnap.id, ...trainerSnap.data() } as Trainer);
+          trainerData = { id: trainerSnap.id, ...trainerSnap.data() } as Trainer;
+          // Ensure Austin Jurgens profile exists as Trainer if not forced otherwise
+        } else if (isSystemAdmin) {
+          // Create a temporary trainer profile if one doesn't exist for the admin
+          trainerData = {
+            id: u.uid,
+            fullName: 'Austin Jurgens',
+            initials: 'AJ',
+            role: 'Trainer',
+            pin: '0000',
+            primaryHomeStudioId: '',
+            accessibleStudioIds: [],
+            activeGuestStudioIds: []
+          } as Trainer;
         }
+
+        setAuthTrainer(trainerData);
 
         const studioSnap = await getDocs(collection(db, 'studios'));
         setStudios(studioSnap.docs.map(d => ({ id: d.id, ...d.data() } as Studio)));
@@ -376,7 +396,7 @@ export default function App() {
   }
 
   return (
-    <ActiveStudioProvider studios={studios} authTrainer={authTrainer}>
+    <ActiveStudioProvider studios={studios} authTrainer={authTrainer} isAdmin={user?.email === 'jurgensaj@gmail.com'}>
       <AppContent 
         user={user} 
         authTrainer={authTrainer} 
@@ -407,7 +427,15 @@ function AppContent({
   trainers: Trainer[];
   setTrainers: (t: Trainer[]) => void;
 }) {
-  const { activeStudioId, activeStudio, setActiveStudioId, availableStudios } = useActiveStudio();
+  const { 
+    activeStudioId, 
+    activeStudio, 
+    setActiveStudioId, 
+    availableStudios, 
+    isChangingStudio, 
+    setIsChangingStudio,
+    isAdmin
+  } = useActiveStudio();
   const [isSyncing, setIsSyncing] = useState(false);
   const [currentView, setCurrentView] = useState<View>('clients');
   const [newClientOnboardingName, setNewClientOnboardingName] = useState<string | null>(null);
@@ -502,7 +530,21 @@ function AppContent({
     const unsubscribeSchedules = onSnapshot(query(collection(db, 'schedules'), ...scheduleConstraints), async (snap) => {
       const schedulesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
       setSchedules(schedulesData);
-      const clientIds = Array.from(new Set(schedulesData.map(s => s.clientId).filter(Boolean))) as string[];
+      
+      // Fetch client profile data ONLY for people on today's schedule to stay within read quotas
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+
+      const todaySchedules = schedulesData.filter(s => {
+        if (!s.startTime) return false;
+        // Handle both Firestore Timestamp and JS Date/ISO string
+        const d = s.startTime.toDate ? s.startTime.toDate() : new Date(s.startTime);
+        return d >= startOfToday && d <= endOfToday;
+      });
+
+      const clientIds = Array.from(new Set(todaySchedules.map(s => s.clientId).filter(Boolean))) as string[];
       if (clientIds.length > 0) {
         const chunks = [];
         for (let i = 0; i < clientIds.length; i += 10) chunks.push(clientIds.slice(i, i + 10));
@@ -635,7 +677,7 @@ function AppContent({
   }, [trainers]);
 
   const currentSession = useMemo(() => {
-    return sessions.find(s => s.status === 'In-Progress' && s.clientId === selectedClientId);
+    return sessions.find(s => s.status === 'In-Progress' && s.clientId === selectedClientId && isSessionValid(s));
   }, [sessions, selectedClientId]);
   // Derived state for the active studio name
   const activeStudioName = useMemo(() => {
@@ -855,6 +897,10 @@ function AppContent({
   }, [trainers, authTrainer, user]);
 
   const handleTrainerLogin = (trainer: Trainer) => {
+    // Admin Override: If logged in as the admin email, ensure the profile has Owner role
+    if (user?.email === 'jurgensaj@gmail.com' && trainer.fullName === 'Austin Jurgens') {
+      trainer.role = 'Owner';
+    }
     setAuthTrainer(trainer);
     localStorage.setItem('max_strength_trainer_id', trainer.id!);
   };
@@ -1141,14 +1187,21 @@ function AppContent({
   }
 
   // Studio Selection Screen
-  if (!activeStudioId && availableStudios.length > 0) {
+  if (!activeStudioId || isChangingStudio) {
     return (
       <StudioSelectionView 
         studios={availableStudios}
         onSelect={(studioId) => {
           setActiveStudioId(studioId);
+          setIsChangingStudio(false);
         }}
-        onBack={handleTrainerLock}
+        onBack={() => {
+          if (!activeStudioId) {
+            handleTrainerLock();
+          } else {
+            setIsChangingStudio(false);
+          }
+        }}
       />
     );
   }
@@ -1186,10 +1239,7 @@ function AppContent({
                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Strength</span>
                   {activeStudioName && (
                     <button 
-                      onClick={() => {
-                        setActiveStudioId(null);
-                        localStorage.removeItem('max_strength_active_studio_id');
-                      }}
+                      onClick={() => setIsChangingStudio(true)}
                       className="ml-2 px-2 py-0.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 transition-colors flex items-center gap-1 group"
                     >
                       <Building2 className="w-2.5 h-2.5 text-[#38BDF8]" />
@@ -1243,10 +1293,7 @@ function AppContent({
                       View Profile
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                      onClick={() => {
-                        setActiveStudioId(null);
-                        localStorage.removeItem('max_strength_active_studio_id');
-                      }}
+                      onClick={() => setIsChangingStudio(true)}
                       className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-white focus:bg-slate-700 focus:text-white"
                     >
                       <Building2 className="w-4 h-4 text-amber-500" />
@@ -1400,6 +1447,7 @@ function AppContent({
             {currentView === 'leaderboard' && (
               <MachineLeaderboardDashboard 
                 clients={clients} 
+                activeStudioId={activeStudioId}
                 onBack={() => setCurrentView(leaderboardReturnView)} 
               />
             )}
@@ -1467,6 +1515,7 @@ function AppContent({
                 hasQuotaError={hasQuotaError}
                 user={user}
                 studios={studios}
+                activeStudioId={activeStudioId}
               />
             )}
             {currentView === 'progress-report' && selectedClientId && authTrainer && (
@@ -1487,6 +1536,7 @@ function AppContent({
                 schedules={schedules}
                 sessions={sessions}
                 clients={clients}
+                studios={studios}
                 onSelectClient={setSelectedClientId}
                 setView={setCurrentView}
               />
@@ -1498,6 +1548,7 @@ function AppContent({
               <OwnerStudioManager 
                 authTrainer={authTrainer} 
                 studios={studios} 
+                isAdmin={isAdmin}
                 onBack={() => setCurrentView('owner-dashboard')} 
               />
             )}
@@ -1507,6 +1558,7 @@ function AppContent({
                 trainers={trainers} 
                 machines={machines}
                 clients={clients}
+                sessions={sessions}
                 authTrainer={authTrainer} 
                 isAdmin={authTrainer?.role === 'Owner' || user.email === "jurgensaj@gmail.com"} 
                 onAppCleanse={handleAppCleanse}
@@ -2945,7 +2997,7 @@ function ClientsView({
     !s.trainerName || 
     s.trainerName.toLowerCase().includes('select') || 
     s.trainerName === ''
-  ) || sessions.some(s => s.status === 'In-Progress' && (s as any).isUnassigned); // check for active unassigned sessions
+  ) || sessions.some(s => s.status === 'In-Progress' && (s as any).isUnassigned && isSessionValid(s)); // check for active unassigned sessions
 
   // Recent clients (edited or created)
   const recentClients = [...clients]
@@ -5146,6 +5198,33 @@ function WorkoutTrackerView({
 
   const [machineTimeElapsed, setMachineTimeElapsed] = useState<number>(0);
 
+  // Soft Lock Handoff: Check for stored takeover session ID on mount
+  useEffect(() => {
+    const takeoverSessionId = localStorage.getItem('max_strength_active_session_id');
+    if (takeoverSessionId && !currentSession) {
+      const fetchTakeoverSession = async () => {
+        try {
+          const sRef = doc(db, 'sessions', takeoverSessionId);
+          const sSnap = await getDoc(sRef);
+          if (sSnap.exists()) {
+            const data = { id: sSnap.id, ...sSnap.data() } as WorkoutSession;
+            if (data.status === 'In-Progress') {
+              setCurrentSession(data);
+              setSessions([data]);
+              setIsPreSessionMode(false);
+              setShowRoutinePicker(false);
+              // Clear it so we don't keep doing this if the trainer navigates away and back manually
+              localStorage.removeItem('max_strength_active_session_id');
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching takeover session:", error);
+        }
+      };
+      fetchTakeoverSession();
+    }
+  }, []);
+
   useEffect(() => {
     if (!currentSession) return;
     let didUpdate = false;
@@ -5580,6 +5659,8 @@ function WorkoutTrackerView({
         trainerInitials,
         trainerName,
         trainerId,
+        startedByTrainerId: trainerId,
+        lastHeartbeatAt: serverTimestamp(),
         status: 'In-Progress',
         startTime: serverTimestamp(),
         createdAt: serverTimestamp()
@@ -5797,7 +5878,11 @@ function WorkoutTrackerView({
       const sessionRef = doc(db, 'sessions', currentSession.id);
       const updateData: any = {
         status: 'Completed',
-        endTime: serverTimestamp()
+        endTime: serverTimestamp(),
+        // Credit Routing: Final submission takes the credit
+        trainerId: authTrainer?.id || '',
+        trainerName: authTrainer?.fullName || '',
+        trainerInitials: authTrainer?.initials || ''
       };
       
       // Data Stamping for Analytics
@@ -5956,6 +6041,13 @@ function WorkoutTrackerView({
   const updateLogMultiple = (sessionId: string, machineId: string, updates: Partial<ExerciseLog>, side?: 'Left' | 'Right') => {
     const key = `${sessionId}_${machineId}${side ? '_' + side : ''}`;
     const currentSettings = clientMachineSettings[machineId]?.settings || {};
+
+    // Soft Lock Heartbeat: Update session activity timestamp
+    if (currentSession?.id === sessionId) {
+      updateDoc(doc(db, 'sessions', sessionId), {
+        lastHeartbeatAt: serverTimestamp()
+      }).catch(console.error);
+    }
 
     setLogs(prev => {
       const existing = prev[key];

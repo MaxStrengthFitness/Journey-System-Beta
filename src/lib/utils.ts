@@ -196,6 +196,26 @@ export function getMuscleGroupColor(machineName: string = ''): string {
 }
 
 /**
+ * Identifies if a session is valid (active and not abandoned)
+ * Abandoned sessions are 60+ minutes past their last heartbeat or creation.
+ */
+export function isSessionValid(session: any): boolean {
+  if (!session) return false;
+  if (session.status !== 'In-Progress') return true;
+  
+  const now = new Date().getTime();
+  const heartbeat = getMillis(session.lastHeartbeatAt);
+  const created = getMillis(session.createdAt);
+  
+  // Use heartbeat if available, fallback to creation time
+  const referenceTime = heartbeat > 0 ? heartbeat : created;
+  if (!referenceTime) return true; // Can't validate without timestamp
+  
+  const ageInMinutes = (now - referenceTime) / (1000 * 60);
+  return ageInMinutes < 60; // Valid if less than 60 minutes old
+}
+
+/**
  * Identifies if a machine is one of the "Big 5"
  */
 export function isBig5Machine(machineName: string = ''): boolean {

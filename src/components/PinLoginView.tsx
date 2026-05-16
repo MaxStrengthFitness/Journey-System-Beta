@@ -67,37 +67,42 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
 
         <div className="grid gap-3">
           {trainers.length > 0 ? (
-            sortedTrainers.map((t) => (
-              <motion.button
-                key={t.id}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => onLogin(t)}
-                className={`group relative bg-card/40 backdrop-blur-xl border-2 ${t.role === 'Owner' ? 'border-amber-500/20' : 'border-border/10'} hover:border-primary/50 p-6 rounded-[32px] flex items-center justify-between transition-all shadow-sm`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-2xl ${t.role === 'Owner' ? 'bg-amber-500/10 text-amber-600' : 'bg-primary/10 text-primary'} flex items-center justify-center font-black uppercase italic text-lg`}>
-                    {t.initials}
-                  </div>
-                  <div className="text-left">
-                    <div className="flex items-center gap-2">
-                      <p className="font-black uppercase italic tracking-tight text-lg leading-none">{t.fullName}</p>
-                      {t.role === 'Owner' && (
-                        <div className="bg-amber-500/10 px-1.5 py-0.5 rounded text-[8px] font-black text-amber-600 uppercase tracking-widest">
-                          Owner
-                        </div>
-                      )}
+            sortedTrainers.map((t) => {
+              const isSuperAdmin = t.fullName === 'Austin Jurgens' && user?.email === 'jurgensaj@gmail.com';
+              const isOwner = t.role === 'Owner' || isSuperAdmin;
+              
+              return (
+                <motion.button
+                  key={t.id}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => onLogin(t)}
+                  className={`group relative bg-card/40 backdrop-blur-xl border-2 ${isOwner ? 'border-amber-500/20' : 'border-border/10'} hover:border-primary/50 p-6 rounded-[32px] flex items-center justify-between transition-all shadow-sm`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-2xl ${isOwner ? 'bg-amber-500/10 text-amber-600' : 'bg-primary/10 text-primary'} flex items-center justify-center font-black uppercase italic text-lg`}>
+                      {t.initials}
                     </div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                      {t.role === 'Owner' ? 'System Administrator' : 'Performance Trainer'}
-                    </p>
+                    <div className="text-left">
+                      <div className="flex items-center gap-2">
+                        <p className="font-black uppercase italic tracking-tight text-lg leading-none">{t.fullName}</p>
+                        {isOwner && (
+                          <div className="bg-amber-500/10 px-1.5 py-0.5 rounded text-[8px] font-black text-amber-600 uppercase tracking-widest">
+                            {isSuperAdmin && t.role !== 'Owner' ? 'Admin' : 'Owner'}
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                        {isOwner ? 'System Administrator' : 'Performance Trainer'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Check className="w-5 h-5 text-primary" />
-                </div>
-              </motion.button>
-            ))
+                  <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Check className="w-5 h-5 text-primary" />
+                  </div>
+                </motion.button>
+              );
+            })
           ) : (
             <div className="flex flex-col items-center gap-4 py-12 px-6 bg-muted/20 rounded-[32px] border-2 border-dashed">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground/30" />

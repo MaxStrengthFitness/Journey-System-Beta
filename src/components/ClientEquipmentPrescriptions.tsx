@@ -1,15 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { auth } from '../firebase';
 import { db } from '../firebase';
-import { doc, setDoc, getDocs, collection, query, where, writeBatch } from 'firebase/firestore';
-import { parseSessionDate, cn, getMuscleGroupColor, isBig5Machine } from '../lib/utils';
-import { Wrench, RefreshCw, Star } from 'lucide-react';
+import { doc, setDoc, getDoc, writeBatch } from 'firebase/firestore';
+import { cn, getMuscleGroupColor, isBig5Machine } from '../lib/utils';
+import { Wrench, RefreshCw, Star, Loader2, Gauge } from 'lucide-react';
+import { LeaderboardDocument } from '../types';
 
 const calculateConservativeLoad = (machineId: string, bodyWeight: number, level: string) => {
   const isLowerBody = ['leg_press', 'squat', 'leg_extension', 'leg_curl'].includes(machineId.toLowerCase()) || machineId.includes('leg');
@@ -57,420 +57,273 @@ export const formatMachineSettings = (settings: any): string => {
   }).join(', ');
 };
 
-export const calculateWeightPercentile = (currentWeight: number, machineId: string, allClientData: any[]): string => {
-  if (!allClientData || !Array.isArray(allClientData)) return "N/A";
-  
-  const maxWeightPerClient = new Map<string, number>();
-  
-  allClientData.forEach(log => {
-      if (log.machineId === machineId && log.weight && log.clientId) {
-          const w = parseFloat(log.weight);
-          if (!isNaN(w)) {
-              const existing = maxWeightPerClient.get(log.clientId) || 0;
-              maxWeightPerClient.set(log.clientId, Math.max(existing, w));
-          }
-      }
-  });
-
-  const allWeights = Array.from(maxWeightPerClient.values()).sort((a, b) => a - b);
-  if (allWeights.length === 0) return "N/A";
-
-  let rank = 0;
-  for (let w of allWeights) {
-      if (currentWeight > w) {
-          rank++;
-      } else if (currentWeight === w) {
-          // If tied, count half as below? Let's just say equal is ranked same and we increment.
-          rank += 0.5;
-      }
-  }
-
-  const p = Math.max(1, Math.min(99, Math.round((rank / allWeights.length) * 100)));
-  return `${p}th Percentile`;
-};
-
 export function ClientEquipmentPrescriptions({ 
   clientId, 
   machines, 
   clientSettings, 
   clientBodyWeight,
+  activeStudioId,
   allLogs = []
 }: any) {
   const [selectedMachine, setSelectedMachine] = useState<any>(null);
   const [startingWeight, setStartingWeight] = useState<number | ''>('');
-  const [currentWeight, setCurrentWeight] = useState<number | ''>('');
-  const [fitnessLevel, setFitnessLevel] = useState('Novice');
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [trainingLevel, setTrainingLevel] = useState('Beginner');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardDocument | null>(null);
+  const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false);
 
-  const handleRefreshWeights = async () => {
-    setIsRefreshing(true);
-    try {
-      const logsMap = new Map<string, any>();
-
-      // Fetch logs directly by clientId
-      const logsSnap = await getDocs(query(collection(db, 'exerciseLogs'), where('clientId', '==', clientId)));
-      logsSnap.docs.forEach(docSnap => {
-        logsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
-      });
-
-      // Fetch all sessions for this client (no limit) to get older logs that might lack clientId
-      const sessionsSnap = await getDocs(query(collection(db, 'sessions'), where('clientId', '==', clientId)));
-      const sessionIds = sessionsSnap.docs.map(doc => doc.id).filter(Boolean);
-
-      const chunks = [];
-      for (let i = 0; i < sessionIds.length; i += 10) {
-        chunks.push(sessionIds.slice(i, i + 10));
-      }
-
-      await Promise.all(
-        chunks.map(async (chunk) => {
-          const q = query(collection(db, 'exerciseLogs'), where('sessionId', 'in', chunk));
-          const snap = await getDocs(q);
-          snap.docs.forEach(docSnap => {
-            logsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
-          });
-        })
-      );
-
-      const machineLogs: Record<string, any[]> = {};
-      
-      Array.from(logsMap.values()).forEach(data => {
-        if (!data.machineId || !data.weight) return;
-        const w = parseFloat(data.weight);
-        if (isNaN(w) || w <= 0) return;
-        
-        if (!machineLogs[data.machineId]) {
-          machineLogs[data.machineId] = [];
+  // --- MATERIALIZED VIEW FETCHING ---
+  useEffect(() => {
+    async function fetchLeaderboard() {
+      if (!activeStudioId) return;
+      setIsLoadingLeaderboard(true);
+      try {
+        const docRef = doc(db, 'leaderboards', `studio_${activeStudioId}_latest`);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          setLeaderboardData(snap.data() as LeaderboardDocument);
         }
-        machineLogs[data.machineId].push(data);
+      } catch (err) {
+        console.error("Error fetching leaderboard for prescriptions:", err);
+      } finally {
+        setIsLoadingLeaderboard(false);
+      }
+    }
+    fetchLeaderboard();
+  }, [activeStudioId]);
+
+  // MATERIALIZED PERCENTILE CALCULATION
+  const getPercentileRank = (machineId: string) => {
+    if (!leaderboardData || !leaderboardData.machineData[machineId]) return "N/A";
+    
+    // Find client's current max weight from logs
+    const clientLogs = allLogs.filter((l: any) => l.machineId === machineId);
+    if (clientLogs.length === 0) return "New";
+    
+    const maxWeight = Math.max(...clientLogs.map((l: any) => parseInt(l.weight || '0', 10)));
+    if (maxWeight === 0) return "New";
+
+    const thresholds = leaderboardData.machineData[machineId].percentileThresholds;
+    if (!thresholds) return "N/A";
+
+    // Compare against static thresholds
+    if (maxWeight >= thresholds.p99) return "Top 1%";
+    if (maxWeight >= thresholds.p95) return "Top 5%";
+    if (maxWeight >= thresholds.p90) return "Top 10%";
+    if (maxWeight >= thresholds.p75) return "Top 25%";
+    if (maxWeight >= thresholds.p50) return "Top 50%";
+    
+    return "Building...";
+  };
+
+  const handleSyncAllLevels = async () => {
+    if (!trainingLevel || !clientBodyWeight) return;
+    setIsSyncing(true);
+    const batch = writeBatch(db);
+
+    try {
+      machines.forEach((machine: any) => {
+        const conservativeLoad = calculateConservativeLoad(machine.id, clientBodyWeight, trainingLevel);
+        const docRef = doc(db, 'clientMachineSettings', `${clientId}_${machine.id}`);
+        batch.set(docRef, {
+          clientId,
+          machineId: machine.id,
+          startingWeight: conservativeLoad.toString(),
+          trainingLevel,
+          updatedAt: new Date()
+        }, { merge: true });
       });
 
-      const batch = writeBatch(db);
-      let operations = 0;
-
-      for (const [mId, logs] of Object.entries(machineLogs)) {
-        if (logs.length === 0) continue;
-
-        logs.sort((a, b) => {
-          const timeA = a.createdAt?.toMillis?.() || new Date(a.createdAt).getTime() || 0;
-          const timeB = b.createdAt?.toMillis?.() || new Date(b.createdAt).getTime() || 0;
-          return timeA - timeB;
-        });
-
-        const oldest = logs[0];
-        const newest = logs[logs.length - 1];
-
-        const startingWt = Number(oldest.weight);
-        const startingWtDate = oldest.createdAt?.toDate?.()?.toISOString() || new Date(oldest.createdAt).toISOString();
-        const currentWt = Number(newest.weight);
-
-        const settingId = `${clientId}_${mId}`;
-        const settingRef = doc(db, 'clientMachineSettings', settingId);
-
-        batch.set(settingRef, {
-          clientId,
-          machineId: mId,
-          settings: clientSettings[mId]?.settings || {},
-          updatedBy: auth.currentUser?.uid || 'Unknown',
-          startingWeight: startingWt,
-          startingWeightDate: startingWtDate,
-          currentWeight: currentWt,
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
-
-        operations++;
-      }
-
-      if (operations > 0) {
-        await batch.commit();
-      }
-
-    } catch (e) {
-      console.error(e);
+      await batch.commit();
+      window.location.reload();
+    } catch (error) {
+      console.error("Batch sync failed:", error);
     } finally {
-      setIsRefreshing(false);
+      setIsSyncing(false);
     }
   };
 
-  const handleInitialize = (machine: any) => {
-    setSelectedMachine(machine);
+  const handleSaveStartingWeight = async () => {
+    if (!selectedMachine || startingWeight === '') return;
     
-    if (machine.hasUsed) {
-       setStartingWeight(machine.startingWeight || '');
-       setCurrentWeight(machine.currentWeight || '');
-       setFitnessLevel('Novice'); // default
-    } else {
-       const calcWeight = calculateConservativeLoad(machine.id, clientBodyWeight || 150, 'Novice');
-       setStartingWeight(calcWeight);
-       setCurrentWeight('');
-       setFitnessLevel('Novice');
+    try {
+      const docRef = doc(db, 'clientMachineSettings', `${clientId}_${selectedMachine.id}`);
+      await setDoc(docRef, {
+        clientId,
+        machineId: selectedMachine.id,
+        startingWeight: startingWeight.toString(),
+        updatedAt: new Date()
+      }, { merge: true });
+      
+      setSelectedMachine(null);
+      setStartingWeight('');
+      window.location.reload();
+    } catch (error) {
+       console.error("Failed to save starting weight:", error);
     }
   };
-
-  const handleFitnessLevelChange = (val: string) => {
-    setFitnessLevel(val);
-    if (selectedMachine && !selectedMachine.hasUsed) {
-      setStartingWeight(calculateConservativeLoad(selectedMachine.id, clientBodyWeight || 150, val));
-    }
-  };
-
-  const handleSave = async () => {
-    if (!clientId || !selectedMachine) return;
-    
-    const settingId = `${clientId}_${selectedMachine.id}`;
-    
-    const payload: any = {
-      clientId,
-      machineId: selectedMachine.id,
-      settings: clientSettings[selectedMachine.id]?.settings || {},
-      updatedBy: auth.currentUser?.uid || 'Unknown',
-      updatedAt: new Date().toISOString()
-    };
-    
-    if (startingWeight !== '') {
-       payload.startingWeight = Number(startingWeight);
-       // Only set date if not already set, or if we want to default to today:
-       const existingDate = clientSettings[selectedMachine.id]?.startingWeightDate;
-       if (!existingDate) {
-          payload.startingWeightDate = new Date().toISOString();
-       }
-    }
-    
-    if (currentWeight !== '') {
-       payload.currentWeight = Number(currentWeight);
-    }
-    
-    await setDoc(doc(db, 'clientMachineSettings', settingId), payload, { merge: true });
-    
-    setSelectedMachine(null);
-  };
-
-  const machineData = useMemo(() => {
-    return machines.map((m: any) => {
-      const logsForMachine = allLogs.filter((l: any) => l.machineId === m.id && l.clientId === clientId && l.weight)
-        .sort((a: any, b: any) => {
-          const dateA = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt || 0).getTime();
-          const dateB = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt || 0).getTime();
-          return dateB - dateA; // newest first
-        });
-
-      const setting = clientSettings[m.id];
-      const hasUsed = logsForMachine.length > 0 || setting?.startingWeight > 0 || setting?.currentWeight > 0;
-      
-      const newestLog = logsForMachine.length > 0 ? logsForMachine[0] : null;
-      const oldestLog = logsForMachine.length > 0 ? logsForMachine[logsForMachine.length - 1] : null;
-      
-      const currentWeight = setting?.currentWeight !== undefined ? setting.currentWeight : (newestLog ? parseFloat(newestLog.weight) : 0);
-      const startingWeight = setting?.startingWeight !== undefined ? setting.startingWeight : (oldestLog ? parseFloat(oldestLog.weight) : 0);
-      
-      let startingDate = setting?.startingWeightDate ? new Date(setting.startingWeightDate) : null;
-      
-      if (!startingDate && oldestLog) {
-         startingDate = oldestLog?.createdAt?.toMillis 
-           ? new Date(oldestLog.createdAt.toMillis()) 
-           : oldestLog?.createdAt 
-             ? new Date(oldestLog.createdAt) 
-             : null;
-      }
-      
-      const settingsStr = formatMachineSettings(setting?.settings);
-
-      const percentileStr = hasUsed && !isNaN(currentWeight) ? calculateWeightPercentile(currentWeight, m.id, allLogs) : "N/A";
-      const pNum = hasUsed && !isNaN(currentWeight) ? parseInt(percentileStr) : 0;
-
-      return {
-        ...m,
-        hasUsed,
-        currentWeight,
-        startingWeight,
-        startingDate,
-        settingsStr,
-        percentileStr,
-        pNum
-      };
-    }).sort((a: any, b: any) => {
-      if (a.hasUsed && !b.hasUsed) return -1;
-      if (!a.hasUsed && b.hasUsed) return 1;
-      return (a.order || 0) - (b.order || 0);
-    });
-  }, [machines, allLogs, clientId, clientSettings]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end items-center mb-0">
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={handleRefreshWeights}
-          disabled={isRefreshing}
-          className="h-7 text-[10px] uppercase font-bold text-[#115E8D] border-[#115E8D]/30 shadow-sm transition-all hover:bg-[#115E8D]/5"
-        >
-          <RefreshCw className={`w-3 h-3 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} /> Sync Weights
-        </Button>
-      </div>
-      <div className="bg-white rounded-xl shadow-sm border border-[#115E8D]/20 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse min-w-full">
-            <thead>
-              <tr className="bg-[#115E8D] text-white uppercase text-[8px] sm:text-[9px] font-black tracking-widest leading-none h-[28px]">
-                <th className="px-1.5 py-1.5 sm:px-2 w-[22%]">Machine</th>
-                <th className="px-1.5 py-1.5 sm:px-2">Settings</th>
-                <th className="px-1.5 py-1.5 sm:px-2 text-right">Starting Wt</th>
-                <th className="px-1.5 py-1.5 sm:px-2 text-right">Current Wt</th>
-                <th className="px-1.5 py-1.5 sm:px-2 text-center">Percentile</th>
-                <th className="px-1.5 py-1.5 sm:px-2 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {machineData.map((m: any) => (
-                <tr key={m.id} className={`transition-colors hover:bg-slate-50 ${m.hasUsed ? 'bg-white' : 'bg-slate-50/50'}`}>
-                  <td className="px-1.5 py-1.5 sm:px-2 align-middle">
-                    <span className={cn(
-                      "font-black text-[9px] sm:text-[10px] uppercase tracking-tighter px-1.5 py-0.5 rounded-[4px] border inline-flex items-center justify-between leading-none max-w-[120px] sm:max-w-[150px]",
-                      getMuscleGroupColor(m.name),
-                      !m.hasUsed && "opacity-60 grayscale"
-                    )}>
-                      <span className="truncate">{m.name}</span>
-                      {isBig5Machine(m.name) && (
-                        <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 ml-1 fill-amber-400 text-amber-500 shrink-0" />
-                      )}
-                    </span>
-                  </td>
-                  <td className={`px-1.5 py-1.5 sm:px-2 text-[9px] sm:text-[10px] ${m.hasUsed ? 'text-slate-600 font-medium whitespace-nowrap' : 'text-slate-400'}`}>
-                    {m.settingsStr}
-                  </td>
-                  <td className={`px-1.5 py-1.5 sm:px-2 text-right font-medium text-[9px] sm:text-[10px] ${m.hasUsed ? 'text-slate-700' : 'text-slate-400'}`}>
-                    {m.hasUsed ? (
-                       <div className="flex flex-col items-end leading-none">
-                         <span className="font-bold mb-0.5">{m.startingWeight} lbs</span>
-                         {m.startingDate && (
-                           <span className="text-[7px] sm:text-[8px] text-slate-400 font-medium uppercase tracking-wider">
-                             {m.startingDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
-                           </span>
-                         )}
-                       </div>
-                    ) : '--'}
-                  </td>
-                  <td className={`px-1.5 py-1.5 sm:px-2 text-right font-black text-[10px] sm:text-xs ${m.hasUsed ? 'text-[#F06C22]' : 'text-slate-400'}`}>
-                    {m.hasUsed ? `${m.currentWeight} lbs` : '--'}
-                  </td>
-                  <td className="px-1.5 py-1.5 sm:px-2 text-center">
-                    {m.hasUsed ? (
-                      <Badge 
-                        variant="secondary" 
-                        className={`text-[8px] uppercase tracking-wider font-bold px-1 sm:px-1.5 py-0 h-4 ${
-                          m.pNum >= 75 ? 'bg-[#F06C22]/10 text-[#F06C22] border border-[#F06C22]/20 shadow-sm' : 
-                          m.pNum >= 25 ? 'bg-[#115E8D]/10 text-[#115E8D] border border-[#115E8D]/20 shadow-sm' : 
-                          'bg-zinc-100 text-zinc-600 border border-zinc-200'
-                        }`}
-                      >
-                        {m.percentileStr}
-                      </Badge>
-                    ) : (
-                      <span className="text-[9px] sm:text-[10px] text-slate-300">--</span>
-                    )}
-                  </td>
-                  <td className="px-1.5 py-1.5 sm:px-2 text-right">
-                    {!m.hasUsed ? (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleInitialize(m)}
-                        className="h-5 sm:h-6 px-1.5 sm:px-2 text-[8px] sm:text-[9px] uppercase font-bold text-[#F06C22] hover:text-white hover:bg-[#F06C22] border-[#F06C22]/50 shadow-sm transition-all"
-                      >
-                        <Wrench className="w-2.5 h-2.5 sm:mr-1" /> Setup
-                      </Button>
-                    ) : (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleInitialize(m)}
-                        className="h-5 sm:h-6 px-1.5 sm:px-2 text-[8px] sm:text-[9px] uppercase font-bold text-slate-400 hover:text-[#115E8D] hover:bg-[#115E8D]/10 transition-all"
-                      >
-                        Adjust
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="space-y-6 pb-20">
+      <div className="bg-[#115E8D] rounded-3xl p-6 border border-white/10 shadow-lg">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div>
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <Wrench className="w-5 h-5 text-[#38BDF8]" />
+              Prescription Infrastructure
+            </h3>
+            <p className="text-sm text-slate-300 mt-1">
+              Initialize starting loads based on body weight and clinical expertise.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <Select value={trainingLevel} onValueChange={setTrainingLevel}>
+              <SelectTrigger className="w-full md:w-40 bg-[#0A2E46] border-white/10 text-white font-bold h-12 rounded-xl">
+                <SelectValue placeholder="Level" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#0A2E46] border-white/10 text-white">
+                <SelectItem value="Beginner">Beginner (Slow)</SelectItem>
+                <SelectItem value="Intermediate">Intermediate</SelectItem>
+                <SelectItem value="Advanced">Advanced (1-on-1)</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button 
+              onClick={handleSyncAllLevels} 
+              disabled={isSyncing}
+              className="flex-1 md:flex-none h-12 bg-[#F06C22] hover:bg-[#D45A1AB3] text-white font-black uppercase tracking-widest px-8 rounded-xl shadow-lg border-b-4 border-[#A3430F]"
+            >
+              {isSyncing ? <RefreshCw className="w-5 h-5 animate-spin" /> : "Sync All Bases"}
+            </Button>
+          </div>
         </div>
       </div>
 
-      <Dialog open={!!selectedMachine} onOpenChange={(open) => !open && setSelectedMachine(null)}>
-        <DialogContent className="bg-white border-slate-200 text-slate-900 sm:max-w-md">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {machines.map((machine: any) => {
+          const settings = clientSettings[machine.id];
+          const hasSettings = settings && settings.startingWeight;
+          const isBig5 = isBig5Machine(machine.id);
+          const rankLabel = getPercentileRank(machine.id);
+
+          return (
+            <div 
+              key={machine.id}
+              onClick={() => setSelectedMachine(machine)}
+              className={cn(
+                "group relative bg-[#0A2E46] border border-white/5 rounded-3xl p-5 hover:bg-[#115E8D] transition-all cursor-pointer overflow-hidden",
+                isBig5 && "border-[#F06C22]/30 ring-1 ring-[#F06C22]/10"
+              )}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center", getMuscleGroupColor(machine.muscleGroup))}>
+                    <Dumbbell className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-white italic uppercase text-sm leading-tight group-hover:text-[#38BDF8] transition-colors">{machine.name}</h4>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{machine.muscleGroup}</p>
+                  </div>
+                </div>
+                {isBig5 && (
+                  <Badge className="bg-[#F06C22] hover:bg-[#F06C22] text-white font-black text-[9px] uppercase tracking-tighter italic">Big 5</Badge>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-black/20 rounded-2xl border border-white/5">
+                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Base Load</span>
+                   <span className="text-lg font-black text-white tabular-nums">
+                     {hasSettings ? `${settings.startingWeight} LBS` : '---'}
+                   </span>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-black/20 rounded-2xl border border-white/5">
+                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Setup Configuration</span>
+                   <span className="text-[10px] font-black text-[#38BDF8] uppercase text-right leading-tight max-w-[120px] line-clamp-1">
+                     {formatMachineSettings(settings?.settings)}
+                   </span>
+                </div>
+
+                <div className="pt-2 flex items-center justify-between">
+                   <Badge variant="outline" className="bg-transparent border-slate-700 text-slate-500 font-bold text-[9px] uppercase">
+                     {trainingLevel} Base
+                   </Badge>
+                   <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 rounded-full border border-white/10 group-hover:border-[#F06C22]/50 transition-colors">
+                      <Gauge className="w-3 h-3 text-[#F06C22]" />
+                      <span className="text-[10px] font-bold text-white uppercase italic">
+                        {isLoadingLeaderboard ? <Loader2 className="w-3 h-3 animate-spin" /> : rankLabel}
+                      </span>
+                   </div>
+                </div>
+              </div>
+
+              <div className="absolute inset-x-0 bottom-0 h-1.5 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          );
+        })}
+      </div>
+
+      <Dialog open={!!selectedMachine} onOpenChange={() => setSelectedMachine(null)}>
+        <DialogContent className="bg-[#0A2E46] border-white/10 text-white rounded-[32px] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="uppercase font-black text-xl italic tracking-tighter text-[#115E8D]">Initialize: {selectedMachine?.name}</DialogTitle>
-            <DialogDescription className="text-slate-500 text-xs">
-               Calculate a conservative starting load for continuous-tension protocols.
+            <DialogTitle className="text-2xl font-black uppercase italic tracking-tight text-white">Adjust Base Prescription</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Update the clinical starting load for {selectedMachine?.name}.
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-             <Button variant="outline" className="w-full border-[#115E8D]/20 hover:bg-[#115E8D]/5 text-[#115E8D] uppercase text-[10px] font-black tracking-widest shadow-sm h-8" onClick={() => window.open(`/knowledge?machine=${selectedMachine?.id || ''}`, '_blank')}>
-               Open Clinical Setup Guide
-             </Button>
-             
-             <div className="bg-slate-50 p-4 rounded-xl space-y-4 border border-slate-200">
-               <div className="flex gap-4">
-                 <div className="space-y-2 flex-1">
-                   <Label className="text-[10px] uppercase font-black tracking-widest text-[#68717A]">Body Weight (lbs)</Label>
-                   <Input 
-                     type="number" 
-                     className="bg-white border-slate-200 text-slate-900 text-xs font-bold h-8"
-                     value={clientBodyWeight || ''}
-                     disabled
-                     placeholder="Not set"
-                   />
-                 </div>
-                 <div className="space-y-2 flex-1">
-                   <Label className="text-[10px] uppercase font-black tracking-widest text-[#68717A]">Fitness Level</Label>
-                   <Select value={fitnessLevel} onValueChange={handleFitnessLevelChange}>
-                     <SelectTrigger className="bg-white border-slate-200 text-[#115E8D] font-bold text-xs h-8">
-                       <SelectValue />
-                     </SelectTrigger>
-                     <SelectContent className="bg-white border-slate-200 text-slate-900">
-                       <SelectItem value="Novice" className="text-xs font-medium">Novice</SelectItem>
-                       <SelectItem value="Intermediate" className="text-xs font-medium">Intermediate</SelectItem>
-                     </SelectContent>
-                   </Select>
-                 </div>
-               </div>
-               
-               <div className="flex gap-4 pt-3 border-t border-slate-200">
-                 <div className="space-y-2 flex-1">
-                   <Label className="text-[10px] uppercase font-black tracking-widest text-[#F06C22]">Starting Weight (lbs)</Label>
-                   <Input 
-                     type="number" 
-                     value={startingWeight}
-                     onChange={e => setStartingWeight(Number(e.target.value) || '')}
-                     className="bg-white border-[#F06C22]/30 text-xl font-black focus-visible:ring-[#F06C22]/50 text-[#115E8D] shadow-sm h-10"
-                   />
-                 </div>
-                 <div className="space-y-2 flex-1">
-                   <Label className="text-[10px] uppercase font-black tracking-widest text-[#115E8D]">Current Weight (lbs)</Label>
-                   <Input 
-                     type="number" 
-                     value={currentWeight}
-                     onChange={e => setCurrentWeight(Number(e.target.value) || '')}
-                     className="bg-white border-[#115E8D]/30 text-xl font-black focus-visible:ring-[#115E8D]/50 text-[#115E8D] shadow-sm h-10"
-                   />
-                 </div>
-               </div>
-               
-               {!selectedMachine?.hasUsed && (
-                 <p className="text-[9px] text-slate-500 font-medium uppercase tracking-wider">Starting weight is initialized based on Body Weight & Fitness Level. You can manually override.</p>
-               )}
-             </div>
+
+          <div className="py-8 space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="weight" className="text-xs font-black uppercase text-slate-500 tracking-widest">Recommended Start</Label>
+              <div className="flex items-center gap-4">
+                <Input 
+                  id="weight"
+                  type="number" 
+                  value={startingWeight} 
+                  onChange={(e) => setStartingWeight(e.target.value ? parseInt(e.target.value) : '')}
+                  className="h-14 bg-slate-900 border-white/10 text-2xl font-black italic rounded-2xl flex-1 text-center"
+                  placeholder="---"
+                />
+                <span className="text-xl font-bold text-slate-500 uppercase italic">LBS</span>
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium italic mt-2">
+                * Based on {trainingLevel} protocol for {clientBodyWeight} LBS body weight.
+              </p>
+            </div>
           </div>
-          
-          <DialogFooter>
-            <Button variant="ghost" className="uppercase font-black tracking-widest text-[10px] text-slate-400 hover:text-[#115E8D] h-8" onClick={() => setSelectedMachine(null)}>Cancel</Button>
-            <Button className="bg-[#F06C22] hover:bg-[#D95B16] text-white uppercase font-black tracking-widest text-[10px] h-8 shadow-md shadow-[#F06C22]/20" onClick={handleSave}>Save Prescription</Button>
+
+          <DialogFooter className="flex flex-col sm:flex-row gap-3">
+            <Button 
+              variant="ghost" 
+              onClick={() => setSelectedMachine(null)}
+              className="h-14 rounded-2xl font-bold text-slate-400 hover:text-white hover:bg-white/5 order-2 sm:order-1"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveStartingWeight}
+              className="h-14 flex-1 bg-[#F06C22] hover:bg-[#D45A1A] text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-[#F06C22]/20 order-1 sm:order-2"
+            >
+              Apply Prescription
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
+
+const Dumbbell = ({ className }: { className?: string }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2.5" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.767a2 2 0 1 1-2.829-2.828l-1.767 1.767a2 2 0 1 1-2.829-2.828l1.768-1.767a2 2 0 1 1-2.828-2.829l2.121-2.121a2 2 0 0 1 2.829 0l2.828 2.828a2 2 0 0 1 0 2.828l2.828 2.829a2 2 0 0 1 0 2.828l2.829 2.829a2 2 0 0 1 0 2.828l-2.122 2.121Z"/><path d="m6.457 11.485 2.121-2.121a2 2 0 0 1 2.829 0l2.828 2.828a2 2 0 0 1 0 2.828l2.121-2.121a2 2 0 0 1 2.829 0l2.121 2.121" />
+  </svg>
+);

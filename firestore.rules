@@ -141,6 +141,8 @@ service cloud.firestore {
              (!('clientActivityLevel' in data) || data.clientActivityLevel == null || data.clientActivityLevel is string) &&
              (!('clientClinicalProfile' in data) || data.clientClinicalProfile == null || data.clientClinicalProfile is list) &&
              (!('clientFeel' in data) || data.clientFeel == null || data.clientFeel is string) &&
+             (!('startedByTrainerId' in data) || data.startedByTrainerId == null || data.startedByTrainerId is string) &&
+             (!('lastHeartbeatAt' in data) || data.lastHeartbeatAt == null || data.lastHeartbeatAt is timestamp) &&
              (!('createdAt' in data) || data.createdAt == null || data.createdAt is timestamp);
     }
 
@@ -176,11 +178,14 @@ service cloud.firestore {
     }
 
     function isValidClientMachineSetting(data) {
-      return hasRequiredFields(['clientId', 'machineId', 'settings', 'updatedBy', 'updatedAt']) &&
+      return hasRequiredFields(['clientId', 'machineId']) &&
              data.clientId is string &&
              data.machineId is string &&
-             data.settings is map &&
-             data.updatedBy is string;
+             (!('settings' in data) || data.settings is map) &&
+             (!('updatedBy' in data) || data.updatedBy is string) &&
+             (!('startingWeight' in data) || data.startingWeight is string) &&
+             (!('trainingLevel' in data) || data.trainingLevel is string) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
 
     function isValidSchedule(data) {
@@ -359,6 +364,12 @@ service cloud.firestore {
       allow read, write: if request.auth.uid == userId || isAdmin();
     }
 
+    match /leaderboards/{docId} {
+      allow read: if isAuthenticated();
+      // Only trainers/admins can manually trigger or backend admin SDK writes
+      allow write: if isAdmin();
+    }
+
     match /trainerFocuses/{focusId} {
       allow read: if isAuthenticated();
       allow create, update: if (isAdmin() || isTrainer()) && isValidTrainerFocus(request.resource.data);
@@ -377,7 +388,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     match /studios/{studioId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create, update: if (isAdmin() || isTrainer()) && isValidStudio(request.resource.data);
       allow delete: if isAdmin() || isTrainer();
     }

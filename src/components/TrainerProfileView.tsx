@@ -8,13 +8,18 @@ import {
   ArrowRight,
   TrendingDown,
   Dumbbell,
-  Star
+  Star,
+  ShieldCheck,
+  Award,
+  MapPin,
+  Building2,
+  Briefcase
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScheduleEntry, WorkoutSession, Client, Trainer } from '../types';
+import { ScheduleEntry, WorkoutSession, Client, Trainer, Studio } from '../types';
 import { parseSessionDate } from '../lib/utils';
 
 interface TrainerProfileViewProps {
@@ -22,6 +27,7 @@ interface TrainerProfileViewProps {
   schedules: ScheduleEntry[];
   sessions: WorkoutSession[];
   clients: Client[];
+  studios: Studio[];
   onSelectClient: (clientId: string) => void;
   setView: (view: any) => void;
 }
@@ -31,6 +37,7 @@ export function TrainerProfileView({
   schedules, 
   sessions, 
   clients, 
+  studios,
   onSelectClient, 
   setView 
 }: TrainerProfileViewProps) {
@@ -77,6 +84,11 @@ export function TrainerProfileView({
                   Owner
                 </Badge>
               )}
+              {trainer.fullName === 'Austin Jurgens' && (
+                 <Badge className="rounded-md bg-sky-500 hover:bg-sky-600 text-white font-black uppercase text-[9px] h-5 shadow-[0_0_10px_rgba(56,189,248,0.5)] border-none">
+                  Admin
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -93,6 +105,125 @@ export function TrainerProfileView({
       </div>
 
       <div className="flex flex-col gap-10 relative z-10">
+        {/* Professional Intelligence Section (New Details) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-2xl font-black uppercase italic text-white tracking-tighter">Professional Dossier</h3>
+              <p className="text-[#38BDF8] text-[10px] font-black uppercase tracking-widest">Authorized expertise & qualifications</p>
+            </div>
+
+            <Card className="rounded-[40px] bg-slate-900/50 border-slate-700 shadow-2xl overflow-hidden backdrop-blur-sm">
+              <div className="h-1 bg-gradient-to-r from-[#38BDF8] to-indigo-500" />
+              <CardContent className="p-8 space-y-8">
+                {/* Bio */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-[#38BDF8]">
+                    <ShieldCheck className="w-5 h-5" />
+                    <h4 className="text-[10px] font-black uppercase tracking-widest leading-none">Intelligence Summary</h4>
+                  </div>
+                  <p className="text-slate-300 text-sm leading-relaxed font-medium italic border-l-2 border-slate-700 pl-4 py-1">
+                    {trainer.bio || "No tactical biography provided. Field experience and specialized training confirmed through system authorization."}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                  {/* Certifications */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-[#38BDF8]">
+                      <Award className="w-5 h-5" />
+                      <h4 className="text-[10px] font-black uppercase tracking-widest leading-none">Combat Grade Certifications</h4>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {trainer.certifications && trainer.certifications.length > 0 ? (
+                        trainer.certifications.map((cert, idx) => (
+                          <Badge key={idx} variant="outline" className="rounded-xl border-slate-700 bg-slate-800/80 text-white font-bold px-3 py-1.5 text-[10px]">
+                            {cert}
+                          </Badge>
+                        ))
+                      ) : (
+                        <p className="text-slate-500 text-[10px] uppercase font-bold italic tracking-widest">Level 1 Practitioner</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Core Stats */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-[#38BDF8]">
+                      <Clock className="w-5 h-5" />
+                      <h4 className="text-[10px] font-black uppercase tracking-widest leading-none">Service Timeline</h4>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                        <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Duty Start Date</span>
+                        <span className="text-white font-bold text-xs">
+                          {trainer.employmentStartDate ? new Date(trainer.employmentStartDate.toDate?.() || trainer.employmentStartDate).toLocaleDateString() : "Baseline Personnel"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Total Ops Vol</span>
+                        <span className="text-white font-bold text-xs">{recentSessions.length} Logged Sessions</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-2xl font-black uppercase italic text-white tracking-tighter">Network Access</h3>
+              <p className="text-amber-500 text-[10px] font-black uppercase tracking-widest">Verified Multi-Location Footprint</p>
+            </div>
+
+            <div className="space-y-4">
+              {/* Home Studio */}
+              <div className="p-6 rounded-[32px] bg-slate-900 border-2 border-indigo-500/30 shadow-xl relative overflow-hidden group">
+                <Building2 className="w-12 h-12 absolute -right-3 -top-3 text-white/[0.03] group-hover:text-indigo-500/[0.05] transition-all" />
+                <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <MapPin className="w-3 h-3" />
+                  Primary Home Base
+                </p>
+                <p className="text-xl font-black text-white uppercase italic tracking-tighter">
+                  {studios.find(s => s.id === trainer.primaryHomeStudioId)?.name || "Unknown Location"}
+                </p>
+              </div>
+
+              {/* Other Access */}
+              <div className="p-6 rounded-[32px] bg-slate-900/50 border border-slate-700 space-y-4">
+                <div>
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">Station Access (Permanent)</p>
+                  <div className="flex flex-wrap gap-2">
+                    {trainer.accessibleStudioIds?.filter(id => id !== trainer.primaryHomeStudioId).map(id => (
+                      <Badge key={id} variant="secondary" className="bg-slate-800 text-slate-300 font-bold uppercase text-[9px] px-2 py-1 border-none">
+                        {studios.find(s => s.id === id)?.name || id}
+                      </Badge>
+                    ))}
+                    {(!trainer.accessibleStudioIds || trainer.accessibleStudioIds.filter(id => id !== trainer.primaryHomeStudioId).length === 0) && (
+                      <p className="text-slate-600 text-[9px] font-black uppercase italic">Single Base Clearance</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-800">
+                  <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-3">Guest Credentials (Temporary)</p>
+                  <div className="flex flex-wrap gap-2">
+                    {trainer.activeGuestStudioIds?.map(id => (
+                      <Badge key={id} variant="outline" className="border-amber-500/30 text-amber-500 font-bold uppercase text-[9px] px-2 py-1 bg-amber-500/5">
+                        {studios.find(s => s.id === id)?.name || id}
+                      </Badge>
+                    ))}
+                    {(!trainer.activeGuestStudioIds || trainer.activeGuestStudioIds.length === 0) && (
+                      <p className="text-slate-600 text-[9px] font-black uppercase italic">No Active Guest Ops</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Roster Grid */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">

@@ -8,6 +8,7 @@ interface ActiveStudioContextType {
   availableStudios: Studio[];
   isChangingStudio: boolean;
   setIsChangingStudio: (val: boolean) => void;
+  isAdmin: boolean;
 }
 
 const ActiveStudioContext = createContext<ActiveStudioContextType | undefined>(undefined);
@@ -15,11 +16,13 @@ const ActiveStudioContext = createContext<ActiveStudioContextType | undefined>(u
 export function ActiveStudioProvider({ 
   children, 
   studios, 
-  authTrainer 
+  authTrainer,
+  isAdmin = false
 }: { 
   children: ReactNode; 
   studios: Studio[]; 
   authTrainer: Trainer | null;
+  isAdmin?: boolean;
 }) {
   const [activeStudioId, setActiveStudioIdState] = useState<string | null>(() => {
     return localStorage.getItem('max_strength_active_studio_id');
@@ -27,18 +30,22 @@ export function ActiveStudioProvider({
   const [isChangingStudio, setIsChangingStudio] = useState(false);
 
   const availableStudios = React.useMemo(() => {
+    // If not logged in as a trainer, no studios available
     if (!authTrainer) return [];
-    if (authTrainer.role === 'Owner') return studios;
     
-    // Union of accessible and guest studios
+    // Admin Override: System admins see all studios
+    if (isAdmin || authTrainer.role === 'Owner') return studios;
+
+    // Union of accessible, guest, and owned studios
     const allowedIds = new Set([
       authTrainer.primaryHomeStudioId,
       ...(authTrainer.accessibleStudioIds || []),
-      ...(authTrainer.activeGuestStudioIds || [])
+      ...(authTrainer.activeGuestStudioIds || []),
+      ...(authTrainer.ownedStudioIds || [])
     ]);
     
     return studios.filter(s => s.id && allowedIds.has(s.id));
-  }, [authTrainer, studios]);
+  }, [authTrainer, studios, isAdmin]);
 
   const activeStudio = React.useMemo(() => {
     return studios.find(s => s.id === activeStudioId) || null;
@@ -70,7 +77,8 @@ export function ActiveStudioProvider({
       setActiveStudioId, 
       availableStudios,
       isChangingStudio,
-      setIsChangingStudio
+      setIsChangingStudio,
+      isAdmin
     }}>
       {children}
     </ActiveStudioContext.Provider>
