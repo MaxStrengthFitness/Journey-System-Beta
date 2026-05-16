@@ -36,23 +36,27 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { WorkoutSession, ExerciseLog, Machine, Trainer, RepQuality } from '../types';
+import { WorkoutSession, ExerciseLog, Machine, Trainer, RepQuality, Studio } from '../types';
 import { cn, parseSessionDate, calculateExerciseVolume } from '../lib/utils';
 import { OperationType, handleFirestoreError } from '../lib/firestore-errors';
+import { useActiveStudio } from '../ActiveStudioContext';
 
 export function ClientHistoryCalendar({ 
   clientId, 
+  clientHomeStudioId,
   machines,
   trainers,
   user,
   allLogs = []
 }: { 
   clientId: string, 
+  clientHomeStudioId?: string,
   machines: Machine[],
   trainers: Trainer[],
   user?: any,
   allLogs?: ExerciseLog[]
 }) {
+  const { activeStudioId } = useActiveStudio();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [localAllLogs, setLocalAllLogs] = useState<ExerciseLog[]>([]);
   const [viewDate, setViewDate] = useState(new Date()); // For month navigation
@@ -207,7 +211,9 @@ export function ClientHistoryCalendar({
       const newSession: WorkoutSession = {
         clientId,
         date: manualDate,
-        clientHomeStudioId: null as any,
+        hostedAtStudioId: activeStudioId || 'unknown',
+        clientHomeStudioId: clientHomeStudioId || activeStudioId || 'unknown',
+        isCrossTrain: !!(clientHomeStudioId && activeStudioId && clientHomeStudioId !== activeStudioId),
         sessionType: 'Standard',
         startTime: manualDate + 'T12:00:00.000Z',
         endTime: manualDate + 'T12:30:00.000Z',

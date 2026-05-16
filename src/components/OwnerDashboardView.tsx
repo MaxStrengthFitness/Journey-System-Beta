@@ -3,9 +3,10 @@ import { collection, query, getDocs, where, Timestamp } from 'firebase/firestore
 import { db } from '../firebase';
 import { WorkoutSession, Studio } from '../types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Network, MapPin, Activity, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Network, MapPin, Activity, CalendarDays, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-export function OwnerDashboardView() {
+export function OwnerDashboardView({ onManageStudios }: { onManageStudios?: () => void }) {
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [studios, setStudios] = useState<Studio[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +50,7 @@ export function OwnerDashboardView() {
         // The statistical routing ID is strictly based on the denormalized clientHomeStudioId.
         const creditedSessions = sessionsData.map(session => ({
           ...session,
-          statisticalStudioId: session.clientHomeStudioId || session.studioId
+          statisticalStudioId: session.clientHomeStudioId || session.hostedAtStudioId
         }));
 
         setSessions(creditedSessions as any);
@@ -79,7 +80,7 @@ export function OwnerDashboardView() {
   const studioStats = studios.map(studio => {
     // Filter sessions using the STRICT statistical routing ID derived above
     const creditedSessions = sessions.filter((s: any) => s.statisticalStudioId === studio.id);
-    const physicallyHostedSessions = sessions.filter(s => s.studioId === studio.id);
+    const physicallyHostedSessions = sessions.filter(s => s.hostedAtStudioId === studio.id);
     
     return {
       ...studio,
@@ -99,6 +100,16 @@ export function OwnerDashboardView() {
           <h1 className="text-3xl font-black uppercase text-slate-800 tracking-tight">Owner Dashboard</h1>
           <p className="text-sm font-bold uppercase tracking-widest text-slate-500">Enterprise Network Overview</p>
         </div>
+
+        {onManageStudios && (
+          <Button 
+            onClick={onManageStudios}
+            className="ml-6 rounded-2xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 font-bold uppercase tracking-widest text-[10px] h-10 px-4 shadow-sm"
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Manage Studios
+          </Button>
+        )}
         
         <div className="ml-auto flex items-center bg-white rounded-2xl border border-slate-200 shadow-sm p-1">
           <button onClick={handlePrevMonth} className="p-2 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors rounded-xl outline-none">

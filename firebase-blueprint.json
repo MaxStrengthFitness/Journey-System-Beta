@@ -8,6 +8,7 @@
         "fullName": { "type": "string", "description": "Full name of the trainer" },
         "initials": { "type": "string", "description": "Trainer initials for session sign-offs" },
         "pin": { "type": "string", "description": "Numeric PIN for fast profile switching" },
+        "ownedStudioIds": { "type": "array", "items": { "type": "string" }, "description": "IDs of studios owned by this trainer if they are an Owner" },
         "mindbody_ical_url": { "type": "string", "description": "MindBody schedule subscription URL" },
         "legacy_filemaker_id": { "type": "string", "description": "ID from original tracking software" },
         "createdAt": { "type": "string", "format": "date-time" }

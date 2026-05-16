@@ -21,6 +21,7 @@ import {
 import { Client, Machine, Trainer, WorkoutSession, ExerciseLog } from '../types';
 import { processLegacyChart, extractMachineSettingsFromImage, OCRMachineSetting, ValidationSession, ValidationLog, sanitizeImportedSessions, OCRResult } from '../services/geminiService';
 import { db } from '../firebase';
+import { useActiveStudio } from '../ActiveStudioContext';
 import { collection, writeBatch, doc, serverTimestamp, getDocs, query, where, increment } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -87,6 +88,7 @@ const normalizeMachineName=(rawName:string):string=>{
 };
 
 export function LegacyChartImporter({ clients, machines, trainers, initialClientId, onComplete }: ImporterProps) {
+  const { activeStudioId } = useActiveStudio();
   const [selectedClientId, setSelectedClientId] = useState<string>(initialClientId || '');
   const [expectedSessions, setExpectedSessions] = useState<number>(10);
   const [files, setFiles] = useState<{ name: string; base64: string; mimeType: string; previewUrl: string }[]>([]);
@@ -391,9 +393,14 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
           return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         };
 
+        // In the context of Legacy Import, we'll assume it happened at the target student's home studio or currently active studio
+        const hostedAtStudioId = activeStudioId || 'legacy';
+
         const sessionData: WorkoutSession = {
           clientId: selectedClientId,
-          clientHomeStudioId: null as any,
+          hostedAtStudioId,
+          clientHomeStudioId: hostedAtStudioId, // Defaulting to the same for legacy
+          isCrossTrain: false,
           sessionType: 'Standard',
           sessionNumber: vSess.sessionNumber,
           date: formattedDate || fallbackDate(),

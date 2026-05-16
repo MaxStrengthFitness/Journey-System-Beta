@@ -1676,6 +1676,7 @@ export function ClientProfileView({
               <div className="flex flex-col gap-4">
                 <ClientHistoryCalendar
                   clientId={clientId}
+                  clientHomeStudioId={client?.homeStudioId}
                   machines={machines}
                   trainers={trainers}
                   user={user}
@@ -3177,7 +3178,7 @@ export function ClientProfileView({
                 </CardContent>
               </Card>
 
-              {authTrainer?.isOwner && (
+              {authTrainer?.role === 'Owner' && (
                 <Card className="rounded-[40px] shadow-sm bg-amber-500/5 border-amber-500/10 text-white">
                   <CardHeader className="p-8 border-b border-amber-500/10 flex flex-row items-center justify-between">
                     <div>

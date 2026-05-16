@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { ActiveStudioProvider, useActiveStudio } from '../ActiveStudioContext';
 import { collection, getDocs, query, where, orderBy, limit, QueryConstraint, Query } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Client, Trainer } from '../types';
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTrainer }: Props) {
+  const { activeStudioId } = useActiveStudio();
   const [searchQuery, setSearchQuery] = useState('');
   const [isGlobalSearch, setIsGlobalSearch] = useState(false);
   const [searchResults, setSearchResults] = useState<Client[]>([]);
@@ -31,8 +33,8 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
           // Empty search: 'Recently Profiled'
           const queries: QueryConstraint[] = [];
           
-          if (!isGlobalSearch && authTrainer?.homeStudioId) {
-            queries.push(where('homeStudioId', '==', authTrainer.homeStudioId));
+          if (!isGlobalSearch && activeStudioId) {
+            queries.push(where('homeStudioId', '==', activeStudioId));
           }
           
           q = query(
@@ -44,27 +46,12 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
         } else {
           // We have a search term.
           const term = searchQuery.toLowerCase();
-          
-          // Note: Firestore string prefix queries require exact case match by default if no lowercase fields exist. 
-          // We assume 'lastName' or 'firstName' fields. To do simple prefix match:
-          // Since we can't easily do a case-insensitive full-name contains in Firestore without an array,
-          // we will prefix search on 'firstName' and client-side filter if needed, 
-          // or properly prefix query on a known field.
-          // Due to limitations, let's prefix query 'firstName' for the first word:
+          const termCapitalized = term.charAt(0).toUpperCase() + term.slice(1);
           
           const queries: QueryConstraint[] = [];
-          if (!isGlobalSearch && authTrainer?.homeStudioId) {
-            queries.push(where('homeStudioId', '==', authTrainer.homeStudioId));
+          if (!isGlobalSearch && activeStudioId) {
+            queries.push(where('homeStudioId', '==', activeStudioId));
           }
-          
-          // To implement as requested: string boundary querying for search term
-          // the prompt asked: "where('lastName', '>=', searchTerm), where('lastName', '<=', searchTerm + '\uf8ff')"
-          // However, we want them to find people... maybe we just fetch limit(20) matching the queries 
-          // and apply that boundary! But what if they type a first name? 
-          // The prompt specifies: "use Firebase's string boundary querying for the search term (e.g., where('lastName', '>=', searchTerm), where('lastName', '<=', searchTerm + '\uf8ff')) and attach a .limit(20)"
-          
-          // If we format the search term with first letter capitalized, it might work better.
-          const termCapitalized = term.charAt(0).toUpperCase() + term.slice(1);
           
           q = query(
             clientsRef,
@@ -73,23 +60,16 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
             where('lastName', '<=', termCapitalized + '\uf8ff'),
             limit(20)
           );
-          
-          // If the query is empty resulting from lastName, we might miss firstName searches... 
-          // For now, adhering strictly strictly to prompt "e.g. where('lastName'..." 
-          // But I'll actually just fetch by 'firstName' prefix OR just pull recent 50 and client-side filter if this is small,
-          // Wait, the prompt explicitly said:
-          // "Use Firebase's string boundary querying for the search term (e.g., where('lastName', '>=', searchTerm), where('lastName', '<=', searchTerm + '\uf8ff')) and attach a .limit(20) to ensure we never over-fetch."
         }
 
         const snap = await getDocs(q);
         const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Client));
         
-        // Let's do a fallback for firstName if lastName doesn't match and we are searching
         if (searchQuery.trim() && fetched.length === 0) {
           const termCapitalized = searchQuery.trim().charAt(0).toUpperCase() + searchQuery.trim().slice(1);
           const queries: QueryConstraint[] = [];
-          if (!isGlobalSearch && authTrainer?.homeStudioId) {
-            queries.push(where('homeStudioId', '==', authTrainer.homeStudioId));
+          if (!isGlobalSearch && activeStudioId) {
+            queries.push(where('homeStudioId', '==', activeStudioId));
           }
           const q2 = query(
             clientsRef,
@@ -110,13 +90,12 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
       }
     };
     
-    // Debounce the search
     const delayDebounceFn = setTimeout(() => {
       fetchClients();
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, isGlobalSearch, authTrainer?.homeStudioId]);
+  }, [searchQuery, isGlobalSearch, activeStudioId]);
 
   const displayClients = searchResults;
 
@@ -160,7 +139,7 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
           />
         </div>
         
-        {authTrainer?.homeStudioId && (
+        {authTrainer?.primaryHomeStudioId && (
           <div className="flex items-center gap-3 mt-4 px-2">
             <button
               onClick={() => setIsGlobalSearch(!isGlobalSearch)}
@@ -169,7 +148,7 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
               <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-transform ${isGlobalSearch ? 'left-[22px]' : 'left-0.5'}`} />
             </button>
             <span className="text-xs font-bold text-slate-400 tracking-widest uppercase">
-              Global Search (All Locations)
+              Search Entire Network
             </span>
           </div>
         )}

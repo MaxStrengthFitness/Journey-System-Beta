@@ -73,23 +73,23 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => onLogin(t)}
-                className={`group relative bg-card/40 backdrop-blur-xl border-2 ${t.isOwner ? 'border-amber-500/20' : 'border-border/10'} hover:border-primary/50 p-6 rounded-[32px] flex items-center justify-between transition-all shadow-sm`}
+                className={`group relative bg-card/40 backdrop-blur-xl border-2 ${t.role === 'Owner' ? 'border-amber-500/20' : 'border-border/10'} hover:border-primary/50 p-6 rounded-[32px] flex items-center justify-between transition-all shadow-sm`}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-2xl ${t.isOwner ? 'bg-amber-500/10 text-amber-600' : 'bg-primary/10 text-primary'} flex items-center justify-center font-black uppercase italic text-lg`}>
+                  <div className={`w-12 h-12 rounded-2xl ${t.role === 'Owner' ? 'bg-amber-500/10 text-amber-600' : 'bg-primary/10 text-primary'} flex items-center justify-center font-black uppercase italic text-lg`}>
                     {t.initials}
                   </div>
                   <div className="text-left">
                     <div className="flex items-center gap-2">
                       <p className="font-black uppercase italic tracking-tight text-lg leading-none">{t.fullName}</p>
-                      {t.isOwner && (
+                      {t.role === 'Owner' && (
                         <div className="bg-amber-500/10 px-1.5 py-0.5 rounded text-[8px] font-black text-amber-600 uppercase tracking-widest">
                           Owner
                         </div>
                       )}
                     </div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                      {t.isOwner ? 'System Administrator' : 'Performance Trainer'}
+                      {t.role === 'Owner' ? 'System Administrator' : 'Performance Trainer'}
                     </p>
                   </div>
                 </div>

@@ -1,3 +1,19 @@
+/**
+ * Roles defining system access levels across the organization.
+ */
+export type UserRole = 'Owner' | 'LeadTrainer' | 'Trainer';
+
+/**
+ * Represents the top-level entity owning one or more studios.
+ */
+export interface Owner {
+  id: string;
+  name: string;
+  email: string;
+  /** IDs of studios owned by this entity for relational mapping */
+  ownedStudioIds: string[];
+}
+
 export interface TrainerAvailability {
   standard: {
     [day: string]: { isOpen: boolean; slots: { start: string; end: string }[] };
@@ -7,13 +23,31 @@ export interface TrainerAvailability {
   };
 }
 
+/**
+ * TRAINER & STAFF PROFILES
+ * Trainers are assigned to home locations but can be granted guest access elsewhere.
+ */
 export interface Trainer {
   id?: string;
   fullName: string;
   initials: string;
   pin: string;
-  isOwner?: boolean;
-  homeStudioId?: string;
+  /** Role determining UI permissions and logic overrides */
+  role: UserRole;
+  /** IDs of studios owned by this entity (if role is Owner) */
+  ownedStudioIds?: string[];
+  /** The primary physical location where this trainer is based */
+  primaryHomeStudioId: string;
+  /** List of studio IDs where the trainer has permanent staff access */
+  accessibleStudioIds: string[];
+  /** Temporary assignments to other studios outside their regular access */
+  activeGuestStudioIds: string[];
+  /** Public-facing bio for client profiles */
+  bio?: string;
+  /** List of professional certifications and qualifications */
+  certifications?: string[];
+  /** When the staff member joined the team */
+  employmentStartDate?: any;
   availability?: TrainerAvailability;
   mindbody_ical_url?: string;
   legacy_filemaker_id?: string;
@@ -61,7 +95,8 @@ export interface CurrentMachineMetric {
 export interface Client {
   id?: string;
   mindbodyId?: string;
-  homeStudioId?: string;
+  /** MANDATORY: The studio where the client is billed and primarily trains */
+  homeStudioId: string;
   firstName: string;
   lastName: string;
   gender?: 'Male' | 'Female' | 'Other' | string;
@@ -170,9 +205,12 @@ export interface WorkoutSession {
   id?: string;
   clientId?: string;
   routineId?: string;
-  studioId?: string;
+  /** PHYSICAL LOCATION: Where the workout actually took place */
+  hostedAtStudioId: string;
+  /** DATA ANCHOR: The client's home base (used for local reporting vs cross-studio usage) */
   clientHomeStudioId: string;
-  isCrossTrain?: boolean;
+  /** Flag for sessions performed at a non-home studio location */
+  isCrossTrain: boolean;
   sessionType: SessionType;
   sessionNumber: number;
   date: string;
@@ -412,9 +450,19 @@ export interface TrainerFocus {
   updatedAt: any;
 }
 
+/**
+ * PHYSICAL LOCATION SCHEMA
+ * Studios are the primary organizational units where workouts occur.
+ */
 export interface Studio {
   id?: string;
   name: string;
+  ownerId: string;
+  contactEmail?: string;
+  phone?: string;
+  address?: string;
+  timezone: string;
+  /** MindBody Site ID for external API synchronization */
   mindbodySiteId?: string;
   createdAt?: any;
 }
@@ -432,4 +480,4 @@ export interface HubAnnouncement {
   priority: 'low' | 'medium' | 'high';
 }
 
-export type View = 'trainers' | 'clients' | 'machines' | 'workouts' | 'history' | 'calendar' | 'trainer-hub' | 'dashboard' | 'profile' | 'chart' | 'trainer-profile' | 'progress-report' | 'consultation-wizard' | 'machine-knowledge' | 'client-directory' | 'chart-importer' | 'leaderboard' | 'owner-dashboard';
+export type View = 'trainers' | 'clients' | 'machines' | 'workouts' | 'history' | 'calendar' | 'trainer-hub' | 'dashboard' | 'profile' | 'chart' | 'trainer-profile' | 'progress-report' | 'consultation-wizard' | 'machine-knowledge' | 'client-directory' | 'chart-importer' | 'leaderboard' | 'owner-dashboard' | 'owner-studio-manager';

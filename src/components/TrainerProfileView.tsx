@@ -72,7 +72,7 @@ export function TrainerProfileView({
               <Badge variant="outline" className="rounded-md border-slate-700 text-slate-300 bg-slate-800 font-black uppercase text-[9px] h-5">
                 {trainer.initials}
               </Badge>
-              {trainer.isOwner && (
+              {trainer.role === 'Owner' && (
                  <Badge className="rounded-md bg-amber-500 hover:bg-amber-600 text-white font-black uppercase text-[9px] h-5 shadow-[0_0_10px_rgba(245,158,11,0.5)] border-none">
                   Owner
                 </Badge>

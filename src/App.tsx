@@ -113,6 +113,7 @@ import { PostSessionBriefingView } from './components/PostSessionBriefingView';
 import { ConsultationSetupWizard } from './components/ConsultationSetupWizard';
 import { ConsultationWizard } from './components/ConsultationWizard';
 import { OwnerDashboardView } from './components/OwnerDashboardView';
+import { OwnerStudioManager } from './components/OwnerStudioManager';
 import { CreateClientModal } from './components/CreateClientModal';
 import { ClientProgressReportView } from './components/ClientProgressReportView';
 import { SessionRoutineManagerModal } from './components/SessionRoutineManagerModal';
@@ -324,20 +325,111 @@ const HubAnnouncementHeaderGift = ({ announcements }: { announcements: HubAnnoun
   );
 };
 
+import { ActiveStudioProvider, useActiveStudio } from './ActiveStudioContext';
+
 export default function App() {
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [authTrainer, setAuthTrainer] = useState<Trainer | null>(null);
+  const [studios, setStudios] = useState<Studio[]>([]);
+  const [trainers, setTrainers] = useState<Trainer[]>([]);
+
   useEffect(() => {
     (window as any).migrateClientMachineMetrics = migrateClientMachineMetrics;
   }, []);
 
-  const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [isAuthReady, setIsAuthReady] = useState(false);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (u) {
+        // Fetch base data needed for provider
+        const trainerRef = doc(db, 'trainers', u.uid);
+        const trainerSnap = await getDoc(trainerRef);
+        if (trainerSnap.exists()) {
+          setAuthTrainer({ id: trainerSnap.id, ...trainerSnap.data() } as Trainer);
+        }
+
+        const studioSnap = await getDocs(collection(db, 'studios'));
+        setStudios(studioSnap.docs.map(d => ({ id: d.id, ...d.data() } as Studio)));
+        
+        const trainersSnap = await getDocs(collection(db, 'trainers'));
+        setTrainers(trainersSnap.docs.map(d => ({ id: d.id, ...d.data() } as Trainer)));
+      }
+      setIsAuthReady(true);
+    });
+    return unsubscribe;
+  }, []);
+
+  if (!isAuthReady) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center gap-4"
+        >
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-muted-foreground font-medium">Loading Max Strength...</p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <ActiveStudioProvider studios={studios} authTrainer={authTrainer}>
+      <AppContent 
+        user={user} 
+        authTrainer={authTrainer} 
+        setAuthTrainer={setAuthTrainer}
+        studios={studios}
+        setStudios={setStudios}
+        trainers={trainers}
+        setTrainers={setTrainers}
+      />
+    </ActiveStudioProvider>
+  );
+}
+
+function AppContent({ 
+  user, 
+  authTrainer, 
+  setAuthTrainer, 
+  studios, 
+  setStudios,
+  trainers,
+  setTrainers
+}: { 
+  user: FirebaseUser; 
+  authTrainer: Trainer; 
+  setAuthTrainer: (t: Trainer | null) => void;
+  studios: Studio[];
+  setStudios: (s: Studio[]) => void;
+  trainers: Trainer[];
+  setTrainers: (t: Trainer[]) => void;
+}) {
+  const { activeStudioId, activeStudio, setActiveStudioId, availableStudios } = useActiveStudio();
   const [isSyncing, setIsSyncing] = useState(false);
-  const [authTrainer, setAuthTrainer] = useState<Trainer | null>(null);
-  const [activeStudioId, setActiveStudioId] = useState<string | null>(localStorage.getItem('max_strength_active_studio_id'));
   const [currentView, setCurrentView] = useState<View>('clients');
   const [newClientOnboardingName, setNewClientOnboardingName] = useState<string | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedClientDoc, setSelectedClientDoc] = useState<Client | null>(null);
+  const [hasQuotaError, setHasQuotaError] = useState(false);
+  const [lastQuotaErrorMessage, setLastQuotaErrorMessage] = useState("");
+
+  const triggerQuotaError = (msg: string) => {
+    setHasQuotaError(true);
+    setLastQuotaErrorMessage(msg);
+  };
+
+  useEffect(() => {
+    const handleGlobalQuotaError = (e: any) => {
+      if (e.message?.toLowerCase().includes('quota')) {
+        triggerQuotaError(e.message);
+      }
+    };
+    window.addEventListener('error', handleGlobalQuotaError);
+    return () => window.removeEventListener('error', handleGlobalQuotaError);
+  }, []);
 
   // Fetch the selected client document whenever selectedClientId changes
   useEffect(() => {
@@ -361,22 +453,91 @@ export default function App() {
     fetchClient().catch(err => console.error("Unhandled rejection in fetchClient:", err));
   }, [selectedClientId]);
 
-
   const [dashboardInitialTab, setDashboardInitialTab] = useState<'analytics' | 'importer'>('analytics');
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [selectedProfileTrainerId, setSelectedProfileTrainerId] = useState<string | null>(null);
   const [leaderboardReturnView, setLeaderboardReturnView] = useState<View>('trainer-hub');
-  const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [machines, setMachines] = useState<Machine[]>(DEFAULT_MACHINES);
   const [schedules, setSchedules] = useState<any[]>([]);
   const [liveRosterClients, setLiveRosterClients] = useState<Client[]>([]);
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [trainerFocuses, setTrainerFocuses] = useState<TrainerFocus[]>([]);
   const [focusRecords, setFocusRecords] = useState<FocusRecord[]>([]);
-  const [studios, setStudios] = useState<Studio[]>([]);
   const [announcements, setAnnouncements] = useState<HubAnnouncement[]>([]);
-  
+
+  // Studio-Aware Listeners
+  useEffect(() => {
+    if (!authTrainer || hasQuotaError) return;
+    
+    const unsubscribeTrainers = onSnapshot(query(collection(db, 'trainers'), orderBy('order', 'asc')), (snap) => {
+      setTrainers(snap.docs.map(d => ({ id: d.id, ...d.data() } as Trainer)));
+    });
+
+    const unsubscribeMachines = onSnapshot(query(collection(db, 'machines'), orderBy('order', 'asc')), (snap) => {
+      const machinesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Machine));
+      const mergedMachines = DEFAULT_MACHINES.map(dm => {
+        const remote = machinesData.find(r => r.id === dm.id);
+        return remote ? { ...dm, ...remote } : dm;
+      });
+      const customMachines = machinesData.filter(r => !DEFAULT_MACHINES.find(dm => dm.id === r.id));
+      setMachines([...mergedMachines, ...customMachines].sort((a, b) => a.order - b.order));
+    });
+
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const thirtyDaysAhead = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const scheduleConstraints: QueryConstraint[] = [
+      where('startTime', '>=', Timestamp.fromDate(twentyFourHoursAgo)),
+      where('startTime', '<=', Timestamp.fromDate(thirtyDaysAhead)),
+      orderBy('startTime', 'asc')
+    ];
+    
+    // STRICT FILTERING BY ACTIVE STUDIO
+    if (activeStudioId) {
+      scheduleConstraints.push(where('studioId', '==', activeStudioId));
+    }
+
+    const unsubscribeSchedules = onSnapshot(query(collection(db, 'schedules'), ...scheduleConstraints), async (snap) => {
+      const schedulesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      setSchedules(schedulesData);
+      const clientIds = Array.from(new Set(schedulesData.map(s => s.clientId).filter(Boolean))) as string[];
+      if (clientIds.length > 0) {
+        const chunks = [];
+        for (let i = 0; i < clientIds.length; i += 10) chunks.push(clientIds.slice(i, i + 10));
+        const snapshots = await Promise.all(chunks.map(chunk => getDocs(query(collection(db, 'clients'), where('__name__', 'in', chunk)))));
+        setLiveRosterClients(snapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client))));
+      } else {
+        setLiveRosterClients([]);
+      }
+    });
+
+    const sessionConstraints: QueryConstraint[] = [
+      where('createdAt', '>=', Timestamp.fromDate(twentyFourHoursAgo)),
+      orderBy('createdAt', 'desc')
+    ];
+    if (activeStudioId) {
+      sessionConstraints.push(where('hostedAtStudioId', '==', activeStudioId));
+    }
+
+    const unsubscribeSessions = onSnapshot(query(collection(db, 'sessions'), ...sessionConstraints), (snap) => {
+      setSessions(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkoutSession)));
+    });
+
+    const unsubscribeStudios = onSnapshot(collection(db, 'studios'), (snap) => {
+      setStudios(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Studio)));
+    });
+
+    return () => {
+      unsubscribeTrainers();
+      unsubscribeMachines();
+      unsubscribeSchedules();
+      unsubscribeSessions();
+      unsubscribeStudios();
+    };
+  }, [authTrainer, activeStudioId, hasQuotaError]);
+
   // Announcements fetching
   useEffect(() => {
     if (!authTrainer) return;
@@ -390,10 +551,7 @@ export default function App() {
       setAnnouncements(filtered);
     });
   }, [authTrainer, activeStudioId]);
-  
-  // Derived state to replace the massive global array, 
-  // satisfying components that look up the currently active client by ID,
-  // and the Live Roster that needs today's scheduled clients.
+
   const clients = Array.from(new Map(
     [
       ...(selectedClientDoc ? [selectedClientDoc] : []),
@@ -426,7 +584,7 @@ export default function App() {
 
     const date = new Date().toISOString().split('T')[0];
 
-    const activeStudioId = authTrainer?.homeStudioId || null;
+    const activeStudioIdForSession = activeStudioId || authTrainer.primaryHomeStudioId;
 
     try {
       const docRef = await addDoc(collection(db, 'sessions'), {
@@ -434,8 +592,9 @@ export default function App() {
         sessionType: 'Standard',
         sessionNumber: 0,
         date,
-        studioId: activeStudioId,
-        clientHomeStudioId: null as any,
+        hostedAtStudioId: activeStudioIdForSession,
+        clientHomeStudioId: null,
+        isCrossTrain: false,
         trainerInitials: authTrainer.initials,
         trainerName: authTrainer.fullName,
         trainerId: authTrainer.id,
@@ -484,23 +643,6 @@ export default function App() {
     return studios.find(s => s.id === activeStudioId)?.name || null;
   }, [activeStudioId, studios]);
 
-  const [hasQuotaError, setHasQuotaError] = useState(false);
-  const [lastQuotaErrorMessage, setLastQuotaErrorMessage] = useState("");
-
-  const triggerQuotaError = (msg: string) => {
-    setHasQuotaError(true);
-    setLastQuotaErrorMessage(msg);
-  };
-
-  useEffect(() => {
-    const handleGlobalQuotaError = (e: any) => {
-      if (e.message?.toLowerCase().includes('quota')) {
-        triggerQuotaError(e.message);
-      }
-    };
-    window.addEventListener('error', handleGlobalQuotaError);
-    return () => window.removeEventListener('error', handleGlobalQuotaError);
-  }, []);
   const [clientFormData, setClientFormData] = useState({ 
     firstName: '', 
     lastName: '', 
@@ -682,14 +824,14 @@ export default function App() {
     
     if (viewOverride === 'trainer-hub' && user?.email === "jurgensaj@gmail.com") {
       if (trainers.length > 0) {
-        const ownerTrainer = trainers.find(t => t.isOwner) || trainers[0];
+        const ownerTrainer = trainers.find(t => t.role === 'Owner') || trainers[0];
         if (authTrainer?.id !== ownerTrainer.id) {
           setAuthTrainer(ownerTrainer);
           setCurrentView('trainer-hub');
         }
       } else if (!authTrainer) {
         // Mock a trainer if none exist for bypass
-        setAuthTrainer({ id: 'owner-temp', fullName: 'Owner Tim', initials: 'TD', pin: '0000', isOwner: true } as any);
+        setAuthTrainer({ id: 'owner-temp', fullName: 'Owner Tim', initials: 'TD', pin: '0000', role: 'Owner' } as any);
         setCurrentView('trainer-hub');
       }
       return;
@@ -832,6 +974,9 @@ export default function App() {
           trainerId: trainerId,
           trainerInitials: trainerInitials,
           date: dateStr,
+          hostedAtStudioId: activeStudioId || 'solon',
+          clientHomeStudioId: activeStudioId || 'solon',
+          isCrossTrain: false,
           routineName: routineName,
           sessionType: 'Standard',
           sessionNumber: i + 1,
@@ -898,319 +1043,15 @@ export default function App() {
     }
   };
 
-  // Auth Listener
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setIsAuthReady(true);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Seed Machines and Trainers if empty
-  const hasSeededRef = React.useRef(false);
-  useEffect(() => {
-    if (!isAuthReady || !user || hasQuotaError || hasSeededRef.current) return;
-
-    const seedData = async () => {
-      try {
-        // Only seed if we haven't checked this session
-        if (sessionStorage.getItem('msf_seeded_check')) {
-          hasSeededRef.current = true;
-          return;
-        }
-
-        const trainersSnap = await getDocs(collection(db, 'trainers'));
-        if (trainersSnap.empty) {
-          console.log("Seeding standardized trainers...");
-          const team = [
-            { fullName: "Marina Borden", initials: "MB" },
-            { fullName: "Giovanni Lupia", initials: "GL" },
-            { fullName: "Christian Lupia", initials: "CL" },
-            { fullName: "Austin Jurgens", initials: "AJ" },
-            { fullName: "Arielle Sweeney", initials: "AS" },
-            { fullName: "Tim Dardis", initials: "TD", isOwner: true }
-          ];
-          
-          for (const member of team) {
-            await addDoc(collection(db, 'trainers'), {
-              ...member,
-              pin: "0000", 
-              createdAt: serverTimestamp(),
-              order: team.indexOf(member)
-            });
-          }
-        }
-
-        // Check if machines exist before seeding to save quota
-        const machinesSnap = await getDocs(collection(db, 'machines'));
-        if (machinesSnap.size < DEFAULT_MACHINES.length) {
-          console.log("Ensuring standard equipment is synced...");
-          const machinePromises = DEFAULT_MACHINES.map((machine) => 
-            setDoc(doc(db, 'machines', machine.id!), {
-              ...machine
-            }, { merge: true })
-          );
-          await Promise.all(machinePromises);
-        }
-
-        sessionStorage.setItem('msf_seeded_check', 'true');
-        hasSeededRef.current = true;
-      } catch (error: any) {
-        if (error.message?.toLowerCase().includes('quota')) {
-          setHasQuotaError(true);
-        } else {
-          console.error("Failed to seed:", error);
-        }
-      }
-    };
-    
-    seedData().catch(err => console.error("Unhandled rejection in seedData:", err));
-  }, [isAuthReady, user?.uid, hasQuotaError]);
-
-  // Cleanup old unassigned sessions (once daily per user session, limited to admin)
-  useEffect(() => {
-    if (!isAuthReady || !user || hasQuotaError) return;
-    // Only run cleanup for the main admin to save quota across users
-    if (user.email !== "jurgensaj@gmail.com") return;
-
-    const cleanup = async () => {
-      const todayString = new Date().toISOString().split('T')[0];
-      const lastCleanup = localStorage.getItem('last_unassigned_cleanup');
-      if (lastCleanup === todayString) return;
-
-      // Set it immediately to prevent infinite retries if it fails
-      localStorage.setItem('last_unassigned_cleanup', todayString);
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      try {
-        const q = query(
-          collection(db, 'sessions'),
-          where('isUnassigned', '==', true),
-          limit(25)
-        );
-        
-        const snap = await getDocs(q);
-        const deletePromises = snap.docs
-          .filter(docRef => {
-            const data = docRef.data();
-            const created = safeToDate(data.createdAt) || new Date(data.date);
-            return created < today;
-          })
-          .map(async (docRef) => {
-            try {
-              // Delete associated logs first
-              const logsQ = query(collection(db, 'exerciseLogs'), where('sessionId', '==', docRef.id));
-              const logsSnap = await getDocs(logsQ);
-              for (const logDoc of logsSnap.docs) {
-                await deleteDoc(logDoc.ref);
-              }
-              // Delete associated notes
-              const notesQ = query(collection(db, 'sessionNotes'), where('sessionId', '==', docRef.id));
-              const notesSnap = await getDocs(notesQ);
-              for (const noteDoc of notesSnap.docs) {
-                await deleteDoc(noteDoc.ref);
-              }
-              // Delete session
-              await deleteDoc(docRef.ref);
-            } catch (err: any) {
-               if (err.message?.toLowerCase().includes('quota')) triggerQuotaError(err.message);
-            }
-          });
-          
-        await Promise.all(deletePromises);
-      } catch (error: any) {
-        if (error.message?.toLowerCase().includes('quota')) {
-          setHasQuotaError(true);
-        } else {
-          console.error("Error cleaning up sessions:", error);
-        }
-      }
-    };
-    cleanup().catch(err => console.error("Unhandled rejection in cleanup:", err));
-  }, [isAuthReady, user?.uid, hasQuotaError]);
-
-  // Data Listeners
-  useEffect(() => {
-    if (!isAuthReady || !user || hasQuotaError) {
-      return;
-    }
-    
-    const trainersQuery = query(collection(db, 'trainers'), orderBy('order', 'asc'));
-    
-    // Check cache for trainers
-    const cachedTrainers = sessionStorage.getItem('msf_trainers_cache');
-    if (cachedTrainers) {
-      try {
-        setTrainers(JSON.parse(cachedTrainers));
-      } catch (e) {
-        console.error("Failed to parse cached trainers", e);
-      }
-    }
-
-    const unsubscribeTrainers = onSnapshot(trainersQuery, (snapshot) => {
-      const trainersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Trainer));
-      setTrainers(trainersData);
-      sessionStorage.setItem('msf_trainers_cache', JSON.stringify(trainersData));
-    }, (error) => {
-      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
-      handleFirestoreError(error, OperationType.GET, 'trainers');
-    });
-
-    const machinesQuery = query(collection(db, 'machines'), orderBy('order', 'asc'));
-    
-    // Check cache for machines
-    const cachedMachines = sessionStorage.getItem('msf_machines_cache');
-    if (cachedMachines) {
-      try {
-        setMachines(JSON.parse(cachedMachines));
-      } catch (e) {
-        console.error("Failed to parse cached machines", e);
-      }
-    }
-
-    const unsubscribeMachines = onSnapshot(machinesQuery, (snapshot) => {
-      const machinesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Machine));
-      
-      const mergedMachines = DEFAULT_MACHINES.map(dm => {
-        const remote = machinesData.find(r => r.id === dm.id);
-        return remote ? { ...dm, ...remote } : dm;
-      });
-
-      const customMachines = machinesData.filter(r => !DEFAULT_MACHINES.find(dm => dm.id === r.id));
-      
-      const uniqueNames = new Set<string>();
-      const finalMachines = [...mergedMachines, ...customMachines]
-        .filter(m => {
-          const lowerName = m.name?.toLowerCase() || '';
-          if (uniqueNames.has(lowerName)) return false;
-          uniqueNames.add(lowerName);
-          return true;
-        })
-        .sort((a, b) => a.order - b.order);
-      
-      setMachines(finalMachines);
-      sessionStorage.setItem('msf_machines_cache', JSON.stringify(finalMachines));
-    }, (error) => {
-      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
-      handleFirestoreError(error, OperationType.GET, 'machines');
-    });
-
-    const now = new Date();
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const thirtyDaysAhead = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-    const queryConstraints: QueryConstraint[] = [
-      where('startTime', '>=', Timestamp.fromDate(twentyFourHoursAgo)),
-      where('startTime', '<=', Timestamp.fromDate(thirtyDaysAhead)),
-      orderBy('startTime', 'asc')
-    ];
-    if (authTrainer?.homeStudioId) {
-      queryConstraints.push(where('studioId', '==', authTrainer.homeStudioId));
-    }
-
-    const schedulesQuery = query(
-      collection(db, 'schedules'), 
-      ...queryConstraints
-    );
-    const unsubscribeSchedules = onSnapshot(schedulesQuery, async (snapshot) => {
-      const schedulesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-      setSchedules(schedulesData);
-      
-      // Extract unique clientIds from today's schedules
-      const clientIds = Array.from(new Set(schedulesData.map(s => s.clientId).filter(Boolean))) as string[];
-      if (clientIds.length > 0) {
-        // Firestore 'in' queries are limited to 10 items. We must batch them.
-        const chunkArray = (arr: string[], size: number) => {
-          const chunked = [];
-          for (let i = 0; i < arr.length; i += size) {
-            chunked.push(arr.slice(i, i + size));
-          }
-          return chunked;
-        };
-        const chunks = chunkArray(clientIds, 10);
-        try {
-          const clientPromises = chunks.map(chunk => 
-            getDocs(query(collection(db, 'clients'), where('__name__', 'in', chunk)))
-          );
-          const snaps = await Promise.all(clientPromises);
-          const rosterClients = snaps.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
-          setLiveRosterClients(rosterClients);
-        } catch (e) {
-          console.error("Error fetching live roster clients", e);
-        }
-      } else {
-        setLiveRosterClients([]);
-      }
-    }, (error) => {
-      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
-      handleFirestoreError(error, OperationType.GET, 'schedules');
-    });
-
-    const sessionsQuery = query(
-      collection(db, 'sessions'), 
-      where('createdAt', '>=', Timestamp.fromDate(twentyFourHoursAgo)),
-      orderBy('createdAt', 'desc')
-    );
-    const unsubscribeSessions = onSnapshot(sessionsQuery, (snapshot) => {
-      const sessionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkoutSession));
-      setSessions(sessionsData);
-    }, (error) => {
-      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
-      handleFirestoreError(error, OperationType.GET, 'sessions');
-    });
-
-    const unsubscribeTrainerFocuses = onSnapshot(collection(db, 'trainerFocuses'), (snapshot) => {
-      const focusData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TrainerFocus));
-      setTrainerFocuses(focusData);
-    }, (error) => {
-      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
-      handleFirestoreError(error, OperationType.GET, 'trainerFocuses');
-    });
-
-    const focusRecordsQuery = query(collection(db, 'focusRecords'), orderBy('createdAt', 'desc'), limit(100));
-    const unsubscribeFocusRecords = onSnapshot(focusRecordsQuery, (snapshot) => {
-      const focusData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FocusRecord));
-      setFocusRecords(focusData);
-    }, (error) => {
-      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
-      handleFirestoreError(error, OperationType.GET, 'focusRecords');
-    });
-
-    const unsubscribeStudios = onSnapshot(collection(db, 'studios'), (snapshot) => {
-      const studiosData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Studio));
-      setStudios(studiosData);
-    }, (error) => {
-      if (error.message?.toLowerCase().includes('quota')) { triggerQuotaError(error.message); return; }
-      handleFirestoreError(error, OperationType.GET, 'studios');
-    });
-
-    return () => {
-      unsubscribeTrainers();
-      unsubscribeMachines();
-      unsubscribeSchedules();
-      unsubscribeSessions();
-      unsubscribeTrainerFocuses();
-      unsubscribeFocusRecords();
-      unsubscribeStudios();
-    };
-  }, [isAuthReady, user?.uid]);
-
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const handleLogin = async () => {
     if (isLoggingIn) return;
     setIsLoggingIn(true);
     try {
       const provider = new GoogleAuthProvider();
-      // Using signInWithPopup with explicit resolver can help with assertion failures
       await signInWithPopup(auth, provider);
     } catch (error: any) {
       if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-        return;
-      }
-      if (error.message && error.message.includes('INTERNAL ASSERTION FAILED: Pending promise was never set')) {
         return;
       }
       console.error("Login failed:", error);
@@ -1220,129 +1061,6 @@ export default function App() {
   };
 
   const handleLogout = () => signOut(auth);
-
-  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
-
-  if (hasQuotaError) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background p-6">
-        <Card className="w-full max-w-xl border-none shadow-2xl bg-card/50 backdrop-blur-xl rounded-[40px] overflow-hidden">
-          <CardHeader className="p-8 pb-4 text-center">
-            <div className="mx-auto w-20 h-20 bg-amber-500/10 rounded-3xl flex items-center justify-center mb-6">
-              <AlertCircle className="w-10 h-10 text-amber-500" />
-            </div>
-            <CardTitle className="text-3xl font-black uppercase italic tracking-tighter">Database Capacity Reached</CardTitle>
-            <CardDescription className="text-xs font-bold uppercase tracking-widest leading-relaxed mt-2 text-muted-foreground/60">
-              Your Firestore project has reached its daily data limit.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-8 pt-4 space-y-6">
-            <div className="space-y-4">
-              <p className="text-sm font-medium text-muted-foreground leading-relaxed text-center">
-                To continue using the app immediately and remove these limits, you must upgrade your Firebase project to a <strong className="text-primary italic">paid plan (Blaze)</strong>. If you are already on a paid plan, ensure no budget caps or billing issues are active.
-              </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-5 bg-muted/30 rounded-2xl border border-border/50">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Current State</p>
-                  <p className="text-sm font-bold text-white leading-tight">Blocked by Google Cloud Quota Enforcement</p>
-                </div>
-                <div className="p-5 bg-muted/30 rounded-2xl border border-border/50">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Recommended Action</p>
-                  <p className="text-sm font-bold text-primary leading-tight">Upgrade to Blaze Plan</p>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-3 pt-2">
-                <Button 
-                  onClick={() => window.open(`https://console.firebase.google.com/project/${firebaseConfig.projectId}/usage/details`, '_blank')}
-                  className="w-full h-14 rounded-2xl font-black uppercase tracking-widest bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
-                >
-                  Open Firebase Usage Dashboard
-                </Button>
-                <div className="flex gap-3">
-                  <Button 
-                    onClick={() => window.location.reload()} 
-                    variant="outline" 
-                    className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest border-2"
-                  >
-                    Refresh App
-                  </Button>
-                  <Button 
-                    onClick={() => setShowTechnicalDetails(!showTechnicalDetails)} 
-                    variant="ghost" 
-                    className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-muted-foreground"
-                  >
-                    {showTechnicalDetails ? 'Hide Details' : 'Show Details'}
-                  </Button>
-                </div>
-              </div>
-
-              {showTechnicalDetails && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="p-4 bg-black/40 rounded-xl border border-white/5 font-mono text-[10px] text-zinc-500 overflow-hidden"
-                >
-                  <p className="mb-2 uppercase tracking-widest font-black text-zinc-400">Diagnostic Info</p>
-                  <p>Project ID: {firebaseConfig.projectId || 'Unknown'}</p>
-                  <p>Timestamp: {new Date().toISOString()}</p>
-                  <p>User UID: {user?.uid || 'Not Authenticated'}</p>
-                  <p className="mt-2 text-amber-500/80">Message: {lastQuotaErrorMessage || "The Firestore Enterprise Free Tier allows for 50,000 reads and 20,000 writes per day. Once exceeded, all requests are rejected with a 429 Resource Exhausted error."}</p>
-                  {lastQuotaErrorMessage?.includes('free tier database') && (
-                    <p className="mt-2 text-red-400 font-bold">
-                      CRITICAL: Google reports this is still a "free tier database". Please ensure the project was upgraded to BLAZE and that the Firestore instance has billing enabled.
-                    </p>
-                  )}
-                  
-                  <div className="mt-4 pt-4 border-t border-white/5 space-y-3">
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2">Internal Tools</p>
-                    <Button 
-                      onClick={async () => {
-                        if (!authTrainer) {
-                          alert("Trainer identity not loaded. Generation requires a trainer ID.");
-                          return;
-                        }
-                        if (confirm("Generate mock data for testing? This will attempt to write to Firestore.")) {
-                          try {
-                            const { clientName } = await generateMockClientWithHistory(authTrainer.id!, authTrainer.initials);
-                            alert(`Success: Created ${clientName}`);
-                            window.location.reload();
-                          } catch (err: any) {
-                            alert(`Failed: ${err.message}`);
-                          }
-                        }
-                      }}
-                      variant="outline"
-                      className="w-full h-8 rounded-lg font-black uppercase text-[9px] tracking-widest gap-2 bg-amber-500/5 border-amber-500/20 text-amber-500 hover:bg-amber-500/10"
-                    >
-                      <Database className="w-3 h-3" />
-                      Provision Mock Client Data
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!isAuthReady) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex flex-col items-center gap-4"
-        >
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted-foreground font-medium">Loading Max Strength...</p>
-        </motion.div>
-      </div>
-    );
-  }
 
   if (!user) {
     return (
@@ -1423,13 +1141,12 @@ export default function App() {
   }
 
   // Studio Selection Screen
-  if (!activeStudioId && studios.length > 0) {
+  if (!activeStudioId && availableStudios.length > 0) {
     return (
       <StudioSelectionView 
-        studios={studios}
+        studios={availableStudios}
         onSelect={(studioId) => {
           setActiveStudioId(studioId);
-          localStorage.setItem('max_strength_active_studio_id', studioId);
         }}
         onBack={handleTrainerLock}
       />
@@ -1542,7 +1259,7 @@ export default function App() {
                       <Settings className="w-4 h-4" />
                       Trainer Hub
                     </DropdownMenuItem>
-                    {(authTrainer?.isOwner || user.email === "jurgensaj@gmail.com") && (
+                    {(authTrainer?.role === 'Owner' || user.email === "jurgensaj@gmail.com") && (
                       <DropdownMenuItem 
                         onClick={() => setCurrentView('owner-dashboard')}
                         className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-white focus:bg-slate-700 focus:text-white text-[#F06C22]"
@@ -1775,15 +1492,23 @@ export default function App() {
               />
             )}
             {currentView === 'owner-dashboard' && (
-              <OwnerDashboardView />
+              <OwnerDashboardView onManageStudios={() => setCurrentView('owner-studio-manager')} />
+            )}
+            {currentView === 'owner-studio-manager' && authTrainer && (
+              <OwnerStudioManager 
+                authTrainer={authTrainer} 
+                studios={studios} 
+                onBack={() => setCurrentView('owner-dashboard')} 
+              />
             )}
             {currentView === 'trainer-hub' && (
               <TrainerControlHubView 
+                activeStudioId={activeStudioId}
                 trainers={trainers} 
                 machines={machines}
                 clients={clients}
                 authTrainer={authTrainer} 
-                isAdmin={authTrainer?.isOwner || user.email === "jurgensaj@gmail.com"} 
+                isAdmin={authTrainer?.role === 'Owner' || user.email === "jurgensaj@gmail.com"} 
                 onAppCleanse={handleAppCleanse}
                 onSeedDemoClient={handleSeedDemoClient}
                 onRestoreMachines={handleRestoreMachines}
@@ -1882,7 +1607,7 @@ export default function App() {
             label="Calendar"
           />
 
-          {(authTrainer?.isOwner || user?.email === "jurgensaj@gmail.com") && (
+          {(authTrainer?.role === 'Owner' || user?.email === "jurgensaj@gmail.com") && (
             <NavButton 
               active={currentView === 'dashboard'} 
               onClick={() => setCurrentView('dashboard')}
@@ -5388,6 +5113,7 @@ function WorkoutTrackerView({
   setIsSyncing: (v: boolean) => void,
   isIntroSession?: boolean
 }) {
+  const { activeStudioId: contextActiveStudioId } = useActiveStudio();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [logs, setLogs] = useState<Record<string, ExerciseLog>>({});
   const [routines, setRoutines] = useState<Routine[]>([]);
@@ -5829,21 +5555,27 @@ function WorkoutTrackerView({
 
       // 1. Create the session
       // STATISTICAL ROUTING & CROSS-TRAIN DETECTION
-      // The session should log where it physically happened (authTrainer's homeStudioId)
+      // The session should log where it physically happened (the currently active studio)
       // but if the client belongs elsewhere, mark it as a cross-train event.
-      const activeStudioId = authTrainer?.homeStudioId || null;
+      const currentStudioId = contextActiveStudioId || authTrainer?.primaryHomeStudioId || null;
+      
+      // Explicit fetch/find of client's home studio to verify cross-train status
       const targetClient = clients.find(c => c.id === clientId);
       const clientHomeStudioId = targetClient?.homeStudioId || null;
       
-      const isCrossTrain = clientHomeStudioId !== activeStudioId && activeStudioId !== null;
+      // Cross-Train Logic: If client's home studio != current location, flag it.
+      const isCrossTrain = clientHomeStudioId !== null && 
+                           currentStudioId !== null && 
+                           clientHomeStudioId !== currentStudioId;
 
       const docRef = await addDoc(collection(db, 'sessions'), {
         clientId,
         routineId: routineId || null,
+        hostedAtStudioId: currentStudioId,
+        clientHomeStudioId: clientHomeStudioId,
         sessionType,
         sessionNumber: nextNum,
         date,
-        studioId: activeStudioId,
         isCrossTrain,
         trainerInitials,
         trainerName,
@@ -5967,8 +5699,8 @@ function WorkoutTrackerView({
         sessionType,
         sessionNumber: nextNum, 
         date, 
-        clientHomeStudioId: clientHomeStudioId as any,
-        studioId: activeStudioId,
+        clientHomeStudioId: clientHomeStudioId || currentStudioId || '',
+        hostedAtStudioId: currentStudioId || '',
         isCrossTrain,
         trainerInitials,
         trainerName,

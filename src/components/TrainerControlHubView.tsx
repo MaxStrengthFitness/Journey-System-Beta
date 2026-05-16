@@ -39,6 +39,7 @@ export function TrainerControlHubView({
   machines, 
   clients,
   authTrainer, 
+  activeStudioId,
   isAdmin, 
   onAppCleanse,
   onSeedDemoClient,
@@ -52,6 +53,7 @@ export function TrainerControlHubView({
   machines: Machine[], 
   clients: Client[],
   authTrainer: Trainer | null, 
+  activeStudioId: string | null,
   isAdmin: boolean,
   onAppCleanse: () => void,
   onSeedDemoClient: () => void,
@@ -160,7 +162,7 @@ export function TrainerControlHubView({
         .filter(a => a.isActive !== false) // Handle active only
         .filter(a => 
           a.studioId === 'all' || 
-          (authTrainer?.homeStudioId && a.studioId === authTrainer.homeStudioId)
+          (activeStudioId && a.studioId === activeStudioId)
         )
         .sort((a, b) => {
           const timeA = a.createdAt?.toMillis?.() || 0;
@@ -172,7 +174,7 @@ export function TrainerControlHubView({
     }, (error) => {
       console.error("Announcements collection error:", error);
     });
-  }, [authTrainer?.homeStudioId]);
+  }, [activeStudioId]);
 
   const handleCreateAnnouncement = async () => {
     if (!authTrainer || !newAnnouncement.title || !newAnnouncement.shortContent) return;
@@ -586,7 +588,7 @@ export function TrainerControlHubView({
             { id: 'equipment', label: 'Equipment Configuration', icon: Database },
             { id: 'studio', label: 'Studio Config', icon: Building2 },
             { id: 'data', label: 'Data & Telemetry', icon: HardDrive },
-            ...(isAdmin || authTrainer?.isOwner ? [{ id: 'announcements', label: 'Hub Announcements', icon: Megaphone }] : []),
+            ...(isAdmin || authTrainer?.role === 'Owner' ? [{ id: 'announcements', label: 'Hub Announcements', icon: Megaphone }] : []),
           ].map(tab => {
             const Icon = tab.icon;
             return (
@@ -664,16 +666,16 @@ export function TrainerControlHubView({
                           )}
                         
                           <div className="flex items-start gap-4">
-                            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl italic mt-1 shrink-0", t.isOwner ? 'bg-[#F06C22]/20 text-[#F06C22]' : 'bg-slate-800 text-slate-300 border border-slate-700')}>
+                            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl italic mt-1 shrink-0", t.role === 'Owner' ? 'bg-[#F06C22]/20 text-[#F06C22]' : 'bg-slate-800 text-slate-300 border border-slate-700')}>
                               {t.initials}
                             </div>
                             <div className="flex flex-col flex-1 pr-8">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="text-lg font-black text-white uppercase italic leading-none">{t.fullName}</p>
-                                {t.isOwner && <span className="bg-[#F06C22]/10 text-[#F06C22] border border-[#F06C22]/20 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">Owner</span>}
+                                {t.role === 'Owner' && <span className="bg-[#F06C22]/10 text-[#F06C22] border border-[#F06C22]/20 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">Owner</span>}
                               </div>
                               <p className="text-[10px] font-bold uppercase tracking-widest text-[#38BDF8] leading-none mt-2">
-                                {t.isOwner ? 'System Admin' : 'Performance Trainer'}
+                                {t.role === 'Owner' ? 'System Admin' : 'Performance Trainer'}
                               </p>
                             </div>
                           </div>
