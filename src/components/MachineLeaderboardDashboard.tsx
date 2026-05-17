@@ -55,7 +55,7 @@ const LeaderboardChart = ({
       .attr('transform', `translate(${margin.left},${margin.top})`);
 
     const x = d3.scaleLinear()
-      .domain([0, d3.max(data, d => sortBy === 'gain' ? (d.strengthGainPercent || 0) : d.maxWeight) || 100])
+      .domain([0, d3.max(data, d => d.weight) || 100])
       .range([0, width]);
 
     const y = d3.scaleBand()
@@ -89,7 +89,7 @@ const LeaderboardChart = ({
       })
       .transition()
       .duration(800)
-      .attr('width', d => x(sortBy === 'gain' ? (d.strengthGainPercent || 0) : d.maxWeight));
+      .attr('width', d => x(d.weight));
 
     // Client Labels (Y Axis)
     bars.append('text')
@@ -110,7 +110,7 @@ const LeaderboardChart = ({
       .attr('fill', '#FFFFFF')
       .attr('font-size', '14px')
       .attr('font-weight', '900')
-      .text(d => sortBy === 'gain' ? `+${d.strengthGainPercent || 0}%` : `${d.maxWeight} LBS`);
+      .text(d => `${d.weight} LBS`);
 
     // Rank numbers
     bars.append('text')
@@ -163,7 +163,7 @@ export function MachineLeaderboardDashboard({
     async function fetchMaterializedLeaderboard() {
       setIsLoading(true);
       try {
-        const docId = viewScope === 'global' ? 'global_latest' : `studio_${activeStudioId}_latest`;
+        const docId = viewScope === 'global' ? 'global' : `studio_${activeStudioId}`;
         const docRef = doc(db, 'leaderboards', docId);
         const snap = await getDoc(docRef);
         
@@ -187,17 +187,17 @@ export function MachineLeaderboardDashboard({
   const machineRankings = useMemo(() => {
     if (!leaderboardData || !leaderboardData.machineData[selectedMachine]) return [];
     
-    let list = leaderboardData.machineData[selectedMachine].topRankings;
+    let list = leaderboardData.machineData[selectedMachine].topPerformers;
 
     if (searchQuery) {
       list = list.filter(r => r.clientName.toLowerCase().includes(searchQuery.toLowerCase()));
     }
 
     return [...list].sort((a, b) => {
-      if (sortBy === 'gain') return (b.strengthGainPercent || 0) - (a.strengthGainPercent || 0);
-      return b.maxWeight - a.maxWeight;
+      // Since it's already sorted by weight from backend, we just handle the switch
+      return b.weight - a.weight;
     });
-  }, [leaderboardData, selectedMachine, searchQuery, sortBy]);
+  }, [leaderboardData, selectedMachine, searchQuery]);
 
   const topThree = machineRankings.slice(0, 3);
   const others = machineRankings.slice(3, 20);
@@ -325,19 +325,13 @@ export function MachineLeaderboardDashboard({
                         </div>
                         <h3 className="text-xl font-black uppercase italic text-white tracking-tight mb-1">{entry.clientName}</h3>
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-4">SYNCED RANKING</p>
-                        <div className="mt-auto space-y-1">
                           <div className="text-4xl font-black text-white italic tracking-tighter leading-none">
-                            {sortBy === 'gain' ? (
-                              <>+{entry.strengthGainPercent || 0}<span className="text-[12px] font-bold uppercase text-slate-500 not-italic tracking-widest">%</span></>
-                            ) : (
-                              <>{entry.maxWeight} <span className="text-[12px] font-bold uppercase text-slate-500 not-italic tracking-widest">LBS</span></>
-                            )}
+                            {entry.weight} <span className="text-[12px] font-bold uppercase text-slate-500 not-italic tracking-widest">LBS</span>
                           </div>
                           <div className="py-2 px-4 bg-[#0A2E46] border border-[#38BDF8]/20 rounded-xl inline-flex items-center gap-3">
                              <span className="text-[10px] font-black uppercase text-[#38BDF8] tracking-widest">G:{entry.gap || 0} • {entry.reps || 0} REPS</span>
                           </div>
                         </div>
-                      </div>
                     </motion.div>
                   )) : (
                     <div className="col-span-3 py-20 text-center bg-slate-800/20 shadow-inner rounded-[32px]">

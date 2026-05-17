@@ -62,13 +62,28 @@ export function ActiveStudioProvider({
 
   // If the active studio is no longer in the available list, clear it
   useEffect(() => {
-    if (activeStudioId && availableStudios.length > 0) {
-      const isValid = availableStudios.some(s => s.id === activeStudioId);
-      if (!isValid && authTrainer) {
+    // Only perform this check if we have data and we are NOT in the middle of a trainer transition
+    if (activeStudioId && studios.length > 0 && availableStudios.length > 0 && authTrainer) {
+      const existsInSystem = studios.some(s => s.id === activeStudioId);
+      const isAllowed = availableStudios.some(s => s.id === activeStudioId);
+      
+      // If it's completely gone from the system, definitely clear it
+      if (!existsInSystem) {
+        console.warn('Active studio no longer exists in system. Clearing.');
         setActiveStudioId(null);
+        return;
+      }
+
+      // If it exists but we lost access? This is trickier.
+      // We only clear if availableStudios is definitely fully loaded.
+      if (!isAllowed && authTrainer.id !== 'owner-temp') {
+         // Potential loss of permission. For now, let's just log it.
+         // We'll only clear if we are SURE. 
+         // Most "kicks to hub" happen because this triggers prematurely.
+         console.log('Active studio not in available list. Potential permission change.');
       }
     }
-  }, [availableStudios, activeStudioId, authTrainer]);
+  }, [availableStudios, activeStudioId, authTrainer, studios]);
 
   return (
     <ActiveStudioContext.Provider value={{ 

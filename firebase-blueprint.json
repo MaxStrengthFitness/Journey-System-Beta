@@ -266,6 +266,48 @@
         }
       },
       "required": ["lastUpdated", "scope", "machineData"]
+    },
+    "ClientMachineSetting": {
+      "title": "ClientMachineSetting",
+      "description": "Machine configurations for a client.",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string" },
+        "machineId": { "type": "string" },
+        "settings": { "type": "object" },
+        "updatedBy": { "type": "string" },
+        "startingWeight": { "type": "number" },
+        "trainingLevel": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["clientId", "machineId"]
+    },
+    "MachineSettingChange": {
+      "title": "MachineSettingChange",
+      "description": "Audit record of a setting change.",
+      "type": "object",
+      "properties": {
+        "machineId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "trainerId": { "type": "string" },
+        "previousSettings": { "type": "object" },
+        "newSettings": { "type": "object" },
+        "reason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "RoutineAdjustment": {
+      "title": "RoutineAdjustment",
+      "description": "Audit record of a routine modification.",
+      "type": "object",
+      "properties": {
+        "routineId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "previousMachineIds": { "type": "array" },
+        "newMachineIds": { "type": "array" },
+        "trainerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
@@ -324,6 +366,18 @@
     "/leaderboards/{docId}": {
       "schema": "Leaderboard",
       "description": "Pre-calculated rankings for performance dashboard"
+    },
+    "/clientMachineSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/ClientMachineSetting" },
+      "description": "Machine-specific configurations for individual clients"
+    },
+    "/machineSettingChanges/{changeId}": {
+      "schema": { "$ref": "#/entities/MachineSettingChange" },
+      "description": "Historical audit log of machine setting adjustments"
+    },
+    "/routineAdjustments/{adjustmentId}": {
+      "schema": { "$ref": "#/entities/RoutineAdjustment" },
+      "description": "Audit log for changes made to a client's exercise routine"
     }
   }
 }

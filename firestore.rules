@@ -183,13 +183,13 @@ service cloud.firestore {
              data.machineId is string &&
              (!('settings' in data) || data.settings is map) &&
              (!('updatedBy' in data) || data.updatedBy is string) &&
-             (!('startingWeight' in data) || data.startingWeight is string) &&
+             (!('startingWeight' in data) || data.startingWeight is number || data.startingWeight is string) &&
              (!('trainingLevel' in data) || data.trainingLevel is string) &&
              (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
 
     function isValidSchedule(data) {
-      return hasRequiredFields(['clientName', 'trainerName', 'startTime', 'endTime', 'status', 'serviceName', 'source', 'createdAt']) &&
+      return hasRequiredFields(['clientName', 'trainerName', 'startTime', 'endTime', 'status', 'serviceName', 'source']) &&
              data.clientName is string &&
              data.trainerName is string &&
              data.startTime is timestamp &&
@@ -197,11 +197,13 @@ service cloud.firestore {
              data.status in ['Scheduled', 'Completed', 'Cancelled', 'No-Show'] &&
              data.serviceName is string &&
              data.source in ['MindBody', 'Manual', 'Subscription'] &&
-             (!('clientId' in data) || data.clientId is string) &&
-             (!('trainerId' in data) || data.trainerId is string) &&
-             (!('importId' in data) || data.importId is string) &&
-             (!('ical_uid' in data) || (data.ical_uid is string && data.ical_uid.size() < 255)) &&
-             (!('sync_secret' in data) || data.sync_secret is string);
+             (!('clientId' in data) || data.clientId == null || data.clientId is string) &&
+             (!('trainerId' in data) || data.trainerId == null || data.trainerId is string) &&
+             (!('importId' in data) || data.importId == null || data.importId is string) &&
+             (!('studioId' in data) || data.studioId == null || data.studioId is string) &&
+             (!('ical_uid' in data) || data.ical_uid == null || (data.ical_uid is string && data.ical_uid.size() < 255)) &&
+             (!('sync_secret' in data) || data.sync_secret == null || data.sync_secret is string) &&
+             (!('createdAt' in data) || data.createdAt == null || data.createdAt is timestamp);
     }
 
     function isValidRoutine(data) {
@@ -307,6 +309,7 @@ service cloud.firestore {
     match /clientMachineSettings/{settingId} {
       allow read: if isAuthenticated();
       allow create, update: if (isAdmin() || isAuthenticated()) && isValidClientMachineSetting(request.resource.data);
+      allow delete: if isAdmin() || isTrainer();
     }
 
     match /machines/{machineId} {
@@ -325,7 +328,7 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if (isAdmin() || isAuthenticated()) && isValidRoutine(request.resource.data);
       allow update: if (isAdmin() || isAuthenticated()) && isValidRoutine(request.resource.data);
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || isTrainer();
     }
 
     match /routineAdjustments/{adjustmentId} {
@@ -349,8 +352,16 @@ service cloud.firestore {
 
     match /schedules/{scheduleId} {
       allow read: if true;
-      allow create, update: if ('sync_secret' in request.resource.data && request.resource.data.sync_secret == 'STABLE_MASTER_SYNC_TOKEN_2026') || isTrainer();
-      allow delete: if isAdmin() || isTrainer();
+      allow create, update: if (
+        (request.resource.data.get('sync_secret', '') == 'STABLE_MASTER_SYNC_TOKEN_2026') || 
+        isTrainer() || 
+        isAdmin()
+      ) && isValidSchedule(request.resource.data);
+      allow delete: if (
+        isAdmin() || 
+        isTrainer() || 
+        (resource != null && resource.data.get('sync_secret', '') == 'STABLE_MASTER_SYNC_TOKEN_2026')
+      );
     }
     
     match /sessionNotes/{noteId} {

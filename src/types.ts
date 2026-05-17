@@ -488,18 +488,24 @@ export interface HubAnnouncement {
 export interface LeaderboardRank {
   clientId: string;
   clientName: string;
-  maxWeight: number;
+  weight: number;
   rank: number;
-  strengthGainPercent?: number;
-  initialWeight?: number;
+  percentile: number;
   reps?: number;
   gap?: number;
-  date: string;
+  strengthGainPercent?: number;
+  maxWeight?: number;
 }
 
 export interface LeaderboardMachineData {
-  machineId: string;
-  topRankings: LeaderboardRank[]; // e.g. top 100
+  topPerformers: LeaderboardRank[];
+  stats: {
+    count: number;
+    avg: number;
+    max: number;
+    min: number;
+    buckets: { min: number; max: number; count: number }[];
+  };
   percentileThresholds: {
     p90: number;
     p75: number;
@@ -507,6 +513,7 @@ export interface LeaderboardMachineData {
     p25: number;
     p10: number;
   };
+  clientPlacements: Record<string, { weight: number; rank: number; percentile: number; }>; // clientId -> placement details
 }
 
 export interface LeaderboardDocument {

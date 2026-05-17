@@ -5,11 +5,7 @@ import { createServer as createViteServer } from 'vite';
 import ical from 'node-ical';
 import axios from 'axios';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { masterSync } from './server/sync-logic.ts';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Error Handling: Prevent process crash on unhandled rejections
 process.on('unhandledRejection', (reason, promise) => {
@@ -70,6 +66,16 @@ async function startServer() {
     } catch (error: any) {
       console.error('Manual Sync failed:', error);
       res.status(500).json({ error: error.message || 'Sync failed' });
+    }
+  });
+
+  app.get('/api/diagnostic', async (req, res) => {
+    try {
+      const { diagnosticCheck } = await import('./server/sync-logic.ts');
+      const result = await diagnosticCheck();
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 

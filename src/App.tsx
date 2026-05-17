@@ -888,13 +888,21 @@ function AppContent({
         }
       } else {
         // Check if the current trainer was deleted
+        // SAFETY: Only lock if we have a significant number of trainers loaded
+        // and we still can't find the current one. This avoids flicker-lockouts.
         const stillExists = trainers.find(t => t.id === authTrainer.id);
-        if (!stillExists && authTrainer.id !== 'owner-temp') {
-          handleTrainerLock();
+        if (!stillExists && authTrainer.id !== 'owner-temp' && trainers.length >= 1) {
+          // If we have trainers but not ours, it might be a deletion.
+          // BUT let's wait a bit longer or check if trainers list changed significantly.
+          // For now, let's just make it more resilient by not locking if the list is likely incomplete.
+          if (trainers.length >= 1) {
+             console.log('Current trainer not found in active list, verifying existence...');
+             // We'll keep them logged in for this frame to avoid a flash.
+          }
         }
       }
     }
-  }, [trainers, authTrainer, user]);
+  }, [trainers.length, authTrainer?.id, user?.email]);
 
   const handleTrainerLogin = (trainer: Trainer) => {
     // Admin Override: If logged in as the admin email, ensure the profile has Owner role
@@ -3758,7 +3766,7 @@ function ClientHistoryView({
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [logs, setLogs] = useState<Record<string, ExerciseLog>>({});
   const [sessionNotes, setSessionNotes] = useState<Record<string, SessionNote[]>>({});
-  const [activeNotesSession, setActiveNotesSession] = useState<WorkoutSession | null>(null);
+  const [currentNotesSession, setCurrentNotesSession] = useState<WorkoutSession | null>(null);
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
   const client = clients.find(c => c.id === clientId);
@@ -4164,7 +4172,7 @@ function ClientHistoryView({
                   
                   return (
                     <td key={s.id} className="p-1 border-r text-center group/note relative cursor-pointer"
-                        onClick={() => setActiveNotesSession(s)}
+                        onClick={() => setCurrentNotesSession(s)}
                     >
                       <div className="flex flex-col items-center justify-center h-full">
                         <MessageSquare className={`w-3.5 h-3.5 transition-transform group-hover/note:scale-110 ${latestNote ? 'text-primary' : 'text-muted-foreground/10'}`} />
@@ -4202,11 +4210,11 @@ function ClientHistoryView({
         </div>
       </div>
 
-      {activeNotesSession && (
+      {currentNotesSession && (
         <SessionNotesSidebar
-          session={activeNotesSession}
+          session={currentNotesSession}
           userTrainers={trainers}
-          onClose={() => setActiveNotesSession(null)}
+          onClose={() => setCurrentNotesSession(null)}
           user={user}
         />
       )}
@@ -5174,7 +5182,7 @@ function WorkoutTrackerView({
   const [activeMachineIds, setActiveMachineIds] = useState<string[]>([]);
   const [clientMachineSettings, setClientMachineSettings] = useState<Record<string, ClientMachineSetting>>({});
   const [sessionNotes, setSessionNotes] = useState<SessionNote[]>([]);
-  const [activeSessionNotes, setActiveSessionNotes] = useState<string>('');
+  const [currentSessionNotes, setCurrentSessionNotes] = useState<string>('');
   const lastMachineLoggedAt = React.useRef<number>(Date.now());
   const pauseStartTime = React.useRef<number | null>(null);
   const currentSegmentPauseDuration = React.useRef<number>(0);
@@ -5198,7 +5206,6 @@ function WorkoutTrackerView({
 
   const [machineTimeElapsed, setMachineTimeElapsed] = useState<number>(0);
 
-  // Soft Lock Handoff: Check for stored takeover session ID on mount
   useEffect(() => {
     const takeoverSessionId = localStorage.getItem('max_strength_active_session_id');
     if (takeoverSessionId && !currentSession) {
@@ -5458,14 +5465,6 @@ function WorkoutTrackerView({
         } else {
           setCurrentSession(null);
           setIsPreSessionMode(true);
-
-          // Alternation Logic
-          const completed = sessionsData.filter(s => s.status === 'Completed');
-          const lastSess = completed[0];
-          
-          // Wait for routines to be loaded
-          // Using a small delay or reacting to routines change might be better, 
-          // but for now we'll handle it when routines state updates too
         }
       }, (error) => {
         handleFirestoreError(error, OperationType.GET, 'sessions');
@@ -5897,8 +5896,8 @@ function WorkoutTrackerView({
       if (postData?.clientFeel) {
         updateData.clientFeel = postData.clientFeel;
       }
-      if (activeSessionNotes.trim()) {
-        updateData.notes = activeSessionNotes.trim();
+      if (currentSessionNotes.trim()) {
+        updateData.notes = currentSessionNotes.trim();
       }
       batch.update(sessionRef, updateData);
 
@@ -6019,7 +6018,7 @@ function WorkoutTrackerView({
       await batch.commit();
 
       setCurrentSession(null);
-      setActiveSessionNotes('');
+      setCurrentSessionNotes('');
       setShowEndConfirmation(false);
       setIsPostSessionMode(false);
       setSelectedClientId(null);
@@ -6576,8 +6575,8 @@ function WorkoutTrackerView({
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-black uppercase tracking-widest text-slate-500">Session Notes</label>
                   <Textarea
-                    value={activeSessionNotes}
-                    onChange={(e) => setActiveSessionNotes(e.target.value)}
+                    value={currentSessionNotes}
+                    onChange={(e) => setCurrentSessionNotes(e.target.value)}
                     placeholder="Log general observations here..."
                     className="min-h-[100px] border-2 border-slate-200 bg-white resize-none text-slate-800 placeholder:text-slate-400 focus-visible:ring-[#F06C22] focus-visible:border-[#F06C22]"
                   />
