@@ -21,9 +21,10 @@
         }).catch(err => console.warn('Failed to log error to server', err));
       };
       window.addEventListener('unhandledrejection', function(event) {
-        // Ignore benign Vite HMR errors
+        // Ignore benign Vite HMR errors and browser extension errors
         const reasonStr = event.reason ? String(event.reason) : '';
-        if (reasonStr.includes('WebSocket') || reasonStr.includes('vite')) {
+        const msgStr = (event.reason && event.reason.message) ? String(event.reason.message) : '';
+        if (reasonStr.includes('WebSocket') || reasonStr.includes('vite') || msgStr.includes('standardSelectors')) {
           return;
         }
 

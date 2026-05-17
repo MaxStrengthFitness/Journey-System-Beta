@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   UserCircle, 
   Calendar, 
@@ -13,17 +13,23 @@ import {
   Award,
   MapPin,
   Building2,
-  Briefcase
+  Briefcase,
+  Edit2
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScheduleEntry, WorkoutSession, Client, Trainer, Studio } from '../types';
 import { parseSessionDate } from '../lib/utils';
+import { OperationType, handleFirestoreError } from '../lib/firestore-errors';
+import { EditTrainerModal } from './EditTrainerModal';
 
 interface TrainerProfileViewProps {
   trainer: Trainer;
+  authTrainer: Trainer | null;
   schedules: ScheduleEntry[];
   sessions: WorkoutSession[];
   clients: Client[];
@@ -34,6 +40,7 @@ interface TrainerProfileViewProps {
 
 export function TrainerProfileView({ 
   trainer, 
+  authTrainer,
   schedules, 
   sessions, 
   clients, 
@@ -41,7 +48,20 @@ export function TrainerProfileView({
   onSelectClient, 
   setView 
 }: TrainerProfileViewProps) {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const now = new Date();
+
+  const handleSaveProfile = async (updates: Partial<Trainer>) => {
+    if (!trainer.id) return;
+    try {
+      await updateDoc(doc(db, 'trainers', trainer.id), updates);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, `trainers/${trainer.id}`);
+    }
+  };
+
+  const isEditable = authTrainer?.id === trainer.id || authTrainer?.role === 'Owner';
+
 
   // Filter schedules for this trainer
   const upcomingSchedules = schedules.filter(s => {
@@ -93,6 +113,16 @@ export function TrainerProfileView({
           </div>
         </div>
         <div className="flex gap-4">
+          {isEditable && (
+            <Button 
+              variant="outline" 
+              onClick={() => setIsEditModalOpen(true)}
+              className="h-14 px-6 rounded-2xl font-black uppercase text-[10px] sm:text-xs border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500 hover:text-white transition-all shadow-xl shadow-black/20"
+            >
+              <Edit2 className="w-4 h-4 mr-2" />
+              Edit Profile
+            </Button>
+          )}
           <Button 
             variant="outline" 
             onClick={() => setView('calendar')}
@@ -382,6 +412,12 @@ export function TrainerProfileView({
           </div>
         </div>
       </div>
+      <EditTrainerModal 
+        trainer={trainer}
+        isOpen={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        onSave={handleSaveProfile}
+      />
     </motion.div>
   );
 }

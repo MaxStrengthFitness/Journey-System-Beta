@@ -2,6 +2,7 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { ThemeProvider } from './components/ThemeProvider.tsx';
 
 // Suppress benign ResizeObserver errors
 const suppressResizeObserverError = () => {
@@ -30,7 +31,19 @@ window.addEventListener('error', (e) => {
 });
 
 window.addEventListener('unhandledrejection', (e) => {
-  let message = e.reason?.message;
+  let message = e.reason?.message || '';
+  
+  // Ignore benign errors from Vite and certain extensions
+  const reasonStr = e.reason ? String(e.reason) : '';
+  if (
+    reasonStr.includes('WebSocket') || 
+    reasonStr.includes('vite') ||
+    message.includes('WebSocket') ||
+    message.includes('standardSelectors')
+  ) {
+    return;
+  }
+
   if (!message) {
     if (e.reason instanceof Error) {
       message = e.reason.toString();
@@ -69,6 +82,8 @@ window.addEventListener('unhandledrejection', (e) => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ThemeProvider defaultTheme="dark" storageKey="journey-system-theme">
+      <App />
+    </ThemeProvider>
   </StrictMode>,
 );

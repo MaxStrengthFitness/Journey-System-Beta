@@ -1547,6 +1547,7 @@ function AppContent({
                 studios={studios}
                 onSelectClient={setSelectedClientId}
                 setView={setCurrentView}
+                authTrainer={authTrainer}
               />
             )}
             {currentView === 'owner-dashboard' && (
