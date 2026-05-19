@@ -129,17 +129,24 @@ export async function masterSync(targetTrainerId?: string, hardReset: boolean = 
     });
 
     const studiosSnap = await getDocs(collection(clientDb, 'studios'));
-    const studioMap: Record<string, string> = {};
+    const studiosWithNames: any[] = [];
     studiosSnap.forEach(d => {
       const data = d.data();
-      if (data.mindbodySiteId) {
-        studioMap[String(data.mindbodySiteId)] = d.id;
-      }
+      studiosWithNames.push({ id: d.id, name: data.name, ...data });
     });
 
-    const resolveStudioId = (mbLocationId?: string | number): string | null => {
-      if (!mbLocationId) return null;
-      return studioMap[String(mbLocationId)] || null;
+    const resolveStudioId = (mbLocationStr?: string | number): string | null => {
+      if (!mbLocationStr) return null;
+      const t = String(mbLocationStr).toLowerCase();
+      for (const s of studiosWithNames) {
+        if (s.name && t.includes(s.name.toLowerCase())) {
+          return s.id;
+        }
+        if (s.mindbodySiteId && t.includes(String(s.mindbodySiteId).toLowerCase())) {
+          return s.id;
+        }
+      }
+      return null;
     };
 
     const now = new Date();
@@ -159,16 +166,19 @@ export async function masterSync(targetTrainerId?: string, hardReset: boolean = 
         
         // Use multiple where clauses to mimic the admin query
         const windowSnap = await getDocs(query(collection(clientDb, 'schedules'), 
-          where('trainerId', '==', trainer.id),
-          where('startTime', '>=', thirtyDaysAgo),
-          where('startTime', '<=', thirtyDaysAhead)
+          where('trainerId', '==', trainer.id)
         ));
         
         const existingSchedulesMap: Record<string, { id: string, data: any }> = {};
         windowSnap.forEach(d => {
           const data = d.data();
-          if (data.ical_uid) {
-            existingSchedulesMap[data.ical_uid] = { id: d.id, data };
+          if (data.startTime) {
+            const time = data.startTime.toDate().getTime();
+            if (time >= thirtyDaysAgo.toDate().getTime() && time <= thirtyDaysAhead.toDate().getTime()) {
+              if (data.ical_uid) {
+                existingSchedulesMap[data.ical_uid] = { id: d.id, data };
+              }
+            }
           }
         });
 
@@ -200,7 +210,7 @@ export async function masterSync(targetTrainerId?: string, hardReset: boolean = 
             trainerName: trainer.fullName,
             startTime,
             endTime,
-            studioId: resolveStudioId(ev.location) || trainer.homeStudioId || null,
+            studioId: resolveStudioId(ev.location) || trainer.primaryHomeStudioId || null,
             serviceName,
             status: isCancelled ? 'Cancelled' : 'Scheduled',
             source: 'Subscription',
@@ -223,6 +233,7 @@ export async function masterSync(targetTrainerId?: string, hardReset: boolean = 
               current.clientName !== payload.clientName ||
               current.clientId !== payload.clientId ||
               current.serviceName !== payload.serviceName ||
+              current.studioId !== payload.studioId ||
               current.startTime?.toDate()?.getTime() !== startTime.toDate().getTime() ||
               current.endTime?.toDate()?.getTime() !== endTime.toDate().getTime();
 

@@ -29,6 +29,7 @@ export function CalendarView({
   trainers,
   authTrainer,
   isAdmin,
+  activeStudioId,
   onSelectClient,
   onStartNewClientOnboarding,
   setView,
@@ -38,6 +39,7 @@ export function CalendarView({
   trainers: Trainer[],
   authTrainer: Trainer | null,
   isAdmin: boolean,
+  activeStudioId?: string,
   onSelectClient?: (id: string) => void,
   onStartNewClientOnboarding?: (name: string) => void,
   setView?: (view: any) => void,
@@ -51,7 +53,13 @@ export function CalendarView({
     isAdmin ? 'all' : (authTrainer?.id || 'all')
   );
 
-  const visibleCalendarTrainers = trainers.filter(t => t.isVisibleOnCalendar !== false);
+  const visibleCalendarTrainers = trainers.filter(t => {
+    if (t.isVisibleOnCalendar === false) return false;
+    if (activeStudioId) {
+      return t.primaryHomeStudioId === activeStudioId || t.accessibleStudioIds?.includes(activeStudioId) || t.activeGuestStudioIds?.includes(activeStudioId);
+    }
+    return true;
+  });
 
   const allClientEvents = React.useMemo(() => {
     const events: any[] = [];

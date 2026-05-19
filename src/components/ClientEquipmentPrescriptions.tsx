@@ -69,32 +69,9 @@ export function ClientEquipmentPrescriptions({
   const [startingWeight, setStartingWeight] = useState<number | ''>('');
   const [trainingLevel, setTrainingLevel] = useState('Beginner');
   const [isSyncing, setIsSyncing] = useState(false);
-  const [leaderboardData, setLeaderboardData] = useState<LeaderboardDocument | null>(null);
   const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false);
 
-  // --- MATERIALIZED VIEW FETCHING ---
-  useEffect(() => {
-    async function fetchLeaderboard() {
-      if (!activeStudioId) return;
-      setIsLoadingLeaderboard(true);
-      try {
-        const docRef = doc(db, 'leaderboards', `studio_${activeStudioId}_latest`);
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          setLeaderboardData(snap.data() as LeaderboardDocument);
-        }
-      } catch (err) {
-        console.error("Error fetching leaderboard for prescriptions:", err);
-      } finally {
-        setIsLoadingLeaderboard(false);
-      }
-    }
-    fetchLeaderboard();
-  }, [activeStudioId]);
-
-  // MATERIALIZED PERCENTILE CALCULATION
-  const getPercentileRank = (machineId: string) => {
-    if (!leaderboardData || !leaderboardData.machineData[machineId]) return "N/A";
+  const getPercentileRank = (machineId: string) => {    
     
     // Find client's current max weight from logs
     const clientLogs = allLogs.filter((l: any) => l.machineId === machineId);
@@ -103,17 +80,10 @@ export function ClientEquipmentPrescriptions({
     const maxWeight = Math.max(...clientLogs.map((l: any) => parseInt(l.weight || '0', 10)));
     if (maxWeight === 0) return "New";
 
-    const thresholds = leaderboardData.machineData[machineId].percentileThresholds;
-    if (!thresholds) return "N/A";
-
     // Compare against static thresholds
-    if (maxWeight >= thresholds.p99) return "Top 1%";
-    if (maxWeight >= thresholds.p95) return "Top 5%";
-    if (maxWeight >= thresholds.p90) return "Top 10%";
-    if (maxWeight >= thresholds.p75) return "Top 25%";
-    if (maxWeight >= thresholds.p50) return "Top 50%";
-    
-    return "Building...";
+    // Leaderboard Data has been migrated to dynamic calculation on the leaderboard view,
+    // so we can fallback to N/A instead of failing on prescriptions
+    return "N/A";
   };
 
   const handleSyncAllLevels = async () => {

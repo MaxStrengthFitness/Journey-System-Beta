@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { MACHINE_DATABASE } from '../data/machine-database';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Client, LeaderboardDocument, LeaderboardRank } from '../types';
 
@@ -146,7 +146,8 @@ const LeaderboardChart = ({
 // --- Main Component ---
 export function MachineLeaderboardDashboard({ 
   onBack,
-  activeStudioId
+  activeStudioId,
+  clients
 }: { 
   onBack?: () => void;
   clients?: Client[];
@@ -157,52 +158,125 @@ export function MachineLeaderboardDashboard({
   const [sortBy, setSortBy] = useState<'weight' | 'gain'>('weight');
   const [viewScope, setViewScope] = useState<'studio' | 'global'>('studio');
   const [isLoading, setIsLoading] = useState(false);
-  const [leaderboardData, setLeaderboardData] = useState<LeaderboardDocument | null>(null);
+  const [localRankings, setLocalRankings] = useState<LeaderboardRank[]>([]);
 
   useEffect(() => {
-    async function fetchMaterializedLeaderboard() {
+    async function computeLeaderboard() {
       setIsLoading(true);
       try {
-        const docId = viewScope === 'global' ? 'global' : `studio_${activeStudioId}`;
-        const docRef = doc(db, 'leaderboards', docId);
-        const snap = await getDoc(docRef);
+        const q = query(
+          collection(db, 'exerciseLogs'),
+          where('machineId', '==', selectedMachine)
+        );
+        const snap = await getDocs(q);
         
-        if (snap.exists()) {
-          setLeaderboardData(snap.data() as LeaderboardDocument);
-        } else {
-          setLeaderboardData(null);
+        const bestPerformances: Record<string, { weight: number, reps: number }> = {};
+        
+        snap.forEach(doc => {
+          const data = doc.data();
+          const cid = data.clientId;
+          const w = parseFloat(data.weight);
+          const weight = isNaN(w) ? 0 : w;
+          const reps = parseInt(data.reps) || 0;
+          
+          if (!bestPerformances[cid] || weight > bestPerformances[cid].weight) {
+            bestPerformances[cid] = { weight, reps };
+          }
+        });
+        
+        const rankings: LeaderboardRank[] = [];
+        
+        // Fetch missing clients if necessary, since prop clients only has today's schedule
+        const bestClientIds = Object.keys(bestPerformances);
+        const resolvedClients = new Map<string, any>();
+        
+        // Preload any available from props
+        clients?.forEach(c => resolvedClients.set(c.id!, c));
+        
+        const missingClientIds = bestClientIds.filter(id => !resolvedClients.has(id));
+        
+        if (missingClientIds.length > 0) {
+           const chunks = [];
+           for (let i = 0; i < missingClientIds.length; i += 10) {
+             chunks.push(missingClientIds.slice(i, i + 10));
+           }
+           const snapshots = await Promise.all(chunks.map(chunk => 
+             getDocs(query(collection(db, 'clients'), where('__name__', 'in', chunk)))
+           ));
+           
+           snapshots.forEach(snap => {
+             snap.docs.forEach(d => resolvedClients.set(d.id, { id: d.id, ...d.data() }));
+           });
         }
+        
+        for (const [clientId, perf] of Object.entries(bestPerformances)) {
+          const client = resolvedClients.get(clientId);
+          
+          if (viewScope === 'studio' && activeStudioId) {
+            // Only include clients from the active studio
+            if (!client || client.homeStudioId !== activeStudioId) {
+              continue;
+            }
+          }
+          
+          if (client) {
+            rankings.push({
+              clientId: client.id || clientId,
+              clientName: `${client.firstName} ${client.lastName?.[0] || ''}.`.trim(),
+              weight: perf.weight,
+              reps: perf.reps,
+              maxWeight: perf.weight,
+              strengthGainPercent: 0
+            });
+          }
+        }
+        
+        // Sort descending
+        rankings.sort((a, b) => b.weight - a.weight);
+        setLocalRankings(rankings);
       } catch (err) {
-        console.error("Error fetching materialized leaderboard:", err);
+        console.error("Error computing leaderboard:", err);
       } finally {
         setIsLoading(false);
       }
     }
 
     if (activeStudioId || viewScope === 'global') {
-      fetchMaterializedLeaderboard();
+      computeLeaderboard();
     }
-  }, [viewScope, activeStudioId]);
+  }, [viewScope, activeStudioId, selectedMachine, clients]);
 
   const machineRankings = useMemo(() => {
-    if (!leaderboardData || !leaderboardData.machineData[selectedMachine]) return [];
-    
-    let list = leaderboardData.machineData[selectedMachine].topPerformers;
+    let list = localRankings;
 
     if (searchQuery) {
       list = list.filter(r => r.clientName.toLowerCase().includes(searchQuery.toLowerCase()));
     }
 
-    return [...list].sort((a, b) => {
-      // Since it's already sorted by weight from backend, we just handle the switch
-      return b.weight - a.weight;
-    });
-  }, [leaderboardData, selectedMachine, searchQuery]);
+    return list;
+  }, [localRankings, searchQuery]);
 
   const topThree = machineRankings.slice(0, 3);
   const others = machineRankings.slice(3, 20);
 
+  
+  const percentiles = useMemo(() => {
+    if (localRankings.length === 0) return null;
+    const weights = localRankings.map(r => r.weight).sort((a,b) => a-b);
+    const getP = (p: number) => {
+      const idx = Math.max(0, Math.floor((p/100) * weights.length) - 1);
+      return weights[idx] || weights[0];
+    };
+    return {
+      p99: getP(99) || getP(100),
+      p90: getP(90),
+      p75: getP(75),
+      p50: getP(50)
+    };
+  }, [localRankings]);
+
   const machineDetails = MACHINE_DATABASE[selectedMachine];
+
 
   return (
     <div className="flex flex-col bg-[#0A2E46] min-h-full w-full text-white overflow-hidden pb-20">
@@ -227,7 +301,7 @@ export function MachineLeaderboardDashboard({
                 <h1 className="text-2xl font-black uppercase tracking-tighter italic">Machine Performance</h1>
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                   <BarChart3 className="w-3 h-3" />
-                  Materialized Rank Intelligence
+                  Real-Time Rank Intelligence
                 </p>
               </div>
             </div>
@@ -286,7 +360,7 @@ export function MachineLeaderboardDashboard({
             <div className="py-20 text-center">
               <Loader2 className="w-10 h-10 text-[#F06C22] mx-auto mb-4 animate-spin opacity-50" />
               <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">
-                Fetching Materialized Rankings...
+                Aggregating Live Leaderboard Data...
               </p>
             </div>
           ) : (
@@ -297,11 +371,7 @@ export function MachineLeaderboardDashboard({
                     <Sparkles className="w-4 h-4 fill-[#38BDF8]/20" />
                     {viewScope === 'global' ? 'Global Network Elite' : 'Studio Performance Hub'}
                   </h2>
-                  {leaderboardData && (
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                      Last Sync: {leaderboardData.lastUpdated?.toDate?.()?.toLocaleDateString() || 'Today'}
-                    </p>
-                  )}
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Live Aggregation</p>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -347,7 +417,7 @@ export function MachineLeaderboardDashboard({
                    <div className="flex items-center justify-between">
                      <h2 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-3">
                        <BarChart3 className="w-4 h-4 text-[#F06C22]" />
-                       Materialized Distribution
+                       Real-Time Distribution
                      </h2>
                    </div>
                    <div className="bg-slate-900/50 border border-white/5 rounded-[32px] p-6 shadow-xl">
@@ -382,10 +452,9 @@ export function MachineLeaderboardDashboard({
                        <CardDescription className="text-slate-400">Static benchmarks for {machineDetails?.name}</CardDescription>
                      </CardHeader>
                      <CardContent className="space-y-6">
-                        {leaderboardData?.machineData[selectedMachine]?.percentileThresholds ? (
+                        {percentiles ? (
                           <div className="space-y-4">
-                            {Object.entries(leaderboardData.machineData[selectedMachine].percentileThresholds)
-                              .sort((a, b) => parseInt(b[0].slice(1)) - parseInt(a[0].slice(1)))
+                            {Object.entries({ p99: percentiles.p99, p90: percentiles.p90, p75: percentiles.p75, p50: percentiles.p50 })
                               .map(([key, val]) => (
                                 <div key={key} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-xl border border-white/5">
                                   <span className="text-[10px] font-black uppercase text-slate-500">{key.toUpperCase()} Rank</span>
@@ -394,14 +463,14 @@ export function MachineLeaderboardDashboard({
                               ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-slate-500 italic text-center py-4">Thresholds not yet synced.</p>
+                          <p className="text-xs text-slate-500 italic text-center py-4">No data to compute thresholds.</p>
                         )}
                      </CardContent>
                    </Card>
                    <div className="bg-gradient-to-br from-[#115E8D] to-[#0A2E46] p-8 rounded-[32px] border border-[#38BDF8]/30 shadow-xl overflow-hidden group">
                      <h3 className="text-lg font-black uppercase italic text-white mb-2 relative z-10">Cross-Network Data</h3>
                      <p className="text-xs text-[#38BDF8] font-bold leading-relaxed relative z-10">
-                        Materialized views allow for instant network-wide comparisons without the latency or cost of multi-collection aggregations.
+                        Dynamically computing real-time distributions across the network.
                      </p>
                    </div>
                 </div>

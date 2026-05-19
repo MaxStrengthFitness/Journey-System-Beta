@@ -120,6 +120,7 @@ import { SessionRoutineManagerModal } from './components/SessionRoutineManagerMo
 import { MachineKnowledgeDashboard } from './components/MachineKnowledgeDashboard';
 import { MaxStrengthLogo } from './components/MaxStrengthLogo';
 import { ActiveSessionTimer } from './components/ActiveSessionTimer';
+import { ThemeToggle } from './components/ThemeToggle';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -228,9 +229,20 @@ const getMachineImageUrl = (machineId?: string): string => {
 type RoutineType = 'A' | 'B' | 'Free';
 
 const HubAnnouncementHeaderGift = ({ announcements }: { announcements: HubAnnouncement[] }) => {
-  const announcement = announcements[0];
+  const [dismissedId, setDismissedId] = useState<string | null>(localStorage.getItem('dismissed_announcement_id'));
+  const activeAnnouncements = announcements.filter(a => a.id !== dismissedId);
+  const announcement = activeAnnouncements[0];
   const [isExpanded, setIsExpanded] = useState(false);
   if (!announcement) return null;
+
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (announcement.id) {
+       localStorage.setItem('dismissed_announcement_id', announcement.id);
+       setDismissedId(announcement.id);
+    }
+    setIsExpanded(false);
+  };
 
   return (
     <div className="relative">
@@ -238,11 +250,11 @@ const HubAnnouncementHeaderGift = ({ announcements }: { announcements: HubAnnoun
         layout
         className={cn(
           "bg-slate-900/60 backdrop-blur-md border overflow-hidden transition-all duration-500 cursor-pointer",
-          isExpanded ? "fixed inset-x-0 top-24 mx-auto max-w-lg z-[60] rounded-[32px] p-6 shadow-2xl border-sky-500/30" : "rounded-2xl p-2 border-amber-500/20 hover:border-amber-500/40 w-full"
+          isExpanded ? "fixed inset-x-4 md:inset-x-0 top-24 mx-auto max-w-lg z-[60] rounded-[32px] p-6 shadow-2xl border-sky-500/30 max-h-[80vh] flex flex-col" : "rounded-2xl p-2 border-amber-500/20 hover:border-amber-500/40 w-full"
         )}
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <div className={cn(
             "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-lg",
             isExpanded ? "bg-sky-500 text-white" : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
@@ -280,7 +292,7 @@ const HubAnnouncementHeaderGift = ({ announcements }: { announcements: HubAnnoun
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-6 border-t border-slate-800 pt-6"
+              className="mt-6 border-t border-slate-800 pt-6 overflow-y-auto no-scrollbar flex-1"
             >
               <div className="flex flex-col gap-4">
                 <div className="prose prose-invert prose-sm max-w-none">
@@ -298,17 +310,26 @@ const HubAnnouncementHeaderGift = ({ announcements }: { announcements: HubAnnoun
                       From {announcement.authorName}
                     </p>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-8 rounded-lg text-[10px] font-black uppercase tracking-widest text-sky-400"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsExpanded(false);
-                    }}
-                  >
-                    Close Insight
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-400"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsExpanded(false);
+                      }}
+                    >
+                      Close
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      className="h-8 rounded-lg text-[10px] font-black uppercase tracking-widest bg-sky-500 hover:bg-sky-400 text-white"
+                      onClick={handleDismiss}
+                    >
+                      Mark Viewed
+                    </Button>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -354,17 +375,23 @@ export default function App() {
           trainerData = { id: trainerSnap.id, ...trainerSnap.data() } as Trainer;
           // Ensure Austin Jurgens profile exists as Trainer if not forced otherwise
         } else if (isSystemAdmin) {
-          // Create a temporary trainer profile if one doesn't exist for the admin
-          trainerData = {
-            id: u.uid,
-            fullName: 'Austin Jurgens',
-            initials: 'AJ',
-            role: 'Trainer',
-            pin: '0000',
-            primaryHomeStudioId: '',
-            accessibleStudioIds: [],
-            activeGuestStudioIds: []
-          } as Trainer;
+          // Check if Austin Jurgens exists under a different ID
+          const jurgensDoc = await getDocs(query(collection(db, 'trainers'), where('fullName', '==', 'Austin Jurgens')));
+          if (!jurgensDoc.empty) {
+            trainerData = { id: jurgensDoc.docs[0].id, ...jurgensDoc.docs[0].data() } as Trainer;
+          } else {
+            // Create a temporary trainer profile if one doesn't exist for the admin
+            trainerData = {
+              id: u.uid,
+              fullName: 'Austin Jurgens',
+              initials: 'AJ',
+              role: 'Trainer',
+              pin: '0000',
+              primaryHomeStudioId: '',
+              accessibleStudioIds: [],
+              activeGuestStudioIds: []
+            } as Trainer;
+          }
         }
 
         setAuthTrainer(trainerData);
@@ -1239,10 +1266,10 @@ function AppContent({
         <div className="flex flex-col min-h-screen bg-background text-foreground font-sans overflow-x-hidden w-full max-w-full">
         {/* Header */}
         {currentView !== 'workouts' && (
-          <header className="sticky top-0 z-50 w-full border-b border-slate-700/80 bg-[#0A2E46] px-6 h-16 md:h-20 flex items-center justify-between">
-            <div className="flex items-center -ml-2">
+          <header className="sticky top-0 z-50 w-full border-b border-slate-700/80 bg-[#0A2E46] px-3 md:px-6 h-16 md:h-20 flex items-center justify-between">
+            <div className="flex items-center shrink-0">
               <MaxStrengthLogo size="sm" showText={false} className="scale-[0.8] origin-left text-white drop-shadow-md" />
-              <div className="flex flex-col ml-1.5 leading-none">
+              <div className="flex flex-col ml-1 leading-none">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Strength</span>
                   {activeStudioName && (
@@ -1261,12 +1288,13 @@ function AppContent({
             
             {/* Announcement "Gift" in Middle if in Hub */}
             {currentView === 'trainer-hub' && (
-              <div className="flex-1 max-w-lg mx-auto hidden lg:block">
+              <div className="flex-1 min-w-[120px] max-w-lg mx-auto px-2 z-50 transition-all">
                 <HubAnnouncementHeaderGift announcements={announcements} />
               </div>
             )}
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4 shrink-0">
+              <ThemeToggle />
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -1422,6 +1450,7 @@ function AppContent({
                 trainers={trainers}
                 sortedTrainers={sortedTrainers}
                 isAdmin={user?.email === "jurgensaj@gmail.com"}
+                activeStudioId={activeStudioId}
                 onSelectClient={(id) => {
                   setSelectedClientId(id);
                   setView('profile');
@@ -1599,6 +1628,7 @@ function AppContent({
                 trainers={trainers} 
                 authTrainer={authTrainer}
                 isAdmin={user.email === "jurgensaj@gmail.com"}
+                activeStudioId={activeStudioId}
                 onSelectClient={setSelectedClientId}
                 onStartNewClientOnboarding={setNewClientOnboardingName}
                 setView={setView}
@@ -2829,6 +2859,7 @@ function ClientsView({
   trainers,
   sortedTrainers,
   isAdmin,
+  activeStudioId,
   onSelectClient, 
   onStartNewClientOnboarding,
   setView, 
@@ -2848,6 +2879,7 @@ function ClientsView({
   trainers: Trainer[],
   sortedTrainers: Trainer[],
   isAdmin: boolean,
+  activeStudioId: string,
   onSelectClient: (id: string) => void, 
   onStartNewClientOnboarding?: (name: string) => void,
   setView: (v: View) => void, 
@@ -3031,7 +3063,10 @@ function ClientsView({
     return { next, last };
   };
 
-  const visibleTrainersList = sortedTrainers.filter(t => t.isVisibleOnCalendar !== false).slice(0, 5);
+  const visibleTrainersList = sortedTrainers.filter(t => {
+    if (t.isVisibleOnCalendar === false) return false;
+    return t.primaryHomeStudioId === activeStudioId || t.accessibleStudioIds?.includes(activeStudioId) || t.activeGuestStudioIds?.includes(activeStudioId);
+  }).slice(0, 5);
 
   return (
     <motion.div 
@@ -3417,76 +3452,107 @@ function ClientsView({
                       </tr>
                     </thead>
                     <tbody className="relative">
-                      {currentSlots.map((slot) => {
-                      return (
-                        <tr key={slot} className="border-b border-slate-700 last:border-0 hover:bg-white/[0.02] transition-colors group relative">
-                          <td className="p-3 text-center border-r border-slate-700 sticky left-0 bg-[#0A2E46] z-10 text-slate-400">
-                            <span className="text-[11px] font-black tracking-tighter group-hover:text-white transition-colors">{slot}</span>
-                          </td>
-                          {visibleTrainersList.map((trainer, tIdx) => {
-                            const session = todaysSchedules.find(s => {
-                              const sDate = safeToDate(s.startTime);
-                              if (!sDate) return false;
-                              const tStr = get12HourStr(sDate);
-                              return tStr === slot && s.trainerName === trainer.fullName && s.status !== 'Cancelled';
-                            });
-
-                            const color = TRAINER_COLORS[tIdx % TRAINER_COLORS.length];
-                            const isCompleted = session && (session.status === 'Completed' || getMillis(session.startTime) < now.getTime());
-                            const clientObj = session ? findClientForSession(session) : null;
-                            const workoutSession = clientObj ? sessions.find(s => s.clientId === clientObj.id && new Date(s.createdAt?.toDate?.() || s.date).toDateString() === new Date().toDateString()) : null;
-                            const isAlreadyCompleted = workoutSession?.status === "Completed";
-                            const sessionNumber = clientObj ? (clientObj.sessionCount || 0) + (isAlreadyCompleted ? 0 : 1) : 1;
-                            const hasAlert = clientObj && (
-                              (clientObj.clinicalProfile && clientObj.clinicalProfile.length > 0) ||
-                              !!clientObj.clinicalNotes ||
-                              !!clientObj.medicalHistory
-                            );
-
-                            return (
-                              <td 
-                                key={`${trainer.id}-${slot}`} 
-                                className="p-1 border-r border-slate-700 last:border-r-0 h-[60px]"
-                              >
-                                {session ? (
-                                  <div
-                                    onClick={() => {
-                                      if (clientObj) {
-                                        onSelectClient(clientObj.id!);
-                                        setView('profile');
-                                      } else {
-                                        setLinkingSession(session);
-                                        setIsLinking(true);
-                                      }
-                                    }}
-                                    className={cn(
-                                      "p-2 rounded-xl flex flex-col justify-between hover:border-[#38BDF8]/40 hover:bg-slate-700/80 transition-all cursor-pointer h-full border overflow-hidden",
-                                      isCompleted ? 'bg-slate-900/80 border-slate-700/50 opacity-60 grayscale' : "bg-slate-800 border-slate-700"
-                                    )}
-                                  >
-                                    <span className="text-sm font-bold text-white leading-tight break-words line-clamp-2">
-                                      {session.clientName}
-                                    </span>
-                                    <div className="flex items-center justify-between mt-auto pt-1">
-                                      <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">
-                                        Session #{sessionNumber}
-                                      </span>
-                                      {hasAlert && (
-                                        <AlertTriangle className="w-[14px] h-[14px] text-amber-500 shrink-0" />
-                                      )}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="h-full w-full opacity-0 hover:opacity-10 transition-opacity flex items-center justify-center p-2 bg-slate-600 rounded-lg pointer-events-none">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-white">Open</span>
-                                  </div>
-                                )}
+                      {(() => {
+                        const skippedGridCells = new Set<string>();
+                        return currentSlots.map((slot, sIdx) => {
+                          return (
+                            <tr key={slot} className="border-b border-slate-700 last:border-0 hover:bg-white/[0.02] transition-colors group relative">
+                              <td className="p-3 text-center border-r border-slate-700 sticky left-0 bg-[#0A2E46] z-10 text-slate-400">
+                                <span className="text-[11px] font-black tracking-tighter group-hover:text-white transition-colors">{slot}</span>
                               </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
+                              {visibleTrainersList.map((trainer, tIdx) => {
+                                const cellId = `${trainer.id}-${slot}`;
+                                if (skippedGridCells.has(cellId)) return null;
+
+                                const session = todaysSchedules.find(s => {
+                                  const sDate = safeToDate(s.startTime);
+                                  if (!sDate) return false;
+                                  const tStr = get12HourStr(sDate);
+                                  return tStr === slot && s.trainerName === trainer.fullName && s.status !== 'Cancelled';
+                                });
+
+                                let rowSpan = 1;
+                                if (session) {
+                                  const start = safeToDate(session.startTime);
+                                  const end = safeToDate(session.endTime);
+                                  if (start && end) {
+                                    const duration = (end.getTime() - start.getTime()) / (1000 * 60);
+                                    rowSpan = Math.max(1, Math.round(duration / 30));
+                                    if (rowSpan > 1) {
+                                      for (let i = 1; i < rowSpan; i++) {
+                                        if (currentSlots[sIdx + i]) {
+                                          skippedGridCells.add(`${trainer.id}-${currentSlots[sIdx + i]}`);
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+
+                                const color = TRAINER_COLORS[tIdx % TRAINER_COLORS.length];
+                                const isCompleted = session && (session.status === 'Completed' || getMillis(session.startTime) < now.getTime());
+                                const clientObj = session ? findClientForSession(session) : null;
+                                const workoutSession = clientObj ? sessions.find(s => s.clientId === clientObj.id && new Date(s.createdAt?.toDate?.() || s.date).toDateString() === new Date().toDateString()) : null;
+                                const isAlreadyCompleted = workoutSession?.status === "Completed";
+                                const sessionNumber = clientObj ? (clientObj.sessionCount || 0) + (isAlreadyCompleted ? 0 : 1) : 1;
+                                const hasAlert = clientObj && (
+                                  (clientObj.clinicalProfile && clientObj.clinicalProfile.length > 0) ||
+                                  !!clientObj.clinicalNotes ||
+                                  !!clientObj.medicalHistory
+                                );
+
+                                return (
+                                  <td 
+                                    key={cellId} 
+                                    rowSpan={rowSpan}
+                                    className={cn("p-1 border-r border-slate-700 last:border-r-0", rowSpan > 1 ? "" : "h-[60px]")}
+                                  >
+                                    {session ? (
+                                      <div
+                                        onClick={() => {
+                                          if (clientObj) {
+                                            onSelectClient(clientObj.id!);
+                                            setView('profile');
+                                          } else {
+                                            setLinkingSession(session);
+                                            setIsLinking(true);
+                                          }
+                                        }}
+                                        className={cn(
+                                          "p-2 rounded-xl flex flex-col justify-between hover:border-[#38BDF8]/40 hover:bg-slate-700/80 transition-all cursor-pointer h-full border overflow-hidden",
+                                          isCompleted ? 'bg-slate-900/80 border-slate-700/50 opacity-60 grayscale' : "bg-slate-800 border-slate-700"
+                                        )}
+                                      >
+                                        <div className="flex items-start justify-between gap-1">
+                                          <span className="text-sm font-bold text-white leading-tight break-words line-clamp-2">
+                                            {session.clientName}
+                                          </span>
+                                          {rowSpan > 1 && (
+                                            <Badge variant="outline" className="text-[8px] h-4 bg-slate-900/50 border-slate-700 text-[#38BDF8] shrink-0">
+                                              {Math.round((safeToDate(session.endTime).getTime() - safeToDate(session.startTime).getTime()) / 60000)}m
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center justify-between mt-auto pt-1">
+                                          <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider line-clamp-1">
+                                            Session #{sessionNumber}
+                                          </span>
+                                          {hasAlert && (
+                                            <AlertTriangle className="w-[14px] h-[14px] text-amber-500 shrink-0 ml-1" />
+                                          )}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="h-full w-full opacity-0 hover:opacity-10 transition-opacity flex items-center justify-center p-2 bg-slate-600 rounded-lg pointer-events-none">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-white">Open</span>
+                                      </div>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        });
+                      })()}
                   </tbody>
                 </table>
                 </div>

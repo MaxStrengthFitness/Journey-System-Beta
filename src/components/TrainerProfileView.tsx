@@ -17,7 +17,7 @@ import {
   Edit2
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -54,7 +54,13 @@ export function TrainerProfileView({
   const handleSaveProfile = async (updates: Partial<Trainer>) => {
     if (!trainer.id) return;
     try {
-      await updateDoc(doc(db, 'trainers', trainer.id), updates);
+      const ref = doc(db, 'trainers', trainer.id);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        await updateDoc(ref, updates);
+      } else {
+        await setDoc(ref, { ...trainer, ...updates, createdAt: new Date() });
+      }
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, `trainers/${trainer.id}`);
     }
