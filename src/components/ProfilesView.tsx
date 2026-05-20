@@ -473,10 +473,8 @@ export function ProfilesView({
                           onClick={(e) => e.stopPropagation()}
                         >
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white">
+                            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white" />}>
                                 <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                              </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="rounded-xl border-2">
                               <DropdownMenuItem 

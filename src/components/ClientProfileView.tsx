@@ -1208,13 +1208,9 @@ export function ClientProfileView({
         <div className="flex items-center gap-2 z-10 shrink-0 ml-auto">
           {activeInProgressSession ? (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-black uppercase text-xs tracking-widest h-9 sm:h-10 px-4 sm:px-6 shadow-[0_0_15px_rgba(245,158,11,0.5)] border-none shrink-0 border-2 border-amber-300/20"
-                >
+              <DropdownMenuTrigger render={<Button className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-black uppercase text-xs tracking-widest h-9 sm:h-10 px-4 sm:px-6 shadow-[0_0_15px_rgba(245,158,11,0.5)] border-none shrink-0 border-2 border-amber-300/20" />}>
                   <Clock className="w-4 h-4 mr-2 animate-pulse" />
                   IN-PROGRESS ({activeInProgressSession.trainerInitials})
-                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[240px] rounded-2xl p-2 bg-slate-900 border-slate-800 text-white">
                 <div className="px-3 py-2 mb-2 border-b border-white/10">

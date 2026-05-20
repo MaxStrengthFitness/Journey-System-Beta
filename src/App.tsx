@@ -1403,7 +1403,7 @@ function AppContent({
         )}
 
         {/* Main Content */}
-        <main className={`flex-1 w-full max-w-full mx-auto relative ${currentView === 'workouts' ? 'p-2 pb-24 overflow-y-auto' : (currentView === 'clients' || currentView === 'client-directory' || currentView === 'dashboard') ? 'h-[calc(100vh-5rem)] overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col' : 'p-6 pb-24 overflow-y-auto'}`}>
+        <main className={`flex-1 w-full max-w-full mx-auto relative ${currentView === 'workouts' ? 'p-2 pb-24 overflow-y-auto bg-slate-50 dark:bg-slate-950' : (currentView === 'clients' || currentView === 'client-directory' || currentView === 'dashboard') ? 'h-[calc(100vh-5rem)] overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col' : 'p-6 pb-24 overflow-y-auto bg-slate-50 dark:bg-slate-950'}`}>
           <AnimatePresence mode="wait">
             {currentView === 'consultation-wizard' && selectedClientId && (
               <ConsultationWizard 
@@ -3518,27 +3518,31 @@ function ClientsView({
                                           }
                                         }}
                                         className={cn(
-                                          "p-2 rounded-xl flex flex-col justify-between hover:border-sky-500/40 hover:bg-slate-700/80 transition-all cursor-pointer h-full border overflow-hidden",
-                                          isCompleted ? 'bg-slate-50 border-slate-200 dark:border-slate-800 opacity-60 grayscale' : "bg-white border-slate-200 dark:border-slate-800"
+                                          "flex flex-col justify-between p-3 rounded-lg border shadow-sm transition-all cursor-pointer h-full box-border",
+                                          isCompleted ? 'opacity-60 grayscale bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80' : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700",
+                                          hasAlert && !isCompleted ? "border-l-4 border-l-red-500" : "",
+                                          !isCompleted && "hover:border-sky-500/40 hover:bg-slate-50 dark:hover:bg-slate-700/80"
                                         )}
                                       >
-                                        <div className="flex items-start justify-between gap-1">
-                                          <span className="text-sm font-bold text-slate-900 dark:text-white leading-tight break-words line-clamp-2">
-                                            {session.clientName}
-                                          </span>
+                                        <div className="flex w-full items-start justify-between gap-2">
+                                          <div className="flex items-center gap-1.5 min-w-0">
+                                            <span className="text-[15px] sm:text-base font-bold text-slate-900 dark:text-slate-50 leading-tight truncate">
+                                              {session.clientName}
+                                            </span>
+                                            {hasAlert && !isCompleted && (
+                                              <div className="w-2 h-2 rounded-full bg-red-500 animate-[pulse_2s_ease-in-out_infinite] shrink-0" />
+                                            )}
+                                          </div>
                                           {rowSpan > 1 && (
-                                            <Badge variant="outline" className="text-[8px] h-4 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-sky-500 shrink-0">
+                                            <Badge variant="outline" className="text-[8px] h-4 bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-sky-500 shrink-0 px-1.5">
                                               {Math.round((safeToDate(session.endTime).getTime() - safeToDate(session.startTime).getTime()) / 60000)}m
                                             </Badge>
                                           )}
                                         </div>
-                                        <div className="flex items-center justify-between mt-auto pt-1">
-                                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider line-clamp-1">
+                                        <div className="mt-auto pt-2 flex items-center justify-between">
+                                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-mono font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300">
                                             Session #{sessionNumber}
                                           </span>
-                                          {hasAlert && (
-                                            <AlertTriangle className="w-[14px] h-[14px] text-amber-500 shrink-0 ml-1" />
-                                          )}
                                         </div>
                                       </div>
                                     ) : (
@@ -6343,91 +6347,73 @@ function WorkoutTrackerView({
       )}
       {/* Persistent Active Header - Minimalist Refactor */}
       {(selectedClient || currentSession) && (
-        <div className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-4 flex items-center justify-between sticky top-0 z-40 h-16 shadow-lg backdrop-blur-xl shrink-0">
+        <div className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between sticky top-0 z-40 shadow-sm shrink-0">
           {/* Left: Client & Trainer Identity */}
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+          <div className="flex flex-col">
+            <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
               {selectedClient ? `${selectedClient.firstName} ${selectedClient.lastName}` : (currentSession?.isUnassigned ? 'Unassigned Tracking' : 'Initializing...')}
             </h3>
-            
-            <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-800 shadow-inner">
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-                {authTrainer?.initials || currentSession?.trainerInitials || '??'}
-              </span>
+            <div className="flex items-center gap-2 mt-0.5 text-sm font-medium text-slate-500 dark:text-slate-400">
+               <div className="w-5 h-5 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
+                <span className="text-[9px] font-bold">{authTrainer?.initials || currentSession?.trainerInitials || '??'}</span>
+               </div>
+               Trainer
             </div>
           </div>
 
-          {/* Center: Minimalist Mission Clock */}
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse" />
-            {currentSession && currentSession.startTime && (
-              <div className="text-sm text-slate-500 dark:text-slate-400 font-mono tabular-nums tracking-wider uppercase">
-                <ActiveSessionTimer startTime={currentSession.startTime} paused={isPaused} />
-              </div>
-            )}
+          {/* Center: Focal Clock */}
+          <div className="flex flex-col items-center absolute left-1/2 -translate-x-1/2">
+             <div 
+               className="flex items-center gap-3 cursor-pointer group" 
+               onClick={() => setIsPaused(!isPaused)} 
+               title={isPaused ? "Resume Session" : "Pause Session"}
+             >
+               <div className={`w-3 h-3 rounded-full transition-all ${isPaused ? 'bg-amber-500' : 'bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.6)]'}`} />
+               {currentSession && currentSession.startTime && (
+                 <div className={`font-mono text-4xl md:text-5xl tracking-tight font-light tabular-nums transition-colors ${isPaused ? 'text-amber-500 opacity-80' : 'text-slate-900 dark:text-white'}`}>
+                   <ActiveSessionTimer startTime={currentSession.startTime} paused={isPaused} />
+                 </div>
+               )}
+             </div>
           </div>
 
           {/* Right: Tactical Controls & Hard Stop */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center bg-slate-50/40 rounded-xl p-1 border border-slate-200 dark:border-slate-800/50 dark:border-slate-800/50 mr-2">
-              <Button 
-                variant="ghost"
-                size="sm"
+            <Button 
+                variant="outline" 
                 className={cn(
-                  "h-9 px-3 rounded-lg font-bold uppercase text-[9px] tracking-[0.15em] transition-all",
-                  isPaused ? "text-orange-500 bg-orange-500/10" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50"
-                )}
-                onClick={() => setIsPaused(!isPaused)}
-              >
-                {isPaused ? <Play className="w-3.5 h-3.5 mr-1.5" /> : <Pause className="w-3.5 h-3.5 mr-1.5" />}
-                {isPaused ? "Resume" : "Pause"}
-              </Button>
-
-              <div className="w-px h-4 bg-white dark:bg-slate-900 mx-1" />
-
-              <Button 
-                variant="ghost" 
-                size="sm"
-                className={cn(
-                  "h-9 px-3 rounded-lg font-bold uppercase text-[9px] tracking-[0.15em] transition-all",
-                  !showAllMachines ? "bg-orange-500 dark:bg-orange-600 text-white" : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50"
+                  "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 h-10 px-3 transition-colors",
+                  !showAllMachines ? "bg-orange-500 text-white hover:bg-orange-600 dark:text-white border-transparent hover:text-white" : ""
                 )}
                 onClick={() => setShowAllMachines(!showAllMachines)}
               >
-                <LayoutList className="w-3.5 h-3.5 mr-1.5" />
+                <LayoutList className="w-4 h-4 mr-2" />
                 Focus
-              </Button>
-
-              <div className="w-px h-4 bg-white dark:bg-slate-900 mx-1" />
-
-              <Button 
-                variant="ghost" 
-                size="sm"
-                className="h-9 px-3 rounded-lg font-bold uppercase text-[9px] tracking-[0.15em] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 transition-all"
+            </Button>
+            
+            <Button 
+                variant="outline" 
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 h-10 px-3 hidden sm:flex transition-colors"
                 onClick={() => setIsShowingSessionNotes(true)}
               >
-                <MessageSquare className="w-3.5 h-3.5 mr-1.5 text-orange-500" />
+                <MessageSquare className="w-4 h-4 mr-2" />
                 Notes
-              </Button>
-
-              <div className="w-px h-4 bg-white dark:bg-slate-900 mx-1" />
-
-              <Button 
-                variant="ghost" 
-                size="sm"
-                className="h-9 px-3 rounded-lg font-bold uppercase text-[9px] tracking-[0.15em] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 transition-all"
-                onClick={() => setIsSessionRoutineManagerOpen(true)}
-              >
-                <Settings2 className="w-3.5 h-3.5 mr-1.5 text-orange-500" />
-                Routine
-              </Button>
-            </div>
+            </Button>
 
             <Button 
-              className="bg-red-600text-white font-bold uppercase tracking-widest text-[10px] px-6 h-10 rounded-xl shadow-[0_4px_15px_rgba(220,38,38,0.3)] active:scale-95 transition-all"
+                variant="outline" 
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 h-10 px-3 hidden lg:flex transition-colors"
+                onClick={() => setIsSessionRoutineManagerOpen(true)}
+              >
+                <Settings2 className="w-4 h-4 mr-2" />
+                Routine
+            </Button>
+
+            <Button 
+              className="bg-orange-500 hover:bg-orange-600 text-white font-semibold shadow-sm transition-all h-10 px-6 rounded-lg ml-2"
               onClick={handleEndSessionPress}
             >
-              End Session
+              Finish Session
             </Button>
           </div>
         </div>
@@ -6651,13 +6637,13 @@ function WorkoutTrackerView({
                 <div className="grid grid-cols-2 gap-3">
                   <Button 
                     variant="outline" 
-                    className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2"
+                    className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 dark:border-slate-800 dark:hover:bg-slate-800"
                     onClick={() => setShowEndConfirmation(false)}
                   >
                     Keep Training
                   </Button>
                   <Button 
-                    className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20 bg-red-600text-white"
+                    className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20 bg-red-600 text-white hover:bg-red-700"
                     onClick={() => {
                       setShowEndConfirmation(false);
                       setIsPostSessionMode(true);
@@ -6666,6 +6652,17 @@ function WorkoutTrackerView({
                   >
                     Confirm End
                   </Button>
+                </div>
+                <div className="pt-4 flex justify-center border-t border-slate-100 dark:border-slate-800 mt-2">
+                  <button 
+                    onClick={() => {
+                      setShowEndConfirmation(false);
+                      setShowCancelConfirmation(true);
+                    }}
+                    className="text-xs font-bold uppercase tracking-widest text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors py-3 px-6 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    Abort Session (No Record)
+                  </button>
                 </div>
               </div>
             )}
@@ -6688,14 +6685,14 @@ function WorkoutTrackerView({
           
           <div className="p-6 grid grid-cols-2 gap-3 bg-white dark:bg-slate-900">
             <Button 
-              variant="outline" 
-              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50"
+              variant="outline"
+              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
               onClick={() => setShowCancelConfirmation(false)}
             >
               Resume Session
             </Button>
             <Button 
-              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-red-600text-white shadow-lg shadow-red-200"
+              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-red-600 text-white shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700"
               onClick={confirmScrapSession}
             >
               Scrap Session
@@ -6704,33 +6701,33 @@ function WorkoutTrackerView({
         </DialogContent>
       </Dialog>
       {/* Workout Table Scroll Area */}
-      <div className="flex-1 overflow-hidden border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 shadow-sm dark:shadow-none flex flex-col">
-        <div className="w-full h-full overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left border-collapse table-fixed select-none min-w-[600px] h-full flex flex-col">
+      <div className="flex-1 overflow-hidden border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 shadow-sm flex flex-col">
+        <div className="w-full h-full overflow-x-auto custom-scrollbar bg-slate-50 dark:bg-slate-950">
+          <table className="w-full text-left border-collapse table-fixed select-none min-w-[600px] h-full flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
             <thead className="flex w-full shrink-0">
-              <tr className="bg-sky-500 dark:bg-sky-600text-white uppercase text-[9px] font-black tracking-widest leading-none h-[28px] w-full flex">
-                <th className="p-0 flex items-center justify-center w-[40px] shrink-0 border-r border-[#115E8D]/20">
+              <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 uppercase text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 leading-none h-[36px] w-full flex items-center">
+                <th className="p-0 flex items-center justify-center w-[40px] shrink-0 border-r border-slate-200 dark:border-slate-700 h-full">
                   {currentSession ? (
                     <button 
                       onClick={() => setIsSessionRoutineManagerOpen(true)}
-                      className="w-full h-full flex items-center justify-center hover:bg-white dark:hover:bg-slate-800/10 transition-colors"
+                      className="w-full h-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
                       title="Edit Routine"
                     >
-                      <Settings2 className="w-3.5 h-3.5 text-slate-900 dark:text-white/80" />
+                      <Settings2 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                     </button>
                   ) : (
                     "#"
                   )}
                 </th>
-                <th className="p-1.5 pl-3 flex-1 border-r border-[#115E8D]/20 truncate">Exercise & Settings</th>
-                <th className="p-1.5 text-center w-[50px] shrink-0 border-r border-[#115E8D]/20">Prev</th>
-                <th className="p-1.5 text-center w-[60px] shrink-0 border-r border-[#115E8D]/20">Weight</th>
-                <th className="p-1.5 text-center w-[60px] shrink-0 border-r border-[#115E8D]/20">Reps</th>
-                <th className="p-1.5 text-center w-[60px] shrink-0">Quality</th>
+                <th className="p-1.5 pl-3 flex-1 border-r border-slate-200 dark:border-slate-700 h-full flex items-center truncate">Exercise & Settings</th>
+                <th className="p-1.5 text-center w-[50px] shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center">Prev</th>
+                <th className="p-1.5 text-center w-[60px] shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center">Weight</th>
+                <th className="p-1.5 text-center w-[60px] shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center">Reps</th>
+                <th className="p-1.5 text-center w-[60px] shrink-0 h-full flex items-center justify-center">Quality</th>
               </tr>
             </thead>
 
-            <tbody className="flex-1 overflow-y-auto block w-full text-[#115E8D]">
+            <tbody className="flex-1 overflow-y-auto block w-full text-slate-900 dark:text-slate-50">
               {(() => {
                 let activeFocusMachineId: string | null = null;
                 if (currentSession) {
@@ -6816,7 +6813,7 @@ function WorkoutTrackerView({
                         const settingsStr = clientMachineSettings[machine.id!]?.settings;
                         let settingsDisplay;
                         if (!settingsStr || Object.keys(settingsStr).length === 0) {
-                          settingsDisplay = <span className="text-[#68717A]/60 italic font-medium">NO SETTINGS</span>;
+                          settingsDisplay = <span className="text-slate-400 dark:text-slate-500 italic text-[10px]">No Settings</span>;
                         } else {
                           const orderedKeys = ['gap', 'seat', 'back', 'back pad', 'handles', 'handle'];
                           const sortedEntries = Object.entries(settingsStr).sort(([ka], [kb]) => {
@@ -6834,9 +6831,9 @@ function WorkoutTrackerView({
                             <div className="flex gap-1.5 items-center">
                               {sortedEntries.map(([k, v], i) => (
                                 <span key={k} className="flex gap-0.5 items-baseline">
-                                  <span className="text-[#68717A] text-[7.5px] font-medium">{k}:</span>
-                                  <span className="font-black text-slate-800 dark:text-slate-200 text-[8.5px]">{v}</span>
-                                  {i < sortedEntries.length - 1 && <span className="text-slate-600 dark:text-slate-400 ml-0.5 text-[7px]">•</span>}
+                                  <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-medium">{k}:</span>
+                                  <span className="font-medium text-slate-700 dark:text-slate-300 text-[10px] uppercase">{v}</span>
+                                  {i < sortedEntries.length - 1 && <span className="text-slate-300 dark:text-slate-600 ml-0.5 text-[10px]">•</span>}
                                 </span>
                               ))}
                             </div>
@@ -6846,49 +6843,48 @@ function WorkoutTrackerView({
                         return (
                           <tr 
                             key={machine.id} 
-                            className={`flex w-full group transition-all h-[34px] sm:h-[36px] items-center border-b border-slate-100 last:border-b-0 border-l-[3px]
+                            className={`flex w-full group transition-colors h-[34px] sm:h-[36px] items-center border-b border-slate-100 dark:border-slate-800/50 last:border-b-0 border-l-[4px] bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50
                               ${(!isActive && !showAllMachines) ? 'opacity-30 grayscale hover:grayscale-0' : ''}
-                              ${isFocusMachine ? 'bg-orange-500 dark:bg-orange-600/[0.05] border-l-orange-500' : isCompleted && isActive ? 'bg-emerald-500/[0.05] border-l-emerald-500' : isActive ? 'bg-sky-500 dark:bg-sky-600/[0.02] border-l-transparent' : 'even:bg-slate-50 odd:bg-white border-l-transparent'} 
-                              hover:bg-sky-500 dark:bg-sky-600/5`}
+                              ${isFocusMachine ? 'border-l-blue-500' : isCompleted && isActive ? 'border-l-emerald-500' : 'border-l-transparent'}`}
                           >
                             <td className="w-[40px] shrink-0 flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
                               {isActive ? (
-                                <div className={`flex items-center justify-center rounded-full w-5 h-5 text-slate-900 dark:text-white shadow-sm ${isFocusMachine ? 'bg-orange-500 dark:bg-orange-600' : isCompleted ? 'bg-emerald-500' : 'bg-sky-500 dark:bg-sky-600 opacity-80'}`}>
-                                  {isCompleted ? <Check className="w-3 h-3" /> : <span className="font-black text-[9px] leading-none">{seqPosition}</span>}
+                                <div className={`flex items-center justify-center rounded-md px-1.5 h-5 shadow-sm ${isFocusMachine ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : isCompleted ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium'}`}>
+                                  {isCompleted ? <Check className="w-3 h-3" /> : <span className="font-bold text-[9px] leading-none">{seqPosition}</span>}
                                 </div>
                               ) : !currentSession ? (
                                 <button
-                                  className="flex items-center justify-center transition-all rounded-full w-4 h-4 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-[#115E8D] hover:border-[#115E8D]"
+                                  className="flex items-center justify-center transition-all rounded-full w-4 h-4 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-blue-500 hover:border-blue-500"
                                   onClick={() => toggleMachine(machine.id!)}
                                 >
                                   <Plus className="w-2.5 h-2.5" />
                                 </button>
                               ) : (
-                                <div className="w-1 h-1 rounded-full bg-slate-200"></div>
+                                <div className="w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-700"></div>
                               )}
                             </td>
                             
                             <td className="flex-1 p-1 pl-3 border-r border-slate-200 dark:border-slate-800/60 h-full flex flex-col justify-center min-w-0 truncate">
                               <div className="flex items-center">
-                                <span className={`font-bold text-[11px] ${isFocusMachine ? 'text-[#115E8D]' : 'text-[#115E8D]'} leading-none truncate`}>{machine.name}</span>
+                                <span className={`font-medium text-xs ${isFocusMachine ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-900 dark:text-slate-50'} leading-none truncate`}>{machine.name}</span>
                               </div>
                               <div 
                                 onClick={() => setEditingSettingsMachineId(machine.id!)}
-                                className="tracking-widest leading-none uppercase truncate mt-[2px] cursor-pointer hover:opacity-80"
+                                className="leading-none mt-[4px] cursor-pointer hover:opacity-80 pb-1"
                               >
                                 {isTorso ? (
                                   settingsDisplay
                                 ) : isCompleted ? (
-                                  <span className="font-black text-[9px] text-orange-500">
-                                    {currentLog.weight} LBS | {
+                                  <span className="font-medium text-[10px] text-slate-500 dark:text-slate-400">
+                                    {currentLog.weight} lbs | {
                                      currentLog.repsLeft !== undefined && currentLog.repsRight !== undefined ? (
-                                       `${currentLog.repsLeft}L|${currentLog.repsRight}R`
+                                       `${currentLog.repsLeft}L | ${currentLog.repsRight}R`
                                      ) : (
                                        currentLog.isStaticHold ? (
-                                          <>{currentLog.seconds}<span className="text-[7px] ml-0.5 lowercase">s</span></>
-                                        ) : `${currentLog.reps} REPS`
+                                          <>{currentLog.seconds}s</>
+                                        ) : `${currentLog.reps} reps`
                                      )
-                                   } | QUALITY: {currentLog.repQuality}
+                                   } | Q: {currentLog.repQuality}
                                   </span>
                                 ) : (
                                   settingsDisplay
@@ -6899,8 +6895,8 @@ function WorkoutTrackerView({
                             <td className="w-[50px] shrink-0 flex flex-col items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
                               {prevLog && prevLog.weight ? (
                                  <div className="flex flex-col items-center leading-none">
-                                    <span className="font-black text-[11px] text-slate-800 dark:text-slate-200">{prevLog.weight}</span>
-                                    <span className="font-extrabold text-[8px] text-slate-500 dark:text-slate-400 mt-[1px]">
+                                    <span className="font-medium text-xs text-slate-500 dark:text-slate-400">{prevLog.weight}</span>
+                                    <span className="font-medium text-[9px] text-slate-400 dark:text-slate-500 mt-[1px]">
                                       {prevLog.repsLeft !== undefined && prevLog.repsRight !== undefined ? (
                                        `${prevLog.repsLeft}L|${prevLog.repsRight}R`
                                      ) : (
@@ -6925,30 +6921,30 @@ function WorkoutTrackerView({
                               )}
                             </td>
 
-                            <td className={`w-[60px] shrink-0 cursor-pointer group/weight p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors ${isFocusMachine ? 'bg-white shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50' : 'bg-slate-50/50 hover:bg-sky-500 dark:bg-sky-600/10'}`} 
+                            <td className={`w-[60px] shrink-0 cursor-pointer group/weight p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors ${isFocusMachine ? 'bg-white dark:bg-slate-800 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50' : 'bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800'}`} 
                             >
                               {isTorso ? (
                                 <div className="flex flex-col items-center justify-center gap-0.5 w-full h-full">
                                   <div 
-                                    className="flex-1 w-full flex items-center justify-center hover:bg-orange-500/10 dark:bg-orange-600/10 transition-colors"
+                                    className="flex-1 w-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setEditingWeightMachineId(machine.id!);
                                       setEditingWeightSide('Left');
                                     }}
                                   >
-                                    <span className={`font-black text-[10px] ${logL.weight ? 'text-[#115E8D]' : 'text-slate-600'}`}>{logL.weight || '--'}</span>
+                                    <span className={`font-black text-[10px] ${logL.weight ? 'text-slate-900 dark:text-slate-50' : 'text-slate-400 dark:text-slate-500'}`}>{logL.weight || '--'}</span>
                                   </div>
-                                  <div className="w-4 h-[1px] bg-slate-200" />
+                                  <div className="w-4 h-[1px] bg-slate-200 dark:bg-slate-700" />
                                   <div 
-                                    className="flex-1 w-full flex items-center justify-center hover:bg-orange-500/10 dark:bg-orange-600/10 transition-colors"
+                                    className="flex-1 w-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setEditingWeightMachineId(machine.id!);
                                       setEditingWeightSide('Right');
                                     }}
                                   >
-                                    <span className={`font-black text-[10px] ${logR.weight ? 'text-[#115E8D]' : 'text-slate-600'}`}>{logR.weight || '--'}</span>
+                                    <span className={`font-black text-[10px] ${logR.weight ? 'text-slate-900 dark:text-slate-50' : 'text-slate-400 dark:text-slate-500'}`}>{logR.weight || '--'}</span>
                                   </div>
                                 </div>
                               ) : (
@@ -6957,42 +6953,42 @@ function WorkoutTrackerView({
                                   onClick={() => setEditingWeightMachineId(machine.id!)}
                                 >
                                   {currentLog.weight ? (
-                                    <span className="font-black text-[13px] text-[#115E8D]">{currentLog.weight}</span>
+                                    <span className="font-bold text-[13px] text-slate-900 dark:text-slate-50">{currentLog.weight}</span>
                                   ) : (
-                                    <span className={`font-black text-[11px] ${isFocusMachine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-600 group-hover/weight:text-[#115E8D]/50'}`}>--</span>
+                                    <span className={`font-black text-[11px] ${isFocusMachine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-300 dark:text-slate-600 group-hover/weight:text-slate-500'}`}>--</span>
                                   )}
                                 </div>
                               )}
                             </td>
 
-                            <td className={`w-[60px] shrink-0 cursor-pointer group/reps p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors relative ${isFocusMachine ? 'bg-white shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50' : 'bg-slate-50/50 hover:bg-sky-500 dark:bg-sky-600/10'}`} 
+                            <td className={`w-[60px] shrink-0 cursor-pointer group/reps p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors relative ${isFocusMachine ? 'bg-white dark:bg-slate-800 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50' : 'bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800'}`} 
                             >
                               {isTorso ? (
                                 <div className="flex flex-col items-center justify-center gap-0.5 w-full h-full">
                                   <div 
-                                    className="flex-1 w-full flex items-center justify-center hover:bg-orange-500/10 dark:bg-orange-600/10 transition-colors"
+                                    className="flex-1 w-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setEditingWeightMachineId(machine.id!);
                                       setEditingWeightSide('Left');
                                     }}
                                   >
-                                    <span className={`font-black text-[10px] ${logL.reps || logL.seconds ? 'text-[#115E8D]' : 'text-slate-600'}`}>
+                                    <span className={`font-black text-[10px] ${logL.reps || logL.seconds ? 'text-slate-900 dark:text-slate-50' : 'text-slate-400 dark:text-slate-500'}`}>
                                       {logL.isStaticHold ? (
                                         <>{logL.seconds}<span className="text-[7px] ml-0.5 lowercase opacity-70">s</span></>
                                       ) : logL.reps || '--'}
                                     </span>
                                   </div>
-                                  <div className="w-4 h-[1px] bg-slate-200" />
+                                  <div className="w-4 h-[1px] bg-slate-200 dark:bg-slate-700" />
                                   <div 
-                                    className="flex-1 w-full flex items-center justify-center hover:bg-orange-500/10 dark:bg-orange-600/10 transition-colors"
+                                    className="flex-1 w-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setEditingWeightMachineId(machine.id!);
                                       setEditingWeightSide('Right');
                                     }}
                                   >
-                                    <span className={`font-black text-[10px] ${logR.reps || logR.seconds ? 'text-[#115E8D]' : 'text-slate-600'}`}>
+                                    <span className={`font-black text-[10px] ${logR.reps || logR.seconds ? 'text-slate-900 dark:text-slate-50' : 'text-slate-400 dark:text-slate-500'}`}>
                                       {logR.isStaticHold ? (
                                         <>{logR.seconds}<span className="text-[7px] ml-0.5 lowercase opacity-70">s</span></>
                                       ) : logR.reps || '--'}
@@ -7005,9 +7001,9 @@ function WorkoutTrackerView({
                                   onClick={() => setEditingWeightMachineId(machine.id!)}
                                 >
                                   {currentLog.isStaticHold || currentLog.reps ? (
-                                     <span className="font-black text-[13px] text-[#115E8D]">
+                                     <span className="font-bold text-[13px] text-slate-900 dark:text-slate-50">
                                       {currentLog.repsLeft !== undefined && currentLog.repsRight !== undefined ? (
-                                        `${currentLog.repsLeft}L|${currentLog.repsRight}R`
+                                        `${currentLog.repsLeft}L | ${currentLog.repsRight}R`
                                       ) : (
                                         currentLog.isStaticHold ? (
                                           <>{currentLog.seconds}<span className="text-[9px] ml-0.5 lowercase opacity-70">s</span></>
@@ -7015,37 +7011,37 @@ function WorkoutTrackerView({
                                       )}
                                     </span>
                                   ) : (
-                                     <span className={`font-black text-[11px] ${isFocusMachine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-600 group-hover/reps:text-[#115E8D]/50'}`}>--</span>
+                                     <span className={`font-black text-[11px] ${isFocusMachine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-300 dark:text-slate-600 group-hover/reps:text-slate-500'}`}>--</span>
                                   )}
                                 </div>
                               )}
                             </td>
 
-                            <td className={`w-[60px] shrink-0 px-1 border-r border-slate-200 dark:border-slate-800/60 flex items-center justify-center h-full transition-colors ${isFocusMachine ? 'bg-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]' : 'group-hover:bg-sky-500 dark:bg-sky-600/5'}`}>
+                            <td className={`w-[60px] shrink-0 px-1 border-r border-slate-200 dark:border-slate-800/60 flex items-center justify-center h-full transition-colors ${isFocusMachine ? 'bg-white dark:bg-slate-800 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]' : 'group-hover:bg-slate-50 dark:group-hover:bg-slate-800'}`}>
                               {isTorso ? (
                                 <div className="flex flex-col gap-1 items-center">
-                                  <div className={`flex rounded-full p-[1px] gap-[1px] ${isFocusMachine ? 'bg-slate-100/80 border border-slate-200 dark:border-slate-800' : 'bg-slate-200/50'}`}>
+                                  <div className={`flex rounded-full p-[1px] gap-[1px] ${isFocusMachine ? 'bg-slate-100/80 border border-slate-200 dark:border-slate-700' : 'bg-slate-100 dark:bg-slate-800'}`}>
                                     {[1, 2, 3].map((v) => {
                                       const isSelected = logL.repQuality === v;
-                                      let bgClass = isFocusMachine ? 'bg-slate-300 hover:bg-sky-500 dark:bg-sky-600/20' : 'bg-slate-300/50 hover:bg-slate-400';
+                                      let bgClass = isFocusMachine ? 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500' : 'bg-slate-300/50 hover:bg-slate-400';
                                       if (isSelected) {
                                         if (v === 1) bgClass = 'bg-red-500 shadow-sm';
                                         else if (v === 2) bgClass = 'bg-amber-500 shadow-sm';
-                                        else if (v === 3) bgClass = 'bg-emerald-500';
+                                        else if (v === 3) bgClass = 'bg-emerald-500 shadow-sm';
                                       }
                                       return (
                                         <button key={v} onClick={() => currentSession?.id && updateLog(currentSession.id, machine.id!, 'repQuality', v, 'Left')} className={`w-[10px] h-[10px] rounded-full transition-all ${bgClass}`} />
                                       );
                                     })}
                                   </div>
-                                  <div className={`flex rounded-full p-[1px] gap-[1px] ${isFocusMachine ? 'bg-slate-100/80 border border-slate-200 dark:border-slate-800' : 'bg-slate-200/50'}`}>
+                                  <div className={`flex rounded-full p-[1px] gap-[1px] ${isFocusMachine ? 'bg-slate-100/80 border border-slate-200 dark:border-slate-700' : 'bg-slate-100 dark:bg-slate-800'}`}>
                                     {[1, 2, 3].map((v) => {
                                       const isSelected = logR.repQuality === v;
-                                      let bgClass = isFocusMachine ? 'bg-slate-300 hover:bg-sky-500 dark:bg-sky-600/20' : 'bg-slate-300/50 hover:bg-slate-400';
+                                      let bgClass = isFocusMachine ? 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500' : 'bg-slate-300/50 hover:bg-slate-400';
                                       if (isSelected) {
                                         if (v === 1) bgClass = 'bg-red-500 shadow-sm';
                                         else if (v === 2) bgClass = 'bg-amber-500 shadow-sm';
-                                        else if (v === 3) bgClass = 'bg-emerald-500';
+                                        else if (v === 3) bgClass = 'bg-emerald-500 shadow-sm';
                                       }
                                       return (
                                         <button key={v} onClick={() => currentSession?.id && updateLog(currentSession.id, machine.id!, 'repQuality', v, 'Right')} className={`w-[10px] h-[10px] rounded-full transition-all ${bgClass}`} />
@@ -7054,14 +7050,14 @@ function WorkoutTrackerView({
                                   </div>
                                 </div>
                               ) : (
-                                <div className={`flex rounded-full p-[2px] gap-[2px] ${isFocusMachine ? 'bg-slate-100/80 border border-slate-200 dark:border-slate-800' : 'bg-slate-200/50'}`}>
+                                <div className={`flex rounded-full p-[2px] gap-[2px] ${isFocusMachine ? 'bg-slate-100/80 border border-slate-200 dark:border-slate-700' : 'bg-slate-100 dark:bg-slate-800'}`}>
                                   {[1, 2, 3].map((v) => {
                                      const isSelected = currentLog.repQuality === v;
-                                     let bgClass = isFocusMachine ? 'bg-slate-300 hover:bg-sky-500 dark:bg-sky-600/20' : 'bg-slate-300/50 hover:bg-slate-400';
+                                     let bgClass = isFocusMachine ? 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500' : 'bg-slate-300/50 hover:bg-slate-400';
                                      if (isSelected) {
                                        if (v === 1) bgClass = 'bg-red-500 shadow-sm';
                                        else if (v === 2) bgClass = 'bg-amber-500 shadow-sm';
-                                       else if (v === 3) bgClass = 'bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]';
+                                       else if (v === 3) bgClass = 'bg-emerald-500 shadow-sm';
                                      }
                                      return (
                                        <button
