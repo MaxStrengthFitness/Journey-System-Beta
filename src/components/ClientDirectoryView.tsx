@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, User2, PlayCircle, History, Loader2 } from 'lucide-react';
+import { Search, User2, PlayCircle, History, Loader2, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTrainer }: Props) {
-  const { activeStudioId } = useActiveStudio();
+  const { availableStudios, activeStudioId } = useActiveStudio();
   const [searchQuery, setSearchQuery] = useState('');
   const [isGlobalSearch, setIsGlobalSearch] = useState(false);
   const [searchResults, setSearchResults] = useState<Client[]>([]);
@@ -100,26 +100,26 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
   const displayClients = searchResults;
 
   const renderTierBadge = (tier?: string) => {
-    if (!tier) return null;
-    if (tier.toLowerCase().includes('18')) return <Badge className="bg-slate-300 text-slate-800 uppercase tracking-widest text-[8px] font-black">18-Month Silver</Badge>;
-    if (tier.toLowerCase().includes('12')) return <Badge className="bg-[#F06C22] text-white uppercase tracking-widest text-[8px] font-black">12-Month Orange</Badge>;
-    if (tier.toLowerCase().includes('6')) return <Badge className="bg-[#115E8D] text-white uppercase tracking-widest text-[8px] font-black">6-Month Blue</Badge>;
-    return <Badge className="bg-slate-700 text-slate-300 uppercase tracking-widest text-[8px] font-black">{tier}</Badge>;
+    if (!tier || tier === "None") return null;
+    if (tier.toLowerCase().includes('18')) return <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 uppercase tracking-widest text-[9px] md:text-[10px] font-black px-2 py-0.5">Silver</Badge>;
+    if (tier.toLowerCase().includes('12')) return <Badge className="bg-[#F06C22]/10 text-[#d95d1a] dark:text-[#F06C22] border-[#F06C22]/20 uppercase tracking-widest text-[9px] md:text-[10px] font-black px-2 py-0.5">Orange</Badge>;
+    if (tier.toLowerCase().includes('6')) return <Badge className="bg-[#115E8D]/10 text-[#115E8D] dark:text-[#38BDF8] border-[#115E8D]/20 dark:border-[#38BDF8]/20 uppercase tracking-widest text-[9px] md:text-[10px] font-black px-2 py-0.5">Blue</Badge>;
+    return <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 uppercase tracking-widest text-[9px] md:text-[10px] font-black px-2 py-0.5">{tier}</Badge>;
   };
 
   return (
-    <div className="h-full bg-[#0A2E46] p-6 lg:p-10 flex flex-col pt-12">
+    <div className="h-full bg-slate-50 dark:bg-slate-950 p-6 lg:p-10 flex flex-col pt-12 transition-colors duration-200">
       {/* Search Bar Header */}
       <div className="max-w-4xl mx-auto w-full mb-8 shrink-0">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter flex items-center gap-3">
             <User2 className="w-8 h-8 text-[#F06C22]" />
             Client Directory
           </h1>
           {onStartOpenSession && (
             <Button
               onClick={onStartOpenSession}
-              className="bg-transparent border-2 border-slate-700 hover:border-[#F06C22] hover:bg-[#F06C22]/10 text-white font-black uppercase tracking-widest rounded-2xl h-12 px-6 transition-all shadow-lg hover:shadow-[#F06C22]/20"
+              className="bg-transparent border-2 border-slate-300 dark:border-slate-700 hover:border-[#F06C22] dark:hover:border-[#F06C22] hover:bg-[#F06C22]/10 text-slate-900 dark:text-white font-black uppercase tracking-widest rounded-[20px] h-12 md:h-14 px-6 md:px-8 transition-all shadow-sm hover:shadow-[#F06C22]/20"
             >
               <PlayCircle className="w-5 h-5 mr-2 text-[#F06C22]" />
               Start Open Session
@@ -128,14 +128,14 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
         </div>
         
         <div className="relative group">
-          <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-            <Search className="h-6 w-6 text-slate-500 group-focus-within:text-[#F06C22] transition-colors" />
+          <div className="absolute inset-y-0 left-0 pl-6 md:pl-8 flex items-center pointer-events-none">
+            <Search className="h-6 w-6 md:h-8 md:w-8 text-slate-400 dark:text-slate-500 group-focus-within:text-[#F06C22] transition-colors" />
           </div>
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search client roster..."
-            className="w-full bg-slate-900 border-2 border-slate-800 text-white placeholder:text-slate-600 h-20 pl-16 rounded-3xl text-xl font-medium focus-visible:ring-0 focus-visible:border-[#F06C22] shadow-2xl transition-all"
+            className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 h-20 md:h-24 pl-16 md:pl-24 rounded-[28px] md:rounded-[32px] text-xl md:text-3xl font-medium focus-visible:ring-4 focus-visible:ring-[#F06C22]/20 focus-visible:border-[#F06C22] shadow-sm hover:shadow-md dark:shadow-2xl transition-all tracking-tight"
           />
         </div>
         
@@ -143,11 +143,11 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
           <div className="flex items-center gap-3 mt-4 px-2">
             <button
               onClick={() => setIsGlobalSearch(!isGlobalSearch)}
-              className={`w-10 h-5 rounded-full transition-colors relative ${isGlobalSearch ? 'bg-[#F06C22]' : 'bg-slate-700'}`}
+              className={`w-10 h-5 rounded-full transition-colors relative ${isGlobalSearch ? 'bg-[#F06C22]' : 'bg-slate-300 dark:bg-slate-700'}`}
             >
               <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-transform ${isGlobalSearch ? 'left-[22px]' : 'left-0.5'}`} />
             </button>
-            <span className="text-xs font-bold text-slate-400 tracking-widest uppercase">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">
               Search Entire Network
             </span>
           </div>
@@ -157,7 +157,7 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
       <div className="max-w-4xl mx-auto w-full flex-1 overflow-y-auto custom-scrollbar pr-2 pb-24">
         {!searchQuery.trim() && (
           <div className="mb-4">
-            <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+            <h2 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
               <History className="w-3.5 h-3.5" />
               Recently Profiled
             </h2>
@@ -165,57 +165,77 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
         )}
 
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-48 text-center bg-slate-900/50 rounded-3xl border border-dashed border-slate-800">
+          <div className="flex flex-col items-center justify-center h-48 text-center bg-white dark:bg-slate-900/50 rounded-[32px] border border-dashed border-slate-300 dark:border-slate-800 shadow-sm">
             <Loader2 className="w-8 h-8 text-[#F06C22] animate-spin mb-3" />
-            <p className="text-slate-400 font-medium tracking-widest uppercase text-xs">Searching database...</p>
+            <p className="text-slate-500 dark:text-slate-400 font-medium tracking-widest uppercase text-xs">Searching database...</p>
           </div>
         ) : displayClients.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {displayClients.map(client => (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 key={client.id}
                 onClick={() => onSelectClient(client.id!)}
-                className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-[32px] p-6 cursor-pointer hover:border-[#F06C22]/50 hover:bg-slate-800 transition-all group flex flex-col shadow-2xl overflow-hidden relative"
+                className="bg-white dark:bg-slate-900 border-[1.5px] border-slate-200 dark:border-slate-800 rounded-[28px] md:rounded-[32px] p-6 cursor-pointer hover:border-[#F06C22]/50 dark:hover:border-[#F06C22]/50 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all group flex flex-col shadow-sm hover:shadow-md dark:shadow-none overflow-hidden relative min-h-[190px]"
               >
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-slate-600 to-transparent group-hover:via-[#F06C22] transition-colors" />
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-14 h-14 rounded-full bg-[#0A2E46] border-2 border-slate-700 flex items-center justify-center shrink-0 shadow-inner group-hover:border-[#F06C22] transition-colors">
-                    <span className="text-white font-black text-lg tracking-widest">
-                      {client.firstName?.[0]}{client.lastName?.[0]}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-black text-white truncate tracking-tight group-hover:text-[#F06C22] transition-colors">
-                      {client.firstName} {client.lastName}
-                    </h3>
-                    <div className="mt-1 flex flex-wrap gap-2">
-                      {renderTierBadge(client.packageTier)}
-                      {client.globalNotes && (
-                        <Badge variant="outline" className="border-amber-500/30 text-amber-500 uppercase tracking-widest text-[8px] font-black bg-amber-500/10">
-                          Notes
-                        </Badge>
-                      )}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-700 to-transparent group-hover:via-[#F06C22] transition-colors" />
+                
+                {/* Client Info Section */}
+                <div className="flex items-start justify-between mb-5">
+                  <div className="flex items-center gap-4 flex-1 min-w-0 pr-2">
+                    <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-slate-100 dark:bg-[#0A2E46] border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 shadow-sm dark:shadow-inner group-hover:border-[#F06C22] transition-colors">
+                      <span className="text-slate-900 dark:text-white font-black text-lg md:text-xl tracking-widest uppercase">
+                        {client.firstName?.[0]}{client.lastName?.[0]}
+                      </span>
                     </div>
+                    <div className="flex flex-col min-w-0">
+                      <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white truncate tracking-tight group-hover:text-[#F06C22] transition-colors">
+                        {client.firstName} {client.lastName}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] md:text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-[#F06C22]" />
+                          {availableStudios?.find(s => s.id === client.homeStudioId)?.name || 'Unknown Studio'}
+                        </span>
+                        {client.globalNotes && (
+                          <Badge variant="outline" className="border-amber-500/30 text-amber-600 dark:text-amber-500 uppercase tracking-widest text-[8px] font-black bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0">
+                            Notes
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Membership Tier Badge */}
+                  <div className="shrink-0">
+                    {renderTierBadge(client.packageTier)}
                   </div>
                 </div>
 
-                <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-700/50">
+                {/* Session Info Section */}
+                <div className="mt-auto flex items-end justify-between border-t border-slate-100 dark:border-slate-800/80 pt-5">
                   <div className="flex flex-col">
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">
-                      Session Status
+                    <span className="text-base md:text-lg font-black text-slate-900 dark:text-white tracking-widest uppercase mb-1.5 opacity-80">
+                      Session {client.sessionCount || 0}
                     </span>
-                    <span className="text-sm font-bold text-slate-300 mt-0.5">
-                      {client.sessionCount || 0} / {client.totalSessions || 0} Logged
-                    </span>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[10px] md:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">
+                        Last: <span className="text-slate-700 dark:text-slate-300">{(client as any).lastSessionDate || 'N/A'}</span>
+                      </span>
+                      <span className="text-[10px] md:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">
+                        Next: <span className="text-slate-700 dark:text-slate-300">{(client as any).nextSessionDate || 'Unscheduled'}</span>
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest group-hover:text-[#F06C22] transition-colors">
-                      Start
+                  
+                  {/* Play Action */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] md:text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest group-hover:text-[#F06C22] transition-colors hidden sm:block">
+                      Profile
                     </span>
-                    <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center group-hover:bg-[#F06C22] transition-colors">
-                      <PlayCircle className="w-5 h-5 text-slate-400 group-hover:text-white" />
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center group-hover:bg-[#F06C22] group-hover:border-[#F06C22] transition-all shadow-sm">
+                      <PlayCircle className="w-6 h-6 md:w-7 md:h-7 text-slate-400 dark:text-slate-400 group-hover:text-white transition-colors" />
                     </div>
                   </div>
                 </div>
@@ -223,9 +243,9 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-48 text-center bg-slate-900/50 rounded-3xl border border-dashed border-slate-800">
-            <Search className="w-8 h-8 text-slate-600 mb-3" />
-            <p className="text-slate-400 font-medium">No clients found matching your search.</p>
+          <div className="flex flex-col items-center justify-center h-48 text-center bg-white dark:bg-slate-900/50 rounded-[32px] border border-dashed border-slate-300 dark:border-slate-800 shadow-sm">
+            <Search className="w-8 h-8 text-slate-400 dark:text-slate-600 mb-3" />
+            <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">No clients found matching your search.</p>
           </div>
         )}
       </div>

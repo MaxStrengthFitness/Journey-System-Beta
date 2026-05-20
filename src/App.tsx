@@ -3361,8 +3361,9 @@ function ClientsView({
         {!searchTerm ? (
           <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 p-6 space-y-10">
             {/* Header / Week Selector / Shift Toggle */}
-            <section className="bg-slate-100 dark:bg-slate-900/50 rounded-[32px] p-4 md:p-6 border border-slate-200 dark:border-slate-800 space-y-6 shrink-0">
-              <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+            <section className="bg-slate-900 rounded-[24px] md:rounded-[32px] p-4 md:p-6 shadow-[0_4px_30px_rgba(0,0,0,0.1)] border border-slate-700/50 space-y-6 shrink-0 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 opacity-80 pointer-events-none"></div>
+              <div className="relative flex flex-col xl:flex-row xl:items-center justify-between gap-6 z-10">
                 {/* Week Selector */}
                 <div className="flex flex-wrap gap-2">
                   {weekDays.map((date) => {
@@ -3372,16 +3373,16 @@ function ClientsView({
                       <button
                         key={date.toISOString()}
                         onClick={() => setSelectedDate(date)}
-                        className={`min-w-[80px] px-4 py-3 rounded-2xl flex flex-col items-center gap-1 transition-all border-2 ${
+                        className={`min-w-[85px] px-4 py-3 xl:py-4 rounded-xl flex flex-col items-center gap-1.5 transition-all border ${
                           isSelected 
-                            ? 'bg-sky-500 border-sky-500 text-slate-900 shadow-[0_0_15px_rgba(56,189,248,0.4)] scale-105 z-10' 
-                            : 'bg-white/40 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-sky-500/30 hover:text-slate-900 dark:text-white dark:hover:text-slate-50'
+                            ? 'bg-[#38BDF8] border-[#38BDF8] text-slate-900 shadow-[0_0_20px_rgba(56,189,248,0.3)] scale-105 z-10' 
+                            : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:border-[#38BDF8]/50 hover:bg-slate-800 hover:text-white'
                         }`}
                       >
-                        <span className="text-[10px] font-black uppercase tracking-widest leading-none">
+                        <span className="text-[10px] font-black uppercase tracking-widest leading-none opacity-80">
                           {date.toLocaleDateString([], { weekday: 'short' })}
                         </span>
-                        <span className={`text-base font-black leading-none ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
+                        <span className={`text-[17px] font-black leading-none ${isSelected ? 'text-slate-900' : 'text-slate-100'}`}>
                           {isToday ? 'Today' : date.toLocaleDateString([], { day: 'numeric' })}
                         </span>
                       </button>
@@ -3390,41 +3391,41 @@ function ClientsView({
                 </div>
 
                 {/* Shift Selector */}
-                <div className="relative flex p-2 bg-slate-200 dark:bg-slate-800 rounded-3xl border border-slate-300 dark:border-slate-700 shadow-inner self-start xl:self-center w-[320px] h-20">
+                <div className="relative flex p-1.5 bg-slate-800/80 rounded-2xl border border-slate-700 shadow-inner self-start xl:self-center w-[320px] h-16 xl:h-20">
                   <div 
                     className={cn(
-                      "absolute top-2 bottom-2 w-[calc(50%-8px)] bg-white dark:bg-slate-900 rounded-2xl shadow-md transition-transform duration-300 ease-out z-0 border border-slate-200 dark:border-slate-700",
+                      "absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white rounded-[14px] shadow-sm transition-transform duration-300 ease-out z-0",
                       activeTab === 'morning' ? "translate-x-0" : "translate-x-[100%]"
                     )}
                   />
                   <button 
                     onClick={() => setActiveTab('morning')}
                     className={cn(
-                      "relative flex-1 rounded-2xl transition-colors z-10 flex flex-col items-center justify-center gap-1",
+                      "relative flex-1 rounded-[14px] transition-colors z-10 flex flex-col items-center justify-center gap-1",
                       activeTab === 'morning' 
-                        ? 'text-slate-900 dark:text-white' 
-                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                        ? 'text-slate-900' 
+                        : 'text-slate-400 hover:text-slate-300'
                     )}
                   >
-                    <span className="text-[14px] font-black uppercase tracking-widest leading-none mt-1">AM Shift</span>
+                    <span className="text-[13px] xl:text-[14px] font-black uppercase tracking-widest leading-none mt-0.5 xl:mt-1">AM Shift</span>
                     <span className={cn(
-                      "text-[10px] font-bold uppercase tracking-widest leading-none",
-                      activeTab === 'morning' ? "text-sky-500" : "opacity-60"
+                      "text-[9px] xl:text-[10px] font-bold uppercase tracking-widest leading-none",
+                      activeTab === 'morning' ? "text-[#0A2E46]" : "opacity-60"
                     )}>{amSessionsCount} Sessions</span>
                   </button>
                   <button 
                     onClick={() => setActiveTab('afternoon')}
                     className={cn(
-                      "relative flex-1 rounded-2xl transition-colors z-10 flex flex-col items-center justify-center gap-1",
+                      "relative flex-1 rounded-[14px] transition-colors z-10 flex flex-col items-center justify-center gap-1",
                       activeTab === 'afternoon' 
-                        ? 'text-slate-900 dark:text-white' 
-                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                        ? 'text-slate-900' 
+                        : 'text-slate-400 hover:text-slate-300'
                     )}
                   >
-                    <span className="text-[14px] font-black uppercase tracking-widest leading-none mt-1">PM Shift</span>
+                    <span className="text-[13px] xl:text-[14px] font-black uppercase tracking-widest leading-none mt-0.5 xl:mt-1">PM Shift</span>
                     <span className={cn(
-                      "text-[10px] font-bold uppercase tracking-widest leading-none",
-                      activeTab === 'afternoon' ? "text-orange-500" : "opacity-60"
+                      "text-[9px] xl:text-[10px] font-bold uppercase tracking-widest leading-none",
+                      activeTab === 'afternoon' ? "text-orange-600" : "opacity-60"
                     )}>{pmSessionsCount} Sessions</span>
                   </button>
                 </div>
@@ -3432,7 +3433,7 @@ function ClientsView({
             </section>
 
             {/* Main Training Grid */}
-            <section className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-none relative pb-64">
+            <section className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-none relative">
               <div className="overflow-x-auto flex-grow relative">
                 <div className="min-w-full relative">
                   {currentTimePos !== null && (
@@ -3446,29 +3447,29 @@ function ClientsView({
                       </div>
                     </div>
                   )}
-                  <table className="w-full border-collapse table-fixed h-full bg-slate-50 dark:bg-slate-950">
-                    <thead>
-                      <tr className="bg-slate-100 dark:bg-slate-800 border-b border-slate-300 dark:border-slate-700 h-[72px] sm:h-[84px]">
-                        <th className="p-1 sm:p-2 border-r border-slate-300 dark:border-slate-700 w-12 sm:w-14 sticky left-0 bg-slate-100 dark:bg-slate-800 z-30 justify-center"></th>
+                  <table className="w-full border-collapse table-fixed h-full bg-white dark:bg-slate-950">
+                    <thead className="relative z-30">
+                      <tr className="bg-slate-50 dark:bg-slate-900 border-b-2 border-slate-300 dark:border-slate-700 h-[84px] sm:h-[100px]">
+                        <th className="p-1 sm:p-2 border-r-2 border-slate-300 dark:border-slate-700 w-12 sm:w-16 sticky left-0 bg-slate-50 dark:bg-slate-900 z-40"></th>
                         {visibleTrainersList.map((trainer) => {
                           const sessionCount = todaysSchedules.filter(s => 
                             s.trainerName === trainer.fullName && 
                             !s.clientName?.toLowerCase().includes('unavailab')
                           ).length;
                           return (
-                          <th key={trainer.id} className="p-1 sm:p-2 border-r border-slate-300 dark:border-slate-700 last:border-r-0 text-center z-20 sticky top-0 bg-slate-100 dark:bg-slate-800 border-b-[3px] border-b-slate-300 dark:border-b-slate-600 shadow-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700 w-1/5 min-w-[70px]">
-                            <div className="flex flex-col items-center justify-center gap-0.5 sm:gap-1">
-                              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-900 dark:bg-white border-2 border-white dark:border-slate-800 shadow-md flex items-center justify-center mb-0.5">
-                                <span className="text-[10px] sm:text-[12px] font-black text-white dark:text-slate-900 uppercase">
+                          <th key={trainer.id} className="p-2 sm:p-3 border-r-2 border-slate-300 dark:border-slate-700 last:border-r-0 text-center sticky top-0 bg-slate-50 dark:bg-slate-900 shadow-sm w-1/5 min-w-[70px]">
+                            <div className="flex flex-col items-center justify-center gap-1 sm:gap-2 pt-1">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-900 dark:bg-[#38BDF8] border-2 border-white dark:border-slate-800 shadow-lg flex items-center justify-center">
+                                <span className="text-[12px] sm:text-[14px] font-black text-white dark:text-slate-900 uppercase tracking-widest">
                                   {trainer.fullName.substring(0, 2)}
                                 </span>
                               </div>
-                              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white leading-none whitespace-nowrap overflow-hidden text-ellipsis w-11/12">
+                              <span className="text-[11px] sm:text-[13px] font-black uppercase tracking-widest text-slate-900 dark:text-white leading-none whitespace-nowrap overflow-hidden text-ellipsis w-11/12">
                                 {trainer.fullName.split(' ')[0]}
                               </span>
-                              <div className="bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 px-1.5 py-[2px] rounded flex items-center gap-1 leading-none border border-sky-200 dark:border-sky-800/50 mt-0.5">
-                                <span className="text-[8px] sm:text-[10px] font-bold tracking-widest whitespace-nowrap">
-                                  {sessionCount} SESS.
+                              <div className="bg-slate-200/50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded flex items-center gap-1 leading-none mt-0.5">
+                                <span className="text-[9px] sm:text-[10px] font-bold tracking-widest whitespace-nowrap uppercase">
+                                  {sessionCount} Sess.
                                 </span>
                               </div>
                             </div>
@@ -3482,9 +3483,12 @@ function ClientsView({
                         const skippedGridCells = new Set<string>();
                         return currentSlots.map((slot, sIdx) => {
                           return (
-                            <tr key={slot} className="border-b border-slate-300 dark:border-slate-700 last:border-0 hover:bg-white dark:hover:bg-slate-800/[0.02] transition-colors group relative h-[80px]">
-                              <td className="p-1 sm:p-2 text-center border-r border-slate-300 dark:border-slate-700 sticky left-0 bg-slate-50 dark:bg-slate-950 z-10 text-slate-500 dark:text-slate-400">
-                                <span className="text-[10px] sm:text-[11px] font-black tracking-tighter group-hover:text-slate-900 dark:text-white dark:hover:text-slate-50 transition-colors">{slot.replace(':00 ', ' ').replace(':30 ', ':30 ')}</span>
+                            <tr key={slot} className="border-b-2 border-slate-300 dark:border-slate-700 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/[0.05] transition-colors group relative h-[72px]">
+                              <td className="p-1 sm:p-2 text-center border-r-2 border-slate-300 dark:border-slate-700 sticky left-0 bg-slate-100 dark:bg-slate-800 z-10 relative box-border shadow-[2px_0_10px_rgba(0,0,0,0.05)]">
+                                <div className="flex flex-col items-center justify-center">
+                                  <span className="text-[12px] sm:text-[14px] font-black tracking-widest text-[#0A2E46] dark:text-white uppercase leading-none">{slot.replace(' AM', '').replace(' PM', '').replace(':00', '').replace(':30', ':30')}</span>
+                                  <span className="text-[9px] font-bold text-[#F06C22] uppercase tracking-widest">{slot.includes('AM') ? 'AM' : 'PM'}</span>
+                                </div>
                               </td>
                               {visibleTrainersList.map((trainer, tIdx) => {
                                 const cellId = `${trainer.id}-${slot}`;
@@ -3541,7 +3545,7 @@ function ClientsView({
                                   <td 
                                     key={cellId} 
                                     rowSpan={rowSpan}
-                                    className={cn("p-1.5 border-r border-slate-300 dark:border-slate-700 last:border-r-0 align-top", rowSpan > 1 ? "" : "h-[80px]")}
+                                    className={cn("p-1 sm:p-1.5 border-r border-slate-300 dark:border-slate-700 last:border-r-0 align-top", rowSpan > 1 ? "" : "h-[72px]")}
                                   >
                                     {session ? (
                                       <div
@@ -3556,49 +3560,45 @@ function ClientsView({
                                           }
                                         }}
                                         className={cn(
-                                          "flex flex-col p-3 rounded-xl border-2 shadow-lg transition-all h-full box-border relative overflow-hidden",
+                                          "flex flex-col p-2 sm:p-2.5 rounded-xl shadow-sm transition-all h-full box-border relative overflow-hidden",
                                           isUnavailable
-                                            ? "bg-[repeating-linear-gradient(45deg,#f8fafc,#f8fafc_10px,#f1f5f9_10px,#f1f5f9_20px)] dark:bg-[repeating-linear-gradient(45deg,#0f172a,#0f172a_10px,#1e293b_10px,#1e293b_20px)] border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-90"
+                                            ? "bg-[repeating-linear-gradient(45deg,#f8fafc,#f8fafc_10px,#f1f5f9_10px,#f1f5f9_20px)] dark:bg-[repeating-linear-gradient(45deg,#0f172a,#0f172a_10px,#1e293b_10px,#1e293b_20px)] border-2 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-90"
                                             : isCompleted 
-                                              ? 'opacity-60 grayscale bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 cursor-pointer' 
-                                              : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 cursor-pointer hover:border-sky-500 hover:bg-slate-50 dark:hover:bg-slate-700",
-                                          hasAlert && !isCompleted && !isUnavailable ? "border-l-4 border-l-red-500" : "",
-                                          rowSpan > 1 ? "justify-between" : "justify-center"
+                                              ? 'opacity-60 grayscale bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700/80 cursor-pointer' 
+                                              : "bg-white dark:bg-slate-800 border-[1.5px] border-slate-300 dark:border-slate-600 cursor-pointer hover:border-[#38BDF8] hover:shadow-md",
+                                          hasAlert && !isCompleted && !isUnavailable ? "border-l-4 border-l-red-500" : ""
                                         )}
                                       >
-                                        <div className="flex w-full items-start justify-between gap-2 overflow-hidden">
-                                          <div className="flex items-center gap-1.5 min-w-0 pr-8">
-                                            <span className={cn(
-                                              "leading-tight truncate text-ellipsis",
-                                              "text-sm font-bold",
-                                              isUnavailable ? "text-slate-500 italic uppercase tracking-widest text-[10px]" : "text-slate-900 dark:text-slate-50"
-                                            )}>
-                                              {isUnavailable ? 'Unavailable' : formattedClientName}
-                                            </span>
-                                            {hasAlert && !isCompleted && !isUnavailable && (
-                                              <div className="w-2 h-2 rounded-full bg-red-500 animate-[pulse_2s_ease-in-out_infinite] shrink-0" />
-                                            )}
-                                          </div>
-                                          
-                                          {!isUnavailable && (
-                                            <div className="absolute top-2 right-2 flex flex-col items-end gap-1 shrink-0">
+                                        <div className="flex flex-col w-full h-full justify-between items-start gap-1 relative z-10">
+                                          <div className="w-full">
+                                            <div className="flex items-start justify-between gap-1 mb-0.5 relative z-20">
                                               <span className={cn(
-                                                "inline-flex items-center text-[14px] font-black leading-none",
-                                                isCompleted ? "text-slate-500/50" : "text-sky-600 dark:text-sky-400"
+                                                "leading-tight truncate",
+                                                "text-sm font-bold",
+                                                isUnavailable ? "text-slate-500 italic uppercase tracking-widest text-[10px]" : "text-slate-900 dark:text-slate-50"
                                               )}>
-                                                {sessionNumber}
+                                                {isUnavailable ? 'Unavailable' : formattedClientName}
                                               </span>
-                                              {rowSpan > 1 && (
-                                                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight line-clamp-1 mt-0.5">
-                                                  {Math.round((safeToDate(session.endTime).getTime() - safeToDate(session.startTime).getTime()) / 60000)}m
-                                                </span>
+                                              {hasAlert && !isCompleted && !isUnavailable && (
+                                                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-[pulse_2s_ease-in-out_infinite] shrink-0 mt-1.5" />
                                               )}
                                             </div>
+                                          </div>
+
+                                          {!isUnavailable && (
+                                              <div className="w-full flex items-end justify-end mt-auto pt-1 relative z-20">
+                                                <span className={cn(
+                                                  "inline-flex items-center text-[11px] sm:text-[12px] font-black leading-none px-1.5 py-0.5 rounded-md border",
+                                                  isCompleted ? "text-slate-500/50 border-slate-200/50" : "text-[#38BDF8] bg-[#38BDF8]/10 border-[#38BDF8]/20"
+                                                )}>
+                                                  {sessionNumber} / {(clientObj?.packageTier === "18-Month" ? 144 : clientObj?.packageTier === "12-Month" ? 96 : clientObj?.packageTier === "6-Month" ? 48 : clientObj?.remainingSessions ? (clientObj.remainingSessions + sessionNumber - 1) : 12)}
+                                                </span>
+                                              </div>
                                           )}
                                         </div>
                                       </div>
                                     ) : (
-                                      <div className="h-full w-full opacity-0 hover:opacity-10 transition-opacity flex items-center justify-center p-2 bg-slate-600 rounded-lg pointer-events-none">
+                                      <div className="h-full w-full opacity-0 hover:opacity-[0.03] transition-opacity flex items-center justify-center p-2 bg-slate-900 rounded-lg pointer-events-none">
                                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">Open</span>
                                       </div>
                                     )}
