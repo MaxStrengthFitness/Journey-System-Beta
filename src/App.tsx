@@ -3374,24 +3374,32 @@ function ClientsView({
                 </div>
 
                 {/* Shift Selector */}
-                <div className="flex p-1.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 backdrop-blur-md self-start xl:self-center">
+                <div className="relative flex p-1.5 bg-slate-200 dark:bg-slate-800 rounded-2xl border border-slate-300 dark:border-slate-700 shadow-inner self-start xl:self-center w-[280px] h-[52px]">
+                  <div 
+                    className={cn(
+                      "absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white dark:bg-slate-900 rounded-xl shadow-md transition-transform duration-300 ease-out z-0",
+                      activeTab === 'morning' ? "translate-x-0" : "translate-x-[100%]"
+                    )}
+                  />
                   <button 
                     onClick={() => setActiveTab('morning')}
-                    className={`px-8 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
+                    className={cn(
+                      "relative flex-1 rounded-xl text-[12px] font-black uppercase tracking-widest transition-colors z-10 flex items-center justify-center",
                       activeTab === 'morning' 
-                        ? 'bg-sky-500 shadow-lg text-slate-900' 
-                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 hover:bg-white dark:hover:bg-slate-800'
-                    }`}
+                        ? 'text-slate-900 dark:text-white' 
+                        : 'text-slate-500 hover:text-slate-700'
+                    )}
                   >
                     AM Shift
                   </button>
                   <button 
                     onClick={() => setActiveTab('afternoon')}
-                    className={`px-8 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
+                    className={cn(
+                      "relative flex-1 rounded-xl text-[12px] font-black uppercase tracking-widest transition-colors z-10 flex items-center justify-center",
                       activeTab === 'afternoon' 
-                        ? 'bg-sky-500 shadow-lg text-slate-900' 
-                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 hover:bg-white dark:hover:bg-slate-800'
-                    }`}
+                        ? 'text-slate-900 dark:text-white' 
+                        : 'text-slate-500 hover:text-slate-700'
+                    )}
                   >
                     PM Shift
                   </button>
@@ -3421,7 +3429,7 @@ function ClientsView({
             </section>
 
             {/* Main Training Grid */}
-            <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-2xl dark:shadow-none relative pb-40">
+            <section className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-none relative pb-64">
               <div className="overflow-x-auto flex-grow relative">
                 <div className="min-w-[800px] h-full relative">
                   {currentTimePos !== null && (
@@ -3530,12 +3538,12 @@ function ClientsView({
                                           }
                                         }}
                                         className={cn(
-                                          "flex flex-col p-3 rounded-xl border-2 shadow-sm transition-all h-full box-border relative overflow-hidden",
+                                          "flex flex-col p-3 rounded-xl border-2 shadow-lg transition-all h-full box-border relative overflow-hidden",
                                           isUnavailable
-                                            ? "bg-[repeating-linear-gradient(45deg,#f8fafc,#f8fafc_10px,#e2e8f0_10px,#e2e8f0_20px)] dark:bg-[repeating-linear-gradient(45deg,#0f172a,#0f172a_10px,#1e293b_10px,#1e293b_20px)] border-slate-300 dark:border-slate-700 cursor-not-allowed opacity-90"
+                                            ? "bg-[repeating-linear-gradient(45deg,#f8fafc,#f8fafc_10px,#f1f5f9_10px,#f1f5f9_20px)] dark:bg-[repeating-linear-gradient(45deg,#0f172a,#0f172a_10px,#1e293b_10px,#1e293b_20px)] border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-90"
                                             : isCompleted 
                                               ? 'opacity-60 grayscale bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 cursor-pointer' 
-                                              : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 cursor-pointer hover:border-sky-500 hover:bg-slate-50 dark:hover:bg-slate-700",
+                                              : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 cursor-pointer hover:border-sky-500 hover:bg-slate-50 dark:hover:bg-slate-700",
                                           hasAlert && !isCompleted && !isUnavailable ? "border-l-4 border-l-red-500" : "",
                                           rowSpan > 1 ? "justify-between" : "justify-center"
                                         )}
