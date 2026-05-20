@@ -896,7 +896,7 @@ export function ClientProfileView({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-[1400px] mx-auto space-y-2 pb-8 px-2 sm:px-4 bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-950 min-h-screen pt-4"
+      className="max-w-[1400px] mx-auto space-y-2 pb-8 px-2 sm:px-4 bg-slate-50 dark:bg-slate-950 min-h-screen pt-4"
     >
       {/* Alerts / Notifications */}
       {(() => {
@@ -1012,8 +1012,8 @@ export function ClientProfileView({
       })()}
 
       {/* Session Status Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl shadow-sm px-4 sm:px-6 py-4 mb-3 relative overflow-hidden flex flex-col md:flex-row items-center md:items-start justify-between gap-4 transition-colors duration-200">
-        <div className="flex items-center gap-2 sm:gap-4 z-10 shrink-[2] min-w-0 w-full md:w-auto">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm px-6 py-6 mb-3 relative overflow-hidden flex flex-col md:flex-row items-center md:items-center justify-between gap-6 transition-colors duration-200">
+        <div className="flex items-center gap-4 z-10 shrink-0 min-w-0 w-full md:w-auto">
           <Button
             onClick={() => {
               setSelectedClientId(null);
@@ -1021,121 +1021,54 @@ export function ClientProfileView({
             }}
             variant="ghost"
             size="icon"
-            className="shrink-0 text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover: hover:bg-slate-100 dark:hover:bg-slate-50 dark:bg-slate-800 -ml-1 sm:-ml-2 h-8 w-8 sm:h-10 sm:w-10 rounded-full"
+            className="shrink-0 text-slate-700 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 -ml-2 h-10 w-10 sm:h-12 sm:w-12 rounded-full"
           >
-            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+            <ChevronLeft className="w-6 h-6 sm:w-8 sm:h-8" />
           </Button>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-100 dark:bg-slate-800 dark:bg-slate-50 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-800 dark:border-slate-200 hidden sm:flex">
-            <User className="w-5 h-5 text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:text-slate-400" />
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
+            <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-50 uppercase tracking-widest">
+              {client.firstName?.[0]}{client.lastName?.[0]}
+            </span>
           </div>
-          <div className="flex flex-col min-w-0">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <h2 className="text-lg sm:text-2xl font-bold uppercase tracking-tighter leading-none m-0 truncate text-slate-900 dark:text-slate-50">
+          <div className="flex flex-col min-w-0 items-start">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-1">
+              <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter leading-none m-0 truncate text-slate-900 dark:text-white">
                 {client.firstName} {client.lastName}
               </h2>
-              <div className="flex flex-col sm:flex-row items-start sm:items-baseline gap-2 sm:gap-4 mt-2 mb-2 w-full">
-                <div className="flex items-baseline gap-2 group relative">
-                  <span className="text-4xl italic font-bold tracking-tight">
-                    {calculatedSessionCount} / {calculatedSessionCount + (client.remainingSessions ?? 0)}
-                  </span>
-                  <button
-                    onClick={() => {
-                      setSessionCountInput(String(calculatedSessionCount));
-                      setIsEditingSessionCount(true);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"
-                    title="Edit Session Count"
-                  >
-                    <Edit3 className="w-4 h-4 text-[#38BDF8]" />
-                  </button>
-                </div>
-                <div className="text-[12px] font-bold tracking-widest uppercase text-[#F06C22]">
-                  {client.remainingSessions ?? 0} Remaining
-                </div>
-              </div>
-            </div>
-
-            {/* Flair Row */}
-            <div className="flex flex-wrap gap-2 mt-2 mb-2 items-center group/flair">
-              {true && (
-                <div
-                  className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest rounded border ${ client.packageTier === "6-Month" ? "bg-[#38BDF8]/10 text-[#38BDF8] border-[#38BDF8]/50 shadow-[0_0_15px_rgba(56,189,248,0.15)]" : client.packageTier === "12-Month" ? "bg-[#F06C22]/20 text-[#F06C22] border-[#F06C22]/50 shadow-[0_0_10px_rgba(240,108,34,0.3)]" : client.packageTier === "18-Month" ? "bg-gray-400/20 text-gray-200 border-gray-400/60 shadow-[0_0_15px_rgba(156,163,175,0.4)]" : "bg-slate-700/20 text-slate-800 border-slate-200" }`}
-                >
-                  {client.packageTier === "18-Month"
-                    ? "18-Month VIP"
-                    : client.packageTier === "12-Month"
-                      ? "12-Month Tier"
-                      : client.packageTier === "6-Month"
-                        ? "6-Month Tier"
-                        : "Prospect"}
-                </div>
-              )}
-              {client.occupation && (
-                <div className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest rounded border bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50">
-                  {client.occupation}
-                </div>
-              )}
-              {client.isRetired && (
-                <div className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest rounded border bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50">
-                  RETIRED
-                </div>
-              )}
-              {client.homeStudioId && studios?.find(s => s.id === client.homeStudioId) && (
-                <div className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest rounded border bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 border-teal-200 dark:border-teal-800/50 flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
-                  {studios.find(s => s.id === client.homeStudioId)?.name}
-                </div>
-              )}
-              {false ? (
-                <button
-                  onClick={() => setActiveTab("details")}
-                  className="text-[10px] font-bold text-slate-500 dark:text-slate-600 dark:text-slate-400 uppercase tracking-widest hover: transition-colors flex items-center gap-1"
-                >
-                  + Add Tier
-                </button>
-              ) : (
-                <button
-                  onClick={() => setActiveTab("details")}
-                  className="opacity-0 group-hover/flair:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded-full"
-                >
-                  <Edit3 className="w-3 h-3 text-slate-700 dark:text-slate-300 dark:text-slate-400 dark:text-slate-500" />
-                </button>
-              )}
             </div>
             
-            {client.occupation && getErgonomicRisk(client.occupation) && (
-              <div className="mt-1 mb-3 flex items-start gap-1.5 text-slate-700 dark:text-slate-300 dark:text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-800 dark:border-slate-700 w-fit max-w-full">
-                <AlertCircle className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300 dark:text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
-                <span className="text-[10px] font-bold tracking-wide italic leading-snug">
-                  <span className="text-slate-300 font-bold uppercase not-italic mr-1 tracking-wider">Ergonomic Risk:</span> 
-                  {getErgonomicRisk(client.occupation)}
-                </span>
+            {/* Quick-Glance Pills */}
+            <div className="flex flex-wrap gap-2 mt-2 items-center group/flair">
+              <div className="px-3 py-1 text-[11px] font-black uppercase tracking-widest rounded-lg border bg-[#F06C22]/10 text-[#F06C22] border-[#F06C22]/30 flex items-center gap-1.5">
+                Session {calculatedSessionCount} / {calculatedSessionCount + (client.remainingSessions ?? 0)}
               </div>
-            )}
-
-            <div className="flex items-center gap-2 mt-1">
-              <Calendar className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                Last Session:{" "}
-                <span className="text-slate-900 dark:text-slate-100">
-                  {sessions[0]?.date ? new Date(sessions[0].date + "T12:00:00").toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : "No history"}
-                </span>
-              </span>
+              <div className="px-3 py-1 text-[11px] font-black uppercase tracking-widest rounded-lg border bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                Joined: {client.firstSessionDate ? new Date(client.firstSessionDate.toDate?.() || client.firstSessionDate).toLocaleDateString([], { month: 'short', year: 'numeric' }) : "N/A"}
+              </div>
+              <div className="px-3 py-1 text-[11px] font-black uppercase tracking-widest rounded-lg border bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                Last: {sessions[0]?.date ? new Date(sessions[0].date + "T12:00:00").toLocaleDateString([], { month: 'short', day: 'numeric' }) : "None"}
+              </div>
+              <div className="px-3 py-1 text-[11px] font-black uppercase tracking-widest rounded-lg border bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 flex items-center gap-1.5">
+                <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
+                Next: {scheduledSessions[0]?.startTime ? new Date(scheduledSessions[0].startTime.toDate?.() || scheduledSessions[0].startTime).toLocaleDateString([], { month: 'short', day: 'numeric' }) : "Unscheduled"}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 z-10 shrink-0 ml-auto">
+        <div className="flex flex-col sm:flex-row items-center gap-3 z-10 shrink-0 w-full md:w-auto">
           {activeInProgressSession ? (
             <DropdownMenu>
-              <DropdownMenuTrigger render={<Button className="bg-amber-500 hover:bg-amber-600 rounded-lg font-bold uppercase text-xs tracking-widest h-9 sm:h-10 px-4 sm:px-6 shadow-[0_0_15px_rgba(245,158,11,0.5)] border-none shrink-0 border-2 border-amber-300/20" />}>
-                  <Clock className="w-4 h-4 mr-2 animate-pulse" />
+              <DropdownMenuTrigger render={<Button className="bg-amber-500 hover:bg-amber-600 rounded-xl font-black uppercase text-sm tracking-widest h-12 px-6 sm:px-8 shadow-sm border-none w-full md:w-auto" />}>
+                  <Clock className="w-5 h-5 mr-2 animate-pulse" />
                   IN-PROGRESS ({activeInProgressSession.trainerInitials})
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[240px] rounded-2xl p-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                <div className="px-3 py-2 mb-2 border-b border-white/10">
+                <div className="px-3 py-2 mb-2 border-b border-white/10 border-slate-200 dark:border-slate-800">
                   <p className="text-[10px] font-bold uppercase text-amber-500 tracking-widest">Active Session Detected</p>
-                  <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 mt-1">
+                  <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200 mt-1">
                     Started by {activeInProgressSession.trainerInitials} at {new Date(activeInProgressSession.startTime?.toMillis?.() || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
@@ -1144,14 +1077,14 @@ export function ClientProfileView({
                     localStorage.setItem('max_strength_active_session_id', activeInProgressSession.id!);
                     setView("workouts");
                   }}
-                  className="rounded-xl hover:bg-amber-500 hover: transition-colors cursor-pointer flex items-center gap-2 p-3"
+                  className="rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/20 transition-colors cursor-pointer flex items-center gap-2 p-3 text-amber-700 dark:text-amber-500"
                 >
                   <Play className="w-4 h-4" />
                   <span className="font-bold uppercase text-xs">Take Over Session</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={() => setView("workouts")}
-                  className="rounded-xl hover:bg-white/10 transition-colors cursor-pointer flex items-center gap-2 p-3 text-slate-700 dark:text-slate-300 dark:text-slate-400 dark:text-slate-500"
+                  className="rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-2 p-3 text-slate-700 dark:text-slate-300"
                 >
                   <Maximize className="w-4 h-4" />
                   <span className="font-bold uppercase text-xs">View Current Profile</span>
@@ -1161,20 +1094,16 @@ export function ClientProfileView({
           ) : (
             <Button
               onClick={() => {
-                // Ensure no stale session ID is stored
                 localStorage.removeItem('max_strength_active_session_id');
                 setView("workouts");
               }}
               disabled={isCheckingActiveSession}
-              className="bg-[#F06C22] hover:bg-[#F06C22]/90 rounded-lg font-bold uppercase text-xs sm:text-sm tracking-widest h-9 sm:h-10 px-4 sm:px-6 shadow-[0_0_15px_rgba(240,108,34,0.5)] border-none shrink-0"
+              className="bg-[#F06C22] hover:bg-[#F06C22]/90 rounded-xl font-black uppercase text-sm sm:text-base tracking-widest h-12 md:h-14 px-8 shadow-sm border-none w-full md:w-auto text-white dark:text-white"
             >
+              <Play className="w-5 h-5 mr-2" />
               {isCheckingActiveSession ? 'Checking...' : 'START SESSION'}
             </Button>
           )}
-        </div>
-
-        <div className="absolute -right-20 -top-20 opacity-[0.03] pointer-events-none">
-          <Dumbbell className="w-[300px] h-[300px]" />
         </div>
       </div>
 
@@ -1234,11 +1163,11 @@ export function ClientProfileView({
                <Maximize2 className="w-3.5 h-3.5 mr-1.5" /> Expanded Journey
              </Button>
           </div>
-          <div className="w-full flex-1 overflow-hidden bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 dark:border-slate-200 rounded-xl relative">
-            <table className="w-full text-left border-collapse table-fixed select-none min-w-full">
+          <div className="w-full flex-1 overflow-x-auto overflow-y-auto bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 rounded-xl relative">
+            <table className="w-full text-left border-collapse table-fixed select-none min-w-[700px]">
               <thead>
-                <tr className="bg-[#115E8D] uppercase text-[9px] font-bold tracking-widest leading-none h-[32px]">
-                  <th className="p-1.5 pl-4 w-[28%] border-r border-[#115E8D]/20 truncate">
+                <tr className="bg-slate-800 dark:bg-slate-950 text-white uppercase text-[10px] font-bold tracking-widest leading-none h-[40px]">
+                  <th className="p-2 pl-4 w-[25%] border-r border-slate-700 dark:border-slate-800 truncate">
                     Equipment & Settings
                   </th>
                   {sessions
@@ -1254,33 +1183,33 @@ export function ClientProfileView({
                       return (
                         <th
                           key={s.id}
-                          className="p-1.5 text-center border-r border-[#115E8D]/20 truncate w-[10%] opacity-90"
+                          className="p-1.5 text-center border-r border-slate-700 dark:border-slate-800 truncate w-[10%] opacity-90"
                         >
                           <div className="flex flex-col items-center space-y-0.5">
-                            <div className="bg-white/10 border border-white/20 rounded px-1 py-0 shadow-sm">
-                              <span className="font-bold tabular-nums text-[9px] leading-none">
+                            <div className="bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/10 rounded px-1 min-w-[20px] py-0.5 shadow-sm inline-flex items-center justify-center">
+                              <span className="font-bold tabular-nums text-[9px] leading-none text-white">
                                 {sNum.toString().padStart(2, '0')}
                               </span>
                             </div>
-                            <span className="text-[7px] /70 font-bold uppercase tracking-tighter">
+                            <span className="text-[7.5px] text-slate-300 dark:text-slate-400 font-bold uppercase tracking-tighter">
                               {s.date ? new Date(parseSessionDate(s.date)).toLocaleDateString("en-US", {
-                                month: "2-digit",
-                                day: "2-digit",
+                                month: "short",
+                                day: "numeric",
                               }) : "--"}
                             </span>
-                            <span className="text-[6px] text-[#38BDF8] font-bold uppercase tracking-tighter">
+                            <span className="text-[7px] text-[#38BDF8] dark:text-[#38BDF8] font-bold uppercase tracking-widest">
                               {(s.legacy_filemaker_id || s.trainerId === 'legacy-trainer' || s.trainerInitials === 'Legacy' || s.trainerInitials === 'Chart') ? 'Imported' : s.startTime ? new Date(s.startTime?.toMillis?.() || s.startTime).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' }) : ''}
                             </span>
                           </div>
                         </th>
                       );
                     })}
-                  <th className="p-1.5 text-center bg-[#F06C22] truncate w-[12%] border-l shadow-inner border-[#F06C22]/80">
+                  <th className="p-2 text-center bg-[#F06C22] truncate w-[15%] border-l shadow-inner border-[#F06C22]/80 text-white">
                     TARGET
                   </th>
                 </tr>
               </thead>
-              <tbody className="text-[#115E8D] border-t border-slate-200 dark:border-slate-800 dark:border-slate-200">
+              <tbody className="text-slate-900 dark:text-slate-100 border-t border-slate-200 dark:border-slate-800">
                 {machines
                   .sort((a, b) => (a.order || 0) - (b.order || 0))
                   .map((machine, idx) => {
@@ -1304,34 +1233,43 @@ export function ClientProfileView({
                           const currentSettings = clientSettings[machine.id!]?.settings || {};
                           setEditingSettings({ machineId: machine.id!, settings: { ...currentSettings } });
                         }}
-                        className="even:bg-[#F9FAFB] odd:bg-white hover:bg-slate-100 hover:brightness-95 cursor-pointer transition-all h-[32px] group border-b border-slate-100 dark:border-slate-800 last:border-b-0"
+                        className="even:bg-[#F9FAFB] odd:bg-white dark:even:bg-slate-900/40 dark:odd:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer h-12 transition-all group border-b border-slate-200 dark:border-slate-800 last:border-b-0"
                       >
-                        <td className="p-1 pl-4 border-r border-slate-200/60 truncate align-middle relative overflow-hidden">
+                        <td className={cn("p-2 pl-4 border-r border-slate-200 dark:border-slate-800 truncate align-middle relative overflow-hidden h-full", getMuscleGroupColor(machine.name))}>
                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#115E8D]/0 group-hover:bg-[#115E8D] transition-colors" />
-                          <div className="flex flex-col justify-center translate-y-[1px]">
-                            <div className="flex items-center gap-1.5 mb-0.5 max-w-full">
-                              <span className={cn(
-                                "font-black uppercase tracking-tighter text-[9px] px-1.5 py-0.5 rounded-[4px] border leading-none truncate shrink-0 max-w-full inline-flex items-center justify-between",
-                                getMuscleGroupColor(machine.name)
-                              )}>
+                          <div className="flex flex-col justify-center h-full">
+                            <div className="flex items-center gap-2 mb-1 max-w-full">
+                              <span className="font-black uppercase tracking-tighter text-[12px] leading-none truncate shrink-0 max-w-full inline-flex items-center">
                                 <span>{machine.name}</span>
                                 {isBig5Machine(machine.name) && (
-                                  <Star className="w-2.5 h-2.5 ml-1 fill-amber-400 text-amber-500 inline shrink-0" />
+                                  <Star className="w-3 h-3 ml-1.5 fill-amber-400 text-amber-500 inline shrink-0" />
                                 )}
                               </span>
                               {clientSettings[machine.id!]?.machineNotes?.some(
                                 (n) => n.isImportant,
                               ) && (
-                                <AlertCircle className="w-3 h-3 text-red-500 shrink-0" />
+                                <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
                               )}
                             </div>
-                            <span className="text-[7.5px] font-bold text-[#68717A] opacity-70 tracking-widest truncate leading-none uppercase">
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-widest truncate leading-none uppercase">
                               {clientSettings[machine.id!]?.settings
                                 ? Object.entries(
                                     clientSettings[machine.id!].settings,
                                   )
-                                    .map(([k, v]) => `${k}:${v}`)
-                                    .join(" ")
+                                    .map(([k, v]) => {
+                                      const n = k.trim().toLowerCase();
+                                      let short = n.substring(0, 2).toUpperCase();
+                                      if (n === 'gap') short = 'G';
+                                      else if (n === 'seat') short = 'S';
+                                      else if (n === 'backpad' || n === 'back pad') short = 'BP';
+                                      else if (n === 'chestpad' || n === 'chest pad') short = 'CP';
+                                      else if (n === 'start position' || n === 'start') short = 'SP';
+                                      else if (n === 'range') short = 'R';
+                                      else if (n === 'height') short = 'H';
+                                      else if (n.includes(' ')) short = n.split(' ').map(w => w[0]).join('').toUpperCase();
+                                      return `${short}${v}`;
+                                    })
+                                    .join(",")
                                 : "---"}
                             </span>
                           </div>
@@ -1343,35 +1281,65 @@ export function ClientProfileView({
                           const isLast = sIdx === displaySessions.length - 1;
                           const promptIncrease =
                             isLast && log?.repQuality === 3;
+                          
+                          let bgClass = "bg-transparent";
+                          let labelColor = "text-slate-800 dark:text-slate-200";
+                          let repsColor = "text-slate-600 dark:text-slate-400";
+                          let borderColor = "border-slate-200/50 dark:border-slate-700/50";
+                          
+                          if (log) {
+                            labelColor = isLast ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300";
+                            repsColor = isLast ? "text-slate-600 dark:text-slate-400" : "text-slate-500 dark:text-slate-500";
+                            
+                            if (log.repQuality === 3) {
+                              bgClass = "bg-emerald-200 dark:bg-emerald-500/20";
+                              borderColor = "border-emerald-400 dark:border-emerald-500/30";
+                              if (isLast) {
+                                labelColor = "text-emerald-900 dark:text-emerald-100";
+                                repsColor = "text-emerald-800 dark:text-emerald-300";
+                              }
+                            } else if (log.repQuality === 2) {
+                              bgClass = "bg-amber-200 dark:bg-amber-500/20";
+                              borderColor = "border-amber-400 dark:border-amber-500/30";
+                              if (isLast) {
+                                labelColor = "text-amber-900 dark:text-amber-100";
+                                repsColor = "text-amber-800 dark:text-amber-300";
+                              }
+                            } else if (log.repQuality === 1) {
+                              bgClass = "bg-rose-200 dark:bg-rose-500/20";
+                              borderColor = "border-rose-400 dark:border-rose-500/30";
+                              if (isLast) {
+                                labelColor = "text-rose-900 dark:text-rose-100";
+                                repsColor = "text-rose-800 dark:text-rose-300";
+                              }
+                            }
+                          }
 
                           return (
                             <td
                               key={s.id}
-                              className="p-0 border-r border-slate-200/60 align-middle px-1"
+                              className={cn("p-0 border-r border-slate-200 dark:border-slate-800 align-middle h-full", bgClass)}
                             >
                               {log ? (
-                                <div className="flex flex-col items-center justify-center leading-none tracking-tighter">
-                                  <div className="flex items-center gap-0.5 mb-[2px]">
-                                    <span
-                                      className={`font-bold text-[11px] sm:text-[12px] ${isLast ? "text-black" : "text-slate-700"}`}
-                                    >
-                                      {log.weight}
-                                    </span>
-                                    {promptIncrease && (
-                                      <span className="text-[8px] text-[#F06C22] shrink-0 font-bold ml-0.5 mt-[1px]">
-                                        ▲
+                                <div className="flex flex-col w-full h-full text-center">
+                                  <div className={cn("flex-1 flex flex-col items-center justify-center border-b p-1 min-h-[22px]", borderColor)}>
+                                    <div className="flex items-center">
+                                      <span className={cn("font-bold font-sans text-[12px] sm:text-[13px] tracking-tight leading-none", labelColor)}>
+                                        {log.weight}
                                       </span>
-                                    )}
+                                      {promptIncrease && (
+                                        <span className="text-[9px] text-[#F06C22] shrink-0 font-black ml-0.5" title="Recommend Increase">
+                                          ▲
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-1">
-                                    <span
-                                      className={`font-extrabold text-[9px] ${ isLast ? (log.repQuality === 3 ? "text-emerald-700" : log.repQuality === 2 ? "text-amber-700" : log.repQuality === 1 ? "text-rose-700" : "text-[#115E8D]") : (log.repQuality === 3 ? "text-emerald-700/80" : log.repQuality === 2 ? "text-amber-700/80" : log.repQuality === 1 ? "text-rose-700/80" : "text-slate-500") }`}
-                                    >
-                                      {log.repsLeft !== undefined &&
-                                      log.repsRight !== undefined
+                                  <div className="flex-1 flex items-center justify-center p-1 min-h-[20px]">
+                                    <span className={cn("font-extrabold text-[10px] leading-none", repsColor)}>
+                                      {log.repsLeft !== undefined && log.repsRight !== undefined
                                         ? `${log.repsLeft}L|${log.repsRight}R`
                                         : log.isStaticHold ? (
-                                            <>{log.seconds}<span className="text-[7px] ml-0.5 lowercase opacity-70">s</span></>
+                                            <>{log.seconds}<span className="text-[8px] ml-0.5 lowercase font-medium opacity-80">s</span></>
                                           ) : (
                                             log.reps
                                           )}
@@ -1379,40 +1347,39 @@ export function ClientProfileView({
                                   </div>
                                 </div>
                               ) : (
-                                <div className="text-center w-full">
-                                  <span className="text-[9px] text-slate-300 font-medium">
-                                    --
-                                  </span>
+                                <div className="h-full w-full flex items-center justify-center">
+                                  <span className="text-[12px] text-slate-300 dark:text-slate-600 font-medium">--</span>
                                 </div>
                               )}
                             </td>
                           );
                         })}
-                        <td className="p-0 text-center bg-[#F06C22]/[0.03] align-middle px-1 group-hover:bg-[#F06C22]/10 transition-colors">
+                        <td className="p-0 text-center bg-[#F06C22]/5 dark:bg-[#F06C22]/10 align-middle border-l border-[#F06C22]/20 shadow-inner group-hover:bg-[#F06C22]/10 transition-colors h-full">
                           {targetLog ? (
-                            <div className="flex flex-col items-center opacity-40 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all">
-                              <div className="flex items-center gap-0.5 mb-[2px]">
-                                <span className="font-bold text-[11px] sm:text-[12px] text-[#F06C22]">
+                            <div className="flex flex-col items-center justify-center opacity-50 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all h-full w-full">
+                              <div className="flex-1 flex items-center justify-center border-b border-[#F06C22]/20 w-full p-1 min-h-[22px]">
+                                <span className="font-bold text-[12px] sm:text-[13px] text-[#F06C22] tracking-tight leading-none">
                                   {targetLog.repQuality === 3
                                     ? Number(targetLog.weight) + 5
                                     : targetLog.weight}
                                 </span>
                               </div>
-                              <span className="font-extrabold text-[9px] text-[#F06C22]/70">
-                                {targetLog.repsLeft !== undefined &&
-                                targetLog.repsRight !== undefined
-                                  ? `${targetLog.repsLeft}L|${targetLog.repsRight}R`
-                                  : targetLog.isStaticHold ? (
-                                      <>{targetLog.seconds}<span className="text-[7px] ml-0.5 lowercase opacity-70">s</span></>
-                                    ) : (
-                                      targetLog.reps
-                                    )}
-                              </span>
+                              <div className="flex-1 flex items-center justify-center w-full p-1 min-h-[20px]">
+                                <span className="font-black text-[10px] text-[#F06C22]/80 leading-none">
+                                  {targetLog.repsLeft !== undefined && targetLog.repsRight !== undefined
+                                    ? `${targetLog.repsLeft}L|${targetLog.repsRight}R`
+                                    : targetLog.isStaticHold ? (
+                                        <>{targetLog.seconds}<span className="text-[8px] ml-0.5 lowercase font-medium">s</span></>
+                                      ) : (
+                                        targetLog.reps
+                                      )}
+                                </span>
+                              </div>
                             </div>
                           ) : (
-                            <span className="text-[9px] text-[#F06C22]/40 font-bold uppercase">
-                              ---
-                            </span>
+                            <div className="h-full w-full flex items-center justify-center">
+                              <span className="text-[12px] text-[#F06C22]/30 font-medium opacity-50">--</span>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -1534,7 +1501,7 @@ export function ClientProfileView({
                                 onClick={() =>
                                   toggleMachineInRoutine(routineName, machine.id!)
                                 }
-                                className={`flex items-center gap-1.5 lg:gap-2 p-1.5 lg:p-2 rounded-xl border transition-all text-left relative group ${ isIn ? "bg-[#115E8D]/20 border-[#115E8D] shadow-sm z-10" : "bg-slate-50 dark:bg-slate-800 border-transparent opacity-60 hover:opacity-100 hover:border-slate-200 dark:border-slate-700" }`}
+                                className={`flex items-center min-h-[56px] gap-1.5 lg:gap-2 p-1.5 lg:p-2 rounded-xl border transition-all text-left relative group ${ isIn ? "bg-[#115E8D]/20 border-[#115E8D] shadow-sm z-10" : "bg-slate-50 dark:bg-slate-800 border-transparent opacity-60 hover:opacity-100 hover:border-slate-200 dark:border-slate-700" }`}
                                 title={machine.name}
                               >
                                 <div
@@ -1548,9 +1515,9 @@ export function ClientProfileView({
                                     <Plus className="w-3 h-3 lg:w-3.5 lg:h-3.5 opacity-40 group-hover:opacity-100" />
                                   )}
                                 </div>
-                                <div className="min-w-0 flex-1">
+                                <div className="min-w-0 flex-1 flex items-center">
                                   <span
-                                    className={`text-[8px] lg:text-[9px] font-bold uppercase tracking-tight truncate block leading-tight ${isIn ? "text-[#38BDF8]" : "text-slate-600 dark:text-slate-400"}`}
+                                    className={`text-[10px] lg:text-[11px] font-black uppercase tracking-tight block leading-tight ${isIn ? "text-[#38BDF8]" : "text-slate-600 dark:text-slate-400"}`}
                                   >
                                     {machine.name}
                                   </span>
