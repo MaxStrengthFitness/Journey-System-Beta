@@ -62,7 +62,7 @@ export function OwnerStudioManager({ authTrainer, studios, isAdmin = false, onBa
   const [isAddingStaff, setIsAddingStaff] = useState(false);
 
   // Filter studios - System admins see all, Owners see their owned ones
-  const ownedStudios = isAdmin || authTrainer.role === 'Owner' 
+  const ownedStudios = isAdmin || (authTrainer.role === 'StudioOwner' || authTrainer.role === 'Admin' || authTrainer.role === 'Overseer') 
     ? studios 
     : studios.filter(s => authTrainer.ownedStudioIds?.includes(s.id!) || s.ownerId === authTrainer.id);
 

@@ -66,7 +66,7 @@ export function TrainerProfileView({
     }
   };
 
-  const isEditable = authTrainer?.id === trainer.id || authTrainer?.role === 'Owner';
+  const isEditable = authTrainer?.id === trainer.id || (authTrainer?.role === 'StudioOwner' || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer');
 
 
   // Filter schedules for this trainer
@@ -105,7 +105,7 @@ export function TrainerProfileView({
               <Badge variant="outline" className="rounded-md border-slate-700 text-slate-300 bg-slate-800 font-black uppercase text-[9px] h-5">
                 {trainer.initials}
               </Badge>
-              {trainer.role === 'Owner' && (
+              {(trainer.role === 'StudioOwner' || trainer.role === 'Admin' || trainer.role === 'Overseer') && (
                  <Badge className="rounded-md bg-amber-500 hover:bg-amber-600 text-white font-black uppercase text-[9px] h-5 shadow-[0_0_10px_rgba(245,158,11,0.5)] border-none">
                   Owner
                 </Badge>
@@ -420,6 +420,8 @@ export function TrainerProfileView({
       </div>
       <EditTrainerModal 
         trainer={trainer}
+        authTrainer={authTrainer}
+        studios={studios}
         isOpen={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
         onSave={handleSaveProfile}

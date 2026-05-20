@@ -3196,7 +3196,7 @@ export function ClientProfileView({
                 </CardContent>
               </Card>
 
-              {authTrainer?.role === 'Owner' && (
+              {(authTrainer?.role === 'StudioOwner' || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer') && (
                 <Card className="rounded-[40px] shadow-sm bg-amber-500/5 border-amber-500/10">
                   <CardHeader className="p-8 border-b border-amber-500/10 flex flex-row items-center justify-between">
                     <div>

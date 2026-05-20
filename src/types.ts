@@ -1,7 +1,7 @@
 /**
  * Roles defining system access levels across the organization.
  */
-export type UserRole = 'Owner' | 'LeadTrainer' | 'Trainer';
+export type UserRole = 'Admin' | 'Overseer' | 'StudioOwner' | 'HeadTrainer' | 'Trainer';
 
 /**
  * Represents the top-level entity owning one or more studios.
@@ -32,6 +32,8 @@ export interface Trainer {
   fullName: string;
   initials: string;
   pin: string;
+  pinHash?: string;
+  requiresPinReset?: boolean;
   /** Role determining UI permissions and logic overrides */
   role: UserRole;
   /** IDs of studios owned by this entity (if role is Owner) */

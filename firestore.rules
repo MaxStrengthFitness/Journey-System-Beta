@@ -34,23 +34,37 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Updating these legacy functions just in case they are called elsewhere
-    function isHardcodedAdmin() {
-      return isAdmin();
+    function getTrainerData() {
+      return get(/databases/$(database)/documents/trainers/$(request.auth.uid)).data;
     }
 
     function getRole() {
-      return isAdmin() ? 'admin' : (isTrainer() ? 'trainer' : 'none');
+      return request.auth != null ? getTrainerData().role : 'none';
     }
 
     function isAdmin() {
-      return isAuthenticated() && request.auth.token.email != null && (
-        request.auth.token.email.lower() == "jurgensaj@gmail.com"
-      );
+      return (request.auth != null && request.auth.token.email != null && request.auth.token.email.lower() == "jurgensaj@gmail.com") || getRole() == 'Admin';
+    }
+
+    function isOverseer() {
+      return isAdmin() || getRole() == 'Overseer';
+    }
+
+    function isStudioOwner(studioId) {
+      return isOverseer() || 
+             (getRole() == 'StudioOwner' && 
+               (getTrainerData().primaryHomeStudioId == studioId || 
+               (getTrainerData().ownedStudioIds != null && studioId in getTrainerData().ownedStudioIds))
+             );
+    }
+
+    function isHeadTrainer(studioId) {
+      return isStudioOwner(studioId) || 
+             (getRole() == 'HeadTrainer' && getTrainerData().primaryHomeStudioId == studioId);
     }
 
     function isTrainer() {
-      return isAuthenticated();
+      return isAuthenticated() && (isAdmin() || getRole() == 'Overseer' || getRole() == 'StudioOwner' || getRole() == 'HeadTrainer' || getRole() == 'Trainer' || getRole() == 'none');
     }
 
     function hasRequiredFields(fields) {
@@ -304,20 +318,26 @@ service cloud.firestore {
 
     match /trainers/{trainerId} {
       allow read: if true;
-      allow create: if isAdmin() && isValidTrainer(request.resource.data);
+      allow create: if (isAdmin() || isOverseer() || 
+                        (request.resource.data.primaryHomeStudioId != null && 
+                         isHeadTrainer(request.resource.data.primaryHomeStudioId))) 
+                    && isValidTrainer(request.resource.data);
       allow update: if (
-        (request.resource.data.get('sync_secret', '') == 'STABLE_MASTER_SYNC_TOKEN_2026') ||
         isAdmin() || 
-        (isTrainer() && request.auth.uid == trainerId)
+        isOverseer() ||
+        (resource.data.primaryHomeStudioId != null && isHeadTrainer(resource.data.primaryHomeStudioId)) ||
+        (isAuthenticated() && request.auth.uid == trainerId) ||
+        (resource.data.requiresPinReset == true && request.resource.data.requiresPinReset == false) ||
+        (request.resource.data.get('sync_secret', '') == 'STABLE_MASTER_SYNC_TOKEN_2026')
       ) && isValidTrainer(request.resource.data);
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || isOverseer();
     }
 
     match /clients/{clientId} {
       allow read: if true;
-      allow create: if (isAdmin() || isTrainer()) && isValidClient(request.resource.data);
-      allow update: if (isAdmin() || isTrainer()) && isValidClient(request.resource.data);
-      allow delete: if isAdmin();
+      allow create: if isTrainer() && isValidClient(request.resource.data);
+      allow update: if isTrainer() && isValidClient(request.resource.data);
+      allow delete: if isAdmin() || isOverseer() || (resource.data.homeStudioId != null && isStudioOwner(resource.data.homeStudioId));
     }
 
     match /clientMachineSettings/{settingId} {

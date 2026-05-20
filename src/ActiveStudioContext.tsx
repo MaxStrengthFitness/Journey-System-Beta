@@ -34,7 +34,7 @@ export function ActiveStudioProvider({
     if (!authTrainer) return [];
     
     // Admin Override: System admins see all studios
-    if (isAdmin || authTrainer.role === 'Owner') return studios;
+    if (isAdmin || (authTrainer.role === 'StudioOwner' || authTrainer.role === 'Admin' || authTrainer.role === 'Overseer')) return studios;
 
     // Union of accessible, guest, and owned studios
     const allowedIds = new Set([

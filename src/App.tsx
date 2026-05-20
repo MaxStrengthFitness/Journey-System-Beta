@@ -893,7 +893,7 @@ function AppContent({
     
     if (viewOverride === 'trainer-hub' && user?.email === "jurgensaj@gmail.com") {
       if (trainers.length > 0) {
-        const ownerTrainer = trainers.find(t => t.role === 'Owner') || trainers[0];
+        const ownerTrainer = trainers.find(t => (t.role === 'StudioOwner' || t.role === 'Admin' || t.role === 'Overseer')) || trainers[0];
         if (authTrainer?.id !== ownerTrainer.id) {
           setAuthTrainer(ownerTrainer);
           setCurrentView('trainer-hub');
@@ -934,7 +934,7 @@ function AppContent({
   const handleTrainerLogin = (trainer: Trainer) => {
     // Admin Override: If logged in as the admin email, ensure the profile has Owner role
     if (user?.email === 'jurgensaj@gmail.com' && trainer.fullName === 'Austin Jurgens') {
-      trainer.role = 'Owner';
+      trainer.role = 'Admin';
     }
     setAuthTrainer(trainer);
     localStorage.setItem('max_strength_trainer_id', trainer.id!);
@@ -1162,9 +1162,9 @@ function AppContent({
           <div className="flex flex-col items-center text-center">
             <MaxStrengthLogo size="xl" theme="dark" className="drop-shadow-2xl" />
             
-            <h2 className="text-[#a6a6a6] font-medium tracking-[0.2em] text-lg mt-8 uppercase drop-shadow">
-              Solon Studio
-            </h2>
+            <h1 className="text-transparent bg-clip-text bg-gradient-to-r from-slate-200 via-white to-slate-400 font-extrabold tracking-[0.3em] text-4xl mt-12 uppercase drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+              Journey System
+            </h1>
           </div>
 
           <div className="mt-24 w-full flex justify-center">
@@ -1342,7 +1342,7 @@ function AppContent({
                       <Settings className="w-4 h-4" />
                       Trainer Hub
                     </DropdownMenuItem>
-                    {(authTrainer?.role === 'Owner' || user.email === "jurgensaj@gmail.com") && (
+                    {((authTrainer?.role === 'StudioOwner' || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer') || user.email === "jurgensaj@gmail.com") && (
                       <DropdownMenuItem 
                         onClick={() => setCurrentView('owner-dashboard')}
                         className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white text-orange-500"
@@ -1598,7 +1598,7 @@ function AppContent({
                 clients={clients}
                 sessions={sessions}
                 authTrainer={authTrainer} 
-                isAdmin={authTrainer?.role === 'Owner' || user.email === "jurgensaj@gmail.com"} 
+                isAdmin={(authTrainer?.role === 'StudioOwner' || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer') || user.email === "jurgensaj@gmail.com"} 
                 onAppCleanse={handleAppCleanse}
                 onSeedDemoClient={handleSeedDemoClient}
                 onRestoreMachines={handleRestoreMachines}
@@ -1698,7 +1698,7 @@ function AppContent({
             label="Calendar"
           />
 
-          {(authTrainer?.role === 'Owner' || user?.email === "jurgensaj@gmail.com") && (
+          {((authTrainer?.role === 'StudioOwner' || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer') || user?.email === "jurgensaj@gmail.com") && (
             <NavButton 
               active={currentView === 'dashboard'} 
               onClick={() => setCurrentView('dashboard')}

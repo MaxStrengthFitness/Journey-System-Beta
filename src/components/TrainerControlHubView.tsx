@@ -692,17 +692,17 @@ export function TrainerControlHubView({
                           )}
                         
                           <div className="flex items-start gap-4">
-                            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl italic mt-1 shrink-0", t.role === 'Owner' || (t.fullName === 'Austin Jurgens' && isAdmin) ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-500 border border-orange-200 dark:border-orange-500/30' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800')}>
+                            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl italic mt-1 shrink-0", (t.role === 'StudioOwner' || t.role === 'Admin' || t.role === 'Overseer') || (t.fullName === 'Austin Jurgens' && isAdmin) ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-500 border border-orange-200 dark:border-orange-500/30' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800')}>
                                {t.initials}
                             </div>
                             <div className="flex flex-col flex-1 pr-8">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="text-lg font-black text-slate-900 dark:text-white uppercase italic leading-none">{t.fullName}</p>
-                                {t.role === 'Owner' && <span className="bg-orange-50 dark:bg-orange-500/10 text-orange-500 border border-orange-200 dark:border-orange-500/30 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">Owner</span>}
-                                {t.fullName === 'Austin Jurgens' && isAdmin && t.role !== 'Owner' && <span className="bg-sky-50 dark:bg-sky-500/10 text-sky-400 border border-sky-200 dark:border-sky-500/30 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">System Admin</span>}
+                                {(t.role === 'StudioOwner' || t.role === 'Admin' || t.role === 'Overseer') && <span className="bg-orange-50 dark:bg-orange-500/10 text-orange-500 border border-orange-200 dark:border-orange-500/30 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">Owner</span>}
+                                {t.fullName === 'Austin Jurgens' && isAdmin && (t.role !== 'StudioOwner' && t.role !== 'Admin' && t.role !== 'Overseer') && <span className="bg-sky-50 dark:bg-sky-500/10 text-sky-400 border border-sky-200 dark:border-sky-500/30 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">System Admin</span>}
                               </div>
                               <p className="text-[10px] font-bold uppercase tracking-widest text-sky-600 leading-none mt-2">
-                                {t.role === 'Owner' || (t.fullName === 'Austin Jurgens' && isAdmin) ? 'System Admin' : 'Performance Trainer'}
+                                {(t.role === 'StudioOwner' || t.role === 'Admin' || t.role === 'Overseer') || (t.fullName === 'Austin Jurgens' && isAdmin) ? 'System Admin' : 'Performance Trainer'}
                               </p>
                             </div>
                           </div>
@@ -840,7 +840,7 @@ export function TrainerControlHubView({
             <TrainerMachineEditor machines={machines} />
           )}
 
-          {activeTab === 'operations' && (isAdmin || authTrainer?.role === 'Owner') && (
+          {activeTab === 'operations' && (isAdmin || (authTrainer?.role === 'StudioOwner' || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer')) && (
             <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl dark:shadow-none rounded-[32px] overflow-hidden">
               <CardHeader className="bg-slate-50 dark:bg-slate-950 pb-8 border-b border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-4">

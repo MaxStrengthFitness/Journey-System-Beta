@@ -5,17 +5,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { X, Plus } from 'lucide-react';
-import { Trainer } from '../types';
+import { X, Plus, Network } from 'lucide-react';
+import { Trainer, Studio } from '../types';
+import { arrayUnion, arrayRemove, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { Switch } from '@/components/ui/switch';
 
 interface EditTrainerModalProps {
   trainer: Trainer;
+  authTrainer?: Trainer | null;
+  studios?: Studio[];
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (updates: Partial<Trainer>) => void;
 }
 
-export function EditTrainerModal({ trainer, isOpen, onOpenChange, onSave }: EditTrainerModalProps) {
+export function EditTrainerModal({ trainer, authTrainer, studios = [], isOpen, onOpenChange, onSave }: EditTrainerModalProps) {
   const [fullName, setFullName] = useState(trainer.fullName);
   const [initials, setInitials] = useState(trainer.initials);
   const [pin, setPin] = useState(trainer.pin);
@@ -60,61 +65,94 @@ export function EditTrainerModal({ trainer, isOpen, onOpenChange, onSave }: Edit
     onOpenChange(false);
   };
 
+  const toggleStudioAccess = async (studioId: string, isGrantingAccess: boolean) => {
+    if (!trainer.id) return;
+    try {
+      const ref = doc(db, 'trainers', trainer.id);
+      await updateDoc(ref, {
+        accessibleStudioIds: isGrantingAccess ? arrayUnion(studioId) : arrayRemove(studioId)
+      });
+      // the snapshot listener in App.tsx will automatically update
+    } catch (err) {
+      console.error('Failed to toggle studio access', err);
+    }
+  };
+
+  const isSuperAdmin = authTrainer?.fullName === 'Austin Jurgens';
+  const role = authTrainer?.role;
+  const isSystemAdmin = role === 'Admin' || isSuperAdmin;
+  const isOverseer = role === 'Overseer';
+  const isStudioOwner = role === 'StudioOwner';
+  const isHeadTrainer = role === 'HeadTrainer';
+
+  const assignableStudios = studios.filter(s => {
+    if (isSystemAdmin || isOverseer) return true;
+    if (isStudioOwner) {
+      return authTrainer?.primaryHomeStudioId === s.id || authTrainer?.ownedStudioIds?.includes(s.id!);
+    }
+    if (isHeadTrainer) {
+      return authTrainer?.primaryHomeStudioId === s.id;
+    }
+    return false;
+  });
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-[#0A2E46] border-slate-700 text-white shadow-2xl rounded-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] bg-white border-slate-200 text-slate-900 shadow-xl rounded-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-black italic uppercase text-white tracking-widest">Edit Profile</DialogTitle>
+          <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Edit Profile</DialogTitle>
         </DialogHeader>
         <div className="space-y-6 py-4">
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase text-[#38BDF8] tracking-widest">Full Name</Label>
+            <Label className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Full Name</Label>
             <Input 
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="bg-slate-800/50 border-slate-700 text-white rounded-xl h-12"
+              className="bg-slate-50 border-slate-200 text-slate-900 rounded-xl h-12 font-medium"
             />
           </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase text-[#38BDF8] tracking-widest">Initials</Label>
-            <Input 
-              value={initials}
-              onChange={(e) => setInitials(e.target.value.toUpperCase())}
-              className="bg-slate-800/50 border-slate-700 text-white rounded-xl h-12 uppercase"
-              maxLength={3}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase text-[#38BDF8] tracking-widest">4-Digit PIN</Label>
-            <Input 
-              value={pin}
-              onChange={(e) => {
-                const val = e.target.value.replace(/[^0-9]/g, '');
-                if (val.length <= 4) setPin(val);
-              }}
-              className="bg-slate-800/50 border-slate-700 text-white rounded-xl h-12"
-              maxLength={4}
-              type="password"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Initials</Label>
+              <Input 
+                value={initials}
+                onChange={(e) => setInitials(e.target.value.toUpperCase())}
+                className="bg-slate-50 border-slate-200 text-slate-900 rounded-xl h-12 uppercase font-medium"
+                maxLength={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">4-Digit PIN</Label>
+              <Input 
+                value={pin}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  if (val.length <= 4) setPin(val);
+                }}
+                className="bg-slate-50 border-slate-200 text-slate-900 rounded-xl h-12 font-mono"
+                maxLength={4}
+                type="password"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase text-[#38BDF8] tracking-widest">Intelligence Summary (Bio)</Label>
+            <Label className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Intelligence Summary (Bio)</Label>
             <Textarea 
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              className="bg-slate-800/50 border-slate-700 text-white rounded-xl min-h-[100px] resize-none"
+              className="bg-slate-50 border-slate-200 text-slate-900 rounded-xl min-h-[100px] resize-none font-medium"
               placeholder="Field experience and specialized training..."
             />
           </div>
 
           <div className="space-y-3">
-            <Label className="text-[10px] font-black uppercase text-[#38BDF8] tracking-widest">Combat Grade Certifications</Label>
+            <Label className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Certifications</Label>
             <div className="flex flex-wrap gap-2">
               {certifications.map((cert) => (
-                <Badge key={cert} variant="outline" className="rounded-xl border-slate-700 bg-slate-800/80 text-white font-bold px-3 py-1.5 flex items-center gap-1">
+                <Badge key={cert} variant="outline" className="rounded-xl border-slate-200 bg-slate-100 text-slate-700 font-bold px-3 py-1.5 flex items-center gap-1">
                   {cert}
-                  <button onClick={() => handleRemoveCert(cert)} className="text-slate-400 hover:text-red-400">
+                  <button onClick={() => handleRemoveCert(cert)} className="text-slate-400 hover:text-red-500">
                     <X className="w-3 h-3" />
                   </button>
                 </Badge>
@@ -125,18 +163,52 @@ export function EditTrainerModal({ trainer, isOpen, onOpenChange, onSave }: Edit
                 value={newCert}
                 onChange={(e) => setNewCert(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCert(); } }}
-                className="bg-slate-800/50 border-slate-700 text-white rounded-xl h-10 flex-1"
+                className="bg-slate-50 border-slate-200 text-slate-900 rounded-xl h-10 flex-1 font-medium"
                 placeholder="e.g. CPT, NSCA"
               />
-              <Button type="button" onClick={handleAddCert} variant="outline" className="rounded-xl h-10 border-slate-700 bg-slate-800 shrink-0">
-                <Plus className="w-4 h-4" />
+              <Button type="button" onClick={handleAddCert} variant="outline" className="rounded-xl h-10 border-slate-200 bg-white shadow-sm shrink-0 hover:bg-slate-50">
+                <Plus className="w-4 h-4 text-slate-600" />
               </Button>
             </div>
           </div>
 
+          {/* Cross-Training & Studio Access */}
+          {assignableStudios.length > 0 && (
+            <div className="space-y-3 pt-6 border-t border-slate-100">
+              <div className="flex items-center gap-2 mb-4">
+                <Network className="w-5 h-5 text-indigo-500" />
+                <Label className="text-[12px] font-black uppercase text-slate-900 tracking-widest">Cross-Training & Studio Access</Label>
+              </div>
+              
+              <div className="grid gap-3">
+                {assignableStudios.map(studio => {
+                  const hasAccess = trainer.accessibleStudioIds?.includes(studio.id!) || trainer.primaryHomeStudioId === studio.id;
+                  const isHomeStudio = trainer.primaryHomeStudioId === studio.id;
+
+                  return (
+                    <div key={studio.id} className="flex items-center justify-between bg-slate-50 border border-slate-200 p-4 rounded-2xl">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-900 text-sm">{studio.name}</span>
+                        {isHomeStudio && (
+                          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mt-0.5">Primary Home Base</span>
+                        )}
+                      </div>
+                      <Switch 
+                        checked={hasAccess} 
+                        disabled={isHomeStudio} 
+                        onCheckedChange={(checked) => toggleStudioAccess(studio.id!, checked)}
+                        className={hasAccess ? "bg-indigo-500" : "bg-slate-200"}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
         </div>
-        <DialogFooter>
-          <Button onClick={handleSubmit} disabled={!fullName || !initials || pin.length !== 4} className="w-full bg-[#38BDF8] hover:bg-sky-500 text-slate-900 font-black uppercase text-xs h-12 rounded-xl transition-all shadow-[0_0_20px_rgba(56,189,248,0.3)]">
+        <DialogFooter className="pt-4 border-t border-slate-100">
+          <Button onClick={handleSubmit} disabled={!fullName || !initials || pin.length !== 4} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest text-xs h-12 rounded-xl transition-all shadow-md">
             Save Changes
           </Button>
         </DialogFooter>
