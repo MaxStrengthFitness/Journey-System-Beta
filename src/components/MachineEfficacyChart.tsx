@@ -14,12 +14,12 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-2xl">
-        <p className="text-white font-black uppercase tracking-tight mb-2 border-b border-slate-700 pb-2">{label}</p>
+        <p className="text-white font-bold uppercase tracking-tight mb-2 border-b border-slate-700 pb-2">{label}</p>
         <div className="flex items-center justify-between gap-4 py-1">
           <span className="text-xs font-bold uppercase tracking-widest text-[#F06C22]">
             Avg Gain
           </span>
-          <span className="text-sm font-black text-white">
+          <span className="text-sm font-bold text-white">
             +{payload[0].value}%
           </span>
         </div>

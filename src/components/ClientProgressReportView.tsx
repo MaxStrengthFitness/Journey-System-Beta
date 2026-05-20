@@ -537,7 +537,7 @@ export function ClientProgressReportView({
           >
             <Award className="w-12 h-12 text-[#F06C22]" />
           </motion.div>
-          <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white">
+          <h2 className="text-4xl font-bold uppercase italic tracking-tighter text-white">
             Initialize Report
           </h2>
           <p className="text-[#68717A] font-bold uppercase text-xs tracking-widest leading-relaxed">
@@ -561,7 +561,7 @@ export function ClientProgressReportView({
             <div className="w-14 h-14 rounded-2xl bg-[#F06C22] flex items-center justify-center mb-6 shadow-lg shadow-[#F06C22]/20 group-hover:scale-110 transition-transform">
               <Zap className="w-7 h-7 text-white" />
             </div>
-            <h3 className="text-xl font-black uppercase italic mb-2 text-white">
+            <h3 className="text-xl font-bold uppercase italic mb-2 text-white">
               Auto-Populate
             </h3>
             <p className="text-[10px] text-[#68717A] font-bold uppercase tracking-widest leading-relaxed">
@@ -582,7 +582,7 @@ export function ClientProgressReportView({
             <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
               <FileText className="w-7 h-7 text-white/40" />
             </div>
-            <h3 className="text-xl font-black uppercase italic mb-2 text-white">
+            <h3 className="text-xl font-bold uppercase italic mb-2 text-white">
               Manual Entry
             </h3>
             <p className="text-[10px] text-[#68717A] font-bold uppercase tracking-widest leading-relaxed">
@@ -595,7 +595,7 @@ export function ClientProgressReportView({
         <Button
           variant="ghost"
           onClick={onBack}
-          className="text-slate-300 hover:text-white hover:bg-slate-800 font-black uppercase tracking-[0.3em] text-[10px] h-12 px-8"
+          className="text-slate-300 hover:text-white hover:bg-slate-800 font-bold uppercase tracking-[0.3em] text-[10px] h-12 px-8"
         >
           <ArrowLeft className="w-4 h-4 mr-2" /> Abort Mission
         </Button>
@@ -632,7 +632,7 @@ export function ClientProgressReportView({
             <Button
               variant="ghost"
               onClick={onBack}
-              className="text-white hover:bg-white/10 rounded-2xl gap-2 font-black uppercase italic tracking-widest px-6"
+              className="text-white hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
             >
               <ArrowLeft className="w-5 h-5" /> Back
             </Button>
@@ -640,13 +640,13 @@ export function ClientProgressReportView({
               <Button
                 onClick={() => setMode("editing")}
                 variant="outline"
-                className="text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-black uppercase italic tracking-widest px-6"
+                className="text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
               >
                 Edit Data
               </Button>
               <Button
                 onClick={() => window.print()}
-                className="bg-[#F06C22] hover:bg-[#D95B16] text-white rounded-2xl gap-2 font-black uppercase italic tracking-widest px-8 shadow-lg shadow-[#F06C22]/20"
+                className="bg-[#F06C22] hover:bg-[#D95B16] text-white rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-8 shadow-lg shadow-[#F06C22]/20"
               >
                 <Printer className="w-5 h-5" /> Print Report
               </Button>
@@ -662,11 +662,11 @@ export function ClientProgressReportView({
             <header className="space-y-3 break-inside-avoid">
               <div className="flex flex-col md:flex-row md:items-end justify-between border-b-2 border-[#F06C22] pb-4 gap-4">
                 <div>
-                  <h1 className="text-4xl font-black uppercase italic tracking-tighter leading-none mb-3 print:text-[#0A2E46]">
+                  <h1 className="text-4xl font-bold uppercase italic tracking-tighter leading-none mb-3 print:text-[#0A2E46]">
                     Performance <br />
                     <span className="text-[#F06C22]">Report Card</span>
                   </h1>
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 text-[8px] font-black uppercase tracking-[0.25em] text-[#68717A]">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 text-[8px] font-bold uppercase tracking-[0.25em] text-[#68717A]">
                     <div className="flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5 text-[#F06C22]" />
                       <span className="text-white print:text-[#0A2E46]">
@@ -700,14 +700,14 @@ export function ClientProgressReportView({
                   </div>
                 </div>
                 <div className="flex flex-col items-end md:text-right">
-                  <p className="text-[7px] font-black uppercase tracking-[0.4em] text-[#68717A] mb-1">
+                  <p className="text-[7px] font-bold uppercase tracking-[0.4em] text-[#68717A] mb-1">
                     Authenticated By
                   </p>
-                  <p className="text-base font-black uppercase italic tracking-tight print:text-[#0A2E46] leading-none mb-1">
+                  <p className="text-base font-bold uppercase italic tracking-tight print:text-[#0A2E46] leading-none mb-1">
                     {trainer.fullName}
                   </p>
                   <div className="bg-[#F06C22] px-2 py-0.5 rounded-md">
-                    <p className="text-[7px] font-black text-white uppercase tracking-widest">
+                    <p className="text-[7px] font-bold text-white uppercase tracking-widest">
                       Lead Practitioner • MSF Studio
                     </p>
                   </div>
@@ -721,14 +721,14 @@ export function ClientProgressReportView({
                     <div className="bg-[#F06C22] p-6 rounded-[25px] text-white flex flex-col justify-center items-center text-center shadow-xl shadow-[#F06C22]/30 relative overflow-hidden group min-w-[200px]">
                       <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
                       <Award className="w-8 h-8 mb-2 opacity-50 relative z-10" />
-                      <p className="text-5xl font-black italic tracking-tighter leading-none relative z-10">
+                      <p className="text-5xl font-bold italic tracking-tighter leading-none relative z-10">
                         {report.attendance.totalSessions}
                       </p>
-                      <p className="text-[10px] font-black uppercase tracking-widest opacity-90 mt-2 relative z-10">
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-90 mt-2 relative z-10">
                         Total Sessions
                       </p>
                       <div className="mt-3 pt-3 border-t border-white/20 w-full relative z-10">
-                        <p className="text-[8px] font-black uppercase tracking-widest text-white/80">
+                        <p className="text-[8px] font-bold uppercase tracking-widest text-white/80">
                           First Session
                         </p>
                         <p className="text-[10px] font-bold uppercase tracking-tighter opacity-100 italic">
@@ -745,7 +745,7 @@ export function ClientProgressReportView({
 
                   <div className="flex-1 bg-white/5 backdrop-blur-md p-6 rounded-[25px] border border-white/10 flex flex-col justify-center relative">
                     <Quote className="w-12 h-12 text-[#F06C22] absolute top-4 right-4 opacity-10" />
-                    <p className="text-lg md:text-xl font-black italic uppercase tracking-tight leading-tight text-white print:text-[#0A2E46] max-w-[90%]">
+                    <p className="text-lg md:text-xl font-bold italic uppercase tracking-tight leading-tight text-white print:text-[#0A2E46] max-w-[90%]">
                       "
                       {report.attendance.narrative ||
                         `Incredible work, ${client.firstName}. Your dedication to this clinical protocol is exactly what drives meaningful biological change.`}
@@ -757,11 +757,11 @@ export function ClientProgressReportView({
                 {/* Secondary Toggled Metrics */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   {report.attendance.toggles?.totalVolume !== false && (
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
-                      <h4 className="text-[8px] font-black uppercase tracking-widest text-[#68717A] mb-1">
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-center">
+                      <h4 className="text-[8px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
                         Total Volume Lifted
                       </h4>
-                      <p className="text-2xl font-black text-[#0A2E46] italic">
+                      <p className="text-2xl font-bold text-[#0A2E46] italic">
                         {(report.attendance.totalVolume || 0).toLocaleString()}
                         <span className="text-[10px] text-[#68717A] ml-1 not-italic">
                           lbs
@@ -770,21 +770,21 @@ export function ClientProgressReportView({
                     </div>
                   )}
                   {report.attendance.toggles?.totalReps !== false && (
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
-                      <h4 className="text-[8px] font-black uppercase tracking-widest text-[#68717A] mb-1">
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-center">
+                      <h4 className="text-[8px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
                         Total Reps
                       </h4>
-                      <p className="text-2xl font-black text-[#0A2E46] italic">
+                      <p className="text-2xl font-bold text-[#0A2E46] italic">
                         {(report.attendance.totalReps || 0).toLocaleString()}
                       </p>
                     </div>
                   )}
                   {report.attendance.toggles?.totalGoodReps !== false && (
-                    <div className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-sm text-center bg-emerald-50/10">
-                      <h4 className="text-[8px] font-black uppercase tracking-widest text-emerald-700 mb-1">
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-emerald-100 shadow-sm text-center bg-emerald-50/10">
+                      <h4 className="text-[8px] font-bold uppercase tracking-widest text-emerald-700 mb-1">
                         Green Quality Reps
                       </h4>
-                      <p className="text-2xl font-black text-emerald-600 italic">
+                      <p className="text-2xl font-bold text-emerald-600 italic">
                         {(
                           report.attendance.totalGoodReps || 0
                         ).toLocaleString()}
@@ -792,11 +792,11 @@ export function ClientProgressReportView({
                     </div>
                   )}
                   {report.attendance.toggles?.avgRestDays !== false && (
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
-                      <h4 className="text-[8px] font-black uppercase tracking-widest text-[#68717A] mb-1">
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-center">
+                      <h4 className="text-[8px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
                         Average Rest
                       </h4>
-                      <p className="text-2xl font-black text-[#0A2E46] italic">
+                      <p className="text-2xl font-bold text-[#0A2E46] italic">
                         {report.attendance.avgRestDays || 0}
                         <span className="text-[10px] text-[#68717A] ml-1 not-italic">
                           days
@@ -805,11 +805,11 @@ export function ClientProgressReportView({
                     </div>
                   )}
                   {report.attendance.toggles?.avgDuration !== false && (
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
-                      <h4 className="text-[8px] font-black uppercase tracking-widest text-[#68717A] mb-1">
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-center">
+                      <h4 className="text-[8px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
                         Avg Session Length
                       </h4>
-                      <p className="text-2xl font-black text-[#0A2E46] italic">
+                      <p className="text-2xl font-bold text-[#0A2E46] italic">
                         {report.attendance.avgDuration || 0}
                         <span className="text-[10px] text-[#68717A] ml-1 not-italic">
                           mins
@@ -826,7 +826,7 @@ export function ClientProgressReportView({
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                   <TrendingUp className="w-3.5 h-3.5 text-[#F06C22]" />
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#FAF9F6] print:text-[#0A2E46]">
+                  <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#FAF9F6] print:text-[#0A2E46]">
                     Elite Strength Progress
                   </h3>
                 </div>
@@ -908,7 +908,7 @@ export function ClientProgressReportView({
             {/* 3. REINSTATED 4 P'S MATRIX - THE CENTERPIECE */}
             <section className="space-y-4 break-inside-avoid">
               <div className="flex items-center gap-2">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
                   Methodology Mastery: The 4 P's
                 </h3>
                 <div className="h-px bg-[#F06C22]/20 flex-1"></div>
@@ -931,7 +931,7 @@ export function ClientProgressReportView({
                       className="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 flex flex-col justify-between shadow-xl"
                     >
                       <div>
-                        <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-white print:text-[#0A2E46]">
+                        <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white print:text-[#0A2E46]">
                           {data.title}
                         </h4>
                         
@@ -968,8 +968,8 @@ export function ClientProgressReportView({
               </div>
 
               {(report.performanceMatrix.includedNotes || []).length > 0 && (
-                <div className="bg-[#FAF9F6] p-5 rounded-3xl border border-slate-100 shadow-inner mt-4">
-                  <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-[#68717A] mb-3">
+                <div className="bg-[#FAF9F6] p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-inner mt-4">
+                  <h4 className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#68717A] mb-3">
                     Clinical Highlights
                   </h4>
                   <ul className="space-y-2">
@@ -992,10 +992,10 @@ export function ClientProgressReportView({
             </section>
 
             {/* 4. STRATEGIC ROADMAP */}
-            <section className=" break-inside-avoid space-y-4">
+            <section className="break-inside-avoid space-y-4">
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4 text-[#F06C22]" />
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F06C22] shrink-0">Strategic Road Map</h3>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#F06C22] shrink-0">Strategic Road Map</h3>
                 <div className="h-px bg-[#F06C22]/20 flex-1"></div>
               </div>
 
@@ -1008,36 +1008,36 @@ export function ClientProgressReportView({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
                       {/* Step 1 */}
                       <div className="bg-[#0A2E46] p-5 rounded-2xl border border-white/10 shadow-lg">
-                        <div className="text-[9px] font-black uppercase tracking-[0.2em] text-[#F06C22] mb-2 flex items-center gap-1.5"><Quote className="w-3 h-3" /> Step 1: Your Motivation</div>
+                        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#F06C22] mb-2 flex items-center gap-1.5"><Quote className="w-3 h-3" /> Step 1: Your Motivation</div>
                         <p className="text-white print:text-[#0A2E46] italic font-medium leading-relaxed">
                           "{report.roadmap.emotionalAnchor}"
                         </p>
                       </div>
 
                       {/* Step 2 */}
-                      <div className="bg-[#FAF9F6] p-5 rounded-2xl border border-slate-200 shadow-lg">
-                        <div className="text-[9px] font-black uppercase tracking-[0.2em] text-[#68717A] mb-2 flex items-center gap-1.5"><MapIcon className="w-3 h-3" /> Step 2: The Milestone</div>
+                      <div className="bg-[#FAF9F6] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg">
+                        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#68717A] mb-2 flex items-center gap-1.5"><MapIcon className="w-3 h-3" /> Step 2: The Milestone</div>
                         <p className="text-[#0A2E46] font-bold leading-relaxed">
                           {report.roadmap.smartGoal}
                         </p>
                       </div>
 
                       {/* Step 3 */}
-                      <div className="bg-white p-5 rounded-2xl border-2 border-[#F06C22] shadow-xl relative overflow-hidden">
+                      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border-2 border-[#F06C22] shadow-xl relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-2 opacity-10 pointer-events-none">
                           <Zap className="w-12 h-12 text-[#F06C22]" />
                         </div>
                         <div className="relative z-10">
-                          <div className="text-[9px] font-black uppercase tracking-[0.2em] text-[#F06C22] mb-2 flex items-center gap-1.5"><Dumbbell className="w-3 h-3" /> Step 3: Our Clinical Prescription</div>
+                          <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#F06C22] mb-2 flex items-center gap-1.5"><Dumbbell className="w-3 h-3" /> Step 3: Our Clinical Prescription</div>
                           <div className="space-y-3">
-                            <div className="text-xs font-black uppercase text-[#0A2E46] tracking-widest border-b border-slate-100 pb-2">
+                            <div className="text-xs font-bold uppercase text-[#0A2E46] tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2">
                               {machines.find(m => m.id === report.roadmap?.inStudioPrescription.targetMachine)?.name || 'Machine TBD'}
-                              <span className="ml-2 px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[8px] tracking-widest">{report.roadmap.inStudioPrescription.timeframe}</span>
+                              <span className="ml-2 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded text-[8px] tracking-widest">{report.roadmap.inStudioPrescription.timeframe}</span>
                             </div>
                             
                             {report.roadmap.prescriptionType === 'quantitative' ? (
                               <div className="space-y-1">
-                                <p className="text-base font-black text-[#F06C22]">{report.roadmap.inStudioPrescription.targetMetric}</p>
+                                <p className="text-base font-bold text-[#F06C22]">{report.roadmap.inStudioPrescription.targetMetric}</p>
                                 <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">...with perfect Level 5 Posture and Pace.</p>
                               </div>
                             ) : (
@@ -1095,14 +1095,14 @@ export function ClientProgressReportView({
 
             {/* 5. NOTES & FOOTER */}
             <div className="grid grid-cols-3 gap-4 items-stretch break-inside-avoid">
-              <div className="col-span-2 bg-[#FAF9F6] p-3 rounded-[20px] border border-slate-100 relative">
+              <div className="col-span-2 bg-[#FAF9F6] p-3 rounded-[20px] border border-slate-100 dark:border-slate-800 relative">
                 <div className="flex items-center gap-2 mb-1">
                   <FileText className="w-3 h-3 text-[#F06C22]" />
-                  <h4 className="text-[8px] font-black uppercase tracking-[0.3em] text-[#0A2E46]">
+                  <h4 className="text-[8px] font-bold uppercase tracking-[0.3em] text-[#0A2E46]">
                     Summative Analysis
                   </h4>
                 </div>
-                <div className="bg-white rounded-xl p-2 shadow-inner min-h-[50px]">
+                <div className="bg-white dark:bg-slate-900 rounded-xl p-2 shadow-inner min-h-[50px]">
                   <p className="text-[10px] font-medium italic text-[#0A2E46] leading-relaxed">
                     {report.trainerNotes ||
                       "Incredible work this quarter. Your neurological adaptations are now clearly visible in the data. Your force output is reaching peak clinical efficiency. Keep showing up."}
@@ -1111,12 +1111,12 @@ export function ClientProgressReportView({
               </div>
               <div className="col-span-1 flex flex-col justify-end text-right space-y-2 pb-2">
                 <div className="space-y-1">
-                  <div className="text-[7px] font-black uppercase tracking-[0.3em] text-[#68717A] mb-1">
+                  <div className="text-[7px] font-bold uppercase tracking-[0.3em] text-[#68717A] mb-1">
                     Document Ref: MSF-
                     {report.id?.slice(-8).toUpperCase() || "SYSTEM-NEW"}
                   </div>
                   <div className="h-px bg-[#F06C22]/20 w-3/4 ml-auto" />
-                  <div className="text-[12px] font-black italic text-[#F06C22] uppercase tracking-[0.2em] leading-none pt-1">
+                  <div className="text-[12px] font-bold italic text-[#F06C22] uppercase tracking-[0.2em] leading-none pt-1">
                     Max Strength <br />
                     Professional
                   </div>
@@ -1146,7 +1146,7 @@ export function ClientProgressReportView({
               <ArrowLeft className="w-6 h-6" />
             </Button>
             <div>
-              <h1 className="text-xl font-black uppercase italic tracking-tighter text-white">
+              <h1 className="text-xl font-bold uppercase italic tracking-tighter text-white">
                 Refining Report
               </h1>
               <p className="text-[10px] font-bold text-[#68717A] uppercase tracking-widest mt-0.5">
@@ -1159,14 +1159,14 @@ export function ClientProgressReportView({
               variant="outline"
               onClick={() => handleSave("Draft")}
               disabled={saving}
-              className="flex-1 sm:flex-none border-white/20 bg-[#0A2E46]/50 text-white hover:bg-[#0A2E46] hover:text-white rounded-2xl font-black uppercase tracking-widest h-12 print:hidden"
+              className="flex-1 sm:flex-none border-white/20 bg-[#0A2E46]/50 text-white hover:bg-[#0A2E46] hover:text-white rounded-2xl font-bold uppercase tracking-widest h-12 print:hidden"
             >
               Save Draft
             </Button>
             <Button
               onClick={() => handleSave("Finalized")}
               disabled={saving}
-              className="flex-1 sm:flex-none bg-[#F06C22] hover:bg-[#D95B16] text-white rounded-2xl font-black uppercase tracking-widest h-12 shadow-lg shadow-[#F06C22]/20 print:hidden"
+              className="flex-1 sm:flex-none bg-[#F06C22] hover:bg-[#D95B16] text-white rounded-2xl font-bold uppercase tracking-widest h-12 shadow-lg shadow-[#F06C22]/20 print:hidden"
             >
               Finalize Report
             </Button>
@@ -1175,11 +1175,11 @@ export function ClientProgressReportView({
 
         <div className="space-y-8">
           {/* Section 1: Attendance */}
-          <section className="bg-white rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
+          <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-[#F06C22]" />
             <div className="flex items-center gap-3 mb-8">
               <Calendar className="w-6 h-6 text-[#F06C22]" />
-              <h2 className="text-2xl font-black uppercase italic tracking-tighter text-[#0A2E46]">
+              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46]">
                 Attendance & Dedication
               </h2>
             </div>
@@ -1190,13 +1190,13 @@ export function ClientProgressReportView({
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-[#68717A]">
+                      <Label className="text-[10px] font-bold uppercase tracking-widest text-[#68717A]">
                         Timeframe Start Date (Blank = All Time)
                       </Label>
                       {report.attendance.firstSessionDate && (
                         <button 
                           onClick={() => handleRecalculateAttendance(report.attendance.firstSessionDate!)}
-                          className="text-[9px] font-black text-primary uppercase hover:underline"
+                          className="text-[9px] font-bold text-primary uppercase hover:underline"
                         >
                           Use First Session: {new Date(report.attendance.firstSessionDate).toLocaleDateString()}
                         </button>
@@ -1208,7 +1208,7 @@ export function ClientProgressReportView({
                       onChange={(e) =>
                         handleRecalculateAttendance(e.target.value)
                       }
-                      className="h-12 rounded-xl font-medium border-2 border-slate-100 focus:border-[#F06C22] transition-all"
+                      className="h-12 rounded-xl font-medium border-2 border-slate-100 dark:border-slate-800 focus:border-[#F06C22] transition-all"
                     />
                     <p className="text-[9px] text-[#68717A] italic mt-1 pb-2">
                       Changing this will auto-recalculate the metrics below
@@ -1217,7 +1217,7 @@ export function ClientProgressReportView({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-[#68717A]">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-[#68717A]">
                       Trainer Narrative (The Vibe)
                     </Label>
                     <Textarea
@@ -1231,14 +1231,14 @@ export function ClientProgressReportView({
                           },
                         })
                       }
-                      className="min-h-[100px] rounded-3xl font-medium border-2 border-slate-100 focus:border-[#F06C22] transition-all p-4"
+                      className="min-h-[100px] rounded-3xl font-medium border-2 border-slate-100 dark:border-slate-800 focus:border-[#F06C22] transition-all p-4"
                       placeholder="Celebrate their wins and consistency here..."
                     />
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-[#68717A]">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-[#68717A]">
                     Report Metrics Configuration
                   </Label>
                   <div className="grid grid-cols-1 gap-2">
@@ -1329,10 +1329,10 @@ export function ClientProgressReportView({
                                 : "bg-slate-300 justify-start",
                             )}
                           >
-                            <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                            <div className="w-4 h-4 rounded-full bg-white dark:bg-slate-900 shadow-sm" />
                           </button>
                           <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-[#0A2E46]">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#0A2E46]">
                               {metric.label}
                             </p>
                             <p className="text-[12px] font-bold text-[#F06C22]">
@@ -1352,11 +1352,11 @@ export function ClientProgressReportView({
           </section>
 
           {/* Section 2: Highlights */}
-          <section className="bg-white rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
+          <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-[#0A2E46]" />
             <div className="flex items-center gap-3 mb-8">
               <Award className="w-6 h-6 text-[#0A2E46]" />
-              <h2 className="text-2xl font-black uppercase italic tracking-tighter text-[#0A2E46]">
+              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46]">
                 Highlighted Movements
               </h2>
             </div>
@@ -1366,7 +1366,7 @@ export function ClientProgressReportView({
                   key={i}
                   className="flex flex-col p-6 rounded-3xl bg-slate-800 text-white shadow-xl"
                 >
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">
                     Slot #{i + 1}
                   </p>
 
@@ -1393,7 +1393,7 @@ export function ClientProgressReportView({
                                 <div className="flex justify-between items-center w-full gap-4">
                                   <span className="font-medium">{m.name}</span>
                                   {stats && (
-                                    <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                    <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-400">
                                       <span className="text-emerald-400 shrink-0">
                                         +{stats.percentageIncrease || 0}%
                                       </span>
@@ -1512,11 +1512,11 @@ export function ClientProgressReportView({
           </section>
 
           {/* Section 3: Performance Matrix */}
-          <section className="bg-white rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
+          <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-[#68717A]" />
             <div className="flex items-center gap-3 mb-8">
               <LayoutGrid className="w-6 h-6 text-[#68717A]" />
-              <h2 className="text-2xl font-black uppercase italic tracking-tighter text-[#0A2E46]">
+              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46]">
                 Clinical Performance Matrix
               </h2>
             </div>
@@ -1545,7 +1545,7 @@ export function ClientProgressReportView({
                     className="bg-slate-800 border-slate-700 border p-6 rounded-3xl flex flex-col space-y-6"
                   >
                     <div>
-                      <h3 className="text-2xl font-black uppercase tracking-tighter text-white">
+                      <h3 className="text-2xl font-bold uppercase tracking-tighter text-white">
                         {data.title}
                       </h3>
                       <p className="text-[10px] text-slate-400 uppercase tracking-wider mt-1 leading-relaxed">
@@ -1586,7 +1586,7 @@ export function ClientProgressReportView({
                     </div>
                     
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-1">Personalized Note (Optional)</Label>
+                       <Label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest pl-1">Personalized Note (Optional)</Label>
                        <Textarea 
                           value={report.performanceMatrix[p]?.note || ''}
                           onChange={(e) => {
@@ -1654,8 +1654,8 @@ export function ClientProgressReportView({
             </div>
 
             {(report.performanceMatrix.includedNotes || []).length > 0 && (
-              <div className="mt-8 p-6 bg-slate-50 rounded-3xl border border-slate-100 shadow-inner">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-[#0A2E46] mb-4 block">
+              <div className="mt-8 p-6 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-inner">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-[#0A2E46] mb-4 block">
                   Included Talking Points Summary
                 </Label>
                 <ul className="space-y-3">
@@ -1678,11 +1678,11 @@ export function ClientProgressReportView({
           </section>
 
           {/* Section 4: Roadmap (MSF Evolution) */}
-          <section className="bg-white rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
+          <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-[#F06C22]" />
             <div className="flex items-center gap-3 mb-8">
               <MapIcon className="w-6 h-6 text-[#F06C22]" />
-              <h2 className="text-2xl font-black uppercase italic tracking-tighter text-[#0A2E46]">
+              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46]">
                 Strategic Roadmap
               </h2>
             </div>
@@ -1690,7 +1690,7 @@ export function ClientProgressReportView({
             <div className="space-y-8">
               {/* Category Anchor */}
               <div className="space-y-4">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-[#68717A] ml-1">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-[#68717A] ml-1">
                   1. Clinical Health Anchor (80/20 & EIH Safeguards)
                 </Label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1712,7 +1712,7 @@ export function ClientProgressReportView({
                           : "bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-200"
                       )}
                     >
-                      <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">{cat.label}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest leading-none mb-1">{cat.label}</p>
                       <p className="text-[8px] font-bold opacity-60 uppercase">{cat.description}</p>
                     </button>
                   ))}
@@ -1723,7 +1723,7 @@ export function ClientProgressReportView({
                 {/* Motivation & Milestone */}
                 <div className="space-y-6">
                   <div className="space-y-4">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-[#68717A] ml-1">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-[#68717A] ml-1">
                       2. The Emotional Anchor (Your "Why")
                     </Label>
                     <Textarea
@@ -1732,12 +1732,12 @@ export function ClientProgressReportView({
                         ...report,
                         roadmap: { ...report.roadmap!, emotionalAnchor: e.target.value }
                       })}
-                      className="min-h-[100px] rounded-3xl font-medium border-2 border-slate-100 focus:border-[#F06C22] p-4 placeholder:italic"
+                      className="min-h-[100px] rounded-3xl font-medium border-2 border-slate-100 dark:border-slate-800 focus:border-[#F06C22] p-4 placeholder:italic"
                       placeholder="e.g., Playing with grandkids without knee pain..."
                     />
                   </div>
                   <div className="space-y-4">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-[#68717A] ml-1">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-[#68717A] ml-1">
                       3. The Measurable Milestone (SMART)
                     </Label>
                     <Textarea
@@ -1746,20 +1746,20 @@ export function ClientProgressReportView({
                         ...report,
                         roadmap: { ...report.roadmap!, smartGoal: e.target.value }
                       })}
-                      className="min-h-[100px] rounded-3xl font-medium border-2 border-slate-100 focus:border-[#F06C22] p-4"
+                      className="min-h-[100px] rounded-3xl font-medium border-2 border-slate-100 dark:border-slate-800 focus:border-[#F06C22] p-4"
                       placeholder="e.g., Skiing trip ready by Christmas..."
                     />
                   </div>
                 </div>
 
                 {/* Prescription */}
-                <div className="bg-[#FAF9F6] p-6 rounded-[32px] border-2 border-slate-100 space-y-6">
+                <div className="bg-[#FAF9F6] p-6 rounded-[32px] border-2 border-slate-100 dark:border-slate-800 space-y-6">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-[#F06C22]/10 flex items-center justify-center">
                       <Crosshair className="w-5 h-5 text-[#F06C22]" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-black uppercase italic tracking-tighter text-[#0A2E46] leading-tight">Clinical Prescription</h3>
+                      <h3 className="text-lg font-bold uppercase italic tracking-tighter text-[#0A2E46] leading-tight">Clinical Prescription</h3>
                       <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Step 3: Studio Implementation</p>
                     </div>
                   </div>
@@ -1798,7 +1798,7 @@ export function ClientProgressReportView({
 
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Target Machine</Label>
+                        <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Target Machine</Label>
                         <Select
                           value={report.roadmap?.inStudioPrescription.targetMachine || ""}
                           onValueChange={(v) => setReport({
@@ -1809,10 +1809,10 @@ export function ClientProgressReportView({
                             }
                           })}
                         >
-                          <SelectTrigger className="bg-white border-slate-200 text-xs font-bold">
+                          <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold">
                             <SelectValue placeholder="Select Machine" />
                           </SelectTrigger>
-                          <SelectContent className="bg-white border-slate-200">
+                          <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                             {machines.map(m => (
                               <SelectItem key={m.id} value={m.id!}>{m.name}</SelectItem>
                             ))}
@@ -1822,7 +1822,7 @@ export function ClientProgressReportView({
 
                       {report.roadmap?.prescriptionType === 'quantitative' ? (
                         <div className="space-y-2">
-                          <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Target Weight/Metric</Label>
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Target Weight/Metric</Label>
                           <Input
                             value={report.roadmap?.inStudioPrescription.targetMetric || ""}
                             onChange={(e) => setReport({
@@ -1832,13 +1832,13 @@ export function ClientProgressReportView({
                                 inStudioPrescription: { ...report.roadmap!.inStudioPrescription, targetMetric: e.target.value }
                               }
                             })}
-                            className="bg-white border-slate-200 text-xs font-bold"
+                            className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
                             placeholder="e.g., 250 lbs for 90 seconds"
                           />
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Specific Form Mastery Focus</Label>
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Specific Form Mastery Focus</Label>
                           <Input
                             value={report.roadmap?.inStudioPrescription.qualitativeFocus || ""}
                             onChange={(e) => setReport({
@@ -1848,14 +1848,14 @@ export function ClientProgressReportView({
                                 inStudioPrescription: { ...report.roadmap!.inStudioPrescription, qualitativeFocus: e.target.value }
                               }
                             })}
-                            className="bg-white border-slate-200 text-xs font-bold"
+                            className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
                             placeholder="e.g., Zero momentum on turnarounds"
                           />
                         </div>
                       )}
 
                       <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Timeframe</Label>
+                        <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Timeframe</Label>
                         <Input
                           value={report.roadmap?.inStudioPrescription.timeframe || ""}
                           onChange={(e) => setReport({
@@ -1865,7 +1865,7 @@ export function ClientProgressReportView({
                               inStudioPrescription: { ...report.roadmap!.inStudioPrescription, timeframe: e.target.value }
                             }
                           })}
-                          className="bg-white border-slate-200 text-xs font-bold"
+                          className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
                           placeholder="e.g., Next 12 Weeks"
                         />
                       </div>
@@ -1877,16 +1877,16 @@ export function ClientProgressReportView({
           </section>
 
           {/* Section 5: Trainer Notes */}
-          <section className="bg-white rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
+          <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-[#0A2E46]" />
             <div className="flex items-center gap-3 mb-8">
               <FileText className="w-6 h-6 text-[#0A2E46]" />
-              <h2 className="text-2xl font-black uppercase italic tracking-tighter text-[#0A2E46]">
+              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46]">
                 Closing Trainer Notes
               </h2>
             </div>
             <div className="space-y-4">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-[#68717A]">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-[#68717A]">
                 Lead Practitioner Wrap-Up
               </Label>
               <Textarea
@@ -1894,7 +1894,7 @@ export function ClientProgressReportView({
                 onChange={(e) =>
                   setReport({ ...report, trainerNotes: e.target.value })
                 }
-                className="min-h-[120px] rounded-3xl font-medium border-2 border-slate-100 focus:border-[#F06C22] transition-all p-4 print:border-none print:p-0 print:bg-transparent"
+                className="min-h-[120px] rounded-3xl font-medium border-2 border-slate-100 dark:border-slate-800 focus:border-[#F06C22] transition-all p-4 print:border-none print:p-0 print:bg-transparent"
                 placeholder="Incredible work this quarter... Keep showing up."
               />
             </div>

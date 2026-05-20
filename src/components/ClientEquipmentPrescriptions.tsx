@@ -160,7 +160,7 @@ export function ClientEquipmentPrescriptions({
             <Button 
               onClick={handleSyncAllLevels} 
               disabled={isSyncing}
-              className="flex-1 md:flex-none h-12 bg-[#F06C22] hover:bg-[#D45A1AB3] text-white font-black uppercase tracking-widest px-8 rounded-xl shadow-lg border-b-4 border-[#A3430F]"
+              className="flex-1 md:flex-none h-12 bg-[#F06C22] hover:bg-[#D45A1AB3] text-white font-bold uppercase tracking-widest px-8 rounded-xl shadow-lg border-b-4 border-[#A3430F]"
             >
               {isSyncing ? <RefreshCw className="w-5 h-5 animate-spin" /> : "Sync All Bases"}
             </Button>
@@ -190,26 +190,26 @@ export function ClientEquipmentPrescriptions({
                     <Dumbbell className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h4 className="font-black text-white italic uppercase text-sm leading-tight group-hover:text-[#38BDF8] transition-colors">{machine.name}</h4>
+                    <h4 className="font-bold text-white italic uppercase text-sm leading-tight group-hover:text-[#38BDF8] transition-colors">{machine.name}</h4>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{machine.muscleGroup}</p>
                   </div>
                 </div>
                 {isBig5 && (
-                  <Badge className="bg-[#F06C22] hover:bg-[#F06C22] text-white font-black text-[9px] uppercase tracking-tighter italic">Big 5</Badge>
+                  <Badge className="bg-[#F06C22] hover:bg-[#F06C22] text-white font-bold text-[9px] uppercase tracking-tighter italic">Big 5</Badge>
                 )}
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-black/20 rounded-2xl border border-white/5">
                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Base Load</span>
-                   <span className="text-lg font-black text-white tabular-nums">
+                   <span className="text-lg font-bold text-white tabular-nums">
                      {hasSettings ? `${settings.startingWeight} LBS` : '---'}
                    </span>
                 </div>
                 
                 <div className="flex items-center justify-between p-3 bg-black/20 rounded-2xl border border-white/5">
                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Setup Configuration</span>
-                   <span className="text-[10px] font-black text-[#38BDF8] uppercase text-right leading-tight max-w-[120px] line-clamp-1">
+                   <span className="text-[10px] font-bold text-[#38BDF8] uppercase text-right leading-tight max-w-[120px] line-clamp-1">
                      {formatMachineSettings(settings?.settings)}
                    </span>
                 </div>
@@ -236,7 +236,7 @@ export function ClientEquipmentPrescriptions({
       <Dialog open={!!selectedMachine} onOpenChange={() => setSelectedMachine(null)}>
         <DialogContent className="bg-[#0A2E46] border-white/10 text-white rounded-[32px] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black uppercase italic tracking-tight text-white">Adjust Base Prescription</DialogTitle>
+            <DialogTitle className="text-2xl font-bold uppercase italic tracking-tight text-white">Adjust Base Prescription</DialogTitle>
             <DialogDescription className="text-slate-400">
               Update the clinical starting load for {selectedMachine?.name}.
             </DialogDescription>
@@ -244,17 +244,17 @@ export function ClientEquipmentPrescriptions({
 
           <div className="py-8 space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="weight" className="text-xs font-black uppercase text-slate-500 tracking-widest">Recommended Start</Label>
+              <Label htmlFor="weight" className="text-xs font-bold uppercase text-slate-500 tracking-widest">Recommended Start</Label>
               <div className="flex items-center gap-4">
                 <Input 
                   id="weight"
                   type="number" 
                   value={startingWeight} 
                   onChange={(e) => setStartingWeight(e.target.value ? parseInt(e.target.value) : '')}
-                  className="h-14 bg-slate-900 border-white/10 text-2xl font-black italic rounded-2xl flex-1 text-center"
+                  className="h-14 bg-slate-900 border-white/10 text-2xl font-bold italic rounded-2xl flex-1 text-center"
                   placeholder="---"
                 />
-                <span className="text-xl font-bold text-slate-500 uppercase italic">LBS</span>
+                <span className="text-xl font-bold text-slate-700 dark:text-slate-300 uppercase italic">LBS</span>
               </div>
               <p className="text-[10px] text-slate-500 font-medium italic mt-2">
                 * Based on {trainingLevel} protocol for {clientBodyWeight} LBS body weight.
@@ -272,7 +272,7 @@ export function ClientEquipmentPrescriptions({
             </Button>
             <Button 
               onClick={handleSaveStartingWeight}
-              className="h-14 flex-1 bg-[#F06C22] hover:bg-[#D45A1A] text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-[#F06C22]/20 order-1 sm:order-2"
+              className="h-14 flex-1 bg-[#F06C22] hover:bg-[#D45A1A] text-white font-bold uppercase tracking-widest rounded-2xl shadow-xl shadow-[#F06C22]/20 order-1 sm:order-2"
             >
               Apply Prescription
             </Button>

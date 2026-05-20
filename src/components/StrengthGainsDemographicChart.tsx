@@ -15,13 +15,13 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     const data = payload[0].payload;
     return (
       <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-2xl">
-        <p className="text-white font-black uppercase tracking-tight mb-1 border-b border-slate-700 pb-1 text-xs">{label}</p>
+        <p className="text-white font-bold uppercase tracking-tight mb-1 border-b border-slate-700 pb-1 text-xs">{label}</p>
         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-2">{data.segment}</p>
         <div className="flex items-center justify-between gap-4 py-0.5">
           <span className="text-[10px] font-bold uppercase tracking-widest text-[#38BDF8]">
             {payload[0].name}
           </span>
-          <span className="text-xs font-black text-white">
+          <span className="text-xs font-bold text-white">
             +{payload[0].value}%
           </span>
         </div>

@@ -14,7 +14,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-2xl">
-        <p className="text-white font-black uppercase tracking-tight mb-2 border-b border-slate-700 pb-2">Session: {label}</p>
+        <p className="text-white font-bold uppercase tracking-tight mb-2 border-b border-slate-700 pb-2">Session: {label}</p>
         <div className="flex flex-col gap-2">
           {payload.map((entry: any, index: number) => {
             if (entry.dataKey === 'milestone') return null; // Don't show baseline purely on tooltip
@@ -24,7 +24,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                   {entry.name}
                 </span>
-                <span className="text-sm font-black text-white">
+                <span className="text-sm font-bold text-white">
                   {entry.value} <span className="text-[10px] text-slate-400">lbs</span>
                 </span>
               </div>
