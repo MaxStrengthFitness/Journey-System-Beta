@@ -38,6 +38,7 @@ import {
   Play,
   History,
   Maximize,
+  Calendar,
   Maximize2,
   Battery,
   CalendarDays,
@@ -1010,9 +1011,9 @@ export function ClientProfileView({
         return null;
       })()}
 
-      {/* Compact Header */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 dark:border-slate-200 rounded-xl shadow-sm px-3 sm:px-4 py-3 mb-2 relative overflow-hidden flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2 sm:gap-4 z-10 shrink-[2] min-w-0">
+      {/* Session Status Card */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl shadow-sm px-4 sm:px-6 py-4 mb-3 relative overflow-hidden flex flex-col md:flex-row items-center md:items-start justify-between gap-4 transition-colors duration-200">
+        <div className="flex items-center gap-2 sm:gap-4 z-10 shrink-[2] min-w-0 w-full md:w-auto">
           <Button
             onClick={() => {
               setSelectedClientId(null);
@@ -1032,32 +1033,25 @@ export function ClientProfileView({
               <h2 className="text-lg sm:text-2xl font-bold uppercase tracking-tighter leading-none m-0 truncate text-slate-900 dark:text-slate-50">
                 {client.firstName} {client.lastName}
               </h2>
-              <div className="flex items-center gap-1 group">
-                <Badge
-                  variant="outline"
-                  className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest"
-                >
-                  Session #{calculatedSessionCount + 1}
-                </Badge>
-                <button
-                  onClick={() => {
-                    setSessionCountInput(String(calculatedSessionCount));
-                    setIsEditingSessionCount(true);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded-full"
-                >
-                  <Edit3 className="w-3 h-3 text-[#38BDF8]" />
-                </button>
-              </div>
-
-              {/* Balance Badge */}
-              <div className="flex items-center gap-1">
-                <Badge
-                  variant="outline"
-                  className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest"
-                >
-                  {client.remainingSessions ?? 0} Left
-                </Badge>
+              <div className="flex flex-col sm:flex-row items-start sm:items-baseline gap-2 sm:gap-4 mt-2 mb-2 w-full">
+                <div className="flex items-baseline gap-2 group relative">
+                  <span className="text-4xl italic font-bold tracking-tight">
+                    {calculatedSessionCount} / {calculatedSessionCount + (client.remainingSessions ?? 0)}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setSessionCountInput(String(calculatedSessionCount));
+                      setIsEditingSessionCount(true);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"
+                    title="Edit Session Count"
+                  >
+                    <Edit3 className="w-4 h-4 text-[#38BDF8]" />
+                  </button>
+                </div>
+                <div className="text-[12px] font-bold tracking-widest uppercase text-[#F06C22]">
+                  {client.remainingSessions ?? 0} Remaining
+                </div>
               </div>
             </div>
 
@@ -1119,79 +1113,14 @@ export function ClientProfileView({
               </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-[8px] sm:text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400">
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 dark:bg-slate-50 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-slate-200 dark:border-slate-800 dark:border-slate-200 whitespace-nowrap text-slate-700 dark:text-slate-300 dark:text-slate-400">
-                <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                <span>
-                  LAST:{" "}
-                  <span className="text-slate-900 dark:text-slate-50 dark:">
-                    {sessions[0]?.date
-                      ? new Date(
-                          sessions[0].date + "T12:00:00",
-                        ).toLocaleDateString("en-GB", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })
-                      : "NONE"}
-                  </span>
+            <div className="flex items-center gap-2 mt-1">
+              <Calendar className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                Last Session:{" "}
+                <span className="text-slate-900 dark:text-slate-100">
+                  {sessions[0]?.date ? new Date(sessions[0].date + "T12:00:00").toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : "No history"}
                 </span>
-              </div>
-              {(() => {
-                if (!scheduledSessions[0]) {
-                  return (
-                    <div className="flex items-center gap-1 bg-white/5 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded /40 border border-white/10 whitespace-nowrap">
-                      <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                      <span>NEXT: UNSCHEDULED</span>
-                    </div>
-                  );
-                }
-
-                const firstSessionDate =
-                  scheduledSessions[0].startTime.toDate();
-                const today = new Date();
-                const isFirstSessionToday =
-                  firstSessionDate.getDate() === today.getDate() &&
-                  firstSessionDate.getMonth() === today.getMonth() &&
-                  firstSessionDate.getFullYear() === today.getFullYear();
-
-                if (isFirstSessionToday) {
-                  const timeStr = firstSessionDate.toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  });
-                  let nextStr = "";
-                  if (scheduledSessions[1]) {
-                    const nextDate = scheduledSessions[1].startTime.toDate();
-                    nextStr = ` | Next: ${nextDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}`;
-                  }
-                  return (
-                    <div className="flex items-center gap-1 bg-[#F06C22]/20 text-[#F06C22] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-[#F06C22]/30 shadow-[0_0_10px_rgba(240,108,34,0.3)] whitespace-nowrap">
-                      <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                      <span>
-                        Today @ {timeStr}{" "}
-                        <span className="font-bold text-slate-900 dark:text-slate-50 dark:">{nextStr}</span>
-                      </span>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="flex items-center gap-1 bg-[#F06C22]/20 text-[#F06C22] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-[#F06C22]/30 shadow-[0_0_10px_rgba(240,108,34,0.3)] whitespace-nowrap">
-                    <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                    <span>
-                      NEXT:{" "}
-                      <span className="font-bold text-slate-900 dark:text-slate-50 dark:">
-                        {firstSessionDate.toLocaleDateString("en-US", {
-                          weekday: "short",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
-                    </span>
-                  </div>
-                );
-              })()}
+              </span>
             </div>
           </div>
         </div>

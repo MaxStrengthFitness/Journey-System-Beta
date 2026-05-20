@@ -2931,6 +2931,44 @@ function ClientsView({
     })
     .sort((a, b) => getMillis(a.startTime) - getMillis(b.startTime));
 
+  const AM_SLOTS = [
+    '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', 
+    '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', 
+    '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM',
+    '1:00 PM'
+  ];
+  const PM_SLOTS = [
+    '2:00 PM', '2:30 PM', 
+    '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM', 
+    '5:00 PM', '5:30 PM', '6:00 PM', '6:30 PM', 
+    '7:00 PM'
+  ];
+
+  function get12HourStr(d: Date) {
+    let h = d.getHours();
+    const m = d.getMinutes().toString().padStart(2, '0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    h = h ? h : 12;
+    return `${h}:${m} ${ampm}`;
+  }
+
+  const amSessionsCount = todaysSchedules.filter(s => {
+    if (s.clientName?.toLowerCase().includes('unavailab')) return false;
+    const sDate = safeToDate(s.startTime);
+    if (!sDate) return false;
+    const tStr = get12HourStr(sDate);
+    return AM_SLOTS.includes(tStr);
+  }).length;
+
+  const pmSessionsCount = todaysSchedules.filter(s => {
+    if (s.clientName?.toLowerCase().includes('unavailab')) return false;
+    const sDate = safeToDate(s.startTime);
+    if (!sDate) return false;
+    const tStr = get12HourStr(sDate);
+    return PM_SLOTS.includes(tStr);
+  }).length;
+
   // Generate 6 days starting from today or Monday (skipping Sundays)
   const getUpcomingDays = () => {
     const days = [];
@@ -2965,19 +3003,6 @@ function ClientsView({
     return slots;
   };
 
-  const AM_SLOTS = [
-    '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', 
-    '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', 
-    '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM',
-    '1:00 PM'
-  ];
-  const PM_SLOTS = [
-    '2:00 PM', '2:30 PM', 
-    '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM', 
-    '5:00 PM', '5:30 PM', '6:00 PM', '6:30 PM', 
-    '7:00 PM'
-  ];
-
   const currentSlots = activeTab === 'morning' ? AM_SLOTS : PM_SLOTS;
 
   // Active trainers for column display
@@ -3002,15 +3027,6 @@ function ClientsView({
     return (minsFromStart / totalShiftMins) * 100;
   };
   const currentTimePos = timeToPosition(now);
-
-  const get12HourStr = (d: Date) => {
-    let h = d.getHours();
-    const m = d.getMinutes().toString().padStart(2, '0');
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    h = h % 12;
-    h = h ? h : 12;
-    return `${h}:${m} ${ampm}`;
-  };
 
   // Find if a slot has any sessions for any trainer
   const getSlotSessions = (slot: string) => {
@@ -3374,34 +3390,42 @@ function ClientsView({
                 </div>
 
                 {/* Shift Selector */}
-                <div className="relative flex p-1.5 bg-slate-200 dark:bg-slate-800 rounded-2xl border border-slate-300 dark:border-slate-700 shadow-inner self-start xl:self-center w-[280px] h-[52px]">
+                <div className="relative flex p-2 bg-slate-200 dark:bg-slate-800 rounded-3xl border border-slate-300 dark:border-slate-700 shadow-inner self-start xl:self-center w-[320px] h-20">
                   <div 
                     className={cn(
-                      "absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white dark:bg-slate-900 rounded-xl shadow-md transition-transform duration-300 ease-out z-0",
+                      "absolute top-2 bottom-2 w-[calc(50%-8px)] bg-white dark:bg-slate-900 rounded-2xl shadow-md transition-transform duration-300 ease-out z-0 border border-slate-200 dark:border-slate-700",
                       activeTab === 'morning' ? "translate-x-0" : "translate-x-[100%]"
                     )}
                   />
                   <button 
                     onClick={() => setActiveTab('morning')}
                     className={cn(
-                      "relative flex-1 rounded-xl text-[12px] font-black uppercase tracking-widest transition-colors z-10 flex items-center justify-center",
+                      "relative flex-1 rounded-2xl transition-colors z-10 flex flex-col items-center justify-center gap-1",
                       activeTab === 'morning' 
                         ? 'text-slate-900 dark:text-white' 
-                        : 'text-slate-500 hover:text-slate-700'
+                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
                     )}
                   >
-                    AM Shift
+                    <span className="text-[14px] font-black uppercase tracking-widest leading-none mt-1">AM Shift</span>
+                    <span className={cn(
+                      "text-[10px] font-bold uppercase tracking-widest leading-none",
+                      activeTab === 'morning' ? "text-sky-500" : "opacity-60"
+                    )}>{amSessionsCount} Sessions</span>
                   </button>
                   <button 
                     onClick={() => setActiveTab('afternoon')}
                     className={cn(
-                      "relative flex-1 rounded-xl text-[12px] font-black uppercase tracking-widest transition-colors z-10 flex items-center justify-center",
+                      "relative flex-1 rounded-2xl transition-colors z-10 flex flex-col items-center justify-center gap-1",
                       activeTab === 'afternoon' 
                         ? 'text-slate-900 dark:text-white' 
-                        : 'text-slate-500 hover:text-slate-700'
+                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
                     )}
                   >
-                    PM Shift
+                    <span className="text-[14px] font-black uppercase tracking-widest leading-none mt-1">PM Shift</span>
+                    <span className={cn(
+                      "text-[10px] font-bold uppercase tracking-widest leading-none",
+                      activeTab === 'afternoon' ? "text-orange-500" : "opacity-60"
+                    )}>{pmSessionsCount} Sessions</span>
                   </button>
                 </div>
               </div>
@@ -3410,7 +3434,7 @@ function ClientsView({
             {/* Main Training Grid */}
             <section className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-none relative pb-64">
               <div className="overflow-x-auto flex-grow relative">
-                <div className="min-w-[800px] h-full relative">
+                <div className="min-w-full relative">
                   {currentTimePos !== null && (
                     <div 
                       className="absolute left-0 right-0 border-t-2 border-orange-500 z-20 pointer-events-none shadow-[0_0_15px_#F06C22]"
@@ -3424,20 +3448,27 @@ function ClientsView({
                   )}
                   <table className="w-full border-collapse table-fixed h-full bg-slate-50 dark:bg-slate-950">
                     <thead>
-                      <tr className="bg-slate-100 dark:bg-slate-800 border-b border-slate-300 dark:border-slate-700 h-16">
-                        <th className="p-4 border-r border-slate-300 dark:border-slate-700 w-24 sticky left-0 bg-slate-100 dark:bg-slate-800 z-30"></th>
+                      <tr className="bg-slate-100 dark:bg-slate-800 border-b border-slate-300 dark:border-slate-700 h-[72px] sm:h-[84px]">
+                        <th className="p-1 sm:p-2 border-r border-slate-300 dark:border-slate-700 w-12 sm:w-14 sticky left-0 bg-slate-100 dark:bg-slate-800 z-30 justify-center"></th>
                         {visibleTrainersList.map((trainer) => {
-                          const sessionCount = todaysSchedules.filter(s => s.trainerName === trainer.fullName).length;
+                          const sessionCount = todaysSchedules.filter(s => 
+                            s.trainerName === trainer.fullName && 
+                            !s.clientName?.toLowerCase().includes('unavailab')
+                          ).length;
                           return (
-                          <th key={trainer.id} className="p-3 border-r border-slate-300 dark:border-slate-700 last:border-r-0 text-center z-20 sticky top-0 bg-slate-100 dark:bg-slate-800 border-b-[3px] border-b-slate-300 dark:border-b-slate-600 shadow-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">
-                            <div className="flex flex-col items-center justify-center gap-1">
-                              <span className="text-[13px] md:text-[15px] font-black uppercase tracking-widest text-slate-900 dark:text-white leading-none">
+                          <th key={trainer.id} className="p-1 sm:p-2 border-r border-slate-300 dark:border-slate-700 last:border-r-0 text-center z-20 sticky top-0 bg-slate-100 dark:bg-slate-800 border-b-[3px] border-b-slate-300 dark:border-b-slate-600 shadow-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700 w-1/5 min-w-[70px]">
+                            <div className="flex flex-col items-center justify-center gap-0.5 sm:gap-1">
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-900 dark:bg-white border-2 border-white dark:border-slate-800 shadow-md flex items-center justify-center mb-0.5">
+                                <span className="text-[10px] sm:text-[12px] font-black text-white dark:text-slate-900 uppercase">
+                                  {trainer.fullName.substring(0, 2)}
+                                </span>
+                              </div>
+                              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white leading-none whitespace-nowrap overflow-hidden text-ellipsis w-11/12">
                                 {trainer.fullName.split(' ')[0]}
                               </span>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="w-2 h-2 rounded-full bg-sky-500 shadow-[0_0_8px_#38bdf8]"></span>
-                                <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-wider">
-                                  {sessionCount} ACTIVE
+                              <div className="bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 px-1.5 py-[2px] rounded flex items-center gap-1 leading-none border border-sky-200 dark:border-sky-800/50 mt-0.5">
+                                <span className="text-[8px] sm:text-[10px] font-bold tracking-widest whitespace-nowrap">
+                                  {sessionCount} SESS.
                                 </span>
                               </div>
                             </div>
@@ -3451,9 +3482,9 @@ function ClientsView({
                         const skippedGridCells = new Set<string>();
                         return currentSlots.map((slot, sIdx) => {
                           return (
-                            <tr key={slot} className="border-b border-slate-300 dark:border-slate-700 last:border-0 hover:bg-white dark:hover:bg-slate-800/[0.02] transition-colors group relative">
-                              <td className="p-3 text-center border-r border-slate-300 dark:border-slate-700 sticky left-0 bg-slate-50 dark:bg-slate-950 z-10 text-slate-500 dark:text-slate-400">
-                                <span className="text-[11px] font-black tracking-tighter group-hover:text-slate-900 dark:text-white dark:hover:text-slate-50 transition-colors">{slot}</span>
+                            <tr key={slot} className="border-b border-slate-300 dark:border-slate-700 last:border-0 hover:bg-white dark:hover:bg-slate-800/[0.02] transition-colors group relative h-[80px]">
+                              <td className="p-1 sm:p-2 text-center border-r border-slate-300 dark:border-slate-700 sticky left-0 bg-slate-50 dark:bg-slate-950 z-10 text-slate-500 dark:text-slate-400">
+                                <span className="text-[10px] sm:text-[11px] font-black tracking-tighter group-hover:text-slate-900 dark:text-white dark:hover:text-slate-50 transition-colors">{slot.replace(':00 ', ' ').replace(':30 ', ':30 ')}</span>
                               </td>
                               {visibleTrainersList.map((trainer, tIdx) => {
                                 const cellId = `${trainer.id}-${slot}`;
@@ -3485,7 +3516,7 @@ function ClientsView({
 
                                 const color = TRAINER_COLORS[tIdx % TRAINER_COLORS.length];
                                 const isCompleted = session && (session.status === 'Completed' || getMillis(session.startTime) < now.getTime());
-                                const isUnavailable = session?.clientName?.toLowerCase() === 'unavailable';
+                                const isUnavailable = session?.clientName?.toLowerCase().includes('unavailab');
                                 const clientObj = session ? findClientForSession(session) : null;
                                 const workoutSession = clientObj ? sessions.find(s => s.clientId === clientObj.id && new Date(s.createdAt?.toDate?.() || s.date).toDateString() === new Date().toDateString()) : null;
                                 const isAlreadyCompleted = workoutSession?.status === "Completed";
@@ -3510,7 +3541,7 @@ function ClientsView({
                                   <td 
                                     key={cellId} 
                                     rowSpan={rowSpan}
-                                    className={cn("p-1.5 border-r border-slate-300 dark:border-slate-700 last:border-r-0 align-top", rowSpan > 1 ? "" : "h-[60px]")}
+                                    className={cn("p-1.5 border-r border-slate-300 dark:border-slate-700 last:border-r-0 align-top", rowSpan > 1 ? "" : "h-[80px]")}
                                   >
                                     {session ? (
                                       <div
@@ -3551,11 +3582,14 @@ function ClientsView({
                                           
                                           {!isUnavailable && (
                                             <div className="absolute top-2 right-2 flex flex-col items-end gap-1 shrink-0">
-                                              <span className="inline-flex items-center px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-[10px] font-black bg-slate-900 dark:bg-white text-white dark:text-slate-900 leading-none shadow-sm">
-                                                #{sessionNumber}
+                                              <span className={cn(
+                                                "inline-flex items-center text-[14px] font-black leading-none",
+                                                isCompleted ? "text-slate-500/50" : "text-sky-600 dark:text-sky-400"
+                                              )}>
+                                                {sessionNumber}
                                               </span>
                                               {rowSpan > 1 && (
-                                                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight line-clamp-1">
+                                                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight line-clamp-1 mt-0.5">
                                                   {Math.round((safeToDate(session.endTime).getTime() - safeToDate(session.startTime).getTime()) / 60000)}m
                                                 </span>
                                               )}
