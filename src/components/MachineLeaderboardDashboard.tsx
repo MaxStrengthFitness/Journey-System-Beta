@@ -226,7 +226,9 @@ export function MachineLeaderboardDashboard({
               weight: perf.weight,
               reps: perf.reps,
               maxWeight: perf.weight,
-              strengthGainPercent: 0
+              strengthGainPercent: 0,
+              rank: 0,
+              percentile: 0
             });
           }
         }

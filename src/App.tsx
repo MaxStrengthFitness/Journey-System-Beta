@@ -249,7 +249,7 @@ const HubAnnouncementHeaderGift = ({ announcements }: { announcements: HubAnnoun
       <motion.div 
         layout
         className={cn(
-          "bg-slate-900/60 backdrop-blur-md border overflow-hidden transition-all duration-500 cursor-pointer",
+          "bg-slate-50 backdrop-blur-md border overflow-hidden transition-all duration-500 cursor-pointer",
           isExpanded ? "fixed inset-x-4 md:inset-x-0 top-24 mx-auto max-w-lg z-[60] rounded-[32px] p-6 shadow-2xl border-sky-500/30 max-h-[80vh] flex flex-col" : "rounded-2xl p-2 border-amber-500/20 hover:border-amber-500/40 w-full"
         )}
         onClick={() => setIsExpanded(!isExpanded)}
@@ -257,7 +257,7 @@ const HubAnnouncementHeaderGift = ({ announcements }: { announcements: HubAnnoun
         <div className="flex items-center gap-3 shrink-0">
           <div className={cn(
             "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-lg",
-            isExpanded ? "bg-sky-500 text-white" : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+            isExpanded ? "bg-sky-500 text-slate-900 dark:text-white" : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
           )}>
             {isExpanded ? <Sparkles className="w-4 h-4" /> : <Gift className="w-4 h-4 animate-pulse" />}
           </div>
@@ -266,21 +266,21 @@ const HubAnnouncementHeaderGift = ({ announcements }: { announcements: HubAnnoun
             <div className="flex items-center justify-between gap-4">
               <h4 className={cn(
                 "font-black italic uppercase tracking-tight truncate",
-                isExpanded ? "text-xl text-white font-black" : "text-[10px] text-amber-100"
+                isExpanded ? "text-xl text-slate-900 dark:text-white font-black" : "text-[10px] text-amber-100"
               )}>
                 {announcement.title}
               </h4>
             </div>
             
             {!isExpanded && (
-              <p className="text-[9px] text-slate-400 font-medium truncate leading-none">
+              <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium truncate leading-none">
                 {announcement.shortContent}
               </p>
             )}
           </div>
 
           {isExpanded && (
-            <div className="shrink-0 p-1 rounded-full bg-slate-800 text-slate-400">
+            <div className="shrink-0 p-1 rounded-full bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400">
               <ChevronUp className="w-4 h-4" />
             </div>
           )}
@@ -292,21 +292,21 @@ const HubAnnouncementHeaderGift = ({ announcements }: { announcements: HubAnnoun
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-6 border-t border-slate-800 pt-6 overflow-y-auto no-scrollbar flex-1"
+              className="mt-6 border-t border-slate-200 dark:border-slate-800 pt-6 overflow-y-auto no-scrollbar flex-1"
             >
               <div className="flex flex-col gap-4">
                 <div className="prose prose-invert prose-sm max-w-none">
-                  <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
+                  <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed whitespace-pre-wrap">
                     {announcement.longContent}
                   </p>
                 </div>
                 
                 <div className="flex items-center justify-between pt-4 mt-2">
                   <div className="flex items-center gap-2">
-                     <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[8px] font-black italic border border-slate-700">
+                     <div className="w-6 h-6 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center text-[8px] font-black italic border border-slate-200 dark:border-slate-800">
                       {announcement.authorName.charAt(0)}
                     </div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                       From {announcement.authorName}
                     </p>
                   </div>
@@ -314,7 +314,7 @@ const HubAnnouncementHeaderGift = ({ announcements }: { announcements: HubAnnoun
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="h-8 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-400"
+                      className="h-8 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400"
                       onClick={(e) => {
                         e.stopPropagation();
                         setIsExpanded(false);
@@ -324,7 +324,7 @@ const HubAnnouncementHeaderGift = ({ announcements }: { announcements: HubAnnoun
                     </Button>
                     <Button 
                       size="sm" 
-                      className="h-8 rounded-lg text-[10px] font-black uppercase tracking-widest bg-sky-500 hover:bg-sky-400 text-white"
+                      className="h-8 rounded-lg text-[10px] font-black uppercase tracking-widest bg-sky-500 hover:bg-sky-400 text-slate-900 dark:text-white"
                       onClick={handleDismiss}
                     >
                       Mark Viewed
@@ -1184,10 +1184,10 @@ function AppContent({
               <div className="absolute inset-[1px] bg-gradient-to-b from-white/30 to-transparent rounded-[39px]"></div>
               
               <div className="relative bg-[#1d2736]/90 px-8 py-5 rounded-[38px] flex flex-col items-center justify-center gap-2 w-full h-full shadow-[inset_0_2px_15px_rgba(0,0,0,0.8)] backdrop-blur-md">
-                <span className="font-bold text-white/90 text-sm tracking-widest uppercase">
+                <span className="font-bold text-slate-900 dark:text-white/90 text-sm tracking-widest uppercase">
                   Sign in with Google
                 </span>
-                <svg className="w-7 h-7 text-white/90" viewBox="0 0 24 24" fill="currentColor">
+                <svg className="w-7 h-7 text-slate-900 dark:text-white/90" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                   <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                   <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
@@ -1199,7 +1199,7 @@ function AppContent({
         </motion.div>
 
         <div className="absolute bottom-6 w-full text-center z-10 px-6">
-          <p className="text-white/30 text-xs tracking-wider uppercase font-medium">
+          <p className="text-slate-900 dark:text-white/30 text-xs tracking-wider uppercase font-medium">
             Master/Admin Credentials Required for Administrative Portal Access
           </p>
         </div>
@@ -1266,23 +1266,23 @@ function AppContent({
         <div className="flex flex-col min-h-screen bg-background text-foreground font-sans overflow-x-hidden w-full max-w-full">
         {/* Header */}
         {currentView !== 'workouts' && (
-          <header className="sticky top-0 z-50 w-full border-b border-slate-700/80 bg-[#0A2E46] px-3 md:px-6 h-16 md:h-20 flex items-center justify-between">
+          <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 md:px-6 h-16 md:h-20 flex items-center justify-between">
             <div className="flex items-center shrink-0">
-              <MaxStrengthLogo size="sm" showText={false} className="scale-[0.8] origin-left text-white drop-shadow-md" />
+              <MaxStrengthLogo size="sm" showText={false} className="scale-[0.8] origin-left text-slate-900 dark:text-white drop-shadow-md" />
               <div className="flex flex-col ml-1 leading-none">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Strength</span>
+                  <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-[0.2em]">Strength</span>
                   {activeStudioName && (
                     <button 
                       onClick={() => setIsChangingStudio(true)}
-                      className="ml-2 px-2 py-0.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 transition-colors flex items-center gap-1 group"
+                      className="ml-2 px-2 py-0.5 rounded-full bg-white/10 hover:bg-white dark:hover:bg-slate-800/20 border border-white/10 transition-colors flex items-center gap-1 group"
                     >
-                      <Building2 className="w-2.5 h-2.5 text-[#38BDF8]" />
-                      <span className="text-[9px] font-black text-white/80 uppercase tracking-widest">{activeStudioName}</span>
+                      <Building2 className="w-2.5 h-2.5 text-sky-500" />
+                      <span className="text-[9px] font-black text-slate-900 dark:text-white/80 uppercase tracking-widest">{activeStudioName}</span>
                     </button>
                   )}
                 </div>
-                <span className="text-[12px] font-bold text-white uppercase tracking-[0.3em]">Fitness</span>
+                <span className="text-[12px] font-bold text-slate-900 dark:text-white uppercase tracking-[0.3em]">Fitness</span>
               </div>
             </div>
             
@@ -1299,23 +1299,23 @@ function AppContent({
                 variant="ghost" 
                 size="icon" 
                 onClick={() => setCurrentView('trainer-hub')} 
-                className={`rounded-full transition-all hover:bg-transparent ${currentView === 'trainer-hub' ? 'text-white' : 'text-slate-400 hover:text-white active:text-[#F06C22]'}`}
+                className={`rounded-full transition-all hover:bg-transparent ${currentView === 'trainer-hub' ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 active:text-orange-500'}`}
                 title="Trainer Control Hub"
               >
-                <Settings className="w-6 h-6 md:w-7 md:h-7 transition-colors hover:stroke-[#F06C22]" />
+                <Settings className="w-6 h-6 md:w-7 md:h-7 transition-colors hover:stroke-orange-500" />
               </Button>
 
               <DropdownMenu>
                 <DropdownMenuTrigger
-                  className="flex items-center gap-3 rounded-full cursor-pointer transition-transform hover:scale-105 active:scale-95 outline-none"
+                  className="flex items-center gap-3 rounded-full cursor-pointer transition-transform hover:scale-105 active:scale-95"
                 >
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-[#38BDF8] bg-slate-800 text-white flex items-center justify-center shadow-[0_0_15px_rgba(56,189,248,0.4)]">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-sky-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white flex items-center justify-center shadow-[0_0_15px_rgba(56,189,248,0.4)]">
                     <span className="font-bold text-sm md:text-base uppercase tracking-wider">{authTrainer.initials}</span>
                   </div>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 rounded-[24px] border border-slate-700/50 bg-slate-800 p-2 shadow-2xl text-slate-200">
+                <DropdownMenuContent align="end" className="w-56 rounded-[24px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2 shadow-2xl dark:shadow-none text-slate-700 dark:text-slate-300">
                   <DropdownMenuGroup>
-                    <DropdownMenuLabel className="font-black uppercase text-[10px] tracking-widest px-3 py-2 text-slate-400">
+                    <DropdownMenuLabel className="font-black uppercase text-[10px] tracking-widest px-3 py-2 text-slate-500 dark:text-slate-400">
                       Active Profile
                     </DropdownMenuLabel>
                     <DropdownMenuItem 
@@ -1323,21 +1323,21 @@ function AppContent({
                         setSelectedProfileTrainerId(null);
                         setCurrentView('trainer-profile');
                       }}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-white focus:bg-slate-700 focus:text-white"
+                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
                     >
-                      <UserCircle className="w-4 h-4 text-[#38BDF8]" />
+                      <UserCircle className="w-4 h-4 text-sky-500" />
                       View Profile
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => setIsChangingStudio(true)}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-white focus:bg-slate-700 focus:text-white"
+                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
                     >
                       <Building2 className="w-4 h-4 text-amber-500" />
                       Switch Studio
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => setCurrentView('trainer-hub')}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-white focus:bg-slate-700 focus:text-white"
+                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
                     >
                       <Settings className="w-4 h-4" />
                       Trainer Hub
@@ -1345,7 +1345,7 @@ function AppContent({
                     {(authTrainer?.role === 'Owner' || user.email === "jurgensaj@gmail.com") && (
                       <DropdownMenuItem 
                         onClick={() => setCurrentView('owner-dashboard')}
-                        className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-white focus:bg-slate-700 focus:text-white text-[#F06C22]"
+                        className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white text-orange-500"
                       >
                         <Network className="w-4 h-4" />
                         Owner Dashboard
@@ -1356,7 +1356,7 @@ function AppContent({
                   <DropdownMenuSeparator className="my-2 bg-slate-700" />
                   
                   <DropdownMenuGroup>
-                    <DropdownMenuLabel className="font-black uppercase text-[10px] tracking-widest px-3 py-2 text-slate-400">
+                    <DropdownMenuLabel className="font-black uppercase text-[10px] tracking-widest px-3 py-2 text-slate-500 dark:text-slate-400">
                       Switch Trainer
                     </DropdownMenuLabel>
                     {trainers
@@ -1366,9 +1366,9 @@ function AppContent({
                         <DropdownMenuItem 
                           key={t.id}
                           onClick={() => handleTrainerLogin(t)}
-                          className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer group hover:bg-slate-700 hover:text-white focus:bg-slate-700 focus:text-white"
+                          className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer group hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
                         >
-                          <div className="w-6 h-6 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center font-black group-hover:bg-[#38BDF8] group-hover:text-white group-hover:border-[#38BDF8] transition-colors">
+                          <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center font-black group-hover:bg-sky-500 group-hover:text-slate-900 dark:text-white dark:hover:text-slate-50 group-hover:border-sky-500 transition-colors">
                             {t.initials}
                           </div>
                           {t.fullName}
@@ -1382,7 +1382,7 @@ function AppContent({
                   <DropdownMenuGroup>
                     <DropdownMenuItem 
                       onClick={handleTrainerLock}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest text-[#F06C22] hover:bg-[#F06C22]/10 focus:bg-[#F06C22]/10 focus:text-[#F06C22] cursor-pointer"
+                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest text-orange-500 hover:bg-orange-500/10 dark:bg-orange-600/10 focus:bg-orange-500/10 dark:bg-orange-600/10 focus:text-orange-500 cursor-pointer"
                     >
                       <Lock className="w-4 h-4" />
                       Switch to Name List
@@ -1403,7 +1403,7 @@ function AppContent({
         )}
 
         {/* Main Content */}
-        <main className={`flex-1 w-full max-w-full mx-auto relative ${currentView === 'workouts' ? 'p-2 pb-24 overflow-y-auto' : (currentView === 'clients' || currentView === 'client-directory' || currentView === 'dashboard') ? 'h-[calc(100vh-5rem)] overflow-hidden bg-[#0A2E46] p-0 flex flex-col' : 'p-6 pb-24 overflow-y-auto'}`}>
+        <main className={`flex-1 w-full max-w-full mx-auto relative ${currentView === 'workouts' ? 'p-2 pb-24 overflow-y-auto' : (currentView === 'clients' || currentView === 'client-directory' || currentView === 'dashboard') ? 'h-[calc(100vh-5rem)] overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col' : 'p-6 pb-24 overflow-y-auto'}`}>
           <AnimatePresence mode="wait">
             {currentView === 'consultation-wizard' && selectedClientId && (
               <ConsultationWizard 
@@ -1651,7 +1651,7 @@ function AppContent({
         </main>
 
         {/* Navigation Bar */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-6 h-20 flex items-center justify-around z-[100]">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-6 h-20 flex items-center justify-around z-[100]">
           <NavButton 
             active={currentView === 'clients'} 
             onClick={() => setCurrentView('clients')}
@@ -1681,9 +1681,9 @@ function AppContent({
             }}
             icon={<PlayCircle className="w-6 h-6" />}
             label={currentSession ? "Active Session" : "Start Session"}
-            activeColor={currentSession ? 'text-[#F06C22]' : undefined}
-            activeBg={currentSession ? 'bg-[#F06C22]/10' : undefined}
-            activeIndicator={currentSession ? 'bg-[#F06C22]' : undefined}
+            activeColor={currentSession ? 'text-orange-500' : undefined}
+            activeBg={currentSession ? 'bg-orange-500/10 dark:bg-orange-600/10' : undefined}
+            activeIndicator={currentSession ? 'bg-orange-500 dark:bg-orange-600' : undefined}
           />
           <NavButton 
             active={currentView === 'machine-knowledge'} 
@@ -1711,12 +1711,12 @@ function AppContent({
 
       {/* Machine Information Deep Dive Dialog */}
       <Dialog open={!!infoMachineId} onOpenChange={(open) => !open && setInfoMachineId(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-[32px] p-0 border-none shadow-2xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-[32px] p-0 border-none shadow-2xl dark:shadow-none">
           {infoMachine && (
             <>
-              <DialogHeader className="p-8 bg-muted/30 border-b relative">
+              <DialogHeader className="p-8 bg-white dark:bg-slate-900 border-b relative">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-xl text-primary shadow-sm">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-xl text-primary shadow-sm dark:shadow-none">
                     {infoMachine.order}
                   </div>
                   <div>
@@ -1836,7 +1836,7 @@ function AppContent({
                         )}
                         <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end z-10">
                             <div>
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-[#F06C22] mb-1">Targeted Muscles</p>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-orange-500 mb-1">Targeted Muscles</p>
                               <div className="flex flex-wrap gap-1.5">
                                 {infoMachine.targetMuscles?.split(',').map(m => (
                                   <Badge key={m} className="bg-primary/90 text-primary-foreground border-none font-medium uppercase text-[9px] px-2 py-0.5">{m.trim()}</Badge>
@@ -1941,21 +1941,21 @@ function AppContent({
                         
                         <div className="space-y-3">
                           {/* Simulated Collapsible Cards */}
-                          <div className="border border-border rounded-xl p-4 hover:bg-muted/30 transition-colors cursor-pointer group">
+                          <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-slate-900 transition-colors cursor-pointer group">
                              <div className="flex justify-between items-center">
                                <p className="text-[12px] font-bold text-secondary">Marina's Cue</p>
                                <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                              </div>
                              <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">"Keep your chest proud and drive through the mid-foot rather than the toes."</p>
                           </div>
-                          <div className="border border-border rounded-xl p-4 hover:bg-muted/30 transition-colors cursor-pointer group">
+                          <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-slate-900 transition-colors cursor-pointer group">
                              <div className="flex justify-between items-center">
                                <p className="text-[12px] font-bold text-secondary">Christian's Cue</p>
                                <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                              </div>
                              <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">"Imagine retracting your shoulder blades completely before pulling the weight down."</p>
                           </div>
-                          <div className="border border-border rounded-xl p-4 hover:bg-muted/30 transition-colors cursor-pointer group">
+                          <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-slate-900 transition-colors cursor-pointer group">
                              <div className="flex justify-between items-center">
                                <p className="text-[12px] font-bold text-secondary">Austin's Cue</p>
                                <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -1971,7 +1971,7 @@ function AppContent({
                           <AlertCircle className="w-4 h-4" />
                           Critical Setup Deviations
                         </h4>
-                        <div className="bg-muted/30 rounded-2xl p-6 border border-border">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border">
                           <ul className="space-y-4">
                             <li className="space-y-2">
                                <div className="flex justify-between">
@@ -2029,7 +2029,7 @@ function AppContent({
 
       {/* New Clients Dialog */}
       <Dialog open={showNewClientsDialog} onOpenChange={setShowNewClientsDialog}>
-        <DialogContent className="max-w-2xl rounded-[32px] p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="max-w-2xl rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
           <DialogHeader className="p-8 bg-primary/5 border-b border-primary/10">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-primary/10 rounded-2xl">
@@ -2052,10 +2052,10 @@ function AppContent({
                       setCurrentView('profile');
                       setShowNewClientsDialog(false);
                     }}
-                    className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border border-transparent hover:border-primary/20 hover:bg-muted/50 transition-all cursor-pointer group"
+                    className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-2xl border border-transparent hover:border-primary/20 hover:bg-white dark:bg-slate-900 transition-all cursor-pointer group"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center font-black text-primary border shadow-sm group-hover:scale-110 transition-transform">
+                      <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center font-black text-primary border shadow-sm dark:shadow-none group-hover:scale-110 transition-transform">
                         {client.firstName[0]}{client.lastName[0]}
                       </div>
                       <div>
@@ -2074,7 +2074,7 @@ function AppContent({
               </div>
             )}
           </div>
-          <DialogFooter className="p-6 bg-muted/20 border-t">
+          <DialogFooter className="p-6 bg-white dark:bg-slate-900 border-t">
             <Button onClick={() => setShowNewClientsDialog(false)} className="rounded-xl font-bold uppercase tracking-widest w-full h-12">Close</Button>
           </DialogFooter>
         </DialogContent>
@@ -2082,8 +2082,8 @@ function AppContent({
 
       {/* Trainer Reordering Dialog */}
       <Dialog open={isReorderingTrainers} onOpenChange={setIsReorderingTrainers}>
-        <DialogContent className="max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl min-h-[400px]">
-          <DialogHeader className="p-8 bg-muted/50 border-b">
+        <DialogContent className="max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none min-h-[400px]">
+          <DialogHeader className="p-8 bg-white dark:bg-slate-900 border-b">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-primary/10 rounded-2xl">
                 <GripVertical className="w-6 h-6 text-primary" />
@@ -2098,7 +2098,7 @@ function AppContent({
             {sortedTrainers.map((trainer, idx) => (
               <div 
                 key={trainer.id}
-                className="flex items-center gap-4 p-4 bg-muted/30 rounded-2xl border border-border/50 group"
+                className="flex items-center gap-4 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-border/50 group"
               >
                 <div className="w-8 h-8 rounded-lg bg-background border flex items-center justify-center font-black text-xs text-muted-foreground">
                   {idx + 1}
@@ -2146,7 +2146,7 @@ function AppContent({
               </div>
             ))}
           </div>
-          <DialogFooter className="p-6 border-t bg-muted/20">
+          <DialogFooter className="p-6 border-t bg-white dark:bg-slate-900">
             <Button onClick={() => setIsReorderingTrainers(false)} className="rounded-xl font-bold uppercase tracking-widest w-full h-12">Done</Button>
           </DialogFooter>
         </DialogContent>
@@ -2161,8 +2161,8 @@ function NavButton({
   icon, 
   label,
   activeColor = 'text-[#115E8D]',
-  activeBg = 'bg-[#115E8D]/10',
-  activeIndicator = 'bg-[#115E8D]'
+  activeBg = 'bg-sky-500 dark:bg-sky-600/10',
+  activeIndicator = 'bg-sky-500 dark:bg-sky-600'
 }: { 
   active: boolean, 
   onClick: () => void, 
@@ -2401,10 +2401,10 @@ function TrainersView({
       <div className="grid gap-8">
         {/* Unassigned Sessions Banner */}
         {unassignedSessions.length > 0 && (
-          <section className="bg-red-50 dark:bg-red-950/20 border-2 border-red-500/20 rounded-3xl p-6">
+          <section className="bg-red-50 border-2 border-red-500/20 rounded-3xl p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-red-500 rounded-xl">
-                <AlertCircle className="w-6 h-6 text-white animate-pulse" />
+                <AlertCircle className="w-6 h-6 text-slate-900 dark:text-white animate-pulse" />
               </div>
               <div>
                 <h3 className="text-xl font-black uppercase italic tracking-tight text-red-600">Action Required: Unassigned Sessions</h3>
@@ -2413,7 +2413,7 @@ function TrainersView({
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {unassignedSessions.slice(0, 6).map(sc => (
-                <Card key={sc.id} className="border-red-200 shadow-sm overflow-hidden">
+                <Card key={sc.id} className="border-red-200 shadow-sm dark:shadow-none overflow-hidden">
                   <CardContent className="p-4 flex flex-col gap-3">
                     <div className="flex justify-between items-start">
                       <div className="space-y-1">
@@ -2426,7 +2426,7 @@ function TrainersView({
                     {trainers.length > 0 && (
                       <div className="flex gap-2">
                         <select 
-                          className="flex-1 bg-muted px-3 py-2 rounded-xl text-[10px] font-black uppercase outline-none"
+                          className="flex-1 bg-muted px-3 py-2 rounded-xl text-[10px] font-black uppercase"
                           onChange={(e) => {
                             const val = e.target.value;
                             if (val) {
@@ -2611,7 +2611,7 @@ function TrainersView({
             );
           })}
           {trainers.length === 0 && !isAdding && (
-            <div className="col-span-full py-20 text-center border-2 border-dashed rounded-3xl bg-muted/20 opacity-40">
+            <div className="col-span-full py-20 text-center border-2 border-dashed rounded-3xl bg-white dark:bg-slate-900 opacity-40">
               <UserCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-xs font-black uppercase tracking-widest">No trainers registered</p>
             </div>
@@ -2698,7 +2698,7 @@ function AvailabilityEditor({ trainer, onClose }: { trainer: Trainer, onClose: (
               {days.map(day => {
                 const config = (availability.standard[day] || { isOpen: false, slots: [] }) as { isOpen: boolean; slots: { start: string; end: string }[] };
                 return (
-                  <div key={day} className="p-4 rounded-2xl bg-muted/30 border space-y-3">
+                  <div key={day} className="p-4 rounded-2xl bg-white dark:bg-slate-900 border space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-black uppercase italic tracking-tight">{day}</span>
                       <Switch 
@@ -2845,7 +2845,7 @@ function AvailabilityEditor({ trainer, onClose }: { trainer: Trainer, onClose: (
           )}
         </div>
 
-        <DialogFooter className="p-6 border-t bg-muted/50">
+        <DialogFooter className="p-6 border-t bg-white dark:bg-slate-900">
           <Button variant="outline" onClick={onClose} className="rounded-xl uppercase font-black text-xs">Discard</Button>
           <Button onClick={handleSave} className="rounded-xl uppercase font-black text-xs bg-action text-action-foreground hover:bg-action/90 shadow-action/20 shadow-lg">Save Changes</Button>
         </DialogFooter>
@@ -2982,9 +2982,9 @@ function ClientsView({
 
   // Active trainers for column display
   const TRAINER_COLORS = [
-    { border: 'border-[#38BDF8]', bg: 'bg-[#38BDF8]/10' },
+    { border: 'border-sky-500', bg: 'bg-sky-500/10' },
     { border: 'border-[#10B981]', bg: 'bg-[#10B981]/10' },
-    { border: 'border-[#F06C22]', bg: 'bg-[#F06C22]/10' },
+    { border: 'border-orange-500', bg: 'bg-orange-500/10 dark:bg-orange-600/10' },
     { border: 'border-purple-400', bg: 'bg-purple-400/10' },
     { border: 'border-pink-400', bg: 'bg-pink-400/10' }
   ];
@@ -3074,15 +3074,15 @@ function ClientsView({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col h-full bg-[#0A2E46] text-white w-full overflow-hidden"
+      className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white w-full overflow-hidden"
     >
-      <div className="flex flex-col gap-3 shrink-0 p-4 pb-0 bg-[#0A2E46] z-30">
+      <div className="flex flex-col gap-3 shrink-0 p-4 pb-0 bg-slate-50 dark:bg-slate-950 z-30">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-400" />
             <Input 
               placeholder="Search clients..." 
-              className="pl-12 h-12 rounded-2xl bg-slate-800 border-none font-bold text-base text-white focus-visible:ring-[#38BDF8]"
+              className="pl-12 h-12 rounded-2xl bg-white dark:bg-slate-900 border-none font-bold text-base text-slate-900 dark:text-white focus-visible:ring-sky-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -3094,7 +3094,7 @@ function ClientsView({
               }
             }} 
             size="lg" 
-            className="rounded-xl h-12 px-8 shadow-[0_0_20px_rgba(56,189,248,0.2)] bg-[#38BDF8] hover:bg-[#0284C7] text-[#0A2E46] font-black w-full sm:w-auto uppercase tracking-widest text-sm"
+            className="rounded-xl h-12 px-8 shadow-[0_0_20px_rgba(56,189,248,0.2)] bg-sky-500 hover:bg-[#0284C7] text-slate-900 font-black w-full sm:w-auto uppercase tracking-widest text-sm"
           >
             <Plus className="w-5 h-5 mr-2" />
             Add New Client
@@ -3111,7 +3111,7 @@ function ClientsView({
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden mb-8"
           >
-            <Card className="border-2 border-primary/20 shadow-2xl rounded-3xl overflow-hidden">
+            <Card className="border-2 border-primary/20 shadow-2xl dark:shadow-none rounded-3xl overflow-hidden">
               <CardHeader>
                 <CardTitle>Edit Client Profile</CardTitle>
                 <CardDescription>
@@ -3343,7 +3343,7 @@ function ClientsView({
 
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden w-full">
         {!searchTerm ? (
-          <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#0A2E46] p-6 space-y-10">
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 p-6 space-y-10">
             {/* Header / Week Selector / Shift Toggle */}
             <section className="space-y-6">
               <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
@@ -3358,14 +3358,14 @@ function ClientsView({
                         onClick={() => setSelectedDate(date)}
                         className={`min-w-[80px] px-4 py-3 rounded-2xl flex flex-col items-center gap-1 transition-all border-2 ${
                           isSelected 
-                            ? 'bg-[#38BDF8] border-[#38BDF8] text-[#0A2E46] shadow-[0_0_15px_rgba(56,189,248,0.4)] scale-105 z-10' 
-                            : 'bg-slate-800/40 border-slate-700/50 text-slate-400 hover:border-[#38BDF8]/30 hover:text-white'
+                            ? 'bg-sky-500 border-sky-500 text-slate-900 shadow-[0_0_15px_rgba(56,189,248,0.4)] scale-105 z-10' 
+                            : 'bg-white/40 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-sky-500/30 hover:text-slate-900 dark:text-white dark:hover:text-slate-50'
                         }`}
                       >
                         <span className="text-[10px] font-black uppercase tracking-widest leading-none">
                           {date.toLocaleDateString([], { weekday: 'short' })}
                         </span>
-                        <span className={`text-base font-black leading-none ${isSelected ? 'text-[#0A2E46]' : 'text-slate-200'}`}>
+                        <span className={`text-base font-black leading-none ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
                           {isToday ? 'Today' : date.toLocaleDateString([], { day: 'numeric' })}
                         </span>
                       </button>
@@ -3374,13 +3374,13 @@ function ClientsView({
                 </div>
 
                 {/* Shift Selector */}
-                <div className="flex p-1.5 bg-slate-900/80 rounded-2xl border border-slate-700/50 backdrop-blur-md self-start xl:self-center">
+                <div className="flex p-1.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 backdrop-blur-md self-start xl:self-center">
                   <button 
                     onClick={() => setActiveTab('morning')}
                     className={`px-8 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
                       activeTab === 'morning' 
-                        ? 'bg-[#38BDF8] shadow-lg text-[#0A2E46]' 
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                        ? 'bg-sky-500 shadow-lg text-slate-900' 
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 hover:bg-white dark:hover:bg-slate-800'
                     }`}
                   >
                     AM Shift
@@ -3389,8 +3389,8 @@ function ClientsView({
                     onClick={() => setActiveTab('afternoon')}
                     className={`px-8 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
                       activeTab === 'afternoon' 
-                        ? 'bg-[#38BDF8] shadow-lg text-[#0A2E46]' 
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                        ? 'bg-sky-500 shadow-lg text-slate-900' 
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 hover:bg-white dark:hover:bg-slate-800'
                     }`}
                   >
                     PM Shift
@@ -3399,20 +3399,20 @@ function ClientsView({
               </div>
 
               {/* Roster Summary Tags */}
-              <div className="flex flex-wrap items-center gap-3 py-4 border-y border-slate-800/50">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mr-2 flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-3 py-4 border-y border-slate-200 dark:border-slate-800/50 dark:border-slate-800/50">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mr-2 flex items-center gap-2">
                   <Dumbbell className="w-3 h-3" /> Live Roster
                 </span>
                 {visibleTrainersList.map(trainer => {
                   const sessionCount = todaysSchedules.filter(s => s.trainerName === trainer.fullName).length;
                   if (sessionCount === 0) return null;
                   return (
-                    <div key={trainer.id} className="flex items-center gap-2 bg-[#38BDF8]/10 border border-[#38BDF8]/20 rounded-full pl-1.5 pr-4 py-1.5 shadow-inner">
-                      <div className="w-6 h-6 rounded-full bg-[#38BDF8] flex items-center justify-center text-[10px] font-black text-[#0A2E46]">
+                    <div key={trainer.id} className="flex items-center gap-2 bg-sky-500/10 border border-sky-500/20 rounded-full pl-1.5 pr-4 py-1.5 shadow-inner">
+                      <div className="w-6 h-6 rounded-full bg-sky-500 flex items-center justify-center text-[10px] font-black text-slate-900">
                         {trainer.initials}
                       </div>
-                      <span className="text-[10px] font-bold text-slate-200 uppercase tracking-widest">
-                        {trainer.fullName.split(' ')[0]} <span className="text-[#38BDF8]/80 ml-1">({sessionCount})</span>
+                      <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+                        {trainer.fullName.split(' ')[0]} <span className="text-sky-500/80 ml-1">({sessionCount})</span>
                       </span>
                     </div>
                   );
@@ -3421,31 +3421,31 @@ function ClientsView({
             </section>
 
             {/* Main Training Grid */}
-            <section className="bg-slate-900 border border-slate-700/80 rounded-[32px] overflow-hidden shadow-2xl relative">
+            <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-2xl dark:shadow-none relative">
               <div className="overflow-x-auto flex-grow relative">
                 <div className="min-w-[800px] h-full relative">
                   {currentTimePos !== null && (
                     <div 
-                      className="absolute left-0 right-0 border-t-2 border-[#F06C22] z-20 pointer-events-none shadow-[0_0_15px_#F06C22]"
+                      className="absolute left-0 right-0 border-t-2 border-orange-500 z-20 pointer-events-none shadow-[0_0_15px_#F06C22]"
                       style={{ top: `calc(80px + (100% - 80px) * ${currentTimePos} / 100)` }}
                     >
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 bg-[#F06C22] text-white text-[9px] font-black uppercase px-2 py-1 rounded-r-md tracking-widest flex items-center shadow-[0_0_10px_#F06C22]">
-                        <span className="w-2 h-2 rounded-full bg-white mr-1 animate-pulse"></span>
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 bg-orange-500 dark:bg-orange-600 text-white text-[9px] font-black uppercase px-2 py-1 rounded-r-md tracking-widest flex items-center shadow-[0_0_10px_#F06C22]">
+                        <span className="w-2 h-2 rounded-full bg-white dark:bg-slate-900 mr-1 animate-pulse"></span>
                         Current Time
                       </div>
                     </div>
                   )}
-                  <table className="w-full border-collapse table-fixed h-full bg-[#0A2E46]">
+                  <table className="w-full border-collapse table-fixed h-full bg-slate-50 dark:bg-slate-950">
                     <thead>
-                      <tr className="bg-slate-900 border-b border-slate-700 h-20">
-                        <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-r border-slate-700 w-24 sticky left-0 bg-slate-900 z-30">Time</th>
+                      <tr className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-20">
+                        <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800 w-24 sticky left-0 bg-white dark:bg-slate-900 z-30">Time</th>
                         {visibleTrainersList.map((trainer) => (
-                          <th key={trainer.id} className="p-4 border-r border-slate-700 last:border-r-0 text-center z-20 sticky top-0 bg-slate-900">
+                          <th key={trainer.id} className="p-4 border-r border-slate-200 dark:border-slate-800 last:border-r-0 text-center z-20 sticky top-0 bg-white dark:bg-slate-900">
                             <div className="flex flex-col items-center gap-1">
-                              <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center text-slate-300 font-black text-sm">
+                              <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-400 font-black text-sm">
                                 {trainer.initials}
                               </div>
-                              <span className="text-[10px] font-black uppercase tracking-wider text-white mt-1">{trainer.fullName}</span>
+                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-900 dark:text-white mt-1">{trainer.fullName}</span>
                             </div>
                           </th>
                         ))}
@@ -3456,9 +3456,9 @@ function ClientsView({
                         const skippedGridCells = new Set<string>();
                         return currentSlots.map((slot, sIdx) => {
                           return (
-                            <tr key={slot} className="border-b border-slate-700 last:border-0 hover:bg-white/[0.02] transition-colors group relative">
-                              <td className="p-3 text-center border-r border-slate-700 sticky left-0 bg-[#0A2E46] z-10 text-slate-400">
-                                <span className="text-[11px] font-black tracking-tighter group-hover:text-white transition-colors">{slot}</span>
+                            <tr key={slot} className="border-b border-slate-200 dark:border-slate-800 last:border-0 hover:bg-white dark:hover:bg-slate-800/[0.02] transition-colors group relative">
+                              <td className="p-3 text-center border-r border-slate-200 dark:border-slate-800 sticky left-0 bg-slate-50 dark:bg-slate-950 z-10 text-slate-500 dark:text-slate-400">
+                                <span className="text-[11px] font-black tracking-tighter group-hover:text-slate-900 dark:text-white dark:hover:text-slate-50 transition-colors">{slot}</span>
                               </td>
                               {visibleTrainersList.map((trainer, tIdx) => {
                                 const cellId = `${trainer.id}-${slot}`;
@@ -3504,7 +3504,7 @@ function ClientsView({
                                   <td 
                                     key={cellId} 
                                     rowSpan={rowSpan}
-                                    className={cn("p-1 border-r border-slate-700 last:border-r-0", rowSpan > 1 ? "" : "h-[60px]")}
+                                    className={cn("p-1 border-r border-slate-200 dark:border-slate-800 last:border-r-0", rowSpan > 1 ? "" : "h-[60px]")}
                                   >
                                     {session ? (
                                       <div
@@ -3518,22 +3518,22 @@ function ClientsView({
                                           }
                                         }}
                                         className={cn(
-                                          "p-2 rounded-xl flex flex-col justify-between hover:border-[#38BDF8]/40 hover:bg-slate-700/80 transition-all cursor-pointer h-full border overflow-hidden",
-                                          isCompleted ? 'bg-slate-900/80 border-slate-700/50 opacity-60 grayscale' : "bg-slate-800 border-slate-700"
+                                          "p-2 rounded-xl flex flex-col justify-between hover:border-sky-500/40 hover:bg-slate-700/80 transition-all cursor-pointer h-full border overflow-hidden",
+                                          isCompleted ? 'bg-slate-50 border-slate-200 dark:border-slate-800 opacity-60 grayscale' : "bg-white border-slate-200 dark:border-slate-800"
                                         )}
                                       >
                                         <div className="flex items-start justify-between gap-1">
-                                          <span className="text-sm font-bold text-white leading-tight break-words line-clamp-2">
+                                          <span className="text-sm font-bold text-slate-900 dark:text-white leading-tight break-words line-clamp-2">
                                             {session.clientName}
                                           </span>
                                           {rowSpan > 1 && (
-                                            <Badge variant="outline" className="text-[8px] h-4 bg-slate-900/50 border-slate-700 text-[#38BDF8] shrink-0">
+                                            <Badge variant="outline" className="text-[8px] h-4 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-sky-500 shrink-0">
                                               {Math.round((safeToDate(session.endTime).getTime() - safeToDate(session.startTime).getTime()) / 60000)}m
                                             </Badge>
                                           )}
                                         </div>
                                         <div className="flex items-center justify-between mt-auto pt-1">
-                                          <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider line-clamp-1">
+                                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider line-clamp-1">
                                             Session #{sessionNumber}
                                           </span>
                                           {hasAlert && (
@@ -3543,7 +3543,7 @@ function ClientsView({
                                       </div>
                                     ) : (
                                       <div className="h-full w-full opacity-0 hover:opacity-10 transition-opacity flex items-center justify-center p-2 bg-slate-600 rounded-lg pointer-events-none">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-white">Open</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">Open</span>
                                       </div>
                                     )}
                                   </td>
@@ -3560,13 +3560,13 @@ function ClientsView({
             </section>
 
             {/* Recently Profiled (Compact Grid) */}
-            <section className="space-y-6 pt-10 border-t border-slate-800/50">
+            <section className="space-y-6 pt-10 border-t border-slate-200 dark:border-slate-800/50 dark:border-slate-800/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#38BDF8]/10 flex items-center justify-center border border-[#38BDF8]/20">
-                    <Users className="w-5 h-5 text-[#38BDF8]" />
+                  <div className="w-10 h-10 rounded-xl bg-sky-500/10 flex items-center justify-center border border-sky-500/20">
+                    <Users className="w-5 h-5 text-sky-500" />
                   </div>
-                  <h3 className="text-[17px] font-black uppercase tracking-[0.1em] text-white">Recently Active Profiles</h3>
+                  <h3 className="text-[17px] font-black uppercase tracking-[0.1em] text-slate-900 dark:text-white">Recently Active Profiles</h3>
                 </div>
               </div>
 
@@ -3574,29 +3574,29 @@ function ClientsView({
                 {recentClients.map(client => {
                   const getTierInfo = (c: Client) => {
                     const tier = c.packageTier;
-                    if (tier === '18-Month') return { name: '18-Month VIP', css: 'bg-slate-400/10 text-slate-300 border-slate-400/50 shadow-[0_0_15px_rgba(148,163,184,0.1)]' };
-                    if (tier === '12-Month') return { name: '12-Month Tier', css: 'bg-[#F06C22]/10 text-[#F06C22] border-[#F06C22]/50 shadow-[0_0_15px_rgba(240,108,34,0.15)]' };
-                    if (tier === '6-Month') return { name: '6-Month Tier', css: 'bg-[#38BDF8]/10 text-[#38BDF8] border-[#38BDF8]/50 shadow-[0_0_15px_rgba(56,189,248,0.15)]' };
-                    return { name: 'Prospect', css: 'border-slate-700 text-slate-500 bg-slate-800/20' };
+                    if (tier === '18-Month') return { name: '18-Month VIP', css: 'bg-slate-400/10 text-slate-600 border-slate-400/50 shadow-[0_0_15px_rgba(148,163,184,0.1)]' };
+                    if (tier === '12-Month') return { name: '12-Month Tier', css: 'bg-orange-500/10 dark:bg-orange-600/10 text-orange-500 border-orange-500/50 shadow-[0_0_15px_rgba(240,108,34,0.15)]' };
+                    if (tier === '6-Month') return { name: '6-Month Tier', css: 'bg-sky-500/10 text-sky-500 border-sky-500/50 shadow-[0_0_15px_rgba(56,189,248,0.15)]' };
+                    return { name: 'Prospect', css: 'border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 bg-white/20' };
                   };
                   const tierInfo = getTierInfo(client);
 
                   return (
                     <div 
                       key={client.id}
-                      className="group relative flex flex-col bg-slate-900/40 rounded-[2rem] border border-slate-800/80 p-5 hover:border-[#38BDF8]/40 hover:bg-slate-800/40 cursor-pointer transition-all shadow-xl"
+                      className="group relative flex flex-col bg-slate-50 dark:bg-slate-950 rounded-[2rem] border border-slate-200 dark:border-slate-800/80 p-5 hover:border-sky-500/40 hover:bg-white dark:hover:bg-slate-800/40 cursor-pointer transition-all shadow-xl"
                       onClick={() => {
                         onSelectClient(client.id!);
                         setView('profile');
                       }}
                     >
                       <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-2xl bg-[#0A2E46] flex items-center justify-center font-black text-sm text-[#38BDF8] border border-[#114B72] group-hover:scale-105 transition-transform">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-950 flex items-center justify-center font-black text-sm text-sky-500 border border-[#114B72] group-hover:scale-105 transition-transform">
                           {client.firstName[0]}{client.lastName[0]}
                         </div>
                         <div className="flex flex-col min-w-0">
                           <span className="font-bold text-slate-100 text-[15px] truncate leading-tight">{client.firstName} {client.lastName}</span>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate flex items-center gap-1.5">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate flex items-center gap-1.5">
                             <RefreshCcw className="w-2.5 h-2.5"/> Active
                           </span>
                         </div>
@@ -3611,10 +3611,10 @@ function ClientsView({
             </section>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#0A2E46] p-6">
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 p-6">
             <div className="flex items-center gap-3 mb-8">
-              <Search className="w-6 h-6 text-[#38BDF8]" />
-              <h3 className="text-xl font-black uppercase tracking-widest text-white">Client Directory <span className="text-slate-500 ml-2">({filteredClients.length})</span></h3>
+              <Search className="w-6 h-6 text-sky-500" />
+              <h3 className="text-xl font-black uppercase tracking-widest text-slate-900 dark:text-white">Client Directory <span className="text-slate-500 dark:text-slate-400 ml-2">({filteredClients.length})</span></h3>
             </div>
             <div className="space-y-4 max-w-5xl">
               {filteredClients.map((client) => {
@@ -3652,7 +3652,7 @@ function ClientsView({
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 grow-[2]">
                           {/* Last Session Info */}
-                          <div className="bg-muted/30 p-4 rounded-2xl border border-border/50 flex flex-col justify-between">
+                          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-border/50 flex flex-col justify-between">
                             <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Previous Session</p>
                             {last ? (
                               <div className="space-y-1">
@@ -3683,7 +3683,7 @@ function ClientsView({
                         <div className="flex items-center gap-2 shrink-0">
                           <Button 
                             variant="outline"
-                            className="h-20 w-20 rounded-2xl font-black flex flex-col gap-1 border-2 shadow-sm uppercase group-hover:border-primary/20"
+                            className="h-20 w-20 rounded-2xl font-black flex flex-col gap-1 border-2 shadow-sm dark:shadow-none uppercase group-hover:border-primary/20"
                             onClick={() => {
                               setSelectedSessionId(null);
                               onSelectClient(client.id!);
@@ -3723,7 +3723,7 @@ function ClientsView({
 
       {/* Link Client Dialog */}
       <Dialog open={isLinking} onOpenChange={setIsLinking}>
-        <DialogContent className="rounded-[32px] border-2 max-w-md bg-background shadow-2xl">
+        <DialogContent className="rounded-[32px] border-2 max-w-md bg-background shadow-2xl dark:shadow-none">
           <DialogHeader>
             <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-4">
               <Users className="w-6 h-6 text-amber-500" />
@@ -4007,7 +4007,7 @@ function ClientHistoryView({
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-4 h-[calc(100vh-160px)] overflow-hidden">
-      <div className="flex items-center justify-between bg-card p-4 border rounded-2xl shadow-sm shrink-0">
+      <div className="flex items-center justify-between bg-white dark:bg-slate-800 p-4 border rounded-2xl shadow-sm dark:shadow-none shrink-0">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => setView('clients')} className="rounded-xl">
             <ChevronLeft className="w-5 h-5" />
@@ -4114,7 +4114,7 @@ function ClientHistoryView({
                     onClick={() => setTrainerFilter(trainerFilter === initials ? null : initials)}
                   >
                     <span>{initials}</span>
-                    <Badge variant="secondary" className={`text-[7px] h-3 px-1 font-black border-none ${trainerFilter === initials ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'}`}>
+                    <Badge variant="secondary" className={`text-[7px] h-3 px-1 font-black border-none ${trainerFilter === initials ? 'bg-white/20 text-slate-900 dark:text-white' : 'bg-primary/10 text-primary'}`}>
                       {count}
                     </Badge>
                   </Button>
@@ -4124,7 +4124,7 @@ function ClientHistoryView({
         </Card>
       </div>
 
-      <div className="flex-1 overflow-hidden border rounded-xl bg-card shadow-lg flex flex-col">
+      <div className="flex-1 overflow-hidden border rounded-xl bg-white dark:bg-slate-800 shadow-lg flex flex-col">
         <div className="overflow-auto flex-1 h-full scrollbar-thin scrollbar-thumb-muted-foreground/20">
           <table className="w-full border-collapse border-separate border-spacing-0 table-fixed">
             <thead className="sticky top-0 z-30">
@@ -4140,10 +4140,10 @@ function ClientHistoryView({
                   return (
                     <th 
                       key={s.id} 
-                      className={`p-1.5 text-center border-b border-r min-w-[70px] w-[70px] transition-all bg-muted/50 backdrop-blur-sm ${s.id === selectedSessionId ? 'bg-primary/10 ring-1 ring-inset ring-primary' : ''}`}
+                      className={`p-1.5 text-center border-b border-r min-w-[70px] w-[70px] transition-all bg-white dark:bg-slate-900 backdrop-blur-sm ${s.id === selectedSessionId ? 'bg-primary/10 ring-1 ring-inset ring-primary' : ''}`}
                     >
                       <div className="flex flex-col items-center space-y-1">
-                        <div className="bg-primary/10 border border-primary/20 rounded-md px-1.5 py-0.5 shadow-sm">
+                        <div className="bg-primary/10 border border-primary/20 rounded-md px-1.5 py-0.5 shadow-sm dark:shadow-none">
                           <span className="text-primary font-black tabular-nums text-[10px] leading-none">
                             {sNum.toString().padStart(2, '0')}
                           </span>
@@ -4155,13 +4155,13 @@ function ClientHistoryView({
                     </th>
                   );
                 })}
-                <th className="p-1 text-center font-black uppercase text-[8px] border-b bg-muted/50 sticky right-0 z-20 min-w-[50px] w-[50px]">+/-</th>
+                <th className="p-1 text-center font-black uppercase text-[8px] border-b bg-white dark:bg-slate-900 sticky right-0 z-20 min-w-[50px] w-[50px]">+/-</th>
               </tr>
             </thead>
             <tbody>
               {visibleMachines.map((machine, mIdx) => {
                 const machineLogs = displaySessions.map(s => logs[`${s.id}_${machine.id}`]);
-                const rowColor = mIdx % 2 === 0 ? 'bg-card' : 'bg-muted/5';
+                const rowColor = mIdx % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-muted/5';
 
                 return (
                   <tr key={machine.id} className={`${rowColor} group hover:bg-primary/5 transition-colors h-14`}>
@@ -4252,7 +4252,7 @@ function ClientHistoryView({
                           </div>
                         )}
                         {sessionNotesList.length > 1 && (
-                          <Badge variant="secondary" className="absolute top-1 right-1 h-3 px-1 text-[6px] font-black bg-primary text-white border-white border shrink-0">
+                          <Badge variant="secondary" className="absolute top-1 right-1 h-3 px-1 text-[6px] font-black bg-primary text-slate-900 dark:text-white border-white border shrink-0">
                             {sessionNotesList.length}
                           </Badge>
                         )}
@@ -4287,7 +4287,7 @@ function ClientHistoryView({
       )}
 
       {/* Summary Legend */}
-      <div className="flex items-center justify-between px-4 py-2 bg-muted/30 rounded-2xl shrink-0">
+      <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-slate-900 rounded-2xl shrink-0">
         <div className="flex gap-6 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -4345,7 +4345,7 @@ function ClientSelectionDialog({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
               placeholder="Find client..." 
-              className="pl-10 h-11 rounded-xl bg-muted/50 border-none"
+              className="pl-10 h-11 rounded-xl bg-white dark:bg-slate-900 border-none"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
@@ -4422,7 +4422,7 @@ function MachineSettingsDialog({
                 <div className="flex justify-between items-center pr-1">
                   <Label className="text-sm font-bold">{option}</Label>
                   {machine.standardSettings?.[option] && (
-                    <span className="text-xs font-semibold text-slate-500" title="Standard Setting">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400" title="Standard Setting">
                       STD: {machine.standardSettings[option]}
                     </span>
                   )}
@@ -4543,22 +4543,22 @@ function PerformanceEntryDialog({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[400px] rounded-[32px] p-0 overflow-hidden border-slate-700 bg-slate-900 shadow-2xl flex flex-col h-full max-h-[85vh] sm:max-h-[600px]">
+      <DialogContent className="sm:max-w-[400px] rounded-[32px] p-0 overflow-hidden border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl dark:shadow-none flex flex-col h-full max-h-[85vh] sm:max-h-[600px]">
         {/* Header */}
-        <div className="bg-slate-800 p-4 text-white relative overflow-hidden border-b border-slate-700 shrink-0">
+        <div className="bg-white dark:bg-slate-900 p-4 text-slate-900 dark:text-white relative overflow-hidden border-b border-slate-200 dark:border-slate-800 shrink-0">
           <div className="absolute top-0 right-0 p-8 opacity-5 rotate-12">
             <Zap className="w-24 h-24" />
           </div>
           <div className="flex items-center gap-3 relative z-10">
             <div className="w-10 h-10 bg-slate-700 rounded-xl flex items-center justify-center shrink-0">
-              <Zap className="w-5 h-5 text-[#38BDF8]" />
+              <Zap className="w-5 h-5 text-sky-500" />
             </div>
             <div className="min-w-0">
               <h2 className="text-xl font-black italic uppercase tracking-tight leading-none truncate">{machine.name}</h2>
               <div className="flex items-center gap-2 mt-1">
-                {side && <span className="text-[#F06C22] text-[9px] font-black uppercase tracking-widest leading-none">Rotation: {side}</span>}
+                {side && <span className="text-orange-500 text-[9px] font-black uppercase tracking-widest leading-none">Rotation: {side}</span>}
                 {side && <span className="w-1 h-1 bg-slate-600 rounded-full" />}
-                <p className="text-[9px] uppercase font-bold text-[#38BDF8] tracking-widest leading-none">Entry HUD</p>
+                <p className="text-[9px] uppercase font-bold text-sky-500 tracking-widest leading-none">Entry HUD</p>
               </div>
             </div>
           </div>
@@ -4568,24 +4568,24 @@ function PerformanceEntryDialog({
         <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
           {/* Settings Shorthand Bar */}
           {hasSettings && (
-            <div className="bg-slate-950/40 border border-slate-800 rounded-2xl px-4 py-2.5 flex items-center justify-center gap-x-5 gap-y-1.5 flex-wrap">
+            <div className="bg-slate-50/40 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 flex items-center justify-center gap-x-5 gap-y-1.5 flex-wrap">
               {Object.entries(settings).map(([key, value]) => (
                 <div key={key} className="flex items-center gap-1.5">
-                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">{key}:</span>
-                  <span className="text-[12px] font-black text-[#F06C22] italic">{value}</span>
+                  <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">{key}:</span>
+                  <span className="text-[12px] font-black text-orange-500 italic">{value}</span>
                 </div>
               ))}
             </div>
           )}
 
           {/* Smart Stepper: Weight */}
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-3 flex flex-col items-center relative">
-            <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest text-center block mb-2">
+          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 flex flex-col items-center relative">
+            <Label className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest text-center block mb-2">
               Weight (lbs)
             </Label>
             <div className="flex items-center justify-between w-full h-14 px-1">
               <button 
-                className="w-11 h-11 rounded-xl bg-slate-700/50 text-slate-400 font-black text-lg flex items-center justify-center active:scale-95 transition-transform border border-slate-600/30"
+                className="w-11 h-11 rounded-xl bg-slate-700/50 text-slate-500 dark:text-slate-400 font-black text-lg flex items-center justify-center active:scale-95 transition-transform border border-slate-300/30"
                 onClick={() => adjustCurrent(-2)}
               >
                 -2
@@ -4597,17 +4597,17 @@ function PerformanceEntryDialog({
                   inputMode="decimal"
                   value={current || ''}
                   onChange={e => setCurrent(parseFloat(e.target.value) || 0)}
-                  className="font-black text-5xl text-white tracking-tighter leading-none bg-transparent border-none text-center outline-none w-full p-0 m-0 no-arrows focus:ring-0"
+                  className="font-black text-5xl text-slate-900 dark:text-white tracking-tighter leading-none bg-transparent border-none text-center w-full p-0 m-0 no-arrows focus:ring-0"
                 />
                 {prevW > 0 && (
-                  <div className={`mt-0.5 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md ${weightDelta > 0 ? 'bg-emerald-500/20 text-emerald-400' : weightDelta < 0 ? 'bg-rose-500/20 text-rose-400' : 'bg-slate-700 text-slate-500'}`}>
+                  <div className={`mt-0.5 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md ${weightDelta > 0 ? 'bg-emerald-500/20 text-emerald-400' : weightDelta < 0 ? 'bg-rose-500/20 text-rose-400' : 'bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
                     {weightDelta > 0 ? '+' : ''}{weightDelta} lbs ({weightDelta > 0 ? '+' : ''}{weightDeltaPct}%)
                   </div>
                 )}
               </div>
 
               <button 
-                className="w-11 h-11 rounded-xl bg-[#F06C22] text-white font-black text-lg flex items-center justify-center shadow-[0_4px_12px_rgba(240,108,34,0.3)] active:scale-95 transition-transform"
+                className="w-11 h-11 rounded-xl bg-orange-500 dark:bg-orange-600 text-white font-black text-lg flex items-center justify-center shadow-[0_4px_12px_rgba(240,108,34,0.3)] active:scale-95 transition-transform"
                 onClick={() => adjustCurrent(2)}
               >
                 +2
@@ -4617,17 +4617,17 @@ function PerformanceEntryDialog({
 
           <div className="grid grid-cols-1 gap-4">
             {/* Smart Stepper: Reps / Seconds */}
-            <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-3 flex flex-col items-center relative">
-              <div className="flex items-center justify-center gap-1.5 bg-slate-900 border border-slate-700/50 rounded-xl p-1 mb-2.5 w-full max-w-[180px]">
+            <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 flex flex-col items-center relative">
+              <div className="flex items-center justify-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-1 mb-2.5 w-full max-w-[180px]">
                 <button 
                   onClick={() => setIsHold(false)}
-                  className={`flex-1 h-6 rounded-lg font-black uppercase text-[8px] tracking-widest transition-all ${!isHold ? 'bg-[#38BDF8] text-white' : 'text-slate-600 hover:text-slate-400'}`}
+                  className={`flex-1 h-6 rounded-lg font-black uppercase text-[8px] tracking-widest transition-all ${!isHold ? 'bg-sky-500 text-slate-900 dark:text-white' : 'text-slate-600 hover:text-slate-500 dark:text-slate-400'}`}
                 >
                   REPS
                 </button>
                 <button 
                   onClick={() => setIsHold(true)}
-                  className={`flex-1 h-6 rounded-lg font-black uppercase text-[8px] tracking-widest transition-all ${isHold ? 'bg-[#38BDF8] text-white' : 'text-slate-600 hover:text-slate-400'}`}
+                  className={`flex-1 h-6 rounded-lg font-black uppercase text-[8px] tracking-widest transition-all ${isHold ? 'bg-sky-500 text-slate-900 dark:text-white' : 'text-slate-600 hover:text-slate-500 dark:text-slate-400'}`}
                 >
                   TSC
                 </button>
@@ -4636,7 +4636,7 @@ function PerformanceEntryDialog({
               {!isTorsoFull ? (
                 <div className="flex items-center justify-between w-full h-12 px-1">
                   <button 
-                    className="w-10 h-10 rounded-xl bg-slate-700/50 text-slate-400 font-black text-lg flex items-center justify-center active:scale-95 transition-transform border border-slate-600/30 shrink-0"
+                    className="w-10 h-10 rounded-xl bg-slate-700/50 text-slate-500 dark:text-slate-400 font-black text-lg flex items-center justify-center active:scale-95 transition-transform border border-slate-300/30 shrink-0"
                     onClick={() => adjustReps(-1)}
                   >
                     -1
@@ -4649,12 +4649,12 @@ function PerformanceEntryDialog({
                       value={reps || ''}
                       onChange={e => setReps(e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
                       placeholder={prevRepsLeftPlaceholder}
-                      className="font-black text-4xl text-white tracking-tight leading-none bg-transparent border-none text-center outline-none w-full p-0 m-0 no-arrows focus:ring-0 placeholder:text-slate-600/50"
+                      className="font-black text-4xl text-slate-900 dark:text-white tracking-tight leading-none bg-transparent border-none text-center w-full p-0 m-0 no-arrows focus:ring-0 placeholder:text-slate-600/50"
                     />
                   </div>
 
                   <button 
-                    className="w-10 h-10 rounded-xl bg-[#38BDF8] text-white font-black text-lg flex items-center justify-center shadow-[0_4px_12px_rgba(56,189,248,0.3)] active:scale-95 transition-transform shrink-0"
+                    className="w-10 h-10 rounded-xl bg-sky-500 text-slate-900 dark:text-white font-black text-lg flex items-center justify-center shadow-[0_4px_12px_rgba(56,189,248,0.3)] active:scale-95 transition-transform shrink-0"
                     onClick={() => adjustReps(1)}
                   >
                     +1
@@ -4662,34 +4662,34 @@ function PerformanceEntryDialog({
                 </div>
               ) : (
                  <div className="flex items-center gap-4 w-full px-1">
-                    <div className="flex flex-col items-center flex-1 bg-slate-900/50 p-2 rounded-xl border border-slate-700/50">
-                       <span className="text-[9px] font-black uppercase tracking-widest text-[#F06C22] mb-1">Left ({isHold ? 'SEC' : 'REPS'})</span>
+                    <div className="flex flex-col items-center flex-1 bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-slate-200 dark:border-slate-800">
+                       <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 mb-1">Left ({isHold ? 'SEC' : 'REPS'})</span>
                        <div className="flex items-center justify-between w-full h-10">
-                          <button onClick={() => adjustReps(-1)} className="w-8 h-8 rounded-lg bg-slate-700/50 text-slate-400 font-black text-sm flex items-center justify-center active:scale-95 border border-slate-600/30 shrink-0">-</button>
+                          <button onClick={() => adjustReps(-1)} className="w-8 h-8 rounded-lg bg-slate-700/50 text-slate-500 dark:text-slate-400 font-black text-sm flex items-center justify-center active:scale-95 border border-slate-300/30 shrink-0">-</button>
                           <input 
                             type="number"
                             inputMode="numeric"
                             value={reps || ''}
                             onChange={e => setReps(e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
                             placeholder={prevRepsLeftPlaceholder}
-                            className="font-black text-2xl text-white tracking-tight leading-none bg-transparent border-none text-center outline-none w-full p-0 m-0 no-arrows focus:ring-0 min-w-0 placeholder:text-slate-600/50"
+                            className="font-black text-2xl text-slate-900 dark:text-white tracking-tight leading-none bg-transparent border-none text-center w-full p-0 m-0 no-arrows focus:ring-0 min-w-0 placeholder:text-slate-600/50"
                           />
-                          <button onClick={() => adjustReps(1)} className="w-8 h-8 rounded-lg bg-[#38BDF8] text-white font-black text-sm flex items-center justify-center shadow-lg active:scale-95 shrink-0">+</button>
+                          <button onClick={() => adjustReps(1)} className="w-8 h-8 rounded-lg bg-sky-500 text-slate-900 dark:text-white font-black text-sm flex items-center justify-center shadow-lg active:scale-95 shrink-0">+</button>
                        </div>
                     </div>
-                    <div className="flex flex-col items-center flex-1 bg-slate-900/50 p-2 rounded-xl border border-slate-700/50">
-                       <span className="text-[9px] font-black uppercase tracking-widest text-[#F06C22] mb-1">Right ({isHold ? 'SEC' : 'REPS'})</span>
+                    <div className="flex flex-col items-center flex-1 bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-slate-200 dark:border-slate-800">
+                       <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 mb-1">Right ({isHold ? 'SEC' : 'REPS'})</span>
                        <div className="flex items-center justify-between w-full h-10">
-                          <button onClick={() => adjustRepsRt(-1)} className="w-8 h-8 rounded-lg bg-slate-700/50 text-slate-400 font-black text-sm flex items-center justify-center active:scale-95 border border-slate-600/30 shrink-0">-</button>
+                          <button onClick={() => adjustRepsRt(-1)} className="w-8 h-8 rounded-lg bg-slate-700/50 text-slate-500 dark:text-slate-400 font-black text-sm flex items-center justify-center active:scale-95 border border-slate-300/30 shrink-0">-</button>
                           <input 
                             type="number"
                             inputMode="numeric"
                             value={repsRt || ''}
                             onChange={e => setRepsRt(e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
                             placeholder={prevRepsRightPlaceholder}
-                            className="font-black text-2xl text-white tracking-tight leading-none bg-transparent border-none text-center outline-none w-full p-0 m-0 no-arrows focus:ring-0 min-w-0 placeholder:text-slate-600/50"
+                            className="font-black text-2xl text-slate-900 dark:text-white tracking-tight leading-none bg-transparent border-none text-center w-full p-0 m-0 no-arrows focus:ring-0 min-w-0 placeholder:text-slate-600/50"
                           />
-                          <button onClick={() => adjustRepsRt(1)} className="w-8 h-8 rounded-lg bg-[#38BDF8] text-white font-black text-sm flex items-center justify-center shadow-lg active:scale-95 shrink-0">+</button>
+                          <button onClick={() => adjustRepsRt(1)} className="w-8 h-8 rounded-lg bg-sky-500 text-slate-900 dark:text-white font-black text-sm flex items-center justify-center shadow-lg active:scale-95 shrink-0">+</button>
                        </div>
                     </div>
                  </div>
@@ -4697,26 +4697,26 @@ function PerformanceEntryDialog({
             </div>
 
             {/* Quality Rating */}
-            <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-3 flex flex-col items-center relative">
-              <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest text-center block mb-2.5">
+            <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 flex flex-col items-center relative">
+              <Label className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest text-center block mb-2.5">
                 Set Quality / RPE
               </Label>
               <div className="flex items-center gap-1.5 w-full h-9">
                 <button 
                   onClick={() => setQuality(1)}
-                  className={`flex-1 h-full rounded-xl font-black uppercase text-[9px] tracking-widest transition-all ${quality === 1 ? 'bg-rose-500 text-white shadow-[0_4px_10px_rgba(244,63,94,0.3)]' : 'bg-slate-900 border border-slate-700/50 text-slate-600 hover:text-slate-400'}`}
+                  className={`flex-1 h-full rounded-xl font-black uppercase text-[9px] tracking-widest transition-all ${quality === 1 ? 'bg-rose-500 text-slate-900 dark:text-white shadow-[0_4px_10px_rgba(244,63,94,0.3)]' : 'bg-white border border-slate-200 dark:border-slate-800 text-slate-600 hover:text-slate-500 dark:text-slate-400'}`}
                 >
                   Poor
                 </button>
                 <button 
                   onClick={() => setQuality(2)}
-                  className={`flex-1 h-full rounded-xl font-black uppercase text-[9px] tracking-widest transition-all ${quality === 2 ? 'bg-amber-500 text-white shadow-[0_4px_10px_rgba(245,158,11,0.3)]' : 'bg-slate-900 border border-slate-700/50 text-slate-600 hover:text-slate-400'}`}
+                  className={`flex-1 h-full rounded-xl font-black uppercase text-[9px] tracking-widest transition-all ${quality === 2 ? 'bg-amber-500 text-slate-900 dark:text-white shadow-[0_4px_10px_rgba(245,158,11,0.3)]' : 'bg-white border border-slate-200 dark:border-slate-800 text-slate-600 hover:text-slate-500 dark:text-slate-400'}`}
                 >
                   Good
                 </button>
                 <button 
                   onClick={() => setQuality(3)}
-                  className={`flex-1 h-full rounded-xl font-black uppercase text-[9px] tracking-widest transition-all ${quality === 3 ? 'bg-emerald-500 text-white shadow-[0_4px_10px_rgba(16,185,129,0.3)]' : 'bg-slate-900 border border-slate-700/50 text-slate-600 hover:text-slate-400'}`}
+                  className={`flex-1 h-full rounded-xl font-black uppercase text-[9px] tracking-widest transition-all ${quality === 3 ? 'bg-emerald-500 text-slate-900 dark:text-white shadow-[0_4px_10px_rgba(16,185,129,0.3)]' : 'bg-white border border-slate-200 dark:border-slate-800 text-slate-600 hover:text-slate-500 dark:text-slate-400'}`}
                 >
                   Elite
                 </button>
@@ -4726,10 +4726,10 @@ function PerformanceEntryDialog({
 
           {/* Trend History */}
           {pastMachineLogs.length > 0 && (
-            <div className="bg-slate-950/30 border border-slate-800/50 rounded-xl p-2.5 flex flex-col gap-1.5">
+            <div className="bg-slate-50/30 border border-slate-200 dark:border-slate-800/50 dark:border-slate-800/50 rounded-xl p-2.5 flex flex-col gap-1.5">
               <div className="flex justify-between items-center px-1">
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Trend History</span>
-                <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Last 3 Sets</span>
+                <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Trend History</span>
+                <span className="text-[8px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Last 3 Sets</span>
               </div>
               {pastMachineLogs.map((entry, idx) => {
                 const isHoldLog = entry.log.isStaticHold;
@@ -4753,13 +4753,13 @@ function PerformanceEntryDialog({
                 }
 
                 return (
-                  <div key={idx} className="flex justify-between items-center text-[11px] bg-slate-900/40 rounded-lg px-2 py-1.5 border border-slate-800/30">
-                    <span className="text-slate-500 font-bold uppercase text-[9px]">
+                  <div key={idx} className="flex justify-between items-center text-[11px] bg-slate-50 dark:bg-slate-950 rounded-lg px-2 py-1.5 border border-slate-200 dark:border-slate-800/30">
+                    <span className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[9px]">
                       {new Date(entry.session.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
-                    <span className="font-black text-slate-200 flex items-center tabular-nums">
-                      {entry.log.weight}<span className="text-[9px] text-slate-500 ml-0.5">lbs</span> 
-                      <span className="mx-1.5 text-slate-700">|</span> 
+                    <span className="font-black text-slate-700 dark:text-slate-300 flex items-center tabular-nums">
+                      {entry.log.weight}<span className="text-[9px] text-slate-500 dark:text-slate-400 ml-0.5">lbs</span> 
+                      <span className="mx-1.5 text-slate-700 dark:text-slate-300">|</span> 
                       {metrics}
                       {arrow}
                     </span>
@@ -4771,11 +4771,11 @@ function PerformanceEntryDialog({
         </div>
 
         {/* Fixed Footer */}
-        <div className="p-4 bg-slate-800 border-t border-slate-700 shrink-0 grid grid-cols-2 gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.2)]">
-          <Button variant="outline" className="h-12 rounded-xl font-black uppercase text-[11px] tracking-widest border border-slate-600 bg-slate-700/50 text-slate-300 hover:bg-slate-700 hover:text-white transition-all shadow-md" onClick={onClose}>
+        <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0 grid grid-cols-2 gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.2)]">
+          <Button variant="outline" className="h-12 rounded-xl font-black uppercase text-[11px] tracking-widest border border-slate-300 dark:border-slate-700 bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 transition-all shadow-md" onClick={onClose}>
             Cancel
           </Button>
-          <Button className="h-12 rounded-xl font-black uppercase text-[11px] tracking-widest bg-[#F06C22] text-white hover:bg-[#ea580c] shadow-[0_4px_15px_rgba(240,108,34,0.4)] border-none active:scale-95 transition-all" onClick={() => onSave(current.toString(), reps.toString(), quality, isHold, side, repsRt.toString())}>
+          <Button className="h-12 rounded-xl font-black uppercase text-[11px] tracking-widest bg-orange-500 dark:bg-orange-600 text-white hover:bg-orange-600 dark:hover:bg-orange-700 shadow-[0_4px_15px_rgba(240,108,34,0.4)] border-none active:scale-95 transition-all" onClick={() => onSave(current.toString(), reps.toString(), quality, isHold, side, repsRt.toString())}>
             Save Set
           </Button>
         </div>
@@ -4849,9 +4849,9 @@ function MachinesView({ machines, clients, onOpenInfo }: { machines: Machine[], 
           const fallbackImgUrl = getMachineImageUrl(machine.id);
 
           return (
-            <Card key={machine.id} className="group rounded-2xl overflow-hidden border border-border/80 hover:border-primary/50 transition-all shadow-sm bg-card flex flex-col">
+            <Card key={machine.id} className="group rounded-2xl overflow-hidden border border-border/80 hover:border-primary/50 transition-all shadow-sm dark:shadow-none bg-white dark:bg-slate-800 flex flex-col">
               {/* Thumbnail Header Area */}
-              <div className="relative h-32 bg-slate-900 overflow-hidden">
+              <div className="relative h-32 bg-white dark:bg-slate-900 overflow-hidden">
                 <img 
                   src={machine.imageUrl || fallbackImgUrl} 
                   alt={machine.name} 
@@ -4870,11 +4870,11 @@ function MachinesView({ machines, clients, onOpenInfo }: { machines: Machine[], 
               <CardContent className="p-3 flex-1 flex flex-col justify-between space-y-3">
                 <div className="space-y-0.5">
                   <h3 className="text-sm font-black uppercase tracking-tight text-secondary leading-tight line-clamp-1">{machine.name}</h3>
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-[#F06C22]">{machine.fullName || machine.id?.replace(/_/g, ' ')}</p>
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-orange-500">{machine.fullName || machine.id?.replace(/_/g, ' ')}</p>
                 </div>
 
                 {/* Global Benchmark Compact */}
-                <div className="bg-muted/30 rounded-lg p-2 border border-border/40">
+                <div className="bg-white dark:bg-slate-900 rounded-lg p-2 border border-border/40">
                   <p className="text-[7px] font-bold uppercase tracking-widest text-secondary mb-1.5 opacity-60">Global Benchmark</p>
                   <div className="flex justify-between items-center mb-2">
                     <div className="text-left">
@@ -4987,7 +4987,7 @@ function ExerciseHistoryDialog({
                 return (
                   <div 
                     key={log.id} 
-                    className={`p-4 rounded-2xl border transition-all ${isOrigin ? 'bg-primary/5 border-primary/20 ring-1 ring-primary/10' : 'bg-card'}`}
+                    className={`p-4 rounded-2xl border transition-all ${isOrigin ? 'bg-primary/5 border-primary/20 ring-1 ring-primary/10' : 'bg-white dark:bg-slate-800'}`}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-2">
@@ -4995,7 +4995,7 @@ function ExerciseHistoryDialog({
                           {safeToDate(log.createdAt)?.toLocaleDateString() || 'Recent'}
                         </span>
                         {isOrigin && (
-                          <Badge className="bg-primary text-white text-[8px] font-black rounded px-1.5 h-4 border-none uppercase">Origin</Badge>
+                          <Badge className="bg-primary text-slate-900 dark:text-white text-[8px] font-black rounded px-1.5 h-4 border-none uppercase">Origin</Badge>
                         )}
                       </div>
                       <div className="flex gap-1">
@@ -5020,7 +5020,7 @@ function ExerciseHistoryDialog({
                       </div>
                       <div className="space-y-0.5">
                         <p className="text-[8px] font-black text-muted-foreground uppercase">Quality</p>
-                        <div className={`w-fit px-2 py-0.5 rounded-full text-[10px] font-black text-white ${
+                        <div className={`w-fit px-2 py-0.5 rounded-full text-[10px] font-black text-slate-900 dark:text-white ${
                           log.repQuality === 3 ? 'bg-emerald-500' : 
                           log.repQuality === 2 ? 'bg-amber-500' : 
                           log.repQuality === 1 ? 'bg-red-500' : 
@@ -5032,7 +5032,7 @@ function ExerciseHistoryDialog({
                     </div>
 
                     {log.notes && (
-                      <div className="mt-3 text-[10px] bg-muted/50 p-2 rounded-lg font-medium text-muted-foreground border-l-2 border-primary/30 italic">
+                      <div className="mt-3 text-[10px] bg-white dark:bg-slate-900 p-2 rounded-lg font-medium text-muted-foreground border-l-2 border-primary/30 italic">
                         "{log.notes}"
                       </div>
                     )}
@@ -5109,7 +5109,7 @@ function SessionNotesSidebar({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-50/60 backdrop-blur-sm"
       />
       
       <motion.div 
@@ -5117,78 +5117,78 @@ function SessionNotesSidebar({
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="relative w-full max-w-sm bg-[#0A2E46] border-l border-slate-800 shadow-2xl flex flex-col h-full"
+        className="relative w-full max-w-sm bg-slate-50 dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 shadow-2xl dark:shadow-none flex flex-col h-full"
       >
-        <div className="p-6 border-b border-slate-800 flex items-center justify-between shrink-0">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex flex-col">
-            <h2 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-[#F06C22]" /> Session Notes
+            <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-orange-500" /> Session Notes
             </h2>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">
               HUD Communication Panel
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-white/10">
-            <X className="w-5 h-5 text-slate-400" />
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-white dark:hover:bg-slate-800/10">
+            <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
           </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-slate-950/20">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-slate-50/20">
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
-              <History className="w-3.5 h-3.5 text-slate-500" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Note History</span>
+              <History className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Note History</span>
             </div>
             
             {history.length > 0 ? (
               history.map((note) => (
-                <div key={note.id} className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-2">
+                <div key={note.id} className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700">
-                        <span className="text-[8px] font-black text-[#F06C22]">{note.trainerInitials}</span>
+                      <div className="w-6 h-6 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-800">
+                        <span className="text-[8px] font-black text-orange-500">{note.trainerInitials}</span>
                       </div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Active Trainer</span>
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight">Active Trainer</span>
                     </div>
-                    <span className="text-[9px] font-bold text-slate-600">
+                    <span className="text-[9px] font-bold text-slate-600 dark:text-slate-400">
                       {safeToDate(note.createdAt)?.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) || 'Now'}
                     </span>
                   </div>
-                  <p className="text-sm font-medium leading-relaxed text-slate-300 whitespace-pre-wrap">
+                  <p className="text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
                     {note.content}
                   </p>
                 </div>
               ))
             ) : (
-              <div className="py-12 text-center bg-slate-900/20 rounded-3xl border border-dashed border-slate-800">
-                <StickyNote className="w-8 h-8 text-slate-800 mx-auto mb-3" />
-                <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">No active communications found.</p>
+              <div className="py-12 text-center bg-slate-50 dark:bg-slate-950 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
+                <StickyNote className="w-8 h-8 text-slate-800 dark:text-slate-200 mx-auto mb-3" />
+                <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">No active communications found.</p>
               </div>
             )}
           </div>
         </div>
 
-        <div className="p-6 border-t border-slate-800 bg-[#0A2E46] shrink-0">
+        <div className="p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 shrink-0">
           <form onSubmit={handleAddNote} className="space-y-4">
             <div className="space-y-2">
               <div className="flex items-center gap-2 mb-1">
-                <Edit3 className="w-3.5 h-3.5 text-[#F06C22]" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tactical Update</span>
+                <Edit3 className="w-3.5 h-3.5 text-orange-500" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Tactical Update</span>
               </div>
               <Textarea 
                 placeholder="Injury notes, performance tweaks, or mood updates..."
                 value={noteContent}
                 onChange={(e) => setNoteContent(e.target.value)}
-                className="min-h-[120px] rounded-2xl bg-slate-950/50 border-slate-800 text-white placeholder:text-slate-700 focus:border-[#F06C22] shadow-inner resize-none"
+                className="min-h-[120px] rounded-2xl bg-slate-50/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-700 focus:border-orange-500 shadow-inner resize-none"
               />
             </div>
             
             <div className="flex items-center justify-between gap-4">
               <div className="flex flex-col">
-                <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">Authenticated:</span>
-                <span className="text-[10px] font-bold text-[#F06C22]">{trainerInitials}</span>
+                <span className="text-[8px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">Authenticated:</span>
+                <span className="text-[10px] font-bold text-orange-500">{trainerInitials}</span>
               </div>
-              <Button type="submit" className="flex-1 h-12 bg-[#F06C22] hover:bg-[#F06C22]/90 text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-xl shadow-xl shadow-orange-950/20 transition-all active:scale-95">
+              <Button type="submit" className="flex-1 h-12 bg-orange-500 dark:bg-orange-600 text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-xl shadow-xl shadow-orange-950/20 transition-all active:scale-95">
                 Save Tactical Note
               </Button>
             </div>
@@ -6333,25 +6333,25 @@ function WorkoutTrackerView({
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[calc(100vh-80px)] flex flex-col gap-1 overflow-hidden">
       {isIntroSession && (
-          <div className="bg-[#F06C22] p-3 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-[#F06C22]/20 border border-white/20 animate-pulse mt-2 mx-4">
-            <Sparkles className="w-5 h-5 text-white" />
-            <span className="text-white font-black uppercase italic tracking-[0.15em] text-xs">
+          <div className="bg-orange-500 dark:bg-orange-600 p-3 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-orange-500/20 border border-white/20 animate-pulse mt-2 mx-4">
+            <Sparkles className="w-5 h-5 text-slate-900 dark:text-white" />
+            <span className="text-slate-900 dark:text-white font-black uppercase italic tracking-[0.15em] text-xs">
               NEW CLIENT INTRODUCTORY SESSION: CONVERSATIONAL BASELINE
             </span>
-            <Sparkles className="w-5 h-5 text-white" />
+            <Sparkles className="w-5 h-5 text-slate-900 dark:text-white" />
           </div>
       )}
       {/* Persistent Active Header - Minimalist Refactor */}
       {(selectedClient || currentSession) && (
-        <div className="bg-[#0A2E46] border-b border-slate-800 px-4 flex items-center justify-between sticky top-0 z-40 h-16 shadow-lg backdrop-blur-xl shrink-0">
+        <div className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-4 flex items-center justify-between sticky top-0 z-40 h-16 shadow-lg backdrop-blur-xl shrink-0">
           {/* Left: Client & Trainer Identity */}
           <div className="flex items-center gap-3">
-            <h3 className="text-lg font-bold tracking-tight text-white">
+            <h3 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
               {selectedClient ? `${selectedClient.firstName} ${selectedClient.lastName}` : (currentSession?.isUnassigned ? 'Unassigned Tracking' : 'Initializing...')}
             </h3>
             
-            <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 shadow-inner">
-              <span className="text-xs font-bold text-slate-400 uppercase">
+            <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-800 shadow-inner">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
                 {authTrainer?.initials || currentSession?.trainerInitials || '??'}
               </span>
             </div>
@@ -6361,7 +6361,7 @@ function WorkoutTrackerView({
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse" />
             {currentSession && currentSession.startTime && (
-              <div className="text-sm text-slate-400 font-mono tabular-nums tracking-wider uppercase">
+              <div className="text-sm text-slate-500 dark:text-slate-400 font-mono tabular-nums tracking-wider uppercase">
                 <ActiveSessionTimer startTime={currentSession.startTime} paused={isPaused} />
               </div>
             )}
@@ -6369,13 +6369,13 @@ function WorkoutTrackerView({
 
           {/* Right: Tactical Controls & Hard Stop */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center bg-slate-950/40 rounded-xl p-1 border border-slate-800/50 mr-2">
+            <div className="flex items-center bg-slate-50/40 rounded-xl p-1 border border-slate-200 dark:border-slate-800/50 dark:border-slate-800/50 mr-2">
               <Button 
                 variant="ghost"
                 size="sm"
                 className={cn(
                   "h-9 px-3 rounded-lg font-bold uppercase text-[9px] tracking-[0.15em] transition-all",
-                  isPaused ? "text-orange-500 bg-orange-500/10" : "text-slate-400 hover:text-white"
+                  isPaused ? "text-orange-500 bg-orange-500/10" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50"
                 )}
                 onClick={() => setIsPaused(!isPaused)}
               >
@@ -6383,14 +6383,14 @@ function WorkoutTrackerView({
                 {isPaused ? "Resume" : "Pause"}
               </Button>
 
-              <div className="w-px h-4 bg-slate-800 mx-1" />
+              <div className="w-px h-4 bg-white dark:bg-slate-900 mx-1" />
 
               <Button 
                 variant="ghost" 
                 size="sm"
                 className={cn(
                   "h-9 px-3 rounded-lg font-bold uppercase text-[9px] tracking-[0.15em] transition-all",
-                  !showAllMachines ? "text-[#F06C22] bg-[#F06C22]/10" : "text-slate-400 hover:text-white"
+                  !showAllMachines ? "bg-orange-500 dark:bg-orange-600 text-white" : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50"
                 )}
                 onClick={() => setShowAllMachines(!showAllMachines)}
               >
@@ -6398,33 +6398,33 @@ function WorkoutTrackerView({
                 Focus
               </Button>
 
-              <div className="w-px h-4 bg-slate-800 mx-1" />
+              <div className="w-px h-4 bg-white dark:bg-slate-900 mx-1" />
 
               <Button 
                 variant="ghost" 
                 size="sm"
-                className="h-9 px-3 rounded-lg font-bold uppercase text-[9px] tracking-[0.15em] text-slate-400 hover:text-white transition-all"
+                className="h-9 px-3 rounded-lg font-bold uppercase text-[9px] tracking-[0.15em] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 transition-all"
                 onClick={() => setIsShowingSessionNotes(true)}
               >
-                <MessageSquare className="w-3.5 h-3.5 mr-1.5 text-[#F06C22]" />
+                <MessageSquare className="w-3.5 h-3.5 mr-1.5 text-orange-500" />
                 Notes
               </Button>
 
-              <div className="w-px h-4 bg-slate-800 mx-1" />
+              <div className="w-px h-4 bg-white dark:bg-slate-900 mx-1" />
 
               <Button 
                 variant="ghost" 
                 size="sm"
-                className="h-9 px-3 rounded-lg font-bold uppercase text-[9px] tracking-[0.15em] text-slate-400 hover:text-white transition-all"
+                className="h-9 px-3 rounded-lg font-bold uppercase text-[9px] tracking-[0.15em] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 transition-all"
                 onClick={() => setIsSessionRoutineManagerOpen(true)}
               >
-                <Settings2 className="w-3.5 h-3.5 mr-1.5 text-[#F06C22]" />
+                <Settings2 className="w-3.5 h-3.5 mr-1.5 text-orange-500" />
                 Routine
               </Button>
             </div>
 
             <Button 
-              className="bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-widest text-[10px] px-6 h-10 rounded-xl shadow-[0_4px_15px_rgba(220,38,38,0.3)] active:scale-95 transition-all"
+              className="bg-red-600text-white font-bold uppercase tracking-widest text-[10px] px-6 h-10 rounded-xl shadow-[0_4px_15px_rgba(220,38,38,0.3)] active:scale-95 transition-all"
               onClick={handleEndSessionPress}
             >
               End Session
@@ -6586,10 +6586,10 @@ function WorkoutTrackerView({
 
       {/* End Session Confirmation Dialog */}
       <Dialog open={showEndConfirmation} onOpenChange={setShowEndConfirmation}>
-        <DialogContent className="sm:max-w-[400px] rounded-[32px] p-0 overflow-hidden border-none shadow-2xl">
-          <div className="bg-primary p-8 text-white space-y-3">
+        <DialogContent className="sm:max-w-[400px] rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
+          <div className="bg-primary p-8 text-slate-900 dark:text-white space-y-3">
             <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-2">
-              <AlertCircle className="w-6 h-6 text-white" />
+              <AlertCircle className="w-6 h-6 text-slate-900 dark:text-white" />
             </div>
             <h3 className="text-2xl font-black italic uppercase tracking-tight">End Session?</h3>
             <p className="text-primary-foreground/90 font-medium text-sm leading-relaxed">
@@ -6640,12 +6640,12 @@ function WorkoutTrackerView({
             ) : (
               <div className="space-y-4">
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-500">Session Notes</label>
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Session Notes</label>
                   <Textarea
                     value={currentSessionNotes}
                     onChange={(e) => setCurrentSessionNotes(e.target.value)}
                     placeholder="Log general observations here..."
-                    className="min-h-[100px] border-2 border-slate-200 bg-white resize-none text-slate-800 placeholder:text-slate-400 focus-visible:ring-[#F06C22] focus-visible:border-[#F06C22]"
+                    className="min-h-[100px] border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-500 dark:text-slate-400 focus-visible:ring-orange-500 focus-visible:border-orange-500"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -6657,7 +6657,7 @@ function WorkoutTrackerView({
                     Keep Training
                   </Button>
                   <Button 
-                    className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20 bg-red-600 hover:bg-red-700 text-white"
+                    className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20 bg-red-600text-white"
                     onClick={() => {
                       setShowEndConfirmation(false);
                       setIsPostSessionMode(true);
@@ -6675,27 +6675,27 @@ function WorkoutTrackerView({
 
       {/* Scrap Session Confirmation Dialog */}
       <Dialog open={showCancelConfirmation} onOpenChange={setShowCancelConfirmation}>
-        <DialogContent className="sm:max-w-[400px] rounded-[32px] p-0 overflow-hidden border-none shadow-2xl">
-          <div className="bg-slate-900 p-8 text-white space-y-3">
+        <DialogContent className="sm:max-w-[400px] rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
+          <div className="bg-white dark:bg-slate-900 p-8 text-slate-900 dark:text-white space-y-3">
             <div className="w-12 h-12 bg-red-500 rounded-2xl flex items-center justify-center mb-2 shadow-[0_0_20px_rgba(239,68,68,0.4)]">
-              <Trash2 className="w-6 h-6 text-white" />
+              <Trash2 className="w-6 h-6 text-slate-900 dark:text-white" />
             </div>
             <h3 className="text-2xl font-black italic uppercase tracking-tight">Scrap Active Session?</h3>
-            <p className="text-slate-400 font-medium text-sm leading-relaxed">
+            <p className="text-slate-500 dark:text-slate-400 font-medium text-sm leading-relaxed">
               Are you sure you want to cancel this session? All data logged so far will be scrapped and will not be recorded in the database.
             </p>
           </div>
           
-          <div className="p-6 grid grid-cols-2 gap-3 bg-white">
+          <div className="p-6 grid grid-cols-2 gap-3 bg-white dark:bg-slate-900">
             <Button 
               variant="outline" 
-              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 hover:bg-slate-50"
+              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50"
               onClick={() => setShowCancelConfirmation(false)}
             >
               Resume Session
             </Button>
             <Button 
-              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200"
+              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-red-600text-white shadow-lg shadow-red-200"
               onClick={confirmScrapSession}
             >
               Scrap Session
@@ -6704,19 +6704,19 @@ function WorkoutTrackerView({
         </DialogContent>
       </Dialog>
       {/* Workout Table Scroll Area */}
-      <div className="flex-1 overflow-hidden border border-slate-200 rounded-xl bg-white shadow-sm flex flex-col">
+      <div className="flex-1 overflow-hidden border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 shadow-sm dark:shadow-none flex flex-col">
         <div className="w-full h-full overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse table-fixed select-none min-w-[600px] h-full flex flex-col">
             <thead className="flex w-full shrink-0">
-              <tr className="bg-[#115E8D] text-white uppercase text-[9px] font-black tracking-widest leading-none h-[28px] w-full flex">
+              <tr className="bg-sky-500 dark:bg-sky-600text-white uppercase text-[9px] font-black tracking-widest leading-none h-[28px] w-full flex">
                 <th className="p-0 flex items-center justify-center w-[40px] shrink-0 border-r border-[#115E8D]/20">
                   {currentSession ? (
                     <button 
                       onClick={() => setIsSessionRoutineManagerOpen(true)}
-                      className="w-full h-full flex items-center justify-center hover:bg-white/10 transition-colors"
+                      className="w-full h-full flex items-center justify-center hover:bg-white dark:hover:bg-slate-800/10 transition-colors"
                       title="Edit Routine"
                     >
-                      <Settings2 className="w-3.5 h-3.5 text-white/80" />
+                      <Settings2 className="w-3.5 h-3.5 text-slate-900 dark:text-white/80" />
                     </button>
                   ) : (
                     "#"
@@ -6763,7 +6763,7 @@ function WorkoutTrackerView({
                     {currentSession?.routineId && activeMachineIds.length === 0 && (
                       <tr className="flex">
                          <td colSpan={5} className="p-4 text-center w-full">
-                           <p className="text-[10px] text-slate-400 font-bold uppercase">Routine blank. Start selecting machines.</p>
+                           <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">Routine blank. Start selecting machines.</p>
                          </td>
                       </tr>
                     )}
@@ -6835,8 +6835,8 @@ function WorkoutTrackerView({
                               {sortedEntries.map(([k, v], i) => (
                                 <span key={k} className="flex gap-0.5 items-baseline">
                                   <span className="text-[#68717A] text-[7.5px] font-medium">{k}:</span>
-                                  <span className="font-black text-slate-800 text-[8.5px]">{v}</span>
-                                  {i < sortedEntries.length - 1 && <span className="text-slate-300 ml-0.5 text-[7px]">•</span>}
+                                  <span className="font-black text-slate-800 dark:text-slate-200 text-[8.5px]">{v}</span>
+                                  {i < sortedEntries.length - 1 && <span className="text-slate-600 dark:text-slate-400 ml-0.5 text-[7px]">•</span>}
                                 </span>
                               ))}
                             </div>
@@ -6848,17 +6848,17 @@ function WorkoutTrackerView({
                             key={machine.id} 
                             className={`flex w-full group transition-all h-[34px] sm:h-[36px] items-center border-b border-slate-100 last:border-b-0 border-l-[3px]
                               ${(!isActive && !showAllMachines) ? 'opacity-30 grayscale hover:grayscale-0' : ''}
-                              ${isFocusMachine ? 'bg-[#F06C22]/[0.05] border-l-[#F06C22]' : isCompleted && isActive ? 'bg-emerald-500/[0.05] border-l-emerald-500' : isActive ? 'bg-[#115E8D]/[0.02] border-l-transparent' : 'even:bg-slate-50 odd:bg-white border-l-transparent'} 
-                              hover:bg-[#115E8D]/5`}
+                              ${isFocusMachine ? 'bg-orange-500 dark:bg-orange-600/[0.05] border-l-orange-500' : isCompleted && isActive ? 'bg-emerald-500/[0.05] border-l-emerald-500' : isActive ? 'bg-sky-500 dark:bg-sky-600/[0.02] border-l-transparent' : 'even:bg-slate-50 odd:bg-white border-l-transparent'} 
+                              hover:bg-sky-500 dark:bg-sky-600/5`}
                           >
-                            <td className="w-[40px] shrink-0 flex items-center justify-center p-0 border-r border-slate-200/60 h-full">
+                            <td className="w-[40px] shrink-0 flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
                               {isActive ? (
-                                <div className={`flex items-center justify-center rounded-full w-5 h-5 text-white shadow-sm ${isFocusMachine ? 'bg-[#F06C22]' : isCompleted ? 'bg-emerald-500' : 'bg-[#115E8D] opacity-80'}`}>
+                                <div className={`flex items-center justify-center rounded-full w-5 h-5 text-slate-900 dark:text-white shadow-sm ${isFocusMachine ? 'bg-orange-500 dark:bg-orange-600' : isCompleted ? 'bg-emerald-500' : 'bg-sky-500 dark:bg-sky-600 opacity-80'}`}>
                                   {isCompleted ? <Check className="w-3 h-3" /> : <span className="font-black text-[9px] leading-none">{seqPosition}</span>}
                                 </div>
                               ) : !currentSession ? (
                                 <button
-                                  className="flex items-center justify-center transition-all rounded-full w-4 h-4 border border-slate-300 text-slate-300 hover:text-[#115E8D] hover:border-[#115E8D]"
+                                  className="flex items-center justify-center transition-all rounded-full w-4 h-4 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-[#115E8D] hover:border-[#115E8D]"
                                   onClick={() => toggleMachine(machine.id!)}
                                 >
                                   <Plus className="w-2.5 h-2.5" />
@@ -6868,7 +6868,7 @@ function WorkoutTrackerView({
                               )}
                             </td>
                             
-                            <td className="flex-1 p-1 pl-3 border-r border-slate-200/60 h-full flex flex-col justify-center min-w-0 truncate">
+                            <td className="flex-1 p-1 pl-3 border-r border-slate-200 dark:border-slate-800/60 h-full flex flex-col justify-center min-w-0 truncate">
                               <div className="flex items-center">
                                 <span className={`font-bold text-[11px] ${isFocusMachine ? 'text-[#115E8D]' : 'text-[#115E8D]'} leading-none truncate`}>{machine.name}</span>
                               </div>
@@ -6879,7 +6879,7 @@ function WorkoutTrackerView({
                                 {isTorso ? (
                                   settingsDisplay
                                 ) : isCompleted ? (
-                                  <span className="font-black text-[9px] text-[#F06C22]">
+                                  <span className="font-black text-[9px] text-orange-500">
                                     {currentLog.weight} LBS | {
                                      currentLog.repsLeft !== undefined && currentLog.repsRight !== undefined ? (
                                        `${currentLog.repsLeft}L|${currentLog.repsRight}R`
@@ -6896,11 +6896,11 @@ function WorkoutTrackerView({
                               </div>
                             </td>
 
-                            <td className="w-[50px] shrink-0 flex flex-col items-center justify-center p-0 border-r border-slate-200/60 h-full">
+                            <td className="w-[50px] shrink-0 flex flex-col items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
                               {prevLog && prevLog.weight ? (
                                  <div className="flex flex-col items-center leading-none">
-                                    <span className="font-black text-[11px] text-slate-800">{prevLog.weight}</span>
-                                    <span className="font-extrabold text-[8px] text-slate-500 mt-[1px]">
+                                    <span className="font-black text-[11px] text-slate-800 dark:text-slate-200">{prevLog.weight}</span>
+                                    <span className="font-extrabold text-[8px] text-slate-500 dark:text-slate-400 mt-[1px]">
                                       {prevLog.repsLeft !== undefined && prevLog.repsRight !== undefined ? (
                                        `${prevLog.repsLeft}L|${prevLog.repsRight}R`
                                      ) : (
@@ -6921,34 +6921,34 @@ function WorkoutTrackerView({
                                     )}
                                  </div>
                               ) : (
-                                 <span className="text-[9px] text-slate-300 font-medium">--</span>
+                                 <span className="text-[9px] text-slate-600 dark:text-slate-400 font-medium">--</span>
                               )}
                             </td>
 
-                            <td className={`w-[60px] shrink-0 cursor-pointer group/weight p-0 border-r border-slate-200/60 h-full flex items-center justify-center transition-colors ${isFocusMachine ? 'bg-white shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50' : 'bg-slate-50/50 hover:bg-[#115E8D]/10'}`} 
+                            <td className={`w-[60px] shrink-0 cursor-pointer group/weight p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors ${isFocusMachine ? 'bg-white shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50' : 'bg-slate-50/50 hover:bg-sky-500 dark:bg-sky-600/10'}`} 
                             >
                               {isTorso ? (
                                 <div className="flex flex-col items-center justify-center gap-0.5 w-full h-full">
                                   <div 
-                                    className="flex-1 w-full flex items-center justify-center hover:bg-[#F06C22]/10 transition-colors"
+                                    className="flex-1 w-full flex items-center justify-center hover:bg-orange-500/10 dark:bg-orange-600/10 transition-colors"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setEditingWeightMachineId(machine.id!);
                                       setEditingWeightSide('Left');
                                     }}
                                   >
-                                    <span className={`font-black text-[10px] ${logL.weight ? 'text-[#115E8D]' : 'text-slate-300'}`}>{logL.weight || '--'}</span>
+                                    <span className={`font-black text-[10px] ${logL.weight ? 'text-[#115E8D]' : 'text-slate-600'}`}>{logL.weight || '--'}</span>
                                   </div>
                                   <div className="w-4 h-[1px] bg-slate-200" />
                                   <div 
-                                    className="flex-1 w-full flex items-center justify-center hover:bg-[#F06C22]/10 transition-colors"
+                                    className="flex-1 w-full flex items-center justify-center hover:bg-orange-500/10 dark:bg-orange-600/10 transition-colors"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setEditingWeightMachineId(machine.id!);
                                       setEditingWeightSide('Right');
                                     }}
                                   >
-                                    <span className={`font-black text-[10px] ${logR.weight ? 'text-[#115E8D]' : 'text-slate-300'}`}>{logR.weight || '--'}</span>
+                                    <span className={`font-black text-[10px] ${logR.weight ? 'text-[#115E8D]' : 'text-slate-600'}`}>{logR.weight || '--'}</span>
                                   </div>
                                 </div>
                               ) : (
@@ -6959,25 +6959,25 @@ function WorkoutTrackerView({
                                   {currentLog.weight ? (
                                     <span className="font-black text-[13px] text-[#115E8D]">{currentLog.weight}</span>
                                   ) : (
-                                    <span className={`font-black text-[11px] ${isFocusMachine ? 'text-slate-400' : 'text-slate-300 group-hover/weight:text-[#115E8D]/50'}`}>--</span>
+                                    <span className={`font-black text-[11px] ${isFocusMachine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-600 group-hover/weight:text-[#115E8D]/50'}`}>--</span>
                                   )}
                                 </div>
                               )}
                             </td>
 
-                            <td className={`w-[60px] shrink-0 cursor-pointer group/reps p-0 border-r border-slate-200/60 h-full flex items-center justify-center transition-colors relative ${isFocusMachine ? 'bg-white shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50' : 'bg-slate-50/50 hover:bg-[#115E8D]/10'}`} 
+                            <td className={`w-[60px] shrink-0 cursor-pointer group/reps p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors relative ${isFocusMachine ? 'bg-white shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50' : 'bg-slate-50/50 hover:bg-sky-500 dark:bg-sky-600/10'}`} 
                             >
                               {isTorso ? (
                                 <div className="flex flex-col items-center justify-center gap-0.5 w-full h-full">
                                   <div 
-                                    className="flex-1 w-full flex items-center justify-center hover:bg-[#F06C22]/10 transition-colors"
+                                    className="flex-1 w-full flex items-center justify-center hover:bg-orange-500/10 dark:bg-orange-600/10 transition-colors"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setEditingWeightMachineId(machine.id!);
                                       setEditingWeightSide('Left');
                                     }}
                                   >
-                                    <span className={`font-black text-[10px] ${logL.reps || logL.seconds ? 'text-[#115E8D]' : 'text-slate-300'}`}>
+                                    <span className={`font-black text-[10px] ${logL.reps || logL.seconds ? 'text-[#115E8D]' : 'text-slate-600'}`}>
                                       {logL.isStaticHold ? (
                                         <>{logL.seconds}<span className="text-[7px] ml-0.5 lowercase opacity-70">s</span></>
                                       ) : logL.reps || '--'}
@@ -6985,14 +6985,14 @@ function WorkoutTrackerView({
                                   </div>
                                   <div className="w-4 h-[1px] bg-slate-200" />
                                   <div 
-                                    className="flex-1 w-full flex items-center justify-center hover:bg-[#F06C22]/10 transition-colors"
+                                    className="flex-1 w-full flex items-center justify-center hover:bg-orange-500/10 dark:bg-orange-600/10 transition-colors"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setEditingWeightMachineId(machine.id!);
                                       setEditingWeightSide('Right');
                                     }}
                                   >
-                                    <span className={`font-black text-[10px] ${logR.reps || logR.seconds ? 'text-[#115E8D]' : 'text-slate-300'}`}>
+                                    <span className={`font-black text-[10px] ${logR.reps || logR.seconds ? 'text-[#115E8D]' : 'text-slate-600'}`}>
                                       {logR.isStaticHold ? (
                                         <>{logR.seconds}<span className="text-[7px] ml-0.5 lowercase opacity-70">s</span></>
                                       ) : logR.reps || '--'}
@@ -7015,19 +7015,19 @@ function WorkoutTrackerView({
                                       )}
                                     </span>
                                   ) : (
-                                     <span className={`font-black text-[11px] ${isFocusMachine ? 'text-slate-400' : 'text-slate-300 group-hover/reps:text-[#115E8D]/50'}`}>--</span>
+                                     <span className={`font-black text-[11px] ${isFocusMachine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-600 group-hover/reps:text-[#115E8D]/50'}`}>--</span>
                                   )}
                                 </div>
                               )}
                             </td>
 
-                            <td className={`w-[60px] shrink-0 px-1 border-r border-slate-200/60 flex items-center justify-center h-full transition-colors ${isFocusMachine ? 'bg-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]' : 'group-hover:bg-[#115E8D]/5'}`}>
+                            <td className={`w-[60px] shrink-0 px-1 border-r border-slate-200 dark:border-slate-800/60 flex items-center justify-center h-full transition-colors ${isFocusMachine ? 'bg-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]' : 'group-hover:bg-sky-500 dark:bg-sky-600/5'}`}>
                               {isTorso ? (
                                 <div className="flex flex-col gap-1 items-center">
-                                  <div className={`flex rounded-full p-[1px] gap-[1px] ${isFocusMachine ? 'bg-slate-100/80 border border-slate-200' : 'bg-slate-200/50'}`}>
+                                  <div className={`flex rounded-full p-[1px] gap-[1px] ${isFocusMachine ? 'bg-slate-100/80 border border-slate-200 dark:border-slate-800' : 'bg-slate-200/50'}`}>
                                     {[1, 2, 3].map((v) => {
                                       const isSelected = logL.repQuality === v;
-                                      let bgClass = isFocusMachine ? 'bg-slate-300 hover:bg-[#115E8D]/20' : 'bg-slate-300/50 hover:bg-slate-400';
+                                      let bgClass = isFocusMachine ? 'bg-slate-300 hover:bg-sky-500 dark:bg-sky-600/20' : 'bg-slate-300/50 hover:bg-slate-400';
                                       if (isSelected) {
                                         if (v === 1) bgClass = 'bg-red-500 shadow-sm';
                                         else if (v === 2) bgClass = 'bg-amber-500 shadow-sm';
@@ -7038,10 +7038,10 @@ function WorkoutTrackerView({
                                       );
                                     })}
                                   </div>
-                                  <div className={`flex rounded-full p-[1px] gap-[1px] ${isFocusMachine ? 'bg-slate-100/80 border border-slate-200' : 'bg-slate-200/50'}`}>
+                                  <div className={`flex rounded-full p-[1px] gap-[1px] ${isFocusMachine ? 'bg-slate-100/80 border border-slate-200 dark:border-slate-800' : 'bg-slate-200/50'}`}>
                                     {[1, 2, 3].map((v) => {
                                       const isSelected = logR.repQuality === v;
-                                      let bgClass = isFocusMachine ? 'bg-slate-300 hover:bg-[#115E8D]/20' : 'bg-slate-300/50 hover:bg-slate-400';
+                                      let bgClass = isFocusMachine ? 'bg-slate-300 hover:bg-sky-500 dark:bg-sky-600/20' : 'bg-slate-300/50 hover:bg-slate-400';
                                       if (isSelected) {
                                         if (v === 1) bgClass = 'bg-red-500 shadow-sm';
                                         else if (v === 2) bgClass = 'bg-amber-500 shadow-sm';
@@ -7054,10 +7054,10 @@ function WorkoutTrackerView({
                                   </div>
                                 </div>
                               ) : (
-                                <div className={`flex rounded-full p-[2px] gap-[2px] ${isFocusMachine ? 'bg-slate-100/80 border border-slate-200' : 'bg-slate-200/50'}`}>
+                                <div className={`flex rounded-full p-[2px] gap-[2px] ${isFocusMachine ? 'bg-slate-100/80 border border-slate-200 dark:border-slate-800' : 'bg-slate-200/50'}`}>
                                   {[1, 2, 3].map((v) => {
                                      const isSelected = currentLog.repQuality === v;
-                                     let bgClass = isFocusMachine ? 'bg-slate-300 hover:bg-[#115E8D]/20' : 'bg-slate-300/50 hover:bg-slate-400';
+                                     let bgClass = isFocusMachine ? 'bg-slate-300 hover:bg-sky-500 dark:bg-sky-600/20' : 'bg-slate-300/50 hover:bg-slate-400';
                                      if (isSelected) {
                                        if (v === 1) bgClass = 'bg-red-500 shadow-sm';
                                        else if (v === 2) bgClass = 'bg-amber-500 shadow-sm';
@@ -7118,7 +7118,7 @@ function WorkoutTrackerView({
 
       {currentSession && activeMachineIds.length > 0 && (
         <div className="fixed bottom-0 left-2 p-1 pointer-events-none opacity-20 z-50">
-          <span className="text-[8px] text-slate-800 font-mono tracking-widest">{machineTimeElapsed}s</span>
+          <span className="text-[8px] text-slate-800 dark:text-slate-200 font-mono tracking-widest">{machineTimeElapsed}s</span>
         </div>
       )}
     </motion.div>
