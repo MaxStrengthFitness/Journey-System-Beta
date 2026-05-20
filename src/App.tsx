@@ -3345,7 +3345,7 @@ function ClientsView({
         {!searchTerm ? (
           <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 p-6 space-y-10">
             {/* Header / Week Selector / Shift Toggle */}
-            <section className="space-y-6">
+            <section className="bg-slate-100 dark:bg-slate-900/50 rounded-[32px] p-4 md:p-6 border border-slate-200 dark:border-slate-800 space-y-6 shrink-0">
               <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
                 {/* Week Selector */}
                 <div className="flex flex-wrap gap-2">
@@ -3405,27 +3405,6 @@ function ClientsView({
                   </button>
                 </div>
               </div>
-
-              {/* Roster Summary Tags */}
-              <div className="flex flex-wrap items-center gap-3 py-4 border-y border-slate-200 dark:border-slate-800/50 dark:border-slate-800/50">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mr-2 flex items-center gap-2">
-                  <Dumbbell className="w-3 h-3" /> Live Roster
-                </span>
-                {visibleTrainersList.map(trainer => {
-                  const sessionCount = todaysSchedules.filter(s => s.trainerName === trainer.fullName).length;
-                  if (sessionCount === 0) return null;
-                  return (
-                    <div key={trainer.id} className="flex items-center gap-2 bg-sky-500/10 border border-sky-500/20 rounded-full pl-1.5 pr-4 py-1.5 shadow-inner">
-                      <div className="w-6 h-6 rounded-full bg-sky-500 flex items-center justify-center text-[10px] font-black text-slate-900">
-                        {trainer.initials}
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-                        {trainer.fullName.split(' ')[0]} <span className="text-sky-500/80 ml-1">({sessionCount})</span>
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
             </section>
 
             {/* Main Training Grid */}
@@ -3435,7 +3414,7 @@ function ClientsView({
                   {currentTimePos !== null && (
                     <div 
                       className="absolute left-0 right-0 border-t-2 border-orange-500 z-20 pointer-events-none shadow-[0_0_15px_#F06C22]"
-                      style={{ top: `calc(80px + (100% - 80px) * ${currentTimePos} / 100)` }}
+                      style={{ top: `calc(64px + (100% - 64px) * ${currentTimePos} / 100)` }}
                     >
                       <div className="absolute left-0 top-1/2 -translate-y-1/2 bg-orange-500 dark:bg-orange-600 text-white text-[9px] font-black uppercase px-2 py-1 rounded-r-md tracking-widest flex items-center shadow-[0_0_10px_#F06C22]">
                         <span className="w-2 h-2 rounded-full bg-white dark:bg-slate-900 mr-1 animate-pulse"></span>
@@ -3445,18 +3424,26 @@ function ClientsView({
                   )}
                   <table className="w-full border-collapse table-fixed h-full bg-slate-50 dark:bg-slate-950">
                     <thead>
-                      <tr className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-20">
-                        <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800 w-24 sticky left-0 bg-white dark:bg-slate-900 z-30">Time</th>
-                        {visibleTrainersList.map((trainer) => (
-                          <th key={trainer.id} className="p-4 border-r border-slate-200 dark:border-slate-800 last:border-r-0 text-center z-20 sticky top-0 bg-white dark:bg-slate-900 border-b-[3px] border-b-slate-200 dark:border-b-slate-800 shadow-sm">
-                            <div className="flex flex-col items-center gap-2">
-                              <div className="w-12 h-12 md:w-14 md:h-14 rounded-full border-2 border-slate-900 dark:border-white bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white font-extrabold text-base shadow-sm">
-                                {trainer.initials}
+                      <tr className="bg-slate-100 dark:bg-slate-800 border-b border-slate-300 dark:border-slate-700 h-16">
+                        <th className="p-4 border-r border-slate-300 dark:border-slate-700 w-24 sticky left-0 bg-slate-100 dark:bg-slate-800 z-30"></th>
+                        {visibleTrainersList.map((trainer) => {
+                          const sessionCount = todaysSchedules.filter(s => s.trainerName === trainer.fullName).length;
+                          return (
+                          <th key={trainer.id} className="p-3 border-r border-slate-300 dark:border-slate-700 last:border-r-0 text-center z-20 sticky top-0 bg-slate-100 dark:bg-slate-800 border-b-[3px] border-b-slate-300 dark:border-b-slate-600 shadow-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">
+                            <div className="flex flex-col items-center justify-center gap-1">
+                              <span className="text-[13px] md:text-[15px] font-black uppercase tracking-widest text-slate-900 dark:text-white leading-none">
+                                {trainer.fullName.split(' ')[0]}
+                              </span>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="w-2 h-2 rounded-full bg-sky-500 shadow-[0_0_8px_#38bdf8]"></span>
+                                <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-wider">
+                                  {sessionCount} ACTIVE
+                                </span>
                               </div>
-                              <span className="text-[11px] md:text-sm font-extrabold uppercase tracking-widest text-slate-900 dark:text-white mt-1">{trainer.fullName}</span>
                             </div>
                           </th>
-                        ))}
+                          );
+                        })}
                       </tr>
                     </thead>
                     <tbody className="relative">
@@ -3464,8 +3451,8 @@ function ClientsView({
                         const skippedGridCells = new Set<string>();
                         return currentSlots.map((slot, sIdx) => {
                           return (
-                            <tr key={slot} className="border-b border-slate-200 dark:border-slate-800 last:border-0 hover:bg-white dark:hover:bg-slate-800/[0.02] transition-colors group relative">
-                              <td className="p-3 text-center border-r border-slate-200 dark:border-slate-800 sticky left-0 bg-slate-50 dark:bg-slate-950 z-10 text-slate-500 dark:text-slate-400">
+                            <tr key={slot} className="border-b border-slate-300 dark:border-slate-700 last:border-0 hover:bg-white dark:hover:bg-slate-800/[0.02] transition-colors group relative">
+                              <td className="p-3 text-center border-r border-slate-300 dark:border-slate-700 sticky left-0 bg-slate-50 dark:bg-slate-950 z-10 text-slate-500 dark:text-slate-400">
                                 <span className="text-[11px] font-black tracking-tighter group-hover:text-slate-900 dark:text-white dark:hover:text-slate-50 transition-colors">{slot}</span>
                               </td>
                               {visibleTrainersList.map((trainer, tIdx) => {
@@ -3523,7 +3510,7 @@ function ClientsView({
                                   <td 
                                     key={cellId} 
                                     rowSpan={rowSpan}
-                                    className={cn("p-1.5 border-r border-slate-200 dark:border-slate-800 last:border-r-0 align-top", rowSpan > 1 ? "" : "h-[60px]")}
+                                    className={cn("p-1.5 border-r border-slate-300 dark:border-slate-700 last:border-r-0 align-top", rowSpan > 1 ? "" : "h-[60px]")}
                                   >
                                     {session ? (
                                       <div
@@ -3551,8 +3538,8 @@ function ClientsView({
                                         <div className="flex w-full items-start justify-between gap-2 overflow-hidden">
                                           <div className="flex items-center gap-1.5 min-w-0 pr-8">
                                             <span className={cn(
-                                              "font-black leading-tight truncate text-ellipsis",
-                                              rowSpan > 1 ? "text-base sm:text-lg" : "text-sm",
+                                              "leading-tight truncate text-ellipsis",
+                                              "text-sm font-bold",
                                               isUnavailable ? "text-slate-500 italic uppercase tracking-widest text-[10px]" : "text-slate-900 dark:text-slate-50"
                                             )}>
                                               {isUnavailable ? 'Unavailable' : formattedClientName}
