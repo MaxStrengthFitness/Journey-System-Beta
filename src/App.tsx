@@ -3421,7 +3421,7 @@ function ClientsView({
             </section>
 
             {/* Main Training Grid */}
-            <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-2xl dark:shadow-none relative">
+            <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-2xl dark:shadow-none relative pb-40">
               <div className="overflow-x-auto flex-grow relative">
                 <div className="min-w-[800px] h-full relative">
                   {currentTimePos !== null && (
@@ -3440,12 +3440,12 @@ function ClientsView({
                       <tr className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-20">
                         <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800 w-24 sticky left-0 bg-white dark:bg-slate-900 z-30">Time</th>
                         {visibleTrainersList.map((trainer) => (
-                          <th key={trainer.id} className="p-4 border-r border-slate-200 dark:border-slate-800 last:border-r-0 text-center z-20 sticky top-0 bg-white dark:bg-slate-900">
-                            <div className="flex flex-col items-center gap-1">
-                              <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-400 font-black text-sm">
+                          <th key={trainer.id} className="p-4 border-r border-slate-200 dark:border-slate-800 last:border-r-0 text-center z-20 sticky top-0 bg-white dark:bg-slate-900 border-b-[3px] border-b-slate-200 dark:border-b-slate-800 shadow-sm">
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="w-12 h-12 md:w-14 md:h-14 rounded-full border-2 border-slate-900 dark:border-white bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white font-extrabold text-base shadow-sm">
                                 {trainer.initials}
                               </div>
-                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-900 dark:text-white mt-1">{trainer.fullName}</span>
+                              <span className="text-[11px] md:text-sm font-extrabold uppercase tracking-widest text-slate-900 dark:text-white mt-1">{trainer.fullName}</span>
                             </div>
                           </th>
                         ))}
@@ -3490,6 +3490,7 @@ function ClientsView({
 
                                 const color = TRAINER_COLORS[tIdx % TRAINER_COLORS.length];
                                 const isCompleted = session && (session.status === 'Completed' || getMillis(session.startTime) < now.getTime());
+                                const isUnavailable = session?.clientName?.toLowerCase() === 'unavailable';
                                 const clientObj = session ? findClientForSession(session) : null;
                                 const workoutSession = clientObj ? sessions.find(s => s.clientId === clientObj.id && new Date(s.createdAt?.toDate?.() || s.date).toDateString() === new Date().toDateString()) : null;
                                 const isAlreadyCompleted = workoutSession?.status === "Completed";
@@ -3500,15 +3501,26 @@ function ClientsView({
                                   !!clientObj.medicalHistory
                                 );
 
+                                const formatClientName = (name: string) => {
+                                  if (!name) return '';
+                                  const parts = name.trim().split(' ');
+                                  if (parts.length > 1) {
+                                    return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+                                  }
+                                  return parts[0];
+                                };
+                                const formattedClientName = formatClientName(session?.clientName || '');
+
                                 return (
                                   <td 
                                     key={cellId} 
                                     rowSpan={rowSpan}
-                                    className={cn("p-1 border-r border-slate-200 dark:border-slate-800 last:border-r-0", rowSpan > 1 ? "" : "h-[60px]")}
+                                    className={cn("p-1.5 border-r border-slate-200 dark:border-slate-800 last:border-r-0 align-top", rowSpan > 1 ? "" : "h-[60px]")}
                                   >
                                     {session ? (
                                       <div
                                         onClick={() => {
+                                          if (isUnavailable) return;
                                           if (clientObj) {
                                             onSelectClient(clientObj.id!);
                                             setView('profile');
@@ -3518,31 +3530,42 @@ function ClientsView({
                                           }
                                         }}
                                         className={cn(
-                                          "flex flex-col justify-between p-3 rounded-lg border shadow-sm transition-all cursor-pointer h-full box-border",
-                                          isCompleted ? 'opacity-60 grayscale bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80' : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700",
-                                          hasAlert && !isCompleted ? "border-l-4 border-l-red-500" : "",
-                                          !isCompleted && "hover:border-sky-500/40 hover:bg-slate-50 dark:hover:bg-slate-700/80"
+                                          "flex flex-col p-3 rounded-xl border-2 shadow-sm transition-all h-full box-border relative overflow-hidden",
+                                          isUnavailable
+                                            ? "bg-[repeating-linear-gradient(45deg,#f8fafc,#f8fafc_10px,#e2e8f0_10px,#e2e8f0_20px)] dark:bg-[repeating-linear-gradient(45deg,#0f172a,#0f172a_10px,#1e293b_10px,#1e293b_20px)] border-slate-300 dark:border-slate-700 cursor-not-allowed opacity-90"
+                                            : isCompleted 
+                                              ? 'opacity-60 grayscale bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 cursor-pointer' 
+                                              : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 cursor-pointer hover:border-sky-500 hover:bg-slate-50 dark:hover:bg-slate-700",
+                                          hasAlert && !isCompleted && !isUnavailable ? "border-l-4 border-l-red-500" : "",
+                                          rowSpan > 1 ? "justify-between" : "justify-center"
                                         )}
                                       >
-                                        <div className="flex w-full items-start justify-between gap-2">
-                                          <div className="flex items-center gap-1.5 min-w-0">
-                                            <span className="text-[15px] sm:text-base font-bold text-slate-900 dark:text-slate-50 leading-tight truncate">
-                                              {session.clientName}
+                                        <div className="flex w-full items-start justify-between gap-2 overflow-hidden">
+                                          <div className="flex items-center gap-1.5 min-w-0 pr-8">
+                                            <span className={cn(
+                                              "font-black leading-tight truncate text-ellipsis",
+                                              rowSpan > 1 ? "text-base sm:text-lg" : "text-sm",
+                                              isUnavailable ? "text-slate-500 italic uppercase tracking-widest text-[10px]" : "text-slate-900 dark:text-slate-50"
+                                            )}>
+                                              {isUnavailable ? 'Unavailable' : formattedClientName}
                                             </span>
-                                            {hasAlert && !isCompleted && (
+                                            {hasAlert && !isCompleted && !isUnavailable && (
                                               <div className="w-2 h-2 rounded-full bg-red-500 animate-[pulse_2s_ease-in-out_infinite] shrink-0" />
                                             )}
                                           </div>
-                                          {rowSpan > 1 && (
-                                            <Badge variant="outline" className="text-[8px] h-4 bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-sky-500 shrink-0 px-1.5">
-                                              {Math.round((safeToDate(session.endTime).getTime() - safeToDate(session.startTime).getTime()) / 60000)}m
-                                            </Badge>
+                                          
+                                          {!isUnavailable && (
+                                            <div className="absolute top-2 right-2 flex flex-col items-end gap-1 shrink-0">
+                                              <span className="inline-flex items-center px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-[10px] font-black bg-slate-900 dark:bg-white text-white dark:text-slate-900 leading-none shadow-sm">
+                                                #{sessionNumber}
+                                              </span>
+                                              {rowSpan > 1 && (
+                                                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight line-clamp-1">
+                                                  {Math.round((safeToDate(session.endTime).getTime() - safeToDate(session.startTime).getTime()) / 60000)}m
+                                                </span>
+                                              )}
+                                            </div>
                                           )}
-                                        </div>
-                                        <div className="mt-auto pt-2 flex items-center justify-between">
-                                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-mono font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300">
-                                            Session #{sessionNumber}
-                                          </span>
                                         </div>
                                       </div>
                                     ) : (
