@@ -1012,8 +1012,8 @@ export function ClientProfileView({
       })()}
 
       {/* Session Status Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm px-6 py-6 mb-3 relative overflow-hidden flex flex-col md:flex-row items-center md:items-center justify-between gap-6 transition-colors duration-200">
-        <div className="flex items-center gap-4 z-10 shrink-0 min-w-0 w-full md:w-auto">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm px-6 py-6 mb-3 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 transition-colors duration-200">
+        <div className="flex items-start gap-4 z-10 shrink-0 min-w-0 w-full md:w-auto">
           <Button
             onClick={() => {
               setSelectedClientId(null);
@@ -1021,38 +1021,44 @@ export function ClientProfileView({
             }}
             variant="ghost"
             size="icon"
-            className="shrink-0 text-slate-700 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 -ml-2 h-10 w-10 sm:h-12 sm:w-12 rounded-full"
+            className="shrink-0 text-slate-700 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 -ml-2 h-10 w-10 sm:h-12 sm:w-12 rounded-full mt-1"
           >
-            <ChevronLeft className="w-6 h-6 sm:w-8 sm:h-8" />
+            <ChevronLeft className="w-6 h-6 md:w-8 md:h-8" />
           </Button>
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
-            <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-50 uppercase tracking-widest">
-              {client.firstName?.[0]}{client.lastName?.[0]}
-            </span>
-          </div>
           <div className="flex flex-col min-w-0 items-start">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-1">
-              <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter leading-none m-0 truncate text-slate-900 dark:text-white">
-                {client.firstName} {client.lastName}
-              </h2>
-            </div>
+            <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter leading-none m-0 mb-3 truncate text-slate-900 dark:text-white">
+              {client.firstName} {client.lastName}
+            </h2>
             
-            {/* Quick-Glance Pills */}
-            <div className="flex flex-wrap gap-2 mt-2 items-center group/flair">
-              <div className="px-3 py-1 text-[11px] font-black uppercase tracking-widest rounded-lg border bg-[#F06C22]/10 text-[#F06C22] border-[#F06C22]/30 flex items-center gap-1.5">
-                Session {calculatedSessionCount} / {calculatedSessionCount + (client.remainingSessions ?? 0)}
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mt-1">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">
+                  Session Progress
+                </span>
+                <span className="text-xl sm:text-2xl font-black tracking-tight text-[#F06C22] leading-none">
+                  {calculatedSessionCount} / {calculatedSessionCount + (client.remainingSessions ?? 0)}
+                </span>
               </div>
-              <div className="px-3 py-1 text-[11px] font-black uppercase tracking-widest rounded-lg border bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                Joined: {client.firstSessionDate ? new Date(client.firstSessionDate.toDate?.() || client.firstSessionDate).toLocaleDateString([], { month: 'short', year: 'numeric' }) : "N/A"}
-              </div>
-              <div className="px-3 py-1 text-[11px] font-black uppercase tracking-widest rounded-lg border bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
-                Last: {sessions[0]?.date ? new Date(sessions[0].date + "T12:00:00").toLocaleDateString([], { month: 'short', day: 'numeric' }) : "None"}
-              </div>
-              <div className="px-3 py-1 text-[11px] font-black uppercase tracking-widest rounded-lg border bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 flex items-center gap-1.5">
-                <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
-                Next: {scheduledSessions[0]?.startTime ? new Date(scheduledSessions[0].startTime.toDate?.() || scheduledSessions[0].startTime).toLocaleDateString([], { month: 'short', day: 'numeric' }) : "Unscheduled"}
+              <div className="hidden sm:block w-px bg-slate-200 dark:bg-slate-700 my-1"></div>
+              <div className="flex flex-wrap gap-x-6 gap-y-3">
+                <div className="flex flex-col">
+                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Joined</span>
+                   <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                     {client.firstSessionDate ? new Date(client.firstSessionDate.toDate?.() || client.firstSessionDate).toLocaleDateString([], { month: 'short', year: 'numeric' }) : "--"}
+                   </span>
+                </div>
+                <div className="flex flex-col">
+                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Last Session</span>
+                   <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                     {sessions[0]?.date ? new Date(sessions[0].date + "T12:00:00").toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "--"}
+                   </span>
+                </div>
+                <div className="flex flex-col">
+                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Next Scheduled</span>
+                   <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                     {scheduledSessions[0]?.startTime ? new Date(scheduledSessions[0].startTime.toDate?.() || scheduledSessions[0].startTime).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "--"}
+                   </span>
+                </div>
               </div>
             </div>
           </div>
@@ -1066,7 +1072,7 @@ export function ClientProfileView({
                   IN-PROGRESS ({activeInProgressSession.trainerInitials})
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[240px] rounded-2xl p-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                <div className="px-3 py-2 mb-2 border-b border-white/10 border-slate-200 dark:border-slate-800">
+                <div className="px-3 py-2 mb-2 border-b border-slate-200 dark:border-slate-800">
                   <p className="text-[10px] font-bold uppercase text-amber-500 tracking-widest">Active Session Detected</p>
                   <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200 mt-1">
                     Started by {activeInProgressSession.trainerInitials} at {new Date(activeInProgressSession.startTime?.toMillis?.() || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1120,7 +1126,7 @@ export function ClientProfileView({
                 { val: "equipment", label: "Equipment" },
                 { val: "routines", label: "Routines" },
                 { val: "focus", label: "Focus" },
-                { val: "details", label: "Details" },
+                { val: "details", label: "Client Information" },
                 { val: "history", label: "History" },
                 { val: "statistics", label: "Statistics" },
               ].map((tab) => (
@@ -2678,182 +2684,93 @@ export function ClientProfileView({
               </CardContent>
             </Card>
 
-            {/* 4. Biometrics & Contact (The Formalities) */}
-            <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700">
-              <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-800 dark:border-slate-700">
-                <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
-                  Biometrics & Formalities
+            {/* 4. Client Information */}
+            <Card className="rounded-[40px] shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 flex flex-col h-full">
+              <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-800">
+                <CardTitle className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">
+                  Client Information
                 </CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-[#38BDF8]">
-                  Identity, Vital Statistics & Contact
+                <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                  Identity & Membership Overview
                 </CardDescription>
               </CardHeader>
-              <CardContent className="p-8 space-y-6">
-                <div className="grid grid-cols-2 gap-4">
+              <CardContent className="p-8 flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
-                      First Name
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                      Full Name
                     </Label>
-                    <Input
-                      value={infoForm.firstName || ""}
-                      onChange={(e) =>
-                        setInfoForm((f) => ({ ...f, firstName: e.target.value }))
-                      }
-                      className="h-12 rounded-2xl font-bold px-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
-                    />
+                     <div className="flex gap-3">
+                       <Input
+                         value={infoForm.firstName || ""}
+                         onChange={(e) => setInfoForm((f) => ({ ...f, firstName: e.target.value }))}
+                         placeholder="First"
+                         className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-black px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
+                       />
+                       <Input
+                         value={infoForm.lastName || ""}
+                         onChange={(e) => setInfoForm((f) => ({ ...f, lastName: e.target.value }))}
+                         placeholder="Last"
+                         className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-black px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
+                       />
+                     </div>
                   </div>
+                  
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
-                      Last Name
-                    </Label>
-                    <Input
-                      value={infoForm.lastName || ""}
-                      onChange={(e) =>
-                        setInfoForm((f) => ({ ...f, lastName: e.target.value }))
-                      }
-                      className="h-12 rounded-2xl font-bold px-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                       Email
                     </Label>
                     <Input
                       value={infoForm.email || ""}
-                      onChange={(e) =>
-                        setInfoForm((f) => ({ ...f, email: e.target.value }))
-                      }
-                      className="h-12 rounded-2xl font-bold px-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
+                      onChange={(e) => setInfoForm((f) => ({ ...f, email: e.target.value }))}
+                      className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-black px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
                     />
                   </div>
+                  
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
-                      Phone
-                    </Label>
-                    <Input
-                      value={infoForm.phone || ""}
-                      onChange={(e) =>
-                        setInfoForm((f) => ({ ...f, phone: e.target.value }))
-                      }
-                      className="h-12 rounded-2xl font-bold px-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                       Age
                     </Label>
-                    <Input
-                      type="number"
-                      value={infoForm.age ?? ""}
-                      onChange={(e) =>
-                        setInfoForm((f) => ({
-                          ...f,
-                          age: e.target.value ? parseInt(e.target.value) : null,
-                        }))
-                      }
-                      className="h-12 rounded-2xl font-bold px-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
-                    />
+                     <Input
+                       type="number"
+                       value={infoForm.age ?? ""}
+                       onChange={(e) =>
+                         setInfoForm((f) => ({
+                           ...f,
+                           age: e.target.value ? parseInt(e.target.value) : null,
+                         }))
+                       }
+                       className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-black px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
+                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
-                      Gender
-                    </Label>
-                    <Select
-                      value={infoForm.gender || "Male"}
-                      onValueChange={(v) =>
-                        setInfoForm((f) => ({ ...f, gender: v as any }))
-                      }
-                    >
-                      <SelectTrigger className="h-12 rounded-2xl font-bold px-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8]">
-                        <SelectValue placeholder="Select Gender" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700 rounded-xl">
-                        <SelectItem value="Male">Male</SelectItem>
-                        <SelectItem value="Female">Female</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
-                      Height
-                    </Label>
-                    <Input
-                      value={infoForm.height || ""}
-                      onChange={(e) =>
-                        setInfoForm((f) => ({ ...f, height: e.target.value }))
-                      }
-                      className="h-12 rounded-2xl font-bold px-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
-                      Home Studio
-                    </Label>
-                    <Select
-                      value={infoForm.homeStudioId || "none"}
-                      onValueChange={(v) =>
-                        setInfoForm((f) => ({ ...f, homeStudioId: v === "none" ? undefined : v }))
-                      }
-                    >
-                      <SelectTrigger className="h-12 rounded-2xl font-bold px-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8]">
-                        <SelectValue placeholder="Select Studio" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700 rounded-xl">
-                        <SelectItem value="none">No Home Studio Assigned</SelectItem>
-                        {studios?.map(s => (
-                          <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
-                      Weight (lbs)
-                    </Label>
-                    <Input
-                      value={infoForm.weight || ""}
-                      onChange={(e) =>
-                        setInfoForm((f) => ({ ...f, weight: e.target.value }))
-                      }
-                      className="h-12 rounded-2xl font-bold px-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
-                    />
-                  </div>
-                </div>
 
-                <div className="pt-4 border-t border-slate-200 dark:border-slate-800 dark:border-slate-700">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">Package Tier</Label>
-                      <Select
-                        value={infoForm.packageTier || "None"}
-                        onValueChange={(v: any) => setInfoForm(f => ({ ...f, packageTier: v }))}
-                      >
-                        <SelectTrigger className="h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 rounded-2xl font-bold focus-visible:ring-[#38BDF8]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700">
-                          <SelectItem value="None">None / Trial</SelectItem>
-                          <SelectItem value="6-Month">6-Month</SelectItem>
-                          <SelectItem value="12-Month">12-Month</SelectItem>
-                          <SelectItem value="18-Month">18-Month VIP</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">Sessions Remaining</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={infoForm.remainingSessions ?? ""}
-                        onChange={(e) =>
-                          setInfoForm((f) => ({ ...f, remainingSessions: parseInt(e.target.value) || 0 }))
-                        }
-                        className="h-12 rounded-2xl font-bold px-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
-                        placeholder="e.g. 12"
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Package Tier</Label>
+                    <Select
+                      value={infoForm.packageTier || "None"}
+                      onValueChange={(v: any) => setInfoForm(f => ({ ...f, packageTier: v }))}
+                    >
+                      <SelectTrigger className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-black px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100 data-[placeholder]:text-slate-400">
+                        <SelectValue placeholder="Select Tier" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold p-2">
+                        <SelectItem value="None" className="h-12 text-sm sm:text-base">None / Trial</SelectItem>
+                        <SelectItem value="6-Month" className="h-12 text-sm sm:text-base">6-Month</SelectItem>
+                        <SelectItem value="12-Month" className="h-12 text-sm sm:text-base">12-Month</SelectItem>
+                        <SelectItem value="18-Month" className="h-12 text-sm sm:text-base">18-Month VIP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                      Join Date
+                    </Label>
+                     <div className="h-14 md:h-16 flex items-center px-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-sm">
+                       <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100">
+                         {client.firstSessionDate ? new Date(client.firstSessionDate.toDate?.() || client.firstSessionDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "N/A"}
+                       </span>
+                     </div>
                   </div>
                 </div>
               </CardContent>
