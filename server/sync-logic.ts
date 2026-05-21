@@ -65,11 +65,16 @@ const normalizeName = (name: string): string => {
   return name.trim().toLowerCase().replace(/\s+/g, ' ');
 };
 
+const cleanAlphanumeric = (name: string): string => {
+  if (!name) return '';
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '');
+};
+
 const extractClientName = (summary: string, description: string) => {
   const patterns = [
     /Client:\s*([^(\r\n]+)/i,
     /\(([^)]+)\)/,
-    /^([^(:|\n]+)[:|-]/,
+    /^([^(:||\n]+)[:|\\-]/,
     /for\s+([^(\r\n]+)/i,
   ];
   const fullText = `${summary}\n${description}`;
@@ -121,10 +126,14 @@ export async function masterSync(targetTrainerId?: string, hardReset: boolean = 
     const clientMap: Record<string, string> = {};
     clientsSnap.forEach(d => {
       const data = d.data();
-      const fullName = normalizeName(`${data.firstName} ${data.lastName}`);
+      const first = data.firstName || '';
+      const last = data.lastName || '';
+      const fullName = normalizeName(`${first} ${last}`);
       clientMap[fullName] = d.id;
+      clientMap[cleanAlphanumeric(fullName)] = d.id;
       if (data.mindbody_name) {
         clientMap[normalizeName(data.mindbody_name)] = d.id;
+        clientMap[cleanAlphanumeric(data.mindbody_name)] = d.id;
       }
     });
 
@@ -190,7 +199,7 @@ export async function masterSync(targetTrainerId?: string, hardReset: boolean = 
           const summary = typeof ev.summary === 'object' ? (ev.summary as any).val : (ev.summary || '');
           const description = typeof ev.description === 'object' ? (ev.description as any).val : (ev.description || '');
           const clientName = extractClientName(summary, description);
-          const clientId = clientMap[normalizeName(clientName)] || null;
+          const clientId = clientMap[normalizeName(clientName)] || clientMap[cleanAlphanumeric(clientName)] || null;
           
           const isCancelled = 
             (ev.status && typeof ev.status === 'string' && ev.status.toUpperCase() === 'CANCELLED') ||

@@ -1,13 +1,18 @@
-
 import React, { useState, useEffect, memo } from 'react';
+import { Play, Pause } from 'lucide-react';
 
 interface ActiveSessionTimerProps {
   startTime: any;
   paused?: boolean;
+  onTogglePause?: () => void;
 }
 
-// 1. Isolate the Timer: Use React.memo so the parent doesn't re-render.
-export const ActiveSessionTimer = memo(function ActiveSessionTimer({ startTime, paused }: ActiveSessionTimerProps) {
+// Robust, Touch-Optimized Active Session Timer with Pause/Play toggles
+export const ActiveSessionTimer = memo(function ActiveSessionTimer({ 
+  startTime, 
+  paused = false, 
+  onTogglePause 
+}: ActiveSessionTimerProps) {
   const [elapsed, setElapsed] = useState<number>(0);
   const [accumulatedPauseTime, setAccumulatedPauseTime] = useState<number>(0);
   const [pauseStart, setPauseStart] = useState<number | null>(null);
@@ -52,10 +57,36 @@ export const ActiveSessionTimer = memo(function ActiveSessionTimer({ startTime, 
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="tabular-nums font-mono text-sm text-slate-400">
-        {formatTime(elapsed)}
-      </span>
+    <div className="flex items-center gap-4 bg-slate-100/90 dark:bg-slate-900/90 border-2 border-slate-200/90 dark:border-slate-800/90 px-5 py-2.5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all">
+      {onTogglePause && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onTogglePause();
+          }}
+          className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all cursor-pointer select-none active:scale-95 ${
+            paused
+              ? 'bg-[#F06C22] hover:bg-[#F06C22]/90 text-white shadow-[0_0_15px_rgba(240,108,34,0.45)]'
+              : 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200'
+          }`}
+          title={paused ? "Resume Session" : "Pause Session"}
+        >
+          {paused ? (
+            <Play className="w-5 h-5 fill-current transition-transform duration-200" />
+          ) : (
+            <Pause className="w-5 h-5 fill-current transition-transform duration-200" />
+          )}
+        </button>
+      )}
+      <div className="flex flex-col items-start leading-none gap-0.5">
+        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+          {paused ? 'PAUSED' : 'ELAPSED'}
+        </span>
+        <span className={`tabular-nums font-mono text-2xl sm:text-3xl font-black ${paused ? 'text-amber-500' : 'text-slate-800 dark:text-slate-100'}`}>
+          {formatTime(elapsed)}
+        </span>
+      </div>
     </div>
   );
 });

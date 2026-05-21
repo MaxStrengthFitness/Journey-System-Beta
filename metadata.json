@@ -2,5 +2,7 @@
   "name": "Remix: Journey System",
   "description": "This is a specialized, clinical iPad app used by Exercise Practitioners during 1-on-1 High-Intensity Training sessions.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

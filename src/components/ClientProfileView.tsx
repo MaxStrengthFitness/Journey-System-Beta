@@ -466,29 +466,33 @@ export function ClientProfileView({
   useEffect(() => {
     if (!clientId || hasQuotaError) return;
 
-    // Routines fetch (can stay as getDocs or become onSnapshot, let's keep getDocs for now or make it onSnapshot too)
-    const routinesQuery = query(
-      collection(db, "routines"),
-      where("clientId", "==", clientId),
-    );
-    const unsubRoutines = onSnapshot(routinesQuery, (snap) => {
-      const routinesData = snap.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() }) as Routine,
-      );
-      setRoutines(routinesData);
-      
-      setStagedMachineIds((prev) => {
-        const newStaged: Record<string, string[]> = { ...prev };
-        routinesData.forEach((r) => {
-          if (!prev[r.name]) {
-            newStaged[r.name] = r.machineIds;
-          }
+    const fetchRoutines = async () => {
+      try {
+        const routinesQuery = query(
+          collection(db, "routines"),
+          where("clientId", "==", clientId),
+        );
+        const snap = await getDocs(routinesQuery);
+        const routinesData = snap.docs.map(
+          (doc) => ({ id: doc.id, ...doc.data() }) as Routine,
+        );
+        setRoutines(routinesData);
+        
+        setStagedMachineIds((prev) => {
+          const newStaged: Record<string, string[]> = { ...prev };
+          routinesData.forEach((r) => {
+            if (!prev[r.name]) {
+              newStaged[r.name] = r.machineIds;
+            }
+          });
+          return newStaged;
         });
-        return newStaged;
-      });
-    }, (error) => handleFirestoreError(error, OperationType.GET, "routines"));
+      } catch (error: any) {
+        handleFirestoreError(error, OperationType.GET, "routines");
+      }
+    };
 
-    return () => unsubRoutines();
+    fetchRoutines();
   }, [clientId, hasQuotaError]);
 
   const fetchLogsForSessions = async (sessionIds: string[]) => {
@@ -523,55 +527,58 @@ export function ClientProfileView({
       return;
     }
 
-    // 2. Firebase Query Limits & Pagination
-    // Always restrict the initial query to 10 to save massive memory/bandwidth.
-    const sessionsQuery = query(
-      collection(db, "sessions"),
-      where("clientId", "==", clientId),
-      orderBy("date", "desc"),
-      limit(10) // STRICT LIMIT 10
-    );
+    const fetchInitialSessions = async () => {
+      try {
+        // 2. Firebase Query Limits & Pagination
+        // Always restrict the initial query to 10 to save massive memory/bandwidth.
+        const sessionsQuery = query(
+          collection(db, "sessions"),
+          where("clientId", "==", clientId),
+          orderBy("date", "desc"),
+          limit(10) // STRICT LIMIT 10
+        );
 
-    const unsubSessions = onSnapshot(sessionsQuery, async (sessionSnap) => {
-      const docs = sessionSnap.docs;
-      
-      if (!docs.length) {
-        setSessions([]);
-        setAllLogs([]);
-        setHasMoreSessions(false);
-        return;
+        const sessionSnap = await getDocs(sessionsQuery);
+        const docs = sessionSnap.docs;
+        
+        if (!docs.length) {
+          setSessions([]);
+          setAllLogs([]);
+          setHasMoreSessions(false);
+          return;
+        }
+
+        setLastVisibleSession(docs[docs.length - 1]);
+        setHasMoreSessions(docs.length === 10);
+
+        const liveSessionsData = docs.map(
+          (doc) => ({ id: doc.id, ...doc.data() }) as WorkoutSession,
+        );
+
+        // Merge gracefully to not erase older paginated history if coach loaded more
+        setSessions((prev: WorkoutSession[]) => {
+          const merged = new Map(prev.map(s => [s.id, s]));
+          liveSessionsData.forEach(s => merged.set(s.id, s));
+          const finalArr = Array.from(merged.values());
+          finalArr.sort((a, b) => parseSessionDate(b.date) - parseSessionDate(a.date));
+          return finalArr;
+        });
+
+        const sessionIds = liveSessionsData.map(s => s.id!).filter(Boolean);
+        const newLogs = await fetchLogsForSessions(sessionIds);
+        
+        setAllLogs((prev) => {
+          const merged = new Map(prev.map(l => [l.id, l]));
+          newLogs.forEach(l => merged.set(l.id, l));
+          return Array.from(merged.values());
+        });
+
+      } catch (error: any) {
+        handleFirestoreError(error, OperationType.GET, "sessions");
       }
+    };
 
-      setLastVisibleSession(docs[docs.length - 1]);
-      setHasMoreSessions(docs.length === 10);
-
-      const liveSessionsData = docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() }) as WorkoutSession,
-      );
-
-      // Merge gracefully to not erase older paginated history if coach loaded more
-      setSessions((prev: WorkoutSession[]) => {
-        const merged = new Map(prev.map(s => [s.id, s]));
-        liveSessionsData.forEach(s => merged.set(s.id, s));
-        const finalArr = Array.from(merged.values());
-        finalArr.sort((a, b) => parseSessionDate(b.date) - parseSessionDate(a.date));
-        return finalArr;
-      });
-
-      const sessionIds = liveSessionsData.map(s => s.id!).filter(Boolean);
-      const newLogs = await fetchLogsForSessions(sessionIds);
-      
-      setAllLogs((prev) => {
-        const merged = new Map(prev.map(l => [l.id, l]));
-        newLogs.forEach(l => merged.set(l.id, l));
-        return Array.from(merged.values());
-      });
-
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, "sessions");
-    });
-
-    return () => unsubSessions();
+    fetchInitialSessions();
   }, [clientId, activeTab, hasQuotaError]);
 
   const handleLoadMoreHistory = async () => {
@@ -669,49 +676,50 @@ export function ClientProfileView({
     if (!clientId || hasQuotaError || !user) return;
     if (activeTab !== "statistics") return;
 
-    const q = query(
-      collection(db, "progressReports"),
-      where("clientId", "==", clientId),
-      orderBy("createdAt", "desc"),
-      limit(50),
-    );
-    
-    const unsubscribe = onSnapshot(q, (snap) => {
-      setProgressReports(
-        snap.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() }) as ProgressReport,
-        ),
-      );
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, "progressReports");
-    });
+    const fetchReports = async () => {
+      try {
+        const q = query(
+          collection(db, "progressReports"),
+          where("clientId", "==", clientId),
+          orderBy("createdAt", "desc"),
+          limit(50),
+        );
+        const snap = await getDocs(q);
+        setProgressReports(
+          snap.docs.map(
+            (doc) => ({ id: doc.id, ...doc.data() }) as ProgressReport,
+          ),
+        );
+      } catch (error: any) {
+        handleFirestoreError(error, OperationType.GET, "progressReports");
+      }
+    };
 
-    return () => unsubscribe();
+    fetchReports();
   }, [clientId, activeTab, user?.uid]);
 
   useEffect(() => {
     if (!clientId || !user) return;
-    const q = query(
-      collection(db, "schedules"),
-      where("clientId", "==", clientId),
-      where("startTime", ">=", Timestamp.now()),
-      orderBy("startTime", "asc"),
-      limit(2),
-    );
-    const unsubscribe = onSnapshot(
-      q,
-      (snap) => {
+    const fetchSchedules = async () => {
+      try {
+        const q = query(
+          collection(db, "schedules"),
+          where("clientId", "==", clientId),
+          where("startTime", ">=", Timestamp.now()),
+          orderBy("startTime", "asc"),
+          limit(2),
+        );
+        const snap = await getDocs(q);
         setScheduledSessions(
           snap.docs.map(
             (doc) => ({ id: doc.id, ...doc.data() }) as ScheduleEntry,
           ),
         );
-      },
-      (error) => {
+      } catch (error: any) {
         handleFirestoreError(error, OperationType.GET, "schedules");
-      },
-    );
-    return () => unsubscribe();
+      }
+    };
+    fetchSchedules();
   }, [clientId, user?.uid]);
 
   useEffect(() => {
@@ -1126,7 +1134,7 @@ export function ClientProfileView({
                 { val: "equipment", label: "Equipment" },
                 { val: "routines", label: "Routines" },
                 { val: "focus", label: "Focus" },
-                { val: "details", label: "Client Information" },
+                { val: "details", label: "Info" },
                 { val: "history", label: "History" },
                 { val: "statistics", label: "Statistics" },
               ].map((tab) => (
@@ -1151,6 +1159,7 @@ export function ClientProfileView({
              clientBodyWeight={parseInt(client?.weight || '150', 10)} 
              allLogs={allLogs} 
              activeStudioId={activeStudioId}
+             authTrainer={authTrainer}
            />
         </TabsContent>
 

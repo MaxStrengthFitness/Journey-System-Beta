@@ -53,6 +53,7 @@
     "vite": "^6.2.0"
   },
   "overrides": {
-    "fetch-blob": "^4.0.0"
+    "fetch-blob": "^4.0.0",
+    "node-domexception": "file:./node-domexception-clean"
   }
 }

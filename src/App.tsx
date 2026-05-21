@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { migrateClientMachineMetrics } from './lib/migration-utils';
 import { 
   Users, 
@@ -48,6 +48,7 @@ import {
   RotateCcw,
   Mic,
   Check,
+  Loader2,
   X,
   Settings2,
   Database,
@@ -94,6 +95,7 @@ import { OperationType, handleFirestoreError } from './lib/firestore-errors';
 // Removing duplicate cn import
 import { hashPin } from './lib/auth-utils';
 import { parseSessionDate, calculateExerciseVolume, safeToDate, getMillis, isSessionValid } from './lib/utils';
+import { normalizeName, cleanAlphanumeric, isFuzzyNameMatch } from './lib/sync-utils';
 import { getLatestTargetWeight } from './lib/historical-utils';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { generateMockClientWithHistory } from './lib/mockDataGenerator';
@@ -463,6 +465,7 @@ function AppContent({
     setIsChangingStudio,
     isAdmin
   } = useActiveStudio();
+  const searchedScheduleNamesRef = useRef<Map<string, string | null>>(new Map());
   const [isSyncing, setIsSyncing] = useState(false);
   const [currentView, setCurrentView] = useState<View>('clients');
   const [newClientOnboardingName, setNewClientOnboardingName] = useState<string | null>(null);
@@ -571,12 +574,136 @@ function AppContent({
         return d >= startOfToday && d <= endOfToday;
       });
 
+      // Background auto-matching lookup check for ALL unlinked schedules (historic and future) to ensure correct profile associations
+      const unlinkedSchedules = schedulesData.filter(s => !s.clientId && s.clientName && !s.clientName.toLowerCase().includes('unavailab'));
+      
+      // Group unlinked schedules by trimmed client name to merge identical clients and optimize database reads
+      const unlinkedGroups: Record<string, typeof unlinkedSchedules> = {};
+      unlinkedSchedules.forEach(s => {
+        const nameKey = s.clientName.trim();
+        if (!nameKey) return;
+        if (!unlinkedGroups[nameKey]) {
+          unlinkedGroups[nameKey] = [];
+        }
+        unlinkedGroups[nameKey].push(s);
+      });
+
+      Object.entries(unlinkedGroups).forEach(async ([nameKey, groupSchedules]) => {
+        // Check if we have already searched this name in this view session
+        if (searchedScheduleNamesRef.current.has(nameKey)) {
+          // If we found a match previously, apply it to all schedules in this group
+          const cachedClientId = searchedScheduleNamesRef.current.get(nameKey);
+          if (cachedClientId) {
+            for (const s of groupSchedules) {
+              await updateDoc(doc(db, 'schedules', s.id), {
+                clientId: cachedClientId
+              });
+            }
+          }
+          return;
+        }
+
+        // Initialize with null in case we find nothing, so we don't spam queries
+        searchedScheduleNamesRef.current.set(nameKey, null);
+
+        try {
+          console.log(`Checking database to auto-link all schedules for "${nameKey}"...`);
+          let matchedClientDoc: any = null;
+
+          // Build case-insensitive query variants for mindbody_name
+          const nameVariants = Array.from(new Set([
+            nameKey,
+            nameKey.toLowerCase(),
+            nameKey.toUpperCase(),
+            nameKey.split(/\s+/).map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ')
+          ]));
+
+          // 1. Direct query of mindbody_name using case-insensitive variants
+          const mbSnap = await getDocs(query(
+            collection(db, 'clients'),
+            where('mindbody_name', 'in', nameVariants)
+          ));
+
+          if (!mbSnap.empty) {
+            matchedClientDoc = { id: mbSnap.docs[0].id, ...mbSnap.docs[0].data() };
+          } else {
+            // 2. Parse first & last name and query case-insensitively using first name variants
+            const parts = nameKey.split(/\s+/);
+            if (parts.length >= 1) {
+              const first = parts[0];
+              const firstVariants = Array.from(new Set([
+                first,
+                first.toLowerCase(),
+                first.toUpperCase(),
+                first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
+              ]));
+
+              // Query first name variants to capture different casings, then filter by fuzzy matching in memory
+              const flSnap = await getDocs(query(
+                collection(db, 'clients'),
+                where('firstName', 'in', firstVariants)
+              ));
+
+              const matchingDoc = flSnap.docs.find(docData => {
+                const data = docData.data();
+                return isFuzzyNameMatch(nameKey, data.firstName || '', data.lastName || '', data.mindbody_name);
+              });
+
+              if (matchingDoc) {
+                matchedClientDoc = { id: matchingDoc.id, ...matchingDoc.data() };
+              }
+            }
+          }
+
+          if (matchedClientDoc) {
+            console.log(`Successfully matched "${nameKey}" to client ID: ${matchedClientDoc.id}. Auto-linking...`);
+            
+            // Cache the matched client ID
+            searchedScheduleNamesRef.current.set(nameKey, matchedClientDoc.id);
+
+            // Update all schedules in this group
+            for (const s of groupSchedules) {
+              await updateDoc(doc(db, 'schedules', s.id), {
+                clientId: matchedClientDoc.id
+              });
+            }
+
+            // If client has no mindbody_name stored, store it to prevent future heavy queries
+            if (!matchedClientDoc.mindbody_name) {
+              await updateDoc(doc(db, 'clients', matchedClientDoc.id), {
+                mindbody_name: nameKey
+              });
+            }
+          }
+        } catch (err) {
+          console.error(`Error background auto-linking schedule for "${nameKey}":`, err);
+        }
+      });
+
       const clientIds = Array.from(new Set(todaySchedules.map(s => s.clientId).filter(Boolean))) as string[];
       if (clientIds.length > 0) {
         const chunks = [];
         for (let i = 0; i < clientIds.length; i += 10) chunks.push(clientIds.slice(i, i + 10));
         const snapshots = await Promise.all(chunks.map(chunk => getDocs(query(collection(db, 'clients'), where('__name__', 'in', chunk)))));
-        setLiveRosterClients(snapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client))));
+        const fetchedClients = snapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
+        setLiveRosterClients(fetchedClients);
+
+        // Self-heal: check if any of today's schedules reference a clientId that does not exist in the database,
+        // and reset it to null so the fuzzy auto-linker can resolve it to the correct profile.
+        const validClientIdsSet = new Set(fetchedClients.map(c => c.id));
+        const invalidSchedules = todaySchedules.filter(s => s.clientId && !validClientIdsSet.has(s.clientId));
+        if (invalidSchedules.length > 0) {
+          for (const s of invalidSchedules) {
+            console.log(`Self-healing schedule ${s.id}: resetting invalid/deleted clientId "${s.clientId}" to null`);
+            try {
+              await updateDoc(doc(db, 'schedules', s.id), {
+                clientId: null
+              });
+            } catch (err) {
+              console.error(`Failed to self-heal schedule ${s.id}:`, err);
+            }
+          }
+        }
       } else {
         setLiveRosterClients([]);
       }
@@ -632,6 +759,29 @@ function AppContent({
   const [isReorderingTrainers, setIsReorderingTrainers] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [isIntroSession, setIsIntroSession] = useState(false);
+  const [isRefreshingSchedule, setIsRefreshingSchedule] = useState(false);
+
+  const handleRefreshSchedule = async () => {
+    setIsRefreshingSchedule(true);
+    try {
+      const resp = await fetch('/api/trigger-master-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hardReset: false })
+      });
+      if (!resp.ok) {
+        const errData = await resp.json();
+        throw new Error(errData.error || 'Server error during refresh');
+      }
+      const data = await resp.json();
+      console.log("Schedule refresh result:", data);
+    } catch (error: any) {
+      console.error("Failed to refresh schedule:", error);
+      alert("Failed to refresh schedule: " + error.message);
+    } finally {
+      setIsRefreshingSchedule(false);
+    }
+  };
 
   const setView = (view: View, data?: { isIntroSession?: boolean }) => {
     if (data?.isIntroSession) {
@@ -1471,6 +1621,8 @@ function AppContent({
                   setSelectedProfileTrainerId(id);
                   setView('trainer-profile');
                 }}
+                handleRefreshSchedule={handleRefreshSchedule}
+                isRefreshingSchedule={isRefreshingSchedule}
               />
             )}
             {currentView === 'machine-knowledge' && (
@@ -2873,7 +3025,9 @@ function ClientsView({
   startEdit,
   updateSessions,
   setSelectedSessionId,
-  onSelectTrainer
+  onSelectTrainer,
+  handleRefreshSchedule,
+  isRefreshingSchedule
 }: { 
   clients: Client[], 
   trainers: Trainer[],
@@ -2893,9 +3047,14 @@ function ClientsView({
   startEdit: (c: Client) => void,
   updateSessions: (id: string, current: number, delta: number) => void,
   setSelectedSessionId: (id: string | null) => void,
-  onSelectTrainer?: (id: string) => void
+  onSelectTrainer?: (id: string) => void,
+  handleRefreshSchedule: () => Promise<void>,
+  isRefreshingSchedule: boolean
 }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [dbSearchResults, setDbSearchResults] = useState<Client[]>([]);
+  const [isSearchingDb, setIsSearchingDb] = useState(false);
+
   const [trainerFilter, setTrainerFilter] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'morning' | 'afternoon'>(() => {
     return new Date().getHours() >= 12 ? 'afternoon' : 'morning';
@@ -2904,6 +3063,8 @@ function ClientsView({
   const [linkingSession, setLinkingSession] = useState<any | null>(null);
   const [isLinking, setIsLinking] = useState(false);
   const [searchTermLink, setSearchTermLink] = useState('');
+  const [dbSearchResultsLink, setDbSearchResultsLink] = useState<Client[]>([]);
+  const [isSearchingDbLink, setIsSearchingDbLink] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -2911,9 +3072,110 @@ function ClientsView({
     return () => clearInterval(timer);
   }, []);
 
+  // Sync / search database in real-time when trainer searches on main screen
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setDbSearchResults([]);
+      return;
+    }
+    const fetchClients = async () => {
+      setIsSearchingDb(true);
+      try {
+        const term = searchTerm.trim().toLowerCase();
+        const termCapitalized = term.charAt(0).toUpperCase() + term.slice(1);
+        const clientsRef = collection(db, 'clients');
+        
+        let q = query(
+          clientsRef,
+          where('lastName', '>=', termCapitalized),
+          where('lastName', '<=', termCapitalized + '\uf8ff'),
+          limit(20)
+        );
+        let snap = await getDocs(q);
+        let fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Client));
+        
+        if (fetched.length === 0) {
+          const q2 = query(
+            clientsRef,
+            where('firstName', '>=', termCapitalized),
+            where('firstName', '<=', termCapitalized + '\uf8ff'),
+            limit(20)
+          );
+          const snap2 = await getDocs(q2);
+          fetched = snap2.docs.map(d => ({ id: d.id, ...d.data() } as Client));
+        }
+        
+        setDbSearchResults(fetched);
+      } catch (err) {
+        console.error("Error searching matching clients in main search:", err);
+      } finally {
+        setIsSearchingDb(false);
+      }
+    };
+    
+    const delayDebounceFn = setTimeout(() => {
+      fetchClients();
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
+
+  // Sync / search database in real-time when trainer searches on Link Client Dialog
+  useEffect(() => {
+    if (!searchTermLink.trim()) {
+      setDbSearchResultsLink([]);
+      return;
+    }
+    const fetchClientsLink = async () => {
+      setIsSearchingDbLink(true);
+      try {
+        const term = searchTermLink.trim().toLowerCase();
+        const termCapitalized = term.charAt(0).toUpperCase() + term.slice(1);
+        const clientsRef = collection(db, 'clients');
+        
+        let q = query(
+          clientsRef,
+          where('lastName', '>=', termCapitalized),
+          where('lastName', '<=', termCapitalized + '\uf8ff'),
+          limit(10)
+        );
+        let snap = await getDocs(q);
+        let fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Client));
+        
+        if (fetched.length === 0) {
+          const q2 = query(
+            clientsRef,
+            where('firstName', '>=', termCapitalized),
+            where('firstName', '<=', termCapitalized + '\uf8ff'),
+            limit(10)
+          );
+          const snap2 = await getDocs(q2);
+          fetched = snap2.docs.map(d => ({ id: d.id, ...d.data() } as Client));
+        }
+        
+        setDbSearchResultsLink(fetched);
+      } catch (err) {
+        console.error("Error searching clients in link dialog:", err);
+      } finally {
+        setIsSearchingDbLink(false);
+      }
+    };
+    
+    const delayDebounceFn = setTimeout(() => {
+      fetchClientsLink();
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTermLink]);
+
   const filteredClients = clients.filter(c => 
     `${c.firstName} ${c.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Merge local filtered clients of today and dynamic DB search results uniquely by client ID
+  const mergedSearchClients = Array.from(new Map(
+    [...filteredClients, ...dbSearchResults].map(c => [c.id, c])
+  ).values());
 
   const now = new Date();
   
@@ -3041,12 +3303,10 @@ function ClientsView({
 
   const findClientForSession = (session: any) => {
     if (!session) return null;
-    const sName = (session.clientName || '').trim().toLowerCase();
+    const sName = (session.clientName || '').trim();
     return clients.find(c => 
       c.id === session.clientId || 
-      (c.mindbody_name && c.mindbody_name.trim().toLowerCase() === sName) ||
-      `${c.firstName} ${c.lastName}`.trim().toLowerCase() === sName ||
-      `${c.firstName} ${c.lastName}`.trim().toLowerCase().replace(/[^a-z0-9]/g, '') === sName.replace(/[^a-z0-9]/g, '')
+      isFuzzyNameMatch(sName, c.firstName || '', c.lastName || '', c.mindbody_name)
     );
   };
 
@@ -3390,43 +3650,56 @@ function ClientsView({
                   })}
                 </div>
 
-                {/* Shift Selector */}
-                <div className="relative flex p-1.5 bg-slate-800/80 rounded-2xl border border-slate-700 shadow-inner self-start xl:self-center w-[320px] h-16 xl:h-20">
-                  <div 
-                    className={cn(
-                      "absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white rounded-[14px] shadow-sm transition-transform duration-300 ease-out z-0",
-                      activeTab === 'morning' ? "translate-x-0" : "translate-x-[100%]"
-                    )}
-                  />
-                  <button 
-                    onClick={() => setActiveTab('morning')}
-                    className={cn(
-                      "relative flex-1 rounded-[14px] transition-colors z-10 flex flex-col items-center justify-center gap-1",
-                      activeTab === 'morning' 
-                        ? 'text-slate-900' 
-                        : 'text-slate-400 hover:text-slate-300'
-                    )}
+                {/* Right Actions: Shift Selector & Refresh Button */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 self-start xl:self-center w-full sm:w-auto">
+                  {/* Shift Selector */}
+                  <div className="relative flex p-1.5 bg-slate-800/80 rounded-2xl border border-slate-700 shadow-inner w-[320px] h-16 xl:h-20 shrink-0">
+                    <div 
+                      className={cn(
+                        "absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white rounded-[14px] shadow-sm transition-transform duration-300 ease-out z-0",
+                        activeTab === 'morning' ? "translate-x-0" : "translate-x-[100%]"
+                      )}
+                    />
+                    <button 
+                      onClick={() => setActiveTab('morning')}
+                      className={cn(
+                        "relative flex-1 rounded-[14px] transition-colors z-10 flex flex-col items-center justify-center gap-1",
+                        activeTab === 'morning' 
+                          ? 'text-slate-900' 
+                          : 'text-slate-400 hover:text-slate-300'
+                      )}
+                    >
+                      <span className="text-[13px] xl:text-[14px] font-black uppercase tracking-widest leading-none mt-0.5 xl:mt-1">AM Shift</span>
+                      <span className={cn(
+                        "text-[9px] xl:text-[10px] font-bold uppercase tracking-widest leading-none",
+                        activeTab === 'morning' ? "text-[#0A2E46]" : "opacity-60"
+                      )}>{amSessionsCount} Sessions</span>
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('afternoon')}
+                      className={cn(
+                        "relative flex-1 rounded-[14px] transition-colors z-10 flex flex-col items-center justify-center gap-1",
+                        activeTab === 'afternoon' 
+                          ? 'text-slate-900' 
+                          : 'text-slate-400 hover:text-slate-300'
+                      )}
+                    >
+                      <span className="text-[13px] xl:text-[14px] font-black uppercase tracking-widest leading-none mt-0.5 xl:mt-1">PM Shift</span>
+                      <span className={cn(
+                        "text-[9px] xl:text-[10px] font-bold uppercase tracking-widest leading-none",
+                        activeTab === 'afternoon' ? "text-orange-600" : "opacity-60"
+                      )}>{pmSessionsCount} Sessions</span>
+                    </button>
+                  </div>
+
+                  {/* Refresh Schedule Button */}
+                  <button
+                    onClick={handleRefreshSchedule}
+                    disabled={isRefreshingSchedule}
+                    className="relative px-6 rounded-2xl bg-[#F06C22] border-2 border-[#F06C22] hover:bg-[#F06C22]/90 hover:border-[#F06C22] text-white disabled:opacity-55 transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(240,108,34,0.35)] font-black uppercase tracking-widest text-[11px] sm:text-[12px] h-16 xl:h-20 w-fit cursor-pointer select-none"
                   >
-                    <span className="text-[13px] xl:text-[14px] font-black uppercase tracking-widest leading-none mt-0.5 xl:mt-1">AM Shift</span>
-                    <span className={cn(
-                      "text-[9px] xl:text-[10px] font-bold uppercase tracking-widest leading-none",
-                      activeTab === 'morning' ? "text-[#0A2E46]" : "opacity-60"
-                    )}>{amSessionsCount} Sessions</span>
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('afternoon')}
-                    className={cn(
-                      "relative flex-1 rounded-[14px] transition-colors z-10 flex flex-col items-center justify-center gap-1",
-                      activeTab === 'afternoon' 
-                        ? 'text-slate-900' 
-                        : 'text-slate-400 hover:text-slate-300'
-                    )}
-                  >
-                    <span className="text-[13px] xl:text-[14px] font-black uppercase tracking-widest leading-none mt-0.5 xl:mt-1">PM Shift</span>
-                    <span className={cn(
-                      "text-[9px] xl:text-[10px] font-bold uppercase tracking-widest leading-none",
-                      activeTab === 'afternoon' ? "text-orange-600" : "opacity-60"
-                    )}>{pmSessionsCount} Sessions</span>
+                    <RefreshCw className={cn("w-4 h-4", isRefreshingSchedule && "animate-spin")} />
+                    {isRefreshingSchedule ? 'Syncing...' : 'Refresh Schedule'}
                   </button>
                 </div>
               </div>
@@ -3519,12 +3792,14 @@ function ClientsView({
                                 }
 
                                 const color = TRAINER_COLORS[tIdx % TRAINER_COLORS.length];
-                                const isCompleted = session && (session.status === 'Completed' || getMillis(session.startTime) < now.getTime());
-                                const isUnavailable = session?.clientName?.toLowerCase().includes('unavailab');
                                 const clientObj = session ? findClientForSession(session) : null;
                                 const workoutSession = clientObj ? sessions.find(s => s.clientId === clientObj.id && new Date(s.createdAt?.toDate?.() || s.date).toDateString() === new Date().toDateString()) : null;
+                                const isInSession = workoutSession?.status === "In-Progress";
+                                const isCompleted = session && !isInSession && (session.status === 'Completed' || getMillis(session.startTime) < now.getTime());
+                                const isUnavailable = session?.clientName?.toLowerCase().includes('unavailab');
                                 const isAlreadyCompleted = workoutSession?.status === "Completed";
                                 const sessionNumber = clientObj ? (clientObj.sessionCount || 0) + (isAlreadyCompleted ? 0 : 1) : 1;
+                                const isMilestone = sessionNumber === 1 || sessionNumber % 25 === 0;
                                 const hasAlert = clientObj && (
                                   (clientObj.clinicalProfile && clientObj.clinicalProfile.length > 0) ||
                                   !!clientObj.clinicalNotes ||
@@ -3565,7 +3840,13 @@ function ClientsView({
                                             ? "bg-[repeating-linear-gradient(45deg,#f8fafc,#f8fafc_10px,#f1f5f9_10px,#f1f5f9_20px)] dark:bg-[repeating-linear-gradient(45deg,#0f172a,#0f172a_10px,#1e293b_10px,#1e293b_20px)] border-2 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-90"
                                             : isCompleted 
                                               ? 'opacity-60 grayscale bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700/80 cursor-pointer' 
-                                              : "bg-white dark:bg-slate-800 border-[1.5px] border-slate-300 dark:border-slate-600 cursor-pointer hover:border-[#38BDF8] hover:shadow-md",
+                                              : isInSession
+                                                ? isMilestone
+                                                  ? "bg-[#F06C22] border-2 border-[#F06C22] shadow-[0_0_15px_rgba(240,108,34,0.65)] cursor-pointer hover:shadow-[0_0_20px_rgba(240,108,34,0.8)] text-white"
+                                                  : "bg-[#38BDF8] border-2 border-[#38BDF8] shadow-[0_0_12px_rgba(56,189,248,0.5)] cursor-pointer hover:shadow-[0_0_16px_rgba(56,189,248,0.7)] text-slate-950"
+                                                : isMilestone
+                                                   ? "bg-white dark:bg-slate-800 border-2 border-[#F06C22]/85 shadow-[0_0_10px_rgba(240,108,34,0.4)] dark:shadow-[0_0_12px_rgba(240,108,34,0.55)] cursor-pointer hover:border-[#F06C22] hover:shadow-[0_0_16px_rgba(240,108,34,0.7)]"
+                                                   : "bg-white dark:bg-slate-800 border-2 border-[#38BDF8]/85 shadow-[0_0_8px_rgba(56,189,248,0.3)] dark:shadow-[0_0_10px_rgba(56,189,248,0.45)] cursor-pointer hover:border-[#38BDF8] hover:shadow-[0_0_14px_rgba(56,189,248,0.6)]",
                                           hasAlert && !isCompleted && !isUnavailable ? "border-l-4 border-l-red-500" : ""
                                         )}
                                       >
@@ -3575,7 +3856,11 @@ function ClientsView({
                                               <span className={cn(
                                                 "leading-tight truncate",
                                                 "text-sm font-bold",
-                                                isUnavailable ? "text-slate-500 italic uppercase tracking-widest text-[10px]" : "text-slate-900 dark:text-slate-50"
+                                                isUnavailable 
+                                                  ? "text-slate-500 italic uppercase tracking-widest text-[10px]" 
+                                                  : isInSession
+                                                    ? isMilestone ? "text-white font-black" : "text-slate-950 font-black"
+                                                    : "text-slate-900 dark:text-slate-50"
                                               )}>
                                                 {isUnavailable ? 'Unavailable' : formattedClientName}
                                               </span>
@@ -3589,9 +3874,17 @@ function ClientsView({
                                               <div className="w-full flex items-end justify-end mt-auto pt-1 relative z-20">
                                                 <span className={cn(
                                                   "inline-flex items-center text-[11px] sm:text-[12px] font-black leading-none px-1.5 py-0.5 rounded-md border",
-                                                  isCompleted ? "text-slate-500/50 border-slate-200/50" : "text-[#38BDF8] bg-[#38BDF8]/10 border-[#38BDF8]/20"
+                                                  isCompleted 
+                                                    ? "text-slate-500/50 border-slate-200/50 bg-slate-100/50 dark:bg-slate-800/50" 
+                                                    : isInSession
+                                                      ? isMilestone 
+                                                        ? "text-white bg-white/20 border-white/30 font-mono shadow-[0_0_5px_rgba(255,255,255,0.25)]" 
+                                                        : "text-slate-950 bg-black/10 border-black/20 font-mono"
+                                                      : isMilestone 
+                                                        ? "text-[#F06C22] bg-[#F06C22]/10 border-[#F06C22]/30 shadow-[0_0_5px_rgba(240,108,34,0.15)] font-mono" 
+                                                        : "text-[#38BDF8] bg-[#38BDF8]/10 border-[#38BDF8]/20"
                                                 )}>
-                                                  {sessionNumber} / {(clientObj?.packageTier === "18-Month" ? 144 : clientObj?.packageTier === "12-Month" ? 96 : clientObj?.packageTier === "6-Month" ? 48 : clientObj?.remainingSessions ? (clientObj.remainingSessions + sessionNumber - 1) : 12)}
+                                                  {sessionNumber}
                                                 </span>
                                               </div>
                                           )}
@@ -3669,11 +3962,15 @@ function ClientsView({
         ) : (
           <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 p-6">
             <div className="flex items-center gap-3 mb-8">
-              <Search className="w-6 h-6 text-sky-500" />
-              <h3 className="text-xl font-black uppercase tracking-widest text-slate-900 dark:text-white">Client Directory <span className="text-slate-500 dark:text-slate-400 ml-2">({filteredClients.length})</span></h3>
+              {isSearchingDb ? (
+                <Loader2 className="w-6 h-6 text-sky-500 animate-spin" />
+              ) : (
+                <Search className="w-6 h-6 text-sky-500" />
+              )}
+              <h3 className="text-xl font-black uppercase tracking-widest text-slate-900 dark:text-white">Client Directory <span className="text-slate-500 dark:text-slate-400 ml-2">({mergedSearchClients.length})</span></h3>
             </div>
             <div className="space-y-4 max-w-5xl">
-              {filteredClients.map((client) => {
+              {mergedSearchClients.map((client) => {
               const { next, last } = getClientSessions(client);
               const clientName = `${client.firstName} ${client.lastName}`;
               
@@ -3698,11 +3995,11 @@ function ClientsView({
                             )}
                           </div>
                           <div className="flex gap-4 text-[10px] font-bold text-muted-foreground uppercase">
-                            <span>{client.height}</span>
-                            <span>•</span>
-                            <span>{client.weight || '--'} LBS</span>
-                            <span>•</span>
-                            <span className="text-primary">{client.remainingSessions} SESSIONS</span>
+                             <span>{client.height}</span>
+                             <span>•</span>
+                             <span>{client.weight || '--'} LBS</span>
+                             <span>•</span>
+                             <span className="text-primary">{client.remainingSessions} SESSIONS</span>
                           </div>
                         </div>
 
@@ -3766,7 +4063,7 @@ function ClientsView({
                 </motion.div>
               );
             })}
-            {filteredClients.length === 0 && (
+            {mergedSearchClients.length === 0 && !isSearchingDb && (
               <div className="py-20 text-center border-2 border-dashed rounded-3xl bg-muted/10 opacity-50">
                 <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-xs font-black uppercase">No client matches "{searchTerm}"</p>
@@ -3825,7 +4122,11 @@ function ClientsView({
 
             <div className="space-y-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                {isSearchingDbLink ? (
+                  <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sky-500 animate-spin" />
+                ) : (
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                )}
                 <Input 
                   placeholder="Search existing clients..." 
                   className="pl-10 h-12 rounded-xl border-2"
@@ -3834,10 +4135,13 @@ function ClientsView({
                 />
               </div>
               <div className="max-h-[200px] overflow-y-auto space-y-1 pr-2 custom-scrollbar">
-                {clients
-                  .filter(c => `${c.firstName} ${c.lastName}`.toLowerCase().includes(searchTermLink.toLowerCase()))
-                  .slice(0, 10)
-                  .map(client => (
+                {(() => {
+                  const filteredLocal = clients.filter(c => `${c.firstName} ${c.lastName}`.toLowerCase().includes(searchTermLink.toLowerCase()));
+                  const mergedLink = Array.from(new Map(
+                    [...filteredLocal, ...dbSearchResultsLink].map(c => [c.id, c])
+                  ).values());
+
+                  return mergedLink.map(client => (
                     <Button
                       key={client.id}
                       variant="ghost"
@@ -3846,6 +4150,10 @@ function ClientsView({
                         try {
                           await updateDoc(doc(db, 'clients', client.id!), {
                             mindbody_name: linkingSession.clientName
+                          });
+                          // Also immediately link the current schedule in Firestore
+                          await updateDoc(doc(db, 'schedules', linkingSession.id), {
+                            clientId: client.id!
                           });
                           setIsLinking(false);
                           setSearchTermLink('');
@@ -3856,8 +4164,9 @@ function ClientsView({
                     >
                       {client.firstName} {client.lastName}
                     </Button>
-                  ))}
-                {clients.length > 0 && clients.filter(c => `${c.firstName} ${c.lastName}`.toLowerCase().includes(searchTermLink.toLowerCase())).length === 0 && (
+                  ));
+                })()}
+                {clients.length > 0 && clients.filter(c => `${c.firstName} ${c.lastName}`.toLowerCase().includes(searchTermLink.toLowerCase())).length === 0 && dbSearchResultsLink.length === 0 && !isSearchingDbLink && (
                   <p className="text-[10px] text-center py-4 text-muted-foreground italic font-medium">No clients match your search</p>
                 )}
               </div>
@@ -6386,10 +6695,19 @@ function WorkoutTrackerView({
     : null;
   const needsRest = daysSinceLastSession !== null && daysSinceLastSession < 3;
 
+  const hasActiveHeader = !!(selectedClient || currentSession);
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[calc(100vh-80px)] flex flex-col gap-1 overflow-hidden">
+    <motion.div 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      className={cn(
+        "h-[calc(100vh-80px)] flex flex-col gap-1 overflow-hidden relative",
+        hasActiveHeader ? "pt-[112px]" : ""
+      )}
+    >
       {isIntroSession && (
-          <div className="bg-orange-500 dark:bg-orange-600 p-3 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-orange-500/20 border border-white/20 animate-pulse mt-2 mx-4">
+          <div className="bg-orange-500 dark:bg-orange-600 p-3 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-orange-500/20 border border-white/20 animate-pulse mt-2 mx-4 relative z-40">
             <Sparkles className="w-5 h-5 text-slate-900 dark:text-white" />
             <span className="text-slate-900 dark:text-white font-black uppercase italic tracking-[0.15em] text-xs">
               NEW CLIENT INTRODUCTORY SESSION: CONVERSATIONAL BASELINE
@@ -6397,40 +6715,35 @@ function WorkoutTrackerView({
             <Sparkles className="w-5 h-5 text-slate-900 dark:text-white" />
           </div>
       )}
-      {/* Persistent Active Header - Minimalist Refactor */}
+      {/* Persistent Active Header - Refactored as Sticky Fixed */}
       {(selectedClient || currentSession) && (
-        <div className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between sticky top-0 z-40 shadow-sm shrink-0">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between h-[100px] shadow-md transition-all">
           {/* Left: Client & Trainer Identity */}
-          <div className="flex flex-col">
-            <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+          <div className="flex flex-col min-w-0 max-w-[200px] sm:max-w-xs">
+            <h3 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
               {selectedClient ? `${selectedClient.firstName} ${selectedClient.lastName}` : (currentSession?.isUnassigned ? 'Unassigned Tracking' : 'Initializing...')}
             </h3>
-            <div className="flex items-center gap-2 mt-0.5 text-sm font-medium text-slate-500 dark:text-slate-400">
-               <div className="w-5 h-5 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="flex items-center gap-2 mt-0.5 text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
+               <div className="w-5 h-5 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
                 <span className="text-[9px] font-bold">{authTrainer?.initials || currentSession?.trainerInitials || '??'}</span>
                </div>
                Trainer
             </div>
           </div>
 
-          {/* Center: Focal Clock */}
-          <div className="flex flex-col items-center absolute left-1/2 -translate-x-1/2">
-             <div 
-               className="flex items-center gap-3 cursor-pointer group" 
-               onClick={() => setIsPaused(!isPaused)} 
-               title={isPaused ? "Resume Session" : "Pause Session"}
-             >
-               <div className={`w-3 h-3 rounded-full transition-all ${isPaused ? 'bg-amber-500' : 'bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.6)]'}`} />
-               {currentSession && currentSession.startTime && (
-                 <div className={`font-mono text-4xl md:text-5xl tracking-tight font-light tabular-nums transition-colors ${isPaused ? 'text-amber-500 opacity-80' : 'text-slate-900 dark:text-white'}`}>
-                   <ActiveSessionTimer startTime={currentSession.startTime} paused={isPaused} />
-                 </div>
-               )}
-             </div>
+          {/* Center: Focal Clock with Play/Pause button inside */}
+          <div className="flex flex-col items-center absolute left-1/2 -translate-x-1/2 z-50">
+             {currentSession && currentSession.startTime && (
+               <ActiveSessionTimer 
+                 startTime={currentSession.startTime} 
+                 paused={isPaused} 
+                 onTogglePause={() => setIsPaused(!isPaused)}
+               />
+             )}
           </div>
 
           {/* Right: Tactical Controls & Hard Stop */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0 z-50">
             <Button 
                 variant="outline" 
                 className={cn(
@@ -6441,15 +6754,6 @@ function WorkoutTrackerView({
               >
                 <LayoutList className="w-4 h-4 mr-2" />
                 Focus
-            </Button>
-            
-            <Button 
-                variant="outline" 
-                className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 h-10 px-3 hidden sm:flex transition-colors"
-                onClick={() => setIsShowingSessionNotes(true)}
-              >
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Notes
             </Button>
 
             <Button 
@@ -7159,15 +7463,27 @@ function WorkoutTrackerView({
       )}
 
       {currentSession && (
-        <div className="fixed bottom-20 left-0 right-0 z-50">
+        <div className="fixed bottom-20 left-0 right-0 z-[110]">
            <Stopwatch onLogTSC={handleLogTSC} />
-         </div>
+        </div>
       )}
 
       {currentSession && activeMachineIds.length > 0 && (
-        <div className="fixed bottom-0 left-2 p-1 pointer-events-none opacity-20 z-50">
+        <div className="fixed bottom-0 left-2 p-1 pointer-events-none opacity-20 z-[110]">
           <span className="text-[8px] text-slate-800 dark:text-slate-200 font-mono tracking-widest">{machineTimeElapsed}s</span>
         </div>
+      )}
+
+      {/* Floating Action Button (FAB) for session notes */}
+      {currentSession && (
+        <button
+          type="button"
+          onClick={() => setIsShowingSessionNotes(true)}
+          className="fixed bottom-24 right-6 z-[110] w-16 h-16 rounded-full bg-[#F06C22] hover:bg-[#F06C22]/90 flex items-center justify-center text-white shadow-[0_4px_24px_rgba(240,108,34,0.45)] hover:shadow-[0_6px_28px_rgba(240,108,34,0.6)] cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 active:bg-[#d65b1d] select-none"
+          title="Session Notes"
+        >
+          <MessageSquare className="w-7 h-7 fill-current" />
+        </button>
       )}
     </motion.div>
   );

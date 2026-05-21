@@ -13,7 +13,8 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
-  orderBy
+  orderBy,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Button } from '@/components/ui/button';
@@ -29,7 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CreateTrainerModal } from './CreateTrainerModal';
 import { TrainerMachineEditor } from './TrainerMachineEditor';
 import { Machine, Client, Trainer, WorkoutSession, ScheduleEntry, Studio, HubAnnouncement } from '../types';
-import { findMatchingTrainer, normalizeName } from '../lib/sync-utils';
+import { findMatchingTrainer, normalizeName, cleanAlphanumeric } from '../lib/sync-utils';
 import { parseMachineSettings, isSessionValid } from '../lib/utils';
 
 import { DataMigrationTool } from './DataMigrationTool';
@@ -143,31 +144,40 @@ export function TrainerControlHubView({
     }
   };
 
-  // Fetch Announcements
+  // Fetch Announcements (Hybrid One-Time Fetch to save read quota)
   React.useEffect(() => {
-    // Basic query to avoid composite index requirements
-    const q = query(collection(db, 'hub_announcements'));
-    
-    return onSnapshot(q, (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as HubAnnouncement));
-      
-      // Filter and sort in memory to be resilient to missing indexes
-      const filtered = data
-        .filter(a => a.isActive !== false) // Handle active only
-        .filter(a => 
-          a.studioId === 'all' || 
-          (activeStudioId && a.studioId === activeStudioId)
-        )
-        .sort((a, b) => {
-          const timeA = a.createdAt?.toMillis?.() || 0;
-          const timeB = b.createdAt?.toMillis?.() || 0;
-          return timeB - timeA;
-        });
+    let active = true;
+    const fetchAnnouncements = async () => {
+      try {
+        const q = query(collection(db, 'hub_announcements'));
+        const snap = await getDocs(q);
+        if (!active) return;
         
-      setAnnouncements(filtered);
-    }, (error) => {
-      console.error("Announcements collection error:", error);
-    });
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as HubAnnouncement));
+        
+        // Filter and sort in memory to be resilient to missing indexes
+        const filtered = data
+          .filter(a => a.isActive !== false) // Handle active only
+          .filter(a => 
+            a.studioId === 'all' || 
+            (activeStudioId && a.studioId === activeStudioId)
+          )
+          .sort((a, b) => {
+            const timeA = a.createdAt?.toMillis?.() || 0;
+            const timeB = b.createdAt?.toMillis?.() || 0;
+            return timeB - timeA;
+          });
+          
+        setAnnouncements(filtered);
+      } catch (error) {
+        console.error("Announcements collection error:", error);
+      }
+    };
+
+    fetchAnnouncements();
+    return () => {
+      active = false;
+    };
   }, [activeStudioId]);
 
   const handleCreateAnnouncement = async () => {
@@ -335,11 +345,20 @@ export function TrainerControlHubView({
           const clientMap: Record<string, string> = {};
           clientsSnap.forEach(d => {
             const c = d.data() as Client;
-            clientMap[normalizeName(`${c.firstName} ${c.lastName}`)] = d.id;
+            const fullName = `${c.firstName || ''} ${c.lastName || ''}`;
+            clientMap[normalizeName(fullName)] = d.id!;
+            clientMap[cleanAlphanumeric(fullName)] = d.id!;
+            if (c.mindbody_name) {
+              clientMap[normalizeName(c.mindbody_name)] = d.id!;
+              clientMap[cleanAlphanumeric(c.mindbody_name)] = d.id!;
+            }
           });
 
           let successCount = 0;
           let failedCount = 0;
+
+          let batch = writeBatch(db);
+          let opCount = 0;
 
           for (const row of data) {
             const clientName = row['Client Name'] || row['Client'] || row['Student'] || '';
@@ -362,11 +381,12 @@ export function TrainerControlHubView({
               continue;
             }
 
-            const clientId = clientMap[normalizeName(clientName)];
+            const clientId = clientMap[normalizeName(clientName)] || clientMap[cleanAlphanumeric(clientName)];
             const matchingTrainer = findMatchingTrainer(mbTrainerName, trainers);
             const trainerId = matchingTrainer?.id || null;
 
-            await addDoc(collection(db, 'schedules'), {
+            const docRef = doc(collection(db, 'schedules'));
+            batch.set(docRef, {
               clientName,
               trainerName: mbTrainerName,
               clientId: clientId || null,
@@ -380,6 +400,17 @@ export function TrainerControlHubView({
               createdAt: serverTimestamp(),
             });
             successCount++;
+            opCount++;
+
+            if (opCount >= 400) {
+              await batch.commit();
+              batch = writeBatch(db);
+              opCount = 0;
+            }
+          }
+
+          if (opCount > 0) {
+            await batch.commit();
           }
 
           setImportStats({ success: successCount, failed: failedCount });
@@ -434,6 +465,10 @@ export function TrainerControlHubView({
             clientCache[`${c.firstName} ${c.lastName}`.toLowerCase()] = doc.id;
           });
 
+          let batch = writeBatch(db);
+          let opCount = 0;
+          const localSessionCache: Record<string, string> = {};
+
           for (const row of data) {
             const firstName = row['First Name'] || row['FirstName'] || '';
             const lastName = row['Last Name'] || row['LastName'] || '';
@@ -458,7 +493,10 @@ export function TrainerControlHubView({
               const fName = nameParts[0] || 'Imported';
               const lName = nameParts.slice(1).join(' ') || 'Client';
               
-              const clientDoc = await addDoc(collection(db, 'clients'), {
+              const clientRef = doc(collection(db, 'clients'));
+              clientId = clientRef.id;
+              
+              batch.set(clientRef, {
                 firstName: fName,
                 lastName: lName,
                 gender: 'Other',
@@ -469,9 +507,9 @@ export function TrainerControlHubView({
                 globalNotes: row['Client Notes'] || '',
                 createdAt: serverTimestamp()
               });
-              clientId = clientDoc.id;
               clientCache[fullName.toLowerCase()] = clientId;
               clientCount++;
+              opCount++;
             }
 
             const machineId = machineCache[machineName.toLowerCase()];
@@ -486,32 +524,43 @@ export function TrainerControlHubView({
               continue;
             }
 
-            const q = query(
-              collection(db, 'sessions'), 
-              where('clientId', '==', clientId),
-              where('date', '==', sessionDate.toISOString().split('T')[0])
-            );
-            const existingSessions = await getDocs(q);
+            // High Performance Cache for Session Retrieval within loop
             let sessionId: string;
-
-            if (existingSessions.empty) {
-              const sessionDoc = await addDoc(collection(db, 'sessions'), {
-                clientId,
-                sessionType: 'Standard',
-                sessionNumber: 0, 
-                date: sessionDate.toISOString().split('T')[0],
-                trainerInitials,
-                status: 'Completed',
-                notes: row['Session Notes'] || '',
-                createdAt: Timestamp.fromDate(sessionDate)
-              });
-              sessionId = sessionDoc.id;
-              sessionCount++;
+            const sessionCacheKey = `${clientId}_${sessionDate.toISOString().split('T')[0]}`;
+            
+            if (localSessionCache[sessionCacheKey]) {
+              sessionId = localSessionCache[sessionCacheKey];
             } else {
-              sessionId = existingSessions.docs[0].id;
+              const q = query(
+                collection(db, 'sessions'), 
+                where('clientId', '==', clientId),
+                where('date', '==', sessionDate.toISOString().split('T')[0])
+              );
+              const existingSessions = await getDocs(q);
+              
+              if (existingSessions.empty) {
+                const sessionRef = doc(collection(db, 'sessions'));
+                batch.set(sessionRef, {
+                  clientId,
+                  sessionType: 'Standard',
+                  sessionNumber: 0, 
+                  date: sessionDate.toISOString().split('T')[0],
+                  trainerInitials,
+                  status: 'Completed',
+                  notes: row['Session Notes'] || '',
+                  createdAt: Timestamp.fromDate(sessionDate)
+                });
+                sessionId = sessionRef.id;
+                sessionCount++;
+                opCount++;
+              } else {
+                sessionId = existingSessions.docs[0].id;
+              }
+              localSessionCache[sessionCacheKey] = sessionId;
             }
 
-            await addDoc(collection(db, 'exerciseLogs'), {
+            const logRef = doc(collection(db, 'exerciseLogs'));
+            batch.set(logRef, {
               sessionId,
               clientId,
               machineId,
@@ -522,18 +571,31 @@ export function TrainerControlHubView({
               createdAt: Timestamp.fromDate(sessionDate)
             });
             logCount++;
+            opCount++;
 
             if (settingsStr) {
               const settings = parseMachineSettings(settingsStr);
+              const settingsRef = doc(db, 'clientMachineSettings', `${clientId}_${machineId}`);
               
-              await setDoc(doc(db, 'clientMachineSettings', `${clientId}_${machineId}`), {
+              batch.set(settingsRef, {
                 clientId,
                 machineId,
                 settings,
                 updatedBy: trainerInitials,
                 updatedAt: Timestamp.fromDate(sessionDate)
               }, { merge: true });
+              opCount++;
             }
+
+            if (opCount >= 400) {
+              await batch.commit();
+              batch = writeBatch(db);
+              opCount = 0;
+            }
+          }
+
+          if (opCount > 0) {
+            await batch.commit();
           }
 
           setLegacyStats({ clients: clientCount, sessions: sessionCount, logs: logCount, failed: failedCount });
