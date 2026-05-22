@@ -100,30 +100,27 @@ export const HubAnnouncementsWidget: React.FC<HubAnnouncementsWidgetProps> = ({
         }
       }}
     >
-      <DialogTrigger asChild>
-        <Button
-          id="hub-announcements-bell-btn"
-          variant="ghost"
+      <DialogTrigger
+        id="hub-announcements-bell-btn"
+        className={cn(
+          "relative h-12 w-12 rounded-2xl flex items-center justify-center transition-all bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-950 shadow-sm cursor-pointer",
+          hasUnread && "ring-2 ring-blue-500/20 shadow-md border-blue-200 dark:border-blue-800"
+        )}
+      >
+        <Bell
           className={cn(
-            "relative h-12 w-12 rounded-2xl flex items-center justify-center transition-all bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-950 shadow-sm",
-            hasUnread && "ring-2 ring-blue-500/20 shadow-md border-blue-200 dark:border-blue-800"
+            "w-5 h-5 transition-transform",
+            hasUnread
+              ? "text-blue-500 animate-swing"
+              : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
           )}
-        >
-          <Bell
-            className={cn(
-              "w-5 h-5 transition-transform",
-              hasUnread
-                ? "text-blue-500 animate-swing"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
-            )}
-          />
-          {hasUnread && (
-            <span className="absolute top-2 right-2 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-            </span>
-          )}
-        </Button>
+        />
+        {hasUnread && (
+          <span className="absolute top-2 right-2 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+          </span>
+        )}
       </DialogTrigger>
 
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto rounded-[32px] p-0 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl dark:shadow-none flex flex-col">
