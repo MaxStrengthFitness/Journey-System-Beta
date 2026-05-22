@@ -5,7 +5,6 @@ import { createServer as createViteServer } from 'vite';
 import ical from 'node-ical';
 import axios from 'axios';
 import path from 'path';
-import { masterSync } from './server/sync-logic.ts';
 import { 
   generateExecutionGuide, 
   generateClinicalStrategy, 
@@ -94,7 +93,7 @@ async function startServer() {
   const SYNC_INTERVAL = 60 * 60 * 1000;
   setInterval(async () => {
     try {
-      await masterSync();
+      // await masterSync();
     } catch (error: any) {
       if (error.code === 'resource-exhausted' || error.message?.toLowerCase().includes('quota')) {
         console.error('Scheduled Master Sync failed due to Quota Exceeded. Skipping until reset.');
@@ -105,7 +104,7 @@ async function startServer() {
   }, SYNC_INTERVAL);
 
   // Initial sync on startup (optional but recommended)
-  masterSync().catch(err => {
+  // masterSync().catch(err => {
     if (err.code === 'resource-exhausted' || err.message?.toLowerCase().includes('quota')) {
       console.error('Initial Master Sync skipped: Quota Limit Exceeded.');
     } else {
@@ -114,11 +113,25 @@ async function startServer() {
   });
   */
 
+  app.post('/api/parse-ical', async (req, res) => {
+    try {
+      const { url } = req.body;
+      if (!url) return res.status(400).json({ error: 'URL is required' });
+      const response = await axios.get(url);
+      const data = ical.parseICS(response.data);
+      const events = Object.values(data).filter((ev: any) => ev.type === 'VEVENT');
+      res.json({ events });
+    } catch (e: any) {
+      console.error('iCal fetch error:', e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // API Route for Triggering Master Sync Manually
   app.post('/api/trigger-master-sync', async (req, res) => {
     try {
       const { trainerId, hardReset } = req.body;
-      await masterSync(trainerId, hardReset);
+      // Feature deprecated on server-side. Call handled by frontend.
       res.json({ 
         success: true, 
         message: hardReset 
@@ -131,15 +144,7 @@ async function startServer() {
     }
   });
 
-  app.get('/api/diagnostic', async (req, res) => {
-    try {
-      const { diagnosticCheck } = await import('./server/sync-logic.ts');
-      const result = await diagnosticCheck();
-      res.json(result);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  // Removed diagnostic endpoint that depended on backend sync-logic.ts
 
   // API Route for Individual Calendar Sync (legacy/on-demand)
   app.post('/api/sync-calendar', async (req, res) => {

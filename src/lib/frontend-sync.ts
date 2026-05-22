@@ -1,74 +1,9 @@
-import { initializeApp } from 'firebase/app';
-import { 
-  getFirestore, 
-  collection,
-  query,
-  where,
-  getDocs,
-  addDoc,
-  doc,
-  updateDoc,
-  deleteDoc,
-  writeBatch,
-  Timestamp,
-  serverTimestamp
-} from 'firebase/firestore';
-import ical from 'node-ical';
-import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
+import { collection, getDocs, writeBatch, doc, Timestamp, query, where } from 'firebase/firestore';
+import { db } from '../firebase';
+import { Trainer, Client, Studio } from '../types';
+import { normalizeName, cleanAlphanumeric, findMatchingTrainer } from './sync-utils';
 
-// Load config for database ID and project ID
-const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-
-// Initialize Firebase Client SDK for backend (no IAM needed)
-const app = initializeApp(config);
-const clientDb = getFirestore(app, config.firestoreDatabaseId);
-
-export async function diagnosticCheck() {
-  const syncId = 'DIAG-' + Math.random().toString(36).substring(7);
-  const results: any = {
-    syncId,
-    timestamp: new Date().toISOString(),
-    steps: []
-  };
-
-  try {
-    results.steps.push({ name: 'Client SDK initialized', status: 'OK' });
-    
-    // Step 1: Test Read on trainers (should pass if rules allow)
-    try {
-      const trainersSnap = await getDocs(query(collection(clientDb, 'trainers')));
-      results.steps.push({ 
-        name: 'Test Read (trainers)', 
-        status: trainersSnap.empty ? 'EMPTY' : 'OK',
-        count: trainersSnap.size,
-        permissionVerified: true
-      });
-    } catch (e: any) {
-      results.steps.push({ name: 'Test Read (trainers)', status: 'FAIL', error: e.message, code: e.code });
-    }
-
-    return results;
-  } catch (globalError: any) {
-    results.globalError = globalError.message;
-    return results;
-  }
-}
-
-// Sync Token for identification
 const SYNC_SECRET = 'STABLE_MASTER_SYNC_TOKEN_2026';
-
-const normalizeName = (name: string): string => {
-  if (!name) return '';
-  return name.trim().toLowerCase().replace(/\s+/g, ' ');
-};
-
-const cleanAlphanumeric = (name: string): string => {
-  if (!name) return '';
-  return name.toLowerCase().replace(/[^a-z0-9]/g, '');
-};
 
 const extractClientName = (summary: string, description: string) => {
   const patterns = [
@@ -90,40 +25,40 @@ const extractClientName = (summary: string, description: string) => {
   return summary.replace(/Personal Training|Workout|Session/gi, '').trim();
 };
 
-export async function masterSync(targetTrainerId?: string, hardReset: boolean = false) {
+export async function executeFrontendMasterSync(
+  targetTrainerId: string | null,
+  hardReset: boolean,
+  trainers: Trainer[],
+  clientsData: Client[],
+  studiosWithNames: Studio[]
+) {
   const syncId = Math.random().toString(36).substring(7);
-  console.log(`[Sync-${syncId}] Starting Master Schedule Sync using Client SDK...`);
+  console.log(`[FrontendSync-${syncId}] Starting Master Schedule Sync...`);
 
   try {
-    console.log(`[Sync-${syncId}] Fetching trainers...`);
-    const trainersSnap = await getDocs(collection(clientDb, 'trainers'));
-    let trainers = trainersSnap.docs
-      .map(d => ({ id: d.id, ...d.data() } as any))
-      .filter(t => t.mindbody_ical_url);
-
+    let targetTrainers = trainers.filter(t => t.mindbody_ical_url);
     if (targetTrainerId) {
-      trainers = trainers.filter(t => t.id === targetTrainerId);
+      targetTrainers = targetTrainers.filter(t => t.id === targetTrainerId);
     }
 
-    if (trainers.length === 0) {
-      console.log(`[Sync-${syncId}] No trainers found with iCal URLs.`);
+    if (targetTrainers.length === 0) {
+      console.log(`[FrontendSync-${syncId}] No trainers found with iCal URLs.`);
       return;
     }
 
+    console.log(`[FrontendSync-${syncId}] Found ${targetTrainers.length} trainers with feeds.`);
+
+    // If hardReset, we just delete all Scheduled entries the frontend user has access to read/write.
+    // However, it's safer to avoid doing a blind query of 'status == Scheduled' because a regular trainer could only delete stuff from their studio, which is fine!
     if (hardReset) {
-      console.log(`[Sync-${syncId}] Performing hard reset (purging all scheduled entries)...`);
-      const allScheduled = await getDocs(query(collection(clientDb, 'schedules'), where('status', '==', 'Scheduled')));
-      const batch = writeBatch(clientDb);
-      allScheduled.docs.forEach(d => batch.delete(d.ref));
-      await batch.commit();
-      console.log(`[Sync-${syncId}] Purged ${allScheduled.size} records.`);
+      console.log(`[FrontendSync-${syncId}] Performing hard reset for targets...`);
+      for (const trainer of targetTrainers) {
+         const allScheduled = await getDocs(query(collection(db, 'schedules'), where('status', '==', 'Scheduled'), where('trainerId', '==', trainer.id)));
+         const batch = writeBatch(db);
+         allScheduled.docs.forEach(d => batch.delete(d.ref));
+         await batch.commit();
+      }
     }
-
-    console.log(`[Sync-${syncId}] Found ${trainers.length} trainers with MindBody feeds.`);
-
-    console.log(`[Sync-${syncId}] Loading client mapping...`);
-    const clientsSnap = await getDocs(collection(clientDb, 'clients'));
-    const clientsData = clientsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
 
     const findClientForTrainerSync = (clientName: string, trainerHomeStudioId?: string): string | null => {
       if (!clientName) return null;
@@ -164,7 +99,6 @@ export async function masterSync(targetTrainerId?: string, hardReset: boolean = 
         return false;
       };
 
-      // 1. Try matching with strict name/fuzzy in the trainer's home studio
       if (trainerHomeStudioId) {
         const match = clientsData.find(c => {
           if (c.homeStudioId !== trainerHomeStudioId) return false;
@@ -176,10 +110,9 @@ export async function masterSync(targetTrainerId?: string, hardReset: boolean = 
           
           return isFuzzyMatch(clientName, first, last, c.mindbody_name);
         });
-        if (match) return match.id;
+        if (match) return match.id || null;
       }
 
-      // 2. Fallback globally
       const matchGlobal = clientsData.find(c => {
         const first = c.firstName || '';
         const last = c.lastName || '';
@@ -189,62 +122,59 @@ export async function masterSync(targetTrainerId?: string, hardReset: boolean = 
         
         return isFuzzyMatch(clientName, first, last, c.mindbody_name);
       });
-      return matchGlobal ? matchGlobal.id : null;
+      return matchGlobal ? matchGlobal.id || null : null;
     };
-
-    const studiosSnap = await getDocs(collection(clientDb, 'studios'));
-    const studiosWithNames: any[] = [];
-    studiosSnap.forEach(d => {
-      const data = d.data();
-      studiosWithNames.push({ id: d.id, name: data.name, ...data });
-    });
 
     const resolveStudioId = (mbLocationStr?: string | number): string | null => {
       if (!mbLocationStr) return null;
       const t = String(mbLocationStr).toLowerCase();
       for (const s of studiosWithNames) {
         if (s.name && t.includes(s.name.toLowerCase())) {
-          return s.id;
+          return s.id || null;
         }
         if (s.mindbodySiteId && t.includes(String(s.mindbodySiteId).toLowerCase())) {
-          return s.id;
+          return s.id || null;
         }
       }
       return null;
     };
 
     const now = new Date();
-    const thirtyDaysAgo = Timestamp.fromDate(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000));
-    const thirtyDaysAhead = Timestamp.fromDate(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000));
+    const thirtyDaysAgoTime = now.getTime() - 30 * 24 * 60 * 60 * 1000;
+    const thirtyDaysAheadTime = now.getTime() + 30 * 24 * 60 * 60 * 1000;
 
-    for (const trainer of trainers) {
-      console.log(`[Sync-${syncId}] Syncing trainer: ${trainer.fullName}`);
+    for (const trainer of targetTrainers) {
+      console.log(`[FrontendSync-${syncId}] Syncing trainer: ${trainer.fullName}`);
       try {
-        const response = await axios.get(trainer.mindbody_ical_url);
-        const icalData = ical.parseICS(response.data);
+        const response = await fetch('/api/parse-ical', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: trainer.mindbody_ical_url })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to parse iCal');
+        const vevents = data.events;
         
         const sessionUidsInFetch = new Set<string>();
-        const vevents = Object.values(icalData).filter((ev: any) => ev.type === 'VEVENT');
 
-        console.log(`[Sync-${syncId}] Fetching existing records for ${trainer.fullName}...`);
-        
-        // Use multiple where clauses to mimic the admin query
-        const windowSnap = await getDocs(query(collection(clientDb, 'schedules'), 
-          where('trainerId', '==', trainer.id)
-        ));
+        // Fetch existing schedules for this trainer
+        const windowSnap = await getDocs(query(collection(db, 'schedules'), where('trainerId', '==', trainer.id)));
         
         const existingSchedulesMap: Record<string, { id: string, data: any }> = {};
         windowSnap.forEach(d => {
-          const data = d.data();
-          if (data.startTime) {
-            const time = data.startTime.toDate().getTime();
-            if (time >= thirtyDaysAgo.toDate().getTime() && time <= thirtyDaysAhead.toDate().getTime()) {
-              if (data.ical_uid) {
-                existingSchedulesMap[data.ical_uid] = { id: d.id, data };
+          const docData = d.data();
+          if (docData.startTime) {
+            const time = docData.startTime.toDate ? docData.startTime.toDate().getTime() : docData.startTime;
+            if (time >= thirtyDaysAgoTime && time <= thirtyDaysAheadTime) {
+              if (docData.ical_uid) {
+                existingSchedulesMap[docData.ical_uid] = { id: d.id, data: docData };
               }
             }
           }
         });
+
+        const batch = writeBatch(db);
+        let batchCount = 0;
 
         for (const ev of vevents as any[]) {
           const uid = ev.uid;
@@ -278,59 +208,73 @@ export async function masterSync(targetTrainerId?: string, hardReset: boolean = 
             serviceName,
             status: isCancelled ? 'Cancelled' : 'Scheduled',
             source: 'Subscription',
-            lastSyncAt: serverTimestamp(),
+            lastSyncAt: Timestamp.now(),
             sync_secret: SYNC_SECRET
           };
 
           const existing = existingSchedulesMap[uid];
           
           if (!existing) {
-            console.log(`[Sync-${syncId}] Creating ${uid} for ${clientName}`);
-            await addDoc(collection(clientDb, 'schedules'), {
+            const newRef = doc(collection(db, 'schedules'));
+            batch.set(newRef, {
               ...payload,
-              createdAt: serverTimestamp()
+              createdAt: Timestamp.now()
             });
+            batchCount++;
           } else {
             const current = existing.data;
+            const currentStartTime = current.startTime?.toDate ? current.startTime.toDate().getTime() : current.startTime;
+            const currentEndTime = current.endTime?.toDate ? current.endTime.toDate().getTime() : current.endTime;
             const hasChanged = 
               current.status !== payload.status ||
               current.clientName !== payload.clientName ||
               current.clientId !== payload.clientId ||
               current.serviceName !== payload.serviceName ||
               current.studioId !== payload.studioId ||
-              current.startTime?.toDate()?.getTime() !== startTime.toDate().getTime() ||
-              current.endTime?.toDate()?.getTime() !== endTime.toDate().getTime();
+              currentStartTime !== startTime.toDate().getTime() ||
+              currentEndTime !== endTime.toDate().getTime();
 
             if (hasChanged) {
-              console.log(`[Sync-${syncId}] Updating ${uid} for ${clientName}`);
-              await updateDoc(doc(clientDb, 'schedules', existing.id), payload);
+               batch.update(doc(db, 'schedules', existing.id), payload);
+               batchCount++;
             }
+          }
+
+          if (batchCount > 400) {
+            await batch.commit();
+            batchCount = 0;
           }
         }
 
-        // Cleanup orphaned records
         for (const uid in existingSchedulesMap) {
           if (!sessionUidsInFetch.has(uid) && existingSchedulesMap[uid].data.status === 'Scheduled') {
             const staleId = existingSchedulesMap[uid].id;
-            console.log(`[Sync-${syncId}] Marking orphaned record as cancelled: ${uid}`);
-            await updateDoc(doc(clientDb, 'schedules', staleId), {
+            batch.update(doc(db, 'schedules', staleId), {
               status: 'Cancelled',
               cancellationReason: 'Session removed from MindBody feed',
-              updatedAt: serverTimestamp(),
+              updatedAt: Timestamp.now(),
               sync_secret: SYNC_SECRET
             });
+            batchCount++;
+          }
+          if (batchCount > 400) {
+             await batch.commit();
+             batchCount = 0;
           }
         }
 
+        if (batchCount > 0) {
+          await batch.commit();
+        }
+
       } catch (err: any) {
-        console.error(`[Sync-${syncId}] Error syncing trainer ${trainer.fullName}:`, err.message);
+        console.error(`[FrontendSync-${syncId}] Error syncing trainer ${trainer.fullName}:`, err.message);
       }
     }
 
-    console.log(`[Sync-${syncId}] Master Sync Completed.`);
+    console.log(`[FrontendSync-${syncId}] Master Sync Completed.`);
   } catch (error: any) {
-    console.error(`[Sync-${syncId}] Sync operation FAILED:`, error.message);
+    console.error(`[FrontendSync-${syncId}] Sync operation FAILED:`, error.message);
     throw error;
   }
 }
-

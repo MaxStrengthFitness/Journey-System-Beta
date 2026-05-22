@@ -398,6 +398,14 @@
     "/routineAdjustments/{adjustmentId}": {
       "schema": { "$ref": "#/entities/RoutineAdjustment" },
       "description": "Audit log for changes made to a client's exercise routine"
+    },
+    "/machines/{machineId}/settingHistory/{historyId}": {
+      "schema": { "$ref": "#/entities/MachineSettingChange" },
+      "description": "Historical audit log of machine setting adjustments stored as a subcollection under machines"
+    },
+    "/sessions/{sessionId}/logs/{logId}": {
+      "schema": "ExerciseLog",
+      "description": "Collection of exercise logs for a specific session stored as a subcollection under sessions"
     }
   }
 }

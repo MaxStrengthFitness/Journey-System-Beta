@@ -436,7 +436,6 @@ function AppContent({
   const [liveRosterClients, setLiveRosterClients] = useState<Client[]>([]);
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [trainerFocuses, setTrainerFocuses] = useState<TrainerFocus[]>([]);
-  const [focusRecords, setFocusRecords] = useState<FocusRecord[]>([]);
   const [announcements, setAnnouncements] = useState<HubAnnouncement[]>([]);
 
   // Studio-Aware Listeners
@@ -493,155 +492,12 @@ function AppContent({
         return d >= startOfToday && d <= endOfToday;
       });
 
-      // Background auto-matching lookup check for ALL unlinked schedules (historic and future) to ensure correct profile associations
-      const unlinkedSchedules = schedulesData.filter(s => !s.clientId && s.clientName && !s.clientName.toLowerCase().includes('unavailab'));
-      
-      const teachersSnap = await getDocs(collection(db, 'trainers'));
-      const activeTrainers = teachersSnap.docs.map(d => ({ id: d.id, ...d.data() } as Trainer));
+      // Background auto-matching lookup check has been disabled to prevent quota/query leaks on schedule snapshots.
+      // (Used to iterate over unlinkedSchedules and query 'trainers'/'clients' redundantly)
 
-      // Group unlinked schedules by unique cache key to optimize DB reads
-      const limitedUnlinked = unlinkedSchedules.slice(0, 10);
 
-      for (const s of limitedUnlinked) {
-        const nameKey = s.clientName.trim();
-        if (!nameKey) continue;
-
-        const scheduleTrainer = activeTrainers.find(t => 
-          t.id === s.trainerId || 
-          (t.fullName && s.trainerName && t.fullName.toLowerCase() === s.trainerName.toLowerCase())
-        );
-        const targetStudioId = scheduleTrainer?.primaryHomeStudioId;
-        const cacheKey = `${targetStudioId || 'no-studio'}_${nameKey.toLowerCase()}`;
-
-        if (searchedScheduleNamesRef.current.has(cacheKey)) {
-          const cachedClientId = searchedScheduleNamesRef.current.get(cacheKey);
-          if (cachedClientId) {
-            await updateDoc(doc(db, 'schedules', s.id), {
-              clientId: cachedClientId
-            });
-          }
-          continue;
-        }
-
-        // Initialize with null to prevent spam
-        searchedScheduleNamesRef.current.set(cacheKey, null);
-
-        try {
-          console.log(`Checking DB to auto-link "${nameKey}" under studio "${targetStudioId || 'global'}"...`);
-          let matchedClientDoc: any = null;
-
-          const nameVariants = Array.from(new Set([
-            nameKey,
-            nameKey.toLowerCase(),
-            nameKey.toUpperCase(),
-            nameKey.split(/\s+/).map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ')
-          ]));
-
-          // 1. Direct query and fuzzy lookup under the trainer's home studio first
-          if (targetStudioId) {
-            const mbSnap = await getDocs(query(
-              collection(db, 'clients'),
-              where('homeStudioId', '==', targetStudioId),
-              where('mindbody_name', 'in', nameVariants)
-            ));
-
-            if (!mbSnap.empty) {
-              matchedClientDoc = { id: mbSnap.docs[0].id, ...mbSnap.docs[0].data() };
-            } else {
-              const parts = nameKey.split(/\s+/);
-              if (parts.length >= 1) {
-                const first = parts[0];
-                const firstVariants = Array.from(new Set([
-                  first,
-                  first.toLowerCase(),
-                  first.toUpperCase(),
-                  first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
-                ]));
-
-                const flSnap = await getDocs(query(
-                  collection(db, 'clients'),
-                  where('homeStudioId', '==', targetStudioId),
-                  where('firstName', 'in', firstVariants)
-                ));
-
-                const matchingDoc = flSnap.docs.find(docData => {
-                  const data = docData.data();
-                  return isFuzzyNameMatch(nameKey, data.firstName || '', data.lastName || '', data.mindbody_name);
-                });
-
-                if (matchingDoc) {
-                  matchedClientDoc = { id: matchingDoc.id, ...matchingDoc.data() };
-                }
-              }
-            }
-          }
-
-          // 2. Global fallback search if not found in associated studio
-          if (!matchedClientDoc) {
-            const mbSnap = await getDocs(query(
-              collection(db, 'clients'),
-              where('mindbody_name', 'in', nameVariants)
-            ));
-
-            if (!mbSnap.empty) {
-              matchedClientDoc = { id: mbSnap.docs[0].id, ...mbSnap.docs[0].data() };
-            } else {
-              const parts = nameKey.split(/\s+/);
-              if (parts.length >= 1) {
-                const first = parts[0];
-                const firstVariants = Array.from(new Set([
-                  first,
-                  first.toLowerCase(),
-                  first.toUpperCase(),
-                  first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
-                ]));
-
-                const flSnap = await getDocs(query(
-                  collection(db, 'clients'),
-                  where('firstName', 'in', firstVariants)
-                ));
-
-                const matchingDoc = flSnap.docs.find(docData => {
-                  const data = docData.data();
-                  return isFuzzyNameMatch(nameKey, data.firstName || '', data.lastName || '', data.mindbody_name);
-                });
-
-                if (matchingDoc) {
-                  matchedClientDoc = { id: matchingDoc.id, ...matchingDoc.data() };
-                }
-              }
-            }
-          }
-
-          // 3. Quick check history
-          if (!matchedClientDoc) {
-             const historyLink = schedulesData.find(hs => hs.clientName === nameKey && !!hs.clientId);
-             if (historyLink) {
-                matchedClientDoc = { id: historyLink.clientId };
-             }
-          }
-
-          if (matchedClientDoc) {
-            console.log(`Successfully matched "${nameKey}" to client ID: ${matchedClientDoc.id}. Auto-linking...`);
-            
-            searchedScheduleNamesRef.current.set(cacheKey, matchedClientDoc.id);
-
-            await updateDoc(doc(db, 'schedules', s.id), {
-              clientId: matchedClientDoc.id
-            });
-
-            if (!matchedClientDoc.mindbody_name) {
-              await updateDoc(doc(db, 'clients', matchedClientDoc.id), {
-                mindbody_name: nameKey
-              });
-            }
-          }
-        } catch (err) {
-          console.error(`Error background auto-linking schedule for "${nameKey}":`, err);
-        }
-      }
-
-      const clientIds = Array.from(new Set(schedulesData.map(s => s.clientId).filter(Boolean))) as string[];
+      // Fetch client data ONLY for today's schedule to stay within read quotas
+      const clientIds = Array.from(new Set(todaySchedules.map(s => s.clientId).filter(Boolean))) as string[];
       if (clientIds.length > 0) {
         const chunks = [];
         for (let i = 0; i < clientIds.length; i += 10) chunks.push(clientIds.slice(i, i + 10));
@@ -652,7 +508,7 @@ function AppContent({
         // Self-heal: check if any of the loaded schedules reference a clientId that does not exist in the database,
         // and reset it to null so the fuzzy auto-linker can resolve it to the correct profile.
         const validClientIdsSet = new Set(fetchedClients.map(c => c.id));
-        const invalidSchedules = schedulesData.filter(s => s.clientId && !validClientIdsSet.has(s.clientId));
+        const invalidSchedules = todaySchedules.filter(s => s.clientId && !validClientIdsSet.has(s.clientId));
         if (invalidSchedules.length > 0) {
           for (const s of invalidSchedules) {
             console.log(`Self-healing schedule ${s.id}: resetting invalid/deleted clientId "${s.clientId}" to null`);
@@ -740,17 +596,9 @@ function AppContent({
   const handleRefreshSchedule = async () => {
     setIsRefreshingSchedule(true);
     try {
-      const resp = await fetch('/api/trigger-master-sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hardReset: false })
-      });
-      if (!resp.ok) {
-        const errData = await resp.json();
-        throw new Error(errData.error || 'Server error during refresh');
-      }
-      const data = await resp.json();
-      console.log("Schedule refresh result:", data);
+      const { executeFrontendMasterSync } = await import('./lib/frontend-sync');
+      await executeFrontendMasterSync(null, false, trainers, liveRosterClients, studios);
+      console.log("Schedule refresh result: completed on frontend.");
     } catch (error: any) {
       console.error("Failed to refresh schedule:", error);
       alert("Failed to refresh schedule: " + error.message);
@@ -1644,7 +1492,6 @@ function AppContent({
                 }}
                 authTrainer={authTrainer}
                 trainerFocuses={trainerFocuses}
-                focusRecords={focusRecords}
                 isSyncing={isSyncing}
                 setIsSyncing={setIsSyncing}
                 isIntroSession={isIntroSession}
@@ -5657,7 +5504,6 @@ function WorkoutTrackerView({
   onOpenInfo,
   authTrainer,
   trainerFocuses,
-  focusRecords,
   isSyncing,
   setIsSyncing,
   schedules,
@@ -5678,7 +5524,6 @@ function WorkoutTrackerView({
   onOpenInfo: (m: Machine) => void,
   authTrainer: Trainer | null,
   trainerFocuses: TrainerFocus[],
-  focusRecords: FocusRecord[],
   isSyncing: boolean,
   setIsSyncing: (v: boolean) => void,
   isIntroSession?: boolean
@@ -5691,6 +5536,7 @@ function WorkoutTrackerView({
   const [currentSession, setCurrentSession] = useState<WorkoutSession | null>(null);
   const [activeMachineIds, setActiveMachineIds] = useState<string[]>([]);
   const [clientMachineSettings, setClientMachineSettings] = useState<Record<string, ClientMachineSetting>>({});
+  const [focusRecords, setFocusRecords] = useState<FocusRecord[]>([]);
   const [sessionNotes, setSessionNotes] = useState<SessionNote[]>([]);
   const [currentSessionNotes, setCurrentSessionNotes] = useState<string>('');
   const lastMachineLoggedAt = React.useRef<number>(Date.now());
@@ -5962,6 +5808,11 @@ function WorkoutTrackerView({
         limit(5)
       );
 
+      const focusQuery = query(
+        collection(db, 'focusRecords'),
+        where('clientId', '==', clientId)
+      );
+
       const unsubscribeSessions = onSnapshot(sessionsQuery, async (snapshot) => {
         const sessionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkoutSession));
         setSessions(sessionsData);
@@ -5987,11 +5838,19 @@ function WorkoutTrackerView({
         handleFirestoreError(error, OperationType.GET, 'sessionNotes');
       });
 
+      const unsubscribeFocus = onSnapshot(focusQuery, (snapshot) => {
+        const focusData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FocusRecord));
+        setFocusRecords(focusData);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, 'focusRecords');
+      });
+
       return () => {
         unsubscribeSettings();
         unsubscribeRoutines();
         unsubscribeSessions();
         unsubscribeNotes();
+        unsubscribeFocus();
       };
     }
   }, [clientId, user?.uid]);

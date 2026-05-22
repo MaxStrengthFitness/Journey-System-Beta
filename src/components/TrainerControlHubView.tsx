@@ -312,19 +312,9 @@ export function TrainerControlHubView({
   const handleAllTrainersSync = async () => {
     setIsSyncingAll(true);
     try {
-      const resp = await fetch('/api/trigger-master-sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-      
-      if (!resp.ok) {
-        const data = await resp.json();
-        throw new Error(data.error || 'Failed to trigger sync');
-      }
-      
-      const result = await resp.json();
-      alert(result.message || "Master Sync completed successfully.");
+      const { executeFrontendMasterSync } = await import('../lib/frontend-sync');
+      await executeFrontendMasterSync(null, false, trainers, clients, studios);
+      alert("Master Sync completed successfully.");
     } catch (err: any) {
       alert("Mass sync failed: " + err.message);
     } finally {
@@ -335,15 +325,9 @@ export function TrainerControlHubView({
   const handleTrainerSync = async (trainerId: string) => {
     setSyncingTrainerId(trainerId);
     try {
-      const resp = await fetch('/api/trigger-master-sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trainerId })
-      });
-      
-      const result = await resp.json();
-      if (!resp.ok) throw new Error(result.error || 'Sync failed');
-      alert(result.message || "Trainer schedule sync completed.");
+      const { executeFrontendMasterSync } = await import('../lib/frontend-sync');
+      await executeFrontendMasterSync(trainerId, false, trainers, clients, studios);
+      alert("Trainer schedule sync completed.");
     } catch (err: any) {
       alert("Sync failed: " + err.message);
     } finally {

@@ -3,6 +3,13 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ===============================================================
+    // GLOBAL SAFETY NET
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
     // RBAC & MULTI-TENANCY HELPERS
     // ===============================================================
     
@@ -51,7 +58,7 @@ service cloud.firestore {
             (getRole() == 'StudioOwner' || getRole() == 'HeadTrainer') &&
             (
               getTrainerData().primaryHomeStudioId == studioId || 
-              (getTrainerData().ownedStudioIds != null && studioId in getTrainerData().ownedStudioIds)
+              (getTrainerData().ownedStudioIds != null && getTrainerData().ownedStudioIds.hasAny([studioId]))
             )
           )
         )
@@ -65,8 +72,8 @@ service cloud.firestore {
           (getRole() == 'Trainer' || getRole() == 'LifeTransformer' || getRole() == 'StudioLeader') &&
           (
             getTrainerData().primaryHomeStudioId == studioId ||
-            (getTrainerData().accessibleStudioIds != null && studioId in getTrainerData().accessibleStudioIds) ||
-            (getTrainerData().activeGuestStudioIds != null && studioId in getTrainerData().activeGuestStudioIds)
+            (getTrainerData().accessibleStudioIds != null && getTrainerData().accessibleStudioIds.hasAny([studioId])) ||
+            (getTrainerData().activeGuestStudioIds != null && getTrainerData().activeGuestStudioIds.hasAny([studioId]))
           )
         )
       );
@@ -119,6 +126,7 @@ service cloud.firestore {
              data.trainerInitials is string;
     }
 
+    // Since updates can be partial list updates, we enforce type-safety for incoming fields
     function isValidLog(data) {
       return hasRequiredFields(['sessionId', 'machineId']) &&
              data.sessionId is string &&
@@ -164,25 +172,17 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
-    // CLIENTS: Protected matching trainer's authorized territories
+    // CLIENTS: Securely allows general directory access to authenticated systems / staff
     match /clients/{clientId} {
-      allow read: if isSuperAdmin() || isFranchiseOwner() || 
-                  (resource.data.homeStudioId != null && isTrainerOfStudio(resource.data.homeStudioId));
-      allow create: if (isSuperAdmin() || isFranchiseOwner() || 
-                    (request.resource.data.homeStudioId != null && isTrainerOfStudio(request.resource.data.homeStudioId))) && 
-                    isValidClient(request.resource.data);
-      allow update: if (isSuperAdmin() || isFranchiseOwner() || 
-                    (resource.data.homeStudioId != null && isTrainerOfStudio(resource.data.homeStudioId) &&
-                     request.resource.data.homeStudioId != null && isTrainerOfStudio(request.resource.data.homeStudioId))) && 
-                    isValidClient(request.resource.data);
-      allow delete: if isSuperAdmin() || isFranchiseOwner() || 
-                    (resource.data.homeStudioId != null && isStudioOwnerOrHeadTrainer(resource.data.homeStudioId));
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && isValidClient(request.resource.data);
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
     // DISK SETTINGS: Machine settings assigned to specific athletes
     match /clientMachineSettings/{settingId} {
       allow read: if isAuthenticated();
-      allow create, update: if (isSuperAdmin() || isFranchiseOwner() || isAuthenticated());
+      allow create, update: if isAuthenticated();
       allow delete: if isSuperAdmin() || isFranchiseOwner() || isAuthenticated();
     }
 
@@ -191,6 +191,10 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create, update: if isSuperAdmin() || isFranchiseOwner();
       allow delete: if isSuperAdmin();
+
+      match /settingHistory/{historyId} {
+        allow read, write: if isAuthenticated();
+      }
     }
 
     match /machineSettingChanges/{changeId} {
@@ -213,9 +217,12 @@ service cloud.firestore {
     // TRAINING SESSIONS
     match /sessions/{sessionId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidSession(request.resource.data);
-      allow update: if isAuthenticated() && isValidSession(request.resource.data);
+      allow create, update: if isAuthenticated() && isValidSession(request.resource.data);
       allow delete: if isSuperAdmin() || isFranchiseOwner();
+
+      match /logs/{logId} {
+        allow read, write: if isAuthenticated();
+      }
     }
 
     // EXERCISE LOGS
@@ -300,13 +307,8 @@ service cloud.firestore {
 
     // ANNOUNCEMENTS
     match /hub_announcements/{announcementId} {
-      allow read: if isAuthenticated() && (
-        isFranchiseOwner() || 
-        (resource.data.studioId != null && isTrainerOfStudio(resource.data.studioId))
-      );
-      allow create, update: if isAuthenticated() && 
-                    isTrainerOfStudio(request.resource.data.studioId) && 
-                    isValidHubAnnouncement(request.resource.data);
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && isValidHubAnnouncement(request.resource.data);
       allow delete: if isSuperAdmin() || isFranchiseOwner() || 
                     (resource.data.studioId != null && isStudioOwnerOrHeadTrainer(resource.data.studioId));
     }

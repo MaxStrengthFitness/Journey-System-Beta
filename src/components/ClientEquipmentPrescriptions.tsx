@@ -46,12 +46,26 @@ function MachineCard({
   authTrainer,
   clientGender,
   clientExperienceLevel,
+  allLogs = [],
 }: any) {
-  const currentWeight = clientSetting?.startingWeight || "";
+  const machineLogs = [...(allLogs || [])]
+    .filter((l: any) => l.machineId === machine.id && l.weight !== undefined && l.weight !== "" && !isNaN(Number(l.weight)))
+    .sort((a, b) => {
+       const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt || 0).getTime();
+       const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt || 0).getTime();
+       return timeA - timeB;
+    });
+
+  const autoStartingWeight = machineLogs.length > 0 ? machineLogs[0].weight : "";
+  const autoCurrentWeight = machineLogs.length > 0 ? machineLogs[machineLogs.length - 1].weight : "";
+
+  const startingWeightDisplay = clientSetting?.startingWeight !== undefined ? clientSetting.startingWeight : autoStartingWeight;
+  const currentWeightDisplay = clientSetting?.currentWeight !== undefined ? clientSetting.currentWeight : (clientSetting?.startingWeight !== undefined ? clientSetting.startingWeight : autoCurrentWeight);
+
   const currentSettings = clientSetting?.settings || {};
   const machineNotes = clientSetting?.machineNotes || [];
   const hasData =
-    !!clientSetting?.startingWeight || Object.keys(currentSettings).length > 0;
+    !!clientSetting?.startingWeight || !!clientSetting?.currentWeight || Object.keys(currentSettings).length > 0 || machineLogs.length > 0;
 
   const { activeStudio } = useActiveStudio();
 
@@ -94,7 +108,8 @@ function MachineCard({
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [initDialogOpen, setInitDialogOpen] = useState(false);
 
-  const [draftWeight, setDraftWeight] = useState(currentWeight.toString());
+  const [draftStartingWeight, setDraftStartingWeight] = useState(startingWeightDisplay?.toString() || "");
+  const [draftCurrentWeight, setDraftCurrentWeight] = useState(currentWeightDisplay?.toString() || "");
   const [draftSettings, setDraftSettings] =
     useState<Record<string, string>>(currentSettings);
   const [reason, setReason] = useState("");
@@ -135,7 +150,8 @@ function MachineCard({
       (opt: string) => (initialSettings[opt] = standardSettings[opt] || ""),
     );
 
-    setDraftWeight(suggestedWeight);
+    setDraftStartingWeight(suggestedWeight);
+    setDraftCurrentWeight(suggestedWeight);
     setDraftSettings(initialSettings);
     setReason(`Initial Setup (${clientExperienceLevel || "Standard"})`);
     setInitDialogOpen(true);
@@ -166,7 +182,7 @@ function MachineCard({
         trainerName: authTrainer.fullName || authTrainer.initials || "Unknown",
         changeType: "INITIAL_SETUP",
         oldValue: "None",
-        newValue: `Weight: ${draftWeight}, Settings: STD`,
+        newValue: `Started: ${draftStartingWeight}, Current: ${draftCurrentWeight}, Settings: STD`,
         reason: reason || `Initial Setup`,
       };
 
@@ -175,7 +191,8 @@ function MachineCard({
         {
           clientId,
           machineId: machine.id,
-          startingWeight: draftWeight,
+          startingWeight: draftStartingWeight ? Number(draftStartingWeight) : null,
+          currentWeight: draftCurrentWeight ? Number(draftCurrentWeight) : null,
           settings: CleanSettings,
           updatedAt: new Date(),
         },
@@ -197,7 +214,7 @@ function MachineCard({
 
   const handleSaveWeight = async () => {
     if (!authTrainer) return alert("Trainer session required.");
-    if (draftWeight === currentWeight) {
+    if (draftStartingWeight === startingWeightDisplay?.toString() && draftCurrentWeight === currentWeightDisplay?.toString()) {
       setWeightDialogOpen(false);
       return;
     }
@@ -214,8 +231,8 @@ function MachineCard({
         trainerId: authTrainer.id || "unknown",
         trainerName: authTrainer.fullName || authTrainer.initials || "Unknown",
         changeType: "WEIGHT",
-        oldValue: currentWeight || "None",
-        newValue: draftWeight,
+        oldValue: `Start: ${startingWeightDisplay || "None"}, Cur: ${currentWeightDisplay || "None"}`,
+        newValue: `Start: ${draftStartingWeight}, Cur: ${draftCurrentWeight}`,
         reason: "Weight Update",
       };
       await setDoc(
@@ -223,7 +240,8 @@ function MachineCard({
         {
           clientId,
           machineId: machine.id,
-          startingWeight: draftWeight,
+          startingWeight: draftStartingWeight !== "" ? Number(draftStartingWeight) : null,
+          currentWeight: draftCurrentWeight !== "" ? Number(draftCurrentWeight) : null,
           updatedAt: new Date(),
         },
         { merge: true },
@@ -528,15 +546,30 @@ function MachineCard({
           </div>
         ) : (
           <div className="flex items-start justify-between">
-            <div>
-              <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">
-                Target WGT
-              </Label>
-              <div className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none flex items-baseline gap-1">
-                {currentWeight}
-                <span className="text-[10px] font-bold text-slate-400">
-                  LBS
-                </span>
+            <div className={cn("border-l-4 border-y border-r rounded-md p-2 px-3 bg-white dark:bg-slate-900", colors.border, colors.border.replace('border-', 'border-l-'))}>
+              <div className="flex gap-4">
+                <div>
+                  <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">
+                    Starting
+                  </Label>
+                  <div className="text-xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tighter leading-none flex items-baseline gap-1">
+                    {startingWeightDisplay}
+                    <span className="text-[8px] font-bold text-slate-400">
+                      LBS
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">
+                    Current
+                  </Label>
+                  <div className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none flex items-baseline gap-1">
+                    {currentWeightDisplay}
+                    <span className="text-[8px] font-bold text-slate-400">
+                      LBS
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
             <div className="text-right">
@@ -575,7 +608,10 @@ function MachineCard({
                 open={weightDialogOpen}
                 onOpenChange={(open) => {
                   setWeightDialogOpen(open);
-                  if (open) setDraftWeight(currentWeight.toString());
+                  if (open) {
+                    setDraftStartingWeight(startingWeightDisplay?.toString() || "");
+                    setDraftCurrentWeight(currentWeightDisplay?.toString() || "");
+                  }
                 }}
               >
                 <DialogTrigger className="h-10 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:border-slate-700 dark:text-slate-300 font-black uppercase tracking-widest text-[10px] flex items-center justify-center transition-colors">
@@ -584,41 +620,52 @@ function MachineCard({
                 <DialogContent className="max-w-xs rounded-[32px] p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                   <DialogHeader className="mb-4 text-left">
                     <DialogTitle className="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">
-                      Update Target
+                      Update Weights
                     </DialogTitle>
-                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-slate-500">
-                      Update prescribed weight.
+                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-[#F06C22]">
+                      Update prescribed weights.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <div>
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                        Target Weight (LBS)
-                      </Label>
-                      <Input
-                        type="number"
-                        value={draftWeight}
-                        onChange={(e) => setDraftWeight(e.target.value)}
-                        className={cn(
-                          "h-14 text-2xl text-center font-black rounded-2xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 transition-all dark:text-white",
-                          Number(draftWeight) === calculateSuggestedWeight() &&
-                            draftWeight !== "" &&
-                            calculateSuggestedWeight() > 0
-                            ? "ring-2 ring-blue-500/50 border-blue-500 text-blue-700 dark:text-blue-400"
-                            : "focus-visible:ring-indigo-500",
-                        )}
-                      />
-                      {Number(draftWeight) === calculateSuggestedWeight() &&
-                        draftWeight !== "" &&
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                          Starting (LBS)
+                        </Label>
+                        <Input
+                          type="number"
+                          value={draftStartingWeight}
+                          onChange={(e) => setDraftStartingWeight(e.target.value)}
+                          className={cn(
+                            "h-14 text-xl text-center font-black rounded-2xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 transition-all dark:text-white",
+                             "focus-visible:ring-indigo-500",
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                          Current (LBS)
+                        </Label>
+                        <Input
+                          type="number"
+                          value={draftCurrentWeight}
+                          onChange={(e) => setDraftCurrentWeight(e.target.value)}
+                          className={cn(
+                            "h-14 text-xl text-center font-black rounded-2xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 transition-all dark:text-white",
+                             "focus-visible:ring-indigo-500",
+                          )}
+                        />
+                      </div>
+                    </div>
+                    {((draftStartingWeight !== "" && Number(draftStartingWeight) === calculateSuggestedWeight()) || (draftCurrentWeight !== "" && Number(draftCurrentWeight) === calculateSuggestedWeight())) &&
                         calculateSuggestedWeight() > 0 && (
                           <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-1 text-center uppercase tracking-widest">
                             Studio Standard
                           </p>
                         )}
-                    </div>
                     <Button
                       onClick={handleSaveWeight}
-                      disabled={isSaving || draftWeight === currentWeight}
+                      disabled={isSaving || (draftStartingWeight === startingWeightDisplay?.toString() && draftCurrentWeight === currentWeightDisplay?.toString())}
                       className="w-full h-14 rounded-2xl bg-black dark:bg-white dark:text-black hover:opacity-90 font-black uppercase tracking-widest"
                     >
                       {isSaving ? (
@@ -760,32 +807,43 @@ function MachineCard({
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-6">
-                    <div>
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                        Target Weight (LBS)
-                      </Label>
-                      <Input
-                        type="number"
-                        value={draftWeight}
-                        onChange={(e) => setDraftWeight(e.target.value)}
-                        className={cn(
-                          "h-14 text-2xl text-center font-black rounded-2xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 transition-all dark:text-white",
-                          Number(draftWeight) === calculateSuggestedWeight() &&
-                            draftWeight !== "" &&
-                            calculateSuggestedWeight() > 0
-                            ? "ring-2 ring-blue-500/50 border-blue-500 text-blue-700 dark:text-blue-400"
-                            : "focus-visible:ring-indigo-500",
-                        )}
-                      />
-                      {Number(draftWeight) === calculateSuggestedWeight() &&
-                        draftWeight !== "" &&
-                        calculateSuggestedWeight() > 0 && (
-                          <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-1 text-center uppercase tracking-widest">
-                            Studio Standard: {calculateSuggestedWeight()} LBS (
-                            {clientExperienceLevel || "Beginner"})
-                          </p>
-                        )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                          Starting (LBS)
+                        </Label>
+                        <Input
+                          type="number"
+                          value={draftStartingWeight}
+                          onChange={(e) => setDraftStartingWeight(e.target.value)}
+                          className={cn(
+                            "h-14 text-xl text-center font-black rounded-2xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 transition-all dark:text-white",
+                             "focus-visible:ring-indigo-500",
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                          Current (LBS)
+                        </Label>
+                        <Input
+                          type="number"
+                          value={draftCurrentWeight}
+                          onChange={(e) => setDraftCurrentWeight(e.target.value)}
+                          className={cn(
+                            "h-14 text-xl text-center font-black rounded-2xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 transition-all dark:text-white",
+                             "focus-visible:ring-indigo-500",
+                          )}
+                        />
+                      </div>
                     </div>
+                    {((draftStartingWeight !== "" && Number(draftStartingWeight) === calculateSuggestedWeight()) || (draftCurrentWeight !== "" && Number(draftCurrentWeight) === calculateSuggestedWeight())) &&
+                      calculateSuggestedWeight() > 0 && (
+                        <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-1 text-center uppercase tracking-widest">
+                          Studio Standard: {calculateSuggestedWeight()} LBS (
+                          {clientExperienceLevel || "Beginner"})
+                        </p>
+                      )}
                     {options.length > 0 && (
                       <div className="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
                         {options.map((opt: string) => {

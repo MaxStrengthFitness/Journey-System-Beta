@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Settings, X, TrendingUp } from "lucide-react";
 import { ComposedChart, Bar, Line, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis, CartesianGrid } from "recharts";
-import { Machine, ExerciseLog, WorkoutSession } from "../types";
+import { Machine, ExerciseLog, WorkoutSession, Studio } from "../types";
 import { parseSessionDate } from "../lib/utils";
 
 interface Props {
@@ -15,6 +15,8 @@ interface Props {
   sessions: WorkoutSession[];
   isSaving: boolean;
   onSave: () => void;
+  studios?: Studio[];
+  activeStudioId?: string | null;
 }
 
 export function MachineSettingsDashboardModal({
@@ -25,10 +27,14 @@ export function MachineSettingsDashboardModal({
   sessions,
   isSaving,
   onSave,
+  studios = [],
+  activeStudioId = null,
 }: Props) {
   if (!editingSettings) return null;
   const mId = editingSettings.machineId;
   const targetMachine = machines.find((m) => m.id === mId);
+  const activeStudio = studios.find(s => s.id === activeStudioId);
+  const standardSettings = activeStudio?.machineSettings?.[mId] || targetMachine?.standardSettings || {};
 
   // Filter logs for this machine
   const machineLogs = exerciseLogs
@@ -223,8 +229,8 @@ export function MachineSettingsDashboardModal({
               <div key={opt} className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-[#68717A] ml-1 flex justify-between items-center pr-1">
                   <span>{opt}</span>
-                  {targetMachine?.standardSettings?.[opt] && (
-                    <span className="text-slate-500 font-semibold" title="Standard Setting">STD: {targetMachine.standardSettings[opt]}</span>
+                  {standardSettings[opt] && (
+                    <span className="text-slate-500 font-semibold" title="Standard Setting">STD: {standardSettings[opt]}</span>
                   )}
                 </label>
                 <Input
@@ -238,7 +244,7 @@ export function MachineSettingsDashboardModal({
                        },
                      })
                    }
-                  placeholder={targetMachine?.standardSettings?.[opt] || "--"}
+                  placeholder={standardSettings[opt] || "--"}
                   className="h-12 rounded-xl bg-slate-800 border border-slate-700 focus:border-[#F06C22] focus:ring-[#F06C22] text-lg font-black text-[#f8fafc] px-4 tabular-nums transition-all shadow-sm"
                 />
               </div>

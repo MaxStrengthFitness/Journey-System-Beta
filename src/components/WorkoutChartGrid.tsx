@@ -57,6 +57,8 @@ interface WorkoutChartGridProps {
   preloadedSessions?: WorkoutSession[];
   preloadedLogs?: ExerciseLog[];
   onLoadMoreHistory?: () => void;
+  studios?: import('../types').Studio[];
+  activeStudioId?: string | null;
 }
 
 export function WorkoutChartGrid({ 
@@ -68,7 +70,9 @@ export function WorkoutChartGrid({
   user,
   preloadedSessions,
   preloadedLogs,
-  onLoadMoreHistory
+  onLoadMoreHistory,
+  studios,
+  activeStudioId
 }: WorkoutChartGridProps) {
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [exerciseLogs, setExerciseLogs] = useState<ExerciseLog[]>([]);
@@ -539,6 +543,8 @@ export function WorkoutChartGrid({
         sessions={sessions}
         isSaving={isSaving}
         onSave={handleUpdateSettings}
+        studios={studios}
+        activeStudioId={activeStudioId}
       />
     </div>
   );

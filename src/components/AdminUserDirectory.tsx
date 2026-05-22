@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, getDocs, doc, updateDoc, deleteDoc, limit, where } from 'firebase/firestore';
+import { collection, query, getDocs, doc, updateDoc, deleteDoc, limit, where, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Trainer, Studio } from '../types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Edit, Trash2, UserCog, User, ShieldCheck, Loader2 } from 'lucide-react';
+import { Search, Edit, Trash2, UserCog, User, ShieldCheck, Loader2, Plus } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../lib/firestore-errors';
 import { useDebounce } from '../hooks/useDebounce';
 import { cn, getRoleColor, getRoleDisplayName } from '@/lib/utils';
+import { CreateTrainerModal } from './CreateTrainerModal';
 
 interface Props {
   studios: Studio[];
@@ -24,6 +25,7 @@ export function AdminUserDirectory({ studios }: Props) {
   const [users, setUsers] = useState<Trainer[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   
   // Fetch logic
   const fetchUsers = async (viewAll: boolean = false) => {
@@ -90,6 +92,22 @@ export function AdminUserDirectory({ studios }: Props) {
     }
   };
 
+  const handleCreateUser = async (trainerData: any) => {
+    try {
+      const role = trainerData.isOwner ? 'Owner' : 'LifeTransformer';
+      const ref = await addDoc(collection(db, 'trainers'), {
+        ...trainerData,
+        role: role,
+        systemStatus: 'active',
+        createdAt: new Date().toISOString()
+      });
+      // Add the newly created user to the state
+      setUsers(prev => [{ id: ref.id, ...trainerData, role }, ...prev]);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'trainers');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card className="rounded-[32px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-6 overflow-visible">
@@ -104,13 +122,22 @@ export function AdminUserDirectory({ studios }: Props) {
             </div>
           </div>
           
-          <Button 
-            onClick={() => fetchUsers(true)}
-            variant="outline"
-            className="text-[10px] font-black uppercase tracking-widest h-10 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
-          >
-            View All Staff (Max 50)
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button 
+              onClick={() => setIsCreateModalOpen(true)}
+              className="text-[10px] font-black uppercase tracking-widest h-10 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New User
+            </Button>
+            <Button 
+              onClick={() => fetchUsers(true)}
+              variant="outline"
+              className="text-[10px] font-black uppercase tracking-widest h-10 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
+            >
+              View All Staff (Max 50)
+            </Button>
+          </div>
         </div>
 
         <div className="relative mb-8">
@@ -190,6 +217,12 @@ export function AdminUserDirectory({ studios }: Props) {
           )}
         </div>
       </Card>
+      
+      <CreateTrainerModal
+        isOpen={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+        onSubmit={handleCreateUser}
+      />
     </div>
   );
 }

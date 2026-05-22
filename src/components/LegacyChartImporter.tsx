@@ -565,9 +565,12 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
             });
             const oldest = entries[0];
             const newest = entries[entries.length - 1];
-            updateData.startingWeight = oldest.weight;
+            updateData.startingWeight = extracted?.startingWeight ? Number(extracted.startingWeight) : oldest.weight;
             updateData.startingWeightDate = new Date(oldest.timestamp).toISOString();
-            updateData.currentWeight = newest.weight;
+            updateData.currentWeight = extracted?.currentWeight ? Number(extracted.currentWeight) : newest.weight;
+          } else {
+             if (extracted?.startingWeight) updateData.startingWeight = Number(extracted.startingWeight);
+             if (extracted?.currentWeight) updateData.currentWeight = Number(extracted.currentWeight);
           }
 
           currentBatch.set(settingRef, updateData, { merge: true });
@@ -875,6 +878,34 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                                 {s.gap && <span className="text-[7px] bg-slate-900 px-1 rounded text-slate-400">G:{s.gap}</span>}
                                 {s.backPad && <span className="text-[7px] bg-slate-900 px-1 rounded text-slate-400">B:{s.backPad}</span>}
                                 {s.handles && <span className="text-[7px] bg-slate-900 px-1 rounded text-slate-400">H:{s.handles}</span>}
+                              </div>
+                              <div className="flex gap-2 mt-2">
+                                <div className="flex flex-col gap-0.5 w-full">
+                                  <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest leading-none">STR LBS</span>
+                                  <input type="number" 
+                                      value={s.startingWeight || ""} 
+                                      onChange={(e) => {
+                                        const newSet = [...extractedSettings];
+                                        newSet[idx].startingWeight = e.target.value;
+                                        setExtractedSettings(newSet);
+                                      }}
+                                      className="w-full h-6 bg-slate-900 focus-visible:bg-slate-800 border focus-visible:border-[#F06C22] border-slate-700 rounded text-[9px] text-white px-1 text-center font-bold tabular-nums outline-none transition-colors"
+                                      placeholder="--"
+                                  />
+                                </div>
+                                <div className="flex flex-col gap-0.5 w-full">
+                                  <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest leading-none">CUR LBS</span>
+                                  <input type="number" 
+                                      value={s.currentWeight || ""} 
+                                      onChange={(e) => {
+                                        const newSet = [...extractedSettings];
+                                        newSet[idx].currentWeight = e.target.value;
+                                        setExtractedSettings(newSet);
+                                      }}
+                                      className="w-full h-6 bg-slate-900 focus-visible:bg-slate-800 border focus-visible:border-[#F06C22] border-slate-700 rounded text-[9px] text-white px-1 text-center font-bold tabular-nums outline-none transition-colors"
+                                      placeholder="--"
+                                  />
+                                </div>
                               </div>
                             </div>
                           ))}

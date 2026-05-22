@@ -123,6 +123,7 @@ export interface Client {
   approvedCrossTrainStudioIds?: string[]; // Studio IDs where cross-training is explicitly approved
   firstName: string;
   lastName: string;
+  dateOfBirth?: string;
   gender?: 'Male' | 'Female' | 'Other' | string;
   height: string; // e.g., "5'10\""
   weight?: string;

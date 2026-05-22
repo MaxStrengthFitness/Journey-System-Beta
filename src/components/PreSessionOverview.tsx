@@ -122,6 +122,26 @@ export function PreSessionOverview({
     setIsAdjusting(true);
   };
 
+  const moveMachineUp = (index: number) => {
+    if (index === 0) return;
+    const newSequence = [...adjustedMachineIds];
+    const temp = newSequence[index - 1];
+    newSequence[index - 1] = newSequence[index];
+    newSequence[index] = temp;
+    setAdjustedMachineIds(newSequence);
+    setIsAdjusting(true);
+  };
+
+  const moveMachineDown = (index: number) => {
+    if (index === adjustedMachineIds.length - 1) return;
+    const newSequence = [...adjustedMachineIds];
+    const temp = newSequence[index + 1];
+    newSequence[index + 1] = newSequence[index];
+    newSequence[index] = temp;
+    setAdjustedMachineIds(newSequence);
+    setIsAdjusting(true);
+  };
+
   const handleSaveNote = async () => {
     if (!newNoteContent.trim() || !authTrainer) return;
     setIsSavingNote(true);
@@ -308,34 +328,49 @@ export function PreSessionOverview({
                   const machineLastPerformedDate = safeToDate(metricData?.lastPerformedDate);
                   const wasPerformedInLastSession = lastSession && metricData?.lastSessionId === lastSession.id;
                   
-                  // Map history to the required format from logs
+                  // Map history and determine last log for the precise metrics
                   let mappedHistory: { weight: number; repsOrSeconds: number; }[] = [];
-                  if (logs && logs.length > 0) {
-                    const machineLogs = logs
-                      .filter(log => log.machineId === mId)
-                      .sort((a, b) => getMillis(b.createdAt) - getMillis(a.createdAt))
+                  const machineLogs = logs && logs.length > 0
+                    ? [...logs]
+                        .filter(log => log.machineId === mId)
+                        .sort((a, b) => getMillis(b.createdAt) - getMillis(a.createdAt))
+                    : [];
+                  const lastLog = machineLogs[0];
+
+                  if (machineLogs.length > 0) {
+                    mappedHistory = machineLogs
                       .slice(0, 6)
-                      .map(log => ({
-                        weight: parseInt(log.weight || '0') || 0,
-                        repsOrSeconds: parseInt(log.reps || log.seconds || '0') || 0
-                      }))
+                      .map(log => {
+                        const logIsStatic = log.isStaticHold || log.isTSC || (log.seconds !== undefined && log.seconds !== "" && parseInt(String(log.seconds)) > 0 && (!log.reps || parseInt(String(log.reps)) === 0));
+                        return {
+                          weight: parseInt(log.weight || '0') || 0,
+                          repsOrSeconds: logIsStatic 
+                            ? (parseInt(log.seconds || log.reps || '0') || 0)
+                            : (parseInt(log.reps || log.seconds || '0') || 0)
+                        };
+                      })
                       .reverse();
-                    mappedHistory = machineLogs;
                   }
-                  
-                  const isStaticHold = metricData?.isStaticHold || metricData?.isTSC || false;
-                  
-                  // Use metric data if present, otherwise default
-                  const renderWeight = metricData ? (parseInt(metricData.weight) || 0) : (defaultWeight || 0);
-                  const renderRepsSeconds = metricData ? (parseInt(metricData.reps || metricData.seconds || '0') || 0) : 0;
+
+                  const isStaticHold = lastLog
+                    ? !!(lastLog.isStaticHold || lastLog.isTSC || (lastLog.seconds !== undefined && lastLog.seconds !== "" && parseInt(String(lastLog.seconds)) > 0 && (!lastLog.reps || parseInt(String(lastLog.reps)) === 0)))
+                    : !!(metricData?.isStaticHold || metricData?.isTSC);
+
+                  // Use last log details if present, otherwise fallback to metrics map or default starting load
+                  const renderWeight = lastLog
+                    ? (parseInt(lastLog.weight || '0') || 0)
+                    : (metricData ? (parseInt(metricData.weight) || 0) : (defaultWeight || 0));
+
+                  const renderRepsSeconds = lastLog
+                    ? (isStaticHold 
+                        ? (parseInt(lastLog.seconds || lastLog.reps || '0') || 0)
+                        : (parseInt(lastLog.reps || lastLog.seconds || '0') || 0)
+                      )
+                    : (metricData ? (parseInt(metricData.reps || metricData.seconds || '0') || 0) : 0);
 
                   return (
                     <div 
                       key={`${mId}-${idx}`} 
-                      draggable
-                      onDragStart={(e) => onDragStart(e, idx)}
-                      onDragOver={onDragOver}
-                      onDrop={(e) => onDrop(e, idx)}
                       className="transition-colors"
                     >
                       <ExecutionSequenceCard
@@ -344,7 +379,9 @@ export function PreSessionOverview({
                         repsOrSeconds={renderRepsSeconds}
                         isStaticHold={isStaticHold}
                         history={mappedHistory}
-                        showDragHandle={true}
+                        showDragHandle={false}
+                        onMoveUp={idx > 0 ? () => moveMachineUp(idx) : undefined}
+                        onMoveDown={idx < selectedRoutineIds.length - 1 ? () => moveMachineDown(idx) : undefined}
                         onRemove={() => removeMachine(idx)}
                       />
                     </div>

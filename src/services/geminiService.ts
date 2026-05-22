@@ -81,6 +81,8 @@ export interface OCRMachineSetting {
   handles?: string;
   rawSettings?: Record<string, string>;
   armPad?: string;
+  startingWeight?: string;
+  currentWeight?: string;
 }
 
 async function handleResponse(res: Response) {

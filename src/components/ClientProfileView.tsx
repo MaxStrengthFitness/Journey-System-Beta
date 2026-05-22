@@ -43,12 +43,18 @@ import {
   Battery,
   CalendarDays,
   Star,
-  Database
+  Database,
+  AlertTriangle,
+  Cake,
+  UserCheck,
+  Award,
+  Target
 } from "lucide-react";
 import { generateMockClientWithHistory } from "../lib/mockDataGenerator";
 import { motion, AnimatePresence } from "motion/react";
 import { AreaChart, Area, LineChart, Line, BarChart, Bar, ReferenceLine, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
 import { MachineSettingsDashboardModal } from "./MachineSettingsDashboardModal";
+import { getMachineStyle } from "../lib/machine-colors";
 import {
   Card,
   CardContent,
@@ -727,7 +733,8 @@ export function ClientProfileView({
         const notesQ = query(
           collection(db, "sessionNotes"),
           where("clientId", "==", clientId),
-          orderBy("createdAt", "desc")
+          orderBy("createdAt", "desc"),
+          limit(50)
         );
         const snap = await getDocs(notesQ);
         const notesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as SessionNote));
@@ -817,6 +824,7 @@ export function ClientProfileView({
           collection(db, "trainerFocuses"),
           where("clientId", "==", clientId),
           orderBy("updatedAt", "desc"),
+          limit(50)
         );
         const snap = await getDocs(focusQ);
         setTrainerFocuses(
@@ -1175,8 +1183,8 @@ export function ClientProfileView({
       })()}
 
       {/* Session Status Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm px-6 py-6 mb-3 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 transition-colors duration-200">
-        <div className="flex items-start gap-4 z-10 shrink-0 min-w-0 w-full md:w-auto">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] shadow-sm px-8 py-8 mb-4 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 transition-colors duration-200">
+        <div className="flex items-start gap-4 z-10 shrink-0 min-w-0 w-full md:w-auto pr-[140px] xs:pr-[160px] sm:pr-[180px] md:pr-0">
           <Button
             onClick={() => {
               setSelectedClientId(null);
@@ -1184,54 +1192,74 @@ export function ClientProfileView({
             }}
             variant="ghost"
             size="icon"
-            className="shrink-0 text-slate-700 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 -ml-2 h-10 w-10 sm:h-12 sm:w-12 rounded-full mt-1"
+            className="shrink-0 text-slate-400 dark:text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 -ml-2 h-10 w-10 sm:h-12 sm:w-12 rounded-full mt-1"
           >
             <ChevronLeft className="w-6 h-6 md:w-8 md:h-8" />
           </Button>
-          <div className="flex flex-col min-w-0 items-start">
-            <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter leading-none m-0 mb-3 truncate text-slate-900 dark:text-white">
-              {client.firstName} {client.lastName}
-            </h2>
-            
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mt-1">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">
-                  Session Progress
-                </span>
-                <span className="text-xl sm:text-2xl font-black tracking-tight text-[#F06C22] leading-none">
-                  {calculatedSessionCount} / {calculatedSessionCount + (client.remainingSessions ?? 0)}
-                </span>
+          <div className="flex flex-col min-w-0 items-start mt-1.5">
+            <div className="flex items-center gap-3 mb-1">
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-none m-0 truncate text-slate-900 dark:text-white">
+                {client.firstName} {client.lastName}
+              </h2>
+              {(client.notes || (client.clinicalFlags && client.clinicalFlags.length > 0)) && (
+                <AlertTriangle className="w-6 h-6 text-red-500 animate-pulse shrink-0" />
+              )}
+              <div className="bg-slate-900 text-white dark:bg-slate-50 dark:text-slate-900 rounded-full px-4 py-1 font-mono text-lg shadow-sm ml-2 hidden sm:block shrink-0">
+                {calculatedSessionCount} <span className="opacity-50 text-sm">/ {calculatedSessionCount + (client.remainingSessions ?? 0)}</span>
               </div>
-              <div className="hidden sm:block w-px bg-slate-200 dark:bg-slate-700 my-1"></div>
-              <div className="flex flex-wrap gap-x-6 gap-y-3">
-                <div className="flex flex-col">
-                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Joined</span>
-                   <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                     {client.firstSessionDate ? new Date(client.firstSessionDate.toDate?.() || client.firstSessionDate).toLocaleDateString([], { month: 'short', year: 'numeric' }) : "--"}
-                   </span>
-                </div>
-                <div className="flex flex-col">
-                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Last Session</span>
-                   <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                     {sessions[0]?.date ? new Date(parseSessionDate(sessions[0].date)).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "--"}
-                   </span>
-                </div>
-                <div className="flex flex-col">
-                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Next Scheduled</span>
-                   <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                     {scheduledSessions[0]?.startTime ? new Date(scheduledSessions[0].startTime.toDate?.() || scheduledSessions[0].startTime).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "--"}
-                   </span>
-                </div>
+            </div>
+            
+            <div className="flex items-center gap-4 text-slate-500 dark:text-slate-400 text-sm font-medium mt-3 flex-wrap">
+              {client.dateOfBirth && (
+                 <div className="flex items-center gap-1.5">
+                   <Cake className="w-4 h-4 text-slate-400" />
+                   Born: {new Date(client.dateOfBirth + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                 </div>
+              )}
+              
+              <div className="flex items-center gap-1.5">
+                <UserCheck className="w-4 h-4 text-slate-400" />
+                Lead Transformer: {(() => {
+                  const trainerCount: Record<string, number> = {};
+                  sessions.forEach(s => {
+                    if (s.trainerId) trainerCount[s.trainerId] = (trainerCount[s.trainerId] || 0) + 1;
+                    else if (s.trainerName) {
+                      const t = trainers.find(tr => tr.fullName === s.trainerName || tr.initials === s.trainerName);
+                      if (t && t.id) trainerCount[t.id] = (trainerCount[t.id] || 0) + 1;
+                    }
+                  });
+                  let topTrainerId = null;
+                  let maxCount = 0;
+                  for (const [id, count] of Object.entries(trainerCount)) {
+                    if (count > maxCount) { maxCount = count; topTrainerId = id; }
+                  }
+                  if (topTrainerId) {
+                    const t = trainers.find(tr => tr.id === topTrainerId);
+                    return t ? t.fullName : "N/A";
+                  }
+                  return "N/A";
+                })()}
+              </div>
+              
+              <div className="hidden sm:block w-px h-4 bg-slate-200 dark:bg-slate-700"></div>
+
+              <div className="flex items-center gap-1.5">
+                <CalendarDays className="w-4 h-4 text-slate-400" />
+                Joined: {client.firstSessionDate ? new Date(client.firstSessionDate.toDate?.() || client.firstSessionDate).toLocaleDateString([], { month: 'short', year: 'numeric' }) : "--"}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <History className="w-4 h-4 text-slate-400" />
+                Last: {sessions[0]?.date ? new Date(parseSessionDate(sessions[0].date)).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "--"}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-3 z-10 shrink-0 w-full md:w-auto">
+        <div className="absolute top-6 right-6 md:static flex flex-col md:flex-row items-center gap-3 z-20 shrink-0">
           {activeInProgressSession ? (
             <DropdownMenu>
-              <DropdownMenuTrigger render={<Button className="bg-amber-500 hover:bg-amber-600 rounded-xl font-black uppercase text-sm tracking-widest h-12 px-6 sm:px-8 shadow-sm border-none w-full md:w-auto" />}>
-                  <Clock className="w-5 h-5 mr-2 animate-pulse" />
+              <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap bg-amber-500 hover:bg-amber-600 rounded-xl font-black uppercase text-xs sm:text-sm tracking-widest h-10 sm:h-12 px-4 sm:px-6 shadow-sm border-none w-auto text-white transition-colors">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 animate-pulse" />
                   IN-PROGRESS ({activeInProgressSession.trainerInitials})
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[240px] rounded-2xl p-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
@@ -1267,9 +1295,9 @@ export function ClientProfileView({
                 setView("workouts");
               }}
               disabled={isCheckingActiveSession}
-              className="bg-[#F06C22] hover:bg-[#F06C22]/90 rounded-xl font-black uppercase text-sm sm:text-base tracking-widest h-12 md:h-14 px-8 shadow-sm border-none w-full md:w-auto text-white dark:text-white"
+              className="bg-[#F06C22] hover:bg-[#F06C22]/90 rounded-xl font-black uppercase text-xs sm:text-sm tracking-widest h-10 sm:h-12 px-4 sm:px-6 shadow-sm border-none w-auto text-white dark:text-white"
             >
-              <Play className="w-5 h-5 mr-2" />
+              <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2" />
               {isCheckingActiveSession ? 'Checking...' : 'START SESSION'}
             </Button>
           )}
@@ -1374,8 +1402,8 @@ export function ClientProfileView({
                         </th>
                       );
                     })}
-                  <th className="p-2 text-center bg-[#F06C22] truncate w-[15%] border-l shadow-inner border-[#F06C22]/80 text-white">
-                    TARGET
+                  <th className="p-2 text-center bg-slate-800 dark:bg-slate-950 truncate w-[5%] border-l border-slate-700 dark:border-slate-800 text-slate-400">
+                    <Target className="w-5 h-5 mx-auto" />
                   </th>
                 </tr>
               </thead>
@@ -1386,15 +1414,10 @@ export function ClientProfileView({
                     const machineLogs = allLogs.filter(
                       (l) => l.machineId === machine.id,
                     );
+                    const sortedMachineLogs = [...machineLogs].sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+                    const currentLog = sortedMachineLogs[0] || null;
+                    const colors = getMachineStyle(machine.name);
                     const displaySessions = sessions.slice(0, 6).reverse();
-                    const targetLog =
-                      displaySessions.length > 0
-                        ? machineLogs.find(
-                            (l) =>
-                              l.sessionId ===
-                              displaySessions[displaySessions.length - 1].id,
-                          )
-                        : null;
 
                     return (
                       <tr
@@ -1409,7 +1432,7 @@ export function ClientProfileView({
                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#115E8D]/0 group-hover:bg-[#115E8D] transition-colors" />
                           <div className="flex flex-col justify-center h-full">
                             <div className="flex items-center gap-2 mb-1 max-w-full">
-                              <span className="font-black uppercase tracking-tighter text-[12px] leading-none truncate shrink-0 max-w-full inline-flex items-center">
+                              <span className="font-black uppercase tracking-tighter text-[14px] leading-none truncate shrink-0 max-w-full inline-flex items-center">
                                 <span>{machine.name}</span>
                                 {isBig5Machine(machine.name) && (
                                   <Star className="w-3 h-3 ml-1.5 fill-amber-400 text-amber-500 inline shrink-0" />
@@ -1421,27 +1444,33 @@ export function ClientProfileView({
                                 <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
                               )}
                             </div>
-                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-widest truncate leading-none uppercase">
-                              {clientSettings[machine.id!]?.settings
-                                ? Object.entries(
-                                    clientSettings[machine.id!].settings,
-                                  )
-                                    .map(([k, v]) => {
-                                      const n = k.trim().toLowerCase();
-                                      let short = n.substring(0, 2).toUpperCase();
-                                      if (n === 'gap') short = 'G';
-                                      else if (n === 'seat') short = 'S';
-                                      else if (n === 'backpad' || n === 'back pad') short = 'BP';
-                                      else if (n === 'chestpad' || n === 'chest pad') short = 'CP';
-                                      else if (n === 'start position' || n === 'start') short = 'SP';
-                                      else if (n === 'range') short = 'R';
-                                      else if (n === 'height') short = 'H';
-                                      else if (n.includes(' ')) short = n.split(' ').map(w => w[0]).join('').toUpperCase();
-                                      return `${short}${v}`;
-                                    })
-                                    .join(",")
-                                : "---"}
-                            </span>
+                            <div className="flex items-center gap-2 text-[10px] tracking-widest truncate leading-none uppercase mt-0.5 flex-wrap">
+                              {(() => {
+                                const settings = clientSettings[machine.id!]?.settings || {};
+                                
+                                const getShort = (n: string) => {
+                                  const lower = n.trim().toLowerCase();
+                                  if (lower === 'gap') return 'G';
+                                  if (lower === 'chestpad' || lower === 'chest pad') return 'C';
+                                  if (lower === 'backpad' || lower === 'back pad' || lower === 'backrest') return 'B';
+                                  if (lower === 'backpad 2' || lower === 'back pad 2') return 'B2';
+                                  if (lower === 'seat') return 'S';
+                                  if (lower === 'handles' || lower === 'handle') return 'H';
+                                  if (lower === 'start position' || lower === 'start') return 'SP';
+                                  if (lower === 'range' || lower === 'rom') return 'R';
+                                  return lower.substring(0, 2).toUpperCase();
+                                };
+
+                                const mappedSettings = Object.entries(settings).map(([k, v]) => ({ short: getShort(k), val: v }));
+
+                                return mappedSettings.map((s, i) => (
+                                  <span key={i} className="inline-flex items-baseline bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded-[4px]">
+                                     <span className="font-semibold text-slate-400 font-sans mr-[2px]">{s.short}:</span>
+                                     <span className="font-bold text-slate-800 dark:text-slate-200">{s.val}</span>
+                                  </span>
+                                ));
+                              })()}
+                            </div>
                           </div>
                         </td>
                         {displaySessions.map((s, sIdx) => {
@@ -1449,8 +1478,6 @@ export function ClientProfileView({
                             (l) => l.sessionId === s.id,
                           );
                           const isLast = sIdx === displaySessions.length - 1;
-                          const promptIncrease =
-                            isLast && log?.repQuality === 3;
                           
                           let bgClass = "bg-transparent";
                           let labelColor = "text-slate-800 dark:text-slate-200";
@@ -1497,11 +1524,6 @@ export function ClientProfileView({
                                       <span className={cn("font-bold font-sans text-[12px] sm:text-[13px] tracking-tight leading-none", labelColor)}>
                                         {log.weight}
                                       </span>
-                                      {promptIncrease && (
-                                        <span className="text-[9px] text-[#F06C22] shrink-0 font-black ml-0.5" title="Recommend Increase">
-                                          ▲
-                                        </span>
-                                      )}
                                     </div>
                                   </div>
                                   <div className="flex-1 flex items-center justify-center p-1 min-h-[20px]">
@@ -1524,31 +1546,18 @@ export function ClientProfileView({
                             </td>
                           );
                         })}
-                        <td className="p-0 text-center bg-[#F06C22]/5 dark:bg-[#F06C22]/10 align-middle border-l border-[#F06C22]/20 shadow-inner group-hover:bg-[#F06C22]/10 transition-colors h-full">
-                          {targetLog ? (
-                            <div className="flex flex-col items-center justify-center opacity-50 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all h-full w-full">
-                              <div className="flex-1 flex items-center justify-center border-b border-[#F06C22]/20 w-full p-1 min-h-[22px]">
-                                <span className="font-bold text-[12px] sm:text-[13px] text-[#F06C22] tracking-tight leading-none">
-                                  {targetLog.repQuality === 3
-                                    ? Number(targetLog.weight) + 5
-                                    : targetLog.weight}
+                        <td className="p-0 text-center bg-[#F9FAFB] dark:bg-slate-900/40 align-middle border-l border-slate-200 dark:border-slate-800 h-full w-[5%]">
+                          {currentLog ? (
+                            <div className={cn("flex flex-col items-center justify-center border-l-[3px] h-full w-full bg-white dark:bg-slate-900/60 shadow-sm transition-colors", colors.border.replace('border-', 'border-l-'))}>
+                                <span className={cn("font-black text-lg sm:text-xl tracking-tighter leading-none", colors.activeText)}>
+                                  {currentLog.weight}
                                 </span>
-                              </div>
-                              <div className="flex-1 flex items-center justify-center w-full p-1 min-h-[20px]">
-                                <span className="font-black text-[10px] text-[#F06C22]/80 leading-none">
-                                  {targetLog.repsLeft !== undefined && targetLog.repsRight !== undefined
-                                    ? `${targetLog.repsLeft}L|${targetLog.repsRight}R`
-                                    : targetLog.isStaticHold ? (
-                                        <>{targetLog.seconds}<span className="text-[8px] ml-0.5 lowercase font-medium">s</span></>
-                                      ) : (
-                                        targetLog.reps
-                                      )}
-                                </span>
-                              </div>
                             </div>
                           ) : (
-                            <div className="h-full w-full flex items-center justify-center">
-                              <span className="text-[12px] text-[#F06C22]/30 font-medium opacity-50">--</span>
+                            <div className="h-full w-full flex items-center justify-center p-1.5 border-l-[3px] border-l-transparent">
+                              <span className="text-slate-400 dark:text-slate-500 italic text-[11px] font-semibold whitespace-nowrap">
+                                        --
+                              </span>
                             </div>
                           )}
                         </td>
@@ -2158,9 +2167,9 @@ export function ClientProfileView({
 
             machineGrowths.sort((a, b) => b.growth - a.growth);
 
-            // Initialize chart machines exactly once to top 3
-            if (!hasInitializedChartMachines && machineGrowths.length > 0) {
-              setSelectedChartMachines(machineGrowths.slice(0, 3).map(m => m.id));
+            // Initialize chart machines exactly once to all performed machines
+            if (!hasInitializedChartMachines && seenMachines.size > 0) {
+              setSelectedChartMachines(Array.from(seenMachines));
               setHasInitializedChartMachines(true);
             }
 
@@ -2171,22 +2180,27 @@ export function ClientProfileView({
               if (active && payload && payload.length) {
                 const data = payload[0].payload;
                 return (
-                  <div className="bg-[#0A2E46] border border-slate-200 dark:border-slate-800 dark:border-slate-700 p-3 rounded-lg shadow-xl min-w-[150px]">
+                  <div className="bg-[#0A2E46] border border-slate-200 dark:border-slate-800 dark:border-slate-700 p-3 rounded-lg shadow-xl min-w-[200px]">
                     <p className="text-[10px] uppercase tracking-widest text-[#68717A] mb-2">{data.date}</p>
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       {payload.map((entry: any, index: number) => {
                         const machine = machines.find(m => m.id === entry.dataKey);
                         if (!machine) return null;
                         const weight = data[entry.dataKey + '_weight'];
+                        const baselineWeight = memoizedMachineStatsByDate.machineBaselines[machine.id!];
                         return (
-                          <div key={index} className="flex justify-between items-center text-xs">
-                            <span style={{ color: entry.color }} className="font-bold truncate max-w-[100px] mr-4">{machine.name}</span>
-                            <div className="flex items-center gap-2">
-                              {weight !== undefined && (
-                                <span className="text-slate-400 font-medium">{weight} lbs</span>
-                              )}
-                              <span className="font-bold text-white">+{entry.value}%</span>
+                          <div key={index} className="flex flex-col text-xs bg-slate-900/50 p-1.5 rounded">
+                            <div className="flex justify-between items-center w-full">
+                              <span style={{ color: entry.color }} className="font-bold truncate max-w-[120px]">{machine.name}</span>
+                              <span className="font-black text-white text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">+{entry.value}%</span>
                             </div>
+                            {weight !== undefined && baselineWeight !== undefined && (
+                              <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest text-[#68717A] mt-1">
+                                <span>Start: <span className="text-white font-bold">{baselineWeight} lbs</span></span>
+                                <span>→</span>
+                                <span>Current: <span className="text-white font-bold">{weight} lbs</span></span>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -2271,16 +2285,14 @@ export function ClientProfileView({
                           <TrendingUp className="w-5 h-5 text-[#F06C22]" /> Strength Journey
                         </CardTitle>
                         <CardDescription className="text-xs font-bold uppercase tracking-widest mt-2 text-slate-500">
-                          Percentage Growth from Baseline
+                          Percentage Growth vs. Starting Weight
                         </CardDescription>
                       </div>
                       
                       {/* Compare Machines Dropdown */}
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700">
-                            Compare Machines ({selectedChartMachines.length})
-                          </Button>
+                        <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-900 dark:text-white transition-colors h-9 px-4 py-2">
+                          Compare Machines ({selectedChartMachines.length})
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-[280px] p-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 max-h-[400px] overflow-y-auto">
                            {machines.filter(m => seenMachines.has(m.id!)).map(m => {
@@ -3468,6 +3480,8 @@ export function ClientProfileView({
             preloadedSessions={sessions}
             preloadedLogs={allLogs}
             onLoadMoreHistory={handleLoadMoreHistory}
+            studios={studios}
+            activeStudioId={activeStudioId}
           />
         )}
       </AnimatePresence>
@@ -3528,6 +3542,8 @@ export function ClientProfileView({
         sessions={sessions}
         isSaving={isSavingSettings}
         onSave={handleUpdateMachineSettings}
+        studios={studios}
+        activeStudioId={activeStudioId}
       />
 
       <Dialog

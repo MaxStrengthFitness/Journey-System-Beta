@@ -43,11 +43,12 @@ export const MACHINE_COLORS: Record<string, MovementCategory> = {
   "Seated Leg Curl": "Lower Body",
 };
 
-interface ColorStyles {
+export interface ColorStyles {
   bg: string;
   border: string;
   text: string;
   ring: string;
+  activeText: string;
 }
 
 export function getMachineStyle(machineName: string): ColorStyles {
@@ -94,6 +95,7 @@ export function getMachineStyle(machineName: string): ColorStyles {
         border: "border-blue-400 dark:border-blue-600",
         text: "text-blue-900 dark:text-blue-200",
         ring: "ring-blue-400 dark:ring-blue-600",
+        activeText: "text-blue-600 dark:text-blue-400",
       };
     case "Pull":
       return {
@@ -101,6 +103,7 @@ export function getMachineStyle(machineName: string): ColorStyles {
         border: "border-amber-400 dark:border-amber-600",
         text: "text-amber-900 dark:text-amber-200",
         ring: "ring-amber-400 dark:ring-amber-600",
+        activeText: "text-amber-600 dark:text-amber-400",
       };
     case "Core":
       return {
@@ -108,6 +111,7 @@ export function getMachineStyle(machineName: string): ColorStyles {
         border: "border-purple-400 dark:border-purple-600",
         text: "text-purple-900 dark:text-purple-200",
         ring: "ring-purple-400 dark:ring-purple-600",
+        activeText: "text-purple-600 dark:text-purple-400",
       };
     case "Lower Body":
       return {
@@ -115,6 +119,7 @@ export function getMachineStyle(machineName: string): ColorStyles {
         border: "border-emerald-400 dark:border-emerald-600",
         text: "text-emerald-900 dark:text-emerald-200",
         ring: "ring-emerald-400 dark:ring-emerald-600",
+        activeText: "text-emerald-600 dark:text-emerald-400",
       };
     case "Neck":
     default:
@@ -123,6 +128,7 @@ export function getMachineStyle(machineName: string): ColorStyles {
         border: "border-slate-500 dark:border-slate-400",
         text: "text-slate-900 dark:text-slate-100",
         ring: "ring-slate-500 dark:ring-slate-400",
+        activeText: "text-slate-800 dark:text-slate-300",
       };
   }
 }
