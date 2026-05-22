@@ -213,6 +213,8 @@ export function ClientProfileView({
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [sessionNotes, setSessionNotes] = useState<SessionNote[]>([]);
   const [activeMachine, setActiveMachine] = useState<string | null>(null);
+  const [selectedChartMachines, setSelectedChartMachines] = useState<string[]>([]);
+  const [hasInitializedChartMachines, setHasInitializedChartMachines] = useState(false);
   const [infoForm, setInfoForm] = useState<Partial<Client>>({});
   const [newEventForm, setNewEventForm] = useState<{
     date: string;
@@ -975,8 +977,6 @@ export function ClientProfileView({
   }, [memoizedCompletedSessionsAsc]);
 
   const memoizedMachineStatsByDate = useMemo(() => {
-    const sixtyDaysAgo = new Date();
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
     const machineStatsByDate: Record<string, Record<string, number>> = {};
     const machineWeightsByDate: Record<string, Record<string, number>> = {};
     const machineBaselines: Record<string, number> = {};
@@ -991,8 +991,7 @@ export function ClientProfileView({
             machineBaselines[l.machineId] = w;
           }
           const session = sessions.find((s) => s.id === l.sessionId);
-          const time = l.createdAt?.toMillis?.() || 0;
-          if (session && session.date && time >= sixtyDaysAgo.getTime()) {
+          if (session && session.date) {
             const dateStr = new Date(parseSessionDate(session.date)).toLocaleDateString("en-US", { month: "short", day: "numeric" });
             if (!machineStatsByDate[dateStr]) {
               machineStatsByDate[dateStr] = {};
@@ -2112,7 +2111,7 @@ export function ClientProfileView({
             );
           })()}
 
-          {/* 60-Day Overall Growth Chart */}
+          {/* Strength Journey Overall Growth Chart */}
           {(() => {
             const machineStatsByDate = memoizedMachineStatsByDate.machineStatsByDate;
             const machineWeightsByDate = memoizedMachineStatsByDate.machineWeightsByDate;
@@ -2130,26 +2129,43 @@ export function ClientProfileView({
               const currentWeights = machineWeightsByDate[dateStr];
               const row: any = { date: dateStr };
               machines.forEach(m => {
-                // If there's new data for this machine on this date
-                if (currentStats && currentStats[m.id] !== undefined) {
-                  row[m.id] = Math.round(currentStats[m.id] * 10) / 10;
-                  row[m.id + '_weight'] = currentWeights[m.id];
-                  lastKnownStats[m.id] = row[m.id];
-                  lastKnownWeights[m.id] = row[m.id + '_weight'];
+                if (currentStats && currentStats[m.id!] !== undefined) {
+                  row[m.id!] = Math.round(currentStats[m.id!] * 10) / 10;
+                  row[m.id + '_weight'] = currentWeights[m.id!];
+                  lastKnownStats[m.id!] = row[m.id!];
+                  lastKnownWeights[m.id!] = row[m.id + '_weight'];
 
-                  if (!seenMachines.has(m.id)) {
+                  if (!seenMachines.has(m.id!)) {
                     row[m.id + '_isFirst'] = true;
-                    seenMachines.add(m.id);
+                    seenMachines.add(m.id!);
                   }
                 } 
-                // Carry forward the previous known value for plateaus
-                else if (lastKnownStats[m.id] !== undefined) {
-                  row[m.id] = lastKnownStats[m.id];
-                  row[m.id + '_weight'] = lastKnownWeights[m.id];
+                else if (lastKnownStats[m.id!] !== undefined) {
+                  row[m.id!] = lastKnownStats[m.id!];
+                  row[m.id + '_weight'] = lastKnownWeights[m.id!];
                 }
               });
               return row;
             });
+
+            // Calculate total machine growths for the top 3 and average growth
+            const machineGrowths: Array<{id: string, name: string, growth: number}> = [];
+            machines.forEach(m => {
+              if (lastKnownStats[m.id!] !== undefined && lastKnownStats[m.id!] > 0) {
+                 machineGrowths.push({ id: m.id!, name: m.name, growth: lastKnownStats[m.id!] });
+              }
+            });
+
+            machineGrowths.sort((a, b) => b.growth - a.growth);
+
+            // Initialize chart machines exactly once to top 3
+            if (!hasInitializedChartMachines && machineGrowths.length > 0) {
+              setSelectedChartMachines(machineGrowths.slice(0, 3).map(m => m.id));
+              setHasInitializedChartMachines(true);
+            }
+
+            const totalGrowth = machineGrowths.reduce((sum, m) => sum + m.growth, 0);
+            const avgGrowth = machineGrowths.length > 0 ? Math.round(totalGrowth / machineGrowths.length) : 0;
 
             const CustomGrowthTooltip = ({ active, payload }: any) => {
               if (active && payload && payload.length) {
@@ -2164,12 +2180,12 @@ export function ClientProfileView({
                         const weight = data[entry.dataKey + '_weight'];
                         return (
                           <div key={index} className="flex justify-between items-center text-xs">
-                            <span style={{ color: entry.color }} className="font-bold truncate max-w-[80px]">{machine.name}</span>
+                            <span style={{ color: entry.color }} className="font-bold truncate max-w-[100px] mr-4">{machine.name}</span>
                             <div className="flex items-center gap-2">
                               {weight !== undefined && (
-                                <span className="text-slate-700 dark:text-slate-300 dark:text-slate-400 dark:text-slate-500 font-medium">{weight} lbs</span>
+                                <span className="text-slate-400 font-medium">{weight} lbs</span>
                               )}
-                              <span className="font-bold text-slate-900 dark:text-slate-50 dark:">+{entry.value}%</span>
+                              <span className="font-bold text-white">+{entry.value}%</span>
                             </div>
                           </div>
                         );
@@ -2182,100 +2198,189 @@ export function ClientProfileView({
             };
 
             const OriginDot = (props: any) => {
-              const { cx, cy, payload, dataKey } = props;
+              const { cx, cy, payload, dataKey, stroke } = props;
               if (payload[dataKey + "_isFirst"] && cx && cy) {
                 return (
-                  <circle cx={cx} cy={cy} r={5} fill={props.stroke} stroke="#0A2E46" strokeWidth={2} />
+                  <circle cx={cx} cy={cy} r={5} fill={stroke} stroke="#fff" strokeWidth={2} />
                 );
               }
               return null;
             };
 
-            // Colors for up to 20 machines (repeats if more)
-            const strokeColors = [
-              "#F06C22", "#38BDF8", "#34D399", "#FBBF24", "#F472B6", 
-              "#A78BFA", "#4ADE80", "#F87171", "#60A5FA", "#3B82F6",
-              "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899",
-              "#14B8A6", "#84CC16", "#EAB308", "#6366F1", "#D946EF"
-            ];
+            const getColorForMachine = (machineName: string) => {
+              const lowerName = machineName.toLowerCase();
+              if (lowerName.includes("neck")) return "#64748b"; // Slate (Neck)
+              if (
+                (lowerName.includes("press") && !lowerName.includes("leg")) ||
+                lowerName.includes("raise") ||
+                lowerName.includes("fly") ||
+                lowerName.includes("tricep") ||
+                lowerName.includes("dip")
+              ) return "#3b82f6"; // Steel Blue (Push)
+              if (
+                lowerName.includes("pull") ||
+                lowerName.includes("row") ||
+                lowerName.includes("bicep")
+              ) return "#f59e0b"; // Amber (Pull)
+              if (
+                lowerName.includes("ab") ||
+                lowerName.includes("lumbar") ||
+                lowerName.includes("torso") ||
+                lowerName.includes("core")
+              ) return "#a855f7"; // Purple (Core)
+              if (
+                lowerName.includes("leg") ||
+                lowerName.includes("hip") ||
+                lowerName.includes("calf") ||
+                lowerName.includes("thigh")
+              ) return "#10b981"; // Sage Green (Lower Body)
+              
+              return "#64748b"; // Fallback Slate
+            };
+
+            // Calculate filtered machines based on dropdown
+            const activeChartMachines = machines.filter(m => selectedChartMachines.includes(m.id!));
 
             return (
-              <Card className="rounded-[40px] border-2 shadow-xl overflow-hidden bg-[#0A2E46] border-[#0A2E46]">
-                <CardHeader className="p-8 border-b border-[#0A2E46]/80 bg-white dark:bg-slate-900 dark:bg-slate-900/40">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle className="text-xl font-bold uppercase tracking-widest text-slate-300">
-                        Individual Strength Progression
-                      </CardTitle>
-                      <CardDescription className="text-xs font-bold uppercase tracking-widest mt-2 text-[#F06C22]">
-                        60-Day Machine Specifics (% Increase)
-                      </CardDescription>
-                      <p className="text-slate-700 dark:text-slate-300 dark:text-slate-400 dark:text-slate-500 text-sm mt-1 italic">
-                        Charts reflect currently loaded history. Load more sessions to expand the timeline.
-                      </p>
+              <div className="space-y-6">
+                 {/* Average Growth Summary Card */}
+                {machineGrowths.length > 0 && (
+                  <Card className="rounded-[24px] overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 border-l-4 border-l-[#10b981]">
+                    <CardContent className="p-6 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-[#10b981]/10 flex items-center justify-center">
+                          <TrendingUp className="w-6 h-6 text-[#10b981]" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-widest font-bold text-slate-500">Average Studio Growth</p>
+                          <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total average increase across {machineGrowths.length} machines</p>
+                        </div>
+                      </div>
+                      <div className="text-right flex items-center gap-2">
+                         <span className="text-emerald-500 font-bold text-3xl">+{avgGrowth}%</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Card className="rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden bg-white dark:bg-slate-900">
+                  <CardHeader className="p-8 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <CardTitle className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46] dark:text-slate-200 flex items-center gap-2">
+                          <TrendingUp className="w-5 h-5 text-[#F06C22]" /> Strength Journey
+                        </CardTitle>
+                        <CardDescription className="text-xs font-bold uppercase tracking-widest mt-2 text-slate-500">
+                          Percentage Growth from Baseline
+                        </CardDescription>
+                      </div>
+                      
+                      {/* Compare Machines Dropdown */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700">
+                            Compare Machines ({selectedChartMachines.length})
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[280px] p-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 max-h-[400px] overflow-y-auto">
+                           {machines.filter(m => seenMachines.has(m.id!)).map(m => {
+                             const isSelected = selectedChartMachines.includes(m.id!);
+                             return (
+                               <DropdownMenuItem 
+                                 key={m.id}
+                                 className="flex items-center gap-2 py-2 cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-800"
+                                 onSelect={(e) => {
+                                   e.preventDefault();
+                                   if (isSelected) {
+                                     setSelectedChartMachines(prev => prev.filter(id => id !== m.id));
+                                   } else {
+                                     setSelectedChartMachines(prev => [...prev, m.id!]);
+                                   }
+                                 }}
+                               >
+                                 <div className={cn(
+                                   "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
+                                   isSelected ? "bg-blue-500 border-blue-500" : "border-slate-300 dark:border-slate-600"
+                                 )}>
+                                   {isSelected && <div className="w-2 h-2 rounded-sm bg-white" />}
+                                 </div>
+                                 <span className="text-[11px] font-bold uppercase truncate flex-1">{m.name}</span>
+                                 {machineGrowths.find(x => x.id === m.id) && (
+                                   <span className="text-[10px] font-bold text-emerald-500">+{machineGrowths.find(x => x.id === m.id)?.growth}%</span>
+                                 )}
+                               </DropdownMenuItem>
+                             )
+                           })}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-8 h-[450px]"> {/* slightly taller space for legend to fit */}
-                  {growthChartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={growthChartData} margin={{ top: 20, right: 20, left: -20, bottom: 20 }} onMouseLeave={() => setActiveMachine(null)}>
-                        <XAxis 
-                          dataKey="date" 
-                          stroke="#68717A" 
-                          tick={{ fill: "#68717A", fontSize: 10, fontWeight: 700 }} 
-                          tickMargin={10} 
-                          axisLine={false} 
-                          tickLine={false} 
-                        />
-                        <YAxis 
-                          stroke="#68717A" 
-                          tick={{ fill: "#68717A", fontSize: 10 }} 
-                          axisLine={false} 
-                          tickLine={false}
-                          tickFormatter={(val) => `+${val}%`}
-                        />
-                        <RechartsTooltip content={<CustomGrowthTooltip />} />
-                        <Legend 
-                           wrapperStyle={{ paddingTop: "20px" }}
-                           onMouseEnter={(e) => setActiveMachine(e.dataKey as string)}
-                           onMouseLeave={() => setActiveMachine(null)}
-                           onClick={(e) => setActiveMachine(activeMachine === e.dataKey ? null : e.dataKey as string)}
-                           iconType="circle"
-                        />
-                        {machines.map((m, idx) => {
-                          // Only render line if at least one data point exists for this machine
-                          const hasData = growthChartData.some(d => d[m.id] !== undefined);
-                          if (!hasData) return null;
-                          
-                          const isActive = activeMachine === m.id;
-                          const isFaded = activeMachine !== null && !isActive;
-                          
-                          return (
-                            <Line 
-                              key={m.id}
-                              name={m.name} // Legend uses name
-                              type="stepAfter" // Make it a step chart to show plateaus clearly
-                              dataKey={m.id} 
-                              stroke={strokeColors[idx % strokeColors.length]} 
-                              strokeWidth={3}
-                              strokeOpacity={isFaded ? 0.15 : 1}
-                              dot={<OriginDot />} // Only render the origin marker
-                              activeDot={{ r: 6, fill: "#fff", strokeWidth: 2 }}
-                              connectNulls
-                            />
-                          );
-                        })}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center opacity-30">
-                      <TrendingUp className="w-12 h-12 text-[#68717A] mb-4" />
-                      <p className="text-xs font-bold uppercase tracking-widest text-[#68717A]">Not enough data in the last 60 days</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardHeader>
+                  <CardContent className="p-8 h-[550px] bg-slate-50 dark:bg-slate-900/50">
+                    {growthChartData.length > 0 && activeChartMachines.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={growthChartData} margin={{ top: 20, right: 30, left: -10, bottom: 20 }}>
+                          <XAxis 
+                            dataKey="date" 
+                            stroke="#94a3b8" 
+                            tick={{ fill: "#64748b", fontSize: 10, fontWeight: 700 }} 
+                            tickMargin={15} 
+                            axisLine={{ stroke: '#e2e8f0', strokeWidth: 2 }}
+                            tickLine={false} 
+                          />
+                          <YAxis 
+                            stroke="#94a3b8" 
+                            tick={{ fill: "#64748b", fontSize: 10, fontWeight: 700 }} 
+                            axisLine={false} 
+                            tickLine={false}
+                            tickFormatter={(val) => `+${val}%`}
+                            domain={[0, 'auto']}
+                          />
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                          <RechartsTooltip content={<CustomGrowthTooltip />} />
+                          <Legend 
+                             wrapperStyle={{ paddingTop: "20px" }}
+                             onMouseEnter={(e) => setActiveMachine(e.dataKey as string)}
+                             onMouseLeave={() => setActiveMachine(null)}
+                             onClick={(e) => setActiveMachine(activeMachine === e.dataKey ? null : e.dataKey as string)}
+                             iconType="circle"
+                             iconSize={8}
+                          />
+                          {activeChartMachines.map((m, idx) => {
+                            const hasData = growthChartData.some(d => d[m.id!] !== undefined);
+                            if (!hasData) return null;
+                            
+                            const isActive = activeMachine === m.id;
+                            const isFaded = activeMachine !== null && !isActive;
+                            const color = getColorForMachine(m.name);
+                            
+                            return (
+                              <Line 
+                                key={m.id}
+                                name={m.name} // Legend uses name
+                                type="stepAfter" // Make it a step chart to show plateaus clearly
+                                dataKey={m.id!} 
+                                stroke={color} 
+                                strokeWidth={isActive ? 4 : 2.5}
+                                strokeOpacity={isFaded ? 0.15 : 1}
+                                dot={<OriginDot stroke={color} />}
+                                activeDot={{ r: 6, fill: "#fff", stroke: color, strokeWidth: 2 }}
+                                connectNulls
+                              />
+                            );
+                          })}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center opacity-30">
+                        <TrendingUp className="w-12 h-12 text-[#68717A] mb-4" />
+                        <p className="text-xs font-bold uppercase tracking-widest text-[#68717A]">
+                          {growthChartData.length === 0 ? "Not enough data available" : "Select machines to compare"}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             );
           })()}
 
