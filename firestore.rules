@@ -23,7 +23,7 @@ service cloud.firestore {
     // 1. SUPER ADMIN: Absolute master access to everything
     function isSuperAdmin() {
       return isAuthenticated() && (
-        (request.auth.token.email != null && request.auth.token.email.lower() == "jurgensaj@gmail.com") ||
+        (request.auth.token.email != null && request.auth.token.email == "jurgensaj@gmail.com") ||
         getRole() == 'Admin' || 
         getRole() == 'Founder' || 
         getRole() == 'Overseer'
@@ -150,12 +150,18 @@ service cloud.firestore {
       allow create: if isSuperAdmin() || isFranchiseOwner() || 
                     (request.resource.data.primaryHomeStudioId != null && 
                      isStudioOwnerOrHeadTrainer(request.resource.data.primaryHomeStudioId));
-      allow update: if isSuperAdmin() || isFranchiseOwner() ||
-                    (resource.data.primaryHomeStudioId != null && isStudioOwnerOrHeadTrainer(resource.data.primaryHomeStudioId)) ||
-                    (isAuthenticated() && request.auth.uid == trainerId) ||
+      allow update: if isSuperAdmin() || 
+                    ( (isFranchiseOwner() || 
+                      (resource.data.primaryHomeStudioId != null && isStudioOwnerOrHeadTrainer(resource.data.primaryHomeStudioId)) || 
+                      (isAuthenticated() && request.auth.uid == trainerId))
+                      && 
+                      (!('role' in request.resource.data) || 
+                       request.resource.data.role == resource.data.role || 
+                       (request.resource.data.role != 'Founder' && request.resource.data.role != 'Admin' && request.resource.data.role != 'Overseer'))
+                    ) ||
                     (resource.data.requiresPinReset == true && request.resource.data.requiresPinReset == false) ||
                     (request.resource.data.get('sync_secret', '') == 'STABLE_MASTER_SYNC_TOKEN_2026');
-      allow delete: if isSuperAdmin() || isFranchiseOwner();
+      allow delete: if isSuperAdmin();
     }
 
     // CLIENTS: Protected matching trainer's authorized territories
@@ -283,6 +289,13 @@ service cloud.firestore {
     match /aggregations/{aggId} {
       allow read: if isAuthenticated();
       allow write: if isSuperAdmin();
+    }
+
+    // BUG REPORTS
+    match /bug_reports/{reportId} {
+      allow read: if isSuperAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isSuperAdmin();
     }
 
     // ANNOUNCEMENTS

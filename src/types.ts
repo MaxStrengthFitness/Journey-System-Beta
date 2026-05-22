@@ -9,7 +9,9 @@ export type UserRole = 'Admin' | 'Founder' | 'Owner' | 'StudioLeader' | 'LifeTra
 export interface FranchiseNetwork {
   id: string;
   name: string;
-  ownerId: string; // The Owner/StudioOwner ID who owns this network
+  ownerId?: string; // Legacy
+  ownerIds?: string[]; // Multiple Owners
+  state?: string; // e.g. "Ohio"
   studioIds: string[]; // List of Studio IDs included in this network
   createdAt?: any;
 }
@@ -64,7 +66,8 @@ export interface Trainer {
   activeGuestStudioIds: string[];
   /** Public-facing bio for client profiles */
   bio?: string;
-  /** List of professional certifications and qualifications */
+  email?: string;
+  thirdPartyCalendarUrl?: string;
   certifications?: string[];
   /** When the staff member joined the team */
   employmentStartDate?: any;
@@ -133,6 +136,7 @@ export interface Client {
   medicalHistory?: string;
   occupation?: string;
   isRetired?: boolean;
+  experienceLevel?: 'Beginner' | 'Intermediate' | 'Advanced' | string;
   clinicalProfile?: string[];
   clinicalFlags?: string[];
   clinicalNotes?: string;
@@ -170,6 +174,11 @@ export interface Machine {
   settings?: string; // Repurposed as "Standard Setup Tips"
   settingOptions?: string[]; // e.g. ["Seat", "Pads", "Backrest"]
   standardSettings?: Record<string, string>; // e.g. {"Seat": "5", "Pads": "2"}
+  standardWeights?: {
+    Beginner?: number | string;
+    Intermediate?: number | string;
+    Advanced?: number | string;
+  };
   order?: number;
   imageUrl?: string;
   anatomicalRegion?: string;
@@ -433,11 +442,28 @@ export interface ProgressReport {
   };
   
   roadmap?: {
-    anchorCategory: 'weight_loss' | 'eih_management' | 'general_conditioning';
-    emotionalAnchor: string;
-    smartGoal: string;
-    prescriptionType: 'quantitative' | 'qualitative';
-    inStudioPrescription: {
+    trackType?: 'maintenance' | 'goals' | 'refinement';
+    
+    // Maintenance
+    selectedHabits?: string[];
+    routineChangeRequested?: boolean;
+    routineModifications?: string;
+    
+    // Goals
+    emotionalAnchor?: string;
+    smartGoal?: string;
+    targetMachineId?: string;
+    goalActions?: string[];
+    machinePlan?: string;
+    
+    // Refinement
+    refinementFocusArea?: 'Posture' | 'Pace' | 'Path' | 'Purpose' | string;
+    routineIntervention?: string;
+
+    // Legacy
+    anchorCategory?: 'weight_loss' | 'eih_management' | 'general_conditioning';
+    prescriptionType?: 'quantitative' | 'qualitative';
+    inStudioPrescription?: {
       targetMachine: string;
       targetMetric?: string;
       qualitativeFocus?: string;
@@ -494,6 +520,7 @@ export interface Studio {
   mindbodySiteId?: string;
   createdAt?: any;
   networkId?: string; // Newly added to associate with a FranchiseNetwork
+  machineSettings?: Record<string, Record<string, string>>; // studioStandardSettings per machine
 }
 
 export interface HubAnnouncement {
@@ -503,10 +530,18 @@ export interface HubAnnouncement {
   longContent: string;
   authorId: string;
   authorName: string;
-  studioId: string | 'all';
+  studioId: string | 'all'; // Legacy scope field
+  targetScope?: 'universal' | 'network' | 'studio';
+  targetId?: string; // Network ID or Studio ID
+  type?: 'shout-out' | 'tip' | 'news' | 'event' | 'holiday';
+  referenceTarget?: {
+    type: 'trainer' | 'client' | 'studio';
+    id: string;
+  };
+  expiresAt?: any; // Timestamp for auto-expiration
   createdAt: any;
   isActive: boolean;
-  priority: 'low' | 'medium' | 'high';
+  priority: 'low' | 'medium' | 'high'; // Treated as urgency
   readBy?: string[];
 }
 
@@ -548,4 +583,4 @@ export interface LeaderboardDocument {
   machineData: Record<string, LeaderboardMachineData>;
 }
 
-export type View = 'trainers' | 'clients' | 'machines' | 'workouts' | 'history' | 'calendar' | 'trainer-hub' | 'dashboard' | 'profile' | 'chart' | 'trainer-profile' | 'progress-report' | 'consultation-wizard' | 'machine-knowledge' | 'client-directory' | 'chart-importer' | 'leaderboard' | 'owner-dashboard' | 'owner-studio-manager';
+export type View = 'trainers' | 'clients' | 'machines' | 'workouts' | 'history' | 'calendar' | 'trainer-hub' | 'dashboard' | 'profile' | 'chart' | 'trainer-profile' | 'progress-report' | 'consultation-wizard' | 'machine-knowledge' | 'client-directory' | 'chart-importer' | 'leaderboard' | 'admin-dashboard' | 'franchise-dashboard';

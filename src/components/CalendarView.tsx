@@ -249,18 +249,18 @@ export function CalendarView({
       // Helper to trigger navigation
       const selectMatchedClient = (clientId: string, nameToStore?: string) => {
         if (session.id && (!session.clientId || session.clientId !== clientId)) {
-          import('../firebase').then(({ db }) => {
-            import('firebase/firestore').then(({ updateDoc, doc }) => {
-              updateDoc(doc(db, 'schedules', session.id!), {
-                clientId: clientId
-              }).catch(err => console.error("Error auto-linking clicked calendar schedule:", err));
-              if (nameToStore) {
-                updateDoc(doc(db, 'clients', clientId), {
-                  mindbody_name: nameToStore
-                }).catch(err => console.error("Error setting mindbody_name on click:", err));
-              }
-            });
-          }).catch(e => console.error("Could not load Firebase for dynamic auto-link:", e));
+          try {
+            updateDoc(doc(db, 'schedules', session.id!), {
+              clientId: clientId
+            }).catch(err => console.error("Error auto-linking clicked calendar schedule:", err));
+            if (nameToStore) {
+              updateDoc(doc(db, 'clients', clientId), {
+                mindbody_name: nameToStore
+              }).catch(err => console.error("Error setting mindbody_name on click:", err));
+            }
+          } catch (e) {
+            console.error("Could not update Firebase for auto-link:", e);
+          }
         }
 
         onSelectClient(clientId);
@@ -272,117 +272,112 @@ export function CalendarView({
       } else {
         // If not found in current UI state array (or if the day of schedule is different),
         // query Firestore in real-time under trainer's home studio first, then globally.
-        import('../firebase').then(({ db }) => {
-          import('firebase/firestore').then(async ({ getDocs, query, collection, where }) => {
-            try {
-              const clientsRef = collection(db, 'clients');
-              let dbMatched: any = null;
+        const searchDatabase = async () => {
+          try {
+            const clientsRef = collection(db, 'clients');
+            let dbMatched: any = null;
 
-              const nameVariants = Array.from(new Set([
-                clientName,
-                clientName.toLowerCase(),
-                clientName.toUpperCase(),
-                clientName.split(/\s+/).map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ')
-              ]));
+            const nameVariants = Array.from(new Set([
+              clientName,
+              clientName.toLowerCase(),
+              clientName.toUpperCase(),
+              clientName.split(/\s+/).map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ')
+            ]));
 
-              // A. Try querying trainer's home studio clients first
-              if (targetStudioId) {
-                const mbSnap = await getDocs(query(
-                  clientsRef,
-                  where('homeStudioId', '==', targetStudioId),
-                  where('mindbody_name', 'in', nameVariants)
-                ));
+            // A. Try querying trainer's home studio clients first
+            if (targetStudioId) {
+              const mbSnap = await getDocs(query(
+                clientsRef,
+                where('homeStudioId', '==', targetStudioId),
+                where('mindbody_name', 'in', nameVariants)
+              ));
 
-                if (!mbSnap.empty) {
-                  dbMatched = { id: mbSnap.docs[0].id, ...mbSnap.docs[0].data() };
-                } else {
-                  const parts = clientName.split(/\s+/);
-                  if (parts.length >= 1) {
-                    const first = parts[0];
-                    const firstVariants = Array.from(new Set([
-                      first,
-                      first.toLowerCase(),
-                      first.toUpperCase(),
-                      first.charAt(0).toUpperCase() + first.slice(1).toLowerCase(),
-                      ...nameVariants
-                    ]));
-
-                    const flSnap = await getDocs(query(
-                      clientsRef,
-                      where('homeStudioId', '==', targetStudioId),
-                      where('firstName', 'in', firstVariants)
-                    ));
-
-                    const matchingDoc = flSnap.docs.find(docData => {
-                      const data = docData.data();
-                      return isFuzzyNameMatch(clientName, data.firstName || '', data.lastName || '', data.mindbody_name);
-                    });
-
-                    if (matchingDoc) {
-                      dbMatched = { id: matchingDoc.id, ...matchingDoc.data() };
-                    }
-                  }
-                }
-              }
-
-              // B. Fallback globally
-              if (!dbMatched) {
-                const mbSnapGlobal = await getDocs(query(
-                  clientsRef,
-                  where('mindbody_name', 'in', nameVariants)
-                ));
-
-                if (!mbSnapGlobal.empty) {
-                  dbMatched = { id: mbSnapGlobal.docs[0].id, ...mbSnapGlobal.docs[0].data() };
-                } else {
-                  const parts = clientName.split(/\s+/);
-                  if (parts.length >= 1) {
-                    const first = parts[0];
-                    const firstVariants = Array.from(new Set([
-                      first,
-                      first.toLowerCase(),
-                      first.toUpperCase(),
-                      first.charAt(0).toUpperCase() + first.slice(1).toLowerCase(),
-                      ...nameVariants
-                    ]));
-
-                    const flSnapGlobal = await getDocs(query(
-                      clientsRef,
-                      where('firstName', 'in', firstVariants)
-                    ));
-
-                    const matchingDoc = flSnapGlobal.docs.find(docData => {
-                      const data = docData.data();
-                      return isFuzzyNameMatch(clientName, data.firstName || '', data.lastName || '', data.mindbody_name);
-                    });
-
-                    if (matchingDoc) {
-                      dbMatched = { id: matchingDoc.id, ...matchingDoc.data() };
-                    }
-                  }
-                }
-              }
-
-              if (dbMatched) {
-                selectMatchedClient(dbMatched.id, !dbMatched.mindbody_name ? clientName : undefined);
+              if (!mbSnap.empty) {
+                dbMatched = { id: mbSnap.docs[0].id, ...mbSnap.docs[0].data() };
               } else {
-                if (onStartNewClientOnboarding) {
-                  onStartNewClientOnboarding(clientName);
+                const parts = clientName.split(/\s+/);
+                if (parts.length >= 1) {
+                  const first = parts[0];
+                  const firstVariants = Array.from(new Set([
+                    first,
+                    first.toLowerCase(),
+                    first.toUpperCase(),
+                    first.charAt(0).toUpperCase() + first.slice(1).toLowerCase(),
+                    ...nameVariants
+                  ]));
+
+                  const flSnap = await getDocs(query(
+                    clientsRef,
+                    where('homeStudioId', '==', targetStudioId),
+                    where('firstName', 'in', firstVariants)
+                  ));
+
+                  const matchingDoc = flSnap.docs.find(docData => {
+                    const data = docData.data();
+                    return isFuzzyNameMatch(clientName, data.firstName || '', data.lastName || '', data.mindbody_name);
+                  });
+
+                  if (matchingDoc) {
+                    dbMatched = { id: matchingDoc.id, ...matchingDoc.data() };
+                  }
                 }
               }
-            } catch (err) {
-              console.error("Calendar real-time Firestore client match failed:", err);
+            }
+
+            // B. Fallback globally
+            if (!dbMatched) {
+              const mbSnapGlobal = await getDocs(query(
+                clientsRef,
+                where('mindbody_name', 'in', nameVariants)
+              ));
+
+              if (!mbSnapGlobal.empty) {
+                dbMatched = { id: mbSnapGlobal.docs[0].id, ...mbSnapGlobal.docs[0].data() };
+              } else {
+                const parts = clientName.split(/\s+/);
+                if (parts.length >= 1) {
+                  const first = parts[0];
+                  const firstVariants = Array.from(new Set([
+                    first,
+                    first.toLowerCase(),
+                    first.toUpperCase(),
+                    first.charAt(0).toUpperCase() + first.slice(1).toLowerCase(),
+                    ...nameVariants
+                  ]));
+
+                  const flSnapGlobal = await getDocs(query(
+                    clientsRef,
+                    where('firstName', 'in', firstVariants)
+                  ));
+
+                  const matchingDoc = flSnapGlobal.docs.find(docData => {
+                    const data = docData.data();
+                    return isFuzzyNameMatch(clientName, data.firstName || '', data.lastName || '', data.mindbody_name);
+                  });
+
+                  if (matchingDoc) {
+                    dbMatched = { id: matchingDoc.id, ...matchingDoc.data() };
+                  }
+                }
+              }
+            }
+
+            if (dbMatched) {
+              selectMatchedClient(dbMatched.id, !dbMatched.mindbody_name ? clientName : undefined);
+            } else {
               if (onStartNewClientOnboarding) {
                 onStartNewClientOnboarding(clientName);
               }
             }
-          });
-        }).catch(err => {
-          console.error("Failed to load Firebase libraries for click matcher:", err);
-          if (onStartNewClientOnboarding) {
-            onStartNewClientOnboarding(clientName);
+          } catch (err) {
+            console.error("Calendar real-time Firestore client match failed:", err);
+            if (onStartNewClientOnboarding) {
+              onStartNewClientOnboarding(clientName);
+            }
           }
-        });
+        };
+        
+        searchDatabase();
       }
     }
   };

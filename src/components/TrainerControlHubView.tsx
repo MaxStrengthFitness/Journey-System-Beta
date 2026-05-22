@@ -30,6 +30,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CreateTrainerModal } from './CreateTrainerModal';
 import { TrainerMachineEditor } from './TrainerMachineEditor';
 import { Machine, Client, Trainer, WorkoutSession, ScheduleEntry, Studio, HubAnnouncement } from '../types';
+import { useTheme } from './ThemeProvider';
+import { Bug } from 'lucide-react';
 import { findMatchingTrainer, normalizeName, cleanAlphanumeric } from '../lib/sync-utils';
 import { parseMachineSettings, isSessionValid } from '../lib/utils';
 
@@ -74,6 +76,7 @@ export function TrainerControlHubView({
   // Announcements State
   const [announcements, setAnnouncements] = useState<HubAnnouncement[]>([]);
   const [isCreatingAnnouncement, setIsCreatingAnnouncement] = useState(false);
+  const [lifespan, setLifespan] = useState('24h');
   const [newAnnouncement, setNewAnnouncement] = useState<Partial<HubAnnouncement>>({
     title: '',
     shortContent: '',
@@ -84,10 +87,39 @@ export function TrainerControlHubView({
   });
 
   // Layout State
-  const [activeTab, setActiveTab] = useState<'trainer_settings' | 'studio_settings' | 'app_settings'>('trainer_settings');
+  const [activeTab, setActiveTab] = useState<'equipment_settings' | 'app_settings'>('equipment_settings');
 
   // iCal Edit State
   const [editingIcalId, setEditingIcalId] = useState<string | null>(null);
+
+  const { theme, setTheme } = useTheme();
+
+  const [bugReport, setBugReport] = useState({ issueType: 'UI Problem', description: '' });
+  const [isSubmittingBug, setIsSubmittingBug] = useState(false);
+
+  const submitBug = async () => {
+    if (!bugReport.description) return;
+    setIsSubmittingBug(true);
+    try {
+      await addDoc(collection(db, 'bug_reports'), {
+        ...bugReport,
+        userId: authTrainer?.id || 'unknown',
+        userEmail: authTrainer?.email || 'unknown',
+        userName: authTrainer?.fullName || 'unknown',
+        studioId: authTrainer?.primaryHomeStudioId || 'unassigned',
+        createdAt: serverTimestamp(),
+        browser: window.navigator.userAgent,
+        platform: window.navigator.platform,
+        status: 'open'
+      });
+      setBugReport({ issueType: 'UI Problem', description: '' });
+      alert("Bug report submitted successfully! Thank you.");
+    } catch (e: any) {
+      alert("Failed to submit bug report: " + e.message);
+    } finally {
+      setIsSubmittingBug(false);
+    }
+  };
   const [newIcalUrl, setNewIcalUrl] = useState('');
   const [isUpdatingIcal, setIsUpdatingIcal] = useState(false);
 
@@ -161,7 +193,15 @@ export function TrainerControlHubView({
         // Filter and sort in memory to be resilient to missing indexes
         const filtered = data
           .filter(a => a.isActive !== false) // Handle active only
+          .filter((a) => {
+             if (a.expiresAt) {
+               const expTime = a.expiresAt.toDate ? a.expiresAt.toDate().getTime() : (typeof a.expiresAt === 'number' ? a.expiresAt : 0);
+               if (expTime > 0 && expTime < Date.now()) return false;
+             }
+             return true;
+          })
           .filter(a => 
+            a.targetScope === 'universal' ||
             a.studioId === 'all' || 
             (activeStudioId && a.studioId === activeStudioId)
           )
@@ -192,13 +232,23 @@ export function TrainerControlHubView({
       const filteredStudiosForAnnouncement = studios.filter(s => isSuperUser || (assignedStudioIds as string[]).includes(s.id!));
       const defaultStudioId = isSuperUser ? 'all' : (filteredStudiosForAnnouncement[0]?.id || '');
       const finalStudioId = newAnnouncement.studioId === 'all' && !isSuperUser ? defaultStudioId : (newAnnouncement.studioId || defaultStudioId);
+      const isUniversal = finalStudioId === 'all';
+      
+      const now = new Date();
+      let expiresAt = new Date(now);
+      if (lifespan === '24h') expiresAt.setHours(expiresAt.getHours() + 24);
+      else if (lifespan === '1w') expiresAt.setDate(expiresAt.getDate() + 7);
+      else expiresAt.setMonth(expiresAt.getMonth() + 1);
 
       const docRef = await addDoc(collection(db, 'hub_announcements'), {
         ...newAnnouncement,
         studioId: finalStudioId,
+        targetScope: isUniversal ? 'universal' : 'studio',
+        type: newAnnouncement.type || 'news',
         authorId: authTrainer.id,
         authorName: authTrainer.fullName,
         createdAt: serverTimestamp(),
+        expiresAt: expiresAt,
         isActive: true,
         readBy: []
       });
@@ -211,7 +261,10 @@ export function TrainerControlHubView({
         authorId: authTrainer.id!,
         authorName: authTrainer.fullName,
         studioId: finalStudioId,
+        targetScope: isUniversal ? 'universal' : 'studio',
+        type: newAnnouncement.type || 'news',
         createdAt: { toMillis: () => Date.now(), toDate: () => new Date() }, // Local mock of timestamp
+        expiresAt: expiresAt,
         isActive: true,
         priority: newAnnouncement.priority as any,
         readBy: []
@@ -225,6 +278,7 @@ export function TrainerControlHubView({
         longContent: '',
         studioId: 'all',
         priority: 'low',
+        type: 'news',
         isActive: true
       });
       alert("Announcement published!");
@@ -232,16 +286,6 @@ export function TrainerControlHubView({
       alert("Error creating announcement: " + err.message);
     } finally {
       setIsCreatingAnnouncement(false);
-    }
-  };
-
-  const handleDeleteAnnouncement = async (id: string) => {
-    if (!window.confirm("Delete this announcement?")) return;
-    try {
-      await deleteDoc(doc(db, 'hub_announcements', id));
-      setAnnouncements(prev => prev.filter(a => a.id !== id));
-    } catch (err: any) {
-      alert("Error deleting: " + err.message);
     }
   };
 
@@ -691,8 +735,7 @@ export function TrainerControlHubView({
         {/* Sidebar Nav */}
         <div className="w-full lg:w-64 shrink-0 flex flex-col gap-2">
           {[
-            { id: 'trainer_settings', label: 'Trainer Settings', icon: User },
-            { id: 'studio_settings', label: 'Studio Settings', icon: Building2 },
+            { id: 'equipment_settings', label: 'Hardware Settings', icon: MonitorPlay },
             { id: 'app_settings', label: 'App Settings', icon: Settings },
           ].filter(tab => {
             if (tab.id === 'app_settings') {
@@ -721,7 +764,7 @@ export function TrainerControlHubView({
 
         {/* Content Area */}
         <div className="flex-1 space-y-6">
-          {activeTab === 'trainer_settings' && (
+          {false && (
             <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl dark:shadow-none rounded-[32px] overflow-hidden">
               <CardHeader className="bg-slate-50 dark:bg-slate-950 pb-8 border-b border-slate-200 dark:border-slate-800">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1030,7 +1073,7 @@ export function TrainerControlHubView({
             </Card>
           )}
 
-          {activeTab === 'studio_settings' && (() => {
+          {activeTab === 'equipment_settings' && (() => {
             const isSuperUser = isAdmin || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer';
             const assignedStudioIds = !isSuperUser ? [authTrainer?.primaryHomeStudioId, ...(authTrainer?.accessibleStudioIds || [])].filter(Boolean) : [];
             const filteredStudiosForAnnouncement = studios.filter(s => isSuperUser || (assignedStudioIds as string[]).includes(s.id!));
@@ -1040,7 +1083,7 @@ export function TrainerControlHubView({
             return (
               <div className="space-y-8 animate-fade-in">
                 {/* Step 1: Dashboard Grid Layout */}
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div className="hidden">
                   
                   {/* Step 2: Column 1 - Operations & Telemetry */}
                   <div className="space-y-6">
@@ -1273,21 +1316,57 @@ export function TrainerControlHubView({
                             </div>
 
                             <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800">
-                              <div className="flex items-center gap-2">
-                                <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mt-0.5">Priority:</Label>
-                                <Select 
-                                  value={newAnnouncement.priority} 
-                                  onValueChange={(v: any) => setNewAnnouncement(prev => ({ ...prev, priority: v }))}
-                                >
-                                  <SelectTrigger className="w-24 h-8 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-[10px] uppercase font-black rounded-lg">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
-                                    <SelectItem value="low">Standard</SelectItem>
-                                    <SelectItem value="medium">Growth</SelectItem>
-                                    <SelectItem value="high">Urgent</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                              <div className="flex flex-wrap items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                  <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mt-0.5">Priority:</Label>
+                                  <Select 
+                                    value={newAnnouncement.priority} 
+                                    onValueChange={(v: any) => setNewAnnouncement(prev => ({ ...prev, priority: v }))}
+                                  >
+                                    <SelectTrigger className="w-24 h-8 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-[10px] uppercase font-black rounded-lg">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
+                                      <SelectItem value="low">Standard</SelectItem>
+                                      <SelectItem value="medium">Growth</SelectItem>
+                                      <SelectItem value="high">Urgent</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mt-0.5">Type:</Label>
+                                  <Select 
+                                    value={newAnnouncement.type || 'news'} 
+                                    onValueChange={(v: any) => setNewAnnouncement(prev => ({ ...prev, type: v }))}
+                                  >
+                                    <SelectTrigger className="w-24 h-8 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-[10px] uppercase font-black rounded-lg">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
+                                      <SelectItem value="shout-out">Shout-out</SelectItem>
+                                      <SelectItem value="tip">Tip</SelectItem>
+                                      <SelectItem value="news">News</SelectItem>
+                                      <SelectItem value="event">Event</SelectItem>
+                                      <SelectItem value="holiday">Holiday</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mt-0.5">Lifespan:</Label>
+                                  <Select 
+                                    value={lifespan} 
+                                    onValueChange={v => setLifespan(v)}
+                                  >
+                                    <SelectTrigger className="w-24 h-8 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-[10px] uppercase font-black rounded-lg">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
+                                      <SelectItem value="24h">24 Hours</SelectItem>
+                                      <SelectItem value="1w">1 Week</SelectItem>
+                                      <SelectItem value="1m">1 Month</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
                               </div>
                               <Button 
                                 onClick={handleCreateAnnouncement}
@@ -1333,14 +1412,6 @@ export function TrainerControlHubView({
                                         </p>
                                       </div>
                                     </div>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
-                                      onClick={() => handleDeleteAnnouncement(a.id!)}
-                                      className="h-8 w-8 p-0 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
                                   </div>
                                 ))}
                               </div>
@@ -1421,7 +1492,7 @@ export function TrainerControlHubView({
                     </div>
                   </CardHeader>
                   <CardContent className="p-8 space-y-8">
-                    {/* Interface Theme block preserved & styled legacy block */}
+                    {/* Interface Theme */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl gap-6">
                       <div className="space-y-1">
                          <Label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-2 leading-none">
@@ -1429,13 +1500,62 @@ export function TrainerControlHubView({
                            Interface Theme
                          </Label>
                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-sm mt-1">
-                           Toggle between dark mode, light mode, or system default via the header control.
+                           Toggle between dark mode, light mode, or system default.
                          </p>
                       </div>
-                      <div className="flex bg-white dark:bg-slate-900 rounded-xl p-1 border border-slate-200 dark:border-slate-800 shrink-0">
-                         <div className="px-3.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-[#10B981] bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30 rounded-lg shadow-inner">
-                           Active
-                         </div>
+                      <div className="flex bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
+                         <Select value={theme} onValueChange={(val) => setTheme(val as any)}>
+                            <SelectTrigger className="w-32 bg-transparent border-none text-xs font-bold uppercase tracking-widest outline-none focus:ring-0">
+                              <SelectValue placeholder="Theme" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="light">Light</SelectItem>
+                              <SelectItem value="dark">Dark</SelectItem>
+                              <SelectItem value="system">System</SelectItem>
+                            </SelectContent>
+                         </Select>
+                      </div>
+                    </div>
+
+                    <div className="p-6 bg-rose-50/30 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl space-y-4">
+                      <div className="space-y-1">
+                         <Label className="text-xs font-bold uppercase text-rose-500 dark:text-rose-400 flex items-center gap-2 leading-none">
+                           <Bug className="w-4 h-4" />
+                           Report a Bug
+                         </Label>
+                         <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-sm mt-1 mb-4">
+                           Found an issue? Let us know so our engineering team can investigate.
+                         </p>
+                      </div>
+                      
+                      <div className="space-y-3 pt-2">
+                        <Select value={bugReport.issueType} onValueChange={v => setBugReport(p => ({ ...p, issueType: v }))}>
+                          <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="UI Problem">UI/Visual Problem</SelectItem>
+                            <SelectItem value="Data Not Loading">Data Not Loading/Syncing</SelectItem>
+                            <SelectItem value="Crash">App Crash</SelectItem>
+                            <SelectItem value="Login Issue">Authentication Issue</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <Textarea 
+                          value={bugReport.description}
+                          onChange={e => setBugReport(p => ({ ...p, description: e.target.value }))}
+                          placeholder="Please describe what happened, what you expected, and any steps to reproduce the issue."
+                          className="min-h-[100px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm"
+                        />
+                        
+                        <Button 
+                          onClick={submitBug}
+                          disabled={!bugReport.description || isSubmittingBug}
+                          className="w-full bg-rose-500 hover:bg-rose-600 text-white font-black uppercase text-[10px] tracking-widest"
+                        >
+                          {isSubmittingBug ? "Submitting..." : "Submit Bug Report"}
+                        </Button>
                       </div>
                     </div>
 

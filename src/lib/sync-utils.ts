@@ -100,3 +100,209 @@ export function mapMindbodySessions(sessions: any[], trainers: Trainer[]): Parti
     };
   });
 }
+
+import { Firestore, writeBatch, doc, collection, serverTimestamp, increment } from 'firebase/firestore';
+
+/**
+ * Atomic Session Completion Engine
+ * Consolidates session parameters, notes, log entries, and machine setting updates
+ * into a single transaction writeBatch to prevent partial writes.
+ */
+export async function completeWorkoutSession(
+  db: Firestore,
+  currentSession: any,
+  selectedClient: any,
+  sessionLogs: any[],
+  postData: { clientFeel: string; noteContent: string; notePriority: 'High' | 'Medium' | 'Low' } | undefined,
+  currentSessionNotes: string,
+  authTrainer: any,
+  clientMachineSettings: Record<string, any>,
+  userId: string
+) {
+  if (!currentSession?.id) return;
+  const batch = writeBatch(db);
+  const homeStudioId = selectedClient?.homeStudioId || null;
+
+  // 1. Update session status and Data Stamp
+  const sessionRef = doc(db, 'sessions', currentSession.id);
+  const updateData: any = {
+    status: 'Completed',
+    endTime: serverTimestamp(),
+    trainerId: authTrainer?.id || '',
+    trainerName: authTrainer?.fullName || '',
+    trainerInitials: authTrainer?.initials || '',
+    clientId: selectedClient?.id || '',
+    homeStudioId: homeStudioId,
+    clientHomeStudioId: homeStudioId
+  };
+
+  // Data Stamping for Analytics
+  if (selectedClient) {
+    if (selectedClient.age !== undefined) updateData.clientAge = selectedClient.age;
+    if (selectedClient.occupation) updateData.clientOccupation = selectedClient.occupation;
+    if (selectedClient.isRetired !== undefined) updateData.clientIsRetired = selectedClient.isRetired;
+    if (selectedClient.activityLevel) updateData.clientActivityLevel = selectedClient.activityLevel;
+    if (selectedClient.clinicalProfile) updateData.clientClinicalProfile = selectedClient.clinicalProfile;
+  }
+
+  if (postData?.clientFeel) {
+    updateData.clientFeel = postData.clientFeel;
+  }
+  if (currentSessionNotes.trim()) {
+    updateData.notes = currentSessionNotes.trim();
+  }
+  batch.update(sessionRef, updateData);
+
+  // Post-session note
+  if (postData?.noteContent && selectedClient && authTrainer) {
+    const noteRef = doc(collection(db, 'sessionNotes'));
+    batch.set(noteRef, {
+      sessionId: currentSession.id,
+      clientId: selectedClient.id,
+      homeStudioId: homeStudioId,
+      trainerId: authTrainer.id,
+      trainerInitials: authTrainer.initials || authTrainer.fullName.substring(0, 2).toUpperCase(),
+      content: postData.noteContent,
+      priority: postData.notePriority,
+      createdAt: serverTimestamp()
+    });
+  }
+
+  // 2. Sync all local logs
+  const cleanData = (obj: any): any => {
+    if (obj === null || obj === undefined) return obj;
+    if (Array.isArray(obj)) return obj.map(cleanData);
+    if (typeof obj !== 'object') return obj;
+    if (typeof obj.toDate === 'function' || obj.constructor?.name === 'FieldValue' || obj instanceof Date) return obj;
+
+    const cleaned: any = {};
+    Object.keys(obj).forEach(key => {
+      if (obj[key] !== undefined) {
+        cleaned[key] = cleanData(obj[key]);
+      }
+    });
+    return cleaned;
+  };
+
+  const calculateExerciseVolume = (log: any): number => {
+    if (!log || log.isTSC || log.isStaticHold) return 0;
+    const weight = parseFloat(log.weight || '0');
+    const reps = parseFloat(log.reps || '0');
+    if (isNaN(weight) || isNaN(reps) || weight <= 0 || reps <= 0) return 0;
+    return Math.round(weight * reps);
+  };
+
+  for (const logObj of sessionLogs) {
+    const log = logObj as any;
+    if (log.id && log.id.toString().startsWith('temp_')) {
+      const newLogRef = doc(collection(db, 'exerciseLogs'));
+      const { id, ...logData } = log;
+      batch.set(newLogRef, {
+        ...cleanData(logData),
+        clientId: selectedClient?.id || '',
+        homeStudioId: homeStudioId,
+        clientHomeStudioId: homeStudioId,
+        updatedAt: serverTimestamp()
+      });
+    } else if (log.id) {
+      const logRef = doc(db, 'exerciseLogs', log.id);
+      const { id, ...logData } = log;
+      batch.update(logRef, {
+        ...cleanData(logData),
+        clientId: selectedClient?.id || '',
+        homeStudioId: homeStudioId,
+        clientHomeStudioId: homeStudioId,
+        updatedAt: serverTimestamp()
+      });
+    }
+  }
+
+  // 3. Update client counters & metrics
+  if (selectedClient && selectedClient.id) {
+    let totalSessionReps = 0;
+    let totalSessionVolume = 0;
+
+    sessionLogs.forEach((l: any) => {
+      let reps = 0;
+      if (l.isTSC || l.isStaticHold) {
+        const seconds = parseFloat(l.seconds || '0');
+        reps = isNaN(seconds) || seconds <= 0 ? 0 : (seconds / 30) * 2;
+      } else {
+        reps = parseFloat(l.reps || '0');
+        if (isNaN(reps)) reps = 0;
+      }
+      const volume = calculateExerciseVolume(l);
+      totalSessionReps += reps;
+      totalSessionVolume += volume;
+    });
+
+    const roundedSessionReps = Math.round(totalSessionReps);
+    const roundedSessionVolume = Math.round(totalSessionVolume);
+
+    const clientRef = doc(db, 'clients', selectedClient.id);
+    const clientUpdates: any = {
+      completedSessions: increment(1),
+      sessionCount: currentSession.sessionNumber || increment(1),
+      updatedAt: serverTimestamp()
+    };
+
+    if (roundedSessionReps > 0) {
+      clientUpdates.lifetimeReps = increment(roundedSessionReps);
+    }
+    if (roundedSessionVolume > 0) {
+      clientUpdates.lifetimeWeight = increment(roundedSessionVolume);
+    }
+
+    sessionLogs.forEach(logObj => {
+      const log = logObj as any;
+      if (log.weight || log.reps || log.seconds) {
+        const key = `currentMachineMetrics.${log.machineId}`;
+        clientUpdates[key] = cleanData({
+          weight: log.weight || '0',
+          reps: log.reps,
+          seconds: log.seconds,
+          isStaticHold: log.isStaticHold,
+          isTSC: log.isTSC,
+          totalTimeUnderLoad: log.totalTimeUnderLoad,
+          averageTimePerRep: log.averageTimePerRep,
+          settings: log.machineSettings || {},
+          lastPerformedDate: serverTimestamp(),
+          lastPerformedSessionNumber: currentSession.sessionNumber,
+          lastSessionId: currentSession.id
+        });
+
+        if (log.weight && log.machineId) {
+          const settingId = `${selectedClient.id}_${log.machineId}`;
+          const settingRef = doc(db, 'clientMachineSettings', settingId);
+          const currentSettingsObj = clientMachineSettings[log.machineId];
+
+          const updateObj: any = {
+            clientId: selectedClient.id,
+            homeStudioId: homeStudioId,
+            clientHomeStudioId: homeStudioId,
+            machineId: log.machineId,
+            settings: currentSettingsObj?.settings || {},
+            updatedBy: userId,
+            currentWeight: Number(log.weight),
+            updatedAt: serverTimestamp()
+          };
+
+          if (!currentSettingsObj?.startingWeight) {
+            updateObj.startingWeight = Number(log.weight);
+            updateObj.startingWeightDate = new Date().toISOString();
+          }
+
+          batch.set(settingRef, updateObj, { merge: true });
+        }
+      }
+    });
+
+    if (!selectedClient.consultationCompleted) {
+      clientUpdates.consultationCompleted = true;
+    }
+
+    batch.update(clientRef, clientUpdates);
+  }
+
+  await batch.commit();
+}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MACHINE_LIST, MachineKnowledge } from '../data/machine-database';
+import { getMachineStyle } from '../lib/machine-colors';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -257,12 +258,13 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6 max-w-[1800px] mx-auto">
           {filteredMachines.map((machine, idx) => {
             const indexNumber = (MACHINE_LIST.findIndex(m => m.id === machine.id) + 1).toString().padStart(2, '0');
+            const style = getMachineStyle(machine.name);
             
             return (
               <div 
                 key={machine.id}
                 onClick={() => setActiveMachineId(machine.id)}
-                className="group relative bg-[#0e171e] border border-slate-700/50 rounded-xl cursor-pointer hover:border-[#38BDF8]/50 hover:shadow-[0_8px_30px_rgba(56,189,248,0.15)] hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden"
+                className={`group relative bg-[#0e171e] border-l-4 border-t border-r border-b border-t-slate-700/50 border-r-slate-700/50 border-b-slate-700/50 rounded-xl cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden ${style.border}`}
               >
                 {/* Image Section (16:9 Aspect Ratio) */}
                 <div className="relative aspect-video w-full overflow-hidden bg-slate-900 shrink-0">

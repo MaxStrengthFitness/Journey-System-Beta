@@ -106,7 +106,9 @@ export function PostSessionBriefingView({
               Session Complete
             </h2>
             <p className="text-slate-400 font-medium mt-2">
-              Great work. Here are {client.firstName}'s numbers for today.
+              Great work. Here are {client.firstName}'s numbers for today. {client.homeStudioId && (
+                <span className="text-slate-500 font-semibold text-xs bg-white/5 border border-white/10 px-2 py-0.5 rounded ml-2 uppercase tracking-wide">Studio: {client.homeStudioId}</span>
+              )}
             </p>
           </div>
         </div>

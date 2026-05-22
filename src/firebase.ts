@@ -8,7 +8,7 @@ setLogLevel('silent');
 
 const app = initializeApp(firebaseConfig);
 
-// Enable offline persistence with multi-tab support
+// Enable offline persistence with multi-tab support (modern SDK equivalent of enabling IndexedDB persistence)
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager(),

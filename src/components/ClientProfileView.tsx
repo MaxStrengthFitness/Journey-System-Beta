@@ -834,26 +834,24 @@ export function ClientProfileView({
     if (!clientId || hasQuotaError || !user) return;
     if (activeTab !== "statistics") return;
 
-    const fetchReports = async () => {
-      try {
-        const q = query(
-          collection(db, "progressReports"),
-          where("clientId", "==", clientId),
-          orderBy("createdAt", "desc"),
-          limit(50),
-        );
-        const snap = await getDocs(q);
-        setProgressReports(
-          snap.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as ProgressReport,
-          ),
-        );
-      } catch (error: any) {
-        handleFirestoreError(error, OperationType.GET, "progressReports");
-      }
-    };
+    const q = query(
+      collection(db, "progressReports"),
+      where("clientId", "==", clientId),
+      orderBy("createdAt", "desc"),
+      limit(50),
+    );
+    
+    const unsubscribe = onSnapshot(q, (snap) => {
+      setProgressReports(
+        snap.docs.map(
+          (doc) => ({ id: doc.id, ...doc.data() }) as ProgressReport,
+        ),
+      );
+    }, (error: any) => {
+      handleFirestoreError(error, OperationType.GET, "progressReports");
+    });
 
-    fetchReports();
+    return () => unsubscribe();
   }, [clientId, activeTab, user?.uid]);
 
   useEffect(() => {

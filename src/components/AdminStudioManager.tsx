@@ -52,7 +52,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '@/lib/utils';
+import { cn, getRoleColor, getRoleDisplayName } from '@/lib/utils';
 import { OperationType, handleFirestoreError } from '../lib/firestore-errors';
 
 interface Props {
@@ -62,7 +62,7 @@ interface Props {
   onBack?: () => void;
 }
 
-export function OwnerStudioManager({ authTrainer, studios: initialStudios, isAdmin = false, onBack }: Props) {
+export function AdminStudioManager({ authTrainer, studios: initialStudios, isAdmin = false, onBack }: Props) {
   // Tabs
   const [activeTab, setActiveTab] = useState<'networks' | 'studios'>('networks');
   
@@ -77,7 +77,8 @@ export function OwnerStudioManager({ authTrainer, studios: initialStudios, isAdm
   
   // Creation / modification states
   const [newNetworkName, setNewNetworkName] = useState('');
-  const [newNetworkOwnerId, setNewNetworkOwnerId] = useState('');
+  const [newNetworkOwnerIds, setNewNetworkOwnerIds] = useState<string[]>([]);
+  const [newNetworkState, setNewNetworkState] = useState('');
   const [isCreatingNetwork, setIsCreatingNetwork] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isAddingStaff, setIsAddingStaff] = useState(false);
@@ -149,8 +150,8 @@ export function OwnerStudioManager({ authTrainer, studios: initialStudios, isAdm
   // 1. CREATE FRANCHISE NETWORK
   const handleCreateNetwork = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newNetworkName.trim() || !newNetworkOwnerId) {
-      alert("Please provide a network name and assign a franchise owner.");
+    if (!newNetworkName.trim() || newNetworkOwnerIds.length === 0) {
+      alert("Please provide a network name and assign at least one franchise owner.");
       return;
     }
 
@@ -158,12 +159,15 @@ export function OwnerStudioManager({ authTrainer, studios: initialStudios, isAdm
     try {
       await addDoc(collection(db, 'networks'), {
         name: newNetworkName,
-        ownerId: newNetworkOwnerId,
+        ownerId: newNetworkOwnerIds[0], // Keep for backward compatibility
+        ownerIds: newNetworkOwnerIds,
+        state: newNetworkState,
         studioIds: [],
         createdAt: new Date()
       });
       setNewNetworkName('');
-      setNewNetworkOwnerId('');
+      setNewNetworkOwnerIds([]);
+      setNewNetworkState('');
       setIsCreatingNetwork(false);
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, 'networks');
@@ -172,7 +176,32 @@ export function OwnerStudioManager({ authTrainer, studios: initialStudios, isAdm
     }
   };
 
-  // 2. DELETE FRANCHISE NETWORK
+  // 2. CREATE STUDIO
+  const [newStudioName, setNewStudioName] = useState('');
+  const handleCreateStudio = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStudioName.trim()) {
+      alert("Please provide a new location name.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await addDoc(collection(db, 'studios'), {
+        name: newStudioName,
+        timezone: 'UTC', // Default wait for update
+        createdAt: new Date(),
+        ownerId: authTrainer.id
+      });
+      setNewStudioName('');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, 'studios');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 3. DELETE FRANCHISE NETWORK
   const handleDeleteNetwork = async (networkId: string) => {
     const net = networks.find(n => n.id === networkId);
     if (!net) return;
@@ -578,17 +607,17 @@ export function OwnerStudioManager({ authTrainer, studios: initialStudios, isAdm
                             <div className="flex-1 min-w-0">
                               <p className="font-extrabold text-sm uppercase tracking-wider text-white truncate">{trainer.fullName}</p>
                               <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                                <Badge className="bg-slate-950 text-zinc-400 border border-slate-800 text-[8px] font-black uppercase tracking-widest px-1.5 h-4">
-                                  {trainer.role}
+                                <Badge className={cn("border text-[8px] font-black uppercase tracking-widest px-1.5 h-4", getRoleColor(trainer.role))}>
+                                  {getRoleDisplayName(trainer.role)}
                                 </Badge>
                                 {isOwner && (
                                   <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[8px] font-black uppercase px-1.5 h-4">
-                                    Studio Owner
+                                    Franchise Principal
                                   </Badge>
                                 )}
                                 {isHead && (
                                   <Badge className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[8px] font-black uppercase px-1.5 h-4">
-                                    Head Trainer
+                                    Studio Leader
                                   </Badge>
                                 )}
                               </div>
@@ -682,7 +711,7 @@ export function OwnerStudioManager({ authTrainer, studios: initialStudios, isAdm
                       </div>
                     </div>
 
-                    <form onSubmit={handleCreateNetwork} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                    <form onSubmit={handleCreateNetwork} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                       <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">Franchise Name</Label>
                         <Input 
@@ -694,17 +723,49 @@ export function OwnerStudioManager({ authTrainer, studios: initialStudios, isAdm
                       </div>
 
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">Franchise Principal (Owner)</Label>
-                        <Select value={newNetworkOwnerId} onValueChange={setNewNetworkOwnerId}>
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">State</Label>
+                        <Input 
+                          placeholder="e.g. Ohio" 
+                          value={newNetworkState}
+                          onChange={(e) => setNewNetworkState(e.target.value)}
+                          className="bg-slate-950 border-slate-800 text-white rounded-xl h-12 focus:border-[#F06C22] font-semibold"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">Franchise Principals (Owners)</Label>
+                        <Select 
+                          value={""} 
+                          onValueChange={(id) => {
+                            if (!newNetworkOwnerIds.includes(id)) {
+                              setNewNetworkOwnerIds([...newNetworkOwnerIds, id]);
+                            }
+                          }}
+                        >
                           <SelectTrigger className="bg-slate-950 border-slate-800 text-white h-12 rounded-xl font-bold">
-                            <SelectValue placeholder="Select Franchise Owner" />
+                            <SelectValue placeholder={newNetworkOwnerIds.length > 0 ? `${newNetworkOwnerIds.length} Owner(s) Selected` : "Select Owners"} />
                           </SelectTrigger>
-                          <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                            {trainers.map(t => (
+                          <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-60 overflow-y-auto">
+                            {trainers
+                              .filter(t => t.role === 'FranchiseOwner' || t.role === 'Owner' || t.role === 'StudioOwner' || t.role === 'Admin')
+                              .map(t => (
                               <SelectItem key={t.id} value={t.id!}>{t.fullName} ({t.role})</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                        {/* Display selected owners as chips */ }
+                        {newNetworkOwnerIds.length > 0 && (
+                           <div className="flex flex-wrap gap-2 mt-2">
+                             {newNetworkOwnerIds.map(id => {
+                               const t = trainers.find(tr => tr.id === id);
+                               return (
+                                 <Badge key={id} onClick={() => setNewNetworkOwnerIds(newNetworkOwnerIds.filter(oid => oid !== id))} className="cursor-pointer bg-slate-800 hover:bg-slate-700 text-xs">
+                                   {t?.fullName || id} &times;
+                                 </Badge>
+                               )
+                             })}
+                           </div>
+                        )}
                       </div>
 
                       <Button 
@@ -721,13 +782,17 @@ export function OwnerStudioManager({ authTrainer, studios: initialStudios, isAdm
 
                 {/* Networks grid list */}
                 <div className="space-y-6">
-                  <h3 className="text-sm font-black uppercase tracking-widest text-zinc-500 italic pb-2 border-b border-slate-900">
-                    Active Incorporated Networks ({networks.length})
-                  </h3>
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-900">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-zinc-500 italic">
+                      Active Incorporated Networks ({networks.length})
+                    </h3>
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {networks.map((network) => {
-                      const regionalOwner = trainers.find(t => t.id === network.ownerId || t.fullName === network.ownerId);
+                    {[...networks].sort((a, b) => (a.state || '').localeCompare(b.state || '')).map((network) => {
+                      const regionalOwners = network.ownerIds 
+                         ? trainers.filter(t => network.ownerIds!.includes(t.id!))
+                         : (network.ownerId ? [trainers.find(t => t.id === network.ownerId || t.fullName === network.ownerId)].filter(Boolean) : []);
                       const assignedStudios = allStudios.filter(s => network.studioIds?.includes(s.id!) || s.networkId === network.id);
 
                       return (
@@ -741,9 +806,16 @@ export function OwnerStudioManager({ authTrainer, studios: initialStudios, isAdm
                             <div className="flex items-center justify-between">
                               <div>
                                 <h4 className="text-xl font-extrabold uppercase italic tracking-tight text-white">{network.name}</h4>
-                                <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-0.5">
-                                  REGIONAL FRANCHISE NETWORK
-                                </p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                                    REGIONAL FRANCHISE NETWORK
+                                  </p>
+                                  {network.state && (
+                                    <Badge variant="outline" className="text-[8px] tracking-widest border-slate-700 text-zinc-400">
+                                      {network.state}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                               <Button
                                 variant="ghost"
@@ -757,9 +829,19 @@ export function OwnerStudioManager({ authTrainer, studios: initialStudios, isAdm
 
                             <div className="flex items-center gap-2 bg-slate-950 p-3 rounded-xl border border-slate-850">
                               <Crown className="w-4 h-4 text-amber-500 shrink-0" />
-                              <div className="text-left">
-                                <p className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest leading-none">Franchise Principal</p>
-                                <p className="text-xs font-black text-white uppercase mt-1 leading-none">{regionalOwner?.fullName || 'Jeff (HQ)'}</p>
+                              <div className="text-left w-full">
+                                <p className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1">Franchise Principals</p>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {regionalOwners.length > 0 ? (
+                                    regionalOwners.map(ro => (
+                                      <Badge key={ro?.id} variant="secondary" className="bg-slate-900 border border-slate-800 text-white hover:bg-slate-800 text-[10px]">
+                                        {ro?.fullName || 'Unknown'}
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <p className="text-xs font-black text-white uppercase leading-none">Jeff (HQ)</p>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
@@ -828,6 +910,42 @@ export function OwnerStudioManager({ authTrainer, studios: initialStudios, isAdm
             {/* TAB 2: STUDIO LOCATION REGISTRY */}
             {activeTab === 'studios' && (
               <div className="space-y-6">
+                {(isAdmin || authTrainer.role === 'Founder' || authTrainer.role === 'Admin') && (
+                  <Card className="rounded-[32px] bg-slate-900 border border-slate-800 p-8 relative overflow-hidden mb-8">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-[#F06C22]" />
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-xl bg-[#F06C22]/10 border border-[#F06C22]/20 flex items-center justify-center text-[#F06C22]">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black uppercase italic tracking-tight text-white leading-none">Studio Location Registry</h3>
+                        <p className="text-[10px] font-bold text-zinc-550 uppercase tracking-widest mt-1">Register new physical clinic locations into the platform</p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleCreateStudio} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                      <div className="space-y-2 relative">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">Physical Location Name</Label>
+                        <Input 
+                          placeholder="e.g. Max Strength Chardon" 
+                          value={newStudioName}
+                          onChange={(e) => setNewStudioName(e.target.value)}
+                          className="bg-slate-950 border-slate-800 text-white rounded-xl h-12 focus:border-[#F06C22] font-semibold"
+                        />
+                      </div>
+
+                      <Button 
+                        type="submit" 
+                        disabled={isSaving}
+                        className="bg-[#F06C22] hover:bg-[#D95B16] text-white font-black uppercase tracking-widest text-xs h-12 rounded-xl shadow-xl shadow-[#F06C22]/10 flex items-center justify-center gap-2"
+                      >
+                        <Building2 className="w-4 h-4" />
+                        Incorporate Location
+                      </Button>
+                    </form>
+                  </Card>
+                )}
+
                 <h3 className="text-sm font-black uppercase tracking-widest text-zinc-500 italic pb-2 border-b border-slate-900">
                   Location Registry ({manageableStudios.length} Physical Locations)
                 </h3>

@@ -36,15 +36,26 @@ export const HubAnnouncementsWidget: React.FC<HubAnnouncementsWidgetProps> = ({
           ...docSnap.data(),
         })) as HubAnnouncement[];
 
-        // Handle active-only and studioId matching
+        // Handle active-only, expiry, and scope targeting
         const activeList = list
           .filter((a) => a.isActive !== false)
+          .filter((a) => {
+             if (a.expiresAt) {
+               const expTime = a.expiresAt.toDate ? a.expiresAt.toDate().getTime() : (typeof a.expiresAt === 'number' ? a.expiresAt : 0);
+               if (expTime > 0 && expTime < Date.now()) return false;
+             }
+             return true;
+          })
           .filter(
             (a) =>
+              a.targetScope === 'universal' ||
               a.studioId === "all" ||
               a.studioId === authTrainer.primaryHomeStudioId ||
               (authTrainer.accessibleStudioIds &&
-                authTrainer.accessibleStudioIds.includes(a.studioId))
+                authTrainer.accessibleStudioIds.includes(a.studioId)) ||
+              (a.targetScope === 'studio' && 
+                (a.targetId === authTrainer.primaryHomeStudioId || (authTrainer.accessibleStudioIds && authTrainer.accessibleStudioIds.includes(a.targetId!)))) ||
+              (a.targetScope === 'network' && (authTrainer.role === 'Owner' || authTrainer.role === 'FranchiseOwner' || authTrainer.role === 'StudioOwner'))
           )
           .sort((a, b) => {
             const timeA = a.createdAt?.toMillis?.() || (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
@@ -208,9 +219,15 @@ export const HubAnnouncementsWidget: React.FC<HubAnnouncementsWidgetProps> = ({
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" /> {dateString}
                           </span>
-                          <span className="bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800 px-1.5 py-0.5 rounded text-[8px]">
-                            {ann.studioId === "all" ? "Universal" : "Studio Exclusive"}
+                          <span className="bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800 px-1.5 py-0.5 rounded text-[8px] text-[#F06C22]">
+                            {ann.targetScope === 'universal' || ann.studioId === "all" ? "Universal" :
+                             ann.targetScope === 'network' ? "Network-Wide" : "Studio Exclusive"}
                           </span>
+                          {ann.type && (
+                            <span className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded text-[8px] text-slate-600 dark:text-slate-300">
+                              {ann.type}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

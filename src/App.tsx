@@ -95,7 +95,7 @@ import { OperationType, handleFirestoreError } from './lib/firestore-errors';
 // Removing duplicate cn import
 import { hashPin } from './lib/auth-utils';
 import { parseSessionDate, calculateExerciseVolume, safeToDate, getMillis, isSessionValid, orderMachineSettings } from './lib/utils';
-import { normalizeName, cleanAlphanumeric, isFuzzyNameMatch } from './lib/sync-utils';
+import { normalizeName, cleanAlphanumeric, isFuzzyNameMatch, completeWorkoutSession } from './lib/sync-utils';
 import { getLatestTargetWeight } from './lib/historical-utils';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { generateMockClientWithHistory } from './lib/mockDataGenerator';
@@ -114,8 +114,8 @@ import { PreSessionOverview } from './components/PreSessionOverview';
 import { PostSessionBriefingView } from './components/PostSessionBriefingView';
 import { ConsultationSetupWizard } from './components/ConsultationSetupWizard';
 import { ConsultationWizard } from './components/ConsultationWizard';
-import { OwnerDashboardView } from './components/OwnerDashboardView';
-import { OwnerStudioManager } from './components/OwnerStudioManager';
+import { AdminDashboardView } from './components/AdminDashboardView';
+import { FranchiseDashboardView } from './components/FranchiseDashboardView';
 import { CreateClientModal } from './components/CreateClientModal';
 import { ClientProgressReportView } from './components/ClientProgressReportView';
 import { SessionRoutineManagerModal } from './components/SessionRoutineManagerModal';
@@ -1466,26 +1466,28 @@ function AppContent({
                       View Profile
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                      onClick={() => setIsChangingStudio(true)}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
-                    >
-                      <Building2 className="w-4 h-4 text-amber-500" />
-                      Switch Studio
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
                       onClick={() => setCurrentView('trainer-hub')}
                       className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
                     >
                       <Settings className="w-4 h-4" />
-                      Trainer Hub
+                      Settings
                     </DropdownMenuItem>
-                    {((authTrainer?.role === 'StudioOwner' || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer') || user.email === "jurgensaj@gmail.com") && (
+                    {((authTrainer?.role === 'Admin' || authTrainer?.role === 'Founder' || authTrainer?.role === 'Overseer' || authTrainer?.role === 'Owner' || authTrainer?.role === 'FranchiseOwner' || authTrainer?.role === 'StudioOwner') || user.email === "jurgensaj@gmail.com") && (
                       <DropdownMenuItem 
-                        onClick={() => setCurrentView('owner-dashboard')}
+                        onClick={() => setCurrentView('franchise-dashboard' as any)}
+                        className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white text-indigo-400"
+                      >
+                        <Network className="w-4 h-4" />
+                        Franchise Dashboard
+                      </DropdownMenuItem>
+                    )}
+                    {((authTrainer?.role === 'Admin' || authTrainer?.role === 'Founder' || authTrainer?.role === 'Overseer') || user.email === "jurgensaj@gmail.com") && (
+                      <DropdownMenuItem 
+                        onClick={() => setCurrentView('admin-dashboard' as any)}
                         className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white text-orange-500"
                       >
                         <Network className="w-4 h-4" />
-                        Owner Dashboard
+                        Admin Dashboard
                       </DropdownMenuItem>
                     )}
                   </DropdownMenuGroup>
@@ -1502,11 +1504,19 @@ function AppContent({
                     </DropdownMenuItem>
 
                     <DropdownMenuItem 
+                      onClick={() => setIsChangingStudio(true)}
+                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
+                    >
+                      <Building2 className="w-4 h-4 text-amber-500" />
+                      Switch Studio
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem 
                       onClick={handleLogout}
                       className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10 focus:text-rose-500 cursor-pointer"
                     >
                       <LogOut className="w-4 h-4" />
-                      Logout Facility
+                      Log Out Facility
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
@@ -1695,15 +1705,19 @@ function AppContent({
                 authTrainer={authTrainer}
               />
             )}
-            {currentView === 'owner-dashboard' && (
-              <OwnerDashboardView onManageStudios={() => setCurrentView('owner-studio-manager')} />
-            )}
-            {currentView === 'owner-studio-manager' && authTrainer && (
-              <OwnerStudioManager 
+            {currentView === 'franchise-dashboard' && authTrainer && (
+              <FranchiseDashboardView 
                 authTrainer={authTrainer} 
-                studios={studios} 
+                allStudios={studios} 
+                allTrainers={trainers}
+                networks={networks}
+              />
+            )}
+            {currentView === 'admin-dashboard' && authTrainer && (
+              <AdminDashboardView 
+                authTrainer={authTrainer}
+                studios={studios}
                 isAdmin={isAdmin}
-                onBack={() => setCurrentView('owner-dashboard')} 
               />
             )}
             {currentView === 'trainer-hub' && (
@@ -6144,6 +6158,7 @@ function WorkoutTrackerView({
 
       const docRef = await addDoc(collection(db, 'sessions'), {
         clientId,
+        homeStudioId: clientHomeStudioId, // Explicit homeStudioId security stamp
         routineId: routineId || null,
         hostedAtStudioId: currentStudioId,
         clientHomeStudioId: clientHomeStudioId,
@@ -6217,6 +6232,8 @@ function WorkoutTrackerView({
           const payload: any = {
             sessionId: docRef.id,
             clientId,
+            homeStudioId: clientHomeStudioId, // Explicit homeStudioId security stamp
+            clientHomeStudioId: clientHomeStudioId,
             machineId: mId,
             machineSettings: currentSettings[mId]?.settings || prevLog?.machineSettings || {},
             createdAt: serverTimestamp()
@@ -6367,178 +6384,19 @@ function WorkoutTrackerView({
     
     setIsSyncing(true);
     try {
-      const batch = writeBatch(db);
-      
-      // 1. Update session status and Data Stamp
-      const sessionRef = doc(db, 'sessions', currentSession.id);
-      const updateData: any = {
-        status: 'Completed',
-        endTime: serverTimestamp(),
-        // Credit Routing: Final submission takes the credit
-        trainerId: authTrainer?.id || '',
-        trainerName: authTrainer?.fullName || '',
-        trainerInitials: authTrainer?.initials || ''
-      };
-      
-      // Data Stamping for Analytics
-      if (selectedClient) {
-        if (selectedClient.age !== undefined) updateData.clientAge = selectedClient.age;
-        if (selectedClient.occupation) updateData.clientOccupation = selectedClient.occupation;
-        if (selectedClient.isRetired !== undefined) updateData.clientIsRetired = selectedClient.isRetired;
-        if (selectedClient.activityLevel) updateData.clientActivityLevel = selectedClient.activityLevel;
-        if (selectedClient.clinicalProfile) updateData.clientClinicalProfile = selectedClient.clinicalProfile;
-      }
-      
-      if (postData?.clientFeel) {
-        updateData.clientFeel = postData.clientFeel;
-      }
-      if (currentSessionNotes.trim()) {
-        updateData.notes = currentSessionNotes.trim();
-      }
-      batch.update(sessionRef, updateData);
-
-      // Post-session note
-      if (postData?.noteContent && selectedClient && authTrainer) {
-        const noteRef = doc(collection(db, 'sessionNotes'));
-        batch.set(noteRef, {
-          sessionId: currentSession.id,
-          clientId: selectedClient.id,
-          trainerId: authTrainer.id,
-          trainerInitials: authTrainer.initials || authTrainer.fullName.substring(0, 2).toUpperCase(),
-          content: postData.noteContent,
-          priority: postData.notePriority,
-          createdAt: serverTimestamp()
-        });
-      }
-
-      // 2. Sync all local logs
       const sessionLogs = Object.values(logs).filter((l: any) => l.sessionId === currentSession.id);
       
-      const cleanData = (obj: any): any => {
-        if (obj === null || obj === undefined) return obj;
-        if (Array.isArray(obj)) return obj.map(cleanData);
-        if (typeof obj !== 'object') return obj;
-        
-        // Preserve standard dates or Firestore objects
-        if (typeof obj.toDate === 'function' || obj.constructor?.name === 'FieldValue' || obj instanceof Date) return obj;
-
-        const cleaned: any = {};
-        Object.keys(obj).forEach(key => {
-          if (obj[key] !== undefined) {
-            cleaned[key] = cleanData(obj[key]);
-          }
-        });
-        return cleaned;
-      };
-
-      for (const logObj of sessionLogs) {
-        const log = logObj as any;
-        if (log.id && log.id.toString().startsWith('temp_')) {
-          // New log
-          const newLogRef = doc(collection(db, 'exerciseLogs'));
-          const { id, ...logData } = log;
-          batch.set(newLogRef, {
-            ...cleanData(logData),
-            updatedAt: serverTimestamp()
-          });
-        } else if (log.id) {
-          // Existing log
-          const logRef = doc(db, 'exerciseLogs', log.id);
-          const { id, ...logData } = log;
-          batch.update(logRef, {
-            ...cleanData(logData),
-            updatedAt: serverTimestamp()
-          });
-        }
-      }
-
-      // 3. Update client if consultation completed or just increment session counters
-      if (selectedClient && selectedClient.id) {
-        let totalSessionReps = 0;
-        let totalSessionVolume = 0;
-
-        sessionLogs.forEach((l: any) => {
-          let reps = 0;
-          if (l.isTSC || l.isStaticHold) {
-            const seconds = parseFloat(l.seconds || '0');
-            reps = isNaN(seconds) || seconds <= 0 ? 0 : (seconds / 30) * 2;
-          } else {
-            reps = parseFloat(l.reps || '0');
-            if (isNaN(reps)) reps = 0;
-          }
-          const volume = calculateExerciseVolume(l);
-          totalSessionReps += reps;
-          totalSessionVolume += volume;
-        });
-
-        const roundedSessionReps = Math.round(totalSessionReps);
-        const roundedSessionVolume = Math.round(totalSessionVolume);
-
-        const clientRef = doc(db, 'clients', selectedClient.id);
-        const clientUpdates: any = {
-          completedSessions: increment(1),
-          sessionCount: currentSession.sessionNumber || increment(1),
-          updatedAt: serverTimestamp()
-        };
-
-        if (roundedSessionReps > 0) {
-          clientUpdates.lifetimeReps = increment(roundedSessionReps);
-        }
-        if (roundedSessionVolume > 0) {
-          clientUpdates.lifetimeWeight = increment(roundedSessionVolume);
-        }
-        
-        sessionLogs.forEach(logObj => {
-          const log = logObj as any;
-          if (log.weight || log.reps || log.seconds) {
-             const key = `currentMachineMetrics.${log.machineId}`;
-             clientUpdates[key] = cleanData({
-                weight: log.weight || '0',
-                reps: log.reps,
-                seconds: log.seconds,
-                isStaticHold: log.isStaticHold,
-                isTSC: log.isTSC,
-                totalTimeUnderLoad: log.totalTimeUnderLoad,
-                averageTimePerRep: log.averageTimePerRep,
-                settings: log.machineSettings || {},
-                lastPerformedDate: serverTimestamp(),
-                lastPerformedSessionNumber: currentSession.sessionNumber,
-                lastSessionId: currentSession.id
-             });
-             
-             // Update clientMachineSettings currentWeight
-             if (log.weight && log.machineId) {
-                const settingId = `${selectedClient.id}_${log.machineId}`;
-                const settingRef = doc(db, 'clientMachineSettings', settingId);
-                const currentSettingsObj = clientMachineSettings[log.machineId];
-                
-                const updateObj: any = {
-                   clientId: selectedClient.id,
-                   machineId: log.machineId,
-                   settings: currentSettingsObj?.settings || {},
-                   updatedBy: user.uid,
-                   currentWeight: Number(log.weight),
-                   updatedAt: serverTimestamp()
-                };
-                
-                if (!currentSettingsObj?.startingWeight) {
-                    updateObj.startingWeight = Number(log.weight);
-                    updateObj.startingWeightDate = new Date().toISOString();
-                }
-
-                batch.set(settingRef, updateObj, { merge: true });
-             }
-          }
-        });
-
-        if (!selectedClient.consultationCompleted) {
-          clientUpdates.consultationCompleted = true;
-        }
-        
-        batch.update(clientRef, clientUpdates);
-      }
-
-      await batch.commit();
+      await completeWorkoutSession(
+        db,
+        currentSession,
+        selectedClient,
+        sessionLogs,
+        postData,
+        currentSessionNotes,
+        authTrainer,
+        clientMachineSettings,
+        user.uid
+      );
 
       setCurrentSession(null);
       setCurrentSessionNotes('');
@@ -6617,6 +6475,18 @@ function WorkoutTrackerView({
         newSettings,
         reason,
         createdAt: serverTimestamp()
+      });
+
+      // Save historic record in sidecar subcollection to keep documents optimized
+      await addDoc(collection(db, 'machines', machineId, 'settingHistory'), {
+        clientId,
+        timestamp: new Date().toISOString(),
+        trainerId,
+        trainerName: authTrainer?.fullName || authTrainer?.initials || 'Trainer',
+        changeType: 'SETTINGS',
+        previousSettings: current?.settings || {},
+        newSettings,
+        reason: reason || 'Settings Update'
       });
 
       setEditingSettingsMachineId(null);

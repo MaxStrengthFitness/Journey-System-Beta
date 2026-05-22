@@ -21,6 +21,9 @@ import {
   Crosshair,
   Dumbbell,
   Info,
+  Search,
+  ShieldAlert,
+  Activity,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -67,6 +70,7 @@ import {
 } from "../lib/progress-utils";
 import { cn, parseSessionDate } from "../lib/utils";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
+import { MaxStrengthLogo } from "./MaxStrengthLogo";
 
 interface ClientProgressReportViewProps {
   client: Client;
@@ -224,9 +228,19 @@ export function ClientProgressReportView({
         "The Next 6 Months: We will transition to Routine B, increasing time-under-tension by 10% to fortify your lumbar spine and ensure your 'Why' becomes a permanent reality.",
     },
     roadmap: {
-      anchorCategory: "general_conditioning",
+      trackType: "maintenance",
+      selectedHabits: [],
+      routineChangeRequested: false,
+      routineModifications: "",
       emotionalAnchor: client.globalNotes || "",
       smartGoal: "",
+      targetMachineId: machines[0]?.id || "",
+      goalActions: [],
+      machinePlan: "",
+      refinementFocusArea: "",
+      routineIntervention: "",
+      // Legacy
+      anchorCategory: "general_conditioning",
       prescriptionType: "qualitative",
       inStudioPrescription: {
         targetMachine: machines[0]?.id || "m-leg-press",
@@ -444,9 +458,10 @@ export function ClientProgressReportView({
       const removeUndefined = (obj: any): any => {
         if (obj === undefined) return undefined;
         if (obj === null) return null;
-        if (typeof obj !== 'object') return obj;
+        if (typeof obj !== "object") return obj;
         if (obj.serverTime || obj.isEqual) return obj; // Handle FieldValue / Timestamp
-        if (Array.isArray(obj)) return obj.map(removeUndefined).filter(v => v !== undefined);
+        if (Array.isArray(obj))
+          return obj.map(removeUndefined).filter((v) => v !== undefined);
         const res: any = {};
         for (const k in obj) {
           const val = removeUndefined(obj[k]);
@@ -463,7 +478,7 @@ export function ClientProgressReportView({
         status,
         updatedAt: serverTimestamp(),
       });
-      
+
       // We don't want to overwrite createdAt on updates
       if (sanitizedReport.createdAt === null || report.id) {
         delete sanitizedReport.createdAt;
@@ -474,7 +489,10 @@ export function ClientProgressReportView({
         await updateDoc(doc(db, "progressReports", reportId), sanitizedReport);
       } else {
         sanitizedReport.createdAt = serverTimestamp();
-        const docRef = await addDoc(collection(db, "progressReports"), sanitizedReport);
+        const docRef = await addDoc(
+          collection(db, "progressReports"),
+          sanitizedReport,
+        );
         reportId = docRef.id;
         setReport((prev) => ({ ...prev, id: docRef.id }));
       }
@@ -677,29 +695,32 @@ export function ClientProgressReportView({
                       <Calendar className="w-3.5 h-3.5 text-[#F06C22]" />
                       Report:{" "}
                       <span className="text-white print:text-[#0A2E46]">
-                        {new Date(parseSessionDate(report.date)).toLocaleDateString(
-                          "en-US",
-                          { month: "short", day: "numeric", year: "numeric" },
-                        )}
+                        {new Date(
+                          parseSessionDate(report.date),
+                        ).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 opacity-80">
                       <CheckCircle2 className="w-3 h-3 text-[#F06C22]/60" />
                       Joined:{" "}
-                      <span className="text-white/60">
-                        Jan 15, 2026
-                      </span>
+                      <span className="text-white/60">Jan 15, 2026</span>
                     </div>
                     <div className="flex items-center gap-1.5 opacity-80">
                       <CheckCircle2 className="w-3 h-3 text-[#F06C22]/60" />
                       Prev Report:{" "}
-                      <span className="text-white/60">
-                        Mar 01, 2026
-                      </span>
+                      <span className="text-white/60">Mar 01, 2026</span>
                     </div>
                   </div>
                 </div>
                 <div className="flex flex-col items-end md:text-right">
+                  <div className="mb-2">
+                    <MaxStrengthLogo size="sm" showText={false} theme="dark" className="print:hidden" />
+                    <MaxStrengthLogo size="sm" showText={false} theme="light" className="hidden print:flex" />
+                  </div>
                   <p className="text-[7px] font-bold uppercase tracking-[0.4em] text-[#68717A] mb-1">
                     Authenticated By
                   </p>
@@ -708,7 +729,7 @@ export function ClientProgressReportView({
                   </p>
                   <div className="bg-[#F06C22] px-2 py-0.5 rounded-md">
                     <p className="text-[7px] font-bold text-white uppercase tracking-widest">
-                      Lead Practitioner • MSF Studio
+                      Life Transformer • MSF Studio
                     </p>
                   </div>
                 </div>
@@ -734,7 +755,9 @@ export function ClientProgressReportView({
                         <p className="text-[10px] font-bold uppercase tracking-tighter opacity-100 italic">
                           {report.attendance.firstSessionDate
                             ? new Date(
-                                parseSessionDate(report.attendance.firstSessionDate)
+                                parseSessionDate(
+                                  report.attendance.firstSessionDate,
+                                ),
                               ).toLocaleDateString()
                             : "--"}
                         </p>
@@ -919,10 +942,18 @@ export function ClientProgressReportView({
                   const score = matrixItem?.score ?? 100;
                   const rank = Math.round(score / 20) || 1;
                   const data = FOUR_PILLARS_DATA[p];
-                  
-                  let colorClasses = { text: "text-emerald-500", bg: "bg-emerald-500" };
-                  if (rank === 1) colorClasses = { text: "text-rose-500", bg: "bg-rose-500" };
-                  else if (rank === 2 || rank === 3) colorClasses = { text: "text-amber-400", bg: "bg-amber-400" };
+
+                  let colorClasses = {
+                    text: "text-emerald-500",
+                    bg: "bg-emerald-500",
+                  };
+                  if (rank === 1)
+                    colorClasses = { text: "text-rose-500", bg: "bg-rose-500" };
+                  else if (rank === 2 || rank === 3)
+                    colorClasses = {
+                      text: "text-amber-400",
+                      bg: "bg-amber-400",
+                    };
 
                   return (
                     <div
@@ -933,9 +964,14 @@ export function ClientProgressReportView({
                         <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white print:text-[#0A2E46]">
                           {data.title}
                         </h4>
-                        
+
                         <div className="mt-4 flex flex-col gap-1.5">
-                          <span className={cn("text-[10px] font-black italic", colorClasses.text)}>
+                          <span
+                            className={cn(
+                              "text-[10px] font-black italic",
+                              colorClasses.text,
+                            )}
+                          >
                             {rank} / 5
                           </span>
                           <div className="flex gap-0.5">
@@ -944,16 +980,14 @@ export function ClientProgressReportView({
                                 key={step}
                                 className={cn(
                                   "w-full h-1.5 rounded-[1px] transition-all",
-                                  step <= rank
-                                    ? colorClasses.bg
-                                    : "bg-white/5",
+                                  step <= rank ? colorClasses.bg : "bg-white/5",
                                 )}
                               />
                             ))}
                           </div>
                         </div>
                       </div>
-                      
+
                       {matrixItem?.note && (
                         <div className="mt-3 bg-black/20 p-2 rounded-lg border border-white/5">
                           <p className="text-[8px] font-bold text-white/80 leading-relaxed italic">
@@ -994,100 +1028,150 @@ export function ClientProgressReportView({
             <section className="break-inside-avoid space-y-4">
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4 text-[#F06C22]" />
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#F06C22] shrink-0">Strategic Road Map</h3>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
+                  Strategic Road Map
+                </h3>
                 <div className="h-px bg-[#F06C22]/20 flex-1"></div>
               </div>
 
               {report.roadmap && (
                 <>
-                  <div className="relative">
-                    {/* Horizontal Connector Line */}
-                    <div className="hidden md:block absolute top-1/2 left-0 w-full h-[2px] border-t-2 border-dashed border-[#F06C22]/40 -translate-y-1/2 z-0" />
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
-                      {/* Step 1 */}
-                      <div className="bg-[#0A2E46] p-5 rounded-2xl border border-white/10 shadow-lg">
-                        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#F06C22] mb-2 flex items-center gap-1.5"><Quote className="w-3 h-3" /> Step 1: Your Motivation</div>
-                        <p className="text-white print:text-[#0A2E46] italic font-medium leading-relaxed">
-                          "{report.roadmap.emotionalAnchor}"
-                        </p>
+                  {report.roadmap.trackType === "maintenance" && (
+                    <div className="bg-[#FAF9F6] dark:bg-slate-900/50 p-6 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-lg relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                        <Activity className="w-16 h-16 text-blue-500" />
                       </div>
-
-                      {/* Step 2 */}
-                      <div className="bg-[#FAF9F6] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg">
-                        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#68717A] mb-2 flex items-center gap-1.5"><MapIcon className="w-3 h-3" /> Step 2: The Milestone</div>
-                        <p className="text-[#0A2E46] font-bold leading-relaxed">
-                          {report.roadmap.smartGoal}
-                        </p>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400 mb-4 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4" /> Maintenance Track: Lifestyle & Longevity
                       </div>
-
-                      {/* Step 3 */}
-                      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border-2 border-[#F06C22] shadow-xl relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-2 opacity-10 pointer-events-none">
-                          <Zap className="w-12 h-12 text-[#F06C22]" />
-                        </div>
-                        <div className="relative z-10">
-                          <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#F06C22] mb-2 flex items-center gap-1.5"><Dumbbell className="w-3 h-3" /> Step 3: Our Clinical Prescription</div>
-                          <div className="space-y-3">
-                            <div className="text-xs font-bold uppercase text-[#0A2E46] tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2">
-                              {machines.find(m => m.id === report.roadmap?.inStudioPrescription.targetMachine)?.name || 'Machine TBD'}
-                              <span className="ml-2 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded text-[8px] tracking-widest">{report.roadmap.inStudioPrescription.timeframe}</span>
+                      
+                      <div className="space-y-6 relative z-10">
+                        {report.roadmap.selectedHabits && report.roadmap.selectedHabits.length > 0 && (
+                          <div>
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">Focus Habits</p>
+                            <div className="flex flex-wrap gap-2">
+                              {report.roadmap.selectedHabits.map(habit => (
+                                <span key={habit} className="px-3 py-1.5 bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 rounded-lg text-xs font-bold shadow-sm">
+                                  {habit}
+                                </span>
+                              ))}
                             </div>
-                            
-                            {report.roadmap.prescriptionType === 'quantitative' ? (
-                              <div className="space-y-1">
-                                <p className="text-base font-bold text-[#F06C22]">{report.roadmap.inStudioPrescription.targetMetric}</p>
-                                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">...with perfect Level 5 Posture and Pace.</p>
-                              </div>
-                            ) : (
-                              <p className="text-sm font-bold text-[#F06C22] italic leading-tight">
-                                {report.roadmap.inStudioPrescription.qualitativeFocus}
-                              </p>
-                            )}
                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Auto-Generated Educational Snippets */}
-                  <div className={cn(
-                    "mt-4 p-4 rounded-xl border-l-4 shadow-sm relative overflow-hidden",
-                    report.roadmap.anchorCategory === 'weight_loss' ? "bg-slate-900 border-[#38BDF8]" :
-                    report.roadmap.anchorCategory === 'eih_management' ? "bg-slate-900 border-amber-500" :
-                    "bg-slate-900 border-slate-500"
-                  )}>
-                    <div className="flex gap-3 relative z-10">
-                      <Info className={cn("w-5 h-5 shrink-0 mt-0.5", 
-                        report.roadmap.anchorCategory === 'weight_loss' ? "text-[#38BDF8]" :
-                        report.roadmap.anchorCategory === 'eih_management' ? "text-amber-500" :
-                        "text-slate-400"
-                      )} />
-                      <div className="space-y-1">
-                        <p className={cn("text-[10px] font-black uppercase tracking-widest",
-                          report.roadmap.anchorCategory === 'weight_loss' ? "text-[#38BDF8]" :
-                          report.roadmap.anchorCategory === 'eih_management' ? "text-amber-500" :
-                          "text-slate-400"
-                        )}>Clinical Insight</p>
+                        )}
                         
-                        {report.roadmap.anchorCategory === 'weight_loss' && (
-                          <p className="text-xs text-white/90 leading-relaxed">
-                            Physical conditioning is 80% exercise and 20% nutrition. However, fat loss is 80% nutrition and 20% exercise. We will maximize your metabolic engine in the studio, but your kitchen habits will dictate the scale.
-                          </p>
-                        )}
-                        {report.roadmap.anchorCategory === 'eih_management' && (
-                          <p className="text-xs text-white/90 leading-relaxed">
-                            Due to your history of Exercise Induced Headaches, your 'failure' point is redefined. Your set ends the instant you perceive head discomfort, not at muscular failure. Safety is our only priority.
-                          </p>
-                        )}
-                        {report.roadmap.anchorCategory !== 'weight_loss' && report.roadmap.anchorCategory !== 'eih_management' && (
-                          <p className="text-xs text-white/90 leading-relaxed">
-                            The assumed goal of exercise is to lift heavier weights. The REAL objective is to increase Motor Unit Recruitment by pushing your muscles to deep fatigue safely. Do not chase numbers; chase the quality of the effort.
-                          </p>
+                        {report.roadmap.routineChangeRequested && (
+                          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border-l-4 border-l-blue-500">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-[#0A2E46] dark:text-slate-300 mb-1">Routine Modification</p>
+                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                              {report.roadmap.routineModifications || "Routine updates requested."}
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
-                  </div>
+                  )}
+
+                  {report.roadmap.trackType === "goals" && (
+                    <div className="bg-[#FAF9F6] dark:bg-slate-900/50 p-6 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-lg relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                        <Target className="w-16 h-16 text-[#F06C22]" />
+                      </div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#F06C22] mb-4 flex items-center gap-1.5">
+                        <Target className="w-4 h-4" /> Goal Setting Track: Performance
+                      </div>
+                      
+                      <div className="grid md:grid-cols-2 gap-4 relative z-10">
+                        {report.roadmap.emotionalAnchor && (
+                          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-1">The "Why"</p>
+                            <p className="text-sm font-medium italic text-slate-700 dark:text-slate-300 border-l-2 border-slate-300 dark:border-slate-600 pl-3">
+                              "{report.roadmap.emotionalAnchor}"
+                            </p>
+                          </div>
+                        )}
+
+                        {report.roadmap.smartGoal && (
+                          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-1">SMART Goal</p>
+                            <p className="text-sm font-bold text-[#0A2E46] dark:text-slate-200">
+                              {report.roadmap.smartGoal}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 grid md:grid-cols-2 gap-4 relative z-10">
+                        {report.roadmap.targetMachineId && (
+                          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border-l-4 border-[#F06C22]">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-[#F06C22] mb-1 flex items-center gap-1"><Dumbbell className="w-3 h-3"/> Target Machine</p>
+                            <p className="text-sm font-black uppercase text-[#0A2E46] dark:text-slate-200">
+                              {machines.find(m => m.id === report.roadmap?.targetMachineId)?.name || 'Specified Machine'}
+                            </p>
+                          </div>
+                        )}
+                        {report.roadmap.goalActions && report.roadmap.goalActions.length > 0 && (
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-1">Action Plan</p>
+                            <ul className="space-y-1">
+                              {report.roadmap.goalActions.map(action => (
+                                <li key={action} className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-[#F06C22]"></div> {action}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {report.roadmap.machinePlan && (
+                        <div className="mt-4 bg-[#0A2E46] text-white p-4 rounded-xl shadow-sm relative z-10">
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-white/70 mb-1">Integration Plan</p>
+                          <p className="text-sm">
+                            {report.roadmap.machinePlan}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {report.roadmap.trackType === "refinement" && (
+                    <div className="bg-[#FAF9F6] dark:bg-slate-900/50 p-6 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-lg relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                        <Search className="w-16 h-16 text-emerald-500" />
+                      </div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-4 flex items-center gap-1.5">
+                        <ShieldAlert className="w-4 h-4" /> Refinement Track: Form & Technique
+                      </div>
+                      
+                      <div className="grid md:grid-cols-2 gap-4 relative z-10 mb-4">
+                        {report.roadmap.refinementFocusArea && (
+                          <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl sm:border border-emerald-100 dark:border-emerald-800/50 shadow-sm flex items-center justify-between">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-800 dark:text-emerald-400">4 P's Focus</p>
+                            <span className="text-lg font-black uppercase text-emerald-600 dark:text-emerald-300">
+                              {report.roadmap.refinementFocusArea}
+                            </span>
+                          </div>
+                        )}
+                        {report.roadmap.targetMachineId && (
+                          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-1">Target Machine</p>
+                            <p className="text-sm font-black uppercase text-[#0A2E46] dark:text-slate-200">
+                              {machines.find(m => m.id === report.roadmap?.targetMachineId)?.name || 'Specified Machine'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {report.roadmap.routineIntervention && (
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border-l-4 border-l-emerald-500 relative z-10">
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-[#0A2E46] dark:text-slate-300 mb-1">Intervention Strategy</p>
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            {report.roadmap.routineIntervention}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
             </section>
@@ -1193,11 +1277,18 @@ export function ClientProgressReportView({
                         Timeframe Start Date (Blank = All Time)
                       </Label>
                       {report.attendance.firstSessionDate && (
-                        <button 
-                          onClick={() => handleRecalculateAttendance(report.attendance.firstSessionDate!)}
+                        <button
+                          onClick={() =>
+                            handleRecalculateAttendance(
+                              report.attendance.firstSessionDate!,
+                            )
+                          }
                           className="text-[9px] font-bold text-primary uppercase hover:underline"
                         >
-                          Use First Session: {new Date(report.attendance.firstSessionDate).toLocaleDateString()}
+                          Use First Session:{" "}
+                          {new Date(
+                            report.attendance.firstSessionDate,
+                          ).toLocaleDateString()}
                         </button>
                       )}
                     </div>
@@ -1533,10 +1624,24 @@ export function ClientProgressReportView({
                 const included = (
                   report.performanceMatrix.includedNotes || []
                 ).includes(talkingPoint);
-                
-                let colorClasses = { text: "text-emerald-500", bg: "bg-emerald-500", border: "border-emerald-500" };
-                if (rank === 1) colorClasses = { text: "text-rose-500", bg: "bg-rose-500", border: "border-rose-500" };
-                else if (rank === 2 || rank === 3) colorClasses = { text: "text-amber-400", bg: "bg-amber-400", border: "border-amber-400" };
+
+                let colorClasses = {
+                  text: "text-emerald-500",
+                  bg: "bg-emerald-500",
+                  border: "border-emerald-500",
+                };
+                if (rank === 1)
+                  colorClasses = {
+                    text: "text-rose-500",
+                    bg: "bg-rose-500",
+                    border: "border-rose-500",
+                  };
+                else if (rank === 2 || rank === 3)
+                  colorClasses = {
+                    text: "text-amber-400",
+                    bg: "bg-amber-400",
+                    border: "border-amber-400",
+                  };
 
                 return (
                   <div
@@ -1553,7 +1658,12 @@ export function ClientProgressReportView({
                     </div>
 
                     <div className="space-y-3">
-                      <div className={cn("flex justify-between items-center text-[10px] font-black uppercase tracking-widest", colorClasses.text)}>
+                      <div
+                        className={cn(
+                          "flex justify-between items-center text-[10px] font-black uppercase tracking-widest",
+                          colorClasses.text,
+                        )}
+                      >
                         <span>Rank</span>
                         <span className="text-sm">{rank} / 5</span>
                       </div>
@@ -1583,26 +1693,28 @@ export function ClientProgressReportView({
                         ))}
                       </div>
                     </div>
-                    
+
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest pl-1">Personalized Note (Optional)</Label>
-                       <Textarea 
-                          value={report.performanceMatrix[p]?.note || ''}
-                          onChange={(e) => {
-                              setReport({
-                                ...report,
-                                performanceMatrix: {
-                                  ...report.performanceMatrix,
-                                  [p]: {
-                                    ...report.performanceMatrix[p],
-                                    note: e.target.value,
-                                  },
-                                },
-                              });
-                          }}
-                          placeholder={`Add a specific note about their ${data.title.toLowerCase()}...`}
-                          className="bg-slate-900 border-slate-700 text-sm h-16 resize-none focus:border-slate-500 rounded-xl placeholder:text-slate-600 italic text-white"
-                       />
+                      <Label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest pl-1">
+                        Personalized Note (Optional)
+                      </Label>
+                      <Textarea
+                        value={report.performanceMatrix[p]?.note || ""}
+                        onChange={(e) => {
+                          setReport({
+                            ...report,
+                            performanceMatrix: {
+                              ...report.performanceMatrix,
+                              [p]: {
+                                ...report.performanceMatrix[p],
+                                note: e.target.value,
+                              },
+                            },
+                          });
+                        }}
+                        placeholder={`Add a specific note about their ${data.title.toLowerCase()}...`}
+                        className="bg-slate-900 border-slate-700 text-sm h-16 resize-none focus:border-slate-500 rounded-xl placeholder:text-slate-600 italic text-white"
+                      />
                     </div>
 
                     <div className="bg-slate-900 p-4 rounded-xl border border-slate-700 flex-1 flex flex-col justify-between gap-4">
@@ -1685,193 +1797,404 @@ export function ClientProgressReportView({
                 Strategic Roadmap
               </h2>
             </div>
-            
+
             <div className="space-y-8">
-              {/* Category Anchor */}
+              {/* Track Selection */}
               <div className="space-y-4">
                 <Label className="text-[10px] font-bold uppercase tracking-widest text-[#68717A] ml-1">
-                  1. Clinical Health Anchor (80/20 & EIH Safeguards)
+                  Step 1: Select Diagnostic Track
                 </Label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {[
-                    { id: 'weight_loss', label: 'Weight Loss Focus', description: 'Metabolic engine vs Kitchen habits' },
-                    { id: 'eih_management', label: 'EIH / Safety First', description: 'Pain-limited failure points' },
-                    { id: 'general_conditioning', label: 'Inroad / Mastery', description: 'The REAL objective vs numbers' }
-                  ].map((cat) => (
+                    {
+                      id: "maintenance",
+                      label: "Maintenance",
+                      description: "Focus on Health Longevity & Habits",
+                    },
+                    {
+                      id: "goals",
+                      label: "Goal Setting",
+                      description: 'Focus on "Go-Getters" & Performance',
+                    },
+                    {
+                      id: "refinement",
+                      label: "Refinement",
+                      description: 'Focus on the "4 Ps" / Form Matrix',
+                    },
+                  ].map((track) => (
                     <button
-                      key={cat.id}
-                      onClick={() => setReport({
-                        ...report,
-                        roadmap: { ...report.roadmap!, anchorCategory: cat.id as any }
-                      })}
+                      key={track.id}
+                      onClick={() =>
+                        setReport({
+                          ...report,
+                          roadmap: {
+                            ...report.roadmap!,
+                            trackType: track.id as any,
+                            selectedHabits:
+                              report.roadmap?.selectedHabits || [],
+                            goalActions: report.roadmap?.goalActions || [],
+                          },
+                        })
+                      }
                       className={cn(
                         "p-4 rounded-2xl border-2 text-left transition-all",
-                        report.roadmap?.anchorCategory === cat.id 
-                          ? "bg-[#0A2E46] border-[#0A2E46] text-white shadow-lg shadow-[#0A2E46]/20" 
-                          : "bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-200"
+                        report.roadmap?.trackType === track.id
+                          ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20"
+                          : "bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-200",
                       )}
                     >
-                      <p className="text-[10px] font-bold uppercase tracking-widest leading-none mb-1">{cat.label}</p>
-                      <p className="text-[8px] font-bold opacity-60 uppercase">{cat.description}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest leading-none mb-1">
+                        {track.label}
+                      </p>
+                      <p className="text-[8px] font-bold opacity-60 uppercase">
+                        {track.description}
+                      </p>
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Motivation & Milestone */}
-                <div className="space-y-6">
+              {/* Track 1: Maintenance */}
+              {report.roadmap?.trackType === "maintenance" && (
+                <div className="bg-white dark:bg-slate-900 border-2 border-blue-500/20 p-6 rounded-[32px] space-y-6">
+                  <h3 className="text-lg font-bold uppercase italic tracking-tighter text-blue-900 dark:text-blue-100 mb-4">
+                    Maintenance Track: Longevity
+                  </h3>
+
                   <div className="space-y-4">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-[#68717A] ml-1">
-                      2. The Emotional Anchor (Your "Why")
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                      Lifestyle Habits to Focus On
                     </Label>
-                    <Textarea
-                      value={report.roadmap?.emotionalAnchor || ""}
-                      onChange={(e) => setReport({
-                        ...report,
-                        roadmap: { ...report.roadmap!, emotionalAnchor: e.target.value }
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        "Increase Protein Intake",
+                        "Increase Water Intake",
+                        "Improve Sleep",
+                        "Track Calories",
+                        "InBody Scans",
+                        "Other",
+                      ].map((habit) => {
+                        const isSelected =
+                          report.roadmap?.selectedHabits?.includes(habit);
+                        return (
+                          <button
+                            key={habit}
+                            onClick={() => {
+                              const currentHabits =
+                                report.roadmap?.selectedHabits || [];
+                              const newHabits = isSelected
+                                ? currentHabits.filter((h) => h !== habit)
+                                : [...currentHabits, habit];
+                              setReport({
+                                ...report,
+                                roadmap: {
+                                  ...report.roadmap!,
+                                  selectedHabits: newHabits,
+                                },
+                              });
+                            }}
+                            className={cn(
+                              "px-3 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-colors cursor-pointer",
+                              isSelected
+                                ? "bg-blue-500 text-white border-blue-500"
+                                : "bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-blue-400",
+                            )}
+                          >
+                            {habit}
+                          </button>
+                        );
                       })}
-                      className="min-h-[100px] rounded-3xl font-medium border-2 border-slate-100 dark:border-slate-800 focus:border-[#F06C22] p-4 placeholder:italic"
-                      placeholder="e.g., Playing with grandkids without knee pain..."
-                    />
-                  </div>
-                  <div className="space-y-4">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-[#68717A] ml-1">
-                      3. The Measurable Milestone (SMART)
-                    </Label>
-                    <Textarea
-                      value={report.roadmap?.smartGoal || ""}
-                      onChange={(e) => setReport({
-                        ...report,
-                        roadmap: { ...report.roadmap!, smartGoal: e.target.value }
-                      })}
-                      className="min-h-[100px] rounded-3xl font-medium border-2 border-slate-100 dark:border-slate-800 focus:border-[#F06C22] p-4"
-                      placeholder="e.g., Skiing trip ready by Christmas..."
-                    />
-                  </div>
-                </div>
-
-                {/* Prescription */}
-                <div className="bg-[#FAF9F6] p-6 rounded-[32px] border-2 border-slate-100 dark:border-slate-800 space-y-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-[#F06C22]/10 flex items-center justify-center">
-                      <Crosshair className="w-5 h-5 text-[#F06C22]" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold uppercase italic tracking-tighter text-[#0A2E46] leading-tight">Clinical Prescription</h3>
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Step 3: Studio Implementation</p>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
                       <button
-                        onClick={() => setReport({
-                          ...report,
-                          roadmap: { ...report.roadmap!, prescriptionType: 'quantitative' }
-                        })}
-                        className={cn(
-                          "py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
-                          report.roadmap?.prescriptionType === 'quantitative' 
-                            ? "bg-[#F06C22] text-white" 
-                            : "bg-slate-200 text-slate-500"
-                        )}
-                      >
-                        Quantitative (Number)
-                      </button>
-                      <button
-                        onClick={() => setReport({
-                          ...report,
-                          roadmap: { ...report.roadmap!, prescriptionType: 'qualitative' }
-                        })}
-                        className={cn(
-                          "py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
-                          report.roadmap?.prescriptionType === 'qualitative' 
-                            ? "bg-[#F06C22] text-white" 
-                            : "bg-slate-200 text-slate-500"
-                        )}
-                      >
-                        Qualitative (Skill)
-                      </button>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Target Machine</Label>
-                        <Select
-                          value={report.roadmap?.inStudioPrescription.targetMachine || ""}
-                          onValueChange={(v) => setReport({
+                        onClick={() =>
+                          setReport({
                             ...report,
                             roadmap: {
                               ...report.roadmap!,
-                              inStudioPrescription: { ...report.roadmap!.inStudioPrescription, targetMachine: v }
-                            }
-                          })}
+                              routineChangeRequested:
+                                !report.roadmap?.routineChangeRequested,
+                            },
+                          })
+                        }
+                        className={cn(
+                          "w-12 h-6 rounded-full transition-colors relative",
+                          report.roadmap?.routineChangeRequested
+                            ? "bg-blue-500"
+                            : "bg-slate-200 dark:bg-slate-800",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "w-4 h-4 rounded-full bg-white absolute top-1 transition-transform",
+                            report.roadmap?.routineChangeRequested
+                              ? "left-7"
+                              : "left-1",
+                          )}
+                        />
+                      </button>
+                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-700 dark:text-slate-300">
+                        Routine Modification Requested?
+                      </Label>
+                    </div>
+                    {report.roadmap?.routineChangeRequested && (
+                      <Textarea
+                        value={report.roadmap?.routineModifications || ""}
+                        onChange={(e) =>
+                          setReport({
+                            ...report,
+                            roadmap: {
+                              ...report.roadmap!,
+                              routineModifications: e.target.value,
+                            },
+                          })
+                        }
+                        className="min-h-[100px] rounded-2xl border-2 border-slate-100 dark:border-slate-800 focus:border-blue-500 p-4"
+                        placeholder="Document requested modifications to their current routine..."
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Track 2: Goals */}
+              {report.roadmap?.trackType === "goals" && (
+                <div className="bg-white dark:bg-slate-900 border-2 border-blue-500/20 p-6 rounded-[32px] space-y-6">
+                  <h3 className="text-lg font-bold uppercase italic tracking-tighter text-blue-900 dark:text-blue-100 mb-4">
+                    Goal Setting Track: Performance
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                        The Emotional Anchor ("Why")
+                      </Label>
+                      <Textarea
+                        value={report.roadmap?.emotionalAnchor || ""}
+                        onChange={(e) =>
+                          setReport({
+                            ...report,
+                            roadmap: {
+                              ...report.roadmap!,
+                              emotionalAnchor: e.target.value,
+                            },
+                          })
+                        }
+                        className="min-h-[100px] rounded-2xl border-2 border-slate-100 dark:border-slate-800 focus:border-blue-500 p-4"
+                        placeholder="e.g., Playing with grandkids without pain..."
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                        SMART Goal Category / Detail
+                      </Label>
+                      <Textarea
+                        value={report.roadmap?.smartGoal || ""}
+                        onChange={(e) =>
+                          setReport({
+                            ...report,
+                            roadmap: {
+                              ...report.roadmap!,
+                              smartGoal: e.target.value,
+                            },
+                          })
+                        }
+                        className="min-h-[100px] rounded-2xl border-2 border-slate-100 dark:border-slate-800 focus:border-blue-500 p-4"
+                        placeholder="e.g., Increase leg press by 20% in 3 months..."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                      Clinical Prescription
+                    </Label>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                          Target Machine Integration
+                        </Label>
+                        <Select
+                          value={report.roadmap?.targetMachineId || ""}
+                          onValueChange={(v) =>
+                            setReport({
+                              ...report,
+                              roadmap: {
+                                ...report.roadmap!,
+                                targetMachineId: v,
+                              },
+                            })
+                          }
                         >
-                          <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold">
-                            <SelectValue placeholder="Select Machine" />
+                          <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold rounded-xl">
+                            <SelectValue placeholder="Select Machine to Integrate" />
                           </SelectTrigger>
                           <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                            {machines.map(m => (
-                              <SelectItem key={m.id} value={m.id!}>{m.name}</SelectItem>
+                            {machines.map((m) => (
+                              <SelectItem key={m.id} value={m.id!}>
+                                {m.name}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
 
-                      {report.roadmap?.prescriptionType === 'quantitative' ? (
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Target Weight/Metric</Label>
-                          <Input
-                            value={report.roadmap?.inStudioPrescription.targetMetric || ""}
-                            onChange={(e) => setReport({
-                              ...report,
-                              roadmap: {
-                                ...report.roadmap!,
-                                inStudioPrescription: { ...report.roadmap!.inStudioPrescription, targetMetric: e.target.value }
-                              }
-                            })}
-                            className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
-                            placeholder="e.g., 250 lbs for 90 seconds"
-                          />
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Specific Form Mastery Focus</Label>
-                          <Input
-                            value={report.roadmap?.inStudioPrescription.qualitativeFocus || ""}
-                            onChange={(e) => setReport({
-                              ...report,
-                              roadmap: {
-                                ...report.roadmap!,
-                                inStudioPrescription: { ...report.roadmap!.inStudioPrescription, qualitativeFocus: e.target.value }
-                              }
-                            })}
-                            className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
-                            placeholder="e.g., Zero momentum on turnarounds"
-                          />
-                        </div>
-                      )}
-
-                      <div className="space-y-2">
-                        <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Timeframe</Label>
-                        <Input
-                          value={report.roadmap?.inStudioPrescription.timeframe || ""}
-                          onChange={(e) => setReport({
-                            ...report,
-                            roadmap: {
-                              ...report.roadmap!,
-                              inStudioPrescription: { ...report.roadmap!.inStudioPrescription, timeframe: e.target.value }
-                            }
+                      <div className="space-y-4">
+                        <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                          Recommended Actions
+                        </Label>
+                        <div className="flex flex-col gap-2">
+                          {[
+                            "Add Machine to Rotation",
+                            "Schedule Recurring InBody Scans",
+                            "Add Routine",
+                          ].map((action) => {
+                            const isSelected =
+                              report.roadmap?.goalActions?.includes(action);
+                            return (
+                              <button
+                                key={action}
+                                onClick={() => {
+                                  const currentActions =
+                                    report.roadmap?.goalActions || [];
+                                  const newActions = isSelected
+                                    ? currentActions.filter((a) => a !== action)
+                                    : [...currentActions, action];
+                                  setReport({
+                                    ...report,
+                                    roadmap: {
+                                      ...report.roadmap!,
+                                      goalActions: newActions,
+                                    },
+                                  });
+                                }}
+                                className={cn(
+                                  "px-3 py-2 rounded-xl text-left text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer",
+                                  isSelected
+                                    ? "bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+                                    : "bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-blue-400",
+                                )}
+                              >
+                                {action}
+                              </button>
+                            );
                           })}
-                          className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
-                          placeholder="e.g., Next 12 Weeks"
-                        />
+                        </div>
                       </div>
                     </div>
                   </div>
+
+                  <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                      Machine Plan Mapping
+                    </Label>
+                    <Textarea
+                      value={report.roadmap?.machinePlan || ""}
+                      onChange={(e) =>
+                        setReport({
+                          ...report,
+                          roadmap: {
+                            ...report.roadmap!,
+                            machinePlan: e.target.value,
+                          },
+                        })
+                      }
+                      className="min-h-[100px] rounded-2xl border-2 border-slate-100 dark:border-slate-800 focus:border-blue-500 p-4"
+                      placeholder="Detail the roadmap for adding specific machines to their plan..."
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Track 3: Refinement */}
+              {report.roadmap?.trackType === "refinement" && (
+                <div className="bg-white dark:bg-slate-900 border-2 border-blue-500/20 p-6 rounded-[32px] space-y-6">
+                  <h3 className="text-lg font-bold uppercase italic tracking-tighter text-blue-900 dark:text-blue-100 mb-4">
+                    Refinement Track: Form & Technique
+                  </h3>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                        Performance Matrix Focus (The 4 Ps)
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {["Posture", "Pace", "Path", "Purpose"].map((p) => (
+                          <button
+                            key={p}
+                            onClick={() =>
+                              setReport({
+                                ...report,
+                                roadmap: {
+                                  ...report.roadmap!,
+                                  refinementFocusArea: p,
+                                },
+                              })
+                            }
+                            className={cn(
+                              "py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all text-center border-2",
+                              report.roadmap?.refinementFocusArea === p
+                                ? "bg-blue-600 border-blue-600 text-white"
+                                : "bg-slate-50 border-slate-100 text-slate-400 hover:border-blue-200",
+                            )}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                        Target Machine for Refinement
+                      </Label>
+                      <Select
+                        value={report.roadmap?.targetMachineId || ""}
+                        onValueChange={(v) =>
+                          setReport({
+                            ...report,
+                            roadmap: { ...report.roadmap!, targetMachineId: v },
+                          })
+                        }
+                      >
+                        <SelectTrigger className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 text-xs font-bold rounded-2xl h-[48px]">
+                          <SelectValue placeholder="Search Machine..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                          {machines.map((m) => (
+                            <SelectItem key={m.id} value={m.id!}>
+                              {m.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                      Routine Intervention
+                    </Label>
+                    <Textarea
+                      value={report.roadmap?.routineIntervention || ""}
+                      onChange={(e) =>
+                        setReport({
+                          ...report,
+                          roadmap: {
+                            ...report.roadmap!,
+                            routineIntervention: e.target.value,
+                          },
+                        })
+                      }
+                      className="min-h-[100px] rounded-2xl border-2 border-slate-100 dark:border-slate-800 focus:border-blue-500 p-4"
+                      placeholder="Specifically map out the adjustment to their training routine..."
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 

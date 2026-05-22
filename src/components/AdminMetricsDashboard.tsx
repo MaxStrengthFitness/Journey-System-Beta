@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Network, MapPin, Activity, CalendarDays, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export function OwnerDashboardView({ onManageStudios }: { onManageStudios?: () => void }) {
+export function AdminMetricsDashboard({ onManageStudios }: { onManageStudios?: () => void }) {
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [studios, setStudios] = useState<Studio[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +99,7 @@ export function OwnerDashboardView({ onManageStudios }: { onManageStudios?: () =
           </div>
           <div>
             <h1 className="text-2xl md:text-3xl font-black uppercase text-slate-900 dark:text-white tracking-tight italic">
-              Founder & Admin Command Center
+              Admin Dashboard
             </h1>
             <p className="text-xs font-bold uppercase tracking-widest text-[#F06C22]">
               Corporate Command Center & Demographic Intelligence

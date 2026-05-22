@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { getMachineStyle } from './machine-colors';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -197,31 +198,8 @@ export function calculateExerciseVolume(log: { weight?: string, reps?: string, i
  * Returns Tailwind classes for standardized muscle group color coding.
  */
 export function getMuscleGroupColor(machineName: string = ''): string {
-  const lowerName = machineName.toLowerCase();
-  
-  // Green: Lower Body / Hips
-  if (lowerName.includes('leg') || lowerName.includes('calf') || lowerName.includes('abduction') || lowerName.includes('adduction') || lowerName.includes('glute')) {
-    return 'bg-green-50 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800/50';
-  }
-
-  // Blue: Upper Body – Pull
-  if (lowerName.includes('row') || lowerName.includes('pull') || lowerName.includes('bicep') || lowerName.includes('torso arm')) {
-    return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/50';
-  }
-
-  // Red/Orange: Upper Body – Push
-  // Leg Press is caught by Green above
-  if (lowerName.includes('chest') || lowerName.includes('press') || lowerName.includes('dip') || lowerName.includes('fly') || lowerName.includes('lateral') || lowerName.includes('tricep') || lowerName.includes('shoulder')) {
-    return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50';
-  }
-
-  // Purple: Trunk / Spine / Core
-  if (lowerName.includes('lumbar') || lowerName.includes('abdominal') || lowerName.includes('abs') || lowerName.includes('torso rotation') || lowerName.includes('cervical') || lowerName.includes('core') || lowerName.includes('trunk')) {
-    return 'bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800/50';
-  }
-
-  // Default neutral
-  return 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700/50';
+  const style = getMachineStyle(machineName);
+  return `${style.bg} ${style.text} border ${style.border}`;
 }
 
 /**

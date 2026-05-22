@@ -1,4 +1,4 @@
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { DashboardAggregatedData, InsightsAggregator } from '../data/insights-logic';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
@@ -39,9 +39,9 @@ export class InsightsService {
       console.debug('[InsightsService] Fetching raw data to calculate global insights.');
       
       const [clientsSnap, sessionsSnap, logsSnap] = await Promise.all([
-        getDocs(collection(db, 'clients')),
-        getDocs(collection(db, 'sessions')),
-        getDocs(collection(db, 'exerciseLogs'))
+        getDocs(query(collection(db, 'clients'), limit(100))),
+        getDocs(query(collection(db, 'sessions'), orderBy('createdAt', 'desc'), limit(50))),
+        getDocs(query(collection(db, 'exerciseLogs'), orderBy('createdAt', 'desc'), limit(50)))
       ]);
 
       const clients = clientsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
