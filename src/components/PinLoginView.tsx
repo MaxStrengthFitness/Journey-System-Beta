@@ -23,6 +23,19 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
   const { activeStudioId, setIsAuthenticated, isAuthenticated } = useActiveStudio();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
+  const [userClaims, setUserClaims] = useState<any>(null);
+
+  useEffect(() => {
+    if (user) {
+      user.getIdTokenResult().then((result: any) => {
+        setUserClaims(result.claims);
+      }).catch((e: any) => {
+        console.error("Error fetching token claims in PinLoginView", e);
+      });
+    } else {
+      setUserClaims(null);
+    }
+  }, [user]);
 
   // Automatically focus on the active pre-selected trainer if we have one and not authenticated
   useEffect(() => {
@@ -261,7 +274,7 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
             <motion.div key="list" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid gap-3 max-h-[460px] overflow-y-auto pr-1">
               {filteredTrainers.length > 0 ? (
                 filteredTrainers.map((t) => {
-                  const isSuperAdmin = t.fullName === 'Austin Jurgens' && user?.email === 'jurgensaj@gmail.com';
+                  const isSuperAdmin = userClaims?.role === 'Admin' || userClaims?.role === 'Founder' || userClaims?.role === 'Overseer';
                   const isOwner = t.role === 'Admin' || t.role === 'Founder' || t.role === 'Owner' || t.role === 'Overseer' || t.role === 'StudioOwner' || isSuperAdmin;
                   
                   return (

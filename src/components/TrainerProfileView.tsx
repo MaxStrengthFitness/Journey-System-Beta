@@ -110,7 +110,7 @@ export function TrainerProfileView({
                   Owner
                 </Badge>
               )}
-              {trainer.fullName === 'Austin Jurgens' && (
+              {trainer.role === 'Admin' && (
                  <Badge className="rounded-md bg-sky-500 hover:bg-sky-600 text-white font-black uppercase text-[9px] h-5 shadow-[0_0_10px_rgba(56,189,248,0.5)] border-none">
                   Admin
                 </Badge>

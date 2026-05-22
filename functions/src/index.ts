@@ -122,3 +122,117 @@ async function calculateAndSaveFacilitySummary() {
     lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
   });
 }
+
+/**
+ * HTTPS Callable Cloud Function to assign roles to users as Custom Claims.
+ * Restricts updates to Admins, Founders, or the configured system override IDs.
+ */
+export const setCustomUserClaims = functions.https.onCall(async (data, context) => {
+  // 1. Guard against unauthenticated requests
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "The function must be called while authenticated."
+    );
+  }
+
+  const { uid, role } = data;
+
+  if (!uid || !role) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Both 'uid' and 'role' fields are required."
+    );
+  }
+
+  const allowedRoles = ["Admin", "Founder", "Overseer", "FranchiseOwner", "Owner", "StudioOwner", "HeadTrainer", "Trainer", "LifeTransformer"];
+  if (!allowedRoles.includes(role)) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      `The role '${role}' is not a valid organization role.`
+    );
+  }
+
+  // 2. Authorization check: Is caller authorized to set claims?
+  const callerUid = context.auth.uid;
+  const callerToken = context.auth.token;
+
+  let isAuthorized = false;
+
+  // Caller is claims-level Admin, Founder or Overseer
+  if (
+    callerToken.role === "Admin" ||
+    callerToken.role === "Founder" ||
+    callerToken.role === "Overseer"
+  ) {
+    isAuthorized = true;
+  }
+
+  if (!isAuthorized) {
+    // Fallback: Check caller's db-level role
+    const callerSnap = await db.collection("trainers").doc(callerUid).get();
+    if (callerSnap.exists) {
+      const callerRole = callerSnap.data()?.role;
+      if (callerRole === "Admin" || callerRole === "Founder" || callerRole === "Overseer") {
+        isAuthorized = true;
+      }
+    }
+  }
+
+  if (!isAuthorized) {
+    // Override Check: Check 'systemConfig' collection for Admin UIDs override
+    const systemConfigSnap = await db.collection("systemConfig").doc("overrideConfig").get();
+    if (systemConfigSnap.exists) {
+      const adminUids = systemConfigSnap.data()?.adminUids || [];
+      if (adminUids.includes(callerUid)) {
+        isAuthorized = true;
+      }
+    }
+  }
+
+  // Absolute emergency initialization: If 'trainers' collection is empty, allow initial setup
+  if (!isAuthorized) {
+    const trainersCountSnap = await db.collection("trainers").limit(1).get();
+    if (trainersCountSnap.empty) {
+      isAuthorized = true;
+    }
+  }
+
+  if (!isAuthorized) {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "You are not authorized to assign organization claims."
+    );
+  }
+
+  // 3. Set the custom user claims
+  try {
+    await admin.auth().setCustomUserClaims(uid, { role });
+    
+    // 4. Synchronize role field back to the trainer's Firestore document
+    const trainerRef = db.collection("trainers").doc(uid);
+    const trainerSnap = await trainerRef.get();
+    
+    if (trainerSnap.exists) {
+      await trainerRef.update({ role });
+    } else {
+      // If trainer profile doesn't exist yet, bootstrap it
+      await trainerRef.set({
+        id: uid,
+        role,
+        fullName: data.fullName || "New Staff Member",
+        initials: data.initials || "NS",
+        primaryHomeStudioId: data.primaryHomeStudioId || "",
+        pin: data.pin || "",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    }
+
+    return { success: true, message: `Successfully assigned role '${role}' to user UID: ${uid}` };
+  } catch (error: any) {
+    throw new functions.https.HttpsError(
+      "internal",
+      `Error assigning user claims: ${error.message}`
+    );
+  }
+});

@@ -1,7 +1,31 @@
 /**
  * Roles defining system access levels across the organization.
  */
-export type UserRole = 'Admin' | 'Founder' | 'Owner' | 'StudioLeader' | 'LifeTransformer' | 'FranchiseOwner' | 'Overseer' | 'StudioOwner' | 'HeadTrainer' | 'Trainer';
+export type UserRole =
+  | "Admin"
+  | "Founder"
+  | "Owner"
+  | "StudioLeader"
+  | "LifeTransformer"
+  | "FranchiseOwner"
+  | "Overseer"
+  | "StudioOwner"
+  | "HeadTrainer"
+  | "Trainer";
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  Admin: "System Administrator",
+  Founder: "Founder / Overseer",
+  Owner: "Franchise Owner",
+  StudioLeader: "Studio Leader",
+  LifeTransformer: "Life Transformer",
+  // Legacy mappings
+  FranchiseOwner: "Franchise Owner",
+  Overseer: "Founder / Overseer",
+  StudioOwner: "Franchise Owner",
+  HeadTrainer: "Studio Leader",
+  Trainer: "Life Transformer",
+};
 
 /**
  * Represents a group of studios owned by a Studio Owner or managed as a region.
@@ -39,7 +63,10 @@ export interface TrainerAvailability {
     [day: string]: { isOpen: boolean; slots: { start: string; end: string }[] };
   };
   overrides?: {
-    [date: string]: { isOpen: boolean; slots: { start: string; end: string }[] };
+    [date: string]: {
+      isOpen: boolean;
+      slots: { start: string; end: string }[];
+    };
   };
 }
 
@@ -48,7 +75,7 @@ export interface TrainerAvailability {
  * Trainers are assigned to home locations but can be granted guest access elsewhere.
  */
 export interface Trainer {
-  id?: string;
+  id: string;
   fullName: string;
   initials: string;
   pin: string;
@@ -77,14 +104,67 @@ export interface Trainer {
   createdAt?: any;
   order?: number;
   isVisibleOnCalendar?: boolean;
+  searchTokens?: string[];
+}
+
+export type NewTrainerPayload = CreateTrainerPayload;
+
+/**
+ * Payload utilized for creating a new Trainer/Staff record.
+ * Crucially excludes any ID field to avoid creation of orphan references.
+ */
+export interface CreateTrainerPayload {
+  fullName: string;
+  initials: string;
+  pin: string;
+  pinHash?: string;
+  role?: UserRole;
+  email?: string;
+  primaryHomeStudioId: string;
+  accessibleStudioIds: string[];
+  activeGuestStudioIds?: string[];
+  isVisibleOnCalendar?: boolean;
+  searchTokens?: string[];
+  isOwner?: boolean; // Help modal switch mapping to owner role
+  systemStatus?: "active" | "inactive";
+}
+
+/**
+ * Payload utilized for updating a Trainer/Staff record.
+ */
+export interface UpdateTrainerPayload {
+  fullName?: string;
+  email?: string;
+  role?: UserRole;
+  initials?: string;
+  pin?: string;
+  pinHash?: string;
+  primaryHomeStudioId?: string;
+  accessibleStudioIds?: string[];
+  activeGuestStudioIds?: string[];
+  isVisibleOnCalendar?: boolean;
+  searchTokens?: string[];
+  systemStatus?: "active" | "inactive";
+  ownedStudioIds?: string[];
+  bio?: string;
+  thirdPartyCalendarUrl?: string;
+  certifications?: string[];
+  mindbody_ical_url?: string;
+  order?: number;
 }
 
 export interface ClientEvent {
   id: string;
   date: string; // ISO date format or something similar
   title: string;
-  type: 'Progress Report' | 'InBody Scan' | 'Routine Change' | 'Vacation' | 'Birthday/Anniversary' | 'Other';
-  priority: 'High' | 'Medium' | 'Low';
+  type:
+    | "Progress Report"
+    | "InBody Scan"
+    | "Routine Change"
+    | "Vacation"
+    | "Birthday/Anniversary"
+    | "Other";
+  priority: "High" | "Medium" | "Low";
   notes?: string;
   createdAt?: any;
 }
@@ -124,7 +204,7 @@ export interface Client {
   firstName: string;
   lastName: string;
   dateOfBirth?: string;
-  gender?: 'Male' | 'Female' | 'Other' | string;
+  gender?: "Male" | "Female" | "Other" | string;
   height: string; // e.g., "5'10\""
   weight?: string;
   age?: number;
@@ -137,13 +217,17 @@ export interface Client {
   medicalHistory?: string;
   occupation?: string;
   isRetired?: boolean;
-  experienceLevel?: 'Beginner' | 'Intermediate' | 'Advanced' | string;
+  experienceLevel?: "Beginner" | "Intermediate" | "Advanced" | string;
   clinicalProfile?: string[];
   clinicalFlags?: string[];
   clinicalNotes?: string;
-  activityLevel?: 'Sedentary' | 'Light' | 'Moderate' | 'High' | 'Manual Labor';
-  trainingPedigree?: 'Novice' | 'Intermediate' | 'Advanced' | 'Protocol Veteran';
-  recoveryMetric?: 'Poor' | 'Average' | 'Optimal';
+  activityLevel?: "Sedentary" | "Light" | "Moderate" | "High" | "Manual Labor";
+  trainingPedigree?:
+    | "Novice"
+    | "Intermediate"
+    | "Advanced"
+    | "Protocol Veteran";
+  recoveryMetric?: "Poor" | "Average" | "Optimal";
   activity?: string;
   goals?: string;
   globalNotes?: string;
@@ -189,7 +273,10 @@ export interface Machine {
   targetMusculature?: string[];
   synergists?: string[];
   setupGap?: string;
-  executionPosture?: "Chest Up / Anterior Pelvic Tilt" | "Posterior Pelvic Tilt / Contracted Abdomen" | string;
+  executionPosture?:
+    | "Chest Up / Anterior Pelvic Tilt"
+    | "Posterior Pelvic Tilt / Contracted Abdomen"
+    | string;
   requiresHandoff?: boolean;
   sequencingContraindications?: string[];
   biomechanicalNotes?: string;
@@ -232,7 +319,7 @@ export interface RoutineAdjustment {
   createdAt: any;
 }
 
-export type SessionType = 'Standard' | 'Onboarding' | 'Reset';
+export type SessionType = "Standard" | "Onboarding" | "Reset";
 
 export interface WorkoutSession {
   id?: string;
@@ -257,7 +344,7 @@ export interface WorkoutSession {
   clientFeel?: string;
   startTime?: any;
   endTime?: any;
-  status: 'In-Progress' | 'Completed';
+  status: "In-Progress" | "Completed";
   clientAge?: number;
   clientOccupation?: string;
   clientIsRetired?: boolean;
@@ -275,7 +362,7 @@ export interface SessionNote {
   trainerId?: string;
   trainerInitials: string;
   content: string;
-  priority?: 'High' | 'Medium' | 'Low';
+  priority?: "High" | "Medium" | "Low";
   createdAt: any;
 }
 
@@ -299,7 +386,7 @@ export interface ExerciseLog {
   timeSpent?: string;
   totalTimeUnderLoad?: number;
   averageTimePerRep?: number;
-  side?: 'Left' | 'Right';
+  side?: "Left" | "Right";
   notes?: string;
   machineSettings?: Record<string, string>; // Settings used for this specific set
   createdAt?: any;
@@ -346,15 +433,20 @@ export interface ScheduleEntry {
   studioId?: string;
   startTime: any;
   endTime: any;
-  status: 'Scheduled' | 'Completed' | 'Cancelled' | 'No-Show';
+  status: "Scheduled" | "Completed" | "Cancelled" | "No-Show";
   serviceName: string;
-  source: 'MindBody' | 'Manual' | 'Subscription';
+  source: "MindBody" | "Manual" | "Subscription";
   importId?: string;
   ical_uid?: string;
   createdAt: any;
 }
 
-export type HighlightMetricType = 'strength_gain' | 'total_volume' | 'consistent_quality' | 'time_under_tension' | 'custom';
+export type HighlightMetricType =
+  | "strength_gain"
+  | "total_volume"
+  | "consistent_quality"
+  | "time_under_tension"
+  | "custom";
 
 export interface ProgressReport {
   id?: string;
@@ -365,8 +457,8 @@ export interface ProgressReport {
   sessionNumber?: number;
   date: string;
   isManual?: boolean;
-  status: 'Draft' | 'Finalized';
-  
+  status: "Draft" | "Finalized";
+
   // Step 1: Attendance & Consistency
   attendance: {
     score: number; // 0-100
@@ -408,25 +500,41 @@ export interface ProgressReport {
   // Step 3: The Four P's
   performanceMatrix: {
     includedNotes?: string[];
-    posture: { 
-      score: number; 
-      note: string; 
-      talkingPoints: { id: string; text: string; status: 'red' | 'black' | 'green' }[];
+    posture: {
+      score: number;
+      note: string;
+      talkingPoints: {
+        id: string;
+        text: string;
+        status: "red" | "black" | "green";
+      }[];
     };
-    pace: { 
-      score: number; 
-      note: string; 
-      talkingPoints: { id: string; text: string; status: 'red' | 'black' | 'green' }[];
+    pace: {
+      score: number;
+      note: string;
+      talkingPoints: {
+        id: string;
+        text: string;
+        status: "red" | "black" | "green";
+      }[];
     };
-    path: { 
-      score: number; 
-      note: string; 
-      talkingPoints: { id: string; text: string; status: 'red' | 'black' | 'green' }[];
+    path: {
+      score: number;
+      note: string;
+      talkingPoints: {
+        id: string;
+        text: string;
+        status: "red" | "black" | "green";
+      }[];
     };
-    purpose: { 
-      score: number; 
-      note: string; 
-      talkingPoints: { id: string; text: string; status: 'red' | 'black' | 'green' }[];
+    purpose: {
+      score: number;
+      note: string;
+      talkingPoints: {
+        id: string;
+        text: string;
+        status: "red" | "black" | "green";
+      }[];
     };
   };
 
@@ -441,29 +549,29 @@ export interface ProgressReport {
     primaryPlan: string; // "Routine Mastery"
     focusAreas: string; // "Immediate machine focus..."
   };
-  
+
   roadmap?: {
-    trackType?: 'maintenance' | 'goals' | 'refinement';
-    
+    trackType?: "maintenance" | "goals" | "refinement";
+
     // Maintenance
     selectedHabits?: string[];
     routineChangeRequested?: boolean;
     routineModifications?: string;
-    
+
     // Goals
     emotionalAnchor?: string;
     smartGoal?: string;
     targetMachineId?: string;
     goalActions?: string[];
     machinePlan?: string;
-    
+
     // Refinement
-    refinementFocusArea?: 'Posture' | 'Pace' | 'Path' | 'Purpose' | string;
+    refinementFocusArea?: "Posture" | "Pace" | "Path" | "Purpose" | string;
     routineIntervention?: string;
 
     // Legacy
-    anchorCategory?: 'weight_loss' | 'eih_management' | 'general_conditioning';
-    prescriptionType?: 'quantitative' | 'qualitative';
+    anchorCategory?: "weight_loss" | "eih_management" | "general_conditioning";
+    prescriptionType?: "quantitative" | "qualitative";
     inStudioPrescription?: {
       targetMachine: string;
       targetMetric?: string;
@@ -477,9 +585,9 @@ export interface ProgressReport {
   createdAt: any;
 }
 
-export type FocusCategory = 'Posture' | 'Pace' | 'Path' | 'Purpose';
+export type FocusCategory = "Posture" | "Pace" | "Path" | "Purpose";
 
-export type FocusStatus = 'Active' | 'Achieved' | 'Deleted';
+export type FocusStatus = "Active" | "Achieved" | "Deleted";
 
 export interface FocusRecord {
   id: string;
@@ -531,18 +639,18 @@ export interface HubAnnouncement {
   longContent: string;
   authorId: string;
   authorName: string;
-  studioId: string | 'all'; // Legacy scope field
-  targetScope?: 'universal' | 'network' | 'studio';
+  studioId: string | "all"; // Legacy scope field
+  targetScope?: "universal" | "network" | "studio";
   targetId?: string; // Network ID or Studio ID
-  type?: 'shout-out' | 'tip' | 'news' | 'event' | 'holiday';
+  type?: "shout-out" | "tip" | "news" | "event" | "holiday";
   referenceTarget?: {
-    type: 'trainer' | 'client' | 'studio';
+    type: "trainer" | "client" | "studio";
     id: string;
   };
   expiresAt?: any; // Timestamp for auto-expiration
   createdAt: any;
   isActive: boolean;
-  priority: 'low' | 'medium' | 'high'; // Treated as urgency
+  priority: "low" | "medium" | "high"; // Treated as urgency
   readBy?: string[];
 }
 
@@ -574,14 +682,36 @@ export interface LeaderboardMachineData {
     p25: number;
     p10: number;
   };
-  clientPlacements: Record<string, { weight: number; rank: number; percentile: number; }>; // clientId -> placement details
+  clientPlacements: Record<
+    string,
+    { weight: number; rank: number; percentile: number }
+  >; // clientId -> placement details
 }
 
 export interface LeaderboardDocument {
   id?: string;
   lastUpdated: any;
-  scope: 'global' | string; // 'global' or studioId
+  scope: "global" | string; // 'global' or studioId
   machineData: Record<string, LeaderboardMachineData>;
 }
 
-export type View = 'trainers' | 'clients' | 'machines' | 'workouts' | 'history' | 'calendar' | 'trainer-hub' | 'dashboard' | 'profile' | 'chart' | 'trainer-profile' | 'progress-report' | 'consultation-wizard' | 'machine-knowledge' | 'client-directory' | 'chart-importer' | 'leaderboard' | 'admin-dashboard' | 'franchise-dashboard';
+export type View =
+  | "trainers"
+  | "clients"
+  | "machines"
+  | "workouts"
+  | "history"
+  | "calendar"
+  | "trainer-hub"
+  | "dashboard"
+  | "profile"
+  | "chart"
+  | "trainer-profile"
+  | "progress-report"
+  | "consultation-wizard"
+  | "machine-knowledge"
+  | "client-directory"
+  | "chart-importer"
+  | "leaderboard"
+  | "admin-dashboard"
+  | "franchise-dashboard";

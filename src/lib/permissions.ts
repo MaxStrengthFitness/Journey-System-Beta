@@ -28,20 +28,21 @@ export interface PermissionContext {
 /**
  * Checks if a user is an Admin (Creator/System Architect - complete access)
  */
-export function isAdmin(trainer: Trainer | null, currentUserEmail?: string): boolean {
-  if (currentUserEmail?.toLowerCase() === 'jurgensaj@gmail.com') return true;
+export function isAdmin(trainer: Trainer | null, tokenRole?: string): boolean {
+  if (tokenRole === 'Admin') return true;
   if (!trainer) return false;
-  return trainer.role === 'Admin' || trainer.fullName === 'Austin Jurgens';
+  return trainer.role === 'Admin';
 }
 
 /**
  * Checks if a user is a Founder (formerly Overseer/Jeff - complete company-wide admin access)
  * Inherits: Admin
  */
-export function isFounder(trainer: Trainer | null): boolean {
+export function isFounder(trainer: Trainer | null, tokenRole?: string): boolean {
+  if (tokenRole === 'Founder' || tokenRole === 'Admin' || tokenRole === 'Overseer') return true;
   if (!trainer) return false;
   const role = trainer.role;
-  return role === 'Founder' || role === 'Overseer' || role === 'Admin' || trainer.fullName?.toLowerCase().includes('jeff tomaszewski');
+  return role === 'Founder' || role === 'Overseer' || role === 'Admin';
 }
 
 /**
@@ -139,18 +140,18 @@ export function hasPermission(
   trainer: Trainer | null,
   action: PermissionAction,
   context: PermissionContext = {},
-  currentUserEmail?: string
+  tokenRole?: string
 ): boolean {
   // 1. Unauthenticated users have no permission
   if (!trainer) return false;
 
   // 2. Absolute Admin and Overrides bypass
-  if (isAdmin(trainer, currentUserEmail)) {
+  if (isAdmin(trainer, tokenRole)) {
     return true;
   }
 
   // 3. Founder bypass: Global Owner
-  if (isFounder(trainer)) {
+  if (isFounder(trainer, tokenRole)) {
     return true;
   }
 

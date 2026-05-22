@@ -9,6 +9,13 @@ export enum OperationType {
   WRITE = 'write',
 }
 
+export class DocumentIdMissingError extends Error {
+  constructor(public collectionName: string, public op: OperationType) {
+    super(`ID Missing Error: Cannot perform '${op}' on collection '${collectionName}' because the document ID was not found or is empty.`);
+    this.name = 'DocumentIdMissingError';
+  }
+}
+
 export interface FirestoreErrorInfo {
   error: string;
   operationType: OperationType;
@@ -29,7 +36,13 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errorMessage = error instanceof Error ? error.message : String(error);
+  let errorMessage = error instanceof Error ? error.message : String(error);
+  
+  // Custom alert for browser rendering
+  if (typeof window !== 'undefined' && error instanceof DocumentIdMissingError) {
+    alert(error.message);
+  }
+
   if (errorMessage.toLowerCase().includes('quota')) {
     console.warn(`Firestore Quota Exceeded on ${operationType} to ${path}: ${errorMessage}`);
     return;

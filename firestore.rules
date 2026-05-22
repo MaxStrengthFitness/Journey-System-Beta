@@ -23,18 +23,29 @@ service cloud.firestore {
 
     function getRole() {
       return request.auth != null && exists(/databases/$(database)/documents/trainers/$(request.auth.uid))
-        ? getTrainerData().role 
+        ? ('role' in getTrainerData() && getTrainerData().role != null ? getTrainerData().role : 'none')
         : 'none';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'Admin' ||
+        getRole() == 'Admin'
+      );
+    }
+
+    function isFounder() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'Founder' ||
+        request.auth.token.role == 'Overseer' ||
+        getRole() == 'Founder' || 
+        getRole() == 'Overseer'
+      );
     }
 
     // 1. SUPER ADMIN: Absolute master access to everything
     function isSuperAdmin() {
-      return isAuthenticated() && (
-        (request.auth.token.email != null && request.auth.token.email == "jurgensaj@gmail.com") ||
-        getRole() == 'Admin' || 
-        getRole() == 'Founder' || 
-        getRole() == 'Overseer'
-      );
+      return isAdmin() || isFounder();
     }
 
     // 2. FRANCHISE OWNER: Management authority of regional studio systems
@@ -58,7 +69,7 @@ service cloud.firestore {
             (getRole() == 'StudioOwner' || getRole() == 'HeadTrainer') &&
             (
               getTrainerData().primaryHomeStudioId == studioId || 
-              (getTrainerData().ownedStudioIds != null && getTrainerData().ownedStudioIds.hasAny([studioId]))
+              ('ownedStudioIds' in getTrainerData() && getTrainerData().ownedStudioIds != null && getTrainerData().ownedStudioIds.hasAny([studioId]))
             )
           )
         )
@@ -72,8 +83,8 @@ service cloud.firestore {
           (getRole() == 'Trainer' || getRole() == 'LifeTransformer' || getRole() == 'StudioLeader') &&
           (
             getTrainerData().primaryHomeStudioId == studioId ||
-            (getTrainerData().accessibleStudioIds != null && getTrainerData().accessibleStudioIds.hasAny([studioId])) ||
-            (getTrainerData().activeGuestStudioIds != null && getTrainerData().activeGuestStudioIds.hasAny([studioId]))
+            ('accessibleStudioIds' in getTrainerData() && getTrainerData().accessibleStudioIds != null && getTrainerData().accessibleStudioIds.hasAny([studioId])) ||
+            ('activeGuestStudioIds' in getTrainerData() && getTrainerData().activeGuestStudioIds != null && getTrainerData().activeGuestStudioIds.hasAny([studioId]))
           )
         )
       );
@@ -93,13 +104,13 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidTrainer(data) {
-      return hasRequiredFields(['fullName', 'initials', 'pin']) &&
+      return hasRequiredFields(['fullName', 'initials', 'pin', 'primaryHomeStudioId']) &&
              data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
              data.initials is string && data.initials.size() >= 2 && data.initials.size() <= 4 &&
              data.pin is string && data.pin.matches('^[0-9]{4,6}$') &&
+             data.primaryHomeStudioId is string && data.primaryHomeStudioId.size() > 0 && data.primaryHomeStudioId.size() < 100 &&
              (!('mindbody_ical_url' in data) || data.mindbody_ical_url == null || (data.mindbody_ical_url is string && data.mindbody_ical_url.size() < 500)) &&
              (!('role' in data) || data.role == null || data.role is string) &&
-             (!('primaryHomeStudioId' in data) || data.primaryHomeStudioId == null || data.primaryHomeStudioId is string) &&
              (!('accessibleStudioIds' in data) || data.accessibleStudioIds == null || data.accessibleStudioIds is list) &&
              (!('activeGuestStudioIds' in data) || data.activeGuestStudioIds == null || data.activeGuestStudioIds is list) &&
              (!('createdAt' in data) || data.createdAt == null || data.createdAt is timestamp);
@@ -155,8 +166,10 @@ service cloud.firestore {
     // TRAINERS: Directory search, auth checks, and creation permissions
     match /trainers/{trainerId} {
       allow read: if isAuthenticated();
-      allow create: if isSuperAdmin() || isFranchiseOwner() || 
-                    (request.resource.data.primaryHomeStudioId != null && 
+      allow create: if isAuthenticated() && 
+                    request.resource.data.primaryHomeStudioId != null &&
+                    isValidTrainer(request.resource.data) &&
+                    (isSuperAdmin() || isFranchiseOwner() || 
                      isStudioOwnerOrHeadTrainer(request.resource.data.primaryHomeStudioId));
       allow update: if isSuperAdmin() || 
                     ( (isFranchiseOwner() || 
@@ -167,16 +180,26 @@ service cloud.firestore {
                        request.resource.data.role == resource.data.role || 
                        (request.resource.data.role != 'Founder' && request.resource.data.role != 'Admin' && request.resource.data.role != 'Overseer'))
                     ) ||
-                    (resource.data.requiresPinReset == true && request.resource.data.requiresPinReset == false) ||
-                    (request.resource.data.get('sync_secret', '') == 'STABLE_MASTER_SYNC_TOKEN_2026');
+                    (
+                      isAuthenticated() &&
+                      request.auth.uid == trainerId &&
+                      resource.data.requiresPinReset == true &&
+                      request.resource.data.requiresPinReset == false &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pin', 'pinHash', 'requiresPinReset', 'updatedAt'])
+                    );
       allow delete: if isSuperAdmin();
     }
 
     // CLIENTS: Securely allows general directory access to authenticated systems / staff
     match /clients/{clientId} {
       allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && isValidClient(request.resource.data);
-      allow delete: if isSuperAdmin() || isFranchiseOwner();
+      allow create: if isAuthenticated() && 
+                    isValidClient(request.resource.data) && 
+                    (isSuperAdmin() || (getStudioIdFromData(request.resource.data) != null && isTrainerOfStudio(getStudioIdFromData(request.resource.data))));
+      allow update: if isAuthenticated() && 
+                    isValidClient(request.resource.data) && 
+                    (isSuperAdmin() || (getStudioIdFromData(resource.data) != null && isTrainerOfStudio(getStudioIdFromData(resource.data))));
+      allow delete: if isSuperAdmin();
     }
 
     // DISK SETTINGS: Machine settings assigned to specific athletes
@@ -236,10 +259,9 @@ service cloud.firestore {
     match /schedules/{scheduleId} {
       allow read: if isAuthenticated();
       allow create, update: if (
-        (request.resource.data.get('sync_secret', '') == 'STABLE_MASTER_SYNC_TOKEN_2026') || 
         isFranchiseOwner() || 
         isSuperAdmin() ||
-        (request.resource.data.studioId != null && isTrainerOfStudio(request.resource.data.studioId))
+        (getStudioIdFromData(request.resource.data) != null && isTrainerOfStudio(getStudioIdFromData(request.resource.data)))
       ) && isValidSchedule(request.resource.data);
       allow delete: if isSuperAdmin() || isFranchiseOwner();
     }

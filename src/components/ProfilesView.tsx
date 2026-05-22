@@ -464,13 +464,16 @@ export function ProfilesView({
                     <motion.div
                       key={trainerItem.id}
                       whileHover={{ y: -4 }}
-                      onClick={() => handleProfileClick('trainer', trainerItem.id!)}
+                      onClick={() => {
+                        if (!trainerItem.id) return;
+                        handleProfileClick('trainer', trainerItem.id);
+                      }}
                       className="group cursor-pointer relative"
                     >
                       {isAdmin && (
                         <div 
-                          className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => e.stopPropagation()}
+                           className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                           onClick={(e) => e.stopPropagation()}
                         >
                           <DropdownMenu>
                             <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white" />}>
@@ -479,7 +482,10 @@ export function ProfilesView({
                             <DropdownMenuContent align="end" className="rounded-xl border-2">
                               <DropdownMenuItem 
                                 className="text-destructive focus:text-destructive font-black uppercase text-[10px] tracking-widest p-3 gap-2"
-                                onClick={() => handleDeleteTrainer(trainerItem.id!, trainerItem.fullName)}
+                                onClick={() => {
+                                  if (!trainerItem.id) return;
+                                  handleDeleteTrainer(trainerItem.id, trainerItem.fullName);
+                                }}
                                 disabled={isDeletingTrainer === trainerItem.id}
                               >
                                 {isDeletingTrainer === trainerItem.id ? (

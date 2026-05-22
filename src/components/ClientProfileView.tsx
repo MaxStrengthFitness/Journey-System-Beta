@@ -115,6 +115,7 @@ import { RoutineBuilderView } from "./RoutineBuilderView";
 import { CLINICAL_FLAGS_MATRIX } from "../data/clinical-matrix";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { useActiveSessionCheck } from "../hooks/useActiveSessionCheck";
+import { isOwner as checkIsOwner } from '../lib/permissions';
 
 export function ClientProfileView({
   clientId,
@@ -3426,7 +3427,7 @@ export function ClientProfileView({
                 </CardContent>
               </Card>
 
-              {(authTrainer?.role === 'StudioOwner' || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer') && (
+              {checkIsOwner(authTrainer) && (
                 <Card className="rounded-[40px] shadow-sm bg-amber-500/5 border-amber-500/10">
                   <CardHeader className="p-8 border-b border-amber-500/10 flex flex-row items-center justify-between">
                     <div>
@@ -3487,7 +3488,7 @@ export function ClientProfileView({
       </AnimatePresence>
 
       <Dialog open={isDeleting} onOpenChange={setIsDeleting}>
-        <DialogContent className="rounded-[40px] border-none shadow-2xl p-0 overflow-hidden max-w-sm">
+        <DialogContent className="rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-2xl p-0 overflow-hidden max-w-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
           <div className="bg-red-600 p-8 flex flex-col items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center animate-pulse">
               <AlertCircle className="w-8 h-8" />
@@ -3550,7 +3551,7 @@ export function ClientProfileView({
         open={isEditingSessionCount}
         onOpenChange={setIsEditingSessionCount}
       >
-        <DialogContent className="rounded-3xl border-slate-200 dark:border-slate-800 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl p-6 sm:max-w-xs">
+        <DialogContent className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 sm:max-w-xs text-slate-900 dark:text-white">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold uppercase italic tracking-tighter">
               Edit Session Count

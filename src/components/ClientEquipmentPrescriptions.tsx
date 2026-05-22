@@ -30,6 +30,7 @@ import { MACHINE_DATABASE } from "../data/machine-database";
 import { useActiveStudio } from "../ActiveStudioContext";
 
 import { getMachineStyle } from "../lib/machine-colors";
+import { ClinicalCard } from "./ClinicalCard";
 
 const formatSettingsObj = (settings: Record<string, string>) => {
   if (!settings || Object.keys(settings).length === 0)
@@ -56,11 +57,8 @@ function MachineCard({
        return timeA - timeB;
     });
 
-  const autoStartingWeight = machineLogs.length > 0 ? machineLogs[0].weight : "";
-  const autoCurrentWeight = machineLogs.length > 0 ? machineLogs[machineLogs.length - 1].weight : "";
-
-  const startingWeightDisplay = clientSetting?.startingWeight !== undefined ? clientSetting.startingWeight : autoStartingWeight;
-  const currentWeightDisplay = clientSetting?.currentWeight !== undefined ? clientSetting.currentWeight : (clientSetting?.startingWeight !== undefined ? clientSetting.startingWeight : autoCurrentWeight);
+  const startingWeightDisplay = clientSetting?.startingWeight !== undefined ? clientSetting.startingWeight : "";
+  const currentWeightDisplay = clientSetting?.currentWeight !== undefined ? clientSetting.currentWeight : "";
 
   const currentSettings = clientSetting?.settings || {};
   const machineNotes = clientSetting?.machineNotes || [];
@@ -376,11 +374,10 @@ function MachineCard({
   };
 
   return (
-    <div
-      className={cn(
-        "flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden h-full transition-all group",
-        colors.border,
-      )}
+    <ClinicalCard
+      machineName={machine.name}
+      hasMaintenanceNote={hasMaintenance}
+      isRedAlert={hasMaintenance}
     >
       <div
         className={cn(
@@ -546,7 +543,7 @@ function MachineCard({
           </div>
         ) : (
           <div className="flex items-start justify-between">
-            <div className={cn("border-l-4 border-y border-r rounded-md p-2 px-3 bg-white dark:bg-slate-900", colors.border, colors.border.replace('border-', 'border-l-'))}>
+            <div className={cn("border-l-4 border-y border-r rounded-md p-2 px-3 bg-white dark:bg-slate-900 border-r-slate-100 border-y-slate-100 dark:border-r-slate-800 dark:border-y-slate-800", colors.border.replace('border-', 'border-l-'))}>
               <div className="flex gap-4">
                 <div>
                   <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">
@@ -893,7 +890,7 @@ function MachineCard({
           )}
         </div>
       </div>
-    </div>
+    </ClinicalCard>
   );
 }
 

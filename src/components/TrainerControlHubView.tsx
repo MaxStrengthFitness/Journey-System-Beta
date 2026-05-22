@@ -29,11 +29,14 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateTrainerModal } from './CreateTrainerModal';
 import { TrainerMachineEditor } from './TrainerMachineEditor';
-import { Machine, Client, Trainer, WorkoutSession, ScheduleEntry, Studio, HubAnnouncement } from '../types';
+import { Machine, Client, Trainer, WorkoutSession, ScheduleEntry, Studio, HubAnnouncement, CreateTrainerPayload } from '../types';
 import { useTheme } from './ThemeProvider';
 import { Bug } from 'lucide-react';
 import { findMatchingTrainer, normalizeName, cleanAlphanumeric } from '../lib/sync-utils';
+import { isAdmin as checkIsAdmin, isFounder as checkIsFounder, isOwner as checkIsOwner, isStudioLeader as checkIsStudioLeader, hasPermission } from '../lib/permissions';
+import { ROLE_LABELS } from '../types';
 import { parseMachineSettings, isSessionValid } from '../lib/utils';
+import { DocumentIdMissingError, OperationType } from '../lib/firestore-errors';
 
 import { DataMigrationTool } from './DataMigrationTool';
 
@@ -157,11 +160,11 @@ export function TrainerControlHubView({
     }
   };
 
-  const handleCreateTrainer = async (data: any) => {
+  const handleCreateTrainer = async (data: CreateTrainerPayload) => {
     try {
       await addDoc(collection(db, 'trainers'), {
         ...data,
-        primaryHomeStudioId: activeStudioId,
+        primaryHomeStudioId: data.primaryHomeStudioId || activeStudioId,
         createdAt: serverTimestamp()
       });
     } catch (e: any) {
@@ -227,7 +230,7 @@ export function TrainerControlHubView({
     if (!authTrainer || !newAnnouncement.title || !newAnnouncement.shortContent) return;
     setIsCreatingAnnouncement(true);
     try {
-      const isSuperUser = isAdmin || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer';
+      const isSuperUser = isAdmin || checkIsFounder(authTrainer);
       const assignedStudioIds = !isSuperUser ? [authTrainer?.primaryHomeStudioId, ...(authTrainer?.accessibleStudioIds || [])].filter(Boolean) : [];
       const filteredStudiosForAnnouncement = studios.filter(s => isSuperUser || (assignedStudioIds as string[]).includes(s.id!));
       const defaultStudioId = isSuperUser ? 'all' : (filteredStudiosForAnnouncement[0]?.id || '');
@@ -348,12 +351,15 @@ export function TrainerControlHubView({
 
   const handleToggleAccessibleStudio = async (trainer: Trainer, studioId: string, isAccessible: boolean) => {
     try {
+      if (!trainer.id) {
+        throw new DocumentIdMissingError("trainers", OperationType.UPDATE);
+      }
       const current = trainer.accessibleStudioIds || [];
       const updated = isAccessible 
         ? [...new Set([...current, studioId])]
         : current.filter(id => id !== studioId);
         
-      await updateDoc(doc(db, 'trainers', trainer.id!), {
+      await updateDoc(doc(db, 'trainers', trainer.id), {
         accessibleStudioIds: updated,
         updatedAt: serverTimestamp()
       });
@@ -693,7 +699,7 @@ export function TrainerControlHubView({
         </div>
         
         <div className="flex gap-2 ml-auto">
-          {setView && authTrainer && ['Admin', 'Overseer', 'StudioOwner', 'HeadTrainer'].includes(authTrainer.role || '') && (
+          {setView && authTrainer && checkIsStudioLeader(authTrainer) && (
             <Button 
               onClick={() => setView('owner-dashboard')}
               className="rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-800/60 dark:text-indigo-300 dark:hover:text-white dark:hover:bg-indigo-900/50 h-12 px-6 font-black uppercase text-[10px] tracking-widest shadow-sm dark:shadow-none transition-colors"
@@ -723,7 +729,7 @@ export function TrainerControlHubView({
             { id: 'app_settings', label: 'App Settings', icon: Settings },
           ].filter(tab => {
             if (tab.id === 'app_settings') {
-              return isAdmin || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer' || authTrainer?.role === 'StudioOwner';
+              return isAdmin || checkIsOwner(authTrainer);
             }
             return true;
           }).map(tab => {
@@ -824,7 +830,7 @@ export function TrainerControlHubView({
                                   <div className="flex items-center gap-3 min-w-0">
                                     <div className={cn(
                                       "w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs italic shrink-0", 
-                                      (t.role === 'StudioOwner' || t.role === 'Admin' || t.role === 'Overseer') || (t.fullName === 'Austin Jurgens' && isAdmin)
+                                      checkIsOwner(t)
                                         ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-500 border border-orange-200 dark:border-orange-500/30' 
                                         : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
                                     )}>
@@ -833,7 +839,7 @@ export function TrainerControlHubView({
                                     <div className="min-w-0">
                                       <p className="text-xs font-black text-slate-900 dark:text-white uppercase italic truncate">{t.fullName}</p>
                                       <p className="text-[9px] font-bold uppercase tracking-widest text-sky-600 truncate mt-0.5">
-                                        {(t.role === 'StudioOwner' || t.role === 'Admin' || t.role === 'Overseer') || (t.fullName === 'Austin Jurgens' && isAdmin) ? 'System Admin' : 'Performance Trainer'}
+                                        checkIsOwner(t) ? 'System Admin' : ROLE_LABELS[t.role] || 'Performance Trainer'
                                       </p>
                                     </div>
                                   </div>
@@ -864,18 +870,18 @@ export function TrainerControlHubView({
                             {/* Profile Detail Header */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
                               <div className="flex items-center gap-4">
-                                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl italic shrink-0", (currentSelectedTrainer.role === 'StudioOwner' || currentSelectedTrainer.role === 'Admin' || currentSelectedTrainer.role === 'Overseer') || (currentSelectedTrainer.fullName === 'Austin Jurgens' && isAdmin) ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-500 border border-orange-200 dark:border-orange-500/30' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800')}>
+                                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl italic shrink-0", checkIsOwner(currentSelectedTrainer) ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-500 border border-orange-200 dark:border-orange-500/30' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800')}>
                                   {currentSelectedTrainer.initials}
                                 </div>
                                 <div>
                                   <div className="flex flex-wrap items-center gap-2">
                                     <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase italic leading-none">{currentSelectedTrainer.fullName}</h3>
-                                    {((currentSelectedTrainer.role === 'StudioOwner' || currentSelectedTrainer.role === 'Admin' || currentSelectedTrainer.role === 'Overseer') || (currentSelectedTrainer.fullName === 'Austin Jurgens' && isAdmin)) && (
+                                    {checkIsOwner(currentSelectedTrainer) && (
                                       <span className="bg-orange-50 dark:bg-orange-500/10 text-orange-500 border border-orange-200 dark:border-orange-500/30 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">Owner</span>
                                     )}
                                   </div>
                                   <p className="text-[10px] font-bold uppercase tracking-widest text-sky-600 leading-none mt-2">
-                                    {(currentSelectedTrainer.role === 'StudioOwner' || currentSelectedTrainer.role === 'Admin' || currentSelectedTrainer.role === 'Overseer') || (currentSelectedTrainer.fullName === 'Austin Jurgens' && isAdmin) ? 'System Admin' : 'Performance Trainer'}
+                                    checkIsOwner(currentSelectedTrainer) ? 'System Admin' : ROLE_LABELS[currentSelectedTrainer.role] || 'Performance Trainer'
                                   </p>
                                 </div>
                               </div>
@@ -884,7 +890,10 @@ export function TrainerControlHubView({
                                 <Label className="text-xs font-bold text-slate-600 dark:text-slate-400 cursor-pointer mr-3">Show on Hub Calendar</Label>
                                 <Switch 
                                   checked={currentSelectedTrainer.isVisibleOnCalendar !== false} 
-                                  onCheckedChange={() => handleToggleVisibility(currentSelectedTrainer.id!, currentSelectedTrainer.isVisibleOnCalendar ?? true)}
+                                  onCheckedChange={() => {
+                                    if (!currentSelectedTrainer.id) return;
+                                    handleToggleVisibility(currentSelectedTrainer.id, currentSelectedTrainer.isVisibleOnCalendar ?? true);
+                                  }}
                                   className="data-[state=checked]:bg-[#10B981] data-[state=unchecked]:bg-slate-700"
                                 />
                               </div>
@@ -893,7 +902,10 @@ export function TrainerControlHubView({
                             {/* Home Studio Assignment */}
                             <div className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
                               <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">Primary Home Studio</Label>
-                              <Select value={currentSelectedTrainer.primaryHomeStudioId || 'unassigned'} onValueChange={(val) => handleUpdateHomeStudio(currentSelectedTrainer.id!, val)}>
+                              <Select value={currentSelectedTrainer.primaryHomeStudioId || 'unassigned'} onValueChange={(val) => {
+                                if (!currentSelectedTrainer.id) return;
+                                handleUpdateHomeStudio(currentSelectedTrainer.id, val);
+                              }}>
                                 <SelectTrigger className="h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white font-bold">
                                   <SelectValue placeholder="Select Studio" />
                                 </SelectTrigger>
@@ -974,7 +986,10 @@ export function TrainerControlHubView({
                                       variant="ghost" 
                                       size="sm" 
                                       disabled={syncingTrainerId === currentSelectedTrainer.id}
-                                      onClick={() => handleTrainerSync(currentSelectedTrainer.id!)}
+                                      onClick={() => {
+                                        if (!currentSelectedTrainer.id) return;
+                                        handleTrainerSync(currentSelectedTrainer.id);
+                                      }}
                                       className="h-7 text-[10px] flex items-center px-3 font-black uppercase text-sky-700 hover:text-sky-800 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-lg border border-sky-200 dark:border-sky-800"
                                     >
                                       {syncingTrainerId === currentSelectedTrainer.id ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
@@ -995,7 +1010,10 @@ export function TrainerControlHubView({
                                       <Button variant="ghost" size="sm" onClick={() => setEditingIcalId(null)} className="h-8 px-3 font-bold uppercase text-[10px] rounded-lg tracking-widest text-slate-500 dark:text-slate-400">Cancel</Button>
                                       <Button 
                                         size="sm"
-                                        onClick={() => handleUpdateIcalUrl(currentSelectedTrainer.id!, newIcalUrl)}
+                                        onClick={() => {
+                                          if (!currentSelectedTrainer.id) return;
+                                          handleUpdateIcalUrl(currentSelectedTrainer.id, newIcalUrl);
+                                        }}
                                         disabled={isUpdatingIcal}
                                         className="bg-sky-500 hover:bg-sky-600 text-slate-900 dark:text-white h-8 px-4 rounded-lg font-black uppercase text-[10px] tracking-widest"
                                       >
@@ -1013,7 +1031,8 @@ export function TrainerControlHubView({
                                           variant="ghost" 
                                           size="sm" 
                                           onClick={() => {
-                                            setEditingIcalId(currentSelectedTrainer.id!);
+                                            if (!currentSelectedTrainer.id) return;
+                                            setEditingIcalId(currentSelectedTrainer.id);
                                             setNewIcalUrl(currentSelectedTrainer.mindbody_ical_url || '');
                                           }}
                                           className="h-7 w-7 p-0 rounded-lg shrink-0 opacity-0 group-hover/link:opacity-100 border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -1028,7 +1047,8 @@ export function TrainerControlHubView({
                                           variant="outline" 
                                           size="sm" 
                                           onClick={() => {
-                                            setEditingIcalId(currentSelectedTrainer.id!);
+                                            if (!currentSelectedTrainer.id) return;
+                                            setEditingIcalId(currentSelectedTrainer.id);
                                             setNewIcalUrl('');
                                           }}
                                           className="h-8 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-50 hover:bg-slate-100 hover:text-slate-00 dark:hover:bg-slate-800 rounded-lg px-4 font-black uppercase text-[9px] tracking-widest"
@@ -1058,7 +1078,7 @@ export function TrainerControlHubView({
           )}
 
           {activeTab === 'equipment_settings' && (() => {
-            const isSuperUser = isAdmin || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer';
+            const isSuperUser = isAdmin || checkIsFounder(authTrainer);
             const assignedStudioIds = !isSuperUser ? [authTrainer?.primaryHomeStudioId, ...(authTrainer?.accessibleStudioIds || [])].filter(Boolean) : [];
             const filteredStudiosForAnnouncement = studios.filter(s => isSuperUser || (assignedStudioIds as string[]).includes(s.id!));
             const defaultStudioId = isSuperUser ? 'all' : (filteredStudiosForAnnouncement[0]?.id || '');
@@ -1227,7 +1247,7 @@ export function TrainerControlHubView({
 
                   {/* Step 3: Column 2 - Communications */}
                   <div className="space-y-6">
-                    {(isAdmin || (authTrainer?.role === 'StudioOwner' || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer')) && (
+                    {(isAdmin || checkIsOwner(authTrainer)) && (
                       <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm rounded-[32px] overflow-hidden">
                         <CardHeader className="bg-slate-50 dark:bg-slate-950 pb-6 border-b border-slate-200 dark:border-slate-800">
                           <div className="flex items-center gap-4">
@@ -1442,7 +1462,7 @@ export function TrainerControlHubView({
           })()}
 
           {activeTab === 'app_settings' && (() => {
-            const hasAccess = isAdmin || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer' || authTrainer?.role === 'StudioOwner';
+            const hasAccess = isAdmin || checkIsOwner(authTrainer);
             if (!hasAccess) {
               return (
                 <div className="flex items-center justify-center p-6 min-h-[400px] animate-fade-in">

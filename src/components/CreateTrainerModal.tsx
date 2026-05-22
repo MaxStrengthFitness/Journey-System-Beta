@@ -1,111 +1,200 @@
-import React, { useState } from 'react';
-import { hashPin } from '../lib/auth-utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import React, { useState } from "react";
+import { hashPin } from "../lib/auth-utils";
+import { generateSearchTokens } from "@/lib/utils";
+import { CreateTrainerPayload } from "../types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useActiveStudio } from "../ActiveStudioContext";
 
 interface Props {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (trainerData: any) => void;
+  onSubmit: (trainerData: CreateTrainerPayload) => void | Promise<void>;
 }
 
 export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
-  const [fullName, setFullName] = useState('');
-  const [initials, setInitials] = useState('');
-  const [pin, setPin] = useState('');
+  const { availableStudios, activeStudioId } = useActiveStudio();
+  const [fullName, setFullName] = useState("");
+  const [initials, setInitials] = useState("");
+  const [pin, setPin] = useState("");
   const [enablePin, setEnablePin] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [primaryHomeStudioId, setPrimaryHomeStudioId] = useState("");
+
+  React.useEffect(() => {
+    if (isOpen && activeStudioId) {
+      setPrimaryHomeStudioId(activeStudioId);
+    }
+  }, [isOpen, activeStudioId]);
 
   const handleSubmit = async () => {
-    if (!fullName || !initials) return;
+    if (!fullName || !initials || !primaryHomeStudioId) return;
     if (enablePin && pin.length !== 4) return;
-    
-    let finalPin = '';
-    let finalPinHash = '';
+
+    let finalPin = "";
+    let finalPinHash = "";
     if (enablePin && pin) {
       finalPinHash = await hashPin(pin);
     }
-    
-    onSubmit({
-      fullName,
-      initials,
+
+    const searchTokens = generateSearchTokens(fullName);
+
+    const payload: CreateTrainerPayload = {
+      fullName: fullName.trim(),
+      initials: initials.trim(),
       pin: finalPin,
       pinHash: finalPinHash,
       isOwner,
-      isVisibleOnCalendar: true
-    });
-    
-    setFullName('');
-    setInitials('');
-    setPin('');
+      isVisibleOnCalendar: true,
+      searchTokens,
+      primaryHomeStudioId,
+      accessibleStudioIds: [primaryHomeStudioId],
+      systemStatus: "active",
+    };
+
+    // Strict validation
+    if (!payload.fullName) {
+      alert("Validation Error: Full Name is required.");
+      return;
+    }
+    if (!payload.initials || payload.initials.length < 2) {
+      alert("Validation Error: Initials must be at least 2 characters.");
+      return;
+    }
+    if (!payload.primaryHomeStudioId) {
+      alert("Validation Error: Primary Home Studio ID is required.");
+      return;
+    }
+    if (!payload.accessibleStudioIds || payload.accessibleStudioIds.length === 0) {
+      alert("Validation Error: Accessible Studio ID details must be set.");
+      return;
+    }
+
+    await onSubmit(payload);
+
+    setFullName("");
+    setInitials("");
+    setPin("");
     setEnablePin(false);
     setIsOwner(false);
+    setPrimaryHomeStudioId(activeStudioId || "");
     onOpenChange(false);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-800 text-white shadow-2xl rounded-3xl">
+      <DialogContent className="sm:max-w-[425px] bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-black italic uppercase text-white tracking-widest">Add New Trainer</DialogTitle>
+          <DialogTitle className="text-2xl font-black italic uppercase text-slate-900 dark:text-white tracking-widest">
+            Add New Trainer
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-6 py-4">
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Full Name</Label>
-            <Input 
+            <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+              Full Name
+            </Label>
+            <Input
               value={fullName}
               onChange={(e) => {
                 setFullName(e.target.value);
-                const parts = e.target.value.split(' ');
+                const parts = e.target.value.split(" ");
                 if (parts.length > 1) {
-                  setInitials((parts[0][0] + parts[parts.length-1][0]).toUpperCase());
+                  setInitials(
+                    (parts[0][0] + parts[parts.length - 1][0]).toUpperCase(),
+                  );
                 } else if (parts[0]) {
                   setInitials(parts[0].substring(0, 2).toUpperCase());
                 } else {
-                  setInitials('');
+                  setInitials("");
                 }
               }}
-              className="bg-slate-800 border-slate-700 text-white rounded-xl h-12"
+              className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-12"
               placeholder="e.g. John Doe"
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Initials</Label>
-            <Input 
+            <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+              Initials
+            </Label>
+            <Input
               value={initials}
               onChange={(e) => setInitials(e.target.value.toUpperCase())}
-              className="bg-slate-800 border-slate-700 text-white rounded-xl h-12 uppercase"
+              className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-12 uppercase"
               placeholder="JD"
               maxLength={3}
             />
           </div>
-          <div className="space-y-4 border border-slate-800 rounded-xl p-4 bg-slate-800/50">
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+              Primary Home Studio <span className="text-rose-500">*</span>
+            </Label>
+            <Select
+              value={primaryHomeStudioId}
+              onValueChange={setPrimaryHomeStudioId}
+            >
+              <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-12 text-sm font-bold focus:ring-[#38BDF8]">
+                <SelectValue placeholder="Select primary home studio..." />
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white max-h-[300px]">
+                {availableStudios.map((studio) => (
+                  <SelectItem
+                    key={studio.id}
+                    value={studio.id || ""}
+                    className="focus:bg-[#38BDF8] focus:text-slate-950 cursor-pointer"
+                  >
+                    {studio.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-4 border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50 dark:bg-slate-800/50">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">PIN Lock Security</Label>
-                <p className="text-[9px] text-slate-500 font-bold uppercase">Require a 4-digit PIN for access</p>
+                <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+                  PIN Lock Security
+                </Label>
+                <p className="text-[9px] text-slate-500 font-bold uppercase">
+                  Require a 4-digit PIN for access
+                </p>
               </div>
               <Switch
                 checked={enablePin}
                 onCheckedChange={(checked) => {
                   setEnablePin(checked);
-                  if (!checked) setPin('');
+                  if (!checked) setPin("");
                 }}
               />
             </div>
             {enablePin && (
-              <div className="space-y-2 pt-2 border-t border-slate-800">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">4-Digit PIN Code</Label>
-                <Input 
+              <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+                  4-Digit PIN Code
+                </Label>
+                <Input
                   value={pin}
                   onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    const val = e.target.value.replace(/[^0-9]/g, "");
                     if (val.length <= 4) setPin(val);
                   }}
-                  className="bg-slate-800 border-slate-700 text-white rounded-xl h-10 font-mono"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-10 font-mono"
                   placeholder="Enter 4 digits"
                   maxLength={4}
                   type="password"
@@ -113,17 +202,25 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
               </div>
             )}
           </div>
-          
-          <div className="flex items-center justify-between p-4 bg-slate-800 rounded-xl border border-slate-700">
+
+          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
             <div className="space-y-0.5">
-              <Label className="text-sm font-bold text-white">System Admin</Label>
-              <p className="text-[10px] text-slate-400 font-bold uppercase">Grant full hub access</p>
+              <Label className="text-sm font-bold text-slate-900 dark:text-white">
+                System Admin
+              </Label>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">
+                Grant full hub access
+              </p>
             </div>
             <Switch checked={isOwner} onCheckedChange={setIsOwner} />
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={handleSubmit} disabled={!fullName || !initials || (enablePin && pin.length !== 4)} className="w-full bg-[#F06C22] hover:bg-[#d95b16] text-white font-black uppercase text-xs h-12 rounded-xl transition-all shadow-[0_0_20px_rgba(240,108,34,0.3)]">
+          <Button
+            onClick={handleSubmit}
+            disabled={!fullName || !initials || !primaryHomeStudioId || (enablePin && pin.length !== 4)}
+            className="w-full bg-[#F06C22] hover:bg-[#d95b16] text-white font-black uppercase text-xs h-12 rounded-xl transition-all shadow-[0_0_20px_rgba(240,108,34,0.3)]"
+          >
             Create Trainer Profile
           </Button>
         </DialogFooter>

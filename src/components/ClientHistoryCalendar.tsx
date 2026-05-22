@@ -878,18 +878,18 @@ export function ClientHistoryCalendar({
 
       {/* Delete Confirmation Modal */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <DialogContent className="max-w-md sm:max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6">
+        <DialogContent className="max-w-md sm:max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-3xl p-6 shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight text-white flex items-center gap-2">
+            <DialogTitle className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
               <AlertCircle className="w-6 h-6 text-red-500" />
               Delete Session?
             </DialogTitle>
-            <DialogDescription className="text-slate-400 font-medium">
+            <DialogDescription className="text-slate-500 dark:text-slate-400 font-medium">
               Are you sure you want to permanently delete this session? This action cannot be undone and all associated logs will be lost.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-3 mt-6">
-            <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)} className="text-slate-400 hover:text-white uppercase font-black tracking-widest text-xs h-12 rounded-xl px-6">Cancel</Button>
+            <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)} className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white uppercase font-black tracking-widest text-xs h-12 rounded-xl px-6">Cancel</Button>
             <Button 
               onClick={handleDeleteSession} 
               disabled={isDeletingSession}
@@ -903,44 +903,44 @@ export function ClientHistoryCalendar({
 
       {/* Manual Session Log Dialog */}
       <Dialog open={showManualLog} onOpenChange={setShowManualLog}>
-        <DialogContent className="max-w-md sm:max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6">
+        <DialogContent className="max-w-md sm:max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-3xl p-6 shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight text-white flex items-center gap-2">
+            <DialogTitle className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
               <PlusCircle className="w-6 h-6 text-[#F06C22]" />
               Log Past Session
             </DialogTitle>
-            <DialogDescription className="text-slate-400 font-medium">
+            <DialogDescription className="text-slate-500 dark:text-slate-400 font-medium">
               Create an empty session backbone to retroactively log exercises.
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Session Date</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1">Session Date</label>
               <Input 
                 type="date" 
                 value={manualDate} 
                 onChange={e => setManualDate(e.target.value)} 
-                className="h-12 bg-slate-800 border-slate-700 text-white rounded-xl font-medium"
+                className="h-12 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl font-medium px-4"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Assigned Trainer</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1">Assigned Trainer</label>
               <select
                 value={manualTrainerId}
                 onChange={e => setManualTrainerId(e.target.value)}
-                className="w-full h-12 bg-slate-800 border-slate-700 text-white rounded-xl font-medium px-4 focus:ring-1 focus:ring-[#F06C22] outline-none"
+                className="w-full h-12 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl font-medium px-4 focus:ring-1 focus:ring-[#F06C22] outline-none"
               >
                 <option value="" disabled>Select Trainer...</option>
                 {trainers.map(t => (
-                  <option key={t.id} value={t.id}>{t.fullName}</option>
+                  <option key={t.id} value={t.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t.fullName}</option>
                 ))}
               </select>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 mt-4 border-t border-slate-800 pt-6">
-            <Button variant="ghost" onClick={() => setShowManualLog(false)} className="text-slate-400 hover:text-white uppercase font-black tracking-widest text-xs h-12 rounded-xl px-6">Cancel</Button>
+          <div className="flex justify-end gap-3 mt-4 border-t border-slate-200 dark:border-slate-800 pt-6">
+            <Button variant="ghost" onClick={() => setShowManualLog(false)} className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white uppercase font-black tracking-widest text-xs h-12 rounded-xl px-6">Cancel</Button>
             <Button 
               onClick={handleCreateManualLog} 
               disabled={isSaving || !manualDate || !manualTrainerId}

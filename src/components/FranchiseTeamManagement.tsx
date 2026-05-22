@@ -7,10 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserCog, Plus, RefreshCcw, User, Trash2, Link, Trophy } from 'lucide-react';
-import { Trainer, Studio } from '../types';
+import { Trainer, Studio, CreateTrainerPayload } from '../types';
 import { cn, getRoleColor, getRoleDisplayName } from '@/lib/utils';
 import { CreateTrainerModal } from './CreateTrainerModal';
 import { DataMigrationTool } from './DataMigrationTool';
+import { DocumentIdMissingError, OperationType } from '../lib/firestore-errors';
 
 interface Props {
   trainers: Trainer[];
@@ -49,11 +50,11 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
 
   const currentSelectedTrainer = trainers.find(t => t.id === selectedTrainer?.id) || (filteredTrainers.length > 0 ? filteredTrainers[0] : null);
 
-  const handleCreateTrainer = async (data: any) => {
+  const handleCreateTrainer = async (data: CreateTrainerPayload) => {
     try {
       await addDoc(collection(db, 'trainers'), {
         ...data,
-        primaryHomeStudioId: activeStudioId,
+        primaryHomeStudioId: data.primaryHomeStudioId || activeStudioId, // falls back nicely
         createdAt: serverTimestamp()
       });
     } catch (e: any) {
@@ -73,6 +74,7 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
 
   const handleUpdateHomeStudio = async (id: string, newStudioId: string) => {
     try {
+      if (!id) throw new DocumentIdMissingError("trainers", OperationType.UPDATE);
       await updateDoc(doc(db, 'trainers', id), {
         primaryHomeStudioId: newStudioId === 'unassigned' ? '' : newStudioId
       });
@@ -83,11 +85,12 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
 
   const handleToggleAccessibleStudio = async (trainer: Trainer, studioId: string, isAdding: boolean) => {
     try {
+      if (!trainer.id) throw new DocumentIdMissingError("trainers", OperationType.UPDATE);
       const current = trainer.accessibleStudioIds || [];
       const updated = isAdding 
         ? [...current, studioId]
         : current.filter(id => id !== studioId);
-      await updateDoc(doc(db, 'trainers', trainer.id!), { accessibleStudioIds: updated });
+      await updateDoc(doc(db, 'trainers', trainer.id), { accessibleStudioIds: updated });
     } catch (e) {
       console.error(e);
     }
@@ -95,6 +98,7 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
 
   const handleToggleVisibility = async (id: string, currentValue: boolean) => {
     try {
+      if (!id) throw new DocumentIdMissingError("trainers", OperationType.UPDATE);
       await updateDoc(doc(db, 'trainers', id), { isVisibleOnCalendar: !currentValue });
     } catch (e) {
       console.error(e);
@@ -104,6 +108,7 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
   const handleUpdateIcal = async (trainerId: string) => {
     setIsUpdatingIcal(true);
     try {
+      if (!trainerId) throw new DocumentIdMissingError("trainers", OperationType.UPDATE);
       await updateDoc(doc(db, 'trainers', trainerId), {
         thirdPartyCalendarUrl: newIcalUrl
       });
@@ -222,9 +227,12 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
                 <div className="flex items-center justify-between p-3 px-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
                   <Label className="text-xs font-bold text-slate-600 dark:text-slate-400 cursor-pointer mr-3">Show on Hub Calendar</Label>
                   <Switch 
-                    checked={currentSelectedTrainer.isVisibleOnCalendar !== false} 
-                    onCheckedChange={() => handleToggleVisibility(currentSelectedTrainer.id!, currentSelectedTrainer.isVisibleOnCalendar ?? true)}
-                    className="data-[state=checked]:bg-[#10B981] data-[state=unchecked]:bg-slate-700"
+                     checked={currentSelectedTrainer.isVisibleOnCalendar !== false} 
+                     onCheckedChange={() => {
+                       if (!currentSelectedTrainer.id) return;
+                       handleToggleVisibility(currentSelectedTrainer.id, currentSelectedTrainer.isVisibleOnCalendar ?? true);
+                     }}
+                     className="data-[state=checked]:bg-[#10B981] data-[state=unchecked]:bg-slate-700"
                   />
                 </div>
               </div>
@@ -232,7 +240,10 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
               {/* Home Studio Assignment */}
               <div className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
                 <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">Primary Home Studio</Label>
-                <Select value={currentSelectedTrainer.primaryHomeStudioId || 'unassigned'} onValueChange={(val) => handleUpdateHomeStudio(currentSelectedTrainer.id!, val)}>
+                <Select value={currentSelectedTrainer.primaryHomeStudioId || 'unassigned'} onValueChange={(val) => {
+                  if (!currentSelectedTrainer.id) return;
+                  handleUpdateHomeStudio(currentSelectedTrainer.id, val);
+                }}>
                   <SelectTrigger className="h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white font-bold">
                     <SelectValue placeholder="Select Studio" />
                   </SelectTrigger>
@@ -314,7 +325,10 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
                     <div className="flex items-center gap-2">
                        <Button
                           disabled={isUpdatingIcal}
-                          onClick={() => handleUpdateIcal(currentSelectedTrainer.id!)}
+                          onClick={() => {
+                            if (!currentSelectedTrainer.id) return;
+                            handleUpdateIcal(currentSelectedTrainer.id);
+                          }}
                           className="h-8 text-xs font-bold bg-[#10B981] hover:bg-emerald-600 dark:text-emerald-950"
                         >
                           Save URL
@@ -336,8 +350,9 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
                      <Button 
                         variant="outline"
                         onClick={() => {
+                          if (!currentSelectedTrainer.id) return;
                           setNewIcalUrl(currentSelectedTrainer.thirdPartyCalendarUrl || '');
-                          setEditingIcalId(currentSelectedTrainer.id!);
+                          setEditingIcalId(currentSelectedTrainer.id);
                         }}
                         className="h-8 text-[10px] font-bold uppercase tracking-widest"
                      >

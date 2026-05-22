@@ -3,8 +3,6 @@ import { db } from '../firebase';
 import { Trainer, Client, Studio } from '../types';
 import { normalizeName, cleanAlphanumeric, findMatchingTrainer } from './sync-utils';
 
-const SYNC_SECRET = 'STABLE_MASTER_SYNC_TOKEN_2026';
-
 const extractClientName = (summary: string, description: string) => {
   const patterns = [
     /Client:\s*([^(\r\n]+)/i,
@@ -54,9 +52,20 @@ export async function executeFrontendMasterSync(
       console.log(`[FrontendSync-${syncId}] Performing hard reset for targets...`);
       for (const trainer of targetTrainers) {
          const allScheduled = await getDocs(query(collection(db, 'schedules'), where('status', '==', 'Scheduled'), where('trainerId', '==', trainer.id)));
-         const batch = writeBatch(db);
-         allScheduled.docs.forEach(d => batch.delete(d.ref));
-         await batch.commit();
+         let batch = writeBatch(db);
+         let batchCount = 0;
+         for (const d of allScheduled.docs) {
+           batch.delete(d.ref);
+           batchCount++;
+           if (batchCount >= 400) {
+             await batch.commit();
+             batch = writeBatch(db);
+             batchCount = 0;
+           }
+         }
+         if (batchCount > 0) {
+           await batch.commit();
+         }
       }
     }
 
@@ -173,7 +182,7 @@ export async function executeFrontendMasterSync(
           }
         });
 
-        const batch = writeBatch(db);
+        let batch = writeBatch(db);
         let batchCount = 0;
 
         for (const ev of vevents as any[]) {
@@ -208,8 +217,7 @@ export async function executeFrontendMasterSync(
             serviceName,
             status: isCancelled ? 'Cancelled' : 'Scheduled',
             source: 'Subscription',
-            lastSyncAt: Timestamp.now(),
-            sync_secret: SYNC_SECRET
+            lastSyncAt: Timestamp.now()
           };
 
           const existing = existingSchedulesMap[uid];
@@ -240,8 +248,13 @@ export async function executeFrontendMasterSync(
             }
           }
 
-          if (batchCount > 400) {
-            await batch.commit();
+          if (batchCount >= 400) {
+            try {
+              await batch.commit();
+            } catch (error: any) {
+              throw new Error(`Batch commit failed at count ${batchCount} during chunk processing: ${error.message}`);
+            }
+            batch = writeBatch(db);
             batchCount = 0;
           }
         }
@@ -252,19 +265,27 @@ export async function executeFrontendMasterSync(
             batch.update(doc(db, 'schedules', staleId), {
               status: 'Cancelled',
               cancellationReason: 'Session removed from MindBody feed',
-              updatedAt: Timestamp.now(),
-              sync_secret: SYNC_SECRET
+              updatedAt: Timestamp.now()
             });
             batchCount++;
           }
-          if (batchCount > 400) {
-             await batch.commit();
+          if (batchCount >= 400) {
+             try {
+               await batch.commit();
+             } catch (error: any) {
+               throw new Error(`Batch commit failed during stale schedules processing: ${error.message}`);
+             }
+             batch = writeBatch(db);
              batchCount = 0;
           }
         }
 
         if (batchCount > 0) {
-          await batch.commit();
+          try {
+            await batch.commit();
+          } catch (error: any) {
+            throw new Error(`Final batch commit failed: ${error.message}`);
+          }
         }
 
       } catch (err: any) {

@@ -29,6 +29,7 @@ export function ActiveStudioProvider({
   authTrainer,
   isAdmin = false,
   userEmail,
+  tokenRole,
   onLogout
 }: { 
   children: ReactNode; 
@@ -37,6 +38,7 @@ export function ActiveStudioProvider({
   authTrainer: Trainer | null;
   isAdmin?: boolean;
   userEmail?: string;
+  tokenRole?: string;
   onLogout: () => Promise<void>;
 }) {
   const [activeStudioId, setActiveStudioIdState] = useState<string | null>(() => {
@@ -55,8 +57,8 @@ export function ActiveStudioProvider({
       studioId: activeStudioId || undefined,
       ...context
     };
-    return hasPermissionHelper(authTrainer, action, mergedContext, userEmail);
-  }, [authTrainer, activeStudioId, networks, studios, userEmail]);
+    return hasPermissionHelper(authTrainer, action, mergedContext, tokenRole);
+  }, [authTrainer, activeStudioId, networks, studios, tokenRole]);
 
   // Derived Active Network
   const network = React.useMemo(() => {

@@ -118,14 +118,14 @@ export function MachineSettingsDashboardModal({
       open={!!editingSettings}
       onOpenChange={(open) => !open && setEditingSettings(null)}
     >
-      <DialogContent className="max-w-[800px] rounded-3xl border border-slate-700 shadow-[0_0_50px_rgba(0,0,0,0.5)] p-0 overflow-hidden bg-[#0A2E46] backdrop-blur-md">
+      <DialogContent className="max-w-[800px] bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl p-0 overflow-hidden">
         {/* Hero Header */}
-        <div className="bg-[#0A2E46] border-b border-slate-800 p-6 flex flex-col justify-between relative">
+        <div className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between relative">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setEditingSettings(null)}
-            className="absolute top-4 right-4 rounded-full text-[#68717A] hover:text-white hover:bg-slate-800"
+            className="absolute top-4 right-4 rounded-full text-[#68717A] hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800"
           >
             <X className="w-5 h-5" />
           </Button>
@@ -142,15 +142,15 @@ export function MachineSettingsDashboardModal({
               </div>
               {prLog && (
                 <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <div className="px-3 py-1.5 bg-[#1e293b] rounded-md border border-slate-700 inline-flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-emerald-400" />
-                    <span className="text-emerald-400 font-bold text-sm">PR: {maxWeight} LBS</span>
+                  <div className="px-3 py-1.5 bg-slate-100 dark:bg-[#1e293b] rounded-md border border-slate-200 dark:border-slate-700 inline-flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm">PR: {maxWeight} LBS</span>
                     <span className="text-[#68717A] font-medium text-xs">× {prLog.reps} reps</span>
                     {prDisplayDate && <span className="text-[#68717A] text-[10px] uppercase tracking-widest ml-2">({prDisplayDate})</span>}
                   </div>
                   
                   {currentLog?.totalTimeUnderLoad !== undefined && (
-                    <div className="px-3 py-1.5 bg-[#1e293b] rounded-md border border-slate-700 flex flex-col justify-center">
+                    <div className="px-3 py-1.5 bg-slate-100 dark:bg-[#1e293b] rounded-md border border-slate-200 dark:border-slate-700 flex flex-col justify-center">
                       {(currentLog.isStaticHold || currentLog.isTSC || (currentLog.seconds && (!currentLog.reps || parseInt(currentLog.reps) === 0))) ? (
                         <span className="text-[#F06C22] font-bold text-xs uppercase tracking-widest">
                           Static Time Under Load: {currentLog.totalTimeUnderLoad} sec
@@ -176,19 +176,19 @@ export function MachineSettingsDashboardModal({
         </div>
 
         {/* Trend Visualization (Middle Section) */}
-        <div className="p-6 bg-[#0A2E46] border-b border-slate-800">
+        <div className="p-6 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#68717A]">
               Load Progression
             </h3>
           </div>
-          <div className="h-[200px] w-full">
+          <div className="h-[200px] w-full text-slate-400">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={chartData}
                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-slate-200 dark:text-slate-800/80" vertical={false} />
                 <XAxis
                   dataKey="sessionDate"
                   stroke="#68717A"
@@ -204,8 +204,8 @@ export function MachineSettingsDashboardModal({
                   tickLine={false}
                   domain={['dataMin - 10', 'dataMax + 10']}
                 />
-                <RechartsTooltip content={<CustomTooltip />} cursor={{fill: '#1e293b', opacity: 0.4}} />
-                <Bar dataKey="weight" fill="#1e293b" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                <RechartsTooltip content={<CustomTooltip />} cursor={{fill: 'currentColor', opacity: 0.15, className: 'text-slate-200 dark:text-slate-800'}} />
+                <Bar dataKey="weight" fill="currentColor" className="text-slate-200 hover:text-slate-300 dark:hover:text-slate-800 text-slate-100 dark:text-slate-800" radius={[4, 4, 0, 0]} maxBarSize={40} />
                 <Line
                   type="monotone"
                   dataKey="weight"
@@ -220,7 +220,7 @@ export function MachineSettingsDashboardModal({
         </div>
 
         {/* Machine Settings Editor */}
-        <div className="p-6 bg-[#0A2E46]">
+        <div className="p-6 bg-white dark:bg-slate-900">
           <h3 className="text-xs font-black uppercase tracking-widest text-[#68717A] mb-4 flex items-center gap-2">
             <Settings className="w-4 h-4" /> Machine Configuration
           </h3>
@@ -230,7 +230,7 @@ export function MachineSettingsDashboardModal({
                 <label className="text-[10px] font-black uppercase tracking-widest text-[#68717A] ml-1 flex justify-between items-center pr-1">
                   <span>{opt}</span>
                   {standardSettings[opt] && (
-                    <span className="text-slate-500 font-semibold" title="Standard Setting">STD: {standardSettings[opt]}</span>
+                    <span className="text-slate-400 dark:text-slate-500 font-semibold" title="Standard Setting">STD: {standardSettings[opt]}</span>
                   )}
                 </label>
                 <Input
@@ -245,7 +245,7 @@ export function MachineSettingsDashboardModal({
                      })
                    }
                   placeholder={standardSettings[opt] || "--"}
-                  className="h-12 rounded-xl bg-slate-800 border border-slate-700 focus:border-[#F06C22] focus:ring-[#F06C22] text-lg font-black text-[#f8fafc] px-4 tabular-nums transition-all shadow-sm"
+                  className="h-12 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-[#F06C22] focus:ring-[#F06C22] text-lg font-black text-slate-900 dark:text-[#f8fafc] px-4 tabular-nums transition-all shadow-sm"
                 />
               </div>
             ))}
@@ -254,7 +254,7 @@ export function MachineSettingsDashboardModal({
           <Button
             disabled={isSaving}
             onClick={onSave}
-            className="w-full h-14 rounded-xl bg-[#F06C22] hover:bg-[#F06C22]/90 text-white font-black uppercase tracking-widest text-sm shadow-lg active:scale-[0.98] transition-all"
+            className="w-full h-14 rounded-xl bg-[#F06C22] hover:bg-[#D95B16] text-white font-black uppercase tracking-widest text-sm shadow-lg active:scale-[0.98] transition-all"
           >
             {isSaving ? "Saving..." : "Save Machine Settings"}
           </Button>

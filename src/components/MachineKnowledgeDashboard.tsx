@@ -140,21 +140,21 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                   </Button>
                 }
               />
-              <DialogContent className="sm:max-w-[600px] bg-[#0A2E46] text-white border-slate-700">
+              <DialogContent className="sm:max-w-[600px] bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl p-6">
                 <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-xl font-black uppercase tracking-widest">
-                  <Wand2 className="w-5 h-5 text-emerald-400" />
+                <DialogTitle className="flex items-center gap-2 text-xl font-black uppercase tracking-widest text-[#0A2E46] dark:text-white">
+                  <Wand2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
                   AI Setup Wizard
                 </DialogTitle>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <Select value={wizardSelectedMachine} onValueChange={setWizardSelectedMachine}>
-                  <SelectTrigger className="w-full bg-[#0e171e] border-slate-700 focus:ring-emerald-500 text-white">
+                  <SelectTrigger className="w-full bg-slate-50 dark:bg-[#0e171e] border border-slate-200 dark:border-slate-700 focus:ring-emerald-500 text-slate-900 dark:text-white">
                     <SelectValue placeholder="Select a machine..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#0e171e] text-white border-slate-700 max-h-[300px]">
+                  <SelectContent className="bg-white dark:bg-[#0e171e] text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 max-h-[300px]">
                     {MACHINE_LIST.map((m) => (
-                      <SelectItem key={m.id} value={m.id} className="focus:bg-[#115E8D] focus:text-white flex-1 cursor-pointer">
+                      <SelectItem key={m.id} value={m.id} className="focus:bg-emerald-50 dark:focus:bg-[#115E8D] focus:text-slate-900 dark:focus:text-white flex-1 cursor-pointer">
                         {m.name}
                       </SelectItem>
                     ))}
@@ -165,66 +165,66 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                     placeholder="Client Constraints (e.g., knee pain, short arms)..."
                     value={wizardConstraints}
                     onChange={(e) => setWizardConstraints(e.target.value)}
-                    className="min-h-[100px] bg-[#0e171e] border-slate-700 focus-visible:ring-emerald-500 text-white placeholder:text-slate-500"
+                    className="min-h-[100px] bg-slate-50 dark:bg-[#0e171e] border border-slate-200 dark:border-slate-700 focus-visible:ring-emerald-500 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
                 <Button 
-                  onClick={handleGenerateGuide}
+                   onClick={handleGenerateGuide}
                   disabled={!wizardSelectedMachine || isGenerating}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 font-bold tracking-widest uppercase"
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold tracking-widest uppercase"
                 >
                   {isGenerating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</> : "Generate Custom Setup Guide"}
                 </Button>
 
                 {generatedGuide && (
-                  <div className="mt-4 p-4 bg-[#0e171e] border border-slate-700 rounded-xl max-h-[400px] overflow-y-auto space-y-4">
+                  <div className="mt-4 p-4 bg-slate-50 dark:bg-[#0e171e] border border-slate-200 dark:border-slate-700 rounded-xl max-h-[400px] overflow-y-auto space-y-4">
                     <div className="space-y-2">
                        <h4 className="text-[10px] font-black uppercase tracking-widest text-[#38BDF8]">Target Muscles</h4>
                        <div className="flex flex-wrap gap-2">
                          {generatedGuide.targetMuscles.map((t: string) => (
-                            <Badge key={t} className="bg-white/10 text-white hover:bg-white/20 border-0">{t}</Badge>
+                            <Badge key={t} className="bg-slate-200 dark:bg-white/10 text-slate-800 dark:text-white hover:bg-slate-300 dark:hover:bg-white/20 border-0">{t}</Badge>
                          ))}
                        </div>
                     </div>
                     
                     <div className="space-y-2">
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">Initial Adjustments</h4>
-                      <ul className="space-y-1">
-                        {generatedGuide.initialAdjustments.map((a: string, i: number) => (
-                           <li key={i} className="text-sm text-slate-300 flex items-start gap-2">
+                       <h4 className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">Initial Adjustments</h4>
+                       <ul className="space-y-1">
+                         {generatedGuide.initialAdjustments.map((a: string, i: number) => (
+                            <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
                              <Settings2 className="w-4 h-4 text-[#F06C22] shrink-0 mt-0.5" /> <span>{a}</span>
                            </li>
-                        ))}
-                      </ul>
+                         ))}
+                       </ul>
                     </div>
 
                     <div className="space-y-2">
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Entry & Safety</h4>
-                      <ul className="space-y-1">
-                        {generatedGuide.entryAndSafety.map((a: string, i: number) => (
-                           <li key={i} className="text-sm text-slate-300 flex items-start gap-2">
-                             <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /> <span>{a}</span>
+                       <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 dark:text-emerald-400">Entry & Safety</h4>
+                       <ul className="space-y-1">
+                         {generatedGuide.entryAndSafety.map((a: string, i: number) => (
+                            <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
+                             <ShieldCheck className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0 mt-0.5" /> <span>{a}</span>
                            </li>
-                        ))}
-                      </ul>
+                         ))}
+                       </ul>
                     </div>
                     
                     <div className="space-y-2">
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-[#115E8D]">Alignment & Posture</h4>
-                      <ul className="space-y-1">
-                        {generatedGuide.alignmentAndPosture.map((a: string, i: number) => (
-                           <li key={i} className="text-sm text-slate-300 flex items-start gap-2">
-                             <Target className="w-4 h-4 text-[#115E8D] shrink-0 mt-0.5" /> <span>{a}</span>
+                       <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-[#115E8D]">Alignment & Posture</h4>
+                       <ul className="space-y-1">
+                         {generatedGuide.alignmentAndPosture.map((a: string, i: number) => (
+                            <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
+                             <Target className="w-4 h-4 text-indigo-500 dark:text-indigo-400 shrink-0 mt-0.5" /> <span>{a}</span>
                            </li>
-                        ))}
-                      </ul>
+                         ))}
+                       </ul>
                     </div>
 
                     <div className="space-y-2">
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-amber-500">Client Modifications</h4>
-                      <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm text-amber-200 flex items-start gap-2">
-                         <UserCog className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                         <span>{generatedGuide.clientModifications}</span>
+                       <h4 className="text-[10px] font-black uppercase tracking-widest text-amber-500">Client Modifications</h4>
+                       <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                          <UserCog className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                          <span>{generatedGuide.clientModifications}</span>
                       </div>
                     </div>
                   </div>
