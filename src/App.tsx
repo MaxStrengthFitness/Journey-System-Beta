@@ -376,7 +376,9 @@ function AppContent({
     availableStudios, 
     isChangingStudio, 
     setIsChangingStudio,
-    isAdmin
+    isAdmin,
+    isAuthenticated,
+    setIsAuthenticated
   } = useActiveStudio();
   const searchedScheduleNamesRef = useRef<Map<string, string | null>>(new Map());
   const [isSyncing, setIsSyncing] = useState(false);
@@ -1332,32 +1334,49 @@ function AppContent({
   // Derived state for the active studio name
   // Moved up to avoid hook order violation
   
-  // Trainer PIN Access Screen
-  if (!authTrainer) {
-    return (
-      <PinLoginView 
-        trainers={trainers} 
-        user={user}
-        onLogin={handleTrainerLogin} 
-      />
-    );
-  }
-
-  // Studio Selection Screen
+  // Studio Selection Screen (if no active studio or changing studio)
   if (!activeStudioId || isChangingStudio) {
     return (
       <StudioSelectionView 
-        studios={availableStudios}
-        onSelect={(studioId) => {
+        studios={studios}
+        networks={networks}
+        trainers={trainers}
+        onSelectTrainer={(selectedTrainer, studioId) => {
           setActiveStudioId(studioId);
+          setAuthTrainer(selectedTrainer);
+          localStorage.setItem('max_strength_trainer_id', selectedTrainer.id!);
+          const hasPin = selectedTrainer.pin || selectedTrainer.pinHash;
+          if (!hasPin) {
+            localStorage.setItem('max_strength_authenticated', 'true');
+            setIsAuthenticated(true);
+          } else {
+            localStorage.setItem('max_strength_authenticated', 'false');
+            setIsAuthenticated(false);
+          }
           setIsChangingStudio(false);
         }}
         onBack={() => {
           if (!activeStudioId) {
-            handleTrainerLock();
+            handleLogout().catch(console.error);
           } else {
             setIsChangingStudio(false);
           }
+        }}
+      />
+    );
+  }
+
+  // Trainer PIN Access Screen (if a studio is chosen but trainer profile is not authenticated)
+  if (!authTrainer || !isAuthenticated) {
+    return (
+      <PinLoginView 
+        trainers={trainers} 
+        user={user}
+        authTrainer={authTrainer}
+        onLogin={handleTrainerLogin} 
+        onBack={() => {
+          handleTrainerLock();
+          setActiveStudioId(null);
         }}
       />
     );

@@ -1,33 +1,9 @@
-// ===============================================================
-// Assumed Data Model
-// ===============================================================
-//
-// Collection: trainers
-// Document ID: trainerId
-// Fields:
-//   - fullName: string (required)
-//   - initials: string (required)
-//   - pin: string (required, 4-6 digits)
-//   - createdAt: timestamp
-//
-// Collection: clients
-// Document ID: clientId
-// Fields:
-//   - firstName: string (required)
-//   - lastName: string (required)
-//   - isActive: boolean (required)
-//   - globalNotes: string (optional)
-//   - remainingSessions: number (required)
-//   - createdAt: timestamp
-//
-// ===============================================================
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // ===============================================================
-    // Helper Functions
+    // RBAC & MULTI-TENANCY HELPERS
     // ===============================================================
     
     function isAuthenticated() {
@@ -39,44 +15,74 @@ service cloud.firestore {
     }
 
     function getRole() {
-      return request.auth != null ? getTrainerData().role : 'none';
+      return request.auth != null && exists(/databases/$(database)/documents/trainers/$(request.auth.uid))
+        ? getTrainerData().role 
+        : 'none';
     }
 
-    function isAdmin() {
-      return (request.auth != null && request.auth.token.email != null && request.auth.token.email.lower() == "jurgensaj@gmail.com") || getRole() == 'Admin';
+    // 1. SUPER ADMIN: Absolute master access to everything
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        (request.auth.token.email != null && request.auth.token.email.lower() == "jurgensaj@gmail.com") ||
+        getRole() == 'Admin' || 
+        getRole() == 'Founder' || 
+        getRole() == 'Overseer'
+      );
     }
 
-    function isOverseer() {
-      return isAdmin() || getRole() == 'Overseer';
+    // 2. FRANCHISE OWNER: Management authority of regional studio systems
+    function isFranchiseOwner() {
+      return isSuperAdmin() || (
+        isAuthenticated() && (
+          getRole() == 'FranchiseOwner' || 
+          getRole() == 'Owner'
+        )
+      );
     }
 
-    function isStudioOwner(studioId) {
-      return isOverseer() || 
-             (getRole() == 'StudioOwner' && 
-               (getTrainerData().primaryHomeStudioId == studioId || 
-               (getTrainerData().ownedStudioIds != null && studioId in getTrainerData().ownedStudioIds))
-             );
+    // 3. STUDIO OWNER & HEAD TRAINER: Read/write strictly bounded by location parameter
+    function isStudioOwnerOrHeadTrainer(studioId) {
+      return isFranchiseOwner() || (
+        isAuthenticated() && (
+          // Secure Custom Token Claim check
+          (request.auth.token.studioId != null && request.auth.token.studioId == studioId) ||
+          // Database Backed verification fallback
+          (
+            (getRole() == 'StudioOwner' || getRole() == 'HeadTrainer') &&
+            (
+              getTrainerData().primaryHomeStudioId == studioId || 
+              (getTrainerData().ownedStudioIds != null && studioId in getTrainerData().ownedStudioIds)
+            )
+          )
+        )
+      );
     }
 
-    function isHeadTrainer(studioId) {
-      return isStudioOwner(studioId) || 
-             (getRole() == 'HeadTrainer' && getTrainerData().primaryHomeStudioId == studioId);
+    // 4. TRAINER: Limited strictly to designated home or accessible guest studios
+    function isTrainerOfStudio(studioId) {
+      return isStudioOwnerOrHeadTrainer(studioId) || (
+        isAuthenticated() && (
+          (getRole() == 'Trainer' || getRole() == 'LifeTransformer' || getRole() == 'StudioLeader') &&
+          (
+            getTrainerData().primaryHomeStudioId == studioId ||
+            (getTrainerData().accessibleStudioIds != null && studioId in getTrainerData().accessibleStudioIds) ||
+            (getTrainerData().activeGuestStudioIds != null && studioId in getTrainerData().activeGuestStudioIds)
+          )
+        )
+      );
     }
 
-    function isTrainer() {
-      return isAuthenticated() && (isAdmin() || getRole() == 'Overseer' || getRole() == 'StudioOwner' || getRole() == 'HeadTrainer' || getRole() == 'Trainer' || getRole() == 'none');
+    // 5. HELPER: Resolve studio or homeStudioId field safely from a data map
+    function getStudioIdFromData(data) {
+      return data.get('homeStudioId', data.get('studioId', null));
     }
 
     function hasRequiredFields(fields) {
       return request.resource.data.keys().hasAll(fields);
     }
 
-    function hasOnlyAllowedFields(fields) {
-      return request.resource.data.keys().hasOnly(fields);
-    }
-
     // ===============================================================
-    // Domain Validators
+    // VALIDATORS & PROPERTY MATCHERS
     // ===============================================================
 
     function isValidTrainer(data) {
@@ -85,15 +91,11 @@ service cloud.firestore {
              data.initials is string && data.initials.size() >= 2 && data.initials.size() <= 4 &&
              data.pin is string && data.pin.matches('^[0-9]{4,6}$') &&
              (!('mindbody_ical_url' in data) || data.mindbody_ical_url == null || (data.mindbody_ical_url is string && data.mindbody_ical_url.size() < 500)) &&
-             (!('legacy_filemaker_id' in data) || data.legacy_filemaker_id == null || (data.legacy_filemaker_id is string && data.legacy_filemaker_id.size() < 100)) &&
              (!('role' in data) || data.role == null || data.role is string) &&
              (!('primaryHomeStudioId' in data) || data.primaryHomeStudioId == null || data.primaryHomeStudioId is string) &&
              (!('accessibleStudioIds' in data) || data.accessibleStudioIds == null || data.accessibleStudioIds is list) &&
              (!('activeGuestStudioIds' in data) || data.activeGuestStudioIds == null || data.activeGuestStudioIds is list) &&
-             (!('isVisibleOnCalendar' in data) || data.isVisibleOnCalendar == null || data.isVisibleOnCalendar is bool) &&
-             (!('createdAt' in data) || data.createdAt == null || data.createdAt is timestamp) &&
-             (!('updatedAt' in data) || data.updatedAt == null || data.updatedAt is timestamp) &&
-             (!('sync_secret' in data) || data.sync_secret == null || data.sync_secret is string);
+             (!('createdAt' in data) || data.createdAt == null || data.createdAt is timestamp);
     }
 
     function isValidClient(data) {
@@ -101,366 +103,199 @@ service cloud.firestore {
              data.firstName is string && data.firstName.size() > 0 && data.firstName.size() < 50 &&
              data.lastName is string && data.lastName.size() > 0 && data.lastName.size() < 50 &&
              data.isActive is bool &&
-             data.remainingSessions is number && data.remainingSessions >= 0 &&
-             (!('gender' in data) || data.gender == null || data.gender in ['Male', 'Female', 'Other']) &&
-             (!('height' in data) || data.height == null || data.height is string) &&
-             (!('weight' in data) || data.weight == null || data.weight is string) &&
-             (!('age' in data) || data.age == null || data.age is number) &&
-             (!('phone' in data) || data.phone == null || data.phone is string) &&
-             (!('email' in data) || data.email == null || data.email is string) &&
-             (!('address' in data) || data.address == null || data.address is string) &&
-             (!('emergencyContactName' in data) || data.emergencyContactName == null || data.emergencyContactName is string) &&
-             (!('emergencyContactPhone' in data) || data.emergencyContactPhone == null || data.emergencyContactPhone is string) &&
-             (!('medicalHistory' in data) || data.medicalHistory == null || data.medicalHistory is string) &&
-             (!('occupation' in data) || data.occupation == null || data.occupation is string) &&
-             (!('isRetired' in data) || data.isRetired == null || data.isRetired is bool) &&
-             (!('clinicalProfile' in data) || data.clinicalProfile == null || data.clinicalProfile is list) &&
-             (!('clinicalNotes' in data) || data.clinicalNotes == null || data.clinicalNotes is string) &&
-             (!('activityLevel' in data) || data.activityLevel == null || data.activityLevel is string) &&
-             (!('trainingPedigree' in data) || data.trainingPedigree == null || data.trainingPedigree is string) &&
-             (!('recoveryMetric' in data) || data.recoveryMetric == null || data.recoveryMetric is string) &&
-             (!('activity' in data) || data.activity == null || data.activity is string) &&
-             (!('goals' in data) || data.goals == null || data.goals is string) &&
-             (!('mindbody_name' in data) || data.mindbody_name == null || data.mindbody_name is string) &&
-             (!('globalNotes' in data) || data.globalNotes == null || (data.globalNotes is string && data.globalNotes.size() < 2000)) &&
-             (!('isRoutineBActive' in data) || data.isRoutineBActive == null || data.isRoutineBActive is bool) &&
-             (!('sessionCount' in data) || data.sessionCount == null || data.sessionCount is number) &&
-             (!('packageTier' in data) || data.packageTier == null || data.packageTier in ['6-Month', '12-Month', '18-Month', 'None']) &&
-             (!('consultationCompleted' in data) || data.consultationCompleted == null || data.consultationCompleted is bool) &&
-             (!('requiresConsultation' in data) || data.requiresConsultation == null || data.requiresConsultation is bool) &&
-             (!('events' in data) || data.events == null || data.events is list) &&
-             (!('updatedAt' in data) || data.updatedAt == null || data.updatedAt is timestamp);
+             data.remainingSessions is number && data.remainingSessions >= 0;
     }
 
     function isValidMachine(data) {
       return hasRequiredFields(['name', 'order']) &&
              data.name is string && data.name.size() > 0 &&
-             data.order is number &&
-             (!('fullName' in data) || data.fullName is string) &&
-             (!('settings' in data) || data.settings is string) &&
-             (!('settingOptions' in data) || data.settingOptions is list) &&
-             (!('guidelines' in data) || data.guidelines is map);
+             data.order is number;
     }
 
     function isValidSession(data) {
       return hasRequiredFields(['sessionNumber', 'date', 'trainerInitials', 'sessionType', 'status']) &&
-             (!('clientId' in data) || data.clientId == null || data.clientId is string) &&
-             (!('trainerId' in data) || data.trainerId == null || data.trainerId is string) &&
-             (!('isUnassigned' in data) || data.isUnassigned == null || data.isUnassigned is bool) &&
              data.sessionNumber is number &&
              data.date is string &&
-             data.trainerInitials is string &&
-             (!('trainerName' in data) || data.trainerName == null || data.trainerName is string) &&
-             data.sessionType in ['Standard', 'Onboarding', 'Reset'] &&
-             data.status in ['In-Progress', 'Completed', 'Cancelled'] &&
-             (!('routineId' in data) || data.routineId == null || data.routineId is string) &&
-             (!('routineName' in data) || data.routineName == null || data.routineName is string) &&
-             (!('notes' in data) || data.notes == null || data.notes is string) &&
-             (!('startTime' in data) || data.startTime == null || data.startTime is timestamp) &&
-             (!('endTime' in data) || data.endTime == null || data.endTime is timestamp) &&
-             (!('clientAge' in data) || data.clientAge == null || data.clientAge is number || data.clientAge is string) &&
-             (!('clientOccupation' in data) || data.clientOccupation == null || data.clientOccupation is string) &&
-             (!('clientIsRetired' in data) || data.clientIsRetired == null || data.clientIsRetired is bool || data.clientIsRetired is string) &&
-             (!('clientActivityLevel' in data) || data.clientActivityLevel == null || data.clientActivityLevel is string) &&
-             (!('clientClinicalProfile' in data) || data.clientClinicalProfile == null || data.clientClinicalProfile is list) &&
-             (!('clientFeel' in data) || data.clientFeel == null || data.clientFeel is string) &&
-             (!('startedByTrainerId' in data) || data.startedByTrainerId == null || data.startedByTrainerId is string) &&
-             (!('lastHeartbeatAt' in data) || data.lastHeartbeatAt == null || data.lastHeartbeatAt is timestamp) &&
-             (!('createdAt' in data) || data.createdAt == null || data.createdAt is timestamp);
+             data.trainerInitials is string;
     }
 
     function isValidLog(data) {
       return hasRequiredFields(['sessionId', 'machineId']) &&
              data.sessionId is string &&
-             data.machineId is string &&
-             (!('clientId' in data) || data.clientId == null || data.clientId is string) &&
-             (!('suggestedOrder' in data) || data.suggestedOrder == null || data.suggestedOrder is number) &&
-             (!('weight' in data) || data.weight == null || data.weight is string) &&
-             (!('reps' in data) || data.reps == null || (data.reps is string || data.reps is number)) &&
-             (!('targetWeight' in data) || data.targetWeight == null || data.targetWeight is string) &&
-             (!('seconds' in data) || data.seconds == null || data.seconds is string) &&
-             (!('timeSpent' in data) || data.timeSpent == null || data.timeSpent is string) &&
-             (!('isStaticHold' in data) || data.isStaticHold == null || data.isStaticHold is bool) &&
-             (!('isTSC' in data) || data.isTSC == null || data.isTSC is bool) &&
-             (!('repQuality' in data) || data.repQuality == null || data.repQuality is number) &&
-             (!('side' in data) || data.side == null || data.side in ['Left', 'Right']) &&
-             (!('notes' in data) || data.notes == null || data.notes is string) &&
-             (!('machineSettings' in data) || data.machineSettings == null || data.machineSettings is map) &&
-             (!('createdAt' in data) || data.createdAt == null || data.createdAt is timestamp) &&
-             (!('updatedAt' in data) || data.updatedAt == null || data.updatedAt is timestamp);
-    }
-
-    function isValidSettingChange(data) {
-      return hasRequiredFields(['machineId', 'clientId', 'trainerId', 'previousSettings', 'newSettings', 'createdAt']) &&
-             data.machineId is string &&
-             data.clientId is string &&
-             data.trainerId is string &&
-             data.previousSettings is map &&
-             data.newSettings is map &&
-             (!('reason' in data) || data.reason is string);
-    }
-
-    function isValidClientMachineSetting(data) {
-      return hasRequiredFields(['clientId', 'machineId']) &&
-             data.clientId is string &&
-             data.machineId is string &&
-             (!('settings' in data) || data.settings is map) &&
-             (!('updatedBy' in data) || data.updatedBy is string) &&
-             (!('startingWeight' in data) || data.startingWeight is number || data.startingWeight is string) &&
-             (!('trainingLevel' in data) || data.trainingLevel is string) &&
-             (!('updatedAt' in data) || data.updatedAt is timestamp);
+             data.machineId is string;
     }
 
     function isValidSchedule(data) {
-      return hasRequiredFields(['clientName', 'trainerName', 'startTime', 'endTime', 'status', 'serviceName', 'source']) &&
-             data.clientName is string &&
-             data.trainerName is string &&
-             data.startTime is timestamp &&
-             data.endTime is timestamp &&
-             data.status in ['Scheduled', 'Completed', 'Cancelled', 'No-Show'] &&
-             data.serviceName is string &&
-             data.source in ['MindBody', 'Manual', 'Subscription'] &&
-             (!('clientId' in data) || data.clientId == null || data.clientId is string) &&
-             (!('trainerId' in data) || data.trainerId == null || data.trainerId is string) &&
-             (!('importId' in data) || data.importId == null || data.importId is string) &&
-             (!('studioId' in data) || data.studioId == null || data.studioId is string) &&
-             (!('ical_uid' in data) || data.ical_uid == null || (data.ical_uid is string && data.ical_uid.size() < 255)) &&
-             (!('sync_secret' in data) || data.sync_secret == null || data.sync_secret is string) &&
-             (!('cancellationReason' in data) || data.cancellationReason == null || data.cancellationReason is string) &&
-             (!('createdAt' in data) || data.createdAt == null || data.createdAt is timestamp) &&
-             (!('updatedAt' in data) || data.updatedAt == null || data.updatedAt is timestamp);
-    }
-
-    function isValidRoutine(data) {
-      return hasRequiredFields(['clientId', 'name', 'machineIds']) &&
-             data.clientId is string &&
-             data.name is string &&
-             data.machineIds is list &&
-             (!('updatedAt' in data) || data.updatedAt is timestamp) &&
-             (!('createdAt' in data) || data.createdAt is timestamp);
-    }
-
-    function isValidRoutineAdjustment(data) {
-      return hasRequiredFields(['routineId', 'clientId', 'previousMachineIds', 'newMachineIds', 'trainerId', 'createdAt']) &&
-             data.routineId is string &&
-             data.clientId is string &&
-             data.previousMachineIds is list &&
-             data.newMachineIds is list &&
-             data.trainerId is string &&
-             data.createdAt is timestamp &&
-             (!('notes' in data) || data.notes is string);
-    }
-
-    function isValidSessionNote(data) {
-      return hasRequiredFields(['sessionId', 'content', 'trainerInitials']) &&
-             data.sessionId is string &&
-             data.content is string &&
-             data.trainerInitials is string &&
-             (!('clientId' in data) || data.clientId is string) &&
-             (!('trainerId' in data) || data.trainerId is string) &&
-             (!('createdAt' in data) || data.createdAt is timestamp);
-    }
-
-    function isValidTrainerFocus(data) {
-      return hasRequiredFields(['clientId', 'trainerId', 'category', 'notes']) &&
-             data.clientId is string &&
-             data.trainerId is string &&
-             data.category in ['Path', 'Pace', 'Posture', 'Purpose'] &&
-             data.notes is string && data.notes.size() <= 1000 &&
-             (!('trainerName' in data) || data.trainerName is string) &&
-             (!('updatedAt' in data) || data.updatedAt is timestamp);
-    }
-
-    function isValidProgressReport(data) {
-      return hasRequiredFields(['clientId', 'trainerId', 'date']) &&
-             data.clientId is string &&
-             data.trainerId is string &&
-             data.date is string &&
-             (!('totalSessionsCompleted' in data) || data.totalSessionsCompleted is number) &&
-             (!('attendanceScore' in data) || data.attendanceScore is number) &&
-             (!('createdAt' in data) || data.createdAt == null || data.createdAt is timestamp);
-    }
-
-    function isValidFocusRecord(data) {
-      return hasRequiredFields(['clientId', 'category', 'clinicalNotes', 'status', 'assignedBy', 'trainerId']) &&
-             data.clientId is string &&
-             data.category in ['Posture', 'Pace', 'Path', 'Purpose'] &&
-             data.clinicalNotes is string && data.clinicalNotes.size() <= 2000 &&
-             data.status in ['Active', 'Achieved', 'Deleted'] &&
-             data.assignedBy is string &&
-             data.trainerId is string &&
-             (!('targetMachineId' in data) || data.targetMachineId == null || data.targetMachineId is string) &&
-             (!('dateAssigned' in data) || data.dateAssigned is timestamp) &&
-             (!('dateUpdated' in data) || data.dateUpdated is timestamp);
-    }
-
-    function isValidStudio(data) {
-      return hasRequiredFields(['name']) &&
-             data.name is string && data.name.size() > 0 &&
-             (!('createdAt' in data) || data.createdAt is timestamp);
-    }
-
-    function isValidHubAnnouncement(data) {
-      return hasRequiredFields(['title', 'shortContent', 'longContent', 'authorId', 'authorName', 'studioId', 'isActive', 'priority']) &&
-             data.title is string && data.title.size() > 0 &&
-             data.shortContent is string && data.shortContent.size() > 0 &&
-             data.longContent is string &&
-             data.authorId is string &&
-             data.authorName is string &&
-             data.studioId is string &&
-             data.isActive is bool &&
-             data.priority in ['low', 'medium', 'high'] &&
-             (!('readBy' in data) || data.readBy is list) &&
-             (!('createdAt' in data) || data.createdAt is timestamp);
+      return hasRequiredFields(['clientName', 'trainerName', 'startTime', 'endTime', 'status', 'serviceName', 'source']);
     }
 
     function isValidNetwork(data) {
       return hasRequiredFields(['name', 'ownerId', 'studioIds']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.ownerId is string &&
-             data.studioIds is list &&
-             (!('createdAt' in data) || data.createdAt is timestamp);
+             data.studioIds is list;
+    }
+
+    function isValidHubAnnouncement(data) {
+      return hasRequiredFields(['title', 'shortContent', 'longContent', 'authorId', 'authorName', 'studioId', 'isActive', 'priority']);
     }
 
     // ===============================================================
-    // Rules
+    // COLLECTION ENDPOINTS SECURITY PATHS
     // ===============================================================
 
+    // TRAINERS: Directory search, auth checks, and creation permissions
     match /trainers/{trainerId} {
-      allow read: if true;
-      allow create: if (isAdmin() || isOverseer() || 
-                        (request.resource.data.primaryHomeStudioId != null && 
-                         isHeadTrainer(request.resource.data.primaryHomeStudioId))) 
-                    && isValidTrainer(request.resource.data);
-      allow update: if (
-        isAdmin() || 
-        isOverseer() ||
-        (resource.data.primaryHomeStudioId != null && isHeadTrainer(resource.data.primaryHomeStudioId)) ||
-        (isAuthenticated() && request.auth.uid == trainerId) ||
-        (resource.data.requiresPinReset == true && request.resource.data.requiresPinReset == false) ||
-        (request.resource.data.get('sync_secret', '') == 'STABLE_MASTER_SYNC_TOKEN_2026')
-      ) && isValidTrainer(request.resource.data);
-      allow delete: if isAdmin() || isOverseer();
+      allow read: if isAuthenticated();
+      allow create: if isSuperAdmin() || isFranchiseOwner() || 
+                    (request.resource.data.primaryHomeStudioId != null && 
+                     isStudioOwnerOrHeadTrainer(request.resource.data.primaryHomeStudioId));
+      allow update: if isSuperAdmin() || isFranchiseOwner() ||
+                    (resource.data.primaryHomeStudioId != null && isStudioOwnerOrHeadTrainer(resource.data.primaryHomeStudioId)) ||
+                    (isAuthenticated() && request.auth.uid == trainerId) ||
+                    (resource.data.requiresPinReset == true && request.resource.data.requiresPinReset == false) ||
+                    (request.resource.data.get('sync_secret', '') == 'STABLE_MASTER_SYNC_TOKEN_2026');
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
+    // CLIENTS: Protected matching trainer's authorized territories
     match /clients/{clientId} {
-      allow read: if true;
-      allow create: if isTrainer() && isValidClient(request.resource.data);
-      allow update: if isTrainer() && isValidClient(request.resource.data);
-      allow delete: if isAdmin() || isOverseer() || (resource.data.homeStudioId != null && isStudioOwner(resource.data.homeStudioId));
+      allow read: if isSuperAdmin() || isFranchiseOwner() || 
+                  (resource.data.homeStudioId != null && isTrainerOfStudio(resource.data.homeStudioId));
+      allow create: if (isSuperAdmin() || isFranchiseOwner() || 
+                    (request.resource.data.homeStudioId != null && isTrainerOfStudio(request.resource.data.homeStudioId))) && 
+                    isValidClient(request.resource.data);
+      allow update: if (isSuperAdmin() || isFranchiseOwner() || 
+                    (resource.data.homeStudioId != null && isTrainerOfStudio(resource.data.homeStudioId) &&
+                     request.resource.data.homeStudioId != null && isTrainerOfStudio(request.resource.data.homeStudioId))) && 
+                    isValidClient(request.resource.data);
+      allow delete: if isSuperAdmin() || isFranchiseOwner() || 
+                    (resource.data.homeStudioId != null && isStudioOwnerOrHeadTrainer(resource.data.homeStudioId));
     }
 
+    // DISK SETTINGS: Machine settings assigned to specific athletes
     match /clientMachineSettings/{settingId} {
       allow read: if isAuthenticated();
-      allow create, update: if (isAdmin() || isAuthenticated()) && isValidClientMachineSetting(request.resource.data);
-      allow delete: if isAdmin() || isTrainer();
+      allow create, update: if (isSuperAdmin() || isFranchiseOwner() || isAuthenticated());
+      allow delete: if isSuperAdmin() || isFranchiseOwner() || isAuthenticated();
     }
 
+    // PHYSICAL MACHINES
     match /machines/{machineId} {
       allow read: if isAuthenticated();
-      allow create: if (isAdmin() || isAuthenticated()) && isValidMachine(request.resource.data);
-      allow update: if (isAdmin() || isAuthenticated()) && isValidMachine(request.resource.data);
-      allow delete: if isAdmin();
+      allow create, update: if isSuperAdmin() || isFranchiseOwner();
+      allow delete: if isSuperAdmin();
     }
 
     match /machineSettingChanges/{changeId} {
       allow read: if isAuthenticated();
-      allow create: if (isAdmin() || isAuthenticated()) && isValidSettingChange(request.resource.data);
+      allow create: if isAuthenticated();
     }
 
+    // ROUTINES & ADJUSTMENTS
     match /routines/{routineId} {
       allow read: if isAuthenticated();
-      allow create: if (isAdmin() || isAuthenticated()) && isValidRoutine(request.resource.data);
-      allow update: if (isAdmin() || isAuthenticated()) && isValidRoutine(request.resource.data);
-      allow delete: if isAdmin() || isTrainer();
+      allow create, update: if isAuthenticated();
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
     match /routineAdjustments/{adjustmentId} {
       allow read: if isAuthenticated();
-      allow create: if (isAdmin() || isAuthenticated()) && isValidRoutineAdjustment(request.resource.data);
+      allow create: if isAuthenticated();
     }
 
+    // TRAINING SESSIONS
     match /sessions/{sessionId} {
       allow read: if isAuthenticated();
-      allow create: if (isAdmin() || isAuthenticated()) && isValidSession(request.resource.data);
-      allow update: if (isAdmin() || isAuthenticated()) && isValidSession(request.resource.data);
-      allow delete: if isAdmin() || isTrainer();
+      allow create: if isAuthenticated() && isValidSession(request.resource.data);
+      allow update: if isAuthenticated() && isValidSession(request.resource.data);
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
+    // EXERCISE LOGS
     match /exerciseLogs/{logId} {
       allow read: if isAuthenticated();
-      allow create: if (isAdmin() || isAuthenticated()) && isValidLog(request.resource.data);
-      allow update: if (isAdmin() || isAuthenticated()) && isValidLog(request.resource.data);
-      allow delete: if isAdmin() || isTrainer();
+      allow create, update: if isAuthenticated() && isValidLog(request.resource.data);
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
+    // CALENDAR SCHEDULES
     match /schedules/{scheduleId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow create, update: if (
         (request.resource.data.get('sync_secret', '') == 'STABLE_MASTER_SYNC_TOKEN_2026') || 
-        isTrainer() || 
-        isAdmin()
+        isFranchiseOwner() || 
+        isSuperAdmin() ||
+        (request.resource.data.studioId != null && isTrainerOfStudio(request.resource.data.studioId))
       ) && isValidSchedule(request.resource.data);
-      allow delete: if (
-        isAdmin() || 
-        isTrainer() || 
-        (resource != null && resource.data.get('sync_secret', '') == 'STABLE_MASTER_SYNC_TOKEN_2026')
-      );
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
     
+    // CLINICAL NOTES
     match /sessionNotes/{noteId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidSessionNote(request.resource.data);
-      allow update: if isAuthenticated() && isValidSessionNote(request.resource.data);
-      allow delete: if isAdmin() || isTrainer();
+      allow create, update: if isAuthenticated();
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
     match /users/{userId} {
-      allow read, write: if request.auth.uid == userId || isAdmin();
+      allow read, write: if isSuperAdmin() || request.auth.uid == userId;
     }
 
     match /leaderboards/{docId} {
       allow read: if isAuthenticated();
-      // Only trainers/admins can manually trigger or backend admin SDK writes
-      allow write: if isAdmin();
+      allow write: if isSuperAdmin();
     }
 
+    // SPECIAL ATHLETE FOCUS PATTERNS
     match /trainerFocuses/{focusId} {
       allow read: if isAuthenticated();
-      allow create, update: if (isAdmin() || isTrainer()) && isValidTrainerFocus(request.resource.data);
-      allow delete: if isAdmin();
+      allow create, update: if isAuthenticated();
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
     match /progressReports/{reportId} {
       allow read: if isAuthenticated();
-      allow create, update: if (isAdmin() || isTrainer()) && isValidProgressReport(request.resource.data);
-      allow delete: if isAdmin();
+      allow create, update: if isAuthenticated();
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
     match /focusRecords/{focusId} {
       allow read: if isAuthenticated();
-      allow create, update: if (isAdmin() || isTrainer()) && isValidFocusRecord(request.resource.data);
-      allow delete: if isAdmin();
-    }
-    match /studios/{studioId} {
-      allow read: if true;
-      allow create, update: if (isAdmin() || isTrainer()) && isValidStudio(request.resource.data);
-      allow delete: if isAdmin() || isTrainer();
-    }
-    match /networks/{networkId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAdmin() && isValidNetwork(request.resource.data);
-      allow delete: if isAdmin();
-    }
-    match /aggregations/{aggId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow create, update: if isAuthenticated();
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
-    match /hub_announcements/{announcementId} {
+    // STUDIOS: Territory configurations
+    match /studios/{studioId} {
       allow read: if isAuthenticated();
-      allow create, update: if (isAdmin() || isTrainer()) && isValidHubAnnouncement(request.resource.data);
-      allow delete: if isAdmin() || isTrainer();
+      allow create, update: if isSuperAdmin() || isFranchiseOwner() || isStudioOwnerOrHeadTrainer(studioId);
+      allow delete: if isSuperAdmin();
+    }
+
+    // NETWORKS: Regional Franchise Groupings
+    match /networks/{networkId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isSuperAdmin() || isFranchiseOwner();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /aggregations/{aggId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ANNOUNCEMENTS
+    match /hub_announcements/{announcementId} {
+      allow read: if isAuthenticated() && (
+        isFranchiseOwner() || 
+        (resource.data.studioId != null && isTrainerOfStudio(resource.data.studioId))
+      );
+      allow create, update: if isAuthenticated() && 
+                    isTrainerOfStudio(request.resource.data.studioId) && 
+                    isValidHubAnnouncement(request.resource.data);
+      allow delete: if isSuperAdmin() || isFranchiseOwner() || 
+                    (resource.data.studioId != null && isStudioOwnerOrHeadTrainer(resource.data.studioId));
     }
 
   }

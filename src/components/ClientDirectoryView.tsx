@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ActiveStudioProvider, useActiveStudio } from '../ActiveStudioContext';
+import { useActiveStudio } from '../ActiveStudioContext';
 import { collection, getDocs, query, where, orderBy, limit, QueryConstraint, Query } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Client, Trainer } from '../types';
@@ -29,60 +29,70 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
         let q: Query;
         const clientsRef = collection(db, 'clients');
         
+        // Allowed studios is defined as the home studio PLUS all accessible studios
+        const allowedStudioIds = [
+          authTrainer?.primaryHomeStudioId,
+          ...(authTrainer?.accessibleStudioIds || [])
+        ].filter(Boolean) as string[];
+
+        if (activeStudioId && !allowedStudioIds.includes(activeStudioId)) {
+          allowedStudioIds.push(activeStudioId);
+        }
+
         if (!searchQuery.trim()) {
-          // Empty search: 'Recently Profiled'
+          // Empty search: 'Recently Profiled' lists
           const queries: QueryConstraint[] = [];
           
-          if (!isGlobalSearch && activeStudioId) {
-            queries.push(where('homeStudioId', '==', activeStudioId));
+          if (!isGlobalSearch && allowedStudioIds.length > 0) {
+            if (allowedStudioIds.length === 1) {
+              queries.push(where('homeStudioId', '==', allowedStudioIds[0]));
+            } else {
+              queries.push(where('homeStudioId', 'in', allowedStudioIds.slice(0, 10)));
+            }
           }
           
           q = query(
             clientsRef,
             ...queries,
             orderBy('createdAt', 'desc'),
-            limit(12)
+            limit(16)
           );
         } else {
-          // We have a search term.
+          // We have a search terms constraints.
+          // Prefix queries are index-safe, and we filter by Studio client-side to prevent Composite Index requirement crashes.
           const term = searchQuery.toLowerCase();
           const termCapitalized = term.charAt(0).toUpperCase() + term.slice(1);
           
-          const queries: QueryConstraint[] = [];
-          if (!isGlobalSearch && activeStudioId) {
-            queries.push(where('homeStudioId', '==', activeStudioId));
-          }
-          
           q = query(
             clientsRef,
-            ...queries,
             where('lastName', '>=', termCapitalized),
             where('lastName', '<=', termCapitalized + '\uf8ff'),
-            limit(20)
+            limit(100)
           );
         }
 
         const snap = await getDocs(q);
-        const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Client));
+        let fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Client));
         
+        // If results not found on lastName query, try firstName first
         if (searchQuery.trim() && fetched.length === 0) {
           const termCapitalized = searchQuery.trim().charAt(0).toUpperCase() + searchQuery.trim().slice(1);
-          const queries: QueryConstraint[] = [];
-          if (!isGlobalSearch && activeStudioId) {
-            queries.push(where('homeStudioId', '==', activeStudioId));
-          }
           const q2 = query(
             clientsRef,
-            ...queries,
             where('firstName', '>=', termCapitalized),
             where('firstName', '<=', termCapitalized + '\uf8ff'),
-            limit(20)
+            limit(100)
           );
           const snap2 = await getDocs(q2);
-          setSearchResults(snap2.docs.map(d => ({ id: d.id, ...d.data() } as Client)));
-        } else {
-          setSearchResults(fetched);
+          fetched = snap2.docs.map(d => ({ id: d.id, ...d.data() } as Client));
         }
+
+        // Apply Cross-Studio or Home Studio Territory Filtering client-side if isGlobalSearch is turned off
+        if (searchQuery.trim() && !isGlobalSearch && allowedStudioIds.length > 0) {
+          fetched = fetched.filter(c => c.homeStudioId && allowedStudioIds.includes(c.homeStudioId));
+        }
+
+        setSearchResults(fetched);
       } catch (error) {
         console.error("Error fetching clients:", error);
       } finally {
@@ -95,7 +105,7 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, isGlobalSearch, activeStudioId]);
+  }, [searchQuery, isGlobalSearch, activeStudioId, authTrainer]);
 
   const displayClients = searchResults;
 
@@ -148,7 +158,7 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
               <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-transform ${isGlobalSearch ? 'left-[22px]' : 'left-0.5'}`} />
             </button>
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">
-              Search Entire Network
+              Search Entire Corporate Network
             </span>
           </div>
         )}
@@ -167,80 +177,96 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-48 text-center bg-white dark:bg-slate-900/50 rounded-[32px] border border-dashed border-slate-300 dark:border-slate-800 shadow-sm">
             <Loader2 className="w-8 h-8 text-[#F06C22] animate-spin mb-3" />
-            <p className="text-slate-500 dark:text-slate-400 font-medium tracking-widest uppercase text-xs">Searching database...</p>
+            <p className="text-slate-500 dark:text-slate-400 font-medium tracking-widest uppercase text-xs">Accessing registries...</p>
           </div>
         ) : displayClients.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {displayClients.map(client => (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                key={client.id}
-                onClick={() => onSelectClient(client.id!)}
-                className="bg-white dark:bg-slate-900 border-[1.5px] border-slate-200 dark:border-slate-800 rounded-[28px] md:rounded-[32px] p-6 cursor-pointer hover:border-[#F06C22]/50 dark:hover:border-[#F06C22]/50 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all group flex flex-col shadow-sm hover:shadow-md dark:shadow-none overflow-hidden relative min-h-[190px]"
-              >
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-700 to-transparent group-hover:via-[#F06C22] transition-colors" />
-                
-                {/* Client Info Section */}
-                <div className="flex items-start justify-between mb-5">
-                  <div className="flex items-center gap-4 flex-1 min-w-0 pr-2">
-                    <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-slate-100 dark:bg-[#0A2E46] border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 shadow-sm dark:shadow-inner group-hover:border-[#F06C22] transition-colors">
-                      <span className="text-slate-900 dark:text-white font-black text-lg md:text-xl tracking-widest uppercase">
-                        {client.firstName?.[0]}{client.lastName?.[0]}
-                      </span>
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white truncate tracking-tight group-hover:text-[#F06C22] transition-colors">
-                        {client.firstName} {client.lastName}
-                      </h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] md:text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-[#F06C22]" />
-                          {availableStudios?.find(s => s.id === client.homeStudioId)?.name || 'Unknown Studio'}
+            {displayClients.map(client => {
+              // Check if cross-trainer / visiting from another studio territory
+              const isCrossTrainer = activeStudioId && client.homeStudioId && client.homeStudioId !== activeStudioId;
+              const originalStudioName = availableStudios?.find(s => s.id === client.homeStudioId)?.name || 'HQ Network';
+
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  key={client.id}
+                  onClick={() => onSelectClient(client.id!)}
+                  className="bg-white dark:bg-slate-900 border-[1.5px] border-slate-200 dark:border-slate-800 rounded-[28px] md:rounded-[32px] p-6 cursor-pointer hover:border-[#F06C22]/50 dark:hover:border-[#F06C22]/50 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all group flex flex-col shadow-sm hover:shadow-md dark:shadow-none overflow-hidden relative min-h-[220px]"
+                >
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-700 to-transparent group-hover:via-[#F06C22] transition-colors" />
+                  
+                  {/* Client Info Section */}
+                  <div className="flex items-start justify-between mb-5">
+                    <div className="flex items-center gap-4 flex-1 min-w-0 pr-2">
+                      <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-slate-100 dark:bg-[#0A2E46] border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 shadow-sm dark:shadow-inner group-hover:border-[#F06C22] transition-colors">
+                        <span className="text-slate-900 dark:text-white font-black text-lg md:text-xl tracking-widest uppercase">
+                          {client.firstName?.[0]}{client.lastName?.[0]}
                         </span>
-                        {client.globalNotes && (
-                          <Badge variant="outline" className="border-amber-500/30 text-amber-600 dark:text-amber-500 uppercase tracking-widest text-[8px] font-black bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0">
-                            Notes
-                          </Badge>
-                        )}
+                      </div>
+                      <div className="flex flex-col min-w-0 font-sans">
+                        <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white truncate tracking-tight group-hover:text-[#F06C22] transition-colors leading-tight">
+                          {client.firstName} {client.lastName}
+                        </h3>
+                        <div className="flex flex-col gap-1 mt-1">
+                          {isCrossTrainer ? (
+                            <div className="mt-1">
+                              <Badge className="bg-[#F06C22]/15 hover:bg-[#F06C22]/20 text-[#F06C22] border border-[#F06C22]/25 uppercase tracking-widest text-[8px] font-black h-5 py-0 px-2 rounded-full">
+                                Visiting: {originalStudioName}
+                              </Badge>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] md:text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-[#F06C22]" />
+                              {originalStudioName}
+                            </span>
+                          )}
+                          {client.globalNotes && (
+                            <div className="mt-0.5">
+                              <Badge variant="outline" className="border-amber-500/30 text-amber-600 dark:text-amber-500 uppercase tracking-widest text-[8px] font-black bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0">
+                                Notes
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Membership Tier Badge */}
+                    <div className="shrink-0">
+                      {renderTierBadge(client.packageTier)}
+                    </div>
+                  </div>
+
+                  {/* Session Info Section */}
+                  <div className="mt-auto flex items-end justify-between border-t border-slate-100 dark:border-slate-800/80 pt-5">
+                    <div className="flex flex-col">
+                      <span className="text-base md:text-lg font-black text-slate-900 dark:text-white tracking-widest uppercase mb-1.5 opacity-80">
+                        Session {client.sessionCount || 0}
+                      </span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] md:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">
+                          Last: <span className="text-slate-700 dark:text-slate-300">{(client as any).lastSessionDate || 'N/A'}</span>
+                        </span>
+                        <span className="text-[10px] md:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">
+                          Next: <span className="text-slate-700 dark:text-slate-300">{(client as any).nextSessionDate || 'Unscheduled'}</span>
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Play Action */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] md:text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest group-hover:text-[#F06C22] transition-colors hidden sm:block">
+                        Profile
+                      </span>
+                      <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center group-hover:bg-[#F06C22] group-hover:border-[#F06C22] transition-all shadow-sm">
+                        <PlayCircle className="w-6 h-6 md:w-7 md:h-7 text-slate-400 dark:text-slate-400 group-hover:text-white transition-colors" />
                       </div>
                     </div>
                   </div>
-                  
-                  {/* Membership Tier Badge */}
-                  <div className="shrink-0">
-                    {renderTierBadge(client.packageTier)}
-                  </div>
-                </div>
-
-                {/* Session Info Section */}
-                <div className="mt-auto flex items-end justify-between border-t border-slate-100 dark:border-slate-800/80 pt-5">
-                  <div className="flex flex-col">
-                    <span className="text-base md:text-lg font-black text-slate-900 dark:text-white tracking-widest uppercase mb-1.5 opacity-80">
-                      Session {client.sessionCount || 0}
-                    </span>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] md:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">
-                        Last: <span className="text-slate-700 dark:text-slate-300">{(client as any).lastSessionDate || 'N/A'}</span>
-                      </span>
-                      <span className="text-[10px] md:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">
-                        Next: <span className="text-slate-700 dark:text-slate-300">{(client as any).nextSessionDate || 'Unscheduled'}</span>
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* Play Action */}
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] md:text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest group-hover:text-[#F06C22] transition-colors hidden sm:block">
-                      Profile
-                    </span>
-                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center group-hover:bg-[#F06C22] group-hover:border-[#F06C22] transition-all shadow-sm">
-                      <PlayCircle className="w-6 h-6 md:w-7 md:h-7 text-slate-400 dark:text-slate-400 group-hover:text-white transition-colors" />
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-48 text-center bg-white dark:bg-slate-900/50 rounded-[32px] border border-dashed border-slate-300 dark:border-slate-800 shadow-sm">

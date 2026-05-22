@@ -24,6 +24,8 @@ import {
 import { ScheduleEntry, Trainer } from '../types';
 import { cn } from '../lib/utils';
 import { isFuzzyNameMatch } from '../lib/sync-utils';
+import { db } from '../firebase';
+import { updateDoc, doc, getDocs, query, collection, where } from 'firebase/firestore';
 
 export function CalendarView({ 
   schedules, 

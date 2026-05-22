@@ -1,7 +1,7 @@
 /**
  * Roles defining system access levels across the organization.
  */
-export type UserRole = 'Admin' | 'FranchiseOwner' | 'Overseer' | 'StudioOwner' | 'HeadTrainer' | 'Trainer';
+export type UserRole = 'Admin' | 'Founder' | 'Owner' | 'StudioLeader' | 'LifeTransformer' | 'FranchiseOwner' | 'Overseer' | 'StudioOwner' | 'HeadTrainer' | 'Trainer';
 
 /**
  * Represents a group of studios owned by a Studio Owner or managed as a region.
@@ -12,6 +12,13 @@ export interface FranchiseNetwork {
   ownerId: string; // The Owner/StudioOwner ID who owns this network
   studioIds: string[]; // List of Studio IDs included in this network
   createdAt?: any;
+}
+
+export interface Network {
+  id: string;
+  name: string;
+  ownerId: string;
+  studioIds: string[];
 }
 
 /**

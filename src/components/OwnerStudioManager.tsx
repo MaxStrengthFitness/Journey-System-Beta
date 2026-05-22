@@ -2,16 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { 
   collection, 
   query, 
-  where, 
+  addDoc,
+  deleteDoc,
   getDocs, 
   updateDoc, 
   doc, 
   orderBy,
   arrayUnion,
-  arrayRemove
+  arrayRemove,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Studio, Trainer } from '../types';
+import { Studio, Trainer, FranchiseNetwork } from '../types';
 import { 
   Building2, 
   Users, 
@@ -22,13 +24,20 @@ import {
   Clock, 
   Save, 
   ArrowLeft,
-  Search,
   Plus,
   Trash2,
   Star,
   UserCircle,
   BadgeInfo,
-  ShieldCheck
+  ShieldCheck,
+  Network,
+  Link2,
+  Unlink2,
+  Crown,
+  Key,
+  Flame,
+  Layers,
+  Sparkles
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,93 +62,191 @@ interface Props {
   onBack?: () => void;
 }
 
-export function OwnerStudioManager({ authTrainer, studios, isAdmin = false, onBack }: Props) {
+export function OwnerStudioManager({ authTrainer, studios: initialStudios, isAdmin = false, onBack }: Props) {
+  // Tabs
+  const [activeTab, setActiveTab] = useState<'networks' | 'studios'>('networks');
+  
+  // Real-time Database state
+  const [allStudios, setAllStudios] = useState<Studio[]>(initialStudios);
+  const [networks, setNetworks] = useState<FranchiseNetwork[]>([]);
+  const [trainers, setTrainers] = useState<Trainer[]>([]);
+  
+  // Selection state
+  const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(null);
   const [selectedStudioId, setSelectedStudioId] = useState<string | null>(null);
-  const [staff, setStaff] = useState<Trainer[]>([]);
-  const [allTrainers, setAllTrainers] = useState<Trainer[]>([]);
-  const [loadingStaff, setLoadingStaff] = useState(false);
+  
+  // Creation / modification states
+  const [newNetworkName, setNewNetworkName] = useState('');
+  const [newNetworkOwnerId, setNewNetworkOwnerId] = useState('');
+  const [isCreatingNetwork, setIsCreatingNetwork] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isAddingStaff, setIsAddingStaff] = useState(false);
-
-  // Filter studios - System admins see all, Owners see their owned ones
-  const ownedStudios = isAdmin || (authTrainer.role === 'StudioOwner' || authTrainer.role === 'Admin' || authTrainer.role === 'Overseer') 
-    ? studios 
-    : studios.filter(s => authTrainer.ownedStudioIds?.includes(s.id!) || s.ownerId === authTrainer.id);
-
-  const selectedStudio = studios.find(s => s.id === selectedStudioId);
-
-  // Fetch all trainers for admin selection
+  const [staffLoading, setStaffLoading] = useState(false);
+  
+  // Setup real-time listeners for absolute data safety & syncing
   useEffect(() => {
-    if (!selectedStudioId) return;
+    const unsubNetworks = onSnapshot(collection(db, 'networks'), (snap) => {
+      setNetworks(snap.docs.map(d => ({ id: d.id, ...d.data() } as FranchiseNetwork)));
+    }, (err) => {
+      console.error("Error listening to networks:", err);
+    });
 
-    const fetchAllTrainers = async () => {
-      try {
-        const snap = await getDocs(query(collection(db, 'trainers'), orderBy('fullName', 'asc')));
-        setAllTrainers(snap.docs.map(d => ({ id: d.id, ...d.data() } as Trainer)));
-      } catch (err) {
-        handleFirestoreError(err, OperationType.GET, 'all-trainers');
-      }
+    const unsubStudios = onSnapshot(collection(db, 'studios'), (snap) => {
+      setAllStudios(snap.docs.map(d => ({ id: d.id, ...d.data() } as Studio)));
+    }, (err) => {
+      console.error("Error listening to studios:", err);
+    });
+
+    const unsubTrainers = onSnapshot(collection(db, 'trainers'), (snap) => {
+      setTrainers(snap.docs.map(d => ({ id: d.id, ...d.data() } as Trainer)));
+    }, (err) => {
+      console.error("Error listening to trainers:", err);
+    });
+
+    return () => {
+      unsubNetworks();
+      unsubStudios();
+      unsubTrainers();
     };
+  }, []);
 
-    fetchAllTrainers();
-  }, [selectedStudioId]);
+  // Filter studios based on access permissions
+  // Super Admin / Franchise Owners see all; local managers see their matched territories
+  const manageableStudios = React.useMemo(() => {
+    if (isAdmin || authTrainer.role === 'Admin' || authTrainer.role === 'FranchiseOwner' || authTrainer.role === 'Overseer') {
+      return allStudios;
+    }
+    // Filter to studios where the authTrainer is the designated owner or listed in ownedStudioIds
+    return allStudios.filter(s => 
+      s.ownerId === authTrainer.id || 
+      authTrainer.ownedStudioIds?.includes(s.id!)
+    );
+  }, [allStudios, authTrainer, isAdmin]);
 
-  useEffect(() => {
-    if (!selectedStudioId) {
-      setStaff([]);
+  // Selected entities helper
+  const selectedStudio = allStudios.find(s => s.id === selectedStudioId);
+  const selectedNetwork = networks.find(n => n.id === selectedNetworkId);
+
+  // Filter independent studios (not linked to any network)
+  const independentStudios = React.useMemo(() => {
+    return allStudios.filter(s => {
+      const isLinkedToAny = networks.some(n => n.studioIds?.includes(s.id!));
+      return !isLinkedToAny && !s.networkId;
+    });
+  }, [allStudios, networks]);
+
+  // Find staff for a selected studio
+  const getStaffForStudio = (studioId: string) => {
+    return trainers.filter(t => 
+      t.primaryHomeStudioId === studioId || 
+      t.accessibleStudioIds?.includes(studioId) || 
+      t.activeGuestStudioIds?.includes(studioId) ||
+      t.id === selectedStudio?.ownerId || 
+      t.id === selectedStudio?.headTrainerId
+    );
+  };
+
+  // 1. CREATE FRANCHISE NETWORK
+  const handleCreateNetwork = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newNetworkName.trim() || !newNetworkOwnerId) {
+      alert("Please provide a network name and assign a franchise owner.");
       return;
     }
 
-    const fetchStaff = async () => {
-      setLoadingStaff(true);
-      try {
-        // Query 1: Permanent Staff
-        const q1 = query(
-          collection(db, 'trainers'),
-          where('accessibleStudioIds', 'array-contains', selectedStudioId)
-        );
-        
-        // Query 2: Guest Staff
-        const q2 = query(
-          collection(db, 'trainers'),
-          where('activeGuestStudioIds', 'array-contains', selectedStudioId)
-        );
+    setIsSaving(true);
+    try {
+      await addDoc(collection(db, 'networks'), {
+        name: newNetworkName,
+        ownerId: newNetworkOwnerId,
+        studioIds: [],
+        createdAt: new Date()
+      });
+      setNewNetworkName('');
+      setNewNetworkOwnerId('');
+      setIsCreatingNetwork(false);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, 'networks');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-        const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-        
-        const staffMap = new Map<string, Trainer>();
-        snap1.docs.forEach(doc => staffMap.set(doc.id, { id: doc.id, ...doc.data() } as Trainer));
-        snap2.docs.forEach(doc => staffMap.set(doc.id, { id: doc.id, ...doc.data() } as Trainer));
-        
-        // Include the owner and head trainer in roster if they have been set even if not in access arrays explicitly
-        // (Though usually they should be in accessibleStudioIds)
-        if (selectedStudio?.ownerId) {
-          // If we have all trainers, we can find the owner
-          const ownerTrainer = allTrainers.find(t => t.id === selectedStudio.ownerId);
-          if (ownerTrainer) staffMap.set(ownerTrainer.id!, ownerTrainer);
-        }
-        if (selectedStudio?.headTrainerId) {
-          const headTrainer = allTrainers.find(t => t.id === selectedStudio.headTrainerId);
-          if (headTrainer) staffMap.set(headTrainer.id!, headTrainer);
-        }
+  // 2. DELETE FRANCHISE NETWORK
+  const handleDeleteNetwork = async (networkId: string) => {
+    const net = networks.find(n => n.id === networkId);
+    if (!net) return;
+    if (net.studioIds && net.studioIds.length > 0) {
+      alert("Please unlink all associated studios from this regional network before removing it.");
+      return;
+    }
+    if (!confirm(`Are you absolutely sure you want to disband the regional command for "${net.name}"?`)) {
+      return;
+    }
 
-        setStaff(Array.from(staffMap.values()).sort((a, b) => a.fullName.localeCompare(b.fullName)));
-      } catch (err) {
-        handleFirestoreError(err, OperationType.GET, 'trainers');
-      } finally {
-        setLoadingStaff(false);
+    try {
+      await deleteDoc(doc(db, 'networks', networkId));
+      if (selectedNetworkId === networkId) {
+        setSelectedNetworkId(null);
       }
-    };
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `networks/${networkId}`);
+    }
+  };
 
-    fetchStaff();
-  }, [selectedStudioId, selectedStudio?.ownerId, selectedStudio?.headTrainerId, allTrainers]);
+  // 3. LINK STUDIO TO NETWORK
+  const handleLinkStudio = async (networkId: string, studioId: string) => {
+    try {
+      const net = networks.find(n => n.id === networkId);
+      if (!net) return;
+      
+      const alreadyLinked = net.studioIds?.includes(studioId);
+      if (alreadyLinked) return;
 
-  const handleUpdateStudio = async (e: React.FormEvent<HTMLFormElement>) => {
+      const updatedStudioIds = [...(net.studioIds || []), studioId];
+      // Update Network doc
+      await updateDoc(doc(db, 'networks', networkId), {
+        studioIds: updatedStudioIds
+      });
+      // Update Studio doc
+      await updateDoc(doc(db, 'studios', studioId), {
+        networkId: networkId
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `networks/${networkId}`);
+    }
+  };
+
+  // 4. UNLINK STUDIO FROM NETWORK
+  const handleUnlinkStudio = async (networkId: string, studioId: string) => {
+    try {
+      const net = networks.find(n => n.id === networkId);
+      if (!net) return;
+
+      const updatedStudioIds = (net.studioIds || []).filter(id => id !== studioId);
+      // Update Network doc
+      await updateDoc(doc(db, 'networks', networkId), {
+        studioIds: updatedStudioIds
+      });
+      // Update Studio doc
+      await updateDoc(doc(db, 'studios', studioId), {
+        networkId: null
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `networks/${networkId}`);
+    }
+  };
+
+  // 5. UPDATE STUDIO METADATA (INCLUDING REASSIGNING ROLES)
+  const handleUpdateStudioMetadata = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedStudio?.id) return;
 
     setIsSaving(true);
     const formData = new FormData(e.currentTarget);
+    const ownerIdVal = formData.get('ownerId') as string;
+    const headTrainerIdVal = formData.get('headTrainerId') as string;
+
     const updates: any = {
       name: formData.get('name') as string,
       contactEmail: formData.get('contactEmail') as string,
@@ -147,18 +254,28 @@ export function OwnerStudioManager({ authTrainer, studios, isAdmin = false, onBa
       address: formData.get('address') as string,
       timezone: formData.get('timezone') as string,
       mindbodySiteId: formData.get('mindbodySiteId') as string,
+      ownerId: ownerIdVal === 'none' ? null : ownerIdVal,
+      headTrainerId: headTrainerIdVal === 'none' ? null : headTrainerIdVal,
     };
-
-    // Admin-only fields
-    if (isAdmin) {
-      const ownerId = formData.get('ownerId') as string;
-      const headTrainerId = formData.get('headTrainerId') as string;
-      if (ownerId) updates.ownerId = ownerId;
-      if (headTrainerId) updates.headTrainerId = headTrainerId;
-    }
 
     try {
       await updateDoc(doc(db, 'studios', selectedStudio.id), updates);
+      
+      // Auto-update Trainer roles if we assigned them
+      if (ownerIdVal && ownerIdVal !== 'none') {
+        await updateDoc(doc(db, 'trainers', ownerIdVal), {
+          role: 'StudioOwner',
+          ownedStudioIds: arrayUnion(selectedStudio.id)
+        });
+      }
+      if (headTrainerIdVal && headTrainerIdVal !== 'none') {
+        await updateDoc(doc(db, 'trainers', headTrainerIdVal), {
+          role: 'HeadTrainer',
+          accessibleStudioIds: arrayUnion(selectedStudio.id)
+        });
+      }
+
+      alert("Clinical Studio profile synchronization complete!");
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `studios/${selectedStudio.id}`);
     } finally {
@@ -166,27 +283,24 @@ export function OwnerStudioManager({ authTrainer, studios, isAdmin = false, onBa
     }
   };
 
+  // 6. ROSTER: ADD TRAINER
   const handleAddTrainerToStudio = async (trainerId: string) => {
     if (!selectedStudioId) return;
     try {
       await updateDoc(doc(db, 'trainers', trainerId), {
         accessibleStudioIds: arrayUnion(selectedStudioId)
       });
-      // Refresh staff list locally or rely on snapshot
-      const addedTrainer = allTrainers.find(t => t.id === trainerId);
-      if (addedTrainer) {
-        setStaff(prev => [...prev, addedTrainer].sort((a, b) => a.fullName.localeCompare(b.fullName)));
-      }
       setIsAddingStaff(false);
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `trainers/${trainerId}`);
     }
   };
 
+  // 7. ROSTER: REMOVE TRAINER
   const handleRemoveTrainerFromStudio = async (trainerId: string) => {
     if (!selectedStudioId) return;
     if (trainerId === selectedStudio?.ownerId || trainerId === selectedStudio?.headTrainerId) {
-      alert("Cannot remove the Owner or Head Trainer from the roster. Reassign their role first.");
+      alert("You cannot remove an active designated Business Owner or Head Trainer from the location roster. Re-assign their roles first in the card above.");
       return;
     }
 
@@ -195,400 +309,588 @@ export function OwnerStudioManager({ authTrainer, studios, isAdmin = false, onBa
         accessibleStudioIds: arrayRemove(selectedStudioId),
         activeGuestStudioIds: arrayRemove(selectedStudioId)
       });
-      setStaff(prev => prev.filter(t => t.id !== trainerId));
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `trainers/${trainerId}`);
     }
   };
 
-  if (!selectedStudioId) {
-    return (
-      <div className="max-w-6xl mx-auto p-6 space-y-8">
-        <div className="flex items-center justify-between mb-8">
+  // RENDER SUITE / TABS Layout
+  return (
+    <div className="min-h-screen bg-slate-950 text-white p-6 md:p-12 font-sans selection:bg-[#F06C22]/35 selection:text-white pb-32">
+      <div className="max-w-7xl mx-auto space-y-8">
+        
+        {/* Main Header Row */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-900 pb-8">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-sky-400 shadow-xl">
-              <Building2 className="w-6 h-6" />
+            <div className="w-14 h-14 rounded-3xl bg-gradient-to-br from-[#F06C22] to-amber-600 flex items-center justify-center text-white shadow-2xl shadow-[#F06C22]/20">
+              <Network className="w-7 h-7" />
             </div>
             <div>
-              <h1 className="text-3xl font-black uppercase italic tracking-tighter text-slate-800">Studio Management</h1>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Owner Control Panel</p>
+              <div className="flex items-center gap-2">
+                <h1 className="text-3xl md:text-4xl font-black uppercase italic tracking-tighter text-white">Franchise Command</h1>
+                <Badge className="bg-[#F06C22]/15 text-[#F06C22] border border-[#F06C22]/20 text-[9px] font-black uppercase tracking-widest px-2 py-0.5">Enterprise</Badge>
+              </div>
+              <p className="text-[10px] sm:text-xs font-black uppercase tracking-[0.25em] text-zinc-500 mt-1">Cross-Studio Infrastructure & Role Mapping Matrix</p>
             </div>
           </div>
           {onBack && (
-            <Button variant="ghost" onClick={onBack} className="rounded-xl font-bold uppercase tracking-widest text-[10px] h-10 px-4">
+            <Button 
+              variant="outline" 
+              onClick={onBack} 
+              className="border-slate-850 hover:bg-slate-900 text-zinc-300 hover:text-white font-black uppercase tracking-widest text-[10px] h-12 rounded-2xl px-6 bg-slate-950 transition-all shadow-xl"
+            >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Overview
             </Button>
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {ownedStudios.map(studio => (
-            <motion.div
-              key={studio.id}
-              whileHover={{ y: -5 }}
-              onClick={() => setSelectedStudioId(studio.id!)}
-              className="cursor-pointer"
+        {/* Selected Studio Subview (Configure Staff / Metadata) */}
+        {selectedStudioId ? (
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }} 
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-8"
+          >
+            {/* Context breadcrumb back */}
+            <button 
+              onClick={() => setSelectedStudioId(null)}
+              className="flex items-center gap-2 text-[#F06C22] hover:text-[#F06C22]/80 transition-colors uppercase font-black text-[10px] tracking-widest"
             >
-              <Card className="rounded-[32px] border-slate-200 overflow-hidden hover:border-sky-500/50 hover:shadow-2xl transition-all group">
-                <div className="h-2 bg-slate-900" />
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl font-black uppercase tracking-tight text-slate-800">
-                      {studio.name}
-                    </CardTitle>
-                    <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-sky-500 transition-colors" />
+              <ArrowLeft className="w-4 h-4" />
+              Return to Executive Registries
+            </button>
+
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-900">
+              <div>
+                <div className="flex items-center gap-3">
+                  <span className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-[#F06C22]">
+                    <Building2 className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-3xl font-black uppercase italic tracking-tight text-white leading-none mb-1">
+                      {selectedStudio.name}
+                    </h2>
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                      Station Security ID: {selectedStudio.id}
+                    </span>
                   </div>
-                  <CardDescription className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    <MapPin className="w-3 h-3" />
-                    {studio.address || 'Address not set'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-4 pt-2">
-                    <div className="px-3 py-1 bg-slate-100 rounded-full border border-slate-200">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">ID: {studio.id?.slice(0, 8)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-          {ownedStudios.length === 0 && (
-            <div className="col-span-full py-20 text-center bg-slate-50 rounded-[40px] border-2 border-dashed border-slate-200">
-              <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-sm font-bold uppercase tracking-widest text-slate-400">No owned studios found.</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8 pb-32">
-       <button 
-        onClick={() => setSelectedStudioId(null)}
-        className="flex items-center gap-2 text-slate-400 hover:text-slate-800 transition-colors mb-4 group"
-      >
-        <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-        <span className="text-[10px] font-black uppercase tracking-[0.2em]">All Studios</span>
-      </button>
-
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-slate-200">
-        <div>
-          <h1 className="text-4xl font-black uppercase italic tracking-tighter text-slate-800 leading-none mb-2">
-            {selectedStudio?.name}
-          </h1>
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="rounded-lg bg-teal-50 text-teal-700 border-teal-200 font-black uppercase tracking-widest text-[9px]">
-              Studio Active
-            </Badge>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Location System ID: {selectedStudio?.id}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {/* Studio Details Form */}
-        <div className="lg:col-span-2 space-y-8">
-          <section>
-            <h2 className="text-lg font-black uppercase tracking-tight text-slate-800 mb-6 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-600">
-                <BadgeInfo className="w-5 h-5" />
+                </div>
               </div>
-              Studio Configuration
-            </h2>
-            
-            <Card className="rounded-[40px] shadow-sm border-slate-200">
-              <CardContent className="p-8">
-                <form onSubmit={handleUpdateStudio} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Studio Display Name</Label>
-                    <Input 
-                      id="name" 
-                      name="name" 
-                      defaultValue={selectedStudio?.name} 
-                      className="rounded-2xl border-slate-200 h-12 focus:ring-sky-500 focus:border-sky-500 font-bold" 
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="contactEmail" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Business Email</Label>
-                    <Input 
-                      id="contactEmail" 
-                      name="contactEmail" 
-                      defaultValue={selectedStudio?.contactEmail} 
-                      className="rounded-2xl border-slate-200 h-12 font-bold" 
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Location Phone</Label>
-                    <Input 
-                      id="phone" 
-                      name="phone" 
-                      defaultValue={selectedStudio?.phone} 
-                      className="rounded-2xl border-slate-200 h-12 font-bold" 
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="timezone" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Local Timezone</Label>
-                    <Input 
-                      id="timezone" 
-                      name="timezone" 
-                      defaultValue={selectedStudio?.timezone} 
-                      className="rounded-2xl border-slate-200 h-12 font-bold" 
-                    />
-                  </div>
+              <div>
+                <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-widest text-[9px] font-black py-1 px-3 rounded-full">
+                  Territory Active
+                </Badge>
+              </div>
+            </div>
 
-                  <div className="md:col-span-2 space-y-2">
-                    <Label htmlFor="address" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Physical Address</Label>
-                    <Input 
-                      id="address" 
-                      name="address" 
-                      defaultValue={selectedStudio?.address} 
-                      className="rounded-2xl border-slate-200 h-12 font-bold" 
-                    />
-                  </div>
-                  
-                   <div className="space-y-2">
-                     <Label htmlFor="mindbodySiteId" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">MindBody Site ID</Label>
-                     <Input 
-                       id="mindbodySiteId" 
-                       name="mindbodySiteId" 
-                       defaultValue={selectedStudio?.mindbodySiteId} 
-                       className="rounded-2xl border-slate-200 h-12 font-bold" 
-                     />
-                   </div>
- 
-                   {isAdmin && (
-                     <>
-                       <div className="space-y-2">
-                         <Label htmlFor="ownerId" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Assigned Owner</Label>
-                         <Select name="ownerId" defaultValue={selectedStudio?.ownerId}>
-                           <SelectTrigger className="rounded-2xl border-slate-200 h-12 font-bold">
-                             <SelectValue placeholder="Select Owner" />
-                           </SelectTrigger>
-                           <SelectContent>
-                             {allTrainers.map(t => (
-                               <SelectItem key={t.id} value={t.id!}>{t.fullName} ({t.role})</SelectItem>
-                             ))}
-                           </SelectContent>
-                         </Select>
-                       </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+              {/* Studio Config and Role Assignment (Super / Franchise Owner Level) */}
+              <div className="lg:col-span-2 space-y-8">
+                <Card className="rounded-[32px] bg-slate-900/60 border border-slate-800/80 shadow-2xl relative overflow-hidden backdrop-blur-md">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#F06C22]/5 filter blur-3xl rounded-full" />
+                  <CardHeader className="p-8 border-b border-slate-800/60 flex flex-row items-center gap-4">
+                    <span className="w-10 h-10 bg-[#F06C22]/15 border border-[#F06C22]/20 rounded-xl flex items-center justify-center text-[#F06C22]">
+                      <BadgeInfo className="w-5 h-5" />
+                    </span>
+                    <div>
+                      <CardTitle className="text-lg font-black uppercase tracking-wider text-white">Studio Infrastructure Setup</CardTitle>
+                      <CardDescription className="text-zinc-500 text-[10px] uppercase font-bold tracking-widest mt-0.5">Parameters synchronizing physical location and systems</CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-8">
+                    <form onSubmit={handleUpdateStudioMetadata} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#F06C22] ml-1">Site Display Name</Label>
+                        <Input 
+                          name="name" 
+                          defaultValue={selectedStudio.name} 
+                          className="bg-slate-950 border-slate-800 text-white rounded-2xl h-12 focus:border-[#F06C22] focus:ring-0 font-bold" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Business Email</Label>
+                        <Input 
+                          name="contactEmail" 
+                          defaultValue={selectedStudio.contactEmail} 
+                          className="bg-slate-950 border-slate-800 text-zinc-300 rounded-2xl h-12 font-bold focus:border-[#F06C22]" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Phone Number</Label>
+                        <Input 
+                          name="phone" 
+                          defaultValue={selectedStudio.phone} 
+                          className="bg-slate-950 border-slate-800 text-zinc-300 rounded-2xl h-12 font-bold focus:border-[#F06C22]" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Operating Timezone</Label>
+                        <Input 
+                          name="timezone" 
+                          defaultValue={selectedStudio.timezone} 
+                          className="bg-slate-950 border-slate-800 text-zinc-300 rounded-2xl h-12 font-bold focus:border-[#F06C22]" 
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Physical Address</Label>
+                        <Input 
+                          name="address" 
+                          defaultValue={selectedStudio.address} 
+                          className="bg-slate-950 border-slate-800 text-zinc-300 rounded-2xl h-12 font-bold focus:border-[#F06C22]" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">MindBody Site ID</Label>
+                        <Input 
+                          name="mindbodySiteId" 
+                          defaultValue={selectedStudio.mindbodySiteId} 
+                          className="bg-slate-950 border-slate-800 text-zinc-300 rounded-2xl h-12 font-bold focus:border-[#F06C22]" 
+                        />
+                      </div>
 
-                       <div className="space-y-2">
-                         <Label htmlFor="headTrainerId" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Head Trainer</Label>
-                         <Select name="headTrainerId" defaultValue={selectedStudio?.headTrainerId}>
-                           <SelectTrigger className="rounded-2xl border-slate-200 h-12 font-bold">
-                             <SelectValue placeholder="Select Head Trainer" />
-                           </SelectTrigger>
-                           <SelectContent>
-                             <SelectItem value="none">None Assigned</SelectItem>
-                             {allTrainers.map(t => (
-                               <SelectItem key={t.id} value={t.id!}>{t.fullName}</SelectItem>
-                             ))}
-                           </SelectContent>
-                         </Select>
-                       </div>
-                     </>
-                   )}
+                      {/* Explicit Role Mapping directly from HQ Command Center */}
+                      <div className="md:col-span-2 pt-6 border-t border-slate-800/60 mt-4 space-y-6">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-white flex items-center gap-2">
+                          <Crown className="w-4 h-4 text-[#F06C22]" />
+                          Role & Permission Mapping
+                        </h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Assigned Business Owner</Label>
+                            <Select name="ownerId" defaultValue={selectedStudio.ownerId || 'none'}>
+                              <SelectTrigger className="bg-slate-950 border-slate-800 text-white h-12 rounded-2xl font-bold">
+                                <SelectValue placeholder="No Owner Assigned" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                                <SelectItem value="none">No Owner Assigned</SelectItem>
+                                {trainers.map(t => (
+                                  <SelectItem key={t.id} value={t.id!}>{t.fullName} ({t.role})</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                   <div className="md:col-span-2 pt-4 border-t flex justify-end">
-                    <Button 
-                      type="submit" 
-                      disabled={isSaving}
-                      className="bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest text-xs h-12 px-8 rounded-2xl shadow-xl shadow-slate-900/20"
-                    >
-                      {isSaving ? 'Synchronizing...' : (
-                        <div className="flex items-center gap-2">
-                          <Save className="w-4 h-4" />
-                          Update Foundation
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Designated Head Trainer</Label>
+                            <Select name="headTrainerId" defaultValue={selectedStudio.headTrainerId || 'none'}>
+                              <SelectTrigger className="bg-slate-950 border-slate-800 text-white h-12 rounded-2xl font-bold">
+                                <SelectValue placeholder="No Head Trainer Assigned" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                                <SelectItem value="none">No Head Trainer Assigned</SelectItem>
+                                {trainers.map(t => (
+                                  <SelectItem key={t.id} value={t.id!}>{t.fullName}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                      )}
+                      </div>
+
+                      <div className="md:col-span-2 pt-6 border-t border-slate-800/60 flex justify-end">
+                        <Button 
+                          type="submit" 
+                          disabled={isSaving}
+                          className="bg-[#F06C22] hover:bg-[#D95B16] text-white font-black uppercase tracking-widest text-xs h-12 px-8 rounded-2xl shadow-xl shadow-[#F06C22]/10"
+                        >
+                          {isSaving ? 'Saving Configurations...' : (
+                            <div className="flex items-center gap-2">
+                              <Save className="w-4 h-4" />
+                              Synchronize Systems
+                            </div>
+                          )}
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+
+                {/* Staff Roster Management */}
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-black uppercase tracking-wider flex items-center gap-3 text-white">
+                      <span className="w-10 h-10 bg-[#F06C22]/15 border border-[#F06C22]/20 rounded-xl flex items-center justify-center text-[#F06C22]">
+                        <Users className="w-5 h-5" />
+                      </span>
+                      Linked Professional Staff
+                    </h3>
+                    <Button 
+                      onClick={() => setIsAddingStaff(true)}
+                      className="bg-slate-900 hover:bg-slate-850 hover:text-white border border-slate-800 hover:border-[#F06C22]/30 text-[#F06C22] font-black uppercase tracking-widest text-[10px] h-10 px-4 rounded-xl shadow-xl transition-all"
+                    >
+                      <Plus className="w-4 h-4 mr-1.5" />
+                      Authorize Trainer
                     </Button>
                   </div>
-                </form>
-              </CardContent>
-            </Card>
-          </section>
 
-          {/* Staff Roster Section */}
-          <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-black uppercase tracking-tight text-slate-800 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-600">
-                  <Users className="w-5 h-5" />
-                </div>
-                Staff Roster
-              </h2>
-              <div className="flex items-center gap-4">
-                <span className="px-4 py-1.5 bg-slate-100 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-500 hidden sm:block">
-                  {staff.length} Authorized Professionals
-                </span>
-                <Button 
-                  onClick={() => setIsAddingStaff(true)}
-                  className="rounded-xl h-10 px-4 bg-sky-500 hover:bg-sky-600 text-white font-black uppercase tracking-widest text-[10px]"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Trainer
-                </Button>
-              </div>
-            </div>
+                  <AnimatePresence>
+                    {isAddingStaff && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -15 }}
+                        className="p-6 bg-slate-900/40 border border-dashed border-slate-800 rounded-[28px]"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-xs font-black uppercase tracking-widest text-[#F06C22]">Search Organization for Trainer</h4>
+                          <Button variant="ghost" size="sm" onClick={() => setIsAddingStaff(false)} className="text-[10px] font-black text-zinc-550 uppercase">Cancel</Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="md:col-span-2">
+                             <Select onValueChange={handleAddTrainerToStudio}>
+                              <SelectTrigger className="bg-slate-950 border-slate-800 text-white h-12 rounded-xl font-bold">
+                                <SelectValue placeholder="Select trainer profile to link..." />
+                              </SelectTrigger>
+                              <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                                {trainers
+                                  .filter(t => !getStaffForStudio(selectedStudio.id!).some(current => current.id === t.id))
+                                  .map(t => (
+                                    <SelectItem key={t.id} value={t.id!}>{t.fullName} ({t.initials})</SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-            <AnimatePresence>
-              {isAddingStaff && (
-                <motion.div
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="mb-8 p-6 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 italic">Assign New Trainer</h3>
-                    <Button variant="ghost" size="sm" onClick={() => setIsAddingStaff(false)} className="text-[10px] font-black uppercase">Cancel</Button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {getStaffForStudio(selectedStudio.id!).map(trainer => {
+                      const isOwner = trainer.id === selectedStudio.ownerId;
+                      const isHead = trainer.id === selectedStudio.headTrainerId;
+                      
+                      return (
+                        <Card 
+                          key={trainer.id}
+                          className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex items-stretch group hover:border-[#F06C22]/30 transition-colors"
+                        >
+                          <div className={cn(
+                            "w-1.5 transition-all",
+                            isOwner ? "bg-amber-500" : isHead ? "bg-indigo-500" : "bg-[#F06C22] group-hover:w-3"
+                          )} />
+                          <CardContent className="p-4 flex items-center gap-4 w-full">
+                            <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center font-black text-white shadow-inner">
+                              {trainer.initials}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-extrabold text-sm uppercase tracking-wider text-white truncate">{trainer.fullName}</p>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                <Badge className="bg-slate-950 text-zinc-400 border border-slate-800 text-[8px] font-black uppercase tracking-widest px-1.5 h-4">
+                                  {trainer.role}
+                                </Badge>
+                                {isOwner && (
+                                  <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[8px] font-black uppercase px-1.5 h-4">
+                                    Studio Owner
+                                  </Badge>
+                                )}
+                                {isHead && (
+                                  <Badge className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[8px] font-black uppercase px-1.5 h-4">
+                                    Head Trainer
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleRemoveTrainerFromStudio(trainer.id!)}
+                                className="w-8 h-8 rounded-lg text-zinc-600 hover:text-rose-500 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                    <div className="md:col-span-2">
-                       <Select onValueChange={handleAddTrainerToStudio}>
-                        <SelectTrigger className="rounded-2xl h-12 font-bold bg-white">
-                          <SelectValue placeholder="Search or select trainer to assign..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {allTrainers
-                            .filter(t => !staff.some(s => s.id === t.id))
-                            .map(t => (
-                              <SelectItem key={t.id} value={t.id!}>{t.fullName} ({t.initials})</SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="mt-2 text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-2">
-                        Assigning a trainer grants them permanent staff access to this location.
+                </div>
+              </div>
+
+              {/* Sidebar Stats and Control Metrics */}
+              <div className="space-y-6">
+                <Card className="rounded-[28px] bg-slate-900 border border-slate-800 p-6 space-y-6">
+                  <div className="flex items-center gap-2 text-[#F06C22] border-b border-slate-850 pb-4">
+                    <ShieldCheck className="w-5 h-5" />
+                    <span className="text-xs font-black uppercase tracking-widest">Studio Permissions Check</span>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">Home Base Staff</p>
+                      <p className="text-2xl font-black text-white tracking-widest mt-0.5">
+                        {trainers.filter(t => t.primaryHomeStudioId === selectedStudio.id).length}
                       </p>
+                      <p className="text-[9px] font-medium text-zinc-500 leading-normal uppercase mt-1">Trainers designated natively to this specific home location.</p>
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-850">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Cross-Training Access</p>
+                      <p className="text-2xl font-black text-rose-400 tracking-widest mt-0.5">
+                        {trainers.filter(t => t.accessibleStudioIds?.includes(selectedStudio.id) && t.primaryHomeStudioId !== selectedStudio.id).length}
+                      </p>
+                      <p className="text-[9px] font-medium text-zinc-500 leading-normal uppercase mt-1">Affiliated trainers with authorized cross-studio client permissions.</p>
                     </div>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <AnimatePresence mode="popLayout">
-                {loadingStaff ? (
-                  [1,2,3,4].map(i => (
-                    <div key={i} className="h-32 bg-slate-100 animate-pulse rounded-[24px]" />
-                  ))
-                ) : (
-                  staff.map(trainer => (
-                    <motion.div
-                      key={trainer.id}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="group"
-                    >
-                      <Card className="rounded-[24px] border-slate-200 hover:border-sky-500 transition-colors shadow-sm overflow-hidden flex items-stretch relative">
-                        <div className={cn(
-                          "w-2 transition-all",
-                          trainer.id === selectedStudio?.ownerId ? "bg-amber-500" : 
-                          trainer.id === selectedStudio?.headTrainerId ? "bg-indigo-500" :
-                          "bg-sky-500 group-hover:w-4"
-                        )} />
-                        <CardContent className="p-4 flex items-center gap-4 w-full">
-                          <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-black text-slate-800 shadow-sm">
-                            {trainer.initials}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="font-black uppercase tracking-tight text-slate-800 truncate">
-                                {trainer.fullName}
-                              </p>
-                              {trainer.id === selectedStudio?.ownerId && <Star className="w-3 h-3 fill-amber-500 text-amber-500" />}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2 mt-1">
-                              <Badge variant="secondary" className="px-2 py-0 h-4 rounded-md text-[8px] font-black uppercase tracking-tighter bg-slate-800 text-white">
-                                {trainer.role}
-                              </Badge>
-                              {trainer.id === selectedStudio?.ownerId && (
-                                <Badge variant="outline" className="px-2 py-0 h-4 rounded-md text-[8px] font-black uppercase tracking-tighter border-amber-500 text-amber-600 bg-amber-50">
-                                  Studio Owner
-                                </Badge>
-                              )}
-                              {trainer.id === selectedStudio?.headTrainerId && (
-                                <Badge variant="outline" className="px-2 py-0 h-4 rounded-md text-[8px] font-black uppercase tracking-tighter border-indigo-500 text-indigo-600 bg-indigo-50">
-                                  Head Trainer
-                                </Badge>
-                              )}
-                              {trainer.primaryHomeStudioId === selectedStudioId && (
-                                <Badge variant="outline" className="px-2 py-0 h-4 rounded-md text-[8px] font-black uppercase tracking-tighter border-emerald-500 text-emerald-600">
-                                  Primary Home
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                             <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => handleRemoveTrainerFromStudio(trainer.id!)}
-                              className="w-8 h-8 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-all"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                            <UserCircle className="w-5 h-5 text-slate-200 transition-colors shrink-0" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))
-                )}
-              </AnimatePresence>
+                </Card>
+              </div>
             </div>
-            
-            {staff.length === 0 && !loadingStaff && (
-              <div className="py-20 text-center bg-slate-50 rounded-[40px] border-2 border-dashed border-slate-200">
-                <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-sm font-bold uppercase tracking-widest text-slate-400">No staff members linked to this location.</p>
+          </motion.div>
+        ) : (
+          <div className="space-y-8">
+            {/* Tab Swappers */}
+            <div className="flex bg-slate-900 p-1.5 rounded-[22px] max-w-md border border-slate-850/80">
+              <button 
+                onClick={() => setActiveTab('networks')}
+                className={cn(
+                  "flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all",
+                  activeTab === 'networks' ? "bg-slate-950 text-white shadow-xl border border-slate-850" : "text-zinc-500 hover:text-white"
+                )}
+              >
+                Franchise Networks
+              </button>
+              <button 
+                onClick={() => setActiveTab('studios')}
+                className={cn(
+                  "flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all",
+                  activeTab === 'studios' ? "bg-slate-950 text-white shadow-xl border border-slate-850" : "text-zinc-500 hover:text-white"
+                )}
+              >
+                Location Registry
+              </button>
+            </div>
+
+            {/* TAB 1: FRANCHISE NETWORKS */}
+            {activeTab === 'networks' && (
+              <div className="space-y-12">
+                
+                {/* Network Builder (Super Admin or Franchise Owner) */}
+                {(isAdmin || authTrainer.role === 'FranchiseOwner' || authTrainer.role === 'Admin') && (
+                  <Card className="rounded-[32px] bg-slate-900 border border-slate-800 p-8 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-[#F06C22]" />
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-xl bg-[#F06C22]/10 border border-[#F06C22]/20 flex items-center justify-center text-[#F06C22]">
+                        <Flame className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black uppercase italic tracking-tight text-white leading-none">Regional Franchise Builder</h3>
+                        <p className="text-[10px] font-bold text-zinc-550 uppercase tracking-widest mt-1">Bootstrap new regional networks and link territories under single ownership</p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleCreateNetwork} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">Franchise Name</Label>
+                        <Input 
+                          placeholder="e.g. Max Strength Northeast Ohio" 
+                          value={newNetworkName}
+                          onChange={(e) => setNewNetworkName(e.target.value)}
+                          className="bg-slate-950 border-slate-800 text-white rounded-xl h-12 focus:border-[#F06C22] font-semibold"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">Franchise Principal (Owner)</Label>
+                        <Select value={newNetworkOwnerId} onValueChange={setNewNetworkOwnerId}>
+                          <SelectTrigger className="bg-slate-950 border-slate-800 text-white h-12 rounded-xl font-bold">
+                            <SelectValue placeholder="Select Franchise Owner" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                            {trainers.map(t => (
+                              <SelectItem key={t.id} value={t.id!}>{t.fullName} ({t.role})</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <Button 
+                        type="submit" 
+                        disabled={isSaving}
+                        className="bg-[#F06C22] hover:bg-[#D95B16] text-white font-black uppercase tracking-widest text-xs h-12 rounded-xl shadow-xl shadow-[#F06C22]/10 flex items-center justify-center gap-2"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        Incorporate Network
+                      </Button>
+                    </form>
+                  </Card>
+                )}
+
+                {/* Networks grid list */}
+                <div className="space-y-6">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-zinc-500 italic pb-2 border-b border-slate-900">
+                    Active Incorporated Networks ({networks.length})
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {networks.map((network) => {
+                      const regionalOwner = trainers.find(t => t.id === network.ownerId || t.fullName === network.ownerId);
+                      const assignedStudios = allStudios.filter(s => network.studioIds?.includes(s.id!) || s.networkId === network.id);
+
+                      return (
+                        <Card 
+                          key={network.id}
+                          className="bg-slate-900 border border-slate-800 rounded-[28px] overflow-hidden flex flex-col justify-between p-6 relative"
+                        >
+                          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#F06C22]/60 to-transparent" />
+                          
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h4 className="text-xl font-extrabold uppercase italic tracking-tight text-white">{network.name}</h4>
+                                <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-0.5">
+                                  REGIONAL FRANCHISE NETWORK
+                                </p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteNetwork(network.id)}
+                                className="w-8 h-8 rounded-lg text-zinc-600 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+
+                            <div className="flex items-center gap-2 bg-slate-950 p-3 rounded-xl border border-slate-850">
+                              <Crown className="w-4 h-4 text-amber-500 shrink-0" />
+                              <div className="text-left">
+                                <p className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest leading-none">Franchise Principal</p>
+                                <p className="text-xs font-black text-white uppercase mt-1 leading-none">{regionalOwner?.fullName || 'Jeff (HQ)'}</p>
+                              </div>
+                            </div>
+
+                            {/* Linked Studios */}
+                            <div className="space-y-2 pt-2">
+                              <p className="text-[9px] font-bold text-[#F06C22] uppercase tracking-widest">Incorporated Studios ({assignedStudios.length})</p>
+                              <div className="space-y-1.5">
+                                {assignedStudios.map(studio => (
+                                  <div 
+                                    key={studio.id}
+                                    className="flex items-center justify-between bg-slate-950 px-3 py-2 rounded-xl border border-slate-850"
+                                  >
+                                    <span className="text-xs font-bold uppercase text-zinc-300 flex items-center gap-1.5">
+                                      <Building2 className="w-3.5 h-3.5 text-zinc-550" />
+                                      {studio.name}
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      onClick={() => handleUnlinkStudio(network.id, studio.id!)}
+                                      className="text-[#F06C22] hover:text-[#F06C22]/80 font-black uppercase text-[8px] tracking-widest px-2.5 py-1 rounded h-auto flex items-center gap-1 hover:bg-[#F06C22]/10"
+                                    >
+                                      <Unlink2 className="w-3 h-3" />
+                                      Unlink
+                                    </Button>
+                                  </div>
+                                ))}
+
+                                {assignedStudios.length === 0 && (
+                                  <p className="text-[10px] text-zinc-650 font-bold uppercase tracking-widest py-1 italic">No physical locations linked.</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Link studio selection to this network */}
+                          {independentStudios.length > 0 && (
+                            <div className="pt-4 mt-6 border-t border-slate-850">
+                              <p className="text-[8px] font-black uppercase tracking-widest text-[#F06C22] mb-2 leading-none">Link Independent Location:</p>
+                              <Select onValueChange={(studioId: string) => handleLinkStudio(network.id as string, studioId)}>
+                                <SelectTrigger className="bg-slate-950 border-slate-800 text-zinc-300 h-10 rounded-xl text-[10px] font-black uppercase tracking-wider">
+                                  <SelectValue placeholder="Add Independent Location" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                                  {independentStudios.map(s => (
+                                    <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </Card>
+                      );
+                    })}
+
+                    {networks.length === 0 && (
+                      <div className="col-span-full py-20 text-center bg-slate-900/40 rounded-[40px] border border-dashed border-slate-850/80">
+                        <Network className="w-12 h-12 text-slate-850 mx-auto mb-4" />
+                        <p className="text-sm font-black uppercase tracking-widest text-zinc-500">No active regional network commands incorporated</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
-          </section>
-        </div>
 
-        {/* Sidebar Info */}
-        <div className="space-y-6">
-          <Card className="rounded-[32px] bg-indigo-900 text-white shadow-2xl border-none overflow-hidden">
-            <div className="p-6 bg-white/5 border-b border-white/10">
-              <h3 className="text-sm font-black uppercase tracking-widest text-indigo-200 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4" />
-                Access Summary
-              </h3>
-            </div>
-            <CardContent className="p-6 space-y-6">
-              <div className="space-y-2">
-                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-300">Permanent Access</p>
-                <div className="text-2xl font-black tracking-tighter">
-                  {staff.filter(t => t.accessibleStudioIds?.includes(selectedStudioId!)).length}
+            {/* TAB 2: STUDIO LOCATION REGISTRY */}
+            {activeTab === 'studios' && (
+              <div className="space-y-6">
+                <h3 className="text-sm font-black uppercase tracking-widest text-zinc-500 italic pb-2 border-b border-slate-900">
+                  Location Registry ({manageableStudios.length} Physical Locations)
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {manageableStudios.map(studio => {
+                    const parentNetwork = networks.find(n => n.studioIds?.includes(studio.id!) || studio.networkId === n.id);
+                    const staffRoster = getStaffForStudio(studio.id!);
+                    
+                    return (
+                      <div 
+                        key={studio.id}
+                        onClick={() => setSelectedStudioId(studio.id!)}
+                        className="bg-slate-900 border border-slate-800/80 rounded-[28px] p-6 shadow-xl flex flex-col justify-between min-h-[240px] relative overflow-hidden cursor-pointer hover:border-[#F06C22]/50 transition-all group"
+                      >
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-slate-850 to-transparent group-hover:via-[#F06C22] transition-colors" />
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="w-8 h-8 rounded-lg bg-slate-950 flex items-center justify-center border border-slate-800 text-[#F06C22] group-hover:bg-[#F06C22] group-hover:text-white transition-colors">
+                              <Building2 className="w-4 h-4" />
+                            </span>
+                            {parentNetwork ? (
+                              <span className="text-[8px] font-black uppercase bg-[#F06C22]/15 text-[#F06C22] px-2 py-0.5 rounded-full border border-[#F06C22]/20">
+                                {parentNetwork.name}
+                              </span>
+                            ) : (
+                              <span className="text-[8px] font-black uppercase bg-zinc-800 text-zinc-500 px-2 py-0.5 rounded-full border border-zinc-700/30">
+                                Independent Clinic
+                              </span>
+                            )}
+                          </div>
+                          
+                          <h4 className="font-extrabold uppercase italic tracking-tight text-lg text-white mb-1 leading-none group-hover:text-[#F06C22] transition-colors">
+                            {studio.name}
+                          </h4>
+                          <div className="flex items-center gap-1 text-zinc-500 mb-6 mt-1.5">
+                            <MapPin className="w-3 h-3 shrink-0" />
+                            <span className="text-[9px] font-bold uppercase tracking-wider truncate">
+                              {studio.address || 'Address Not Configured'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Staff count footer */}
+                        <div className="border-t border-slate-850/80 pt-4 flex items-center justify-between">
+                          <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">AUTHORIZED STAFF:</span>
+                          <span className="text-sm font-black text-white">{staffRoster.length}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {manageableStudios.length === 0 && (
+                    <div className="col-span-full py-20 text-center bg-slate-900/40 rounded-[40px] border border-dashed border-slate-850/80">
+                      <Building2 className="w-12 h-12 text-slate-850 mx-auto mb-4" />
+                      <p className="text-sm font-black uppercase tracking-widest text-zinc-400">No manageable studio locations found under your authorization</p>
+                    </div>
+                  )}
                 </div>
-                <p className="text-xs text-indigo-200/60 leading-relaxed font-medium">
-                  Staff members with persistent permissions to view clients and log workouts at this location.
-                </p>
               </div>
-              
-              <div className="pt-6 border-t border-white/10 space-y-2">
-                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-300">Temporary Guest Pool</p>
-                <div className="text-2xl font-black tracking-tighter text-amber-400">
-                  {staff.filter(t => t.activeGuestStudioIds?.includes(selectedStudioId!)).length}
-                </div>
-                <p className="text-xs text-indigo-200/60 leading-relaxed font-medium">
-                  Remote trainers currently authorized for guest training sessions.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

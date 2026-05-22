@@ -26,27 +26,66 @@ export interface PermissionContext {
 }
 
 /**
- * Checks if a user has Super Admin privileges.
- * Austin Jurgens with jurgensaj@gmail.com or role 'Admin' is the Super Admin.
+ * Checks if a user is an Admin (Creator/System Architect - complete access)
  */
-export function isSuperAdmin(trainer: Trainer | null, currentUserEmail?: string): boolean {
+export function isAdmin(trainer: Trainer | null, currentUserEmail?: string): boolean {
+  if (currentUserEmail?.toLowerCase() === 'jurgensaj@gmail.com') return true;
   if (!trainer) return false;
-  const matchEmail = currentUserEmail?.toLowerCase() === 'jurgensaj@gmail.com';
-  return trainer.role === 'Admin' || matchEmail || trainer.fullName === 'Austin Jurgens';
+  return trainer.role === 'Admin' || trainer.fullName === 'Austin Jurgens';
 }
 
 /**
- * Checks if a trainer is a Franchise Owner.
+ * Checks if a user is a Founder (formerly Overseer/Jeff - complete company-wide admin access)
+ * Inherits: Admin
+ */
+export function isFounder(trainer: Trainer | null): boolean {
+  if (!trainer) return false;
+  const role = trainer.role;
+  return role === 'Founder' || role === 'Overseer' || role === 'Admin' || trainer.fullName?.toLowerCase().includes('jeff tomaszewski');
+}
+
+/**
+ * Checks if a user is an Owner (admin access to their specific franchise studio)
+ * Inherits: Founder, Admin
+ */
+export function isOwner(trainer: Trainer | null): boolean {
+  if (!trainer) return false;
+  const role = trainer.role;
+  return role === 'Owner' || role === 'StudioOwner' || role === 'FranchiseOwner' || isFounder(trainer);
+}
+
+/**
+ * Checks if a user is a StudioLeader (admin access to specific studio/staff)
+ * Inherits: Owner, Founder, Admin
+ */
+export function isStudioLeader(trainer: Trainer | null): boolean {
+  if (!trainer) return false;
+  const role = trainer.role;
+  return role === 'StudioLeader' || role === 'HeadTrainer' || isOwner(trainer);
+}
+
+/**
+ * Checks if a user is a LifeTransformer (full edit access to clients)
+ * Inherits: StudioLeader, Owner, Founder, Admin
+ */
+export function isLifeTransformer(trainer: Trainer | null): boolean {
+  if (!trainer) return false;
+  const role = trainer.role;
+  return role === 'LifeTransformer' || role === 'Trainer' || isStudioLeader(trainer);
+}
+
+/**
+ * Checks if a user has Super Admin privileges (backwards compatibility).
+ */
+export function isSuperAdmin(trainer: Trainer | null, currentUserEmail?: string): boolean {
+  return isAdmin(trainer, currentUserEmail);
+}
+
+/**
+ * Checks if a trainer is a Franchise Owner (backwards compatibility).
  */
 export function isFranchiseOwner(trainer: Trainer | null): boolean {
-  if (!trainer) return false;
-  // Role matches FranchiseOwner or is Jeff Tomaszewski
-  return (
-    trainer.role === 'FranchiseOwner' ||
-    trainer.role === 'Overseer' || // Keep Overseer as backward compatibility mapping to owner level
-    trainer.fullName?.toLowerCase().includes('jeff tomaszewski') ||
-    trainer.fullName?.toLowerCase() === 'jeff tomaszewski'
-  );
+  return isFounder(trainer);
 }
 
 /**
@@ -105,19 +144,16 @@ export function hasPermission(
   // 1. Unauthenticated users have no permission
   if (!trainer) return false;
 
-  // 2. Super Admin bypass: Absolute God-Mode
-  if (isSuperAdmin(trainer, currentUserEmail)) {
+  // 2. Absolute Admin and Overrides bypass
+  if (isAdmin(trainer, currentUserEmail)) {
     return true;
   }
 
-  // 3. Franchise Owner bypass: Global Owner
-  if (isFranchiseOwner(trainer)) {
-    // Can do everything except possibly absolute DB bypasses block reserved for Super Admin,
-    // but the spec says "Has full access to all studios, global app settings..."
+  // 3. Founder bypass: Global Owner
+  if (isFounder(trainer)) {
     return true;
   }
 
-  const role = trainer.role;
   const { studioId, targetTrainer, targetClient, networks } = context;
 
   // Determine current active/evaluated studio ID
@@ -127,17 +163,15 @@ export function hasPermission(
     case 'view_all_studios':
     case 'manage_all_studios':
     case 'manage_networks':
-      // Only Super Admin and Franchise Owner can do global actions
+      // Only Admin and Founder can do global actions
       return false;
 
     case 'manage_studio':
     case 'manage_studio_settings':
-      // Studio Owners can manage any studio in their territory
-      if (role === 'StudioOwner') {
+      if (isOwner(trainer)) {
         return isStudioInTerritory(trainer, evaluationStudioId, networks);
       }
-      // Head Trainer can manage their primary home studio settings
-      if (role === 'HeadTrainer') {
+      if (isStudioLeader(trainer)) {
         return trainer.primaryHomeStudioId === evaluationStudioId;
       }
       return false;
@@ -147,32 +181,27 @@ export function hasPermission(
     case 'delete_trainer':
       if (!targetTrainer) return false;
       
-      // Studio Owners can manage trainers in their territory
-      if (role === 'StudioOwner') {
+      if (isOwner(trainer)) {
         return isStudioInTerritory(trainer, targetTrainer.primaryHomeStudioId, networks);
       }
 
-      // Head Trainers can only manage standard Trainers in their primaryHomeStudioId
-      if (role === 'HeadTrainer') {
-        const isStandardTrainer = targetTrainer.role === 'Trainer';
+      if (isStudioLeader(trainer)) {
+        const isStandardTransformer = targetTrainer.role === 'LifeTransformer' || targetTrainer.role === 'Trainer';
         const isSameStudio = targetTrainer.primaryHomeStudioId === trainer.primaryHomeStudioId;
-        return isSameStudio && isStandardTrainer;
+        return isSameStudio && isStandardTransformer;
       }
       return false;
 
     case 'create_client':
-      // Trainers can create clients for their primary studio or cross-training studio
-      if (role === 'Trainer') {
-        return evaluationStudioId === trainer.primaryHomeStudioId || 
-               trainer.accessibleStudioIds?.includes(evaluationStudioId);
+      if (isOwner(trainer)) {
+        return isStudioInTerritory(trainer, evaluationStudioId, networks);
       }
-      // Head Trainers can create clients in their primary home studio
-      if (role === 'HeadTrainer') {
+      if (isStudioLeader(trainer)) {
         return evaluationStudioId === trainer.primaryHomeStudioId;
       }
-      // Studio Owners can create clients in their territory
-      if (role === 'StudioOwner') {
-        return isStudioInTerritory(trainer, evaluationStudioId, networks);
+      if (isLifeTransformer(trainer)) {
+        return evaluationStudioId === trainer.primaryHomeStudioId || 
+               trainer.accessibleStudioIds?.includes(evaluationStudioId);
       }
       return false;
 
@@ -184,13 +213,11 @@ export function hasPermission(
 
       const clientHome = targetClient.homeStudioId;
 
-      // Studio Owner territory check
-      if (role === 'StudioOwner') {
+      if (isOwner(trainer)) {
         return isStudioInTerritory(trainer, clientHome, networks);
       }
 
-      // Head Trainer/Trainer checks:
-      // A. Client belongs to their home studio or permanent accessible list
+      // StudioLeader/LifeTransformer checks:
       const isHomeStudio = clientHome === trainer.primaryHomeStudioId;
       const isPermanentAccess = trainer.accessibleStudioIds?.includes(clientHome) || 
                                 trainer.activeGuestStudioIds?.includes(clientHome);
@@ -199,14 +226,13 @@ export function hasPermission(
         return true;
       }
 
-      // B. Data Sharing Network: Frictionless access if client belongs to a studio in the same network
+      // Data Sharing Network access
       if (areStudiosInSameNetwork(trainer.primaryHomeStudioId, clientHome, networks)) {
         return true;
       }
 
-      // C. Cross-Training Check: Active studio being viewed has explicit client approval or is shared
+      // Cross-Training Check
       if (evaluationStudioId && evaluationStudioId !== clientHome) {
-        // If client approved this studio ortrainer has home studio access
         const isApprovedForCurrentStudio = targetClient.approvedCrossTrainStudioIds?.includes(evaluationStudioId);
         if (isApprovedForCurrentStudio && 
             (trainer.primaryHomeStudioId === evaluationStudioId || 
@@ -218,8 +244,7 @@ export function hasPermission(
       return false;
 
     case 'delete_client':
-      // Only Studio Owners or above can delete clients from their territory
-      if (role === 'StudioOwner') {
+      if (isOwner(trainer)) {
         if (targetClient) {
           return isStudioInTerritory(trainer, targetClient.homeStudioId, networks);
         }
@@ -228,14 +253,13 @@ export function hasPermission(
       return false;
 
     case 'approve_cross_training':
-      // Studio Owners and Head Trainers can approve cross training for clients in their studio
-      if (role === 'StudioOwner') {
+      if (isOwner(trainer)) {
         if (targetClient) {
           return isStudioInTerritory(trainer, targetClient.homeStudioId, networks);
         }
         return true;
       }
-      if (role === 'HeadTrainer') {
+      if (isStudioLeader(trainer)) {
         if (targetClient) {
           return targetClient.homeStudioId === trainer.primaryHomeStudioId;
         }

@@ -12,6 +12,12 @@ interface ActiveStudioContextType {
   isAdmin: boolean;
   logout: () => Promise<void>;
   hasPermission: (action: PermissionAction, context?: PermissionContext) => boolean;
+  
+  // NEW Phase 2 states
+  isAuthenticated: boolean;
+  setIsAuthenticated: (val: boolean) => void;
+  network: FranchiseNetwork | null;
+  accessibleStudioIds: string[];
 }
 
 const ActiveStudioContext = createContext<ActiveStudioContextType | undefined>(undefined);
@@ -36,6 +42,9 @@ export function ActiveStudioProvider({
   const [activeStudioId, setActiveStudioIdState] = useState<string | null>(() => {
     return localStorage.getItem('max_strength_active_studio_id');
   });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('max_strength_authenticated') === 'true';
+  });
   const [isChangingStudio, setIsChangingStudio] = useState(false);
 
   // Expose centralized permission checker using the active trainer, studio, and loaded networks
@@ -49,10 +58,22 @@ export function ActiveStudioProvider({
     return hasPermissionHelper(authTrainer, action, mergedContext, userEmail);
   }, [authTrainer, activeStudioId, networks, studios, userEmail]);
 
+  // Derived Active Network
+  const network = React.useMemo(() => {
+    if (!activeStudioId || !networks.length) return null;
+    return networks.find(net => net.studioIds.includes(activeStudioId)) || null;
+  }, [activeStudioId, networks]);
+
+  // Derived Accessible Studio IDs for Cross-Training
+  const accessibleStudioIds = React.useMemo(() => {
+    if (!authTrainer) return [];
+    return authTrainer.accessibleStudioIds || [];
+  }, [authTrainer]);
+
   // Restrict available studios based on centralized permissions
   const availableStudios = React.useMemo(() => {
-    // If not logged in as a trainer, no studios available
-    if (!authTrainer) return [];
+    // If not logged in as a trainer, show all studios
+    if (!authTrainer) return studios;
     
     // Super Admin or Franchise Owner/Overseer see all studios
     const isGlobalUser = isAdmin || 
@@ -88,6 +109,7 @@ export function ActiveStudioProvider({
 
   const logout = async () => {
     setActiveStudioId(null);
+    setIsAuthenticated(false);
     localStorage.clear();
     await onLogout();
   };
@@ -120,7 +142,11 @@ export function ActiveStudioProvider({
       setIsChangingStudio,
       isAdmin,
       logout,
-      hasPermission
+      hasPermission,
+      isAuthenticated,
+      setIsAuthenticated,
+      network,
+      accessibleStudioIds
     }}>
       {children}
     </ActiveStudioContext.Provider>
