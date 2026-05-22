@@ -694,7 +694,12 @@ export function TrainerControlHubView({
             { id: 'trainer_settings', label: 'Trainer Settings', icon: User },
             { id: 'studio_settings', label: 'Studio Settings', icon: Building2 },
             { id: 'app_settings', label: 'App Settings', icon: Settings },
-          ].map(tab => {
+          ].filter(tab => {
+            if (tab.id === 'app_settings') {
+              return isAdmin || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer' || authTrainer?.role === 'StudioOwner';
+            }
+            return true;
+          }).map(tab => {
             const Icon = tab.icon;
             return (
               <button
@@ -1381,83 +1386,111 @@ export function TrainerControlHubView({
             );
           })()}
 
-          {activeTab === 'app_settings' && (
-            <div className="space-y-8">
-              <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl dark:shadow-none rounded-[32px] overflow-hidden">
-                <CardHeader className="bg-slate-50 dark:bg-slate-950 pb-8 border-b border-slate-200 dark:border-slate-800">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-800 shadow-inner">
-                      <HardDrive className="w-6 h-6 text-sky-600" />
+          {activeTab === 'app_settings' && (() => {
+            const hasAccess = isAdmin || authTrainer?.role === 'Admin' || authTrainer?.role === 'Overseer' || authTrainer?.role === 'StudioOwner';
+            if (!hasAccess) {
+              return (
+                <div className="flex items-center justify-center p-6 min-h-[400px] animate-fade-in">
+                  <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm rounded-[32px] p-8 max-w-md w-full text-center space-y-6">
+                    <div className="mx-auto w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-955/15 flex items-center justify-center border border-rose-100 dark:border-rose-900/30">
+                      <Lock className="w-8 h-8 text-rose-500" />
                     </div>
-                    <div>
-                      <CardTitle className="text-2xl font-black text-slate-900 dark:text-white italic tracking-tight">Data & Telemetry</CardTitle>
-                      <CardDescription className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[10px] tracking-widest">Network status and synchronization.</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-8 space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl gap-6">
                     <div className="space-y-2">
-                       <Label className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                         <Sparkles className="w-4 h-4 text-amber-400" />
-                         Interface Theme
-                       </Label>
-                       <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-sm">
-                         Toggle between dark mode, light mode, or system default via the header control.
-                       </p>
+                      <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase italic tracking-tight">Access Restricted</h3>
+                      <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed font-semibold">
+                        System architecture and data pipelines are limited to System Administrators and Overseers.
+                      </p>
                     </div>
-                    <div className="flex bg-white dark:bg-slate-900 rounded-xl p-1 border border-slate-200 dark:border-slate-800">
-                       <div className="px-4 py-2 text-xs font-black uppercase tracking-widest text-[#10B981] bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30 rounded-lg shadow-inner">
-                         Active
-                       </div>
-                    </div>
-                  </div>
+                  </Card>
+                </div>
+              );
+            }
 
-                  <div className="grid gap-4">
-                    <Label htmlFor="legacy-upload" className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">Historical Workout Data (CSV)</Label>
-                    <div className="relative">
-                      <Input 
-                        id="legacy-upload" 
-                        type="file" 
-                        accept=".csv" 
-                        onChange={handleLegacyFileUpload}
-                        disabled={isLegacyImporting}
-                        className="h-24 border-slate-200 dark:border-slate-800 border-dashed border-slate-300 dark:border-slate-700 bg-white/30 rounded-2xl cursor-pointer file:hidden flex items-center justify-center text-center font-bold text-slate-500 dark:text-slate-400 hover:border-orange-500/50 hover:bg-slate-50 transition-all"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        {isLegacyImporting ? (
-                          <div className="flex items-center gap-3">
-                            <Loader2 className="w-6 h-6 animate-spin text-orange-500" />
-                            <span className="text-lg font-black uppercase italic text-orange-500">Processing...</span>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Click to select CSV</span>
-                            <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase">Legacy/FileMaker Format</span>
-                          </div>
-                        )}
+            return (
+              <div className="space-y-8 animate-fade-in">
+                <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm rounded-[32px] overflow-hidden">
+                  <CardHeader className="bg-slate-50 dark:bg-slate-950 pb-8 border-b border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/20 flex items-center justify-center border border-amber-200 dark:border-amber-900/30 shadow-inner">
+                        <Database className="w-6 h-6 text-amber-500" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-2xl font-black text-slate-900 dark:text-white italic tracking-tight">Legacy Data Ingestion Pipeline</CardTitle>
+                        <CardDescription className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[10px] tracking-widest">Import historical client logs via CSV to populate the demographic engine.</CardDescription>
                       </div>
                     </div>
-                  </div>
+                  </CardHeader>
+                  <CardContent className="p-8 space-y-8">
+                    {/* Interface Theme block preserved & styled legacy block */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl gap-6">
+                      <div className="space-y-1">
+                         <Label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-2 leading-none">
+                           <Sparkles className="w-4 h-4 text-amber-500" />
+                           Interface Theme
+                         </Label>
+                         <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-sm mt-1">
+                           Toggle between dark mode, light mode, or system default via the header control.
+                         </p>
+                      </div>
+                      <div className="flex bg-white dark:bg-slate-900 rounded-xl p-1 border border-slate-200 dark:border-slate-800 shrink-0">
+                         <div className="px-3.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-[#10B981] bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30 rounded-lg shadow-inner">
+                           Active
+                         </div>
+                      </div>
+                    </div>
 
-                  {legacyStats && (
-                    <div className="p-6 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-4">
-                      <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0 mt-1" />
-                      <div>
-                        <p className="font-black text-emerald-400 text-lg">Import Success</p>
-                        <div className="text-emerald-200/80 font-medium grid grid-cols-2 gap-x-8 gap-y-1 mt-2 text-xs">
-                          <p>Clients: <span className="font-black text-emerald-400">{legacyStats.clients}</span></p>
-                          <p>Sessions: <span className="font-black text-emerald-400">{legacyStats.sessions}</span></p>
-                          <p>Logs: <span className="font-black text-emerald-400">{legacyStats.logs}</span></p>
-                          <p>Skipped: <span className="font-black text-emerald-400">{legacyStats.failed}</span></p>
+                    <div className="space-y-4">
+                      <Label htmlFor="legacy-upload" className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 px-1">Historical Workout Data (CSV)</Label>
+                      <div className="relative group">
+                        {/* High-end SaaS drop zone */}
+                        <div className="w-full h-44 border-2 border-dashed border-slate-350 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 rounded-3xl flex flex-col items-center justify-center p-6 text-center transition-all duration-200 group-hover:bg-slate-100/70 dark:group-hover:bg-slate-900/60 group-hover:border-sky-450">
+                          {isLegacyImporting ? (
+                            <div className="flex flex-col items-center gap-3">
+                              <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
+                              <span className="text-sm font-black uppercase italic tracking-wider text-sky-500">Processing Legacy Data...</span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center space-y-3">
+                              <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center shadow-sm text-slate-450 dark:text-slate-500 group-hover:text-sky-500 group-hover:border-sky-200 transition-colors">
+                                <Database className="w-6 h-6" />
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Drag & drop or click to upload CSV</p>
+                                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Supports legacy FileMaker schemas & metrics</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <Input 
+                          id="legacy-upload" 
+                          type="file" 
+                          accept=".csv" 
+                          onChange={handleLegacyFileUpload}
+                          disabled={isLegacyImporting}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        />
+                      </div>
+                    </div>
+
+                    {legacyStats && (
+                      <div className="p-6 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/10 rounded-2xl flex items-start gap-4">
+                        <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-black text-emerald-600 dark:text-emerald-400 uppercase italic tracking-wider text-sm">Import Success</p>
+                          <div className="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-2 mt-3 text-[9px]">
+                            <p>Clients: <span className="font-mono text-xs text-slate-900 dark:text-white font-black">{legacyStats.clients}</span></p>
+                            <p>Sessions: <span className="font-mono text-xs text-slate-900 dark:text-white font-black">{legacyStats.sessions}</span></p>
+                            <p>Logs: <span className="font-mono text-xs text-slate-900 dark:text-white font-black">{legacyStats.logs}</span></p>
+                            <p>Skipped: <span className="font-mono text-xs text-slate-900 dark:text-white font-black">{legacyStats.failed}</span></p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
 
         </div>
       </div>
