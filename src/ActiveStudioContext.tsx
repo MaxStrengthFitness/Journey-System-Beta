@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Studio, Trainer } from './types';
+import { Studio, Trainer, FranchiseNetwork } from './types';
+import { hasPermission as hasPermissionHelper, PermissionAction, PermissionContext } from './lib/permissions';
 
 interface ActiveStudioContextType {
   activeStudioId: string | null;
@@ -9,6 +10,8 @@ interface ActiveStudioContextType {
   isChangingStudio: boolean;
   setIsChangingStudio: (val: boolean) => void;
   isAdmin: boolean;
+  logout: () => Promise<void>;
+  hasPermission: (action: PermissionAction, context?: PermissionContext) => boolean;
 }
 
 const ActiveStudioContext = createContext<ActiveStudioContextType | undefined>(undefined);
@@ -16,25 +19,48 @@ const ActiveStudioContext = createContext<ActiveStudioContextType | undefined>(u
 export function ActiveStudioProvider({ 
   children, 
   studios, 
+  networks = [],
   authTrainer,
-  isAdmin = false
+  isAdmin = false,
+  userEmail,
+  onLogout
 }: { 
   children: ReactNode; 
   studios: Studio[]; 
+  networks?: FranchiseNetwork[];
   authTrainer: Trainer | null;
   isAdmin?: boolean;
+  userEmail?: string;
+  onLogout: () => Promise<void>;
 }) {
   const [activeStudioId, setActiveStudioIdState] = useState<string | null>(() => {
     return localStorage.getItem('max_strength_active_studio_id');
   });
   const [isChangingStudio, setIsChangingStudio] = useState(false);
 
+  // Expose centralized permission checker using the active trainer, studio, and loaded networks
+  const hasPermission = React.useCallback((action: PermissionAction, context: PermissionContext = {}) => {
+    const mergedContext = {
+      networks,
+      studios,
+      studioId: activeStudioId || undefined,
+      ...context
+    };
+    return hasPermissionHelper(authTrainer, action, mergedContext, userEmail);
+  }, [authTrainer, activeStudioId, networks, studios, userEmail]);
+
+  // Restrict available studios based on centralized permissions
   const availableStudios = React.useMemo(() => {
     // If not logged in as a trainer, no studios available
     if (!authTrainer) return [];
     
-    // Admin Override: System admins see all studios
-    if (isAdmin || (authTrainer.role === 'StudioOwner' || authTrainer.role === 'Admin' || authTrainer.role === 'Overseer')) return studios;
+    // Super Admin or Franchise Owner/Overseer see all studios
+    const isGlobalUser = isAdmin || 
+      authTrainer.role === 'Admin' || 
+      authTrainer.role === 'FranchiseOwner' || 
+      authTrainer.role === 'Overseer';
+      
+    if (isGlobalUser) return studios;
 
     // Union of accessible, guest, and owned studios
     const allowedIds = new Set([
@@ -60,26 +86,25 @@ export function ActiveStudioProvider({
     }
   };
 
+  const logout = async () => {
+    setActiveStudioId(null);
+    localStorage.clear();
+    await onLogout();
+  };
+
   // If the active studio is no longer in the available list, clear it
   useEffect(() => {
-    // Only perform this check if we have data and we are NOT in the middle of a trainer transition
     if (activeStudioId && studios.length > 0 && availableStudios.length > 0 && authTrainer) {
       const existsInSystem = studios.some(s => s.id === activeStudioId);
       const isAllowed = availableStudios.some(s => s.id === activeStudioId);
       
-      // If it's completely gone from the system, definitely clear it
       if (!existsInSystem) {
         console.warn('Active studio no longer exists in system. Clearing.');
         setActiveStudioId(null);
         return;
       }
 
-      // If it exists but we lost access? This is trickier.
-      // We only clear if availableStudios is definitely fully loaded.
       if (!isAllowed && authTrainer.id !== 'owner-temp') {
-         // Potential loss of permission. For now, let's just log it.
-         // We'll only clear if we are SURE. 
-         // Most "kicks to hub" happen because this triggers prematurely.
          console.log('Active studio not in available list. Potential permission change.');
       }
     }
@@ -93,7 +118,9 @@ export function ActiveStudioProvider({
       availableStudios,
       isChangingStudio,
       setIsChangingStudio,
-      isAdmin
+      isAdmin,
+      logout,
+      hasPermission
     }}>
       {children}
     </ActiveStudioContext.Provider>

@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { ScheduleEntry, Trainer } from '../types';
 import { cn } from '../lib/utils';
+import { isFuzzyNameMatch } from '../lib/sync-utils';
 
 export function CalendarView({ 
   schedules, 
@@ -89,25 +90,44 @@ export function CalendarView({
     return map;
   }, [trainers]);
 
-  // Handle trainer filtering for sessions
-  const filteredSchedules = React.useMemo(() => {
-    return schedules.filter(s => {
+  // Handle trainer filtering for sessions and partition Unavailability to events
+  const { normalSchedules, unavailEvents } = React.useMemo(() => {
+    const normal: any[] = [];
+    const unavail: any[] = [];
+    schedules.forEach(s => {
+      if (s.status === 'Cancelled') return;
       const tId = trainerMap[s.trainerName];
       const trainerMatches = selectedTrainerId === 'all' || tId === selectedTrainerId;
-      return s.status !== 'Cancelled' && trainerMatches;
+      if (!trainerMatches) return;
+
+      if (s.clientName?.toLowerCase().includes('unavailab')) {
+        unavail.push({
+          ...s,
+          isClientEvent: true,
+          isUnavailabilityEvent: true,
+          date: s.startTime,
+          title: 'Unavailability',
+          type: 'Other',
+          priority: 'Low',
+          notes: (s as any).notes || ''
+        });
+      } else {
+        normal.push(s);
+      }
     });
+    return { normalSchedules: normal, unavailEvents: unavail };
   }, [schedules, selectedTrainerId, trainerMap]);
 
   const filteredItems = React.useMemo(() => {
     let items: any[] = [];
     if (filterMode === 'all' || filterMode === 'sessions') {
-      items = [...items, ...filteredSchedules];
+      items = [...items, ...normalSchedules];
     }
     if (filterMode === 'all' || filterMode === 'events') {
-      items = [...items, ...allClientEvents];
+      items = [...items, ...allClientEvents, ...unavailEvents];
     }
     return items;
-  }, [filterMode, filteredSchedules, allClientEvents]);
+  }, [filterMode, normalSchedules, allClientEvents, unavailEvents]);
 
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
@@ -191,16 +211,176 @@ export function CalendarView({
   const handleClientClick = (session: ScheduleEntry) => {
     if (onSelectClient && setView) {
       const clientName = session.clientName || '';
-      const client = clients?.find(c => 
-        c.id === session.clientId || 
-        c.mindbody_name?.toLowerCase() === clientName.toLowerCase() ||
-        `${c.firstName} ${c.lastName}`.toLowerCase() === clientName.toLowerCase()
+      
+      const scheduleTrainer = trainers.find(t => 
+        t.id === session.trainerId || 
+        (t.fullName && session.trainerName && t.fullName.toLowerCase() === session.trainerName.toLowerCase())
       );
-      if (client) {
-        onSelectClient(client.id!);
+      const targetStudioId = scheduleTrainer?.primaryHomeStudioId;
+
+      let matchedClient: any = null;
+
+      // 1. Try matching with strict name/fuzzy in the trainer's home studio first
+      if (clients && targetStudioId) {
+        matchedClient = clients.find(c => 
+          c.homeStudioId === targetStudioId &&
+          (c.id === session.clientId || isFuzzyNameMatch(clientName, c.firstName || '', c.lastName || '', c.mindbody_name))
+        );
+      }
+
+      // 2. Fallback globally
+      if (!matchedClient && clients) {
+        matchedClient = clients.find(c => 
+          c.id === session.clientId || 
+          isFuzzyNameMatch(clientName, c.firstName || '', c.lastName || '', c.mindbody_name)
+        );
+      }
+
+      // 3. Quick check: Has this exact name been linked in any previous schedule entry?
+      if (!matchedClient && schedules) {
+        const pastLink = schedules.find(s => s.clientName === clientName && !!s.clientId);
+        if (pastLink && clients) {
+          matchedClient = clients.find(c => c.id === pastLink.clientId);
+        }
+      }
+
+      // Helper to trigger navigation
+      const selectMatchedClient = (clientId: string, nameToStore?: string) => {
+        if (session.id && (!session.clientId || session.clientId !== clientId)) {
+          import('../firebase').then(({ db }) => {
+            import('firebase/firestore').then(({ updateDoc, doc }) => {
+              updateDoc(doc(db, 'schedules', session.id!), {
+                clientId: clientId
+              }).catch(err => console.error("Error auto-linking clicked calendar schedule:", err));
+              if (nameToStore) {
+                updateDoc(doc(db, 'clients', clientId), {
+                  mindbody_name: nameToStore
+                }).catch(err => console.error("Error setting mindbody_name on click:", err));
+              }
+            });
+          }).catch(e => console.error("Could not load Firebase for dynamic auto-link:", e));
+        }
+
+        onSelectClient(clientId);
         setView('profile');
-      } else if (onStartNewClientOnboarding) {
-        onStartNewClientOnboarding(clientName);
+      };
+
+      if (matchedClient) {
+        selectMatchedClient(matchedClient.id, !matchedClient.mindbody_name ? clientName : undefined);
+      } else {
+        // If not found in current UI state array (or if the day of schedule is different),
+        // query Firestore in real-time under trainer's home studio first, then globally.
+        import('../firebase').then(({ db }) => {
+          import('firebase/firestore').then(async ({ getDocs, query, collection, where }) => {
+            try {
+              const clientsRef = collection(db, 'clients');
+              let dbMatched: any = null;
+
+              const nameVariants = Array.from(new Set([
+                clientName,
+                clientName.toLowerCase(),
+                clientName.toUpperCase(),
+                clientName.split(/\s+/).map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ')
+              ]));
+
+              // A. Try querying trainer's home studio clients first
+              if (targetStudioId) {
+                const mbSnap = await getDocs(query(
+                  clientsRef,
+                  where('homeStudioId', '==', targetStudioId),
+                  where('mindbody_name', 'in', nameVariants)
+                ));
+
+                if (!mbSnap.empty) {
+                  dbMatched = { id: mbSnap.docs[0].id, ...mbSnap.docs[0].data() };
+                } else {
+                  const parts = clientName.split(/\s+/);
+                  if (parts.length >= 1) {
+                    const first = parts[0];
+                    const firstVariants = Array.from(new Set([
+                      first,
+                      first.toLowerCase(),
+                      first.toUpperCase(),
+                      first.charAt(0).toUpperCase() + first.slice(1).toLowerCase(),
+                      ...nameVariants
+                    ]));
+
+                    const flSnap = await getDocs(query(
+                      clientsRef,
+                      where('homeStudioId', '==', targetStudioId),
+                      where('firstName', 'in', firstVariants)
+                    ));
+
+                    const matchingDoc = flSnap.docs.find(docData => {
+                      const data = docData.data();
+                      return isFuzzyNameMatch(clientName, data.firstName || '', data.lastName || '', data.mindbody_name);
+                    });
+
+                    if (matchingDoc) {
+                      dbMatched = { id: matchingDoc.id, ...matchingDoc.data() };
+                    }
+                  }
+                }
+              }
+
+              // B. Fallback globally
+              if (!dbMatched) {
+                const mbSnapGlobal = await getDocs(query(
+                  clientsRef,
+                  where('mindbody_name', 'in', nameVariants)
+                ));
+
+                if (!mbSnapGlobal.empty) {
+                  dbMatched = { id: mbSnapGlobal.docs[0].id, ...mbSnapGlobal.docs[0].data() };
+                } else {
+                  const parts = clientName.split(/\s+/);
+                  if (parts.length >= 1) {
+                    const first = parts[0];
+                    const firstVariants = Array.from(new Set([
+                      first,
+                      first.toLowerCase(),
+                      first.toUpperCase(),
+                      first.charAt(0).toUpperCase() + first.slice(1).toLowerCase(),
+                      ...nameVariants
+                    ]));
+
+                    const flSnapGlobal = await getDocs(query(
+                      clientsRef,
+                      where('firstName', 'in', firstVariants)
+                    ));
+
+                    const matchingDoc = flSnapGlobal.docs.find(docData => {
+                      const data = docData.data();
+                      return isFuzzyNameMatch(clientName, data.firstName || '', data.lastName || '', data.mindbody_name);
+                    });
+
+                    if (matchingDoc) {
+                      dbMatched = { id: matchingDoc.id, ...matchingDoc.data() };
+                    }
+                  }
+                }
+              }
+
+              if (dbMatched) {
+                selectMatchedClient(dbMatched.id, !dbMatched.mindbody_name ? clientName : undefined);
+              } else {
+                if (onStartNewClientOnboarding) {
+                  onStartNewClientOnboarding(clientName);
+                }
+              }
+            } catch (err) {
+              console.error("Calendar real-time Firestore client match failed:", err);
+              if (onStartNewClientOnboarding) {
+                onStartNewClientOnboarding(clientName);
+              }
+            }
+          });
+        }).catch(err => {
+          console.error("Failed to load Firebase libraries for click matcher:", err);
+          if (onStartNewClientOnboarding) {
+            onStartNewClientOnboarding(clientName);
+          }
+        });
       }
     }
   };
@@ -242,7 +422,7 @@ export function CalendarView({
             return isSameDay(d, day.date);
           });
           const daySessions = dayItems.filter(i => !i.isClientEvent);
-          const dayEvents = dayItems.filter(i => i.isClientEvent);
+          const dayEvents = dayItems.filter(i => i.isClientEvent && !i.isUnavailabilityEvent);
           
           // Sort events: High priority first
           const sortedEvents = [...dayEvents].sort((a,b) => {
@@ -325,7 +505,7 @@ export function CalendarView({
                       </div>
                     ))}
                     {/* Render Sessions Heatmap Dots */}
-                    {daySessions.length > 0 ? (
+                    {daySessions.length > 0 && (
                       <>
                         <span className="text-xs text-slate-400 mt-1">
                           {daySessions.length} {daySessions.length === 1 ? 'Session' : 'Sessions'}
@@ -341,9 +521,7 @@ export function CalendarView({
                           })}
                         </div>
                       </>
-                    ) : sortedEvents.length === 0 ? (
-                      <span className="text-xs text-slate-500 pb-4">Open Day</span>
-                    ) : null}
+                    )}
                   </div>
                 )}
               </div>
@@ -363,7 +541,7 @@ export function CalendarView({
     const weekEnd = new Date(weekDays[6]);
     weekEnd.setHours(23, 59, 59, 999);
 
-    const activeSessions = filteredItems.filter(s => !s.isClientEvent).filter(s => {
+    const activeSessions = filteredItems.filter(s => !s.isClientEvent || s.isUnavailabilityEvent).filter(s => {
       const d = safeToDate(s.startTime);
       return d >= weekStart && d <= weekEnd;
     });
@@ -437,7 +615,7 @@ export function CalendarView({
                 </td>
                 {weekDays.map((date, dIdx) => {
                   const dayEvents = filteredItems.filter(i => {
-                     return i.isClientEvent && isSameDay(safeToDate(i.date), date);
+                     return i.isClientEvent && !i.isUnavailabilityEvent && isSameDay(safeToDate(i.date), date);
                   });
                   // Sort: High priority first
                   const sortedEvents = dayEvents.sort((a,b) => {
@@ -547,6 +725,7 @@ export function CalendarView({
                                   <div className="absolute inset-2 border-2 border-dashed border-slate-700/30 rounded-xl pointer-events-none" />
                                 )}
                                 {daySessions.map((session, sessIdx) => {
+                                  const isUnavail = session.isUnavailabilityEvent || session.clientName?.toLowerCase().includes('unavailab');
                                   const trainerIdx = visibleCalendarTrainers.findIndex(t => t.fullName === session.trainerName);
                                   const trainer = trainerIdx !== -1 ? visibleCalendarTrainers[trainerIdx] : null;
                                   const color = trainer ? TRAINER_COLORS[trainerIdx % TRAINER_COLORS.length] : TRAINER_COLORS[0];
@@ -556,34 +735,40 @@ export function CalendarView({
                                   
                                   const formatClientName = (fullName: string) => {
                                     if (!fullName) return 'Unknown';
+                                    if (fullName.toLowerCase().includes('unavailab')) return 'Unavailable';
                                     const parts = fullName.trim().split(' ');
                                     if (parts.length > 1) {
                                       return `${parts[0]} ${parts[parts.length - 1][0]}.`;
                                     }
                                     return parts[0];
                                   };
-                                  const formattedName = formatClientName(session.clientName || '');
+                                  const formattedName = isUnavail ? 'Unavailable' : formatClientName(session.clientName || '');
 
                                   return (
                                     <div
                                       key={session.id || `sess-${sessIdx}`}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleClientClick(session);
+                                        if (!isUnavail) handleClientClick(session);
                                       }}
                                       className={cn(
-                                        "flex flex-col overflow-hidden p-1.5 rounded-xl border-l-4 shadow-sm transition-all cursor-pointer relative",
-                                        isTrainerSelected 
-                                          ? `${color.border} opacity-100 hover:brightness-125` 
-                                          : "border-slate-700 opacity-20 grayscale",
-                                        color.bg,
+                                        "flex flex-col overflow-hidden p-1.5 rounded-xl border shadow-sm transition-all relative",
+                                        isUnavail
+                                          ? "bg-[repeating-linear-gradient(45deg,#0a2e46,#0a2e46_10px,#0f172a_10px,#0f172a_20px)] border-2 border-slate-700 cursor-not-allowed opacity-90 text-slate-400"
+                                          : cn(
+                                              isTrainerSelected 
+                                                ? `${color.border} opacity-100 hover:brightness-125` 
+                                                : "border-slate-700 opacity-20 grayscale",
+                                              "border-l-4",
+                                              color.bg
+                                            ),
                                         maxRowSpan > 1 ? "flex-grow" : ""
                                       )}
                                     >
                                       <span className="text-[10px] text-white/90 font-medium leading-none mb-1 whitespace-nowrap text-ellipsis overflow-hidden">
                                         {slot}
                                       </span>
-                                      <span className="text-xs font-bold text-white truncate whitespace-nowrap text-ellipsis leading-none" title={session.clientName}>
+                                      <span className="text-xs font-bold text-white truncate whitespace-nowrap text-ellipsis leading-none" title={isUnavail ? 'Unavailable' : session.clientName}>
                                         {formattedName}
                                       </span>
                                     </div>
@@ -772,7 +957,7 @@ export function CalendarView({
                             if (skippedCells.has(cellId)) return null;
 
                             const session = filteredItems.find(s => {
-                            if (s.isClientEvent) return false;
+                            if (s.isClientEvent && !s.isUnavailabilityEvent) return false;
                             const d = safeToDate(s.startTime);
                             const tStr = getSlotHeader(d);
                             return isSameDay(d, selectedDate) && tStr === slot && s.trainerName === trainer.fullName;
@@ -806,32 +991,42 @@ export function CalendarView({
                                 )}
                             >
                                 {session ? (
-                                <div
-                                    onClick={() => handleClientClick(session)}
-                                    className={cn(
-                                    "p-3 rounded-xl border-l-4 flex flex-col gap-0.5 hover:scale-[1.02] transition-all cursor-pointer shadow-md h-full bg-slate-800",
-                                    color.border
-                                    )}
-                                >
-                                    <div className="flex justify-between items-start mb-1">
-                                      <span className="text-[10px] font-bold text-slate-400 tabular-nums leading-none tracking-tight">
-                                      {slot} - {session.endTime ? getSlotHeader(safeToDate(session.endTime)) : '30m'}
-                                      </span>
-                                      {rowSpan > 1 && (
-                                        <Badge variant="outline" className="text-[8px] h-4 bg-slate-900/50 border-slate-700 text-[#38BDF8]">
-                                          {Math.round((safeToDate(session.endTime).getTime() - safeToDate(session.startTime).getTime()) / 60000)}m
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <span className="text-sm font-black truncate text-white leading-tight">
-                                    {session.clientName}
-                                    </span>
-                                    {rowSpan > 1 && session.serviceName && (
-                                      <span className="text-[10px] text-slate-500 font-medium mt-1 truncate">
-                                        {session.serviceName}
-                                      </span>
-                                    )}
-                                </div>
+                                  (() => {
+                                    const isUnavail = session.isUnavailabilityEvent || session.clientName?.toLowerCase().includes('unavailab');
+                                    return (
+                                      <div
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (!isUnavail) handleClientClick(session);
+                                        }}
+                                        className={cn(
+                                          "p-3 rounded-xl flex flex-col gap-0.5 hover:scale-[1.02] transition-all cursor-pointer shadow-md h-full",
+                                          isUnavail
+                                            ? "bg-[repeating-linear-gradient(45deg,#0a2e46,#0a2e46_10px,#0f172a_10px,#0f172a_20px)] border-2 border-slate-700 text-slate-400 cursor-not-allowed opacity-90"
+                                            : cn("bg-slate-800 border-l-4", color.border)
+                                        )}
+                                      >
+                                          <div className="flex justify-between items-start mb-1">
+                                            <span className="text-[10px] font-bold text-slate-400 tabular-nums leading-none tracking-tight">
+                                            {slot} - {session.endTime ? getSlotHeader(safeToDate(session.endTime)) : '30m'}
+                                            </span>
+                                            {rowSpan > 1 && !isUnavail && (
+                                              <Badge variant="outline" className="text-[8px] h-4 bg-slate-900/50 border-slate-700 text-[#38BDF8]">
+                                                {Math.round((safeToDate(session.endTime).getTime() - safeToDate(session.startTime).getTime()) / 60000)}m
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          <span className="text-sm font-black truncate text-white leading-tight">
+                                          {isUnavail ? 'Unavailable' : session.clientName}
+                                          </span>
+                                          {rowSpan > 1 && session.serviceName && !isUnavail && (
+                                            <span className="text-[10px] text-slate-500 font-medium mt-1 truncate">
+                                              {session.serviceName}
+                                            </span>
+                                          )}
+                                      </div>
+                                    );
+                                  })()
                                 ) : (
                                     <div className="h-full w-full opacity-0 hover:opacity-10 transition-opacity flex items-center justify-center p-2 bg-slate-600 rounded-lg cursor-pointer">
                                         <span className="text-[10px] font-black uppercase tracking-widest text-white">Open</span>

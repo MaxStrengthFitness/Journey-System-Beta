@@ -184,13 +184,31 @@ export function TrainerControlHubView({
     if (!authTrainer || !newAnnouncement.title || !newAnnouncement.shortContent) return;
     setIsCreatingAnnouncement(true);
     try {
-      await addDoc(collection(db, 'hub_announcements'), {
+      const docRef = await addDoc(collection(db, 'hub_announcements'), {
         ...newAnnouncement,
         authorId: authTrainer.id,
         authorName: authTrainer.fullName,
         createdAt: serverTimestamp(),
-        isActive: true
+        isActive: true,
+        readBy: []
       });
+      
+      const createdObj: HubAnnouncement = {
+        id: docRef.id,
+        title: newAnnouncement.title,
+        shortContent: newAnnouncement.shortContent,
+        longContent: newAnnouncement.longContent || '',
+        authorId: authTrainer.id!,
+        authorName: authTrainer.fullName,
+        studioId: newAnnouncement.studioId,
+        createdAt: { toMillis: () => Date.now(), toDate: () => new Date() }, // Local mock of timestamp
+        isActive: true,
+        priority: newAnnouncement.priority as any,
+        readBy: []
+      };
+
+      setAnnouncements(prev => [createdObj, ...prev]);
+
       setNewAnnouncement({
         title: '',
         shortContent: '',
@@ -211,6 +229,7 @@ export function TrainerControlHubView({
     if (!window.confirm("Delete this announcement?")) return;
     try {
       await deleteDoc(doc(db, 'hub_announcements', id));
+      setAnnouncements(prev => prev.filter(a => a.id !== id));
     } catch (err: any) {
       alert("Error deleting: " + err.message);
     }
@@ -373,8 +392,8 @@ export function TrainerControlHubView({
               continue;
             }
 
-            const startTime = new Date(startTimeStr);
-            const endTime = endTimeStr ? new Date(endTimeStr) : new Date(startTime.getTime() + 60 * 60 * 1000);
+            const startTime = new Date(startTimeStr.replace(' ', 'T'));
+            const endTime = endTimeStr ? new Date(endTimeStr.replace(' ', 'T')) : new Date(startTime.getTime() + 60 * 60 * 1000);
 
             if (isNaN(startTime.getTime())) {
               failedCount++;

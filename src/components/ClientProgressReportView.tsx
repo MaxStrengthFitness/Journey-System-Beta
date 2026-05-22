@@ -65,7 +65,7 @@ import {
   calculateComprehensiveAttendanceStats,
   calculateDynamicHighlightMetrics,
 } from "../lib/progress-utils";
-import { cn } from "../lib/utils";
+import { cn, parseSessionDate } from "../lib/utils";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 
 interface ClientProgressReportViewProps {
@@ -677,7 +677,7 @@ export function ClientProgressReportView({
                       <Calendar className="w-3.5 h-3.5 text-[#F06C22]" />
                       Report:{" "}
                       <span className="text-white print:text-[#0A2E46]">
-                        {new Date(report.date + "T12:00:00").toLocaleDateString(
+                        {new Date(parseSessionDate(report.date)).toLocaleDateString(
                           "en-US",
                           { month: "short", day: "numeric", year: "numeric" },
                         )}
@@ -734,8 +734,7 @@ export function ClientProgressReportView({
                         <p className="text-[10px] font-bold uppercase tracking-tighter opacity-100 italic">
                           {report.attendance.firstSessionDate
                             ? new Date(
-                                report.attendance.firstSessionDate +
-                                  "T12:00:00",
+                                parseSessionDate(report.attendance.firstSessionDate)
                               ).toLocaleDateString()
                             : "--"}
                         </p>

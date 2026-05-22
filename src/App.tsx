@@ -90,11 +90,11 @@ import {
 
 import { db, auth } from './firebase';
 import firebaseConfig from '../firebase-applet-config.json';
-import { Trainer, TrainerAvailability, Client, View, Machine, WorkoutSession, ExerciseLog, Routine, ClientMachineSetting, SessionType, SessionNote, TrainerFocus, FocusRecord, Studio, HubAnnouncement } from './types';
+import { Trainer, TrainerAvailability, Client, View, Machine, WorkoutSession, ExerciseLog, Routine, ClientMachineSetting, SessionType, SessionNote, TrainerFocus, FocusRecord, Studio, HubAnnouncement, FranchiseNetwork } from './types';
 import { OperationType, handleFirestoreError } from './lib/firestore-errors';
 // Removing duplicate cn import
 import { hashPin } from './lib/auth-utils';
-import { parseSessionDate, calculateExerciseVolume, safeToDate, getMillis, isSessionValid } from './lib/utils';
+import { parseSessionDate, calculateExerciseVolume, safeToDate, getMillis, isSessionValid, orderMachineSettings } from './lib/utils';
 import { normalizeName, cleanAlphanumeric, isFuzzyNameMatch } from './lib/sync-utils';
 import { getLatestTargetWeight } from './lib/historical-utils';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -123,6 +123,7 @@ import { MachineKnowledgeDashboard } from './components/MachineKnowledgeDashboar
 import { MaxStrengthLogo } from './components/MaxStrengthLogo';
 import { ActiveSessionTimer } from './components/ActiveSessionTimer';
 import { ThemeToggle } from './components/ThemeToggle';
+import { HubAnnouncementsWidget } from './components/HubAnnouncementsWidget';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -230,124 +231,6 @@ const getMachineImageUrl = (machineId?: string): string => {
 
 type RoutineType = 'A' | 'B' | 'Free';
 
-const HubAnnouncementHeaderGift = ({ announcements }: { announcements: HubAnnouncement[] }) => {
-  const [dismissedId, setDismissedId] = useState<string | null>(localStorage.getItem('dismissed_announcement_id'));
-  const activeAnnouncements = announcements.filter(a => a.id !== dismissedId);
-  const announcement = activeAnnouncements[0];
-  const [isExpanded, setIsExpanded] = useState(false);
-  if (!announcement) return null;
-
-  const handleDismiss = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (announcement.id) {
-       localStorage.setItem('dismissed_announcement_id', announcement.id);
-       setDismissedId(announcement.id);
-    }
-    setIsExpanded(false);
-  };
-
-  return (
-    <div className="relative">
-      <motion.div 
-        layout
-        className={cn(
-          "bg-slate-50 backdrop-blur-md border overflow-hidden transition-all duration-500 cursor-pointer",
-          isExpanded ? "fixed inset-x-4 md:inset-x-0 top-24 mx-auto max-w-lg z-[60] rounded-[32px] p-6 shadow-2xl border-sky-500/30 max-h-[80vh] flex flex-col" : "rounded-2xl p-2 border-amber-500/20 hover:border-amber-500/40 w-full"
-        )}
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="flex items-center gap-3 shrink-0">
-          <div className={cn(
-            "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-lg",
-            isExpanded ? "bg-sky-500 text-slate-900 dark:text-white" : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
-          )}>
-            {isExpanded ? <Sparkles className="w-4 h-4" /> : <Gift className="w-4 h-4 animate-pulse" />}
-          </div>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-4">
-              <h4 className={cn(
-                "font-black italic uppercase tracking-tight truncate",
-                isExpanded ? "text-xl text-slate-900 dark:text-white font-black" : "text-[10px] text-amber-100"
-              )}>
-                {announcement.title}
-              </h4>
-            </div>
-            
-            {!isExpanded && (
-              <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium truncate leading-none">
-                {announcement.shortContent}
-              </p>
-            )}
-          </div>
-
-          {isExpanded && (
-            <div className="shrink-0 p-1 rounded-full bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400">
-              <ChevronUp className="w-4 h-4" />
-            </div>
-          )}
-        </div>
-
-        <AnimatePresence>
-          {isExpanded && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-6 border-t border-slate-200 dark:border-slate-800 pt-6 overflow-y-auto no-scrollbar flex-1"
-            >
-              <div className="flex flex-col gap-4">
-                <div className="prose prose-invert prose-sm max-w-none">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed whitespace-pre-wrap">
-                    {announcement.longContent}
-                  </p>
-                </div>
-                
-                <div className="flex items-center justify-between pt-4 mt-2">
-                  <div className="flex items-center gap-2">
-                     <div className="w-6 h-6 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center text-[8px] font-black italic border border-slate-200 dark:border-slate-800">
-                      {announcement.authorName.charAt(0)}
-                    </div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                      From {announcement.authorName}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-8 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsExpanded(false);
-                      }}
-                    >
-                      Close
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      className="h-8 rounded-lg text-[10px] font-black uppercase tracking-widest bg-sky-500 hover:bg-sky-400 text-slate-900 dark:text-white"
-                      onClick={handleDismiss}
-                    >
-                      Mark Viewed
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-      {isExpanded && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55]"
-          onClick={() => setIsExpanded(false)}
-        />
-      )}
-    </div>
-  );
-};
-
 import { ActiveStudioProvider, useActiveStudio } from './ActiveStudioContext';
 
 export default function App() {
@@ -356,6 +239,14 @@ export default function App() {
   const [authTrainer, setAuthTrainer] = useState<Trainer | null>(null);
   const [studios, setStudios] = useState<Studio[]>([]);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
+  const [networks, setNetworks] = useState<FranchiseNetwork[]>([]);
+
+  const handleLogout = async () => {
+    localStorage.clear();
+    setAuthTrainer(null);
+    setNetworks([]);
+    await signOut(auth);
+  };
 
   useEffect(() => {
     (window as any).migrateClientMachineMetrics = migrateClientMachineMetrics;
@@ -388,7 +279,7 @@ export default function App() {
               fullName: 'Austin Jurgens',
               initials: 'AJ',
               role: 'Trainer',
-              pin: '0000',
+              pin: '',
               primaryHomeStudioId: '',
               accessibleStudioIds: [],
               activeGuestStudioIds: []
@@ -403,6 +294,12 @@ export default function App() {
         
         const trainersSnap = await getDocs(collection(db, 'trainers'));
         setTrainers(trainersSnap.docs.map(d => ({ id: d.id, ...d.data() } as Trainer)));
+
+        const networksSnap = await getDocs(collection(db, 'networks'));
+        setNetworks(networksSnap.docs.map(d => ({ id: d.id, ...d.data() } as FranchiseNetwork)));
+      } else {
+        setAuthTrainer(null);
+        setNetworks([]);
       }
       setIsAuthReady(true);
     });
@@ -425,7 +322,14 @@ export default function App() {
   }
 
   return (
-    <ActiveStudioProvider studios={studios} authTrainer={authTrainer} isAdmin={user?.email === 'jurgensaj@gmail.com'}>
+    <ActiveStudioProvider 
+      studios={studios} 
+      networks={networks}
+      authTrainer={authTrainer} 
+      isAdmin={user?.email === 'jurgensaj@gmail.com'}
+      userEmail={user?.email || undefined}
+      onLogout={handleLogout}
+    >
       <AppContent 
         user={user} 
         authTrainer={authTrainer} 
@@ -434,6 +338,9 @@ export default function App() {
         setStudios={setStudios}
         trainers={trainers}
         setTrainers={setTrainers}
+        networks={networks}
+        setNetworks={setNetworks}
+        handleLogout={handleLogout}
       />
     </ActiveStudioProvider>
   );
@@ -446,7 +353,10 @@ function AppContent({
   studios, 
   setStudios,
   trainers,
-  setTrainers
+  setTrainers,
+  networks,
+  setNetworks,
+  handleLogout
 }: { 
   user: FirebaseUser; 
   authTrainer: Trainer; 
@@ -455,6 +365,9 @@ function AppContent({
   setStudios: (s: Studio[]) => void;
   trainers: Trainer[];
   setTrainers: (t: Trainer[]) => void;
+  networks: FranchiseNetwork[];
+  setNetworks: (n: FranchiseNetwork[]) => void;
+  handleLogout: () => Promise<void>;
 }) {
   const { 
     activeStudioId, 
@@ -530,6 +443,8 @@ function AppContent({
     
     const unsubscribeTrainers = onSnapshot(query(collection(db, 'trainers'), orderBy('order', 'asc')), (snap) => {
       setTrainers(snap.docs.map(d => ({ id: d.id, ...d.data() } as Trainer)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'trainers');
     });
 
     const unsubscribeMachines = onSnapshot(query(collection(db, 'machines'), orderBy('order', 'asc')), (snap) => {
@@ -540,6 +455,8 @@ function AppContent({
       });
       const customMachines = machinesData.filter(r => !DEFAULT_MACHINES.find(dm => dm.id === r.id));
       setMachines([...mergedMachines, ...customMachines].sort((a, b) => a.order - b.order));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'machines');
     });
 
     const now = new Date();
@@ -577,40 +494,40 @@ function AppContent({
       // Background auto-matching lookup check for ALL unlinked schedules (historic and future) to ensure correct profile associations
       const unlinkedSchedules = schedulesData.filter(s => !s.clientId && s.clientName && !s.clientName.toLowerCase().includes('unavailab'));
       
-      // Group unlinked schedules by trimmed client name to merge identical clients and optimize database reads
-      const unlinkedGroups: Record<string, typeof unlinkedSchedules> = {};
-      unlinkedSchedules.forEach(s => {
+      const teachersSnap = await getDocs(collection(db, 'trainers'));
+      const activeTrainers = teachersSnap.docs.map(d => ({ id: d.id, ...d.data() } as Trainer));
+
+      // Group unlinked schedules by unique cache key to optimize DB reads
+      const limitedUnlinked = unlinkedSchedules.slice(0, 10);
+
+      for (const s of limitedUnlinked) {
         const nameKey = s.clientName.trim();
-        if (!nameKey) return;
-        if (!unlinkedGroups[nameKey]) {
-          unlinkedGroups[nameKey] = [];
-        }
-        unlinkedGroups[nameKey].push(s);
-      });
+        if (!nameKey) continue;
 
-      Object.entries(unlinkedGroups).forEach(async ([nameKey, groupSchedules]) => {
-        // Check if we have already searched this name in this view session
-        if (searchedScheduleNamesRef.current.has(nameKey)) {
-          // If we found a match previously, apply it to all schedules in this group
-          const cachedClientId = searchedScheduleNamesRef.current.get(nameKey);
+        const scheduleTrainer = activeTrainers.find(t => 
+          t.id === s.trainerId || 
+          (t.fullName && s.trainerName && t.fullName.toLowerCase() === s.trainerName.toLowerCase())
+        );
+        const targetStudioId = scheduleTrainer?.primaryHomeStudioId;
+        const cacheKey = `${targetStudioId || 'no-studio'}_${nameKey.toLowerCase()}`;
+
+        if (searchedScheduleNamesRef.current.has(cacheKey)) {
+          const cachedClientId = searchedScheduleNamesRef.current.get(cacheKey);
           if (cachedClientId) {
-            for (const s of groupSchedules) {
-              await updateDoc(doc(db, 'schedules', s.id), {
-                clientId: cachedClientId
-              });
-            }
+            await updateDoc(doc(db, 'schedules', s.id), {
+              clientId: cachedClientId
+            });
           }
-          return;
+          continue;
         }
 
-        // Initialize with null in case we find nothing, so we don't spam queries
-        searchedScheduleNamesRef.current.set(nameKey, null);
+        // Initialize with null to prevent spam
+        searchedScheduleNamesRef.current.set(cacheKey, null);
 
         try {
-          console.log(`Checking database to auto-link all schedules for "${nameKey}"...`);
+          console.log(`Checking DB to auto-link "${nameKey}" under studio "${targetStudioId || 'global'}"...`);
           let matchedClientDoc: any = null;
 
-          // Build case-insensitive query variants for mindbody_name
           const nameVariants = Array.from(new Set([
             nameKey,
             nameKey.toLowerCase(),
@@ -618,57 +535,99 @@ function AppContent({
             nameKey.split(/\s+/).map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ')
           ]));
 
-          // 1. Direct query of mindbody_name using case-insensitive variants
-          const mbSnap = await getDocs(query(
-            collection(db, 'clients'),
-            where('mindbody_name', 'in', nameVariants)
-          ));
+          // 1. Direct query and fuzzy lookup under the trainer's home studio first
+          if (targetStudioId) {
+            const mbSnap = await getDocs(query(
+              collection(db, 'clients'),
+              where('homeStudioId', '==', targetStudioId),
+              where('mindbody_name', 'in', nameVariants)
+            ));
 
-          if (!mbSnap.empty) {
-            matchedClientDoc = { id: mbSnap.docs[0].id, ...mbSnap.docs[0].data() };
-          } else {
-            // 2. Parse first & last name and query case-insensitively using first name variants
-            const parts = nameKey.split(/\s+/);
-            if (parts.length >= 1) {
-              const first = parts[0];
-              const firstVariants = Array.from(new Set([
-                first,
-                first.toLowerCase(),
-                first.toUpperCase(),
-                first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
-              ]));
+            if (!mbSnap.empty) {
+              matchedClientDoc = { id: mbSnap.docs[0].id, ...mbSnap.docs[0].data() };
+            } else {
+              const parts = nameKey.split(/\s+/);
+              if (parts.length >= 1) {
+                const first = parts[0];
+                const firstVariants = Array.from(new Set([
+                  first,
+                  first.toLowerCase(),
+                  first.toUpperCase(),
+                  first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
+                ]));
 
-              // Query first name variants to capture different casings, then filter by fuzzy matching in memory
-              const flSnap = await getDocs(query(
-                collection(db, 'clients'),
-                where('firstName', 'in', firstVariants)
-              ));
+                const flSnap = await getDocs(query(
+                  collection(db, 'clients'),
+                  where('homeStudioId', '==', targetStudioId),
+                  where('firstName', 'in', firstVariants)
+                ));
 
-              const matchingDoc = flSnap.docs.find(docData => {
-                const data = docData.data();
-                return isFuzzyNameMatch(nameKey, data.firstName || '', data.lastName || '', data.mindbody_name);
-              });
+                const matchingDoc = flSnap.docs.find(docData => {
+                  const data = docData.data();
+                  return isFuzzyNameMatch(nameKey, data.firstName || '', data.lastName || '', data.mindbody_name);
+                });
 
-              if (matchingDoc) {
-                matchedClientDoc = { id: matchingDoc.id, ...matchingDoc.data() };
+                if (matchingDoc) {
+                  matchedClientDoc = { id: matchingDoc.id, ...matchingDoc.data() };
+                }
               }
             }
+          }
+
+          // 2. Global fallback search if not found in associated studio
+          if (!matchedClientDoc) {
+            const mbSnap = await getDocs(query(
+              collection(db, 'clients'),
+              where('mindbody_name', 'in', nameVariants)
+            ));
+
+            if (!mbSnap.empty) {
+              matchedClientDoc = { id: mbSnap.docs[0].id, ...mbSnap.docs[0].data() };
+            } else {
+              const parts = nameKey.split(/\s+/);
+              if (parts.length >= 1) {
+                const first = parts[0];
+                const firstVariants = Array.from(new Set([
+                  first,
+                  first.toLowerCase(),
+                  first.toUpperCase(),
+                  first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
+                ]));
+
+                const flSnap = await getDocs(query(
+                  collection(db, 'clients'),
+                  where('firstName', 'in', firstVariants)
+                ));
+
+                const matchingDoc = flSnap.docs.find(docData => {
+                  const data = docData.data();
+                  return isFuzzyNameMatch(nameKey, data.firstName || '', data.lastName || '', data.mindbody_name);
+                });
+
+                if (matchingDoc) {
+                  matchedClientDoc = { id: matchingDoc.id, ...matchingDoc.data() };
+                }
+              }
+            }
+          }
+
+          // 3. Quick check history
+          if (!matchedClientDoc) {
+             const historyLink = schedulesData.find(hs => hs.clientName === nameKey && !!hs.clientId);
+             if (historyLink) {
+                matchedClientDoc = { id: historyLink.clientId };
+             }
           }
 
           if (matchedClientDoc) {
             console.log(`Successfully matched "${nameKey}" to client ID: ${matchedClientDoc.id}. Auto-linking...`);
             
-            // Cache the matched client ID
-            searchedScheduleNamesRef.current.set(nameKey, matchedClientDoc.id);
+            searchedScheduleNamesRef.current.set(cacheKey, matchedClientDoc.id);
 
-            // Update all schedules in this group
-            for (const s of groupSchedules) {
-              await updateDoc(doc(db, 'schedules', s.id), {
-                clientId: matchedClientDoc.id
-              });
-            }
+            await updateDoc(doc(db, 'schedules', s.id), {
+              clientId: matchedClientDoc.id
+            });
 
-            // If client has no mindbody_name stored, store it to prevent future heavy queries
             if (!matchedClientDoc.mindbody_name) {
               await updateDoc(doc(db, 'clients', matchedClientDoc.id), {
                 mindbody_name: nameKey
@@ -678,9 +637,9 @@ function AppContent({
         } catch (err) {
           console.error(`Error background auto-linking schedule for "${nameKey}":`, err);
         }
-      });
+      }
 
-      const clientIds = Array.from(new Set(todaySchedules.map(s => s.clientId).filter(Boolean))) as string[];
+      const clientIds = Array.from(new Set(schedulesData.map(s => s.clientId).filter(Boolean))) as string[];
       if (clientIds.length > 0) {
         const chunks = [];
         for (let i = 0; i < clientIds.length; i += 10) chunks.push(clientIds.slice(i, i + 10));
@@ -688,10 +647,10 @@ function AppContent({
         const fetchedClients = snapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
         setLiveRosterClients(fetchedClients);
 
-        // Self-heal: check if any of today's schedules reference a clientId that does not exist in the database,
+        // Self-heal: check if any of the loaded schedules reference a clientId that does not exist in the database,
         // and reset it to null so the fuzzy auto-linker can resolve it to the correct profile.
         const validClientIdsSet = new Set(fetchedClients.map(c => c.id));
-        const invalidSchedules = todaySchedules.filter(s => s.clientId && !validClientIdsSet.has(s.clientId));
+        const invalidSchedules = schedulesData.filter(s => s.clientId && !validClientIdsSet.has(s.clientId));
         if (invalidSchedules.length > 0) {
           for (const s of invalidSchedules) {
             console.log(`Self-healing schedule ${s.id}: resetting invalid/deleted clientId "${s.clientId}" to null`);
@@ -707,6 +666,8 @@ function AppContent({
       } else {
         setLiveRosterClients([]);
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'schedules');
     });
 
     const sessionConstraints: QueryConstraint[] = [
@@ -719,10 +680,20 @@ function AppContent({
 
     const unsubscribeSessions = onSnapshot(query(collection(db, 'sessions'), ...sessionConstraints), (snap) => {
       setSessions(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkoutSession)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'sessions');
     });
 
     const unsubscribeStudios = onSnapshot(collection(db, 'studios'), (snap) => {
       setStudios(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Studio)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'studios');
+    });
+
+    const unsubscribeNetworks = onSnapshot(collection(db, 'networks'), (snap) => {
+      setNetworks(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as FranchiseNetwork)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'networks');
     });
 
     return () => {
@@ -731,6 +702,7 @@ function AppContent({
       unsubscribeSchedules();
       unsubscribeSessions();
       unsubscribeStudios();
+      unsubscribeNetworks();
     };
   }, [authTrainer, activeStudioId, hasQuotaError]);
 
@@ -745,6 +717,8 @@ function AppContent({
         .filter(a => a.studioId === 'all' || a.studioId === activeStudioId)
         .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
       setAnnouncements(filtered);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'hub_announcements');
     });
   }, [authTrainer, activeStudioId]);
 
@@ -1291,8 +1265,6 @@ function AppContent({
     }
   };
 
-  const handleLogout = () => signOut(auth);
-
   if (!user) {
     return (
       <div className="min-h-screen bg-[#1c1d1f] flex flex-col items-center justify-center p-6 focus:outline-none relative overflow-hidden">
@@ -1436,15 +1408,11 @@ function AppContent({
               </div>
             </div>
             
-            {/* Announcement "Gift" in Middle if in Hub */}
-            {currentView === 'trainer-hub' && (
-              <div className="flex-1 min-w-[120px] max-w-lg mx-auto px-2 z-50 transition-all">
-                <HubAnnouncementHeaderGift announcements={announcements} />
-              </div>
-            )}
+            {/* Removed the old HubAnnouncementHeaderGift component */}
             
             <div className="flex items-center gap-2 md:gap-4 shrink-0">
               <ThemeToggle />
+              <HubAnnouncementsWidget authTrainer={authTrainer} />
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -1506,36 +1474,12 @@ function AppContent({
                   <DropdownMenuSeparator className="my-2 bg-slate-700" />
                   
                   <DropdownMenuGroup>
-                    <DropdownMenuLabel className="font-black uppercase text-[10px] tracking-widest px-3 py-2 text-slate-500 dark:text-slate-400">
-                      Switch Trainer
-                    </DropdownMenuLabel>
-                    {trainers
-                      .filter(t => t.id !== authTrainer.id)
-                      .sort((a, b) => (a.order || 0) - (b.order || 0))
-                      .map(t => (
-                        <DropdownMenuItem 
-                          key={t.id}
-                          onClick={() => handleTrainerLogin(t)}
-                          className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer group hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
-                        >
-                          <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center font-black group-hover:bg-sky-500 group-hover:text-slate-900 dark:text-white dark:hover:text-slate-50 group-hover:border-sky-500 transition-colors">
-                            {t.initials}
-                          </div>
-                          {t.fullName}
-                        </DropdownMenuItem>
-                      ))
-                    }
-                  </DropdownMenuGroup>
-                  
-                  <DropdownMenuSeparator className="my-2 bg-slate-700" />
-                  
-                  <DropdownMenuGroup>
                     <DropdownMenuItem 
                       onClick={handleTrainerLock}
                       className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest text-orange-500 hover:bg-orange-500/10 dark:bg-orange-600/10 focus:bg-orange-500/10 dark:bg-orange-600/10 focus:text-orange-500 cursor-pointer"
                     >
                       <Lock className="w-4 h-4" />
-                      Switch to Name List
+                      Switch Trainer
                     </DropdownMenuItem>
 
                     <DropdownMenuItem 
@@ -1601,6 +1545,7 @@ function AppContent({
                 sortedTrainers={sortedTrainers}
                 isAdmin={user?.email === "jurgensaj@gmail.com"}
                 activeStudioId={activeStudioId}
+                authTrainer={authTrainer}
                 onSelectClient={(id) => {
                   setSelectedClientId(id);
                   setView('profile');
@@ -2931,7 +2876,7 @@ function AvailabilityEditor({ trainer, onClose }: { trainer: Trainer, onClose: (
                   return (
                     <div key={date} className="p-4 bg-primary/5 border border-primary/10 rounded-2xl space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-black uppercase italic">{new Date(date + 'T00:00:00').toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                        <span className="text-sm font-black uppercase italic">{new Date(parseSessionDate(date)).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}</span>
                         <Button 
                           variant="ghost" 
                           size="icon"
@@ -3012,6 +2957,7 @@ function ClientsView({
   sortedTrainers,
   isAdmin,
   activeStudioId,
+  authTrainer,
   onSelectClient, 
   onStartNewClientOnboarding,
   setView, 
@@ -3034,6 +2980,7 @@ function ClientsView({
   sortedTrainers: Trainer[],
   isAdmin: boolean,
   activeStudioId: string,
+  authTrainer: Trainer | null,
   onSelectClient: (id: string) => void, 
   onStartNewClientOnboarding?: (name: string) => void,
   setView: (v: View) => void, 
@@ -3082,29 +3029,54 @@ function ClientsView({
       setIsSearchingDb(true);
       try {
         const term = searchTerm.trim().toLowerCase();
-        const termCapitalized = term.charAt(0).toUpperCase() + term.slice(1);
-        const clientsRef = collection(db, 'clients');
-        
-        let q = query(
-          clientsRef,
-          where('lastName', '>=', termCapitalized),
-          where('lastName', '<=', termCapitalized + '\uf8ff'),
-          limit(20)
-        );
-        let snap = await getDocs(q);
-        let fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Client));
-        
-        if (fetched.length === 0) {
-          const q2 = query(
-            clientsRef,
-            where('firstName', '>=', termCapitalized),
-            where('firstName', '<=', termCapitalized + '\uf8ff'),
-            limit(20)
-          );
-          const snap2 = await getDocs(q2);
-          fetched = snap2.docs.map(d => ({ id: d.id, ...d.data() } as Client));
+        const alphaOnly = term.replace(/[^a-z]/g, '');
+        const prefixLen = alphaOnly.length > 3 ? 3 : alphaOnly.length;
+        const prefix = alphaOnly.slice(0, prefixLen);
+        const prefixCapitalized = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+
+        if (!prefixCapitalized) {
+          setDbSearchResults([]);
+          return;
         }
-        
+
+        const clientsRef = collection(db, 'clients');
+        const q1 = query(
+          clientsRef,
+          where('firstName', '>=', prefixCapitalized),
+          where('firstName', '<=', prefixCapitalized + '\uf8ff'),
+          limit(30)
+        );
+        const q2 = query(
+          clientsRef,
+          where('lastName', '>=', prefixCapitalized),
+          where('lastName', '<=', prefixCapitalized + '\uf8ff'),
+          limit(30)
+        );
+
+        const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+        const uniqueDocs = new Map<string, any>();
+        [...snap1.docs, ...snap2.docs].forEach(d => {
+          uniqueDocs.set(d.id, { id: d.id, ...d.data() });
+        });
+
+        const candidates = Array.from(uniqueDocs.values());
+        const fetched = candidates.filter(c => {
+          const first = (c.firstName || '').toLowerCase();
+          const last = (c.lastName || '').toLowerCase();
+          const full = `${first} ${last}`;
+          const mb = (c.mindbody_name || '').toLowerCase();
+
+          return (
+            first.includes(term) ||
+            last.includes(term) ||
+            full.includes(term) ||
+            mb.includes(term) ||
+            term.includes(first) ||
+            term.includes(last) ||
+            isFuzzyNameMatch(term, c.firstName || '', c.lastName || '', c.mindbody_name)
+          );
+        });
+
         setDbSearchResults(fetched);
       } catch (err) {
         console.error("Error searching matching clients in main search:", err);
@@ -3130,29 +3102,54 @@ function ClientsView({
       setIsSearchingDbLink(true);
       try {
         const term = searchTermLink.trim().toLowerCase();
-        const termCapitalized = term.charAt(0).toUpperCase() + term.slice(1);
-        const clientsRef = collection(db, 'clients');
-        
-        let q = query(
-          clientsRef,
-          where('lastName', '>=', termCapitalized),
-          where('lastName', '<=', termCapitalized + '\uf8ff'),
-          limit(10)
-        );
-        let snap = await getDocs(q);
-        let fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Client));
-        
-        if (fetched.length === 0) {
-          const q2 = query(
-            clientsRef,
-            where('firstName', '>=', termCapitalized),
-            where('firstName', '<=', termCapitalized + '\uf8ff'),
-            limit(10)
-          );
-          const snap2 = await getDocs(q2);
-          fetched = snap2.docs.map(d => ({ id: d.id, ...d.data() } as Client));
+        const alphaOnly = term.replace(/[^a-z]/g, '');
+        const prefixLen = alphaOnly.length > 3 ? 3 : alphaOnly.length;
+        const prefix = alphaOnly.slice(0, prefixLen);
+        const prefixCapitalized = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+
+        if (!prefixCapitalized) {
+          setDbSearchResultsLink([]);
+          return;
         }
-        
+
+        const clientsRef = collection(db, 'clients');
+        const q1 = query(
+          clientsRef,
+          where('firstName', '>=', prefixCapitalized),
+          where('firstName', '<=', prefixCapitalized + '\uf8ff'),
+          limit(30)
+        );
+        const q2 = query(
+          clientsRef,
+          where('lastName', '>=', prefixCapitalized),
+          where('lastName', '<=', prefixCapitalized + '\uf8ff'),
+          limit(30)
+        );
+
+        const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+        const uniqueDocs = new Map<string, any>();
+        [...snap1.docs, ...snap2.docs].forEach(d => {
+          uniqueDocs.set(d.id, { id: d.id, ...d.data() });
+        });
+
+        const candidates = Array.from(uniqueDocs.values());
+        const fetched = candidates.filter(c => {
+          const first = (c.firstName || '').toLowerCase();
+          const last = (c.lastName || '').toLowerCase();
+          const full = `${first} ${last}`;
+          const mb = (c.mindbody_name || '').toLowerCase();
+
+          return (
+            first.includes(term) ||
+            last.includes(term) ||
+            full.includes(term) ||
+            mb.includes(term) ||
+            term.includes(first) ||
+            term.includes(last) ||
+            isFuzzyNameMatch(term, c.firstName || '', c.lastName || '', c.mindbody_name)
+          );
+        });
+
         setDbSearchResultsLink(fetched);
       } catch (err) {
         console.error("Error searching clients in link dialog:", err);
@@ -3304,10 +3301,40 @@ function ClientsView({
   const findClientForSession = (session: any) => {
     if (!session) return null;
     const sName = (session.clientName || '').trim();
-    return clients.find(c => 
-      c.id === session.clientId || 
-      isFuzzyNameMatch(sName, c.firstName || '', c.lastName || '', c.mindbody_name)
+
+    const scheduleTrainer = trainers.find(t => 
+      t.id === session.trainerId || 
+      (t.fullName && session.trainerName && t.fullName.toLowerCase() === session.trainerName.toLowerCase())
     );
+    const targetStudioId = scheduleTrainer?.primaryHomeStudioId;
+
+    let matched: Client | undefined = undefined;
+
+    // 1. First, search under the trainer's home studio
+    if (targetStudioId) {
+      matched = clients.find(c => 
+        c.homeStudioId === targetStudioId &&
+        (c.id === session.clientId || isFuzzyNameMatch(sName, c.firstName || '', c.lastName || '', c.mindbody_name))
+      );
+    }
+
+    // 2. Global fallback
+    if (!matched) {
+      matched = clients.find(c => 
+        c.id === session.clientId || 
+        isFuzzyNameMatch(sName, c.firstName || '', c.lastName || '', c.mindbody_name)
+      );
+    }
+
+    // 3. Quick check: Has this exact name been linked in any previous schedule entry?
+    if (!matched && schedules) {
+      const pastLink = schedules.find(s => s.clientName === sName && !!s.clientId);
+      if (pastLink) {
+        matched = clients.find(c => c.id === pastLink.clientId);
+      }
+    }
+
+    return matched || null;
   };
 
   const hasUnassignedAnywhereInGrid = todaysSchedules.some(s => 
@@ -3353,7 +3380,7 @@ function ClientsView({
       className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white w-full overflow-hidden"
     >
       <div className="flex flex-col gap-3 shrink-0 p-4 pb-0 bg-slate-50 dark:bg-slate-950 z-30">
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex items-center gap-3 w-full">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-400" />
             <Input 
@@ -3370,7 +3397,21 @@ function ClientsView({
               }
             }} 
             size="lg" 
-            className="rounded-xl h-12 px-8 shadow-[0_0_20px_rgba(56,189,248,0.2)] bg-sky-500 hover:bg-[#0284C7] text-slate-900 font-black w-full sm:w-auto uppercase tracking-widest text-sm"
+            className="rounded-xl h-12 px-8 shadow-[0_0_20px_rgba(56,189,248,0.2)] bg-sky-500 hover:bg-[#0284C7] text-slate-900 font-black uppercase tracking-widest text-sm hidden sm:flex items-center shrink-0"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Add New Client
+          </Button>
+        </div>
+        <div className="sm:hidden w-full">
+          <Button 
+            onClick={() => {
+              if (onStartNewClientOnboarding) {
+                onStartNewClientOnboarding("");
+              }
+            }} 
+            size="lg" 
+            className="rounded-xl h-12 px-8 shadow-[0_0_20px_rgba(56,189,248,0.2)] bg-sky-500 hover:bg-[#0284C7] text-slate-900 font-black w-full uppercase tracking-widest text-sm flex items-center justify-center"
           >
             <Plus className="w-5 h-5 mr-2" />
             Add New Client
@@ -4934,7 +4975,7 @@ function PerformanceEntryDialog({
           {/* Settings Shorthand Bar */}
           {hasSettings && (
             <div className="bg-slate-50/40 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 flex items-center justify-center gap-x-5 gap-y-1.5 flex-wrap">
-              {Object.entries(settings).map(([key, value]) => (
+              {orderMachineSettings(settings).map(([key, value]) => (
                 <div key={key} className="flex items-center gap-1.5">
                   <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">{key}:</span>
                   <span className="text-[12px] font-black text-orange-500 italic">{value}</span>
@@ -5120,7 +5161,7 @@ function PerformanceEntryDialog({
                 return (
                   <div key={idx} className="flex justify-between items-center text-[11px] bg-slate-50 dark:bg-slate-950 rounded-lg px-2 py-1.5 border border-slate-200 dark:border-slate-800/30">
                     <span className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[9px]">
-                      {new Date(entry.session.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {new Date(parseSessionDate(entry.session.date)).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                     <span className="font-black text-slate-700 dark:text-slate-300 flex items-center tabular-nums">
                       {entry.log.weight}<span className="text-[9px] text-slate-500 dark:text-slate-400 ml-0.5">lbs</span> 
@@ -5317,6 +5358,8 @@ function ExerciseHistoryDialog({
       const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExerciseLog));
       setHistory(logs);
       setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'exerciseLogs');
     });
 
     return () => unsubscribe();
@@ -5443,6 +5486,8 @@ function SessionNotesSidebar({
       const notes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SessionNote));
       setHistory(notes);
       setIsLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'sessionNotes');
     });
 
     return () => unsubscribe();
@@ -6390,12 +6435,39 @@ function WorkoutTrackerView({
 
       // 3. Update client if consultation completed or just increment session counters
       if (selectedClient && selectedClient.id) {
+        let totalSessionReps = 0;
+        let totalSessionVolume = 0;
+
+        sessionLogs.forEach((l: any) => {
+          let reps = 0;
+          if (l.isTSC || l.isStaticHold) {
+            const seconds = parseFloat(l.seconds || '0');
+            reps = isNaN(seconds) || seconds <= 0 ? 0 : (seconds / 30) * 2;
+          } else {
+            reps = parseFloat(l.reps || '0');
+            if (isNaN(reps)) reps = 0;
+          }
+          const volume = calculateExerciseVolume(l);
+          totalSessionReps += reps;
+          totalSessionVolume += volume;
+        });
+
+        const roundedSessionReps = Math.round(totalSessionReps);
+        const roundedSessionVolume = Math.round(totalSessionVolume);
+
         const clientRef = doc(db, 'clients', selectedClient.id);
         const clientUpdates: any = {
           completedSessions: increment(1),
           sessionCount: currentSession.sessionNumber || increment(1),
           updatedAt: serverTimestamp()
         };
+
+        if (roundedSessionReps > 0) {
+          clientUpdates.lifetimeReps = increment(roundedSessionReps);
+        }
+        if (roundedSessionVolume > 0) {
+          clientUpdates.lifetimeWeight = increment(roundedSessionVolume);
+        }
         
         sessionLogs.forEach(logObj => {
           const log = logObj as any;
@@ -7171,17 +7243,7 @@ function WorkoutTrackerView({
                         if (!settingsStr || Object.keys(settingsStr).length === 0) {
                           settingsDisplay = <span className="text-slate-400 dark:text-slate-500 italic text-[10px]">No Settings</span>;
                         } else {
-                          const orderedKeys = ['gap', 'seat', 'back', 'back pad', 'handles', 'handle'];
-                          const sortedEntries = Object.entries(settingsStr).sort(([ka], [kb]) => {
-                            const a = ka.toLowerCase();
-                            const b = kb.toLowerCase();
-                            const indexA = orderedKeys.findIndex(k => a.includes(k));
-                            const indexB = orderedKeys.findIndex(k => b.includes(k));
-                            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-                            if (indexA !== -1) return -1;
-                            if (indexB !== -1) return 1;
-                            return a.localeCompare(b);
-                          });
+                          const sortedEntries = orderMachineSettings(settingsStr);
                           
                           settingsDisplay = (
                             <div className="flex gap-1.5 items-center">

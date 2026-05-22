@@ -55,6 +55,10 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
   };
 
   const handleTrainerSelect = (t: Trainer) => {
+    if (!t.pin && !t.pinHash) {
+      onLogin(t);
+      return;
+    }
     setSelectedTrainer(t);
     setPinInput('');
     setNewPin('');
@@ -67,7 +71,7 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
     setSelectedTrainer(null);
   };
 
-  const isResetMode = selectedTrainer?.requiresPinReset || !selectedTrainer?.pin;
+  const isResetMode = selectedTrainer?.requiresPinReset || false;
 
   const handleNextMode = () => {
     setError('');
@@ -146,12 +150,12 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
     setError('');
     if (isResetMode) {
       if (step === 'enter') {
-        if (newPin.length < 6) setNewPin(prev => prev + num);
+        if (newPin.length < 4) setNewPin(prev => prev + num);
       } else {
-        if (confirmPin.length < 6) setConfirmPin(prev => prev + num);
+        if (confirmPin.length < 4) setConfirmPin(prev => prev + num);
       }
     } else {
-      if (pinInput.length < 6) setPinInput(prev => prev + num);
+      if (pinInput.length < 4) setPinInput(prev => prev + num);
     }
   };
   
@@ -265,7 +269,7 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
                   )}
                   
                   <div className="flex justify-center gap-3 mb-8">
-                     {[...Array(6)].map((_, i) => {
+                     {[...Array(4)].map((_, i) => {
                        const val = isResetMode ? (step === 'enter' ? newPin : confirmPin) : pinInput;
                        const isFilled = i < val.length;
                        return (

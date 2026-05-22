@@ -6,13 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { db } from '../firebase';
 import { doc, setDoc, collection, addDoc } from 'firebase/firestore';
-import { cn, isBig5Machine } from '../lib/utils';
+import { cn, isBig5Machine, orderMachineSettings } from '../lib/utils';
 import { Loader2, Star, Activity, Settings2 } from 'lucide-react';
 import { MACHINE_DATABASE } from '../data/machine-database';
 
 const formatSettingsObj = (settings: Record<string, string>) => {
   if (!settings || Object.keys(settings).length === 0) return "No configuration";
-  return Object.entries(settings).map(([k, v]) => `${k}: ${v}`).join(', ');
+  return orderMachineSettings(settings).map(([k, v]) => `${k}: ${v}`).join(', ');
 };
 
 function MachineCard({

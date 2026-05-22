@@ -1,7 +1,18 @@
 /**
  * Roles defining system access levels across the organization.
  */
-export type UserRole = 'Admin' | 'Overseer' | 'StudioOwner' | 'HeadTrainer' | 'Trainer';
+export type UserRole = 'Admin' | 'FranchiseOwner' | 'Overseer' | 'StudioOwner' | 'HeadTrainer' | 'Trainer';
+
+/**
+ * Represents a group of studios owned by a Studio Owner or managed as a region.
+ */
+export interface FranchiseNetwork {
+  id: string;
+  name: string;
+  ownerId: string; // The Owner/StudioOwner ID who owns this network
+  studioIds: string[]; // List of Studio IDs included in this network
+  createdAt?: any;
+}
 
 /**
  * Represents the top-level entity owning one or more studios.
@@ -99,6 +110,7 @@ export interface Client {
   mindbodyId?: string;
   /** MANDATORY: The studio where the client is billed and primarily trains */
   homeStudioId: string;
+  approvedCrossTrainStudioIds?: string[]; // Studio IDs where cross-training is explicitly approved
   firstName: string;
   lastName: string;
   gender?: 'Male' | 'Female' | 'Other' | string;
@@ -133,6 +145,8 @@ export interface Client {
   mindbody_name?: string;
   completedSessions?: number;
   sessionCount?: number;
+  lifetimeReps?: number;
+  lifetimeWeight?: number;
   packageTier?: "6-Month" | "12-Month" | "18-Month" | "None";
   consultationCompleted?: boolean;
   requiresConsultation?: boolean;
@@ -472,6 +486,7 @@ export interface Studio {
   /** MindBody Site ID for external API synchronization */
   mindbodySiteId?: string;
   createdAt?: any;
+  networkId?: string; // Newly added to associate with a FranchiseNetwork
 }
 
 export interface HubAnnouncement {
@@ -485,6 +500,7 @@ export interface HubAnnouncement {
   createdAt: any;
   isActive: boolean;
   priority: 'low' | 'medium' | 'high';
+  readBy?: string[];
 }
 
 export interface LeaderboardRank {

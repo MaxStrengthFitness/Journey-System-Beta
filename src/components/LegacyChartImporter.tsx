@@ -275,8 +275,9 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
       setValidationSessions(mappedSessions);
       setScanPercentage(100);
       setScanProgress('OCR Pipeline Complete');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert(err.message || 'Engine Failure: Check Logs');
       setScanProgress('Engine Failure: Check Logs');
     } finally {
       setIsScanning(false);
@@ -295,8 +296,9 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
       const settings = await extractMachineSettingsFromImage(imageFiles);
       setExtractedSettings(settings);
       setScanProgress('Settings Extraction Complete');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert(err.message || 'Settings Extraction Failed');
       setScanProgress('Settings Extraction Failed');
     } finally {
       setIsScanningSettings(false);
@@ -445,12 +447,56 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
         ? Math.max(...validationSessions.map(s => s.sessionNumber)) 
         : 0;
       
+      let totalImportedReps = 0;
+      let totalImportedVolume = 0;
+
+      validationSessions.forEach(vSess => {
+        vSess.machines.forEach(vLog => {
+          if (!vLog.machineId) return;
+          
+          let reps = 0;
+          if (vLog.isStaticHold) {
+            const seconds = Number(vLog.timeUnderLoad) || 0;
+            reps = seconds <= 0 ? 0 : (seconds / 30) * 2;
+          } else {
+            reps = Number(vLog.reps) || 0;
+          }
+
+          const weightNum = Number(vLog.weight) || 0;
+          let volume = 0;
+          if (vLog.isStaticHold) {
+            const seconds = Number(vLog.timeUnderLoad) || 0;
+            const eqReps = seconds <= 0 ? 0 : (seconds / 30) * 2;
+            volume = weightNum * eqReps;
+          } else {
+            const r = Number(vLog.reps) || 0;
+            const repsForVol = r <= 0 ? 1 : r;
+            volume = weightNum * repsForVol;
+          }
+
+          totalImportedReps += reps;
+          totalImportedVolume += volume;
+        });
+      });
+
+      const roundedImportedReps = Math.round(totalImportedReps);
+      const roundedImportedVolume = Math.round(totalImportedVolume);
+
       const clientRef = doc(db, 'clients', selectedClientId);
-      currentBatch.update(clientRef, {
+      const clientUpdateObj: any = {
         completedSessions: increment(validationSessions.length),
         sessionCount: maxSessionNum,
         updatedAt: serverTimestamp()
-      });
+      };
+
+      if (roundedImportedReps > 0) {
+        clientUpdateObj.lifetimeReps = increment(roundedImportedReps);
+      }
+      if (roundedImportedVolume > 0) {
+        clientUpdateObj.lifetimeWeight = increment(roundedImportedVolume);
+      }
+
+      currentBatch.update(clientRef, clientUpdateObj);
       opCount++;
       updateProgress();
       await commitBatchIfNeeded();
@@ -537,9 +583,9 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
       setFinalizeProgress(100);
 
       if (onComplete) onComplete();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Finalization failed. Check Firestore quotas.');
+      alert(err.message || 'Finalization failed. Check Firestore quotas.');
     } finally {
       setIsFinalizing(false);
     }
@@ -869,6 +915,13 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                                 "w-[120px] p-2 bg-slate-900 border-r border-b border-slate-800 text-center relative group",
                                 session.isInferredDate && "border-amber-500/50 shadow-[inset_0_0_10px_rgba(245,158,11,0.1)]"
                               )}>
+                                <button
+                                  onClick={() => setValidationSessions(prev => prev.filter(s => s.id !== session.id))}
+                                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-0.5 bg-red-500/20 hover:bg-red-500 text-red-500 hover:text-white rounded-sm transition-all z-10"
+                                  title="Remove extracted session completely"
+                                >
+                                  <Trash2 className="w-[10px] h-[10px]" />
+                                </button>
                                 <div className="flex flex-col items-center">
                                   <Badge className={cn("text-[9px] font-black h-4 px-1 rounded-sm mb-1", session.isInferredDate ? "bg-amber-600 border-none text-white" : "bg-slate-800 border-slate-700 text-white")}>
                                     S#{session.sessionNumber}

@@ -97,6 +97,7 @@ import {
   FocusRecord,
   ClinicalSafetyFlag,
   Studio,
+  SessionNote,
 } from "../types";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { WorkoutChartGrid } from "./WorkoutChartGrid";
@@ -208,6 +209,9 @@ export function ClientProfileView({
   }, []);
 
   const [activeTab, setActiveTab] = useState("overview");
+  const [clientNotesInput, setClientNotesInput] = useState("");
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [sessionNotes, setSessionNotes] = useState<SessionNote[]>([]);
   const [activeMachine, setActiveMachine] = useState<string | null>(null);
   const [infoForm, setInfoForm] = useState<Partial<Client>>({});
   const [newEventForm, setNewEventForm] = useState<{
@@ -256,8 +260,19 @@ export function ClientProfileView({
     }
   };
 
+  const formatToMMDDYYYY = (dateVal: any) => {
+    if (!dateVal) return "";
+    const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal);
+    if (isNaN(d.getTime())) return "";
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${month}/${day}/${year}`;
+  };
+
   useEffect(() => {
     if (client) {
+      setClientNotesInput(client.notes || "");
       setInfoForm({
         firstName: client.firstName,
         lastName: client.lastName,
@@ -284,6 +299,8 @@ export function ClientProfileView({
         discoveryNotes: client.discoveryNotes || "",
         packageTier: client.packageTier || "None",
         remainingSessions: client.remainingSessions ?? 0,
+        firstSessionDate: client.firstSessionDate || null,
+        firstSessionDateRaw: formatToMMDDYYYY(client.firstSessionDate),
       });
     }
   }, [client]);
@@ -308,6 +325,30 @@ export function ClientProfileView({
         sanitizedData.remainingSessions = isNaN(parsed) ? 0 : parsed;
       }
 
+      // Parse firstSessionDate from typed MM/DD/YYYY if present
+      if (sanitizedData.firstSessionDateRaw) {
+        const cleanRaw = sanitizedData.firstSessionDateRaw.replace(/\D/g, "");
+        if (cleanRaw.length === 8) {
+          const m = parseInt(cleanRaw.slice(0, 2), 10);
+          const d_val = parseInt(cleanRaw.slice(2, 4), 10);
+          const y = parseInt(cleanRaw.slice(4, 8), 10);
+          if (m >= 1 && m <= 12 && d_val >= 1 && d_val <= 31 && y >= 1900) {
+            const selectedDate = new Date(y, m - 1, d_val);
+            sanitizedData.firstSessionDate = Timestamp.fromDate(selectedDate);
+          }
+        } else if (cleanRaw.length === 6) {
+          const m = parseInt(cleanRaw.slice(0, 2), 10);
+          const d_val = parseInt(cleanRaw.slice(2, 4), 10);
+          let y = parseInt(cleanRaw.slice(4, 6), 10);
+          if (m >= 1 && m <= 12 && d_val >= 1 && d_val <= 31) {
+            y = y < 50 ? 2000 + y : 1900 + y;
+            const selectedDate = new Date(y, m - 1, d_val);
+            sanitizedData.firstSessionDate = Timestamp.fromDate(selectedDate);
+          }
+        }
+      }
+      delete (sanitizedData as any).firstSessionDateRaw;
+
       // Cleanup other potentially empty strings to null or delete them if rules prefer
       Object.keys(sanitizedData).forEach((key) => {
         if ((sanitizedData as any)[key] === undefined) {
@@ -324,6 +365,106 @@ export function ClientProfileView({
     } finally {
       setIsSavingInfo(false);
     }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!clientId) return;
+    setIsSavingNotes(true);
+    try {
+      await updateDoc(doc(db, "clients", clientId), {
+        notes: clientNotesInput,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `clients/${clientId}`);
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  const formatDateForInput = (dateVal: any) => {
+    if (!dateVal) return "";
+    const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal);
+    if (isNaN(d.getTime())) return "";
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleStartDateChange = async (newVal: string) => {
+    if (!clientId || !newVal) return;
+    try {
+      let selectedDate: Date;
+      if (newVal.includes("/")) {
+        const parts = newVal.split("/");
+        const month = parseInt(parts[0], 10);
+        const day = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+        selectedDate = new Date(year, month - 1, day);
+      } else {
+        selectedDate = new Date(newVal + "T00:00:00");
+      }
+      const timestamp = Timestamp.fromDate(selectedDate);
+      await updateDoc(doc(db, "clients", clientId), {
+        firstSessionDate: timestamp,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `clients/${clientId}`);
+    }
+  };
+
+  const getCombinedTimelineNotes = () => {
+    const list: {
+      id: string;
+      date: Date;
+      type: "pre" | "during" | "post" | "general" | "session_note";
+      title: string;
+      content: string;
+      trainer: string;
+      priority?: string;
+    }[] = [];
+
+    // Add sessionNotes collection documents
+    sessionNotes.forEach((sn) => {
+      let d = new Date();
+      if (sn.createdAt) {
+        d = sn.createdAt.toDate ? sn.createdAt.toDate() : new Date(sn.createdAt);
+      }
+      list.push({
+        id: sn.id || Math.random().toString(),
+        date: d,
+        type: "session_note",
+        title: sn.priority ? `Session Note (${sn.priority} Priority)` : "Session Note",
+        content: sn.content,
+        trainer: sn.trainerInitials || "Coach",
+        priority: sn.priority,
+      });
+    });
+
+    // Add WorkoutSession standard notes
+    sessions.forEach((s) => {
+      if (s.notes && s.notes.trim()) {
+        let d = new Date();
+        if (s.startTime) {
+          d = s.startTime.toDate ? s.startTime.toDate() : new Date(s.startTime);
+        } else if (s.date) {
+          d = new Date(s.date + "T12:00:00");
+        }
+        list.push({
+          id: `session-notes-${s.id}`,
+          date: d,
+          type: "during",
+          title: s.sessionType ? `${s.sessionType} Session Briefing` : "Session Briefing",
+          content: s.notes,
+          trainer: s.trainerInitials || "Coach",
+        });
+      }
+    });
+
+    // Sort list chronologically descending (newest first)
+    return list.sort((a, b) => b.date.getTime() - a.date.getTime());
   };
 
   const handleAddEvent = async () => {
@@ -578,7 +719,24 @@ export function ClientProfileView({
       }
     };
 
+    const fetchSessionNotesObj = async () => {
+      if (!clientId) return;
+      try {
+        const notesQ = query(
+          collection(db, "sessionNotes"),
+          where("clientId", "==", clientId),
+          orderBy("createdAt", "desc")
+        );
+        const snap = await getDocs(notesQ);
+        const notesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as SessionNote));
+        setSessionNotes(notesData);
+      } catch (error) {
+        console.warn("Could not fetch session notes:", error);
+      }
+    };
+
     fetchInitialSessions();
+    fetchSessionNotesObj();
   }, [clientId, activeTab, hasQuotaError]);
 
   const handleLoadMoreHistory = async () => {
@@ -976,7 +1134,7 @@ export function ClientProfileView({
           );
         }
 
-        const lastDate = new Date(progressReports[0].date + "T12:00:00");
+        const lastDate = new Date(parseSessionDate(progressReports[0].date));
         const nextDueDate = new Date(lastDate);
         nextDueDate.setMonth(nextDueDate.getMonth() + 3);
 
@@ -1058,7 +1216,7 @@ export function ClientProfileView({
                 <div className="flex flex-col">
                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Last Session</span>
                    <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                     {sessions[0]?.date ? new Date(sessions[0].date + "T12:00:00").toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "--"}
+                     {sessions[0]?.date ? new Date(parseSessionDate(sessions[0].date)).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "--"}
                    </span>
                 </div>
                 <div className="flex flex-col">
@@ -1127,21 +1285,21 @@ export function ClientProfileView({
         onValueChange={setActiveTab}
       >
         <div className="mb-3 w-full">
-          <div className="overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar">
-            <TabsList className="bg-transparent p-0 flex flex-nowrap w-max gap-1.5 h-auto">
+          <div className="overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar md:overflow-visible">
+            <TabsList className="bg-slate-100/30 dark:bg-slate-900/40 p-1 rounded-xl flex flex-nowrap md:grid md:grid-cols-7 w-max md:w-full gap-1 lg:gap-1.5 h-auto">
               {[
                 { val: "overview", label: "Journey" },
                 { val: "equipment", label: "Equipment" },
                 { val: "routines", label: "Routines" },
-                { val: "focus", label: "Focus" },
+                { val: "focus", label: "Focus & Notes" },
                 { val: "details", label: "Info" },
                 { val: "history", label: "History" },
-                { val: "statistics", label: "Statistics" },
+                { val: "statistics", label: "Stats" },
               ].map((tab) => (
                 <TabsTrigger
                   key={tab.val}
                   value={tab.val}
-                  className="flex-none min-w-[80px] rounded-md h-[40px] px-4 font-bold text-sm text-slate-700 dark:text-slate-300 hover:text-slate-700 dark:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 bg-transparent data-[state=active]:bg-slate-100 data-[state=active]:dark:bg-slate-50 dark:bg-slate-800 data-[state=active]:text-slate-900 data-[state=active]:dark:text-white transition-all snap-center"
+                  className="flex-none md:flex-1 min-w-[75px] md:min-w-0 md:w-full rounded-lg h-[36px] md:h-[40px] px-2 sm:px-4 font-bold text-xs sm:text-sm text-slate-700 dark:text-slate-300 hover:text-slate-700 dark:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 bg-transparent data-[state=active]:bg-slate-100 data-[state=active]:dark:bg-slate-800 data-[state=active]:text-slate-900 data-[state=active]:dark:text-white transition-all snap-center text-center truncate"
                 >
                   {tab.label}
                 </TabsTrigger>
@@ -1589,14 +1747,111 @@ export function ClientProfileView({
         </div>
       </TabsContent>
 
-        <TabsContent value="focus" className="mt-0 flex-1 overflow-hidden min-h-0 bg-[#0A2E46] rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 dark:border-slate-700">
-          {client && authTrainer && (
-            <ClientFocusDashboard 
-              client={client} 
-              trainer={authTrainer} 
-              machines={machines} 
-            />
-          )}
+        <TabsContent value="focus" className="mt-0 flex-1 min-h-0 focus-visible:outline-none">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            {/* Focus Dashboard on Left Side */}
+            <div className="lg:col-span-7 bg-[#0A2E46] rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 p-1 overflow-hidden h-[750px]">
+              {client && authTrainer && (
+                <ClientFocusDashboard 
+                  client={client} 
+                  trainer={authTrainer} 
+                  machines={machines} 
+                />
+              )}
+            </div>
+
+            {/* Notes Workspace on Right Side */}
+            <div className="lg:col-span-5 space-y-6 h-[750px] flex flex-col min-h-0">
+              
+              {/* Core Notes area */}
+              <Card className="rounded-3xl shadow-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden flex-none">
+                <CardHeader className="p-6 border-b border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Save className="w-5 h-5 text-[#F06C22]" />
+                    <CardTitle className="text-lg font-bold uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
+                      Client Profile Notes
+                    </CardTitle>
+                  </div>
+                  <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-[#F06C22] mt-1">
+                    Persistent Free-Form Notes
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1">
+                      General Trainer Notes
+                    </Label>
+                    <Textarea
+                      value={clientNotesInput}
+                      onChange={(e) => setClientNotesInput(e.target.value)}
+                      placeholder="Enter custom training notes, physical cues, preferences, or other free-form details here..."
+                      className="min-h-[140px] text-sm p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      disabled={isSavingNotes}
+                      onClick={handleSaveNotes}
+                      className="h-10 px-6 rounded-xl bg-[#F06C22] hover:bg-[#ea580c] text-white font-bold uppercase italic text-[10px] tracking-widest shadow-[0_0_20px_rgba(240,108,34,0.2)] transition-all flex items-center gap-2"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      {isSavingNotes ? "Saving Notes..." : "Save Notes"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Historic Notes area - including pre, during and post session notes! */}
+              <Card className="rounded-3xl shadow-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex-1 overflow-hidden flex flex-col min-h-0">
+                <CardHeader className="p-6 border-b border-slate-200 dark:border-slate-800 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-[#F06C22]" />
+                    <CardTitle className="text-lg font-bold uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
+                      Session Timeline Notes
+                    </CardTitle>
+                  </div>
+                  <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-[#F06C22] mt-1">
+                    Pre, During & Post Session Records
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 overflow-y-auto flex-1 custom-scrollbar min-h-0 space-y-4">
+                  {getCombinedTimelineNotes().length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-slate-50 dark:bg-slate-950/40 rounded-2xl border-2 border-dashed border-slate-100 dark:border-slate-800/60">
+                      <Clock className="w-10 h-10 text-slate-400 opacity-25 mb-3" />
+                      <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">No timeline notes recorded</p>
+                      <p className="text-[9px] text-slate-500 mt-1 max-w-[200px]">Notes recorded before, during, or after workouts will automatically appear here as coaching documentation.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {getCombinedTimelineNotes().map((item, index) => (
+                        <div key={item.id} className="relative pl-6 border-l-2 border-slate-200 dark:border-slate-800 last:border-l-0 pb-1">
+                          {/* Dot accent */}
+                          <div className="absolute -left-[6px] top-1.5 w-[10px] h-[10px] rounded-full bg-[#F06C22]" />
+                          
+                          <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-800/40">
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className="text-[10px] font-black uppercase text-slate-900 dark:text-white tracking-widest">
+                                {item.title}
+                              </span>
+                              <span className="text-[8px] font-bold text-slate-500">
+                                {item.date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} at {item.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-800 dark:text-slate-200 italic leading-relaxed whitespace-pre-line">
+                              "{item.content}"
+                            </p>
+                            <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/50 flex justify-between items-center text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                              <span>Coach: {item.trainer}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="history" className="h-[750px] relative pb-20 overflow-y-auto custom-scrollbar">
@@ -2773,13 +3028,51 @@ export function ClientProfileView({
                   
                   <div className="space-y-2">
                     <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                      Join Date
+                      Start Date
                     </Label>
-                     <div className="h-14 md:h-16 flex items-center px-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-sm">
-                       <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100">
-                         {client.firstSessionDate ? new Date(client.firstSessionDate.toDate?.() || client.firstSessionDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "N/A"}
-                       </span>
-                     </div>
+                    <Input
+                      type="text"
+                      placeholder="MM/DD/YYYY"
+                      value={infoForm.firstSessionDateRaw || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const numbersOnly = val.replace(/\D/g, "");
+                        let formatted = numbersOnly;
+                        if (numbersOnly.length > 2 && numbersOnly.length <= 4) {
+                          formatted = `${numbersOnly.slice(0, 2)}/${numbersOnly.slice(2)}`;
+                        } else if (numbersOnly.length > 4) {
+                          formatted = `${numbersOnly.slice(0, 2)}/${numbersOnly.slice(2, 4)}/${numbersOnly.slice(4, 8)}`;
+                        }
+                        
+                        setInfoForm((f) => ({
+                          ...f,
+                          firstSessionDateRaw: formatted,
+                        }));
+
+                        if (numbersOnly.length === 8) {
+                          const m = parseInt(numbersOnly.slice(0, 2), 10);
+                          const d_val = parseInt(numbersOnly.slice(2, 4), 10);
+                          const y = parseInt(numbersOnly.slice(4, 8), 10);
+                          if (m >= 1 && m <= 12 && d_val >= 1 && d_val <= 31 && y >= 1900) {
+                            const selectedDate = new Date(y, m - 1, d_val);
+                            const timestamp = Timestamp.fromDate(selectedDate);
+                            setInfoForm((f) => ({
+                              ...f,
+                              firstSessionDate: timestamp,
+                              firstSessionDateRaw: formatted,
+                            }));
+                            handleStartDateChange(`${formatted}`);
+                          }
+                        } else if (numbersOnly.length === 0) {
+                          setInfoForm((f) => ({
+                            ...f,
+                            firstSessionDate: null,
+                            firstSessionDateRaw: "",
+                          }));
+                        }
+                      }}
+                      className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-black px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -2925,7 +3218,7 @@ export function ClientProfileView({
                               <div className="flex flex-col items-end">
                                 <span className="text-[10px] font-bold tracking-widest uppercase text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 mb-1">
                                   {new Date(
-                                    event.date + "T12:00:00",
+                                    parseSessionDate(event.date)
                                   ).toLocaleDateString()}
                                 </span>
                                 <Button

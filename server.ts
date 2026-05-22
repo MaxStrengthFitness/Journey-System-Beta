@@ -6,6 +6,13 @@ import ical from 'node-ical';
 import axios from 'axios';
 import path from 'path';
 import { masterSync } from './server/sync-logic.ts';
+import { 
+  generateExecutionGuide, 
+  generateClinicalStrategy, 
+  generateMachineSetupGuide, 
+  processLegacyChart, 
+  extractMachineSettingsFromImage 
+} from './server/gemini.ts';
 
 // Error Handling: Prevent process crash on unhandled rejections
 process.on('unhandledRejection', (reason, promise) => {
@@ -19,7 +26,62 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
+
+  app.post('/api/gemini/executionGuide', async (req, res) => {
+    try {
+      const { machineName, referenceText } = req.body;
+      const data = await generateExecutionGuide(machineName, referenceText);
+      res.json(data);
+    } catch (e: any) {
+      console.error(e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/gemini/clinicalStrategy', async (req, res) => {
+    try {
+      const { machineName, clientDetails, referenceText, clientAilments, machineContraindications } = req.body;
+      const data = await generateClinicalStrategy(machineName, clientDetails, referenceText, clientAilments, machineContraindications);
+      res.json(data);
+    } catch (e: any) {
+      console.error(e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/gemini/machineSetup', async (req, res) => {
+    try {
+      const { machineName, clientDetails, referenceText, clientAilments, machineContraindications } = req.body;
+      const data = await generateMachineSetupGuide(machineName, clientDetails, referenceText, clientAilments, machineContraindications);
+      res.json(data);
+    } catch (e: any) {
+      console.error(e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/gemini/processChart', async (req, res) => {
+    try {
+      const { images, expectedSessions, pageIndex, totalPages } = req.body;
+      const data = await processLegacyChart(images, expectedSessions, pageIndex, totalPages);
+      res.json(data);
+    } catch (e: any) {
+      console.error(e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/gemini/extractSettings', async (req, res) => {
+    try {
+      const { images } = req.body;
+      const data = await extractMachineSettingsFromImage(images);
+      res.json(data);
+    } catch (e: any) {
+      console.error(e);
+      res.status(500).json({ error: e.message });
+    }
+  });
 
   app.post('/api/log-error', (req, res) => {
     console.log('CLIENT ERROR:', req.body);

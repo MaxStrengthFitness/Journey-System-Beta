@@ -12,7 +12,13 @@ export function getMillis(dateObj: any): number {
   if (typeof dateObj.getTime === 'function') return dateObj.getTime();
   if (dateObj.seconds !== undefined) return dateObj.seconds * 1000 + ((dateObj.nanoseconds || 0) / 1000000);
   try {
-    const parsed = new Date(dateObj).getTime();
+    let toParse = dateObj;
+    if (typeof dateObj === 'string') {
+      const ts = parseSessionDate(dateObj);
+      if (ts > 0) return ts;
+      toParse = dateObj.replace(' ', 'T');
+    }
+    const parsed = new Date(toParse).getTime();
     return isNaN(parsed) ? 0 : parsed;
   } catch(e) {
     return 0;
@@ -22,7 +28,13 @@ export function getMillis(dateObj: any): number {
 export function safeToDate(d: any): Date | null {
   if (!d) return null;
   if (typeof d.toDate === 'function') return d.toDate();
-  if (typeof d === 'string' || typeof d === 'number') {
+  if (typeof d === 'string') {
+    const ts = parseSessionDate(d);
+    if (ts > 0) return new Date(ts);
+    const newD = new Date(d.replace(' ', 'T'));
+    return isNaN(newD.getTime()) ? null : newD;
+  }
+  if (typeof d === 'number') {
     const newD = new Date(d);
     return isNaN(newD.getTime()) ? null : newD;
   }
@@ -38,10 +50,27 @@ export function safeToDate(d: any): Date | null {
 export function parseSessionDate(dateString: string | undefined): number {
   if (!dateString) return 0;
   
+  // Replace space with T to make it ISO8601 compliant for Safari
+  dateString = dateString.replace(' ', 'T');
+  
   // Standard format YYYY-MM-DD
   if (dateString.includes('-') && dateString.split('-')[0].length === 4) {
-    const d = new Date(dateString + 'T12:00:00');
-    return isNaN(d.getTime()) ? 0 : d.getTime();
+    if (!dateString.includes('T')) {
+      const parts = dateString.split('-');
+      const y = parts[0];
+      const m = parts[1]?.padStart(2, '0') || '01';
+      const day = parts[2]?.padStart(2, '0') || '01';
+      const d = new Date(`${y}-${m}-${day}T12:00:00`);
+      return isNaN(d.getTime()) ? 0 : d.getTime();
+    } else {
+      const [datePart, timePart] = dateString.split('T');
+      const parts = datePart.split('-');
+      const y = parts[0];
+      const m = parts[1]?.padStart(2, '0') || '01';
+      const day = parts[2]?.padStart(2, '0') || '01';
+      const d = new Date(`${y}-${m}-${day}T${timePart}`);
+      return isNaN(d.getTime()) ? 0 : d.getTime();
+    }
   }
 
   // Common legacy format MM/DD or MM/DD/YY
@@ -221,4 +250,32 @@ export function isSessionValid(session: any): boolean {
 export function isBig5Machine(machineName: string = ''): boolean {
   const big5 = ["chest press", "compound row", "overhead press", "pulldown", "leg press"];
   return big5.includes(machineName.toLowerCase());
+}
+
+/**
+ * Orders machine settings entries for display.
+ * Requested order: gap, back pad, chest pad, seat.
+ * Any other settings are placed after in alphabetical order.
+ */
+export function orderMachineSettings(settings: Record<string, string> | undefined | null): [string, string][] {
+  if (!settings) return [];
+  
+  const PREFERRED_ORDER = ['gap', 'back pad', 'chest pad', 'seat'];
+  
+  const entries = Object.entries(settings);
+  return entries.sort(([keyA], [keyB]) => {
+    let indexA = PREFERRED_ORDER.findIndex(k => keyA.toLowerCase().includes(k));
+    let indexB = PREFERRED_ORDER.findIndex(k => keyB.toLowerCase().includes(k));
+    
+    // If exact matches are preferred, we can use exact matching, but includes handles things like 'Back Pad'
+    
+    if (indexA === -1) indexA = 999;
+    if (indexB === -1) indexB = 999;
+    
+    if (indexA !== indexB) {
+      return indexA - indexB; // Lower index comes first
+    }
+    
+    return keyA.localeCompare(keyB);
+  });
 }

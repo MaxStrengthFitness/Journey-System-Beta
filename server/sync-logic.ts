@@ -123,19 +123,74 @@ export async function masterSync(targetTrainerId?: string, hardReset: boolean = 
 
     console.log(`[Sync-${syncId}] Loading client mapping...`);
     const clientsSnap = await getDocs(collection(clientDb, 'clients'));
-    const clientMap: Record<string, string> = {};
-    clientsSnap.forEach(d => {
-      const data = d.data();
-      const first = data.firstName || '';
-      const last = data.lastName || '';
-      const fullName = normalizeName(`${first} ${last}`);
-      clientMap[fullName] = d.id;
-      clientMap[cleanAlphanumeric(fullName)] = d.id;
-      if (data.mindbody_name) {
-        clientMap[normalizeName(data.mindbody_name)] = d.id;
-        clientMap[cleanAlphanumeric(data.mindbody_name)] = d.id;
+    const clientsData = clientsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+
+    const findClientForTrainerSync = (clientName: string, trainerHomeStudioId?: string): string | null => {
+      if (!clientName) return null;
+      const normalizedSName = normalizeName(clientName);
+      const cleanSName = cleanAlphanumeric(clientName);
+
+      const isFuzzyMatch = (sName: string, first: string, last: string, mbName?: string): boolean => {
+        const sNameClean = sName.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '');
+        const cFirstClean = (first || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cLastClean = (last || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cFullClean = `${cFirstClean} ${cLastClean}`.trim();
+        
+        if (mbName) {
+          const mbClean = mbName.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '');
+          if (sNameClean === mbClean) return true;
+        }
+
+        if (sNameClean === cFullClean) return true;
+
+        const sWords = sNameClean.split(/\s+/).filter(Boolean);
+        const cWords = [cFirstClean, cLastClean].filter(Boolean);
+
+        if (sWords.length === 0 || cWords.length === 0) return false;
+        if (sWords[0] !== cWords[0]) return false;
+
+        if (sWords.length === 1 && cWords.length > 1) return true;
+        if (sWords.length > 1 && cWords.length === 1) return true;
+
+        if (sWords.length >= 2 && cWords.length >= 2) {
+          const sLast = sWords.slice(1).join(' ');
+          const cLast = cWords.slice(1).join(' ');
+          
+          if (sLast === cLast) return true;
+          if (sLast.length === 1 && cLast.startsWith(sLast)) return true;
+          if (cLast.length === 1 && sLast.startsWith(cLast)) return true;
+        }
+
+        return false;
+      };
+
+      // 1. Try matching with strict name/fuzzy in the trainer's home studio
+      if (trainerHomeStudioId) {
+        const match = clientsData.find(c => {
+          if (c.homeStudioId !== trainerHomeStudioId) return false;
+          const first = c.firstName || '';
+          const last = c.lastName || '';
+          const fullName = normalizeName(`${first} ${last}`);
+          if (fullName === normalizedSName || cleanAlphanumeric(fullName) === cleanSName) return true;
+          if (c.mindbody_name && (normalizeName(c.mindbody_name) === normalizedSName || cleanAlphanumeric(c.mindbody_name) === cleanSName)) return true;
+          
+          return isFuzzyMatch(clientName, first, last, c.mindbody_name);
+        });
+        if (match) return match.id;
       }
-    });
+
+      // 2. Fallback globally
+      const matchGlobal = clientsData.find(c => {
+        const first = c.firstName || '';
+        const last = c.lastName || '';
+        const fullName = normalizeName(`${first} ${last}`);
+        if (fullName === normalizedSName || cleanAlphanumeric(fullName) === cleanSName) return true;
+        if (c.mindbody_name && (normalizeName(c.mindbody_name) === normalizedSName || cleanAlphanumeric(c.mindbody_name) === cleanSName)) return true;
+        
+        return isFuzzyMatch(clientName, first, last, c.mindbody_name);
+      });
+      return matchGlobal ? matchGlobal.id : null;
+    };
 
     const studiosSnap = await getDocs(collection(clientDb, 'studios'));
     const studiosWithNames: any[] = [];
@@ -199,7 +254,7 @@ export async function masterSync(targetTrainerId?: string, hardReset: boolean = 
           const summary = typeof ev.summary === 'object' ? (ev.summary as any).val : (ev.summary || '');
           const description = typeof ev.description === 'object' ? (ev.description as any).val : (ev.description || '');
           const clientName = extractClientName(summary, description);
-          const clientId = clientMap[normalizeName(clientName)] || clientMap[cleanAlphanumeric(clientName)] || null;
+          const clientId = findClientForTrainerSync(clientName, trainer.primaryHomeStudioId);
           
           const isCancelled = 
             (ev.status && typeof ev.status === 'string' && ev.status.toUpperCase() === 'CANCELLED') ||

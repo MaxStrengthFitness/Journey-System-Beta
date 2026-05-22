@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { ExerciseLog, WorkoutSession } from '../types';
+import { parseSessionDate } from './utils';
 
 /**
  * Calculates the delta for highlighted movements.
@@ -189,8 +190,9 @@ export async function calculateComprehensiveAttendanceStats(clientId: string, st
       }
     }
 
-    const sDate = new Date(s.date + 'T12:00:00');
-    if (!isNaN(sDate.getTime())) {
+    const ts = parseSessionDate(s.date);
+    if (ts > 0) {
+      const sDate = new Date(ts);
       if (previousDate) {
         const diffDays = Math.round((sDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24));
         if (diffDays > 0 && diffDays < 100) {

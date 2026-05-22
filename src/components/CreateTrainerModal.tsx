@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { hashPin } from '../lib/auth-utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,15 +16,24 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
   const [fullName, setFullName] = useState('');
   const [initials, setInitials] = useState('');
   const [pin, setPin] = useState('');
+  const [enablePin, setEnablePin] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
 
-  const handleSubmit = () => {
-    if (!fullName || !initials || !pin) return;
+  const handleSubmit = async () => {
+    if (!fullName || !initials) return;
+    if (enablePin && pin.length !== 4) return;
+    
+    let finalPin = '';
+    let finalPinHash = '';
+    if (enablePin && pin) {
+      finalPinHash = await hashPin(pin);
+    }
     
     onSubmit({
       fullName,
       initials,
-      pin,
+      pin: finalPin,
+      pinHash: finalPinHash,
       isOwner,
       isVisibleOnCalendar: true
     });
@@ -31,6 +41,7 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
     setFullName('');
     setInitials('');
     setPin('');
+    setEnablePin(false);
     setIsOwner(false);
     onOpenChange(false);
   };
@@ -71,19 +82,36 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
               maxLength={3}
             />
           </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">4-Digit PIN</Label>
-            <Input 
-              value={pin}
-              onChange={(e) => {
-                const val = e.target.value.replace(/[^0-9]/g, '');
-                if (val.length <= 4) setPin(val);
-              }}
-              className="bg-slate-800 border-slate-700 text-white rounded-xl h-12"
-              placeholder="1234"
-              maxLength={4}
-              type="password"
-            />
+          <div className="space-y-4 border border-slate-800 rounded-xl p-4 bg-slate-800/50">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">PIN Lock Security</Label>
+                <p className="text-[9px] text-slate-500 font-bold uppercase">Require a 4-digit PIN for access</p>
+              </div>
+              <Switch
+                checked={enablePin}
+                onCheckedChange={(checked) => {
+                  setEnablePin(checked);
+                  if (!checked) setPin('');
+                }}
+              />
+            </div>
+            {enablePin && (
+              <div className="space-y-2 pt-2 border-t border-slate-800">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">4-Digit PIN Code</Label>
+                <Input 
+                  value={pin}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    if (val.length <= 4) setPin(val);
+                  }}
+                  className="bg-slate-800 border-slate-700 text-white rounded-xl h-10 font-mono"
+                  placeholder="Enter 4 digits"
+                  maxLength={4}
+                  type="password"
+                />
+              </div>
+            )}
           </div>
           
           <div className="flex items-center justify-between p-4 bg-slate-800 rounded-xl border border-slate-700">
@@ -95,7 +123,7 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={handleSubmit} disabled={!fullName || !initials || pin.length !== 4} className="w-full bg-[#F06C22] hover:bg-[#d95b16] text-white font-black uppercase text-xs h-12 rounded-xl transition-all shadow-[0_0_20px_rgba(240,108,34,0.3)]">
+          <Button onClick={handleSubmit} disabled={!fullName || !initials || (enablePin && pin.length !== 4)} className="w-full bg-[#F06C22] hover:bg-[#d95b16] text-white font-black uppercase text-xs h-12 rounded-xl transition-all shadow-[0_0_20px_rgba(240,108,34,0.3)]">
             Create Trainer Profile
           </Button>
         </DialogFooter>

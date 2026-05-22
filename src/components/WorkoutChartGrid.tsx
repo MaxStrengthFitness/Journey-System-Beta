@@ -43,7 +43,7 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { Client, Machine, WorkoutSession, ExerciseLog, ClientMachineSetting, Routine } from '../types';
-import { cn, parseSessionDate, getMuscleGroupColor, calculateExerciseVolume, isBig5Machine } from '../lib/utils';
+import { cn, parseSessionDate, getMuscleGroupColor, calculateExerciseVolume, isBig5Machine, orderMachineSettings } from '../lib/utils';
 import { OperationType, handleFirestoreError } from '../lib/firestore-errors';
 import { MachineSettingsDashboardModal } from './MachineSettingsDashboardModal';
 
@@ -445,7 +445,7 @@ export function WorkoutChartGrid({
 
                       {/* Settings Component */}
                       <div className="flex flex-wrap gap-x-2 gap-y-0 bg-slate-900/50 px-1 py-0.5 rounded-md border border-slate-700 transition-all group/settings mt-0.5">
-                         {clientSettings.find(s => s.machineId === machine.id)?.settings && Object.entries(clientSettings.find(s => s.machineId === machine.id)?.settings || {}).map(([opt, val]) => (
+                         {clientSettings.find(s => s.machineId === machine.id)?.settings && orderMachineSettings(clientSettings.find(s => s.machineId === machine.id)?.settings || {}).map(([opt, val]) => (
                            <div key={opt} className="flex items-baseline gap-0.5">
                               <span className="text-[7px] font-bold uppercase tracking-tighter text-slate-400 group-hover/settings:text-[#F06C22] transition-colors line-clamp-1 truncate max-w-[40px]">
                                 {opt}:

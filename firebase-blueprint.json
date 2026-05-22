@@ -44,6 +44,7 @@
         "activity": { "type": "string" },
         "goals": { "type": "string" },
         "globalNotes": { "type": "string" },
+        "notes": { "type": "string", "description": "Persistent free-form notes from trainers" },
         "leadSource": { "type": "string" },
         "referredBy": { "type": "string" },
         "isRoutineBActive": { "type": "boolean" },
@@ -52,6 +53,8 @@
         "mindbody_name": { "type": "string" },
         "completedSessions": { "type": "number" },
         "sessionCount": { "type": "number" },
+        "lifetimeReps": { "type": "number" },
+        "lifetimeWeight": { "type": "number" },
         "packageTier": { "type": "string", "enum": ["6-Month", "12-Month", "18-Month", "None"] },
         "consultationCompleted": { "type": "boolean" },
         "requiresConsultation": { "type": "boolean" },
@@ -249,6 +252,7 @@
         "studioId": { "type": "string", "description": "'all' or a specific studioId" },
         "isActive": { "type": "boolean" },
         "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "readBy": { "type": "array", "items": { "type": "string" } },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["title", "shortContent", "longContent", "authorId", "authorName", "studioId", "isActive", "priority"]
@@ -308,9 +312,25 @@
         "trainerId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "FranchiseNetwork": {
+      "title": "FranchiseNetwork",
+      "description": "Representation of a group of studios managed as a regional franchise network.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "studioIds": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "ownerId", "studioIds"]
     }
   },
   "firestore": {
+    "/networks/{networkId}": {
+      "schema": "FranchiseNetwork",
+      "description": "Collection of regional franchise networks"
+    },
     "/trainers/{trainerId}": {
       "schema": "Trainer",
       "description": "Collection of trainers"

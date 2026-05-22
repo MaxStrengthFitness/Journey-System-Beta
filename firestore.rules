@@ -121,6 +121,7 @@ service cloud.firestore {
              (!('recoveryMetric' in data) || data.recoveryMetric == null || data.recoveryMetric is string) &&
              (!('activity' in data) || data.activity == null || data.activity is string) &&
              (!('goals' in data) || data.goals == null || data.goals is string) &&
+             (!('mindbody_name' in data) || data.mindbody_name == null || data.mindbody_name is string) &&
              (!('globalNotes' in data) || data.globalNotes == null || (data.globalNotes is string && data.globalNotes.size() < 2000)) &&
              (!('isRoutineBActive' in data) || data.isRoutineBActive == null || data.isRoutineBActive is bool) &&
              (!('sessionCount' in data) || data.sessionCount == null || data.sessionCount is number) &&
@@ -309,6 +310,15 @@ service cloud.firestore {
              data.studioId is string &&
              data.isActive is bool &&
              data.priority in ['low', 'medium', 'high'] &&
+             (!('readBy' in data) || data.readBy is list) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidNetwork(data) {
+      return hasRequiredFields(['name', 'ownerId', 'studioIds']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.ownerId is string &&
+             data.studioIds is list &&
              (!('createdAt' in data) || data.createdAt is timestamp);
     }
 
@@ -436,6 +446,11 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if (isAdmin() || isTrainer()) && isValidStudio(request.resource.data);
       allow delete: if isAdmin() || isTrainer();
+    }
+    match /networks/{networkId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() && isValidNetwork(request.resource.data);
+      allow delete: if isAdmin();
     }
     match /aggregations/{aggId} {
       allow read: if isAuthenticated();

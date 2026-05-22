@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { hashPin } from '../lib/auth-utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +24,8 @@ interface EditTrainerModalProps {
 export function EditTrainerModal({ trainer, authTrainer, studios = [], isOpen, onOpenChange, onSave }: EditTrainerModalProps) {
   const [fullName, setFullName] = useState(trainer.fullName);
   const [initials, setInitials] = useState(trainer.initials);
-  const [pin, setPin] = useState(trainer.pin);
+  const [pin, setPin] = useState(trainer.pin || '');
+  const [enablePin, setEnablePin] = useState(!!trainer.pin || !!trainer.pinHash);
   const [bio, setBio] = useState(trainer.bio || '');
   const [certifications, setCertifications] = useState<string[]>(trainer.certifications || []);
   const [newCert, setNewCert] = useState('');
@@ -33,7 +35,8 @@ export function EditTrainerModal({ trainer, authTrainer, studios = [], isOpen, o
     if (isOpen) {
       setFullName(trainer.fullName);
       setInitials(trainer.initials);
-      setPin(trainer.pin);
+      setPin(trainer.pin || '');
+      setEnablePin(!!trainer.pin || !!trainer.pinHash);
       setBio(trainer.bio || '');
       setCertifications(trainer.certifications || []);
       setNewCert('');
@@ -51,13 +54,28 @@ export function EditTrainerModal({ trainer, authTrainer, studios = [], isOpen, o
     setCertifications(certifications.filter(c => c !== cert));
   };
 
-  const handleSubmit = () => {
-    if (!fullName || !initials || !pin) return;
-    
+  const handleSubmit = async () => {
+    if (!fullName || !initials) return;
+    if (enablePin && pin.length !== 4) return;
+
+    let finalPin = '';
+    let finalPinHash = '';
+
+    if (enablePin) {
+      if (pin && pin !== trainer.pin) {
+        finalPinHash = await hashPin(pin);
+        finalPin = ''; // Keep plaintext empty for security if hashed
+      } else {
+        finalPin = trainer.pin || '';
+        finalPinHash = trainer.pinHash || '';
+      }
+    }
+
     onSave({
       fullName,
       initials,
-      pin,
+      pin: finalPin,
+      pinHash: finalPinHash,
       bio,
       certifications
     });
@@ -121,18 +139,36 @@ export function EditTrainerModal({ trainer, authTrainer, studios = [], isOpen, o
                 maxLength={3}
               />
             </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">4-Digit PIN</Label>
-              <Input 
-                value={pin}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/[^0-9]/g, '');
-                  if (val.length <= 4) setPin(val);
-                }}
-                className="bg-slate-50 border-slate-200 text-slate-900 rounded-xl h-12 font-mono"
-                maxLength={4}
-                type="password"
-              />
+            <div className="space-y-4 border border-slate-100 rounded-xl p-3 bg-slate-50/50">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">PIN Lock Security</Label>
+                  <p className="text-[9px] text-slate-400 font-medium">Require a 4-digit PIN to login</p>
+                </div>
+                <Switch
+                  checked={enablePin}
+                  onCheckedChange={(checked) => {
+                    setEnablePin(checked);
+                    if (!checked) setPin('');
+                  }}
+                />
+              </div>
+              {enablePin && (
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">4-Digit PIN Code</Label>
+                  <Input 
+                    value={pin}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      if (val.length <= 4) setPin(val);
+                    }}
+                    className="bg-white border-slate-200 text-slate-900 rounded-xl h-10 font-mono"
+                    maxLength={4}
+                    placeholder="Enter 4 digits"
+                    type="password"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -208,7 +244,7 @@ export function EditTrainerModal({ trainer, authTrainer, studios = [], isOpen, o
 
         </div>
         <DialogFooter className="pt-4 border-t border-slate-100">
-          <Button onClick={handleSubmit} disabled={!fullName || !initials || pin.length !== 4} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest text-xs h-12 rounded-xl transition-all shadow-md">
+          <Button onClick={handleSubmit} disabled={!fullName || !initials || (enablePin && pin.length !== 4)} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest text-xs h-12 rounded-xl transition-all shadow-md">
             Save Changes
           </Button>
         </DialogFooter>
