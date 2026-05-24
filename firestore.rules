@@ -45,7 +45,11 @@ service cloud.firestore {
 
     // 1. SUPER ADMIN: Absolute master access to everything
     function isSuperAdmin() {
-      return isAdmin() || isFounder();
+      return isAdmin() || isFounder() || (
+        isAuthenticated() &&
+        request.auth.token.email == 'jurgensaj@gmail.com' &&
+        request.auth.token.email_verified == true
+      );
     }
 
     // 2. FRANCHISE OWNER: Management authority of regional studio systems

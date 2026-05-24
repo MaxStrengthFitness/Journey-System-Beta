@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:ital,wght@0,600;0,700;0,800;1,600;1,700;1,800&family=Inter:wght@400;500;600;700&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -44,6 +45,34 @@
     --color-card: var(--card);
     --color-foreground: var(--foreground);
     --color-background: var(--background);
+    
+    /* JOURNEY SYSTEM BETA TOKENS */
+    --color-bg-dark: var(--bg-dark);
+    --color-bg-dark-2: var(--bg-dark-2);
+    --color-bg-dark-3: var(--bg-dark-3);
+    --color-ink-d1: var(--ink-d1);
+    --color-ink-d2: var(--ink-d2);
+    --color-ink-d3: var(--ink-d3);
+    --color-div-d: var(--div-d);
+    
+    --color-bg-l: var(--bg-l);
+    --color-bg-l-card: var(--bg-l-card);
+    --color-ink-l1: var(--ink-l1);
+    --color-ink-l2: var(--ink-l2);
+    --color-ink-l3: var(--ink-l3);
+    --color-ink-l4: var(--ink-l4);
+    --color-div-l: var(--div-l);
+    
+    --color-cta: var(--cta);
+    --color-cta-strong: var(--cta-strong);
+    --color-cyan: var(--cyan);
+    --color-yellow: var(--yellow);
+    --color-green: var(--green);
+    --color-red: var(--red);
+    --color-amber: var(--amber);
+    
+    --font-display: 'Saira Condensed', var(--font-sans);
+    
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -91,6 +120,31 @@
     --sidebar-accent-foreground: #115E8D;
     --sidebar-border: #E2E8F0;
     --sidebar-ring: #115E8D;
+    
+    /* JOURNEY SYSTEM BETA TOKENS */
+    --bg-dark:     #0D1A2B;
+    --bg-dark-2:   #16263D;
+    --bg-dark-3:   #1F344F;
+    --ink-d1:      #FFFFFF;
+    --ink-d2:      #B8C5D6;
+    --ink-d3:      #6B7C95;
+    --div-d:       rgba(255,255,255,0.08);
+
+    --bg-l:        #F5F7FA;
+    --bg-l-card:   #FFFFFF;
+    --ink-l1:      #0D1A2B;
+    --ink-l2:      #344155;
+    --ink-l3:      #6B7C95;
+    --ink-l4:      #A5B0BF;
+    --div-l:       #E4E7EB;
+
+    --cta:         #F37427;
+    --cta-strong:  #E45F0F;
+    --cyan:        #5BC0DE;
+    --yellow:      #FCD661;
+    --green:       #4FDB8E;
+    --red:         #E84F4F;
+    --amber:       #F5A623;
 }
 
 .dark {
@@ -151,5 +205,8 @@
   .no-scrollbar {
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 }

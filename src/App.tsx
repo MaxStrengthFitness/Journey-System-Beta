@@ -141,6 +141,10 @@ import { TrainerProfileView } from "./components/TrainerProfileView";
 import { StudioSelectionView } from "./components/StudioSelectionView";
 import { PreSessionOverview } from "./components/PreSessionOverview";
 import { PostSessionBriefingView } from "./components/PostSessionBriefingView";
+import { BriefingScreen } from "./components/BriefingScreen";
+import { VictoryHUDScreen } from "./components/VictoryHUDScreen";
+import { AppHeader } from "./components/AppHeader";
+import { useTheme } from "./components/ThemeProvider";
 import { ConsultationSetupWizard } from "./components/ConsultationSetupWizard";
 import { ConsultationWizard } from "./components/ConsultationWizard";
 import { AdminDashboardView } from "./components/AdminDashboardView";
@@ -532,7 +536,7 @@ export default function App() {
           const trainerSnap = await getDoc(trainerRef);
 
           let trainerData: Trainer | null = null;
-          const isSystemAdmin = claimsRole === "Admin" || claimsRole === "Founder" || claimsRole === "Overseer" || (trainerSnap.exists() && (trainerSnap.data().role === "Admin" || trainerSnap.data().role === "Founder"));
+          const isSystemAdmin = claimsRole === "Admin" || claimsRole === "Founder" || claimsRole === "Overseer" || (trainerSnap.exists() && (trainerSnap.data().role === "Admin" || trainerSnap.data().role === "Founder")) || (u.email === "jurgensaj@gmail.com");
 
           if (trainerSnap.exists()) {
             trainerData = {
@@ -657,6 +661,7 @@ function AppContent({
   handleLogout: () => Promise<void>;
   tokenRole: string | null;
 }) {
+  const { theme } = useTheme();
   const {
     activeStudioId,
     activeStudio,
@@ -1756,58 +1761,29 @@ function AppContent({
       <div className="flex flex-col min-h-screen bg-background text-foreground font-sans overflow-x-hidden w-full max-w-full">
         {/* Header */}
         {currentView !== "workouts" && (
-          <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 md:px-6 h-16 md:h-20 flex items-center justify-between">
-            <div className="flex items-center shrink-0">
-              <MaxStrengthLogo
-                size="sm"
-                showText={false}
-                className="scale-[0.8] origin-left text-slate-900 dark:text-white drop-shadow-md"
-              />
-              <div className="flex flex-col ml-1 leading-none">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-[0.2em]">
-                    Strength
-                  </span>
-                  {activeStudioName && (
-                    <button
-                      onClick={() => setIsChangingStudio(true)}
-                      className="ml-2 px-2 py-0.5 rounded-full bg-white/10 hover:bg-white dark:hover:bg-slate-800/20 border border-white/10 transition-colors flex items-center gap-1 group"
-                    >
-                      <Building2 className="w-2.5 h-2.5 text-sky-500" />
-                      <span className="text-[9px] font-black text-slate-900 dark:text-white/80 uppercase tracking-widest">
-                        {activeStudioName}
-                      </span>
-                    </button>
-                  )}
-                </div>
-                <span className="text-[12px] font-bold text-slate-900 dark:text-white uppercase tracking-[0.3em]">
-                  Fitness
-                </span>
-              </div>
-            </div>
-
-            {/* Removed the old HubAnnouncementHeaderGift component */}
-
-            <div className="flex items-center gap-2 md:gap-4 shrink-0">
-              <ThemeToggle />
-              <HubAnnouncementsWidget authTrainer={authTrainer} />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setCurrentView("trainer-hub")}
-                className={`rounded-full transition-all hover:bg-transparent ${currentView === "trainer-hub" ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 active:text-orange-500"}`}
-                title="Trainer Control Hub"
-              >
-                <Settings className="w-6 h-6 md:w-7 md:h-7 transition-colors hover:stroke-orange-500" />
-              </Button>
-
+          <AppHeader 
+            variant={theme === "light" ? "light" : "dark"}
+            studioName={activeStudioName || undefined}
+            onStudioClick={() => setIsChangingStudio(true)}
+            rightControls={
+              <>
+                <ThemeToggle />
+                <HubAnnouncementsWidget authTrainer={authTrainer} />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setCurrentView("trainer-hub")}
+                  className={`rounded-full transition-all hover:bg-transparent ${currentView === "trainer-hub" ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 active:text-orange-500"}`}
+                  title="Trainer Control Hub"
+                >
+                  <Settings className="w-6 h-6 md:w-7 md:h-7 transition-colors hover:stroke-orange-500" />
+                </Button>
+              </>
+            }
+            trainerDropdown={
               <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center gap-3 rounded-full cursor-pointer transition-transform hover:scale-105 active:scale-95">
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-sky-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white flex items-center justify-center shadow-[0_0_15px_rgba(56,189,248,0.4)]">
-                    <span className="font-bold text-sm md:text-base uppercase tracking-wider">
-                      {authTrainer.initials}
-                    </span>
-                  </div>
+                <DropdownMenuTrigger className="w-11 h-11 rounded-full font-display italic text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-bg-dark text-white dark:border dark:border-div-d dark:bg-bg-dark-3">
+                  {authTrainer.initials}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
@@ -1887,8 +1863,8 @@ function AppContent({
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
-          </header>
+            }
+          />
         )}
 
         {/* Main Content */}
@@ -5222,7 +5198,7 @@ function ClientsView({
                           {client.lastName[0]}
                         </div>
                         <div className="flex flex-col min-w-0">
-                          <span className="font-bold text-slate-100 text-[15px] truncate leading-tight">
+                          <span className="font-bold text-slate-900 dark:text-slate-100 text-[15px] truncate leading-tight">
                             {client.firstName} {client.lastName}
                           </span>
                           <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate flex items-center gap-1.5">
@@ -8663,7 +8639,7 @@ function WorkoutTrackerView({
     }
 
     return (
-      <PreSessionOverview
+      <BriefingScreen
         authTrainer={authTrainer}
         client={selectedClient}
         targetRoutine={targetRoutine}
@@ -8673,7 +8649,7 @@ function WorkoutTrackerView({
         onStart={(routineType, customMachines, note) =>
           startNewSession(routineType, undefined, customMachines, note)
         }
-        onCancel={() => {
+        onClose={() => {
           setIsPreSessionMode(false);
           setView("profile");
         }}
@@ -8692,7 +8668,7 @@ function WorkoutTrackerView({
 
   if (isPostSessionMode && currentSession && selectedClient) {
     return (
-      <PostSessionBriefingView
+      <VictoryHUDScreen
         client={selectedClient}
         session={currentSession}
         logs={
@@ -8705,10 +8681,10 @@ function WorkoutTrackerView({
             (l: any) => l.clientId === selectedClient.id,
           ) as any
         }
-        authTrainer={authTrainer}
         schedules={schedules}
-        isSyncing={isSyncing}
+        authTrainer={authTrainer}
         onFinalize={finalizeEndSession}
+        isSyncing={isSyncing}
       />
     );
   }

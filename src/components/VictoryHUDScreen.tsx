@@ -1,0 +1,148 @@
+import React, { useState } from "react";
+import { AppHeader } from "./AppHeader";
+import { StickyCTA } from "./StickyCTA";
+import { FeelToggle } from "./FeelToggle";
+import { BentoStatTile } from "./BentoStatTile";
+import { Client, WorkoutSession, ExerciseLog, Trainer, ScheduleEntry } from "../types";
+
+export interface VictoryHUDScreenProps {
+  client: Client;
+  session: WorkoutSession;
+  logs: ExerciseLog[];
+  allLogs?: ExerciseLog[];
+  schedules?: ScheduleEntry[];
+  authTrainer: Trainer | null;
+  onFinalize: (postData: { clientFeel: string; noteContent: string; notePriority: 'High' | 'Medium' | 'Low' }) => void;
+  isSyncing?: boolean;
+}
+
+export function VictoryHUDScreen({ 
+  client,
+  session,
+  logs,
+  allLogs = [],
+  schedules = [],
+  authTrainer,
+  onFinalize,
+  isSyncing 
+}: VictoryHUDScreenProps) {
+  const [feel, setFeel] = useState<'great' | 'good' | 'fatigued' | 'sore' | 'pain'>('good');
+  const [notes, setNotes] = useState('');
+  const [priority, setPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
+
+  // Calculate actual total tonnage from today's logs
+  const totalTonnage = logs.reduce((sum, l) => sum + (l.loadLb || 0) * (l.outcomeReps || 0), 0);
+  
+  // Calculate average TUT
+  const totalTimeUnderTension = logs.reduce((sum, l) => sum + (l.outcomeTut || 0), 0);
+  const totalReps = logs.reduce((sum, l) => sum + (l.outcomeReps || 0), 0);
+  const avgTutPerRep = totalReps > 0 ? (totalTimeUnderTension / totalReps).toFixed(1) : '0';
+
+  // Calculate elite sets (assuming quality >= 4 or whatever logic is used)
+  const eliteSets = logs.filter(l => (l.repQuality || 0) >= 4).length;
+  const totalSets = logs.length;
+
+  // Total session duration
+  const durationMs = (session.endTime || Date.now()) - session.startTime;
+  const durationMins = Math.floor(durationMs / 60000);
+  const durationSecs = Math.floor((durationMs % 60000) / 1000);
+  const durationFormat = `${durationMins}:${durationSecs.toString().padStart(2, '0')}`;
+
+  // Lifetime stats
+  const lifetimeVolume = allLogs.reduce((sum, l) => sum + (l.loadLb || 0) * (l.outcomeReps || 0), 0);
+  const lifetimeReps = allLogs.reduce((sum, l) => sum + (l.outcomeReps || 0), 0);
+  const sessionCount = new Set(allLogs.map(l => l.sessionId)).size;
+  const avgRepsPerSession = sessionCount > 0 ? (lifetimeReps / sessionCount).toFixed(1) : '0';
+
+  const tiles = [
+    { id: 'tonnage',      label: "TODAY'S TONNAGE",  value: totalTonnage,    unit: 'lb', variant: 'hero' as const },
+    { id: 'tut',          label: 'AVG TUT / REP',    value: avgTutPerRep,  unit: 's',   variant: 'default' as const },
+    { id: 'elite',        label: 'ELITE SETS',       value: eliteSets.toString(),    meta: `/ ${totalSets}`, progress: { current: eliteSets, target: totalSets }, variant: 'default' as const },
+    { id: 'reps',         label: 'TOTAL REPS',       value: totalReps,                  variant: 'default' as const },
+    { id: 'duration',     label: 'DURATION',         value: durationFormat,             variant: 'default' as const },
+    { id: 'lifetimeVol',  label: 'LIFETIME VOLUME',  value: lifetimeVolume.toLocaleString(), unit: 'lb', meta: `${sessionCount} sessions`, variant: 'elevated' as const },
+    { id: 'lifetimeReps', label: 'LIFETIME REPS',    value: lifetimeReps.toLocaleString(),                 meta: `avg ${avgRepsPerSession} / session`, variant: 'elevated' as const },
+  ];
+
+  return (
+    <div className="w-[820px] h-[1180px] bg-bg-dark mx-auto relative flex flex-col font-sans overflow-hidden border border-div-d shadow-2xl">
+      <AppHeader variant="dark" trainerInitials={authTrainer?.initials || "AJ"} />
+
+      <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 flex flex-col pb-[120px]">
+        {/* 2. Title block */}
+        <div className="px-6 py-[14px]">
+          <div className="font-display italic text-cyan text-[11px] uppercase tracking-[0.16em] mb-1">
+            🏆 VICTORY HUD
+          </div>
+          <h1 className="font-display italic text-white text-[38px] uppercase tracking-[-0.01em] leading-none mb-2 mt-2">
+            SESSION COMPLETE
+          </h1>
+          <div className="flex items-center gap-2 text-ink-d2 text-[13px]">
+            <span>Great work · {client.firstName}'s numbers for today.</span>
+            <div className="font-mono text-[9px] bg-white/10 px-2 py-[3px] rounded-[10px] tracking-[0.04em] uppercase text-white ml-2">
+              SESSION · {session.id.substring(0, 8)}…
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Bento stat grid */}
+        <div className="px-5 mt-2">
+          <div className="grid grid-cols-4 auto-rows-[86px] gap-2.5">
+            {tiles.map(tile => (
+              <BentoStatTile key={tile.id} {...tile} />
+            ))}
+          </div>
+        </div>
+
+        {/* 4. Feedback card */}
+        <div className="mx-5 mt-4 p-[14px] px-4 bg-bg-dark-2 border border-div-d rounded-[14px] flex flex-col gap-3">
+          <div className="font-display italic text-cyan text-[11px] uppercase tracking-[0.10em]">
+            RECOVERY + CLINICAL LOG
+          </div>
+          
+          <div className="font-display italic text-white text-[17px] uppercase mt-[-4px]">
+            How does {client.firstName} feel?
+          </div>
+          
+          <FeelToggle 
+            value={feel} 
+            onChange={(val) => setFeel(val as any)} 
+          />
+          
+          <textarea 
+            className="w-full bg-black/25 border border-white/10 rounded-[10px] p-[10px] px-3 min-h-[60px] text-[13px] text-white placeholder:text-ink-d3 placeholder:italic placeholder:font-sans resize-none outline-none focus:border-cyan transition-colors mt-1"
+            placeholder="Post-session notes — any closing observations? These feed into next briefing."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+          
+          <div className="flex items-center justify-between mt-1">
+            <span className="font-display italic text-[10px] text-ink-d3 uppercase tracking-wider">
+              PRIORITY FOR NEXT TIME
+            </span>
+            <button 
+              onClick={() => {
+                const next: Record<string, 'High' | 'Medium' | 'Low'> = { High: 'Low', Low: 'Medium', Medium: 'High' };
+                setPriority(next[priority]);
+              }}
+              className={`font-display italic text-[11px] uppercase px-4 min-h-[44px] rounded-xl flex items-center gap-2 transition-colors ${
+                priority === 'High' ? 'bg-orange-500/20 border border-orange-500/30 text-orange-400 hover:bg-orange-500/30' :
+                priority === 'Medium' ? 'bg-cyan/10 border border-cyan/30 text-cyan hover:bg-cyan/20' :
+                'bg-white/5 border border-white/10 text-white hover:bg-white/10'
+              }`}
+            >
+              {priority} <span className="text-[8px] opacity-70">▼</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <StickyCTA 
+        label={isSyncing ? "SAVING..." : "FINALIZE & RETURN TO HUB"}
+        icon={!isSyncing ? <span className="text-[13px] order-last ml-1">▶</span> : undefined}
+        onClick={() => onFinalize({ clientFeel: feel, noteContent: notes, notePriority: priority })}
+      />
+    </div>
+  );
+}
+
