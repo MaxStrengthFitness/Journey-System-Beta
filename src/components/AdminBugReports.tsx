@@ -36,7 +36,7 @@ export function AdminBugReports() {
         </div>
         <div>
           <h2 className="text-xl font-black uppercase italic tracking-tight text-slate-900 dark:text-white">Bug Reports</h2>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Issues submitted by users</p>
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1">Issues submitted by users</p>
         </div>
       </div>
 
@@ -57,12 +57,12 @@ export function AdminBugReports() {
                       <span className="w-2 rounded-full h-2 bg-rose-500" />
                       {report.issueType || 'General Bug'}
                    </CardTitle>
-                   <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                   <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
                      <Clock className="w-3 h-3" />
                      {report.createdAt?.toDate?.()?.toLocaleString() || 'Unknown Time'}
                    </span>
                  </div>
-                 <CardDescription className="text-[10px] uppercase tracking-widest font-bold">
+                 <CardDescription className="text-[11px] uppercase tracking-widest font-bold">
                    Submitted by: <span className="text-sky-500">{report.userEmail || report.userName || 'Unknown User'}</span> 
                    {report.studioName && <span className="ml-2 text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-100 dark:border-amber-900/60">{report.studioName}</span>}
                  </CardDescription>
@@ -74,8 +74,8 @@ export function AdminBugReports() {
                   
                   {(report.browser || report.os) && (
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" className="text-[9px] uppercase tracking-widest bg-white dark:bg-slate-900 border-slate-200">{report.platform || 'Platform: Unknown'}</Badge>
-                      <Badge variant="outline" className="text-[9px] uppercase tracking-widest bg-white dark:bg-slate-900 border-slate-200">{report.browser || 'Browser: Unknown'}</Badge>
+                      <Badge variant="outline" className="text-[11px] uppercase tracking-widest bg-white dark:bg-slate-900 border-slate-200">{report.platform || 'Platform: Unknown'}</Badge>
+                      <Badge variant="outline" className="text-[11px] uppercase tracking-widest bg-white dark:bg-slate-900 border-slate-200">{report.browser || 'Browser: Unknown'}</Badge>
                     </div>
                   )}
                </CardContent>

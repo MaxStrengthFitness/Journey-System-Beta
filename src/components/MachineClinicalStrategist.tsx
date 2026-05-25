@@ -61,7 +61,7 @@ export function MachineClinicalStrategist({ client, machine }: Props) {
             </div>
             <div>
               <h3 className="text-sm font-black uppercase tracking-widest text-[#F8F9FA]">Clinical & Progression</h3>
-              <p className="text-[10px] uppercase tracking-widest text-[#68717A] mt-0.5">AI-Powered Modifications & Strategy</p>
+              <p className="text-[11px] uppercase tracking-widest text-[#68717A] mt-0.5">AI-Powered Modifications & Strategy</p>
             </div>
           </div>
           
@@ -90,10 +90,10 @@ export function MachineClinicalStrategist({ client, machine }: Props) {
           </Button>
 
           {!referenceData && (
-            <p className="text-[10px] text-red-400 font-bold tracking-widest text-center">Missing reference data for this machine.</p>
+            <p className="text-[11px] text-red-400 font-bold tracking-widest text-center">Missing reference data for this machine.</p>
           )}
           {error && (
-            <p className="text-[10px] text-red-500 font-bold tracking-widest text-center bg-red-500/10 p-2 rounded-lg">{error}</p>
+            <p className="text-[11px] text-red-500 font-bold tracking-widest text-center bg-red-500/10 p-2 rounded-lg">{error}</p>
           )}
         </CardContent>
       </Card>
@@ -110,7 +110,7 @@ export function MachineClinicalStrategist({ client, machine }: Props) {
                </div>
                <div className="flex items-center gap-2 mb-2 relative z-10">
                  <ShieldAlert className="w-5 h-5 text-rose-500" />
-                 <span className="text-[10px] font-black uppercase tracking-widest text-rose-600">Contraindications & Red Flags</span>
+                 <span className="text-[11px] font-black uppercase tracking-widest text-rose-600">Contraindications & Red Flags</span>
                </div>
                <ul className="space-y-1 mt-2">
                  {result.contraindications.map((contra, idx) => (
@@ -129,7 +129,7 @@ export function MachineClinicalStrategist({ client, machine }: Props) {
                <CardContent className="p-5">
                  <div className="flex items-center gap-2 mb-3">
                    <AlertTriangle className="w-4 h-4 text-amber-500" />
-                   <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-800">Dynamic Modifications</h4>
+                   <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Dynamic Modifications</h4>
                  </div>
                  <p className="text-sm font-semibold text-slate-700 leading-snug">
                    {result.dynamicModifications}
@@ -143,7 +143,7 @@ export function MachineClinicalStrategist({ client, machine }: Props) {
                <CardContent className="p-5">
                  <div className="flex items-center gap-2 mb-3">
                    <Activity className="w-4 h-4 text-teal-600" />
-                   <h4 className="text-[10px] font-black uppercase tracking-widest text-teal-800">Static Hold / TSC Protocol</h4>
+                   <h4 className="text-[11px] font-black uppercase tracking-widest text-teal-800">Static Hold / TSC Protocol</h4>
                  </div>
                  {result.staticAlternativeProtocol.isRecommended ? (
                    <p className="text-sm font-semibold text-teal-900 leading-snug">
@@ -163,7 +163,7 @@ export function MachineClinicalStrategist({ client, machine }: Props) {
                <CardContent className="p-5">
                  <div className="flex items-center gap-2 mb-3">
                    <Replace className="w-4 h-4 text-indigo-500" />
-                   <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-800">Approved Substitutions</h4>
+                   <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Approved Substitutions</h4>
                  </div>
                  <ul className="space-y-2 text-sm font-semibold text-slate-700">
                    {result.approvedSubstitutions.map((sub, idx) => (
@@ -184,7 +184,7 @@ export function MachineClinicalStrategist({ client, machine }: Props) {
                <CardContent className="p-5">
                  <div className="flex items-center gap-2 mb-3">
                    <TrendingUp className="w-4 h-4 text-emerald-600" />
-                   <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-800">Progression Rules</h4>
+                   <h4 className="text-[11px] font-black uppercase tracking-widest text-emerald-800">Progression Rules</h4>
                  </div>
                  <p className="text-sm font-semibold text-slate-700 leading-snug">
                    {result.progressionAdvice}

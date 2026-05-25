@@ -582,7 +582,7 @@ export function ClientProgressReportView({
             <h3 className="text-xl font-bold uppercase italic mb-2 text-white">
               Auto-Populate
             </h3>
-            <p className="text-[10px] text-[#68717A] font-bold uppercase tracking-widest leading-relaxed">
+            <p className="text-[11px] text-[#68717A] font-bold uppercase tracking-widest leading-relaxed">
               Scan database for sessions, lift deltas, and punctuality patterns.
             </p>
           </motion.button>
@@ -603,7 +603,7 @@ export function ClientProgressReportView({
             <h3 className="text-xl font-bold uppercase italic mb-2 text-white">
               Manual Entry
             </h3>
-            <p className="text-[10px] text-[#68717A] font-bold uppercase tracking-widest leading-relaxed">
+            <p className="text-[11px] text-[#68717A] font-bold uppercase tracking-widest leading-relaxed">
               Start with a blank canvas. Ideal for clients with external
               history.
             </p>
@@ -613,7 +613,7 @@ export function ClientProgressReportView({
         <Button
           variant="ghost"
           onClick={onBack}
-          className="text-slate-300 hover:text-white hover:bg-slate-800 font-bold uppercase tracking-[0.3em] text-[10px] h-12 px-8"
+          className="text-slate-300 hover:text-white hover:bg-slate-800 font-bold uppercase tracking-[0.3em] text-[11px] h-12 px-8"
         >
           <ArrowLeft className="w-4 h-4 mr-2" /> Abort Mission
         </Button>
@@ -684,7 +684,7 @@ export function ClientProgressReportView({
                     Performance <br />
                     <span className="text-[#F06C22]">Report Card</span>
                   </h1>
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 text-[8px] font-bold uppercase tracking-[0.25em] text-[#68717A]">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 text-[11px] font-bold uppercase tracking-[0.25em] text-[#68717A]">
                     <div className="flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5 text-[#F06C22]" />
                       <span className="text-white print:text-[#0A2E46]">
@@ -745,14 +745,14 @@ export function ClientProgressReportView({
                       <p className="text-5xl font-bold italic tracking-tighter leading-none relative z-10">
                         {report.attendance.totalSessions}
                       </p>
-                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-90 mt-2 relative z-10">
+                      <p className="text-[11px] font-bold uppercase tracking-widest opacity-90 mt-2 relative z-10">
                         Total Sessions
                       </p>
                       <div className="mt-3 pt-3 border-t border-white/20 w-full relative z-10">
-                        <p className="text-[8px] font-bold uppercase tracking-widest text-white/80">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-white/80">
                           First Session
                         </p>
-                        <p className="text-[10px] font-bold uppercase tracking-tighter opacity-100 italic">
+                        <p className="text-[11px] font-bold uppercase tracking-tighter opacity-100 italic">
                           {report.attendance.firstSessionDate
                             ? new Date(
                                 parseSessionDate(
@@ -780,12 +780,12 @@ export function ClientProgressReportView({
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   {report.attendance.toggles?.totalVolume !== false && (
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-center">
-                      <h4 className="text-[8px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
+                      <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
                         Total Volume Lifted
                       </h4>
                       <p className="text-2xl font-bold text-[#0A2E46] italic">
                         {(report.attendance.totalVolume || 0).toLocaleString()}
-                        <span className="text-[10px] text-[#68717A] ml-1 not-italic">
+                        <span className="text-[11px] text-[#68717A] ml-1 not-italic">
                           lbs
                         </span>
                       </p>
@@ -793,7 +793,7 @@ export function ClientProgressReportView({
                   )}
                   {report.attendance.toggles?.totalReps !== false && (
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-center">
-                      <h4 className="text-[8px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
+                      <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
                         Total Reps
                       </h4>
                       <p className="text-2xl font-bold text-[#0A2E46] italic">
@@ -803,7 +803,7 @@ export function ClientProgressReportView({
                   )}
                   {report.attendance.toggles?.totalGoodReps !== false && (
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-emerald-100 shadow-sm text-center bg-emerald-50/10">
-                      <h4 className="text-[8px] font-bold uppercase tracking-widest text-emerald-700 mb-1">
+                      <h4 className="text-[11px] font-bold uppercase tracking-widest text-emerald-700 mb-1">
                         Green Quality Reps
                       </h4>
                       <p className="text-2xl font-bold text-emerald-600 italic">
@@ -815,12 +815,12 @@ export function ClientProgressReportView({
                   )}
                   {report.attendance.toggles?.avgRestDays !== false && (
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-center">
-                      <h4 className="text-[8px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
+                      <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
                         Average Rest
                       </h4>
                       <p className="text-2xl font-bold text-[#0A2E46] italic">
                         {report.attendance.avgRestDays || 0}
-                        <span className="text-[10px] text-[#68717A] ml-1 not-italic">
+                        <span className="text-[11px] text-[#68717A] ml-1 not-italic">
                           days
                         </span>
                       </p>
@@ -828,12 +828,12 @@ export function ClientProgressReportView({
                   )}
                   {report.attendance.toggles?.avgDuration !== false && (
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-center">
-                      <h4 className="text-[8px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
+                      <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
                         Avg Session Length
                       </h4>
                       <p className="text-2xl font-bold text-[#0A2E46] italic">
                         {report.attendance.avgDuration || 0}
-                        <span className="text-[10px] text-[#68717A] ml-1 not-italic">
+                        <span className="text-[11px] text-[#68717A] ml-1 not-italic">
                           mins
                         </span>
                       </p>
@@ -848,7 +848,7 @@ export function ClientProgressReportView({
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                   <TrendingUp className="w-3.5 h-3.5 text-[#F06C22]" />
-                  <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#FAF9F6] print:text-[#0A2E46]">
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#FAF9F6] print:text-[#0A2E46]">
                     Elite Strength Progress
                   </h3>
                 </div>
@@ -917,7 +917,7 @@ export function ClientProgressReportView({
                       </div>
 
                       <div className="mt-4 pt-3 border-t border-white/10 w-full relative z-10">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                           {contextText}
                         </p>
                       </div>
@@ -930,7 +930,7 @@ export function ClientProgressReportView({
             {/* 3. REINSTATED 4 P'S MATRIX - THE CENTERPIECE */}
             <section className="space-y-4 break-inside-avoid">
               <div className="flex items-center gap-2">
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
                   Methodology Mastery: The 4 P's
                 </h3>
                 <div className="h-px bg-[#F06C22]/20 flex-1"></div>
@@ -968,7 +968,7 @@ export function ClientProgressReportView({
                         <div className="mt-4 flex flex-col gap-1.5">
                           <span
                             className={cn(
-                              "text-[10px] font-black italic",
+                              "text-[11px] font-black italic",
                               colorClasses.text,
                             )}
                           >
@@ -990,7 +990,7 @@ export function ClientProgressReportView({
 
                       {matrixItem?.note && (
                         <div className="mt-3 bg-black/20 p-2 rounded-lg border border-white/5">
-                          <p className="text-[8px] font-bold text-white/80 leading-relaxed italic">
+                          <p className="text-[11px] font-bold text-white/80 leading-relaxed italic">
                             "{matrixItem.note}"
                           </p>
                         </div>
@@ -1002,7 +1002,7 @@ export function ClientProgressReportView({
 
               {(report.performanceMatrix.includedNotes || []).length > 0 && (
                 <div className="bg-[#FAF9F6] p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-inner mt-4">
-                  <h4 className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#68717A] mb-3">
+                  <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#68717A] mb-3">
                     Clinical Highlights
                   </h4>
                   <ul className="space-y-2">
@@ -1028,7 +1028,7 @@ export function ClientProgressReportView({
             <section className="break-inside-avoid space-y-4">
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4 text-[#F06C22]" />
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
                   Strategic Road Map
                 </h3>
                 <div className="h-px bg-[#F06C22]/20 flex-1"></div>
@@ -1041,14 +1041,14 @@ export function ClientProgressReportView({
                       <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                         <Activity className="w-16 h-16 text-blue-500" />
                       </div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400 mb-4 flex items-center gap-1.5">
+                      <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400 mb-4 flex items-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4" /> Maintenance Track: Lifestyle & Longevity
                       </div>
                       
                       <div className="space-y-6 relative z-10">
                         {report.roadmap.selectedHabits && report.roadmap.selectedHabits.length > 0 && (
                           <div>
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">Focus Habits</p>
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-2">Focus Habits</p>
                             <div className="flex flex-wrap gap-2">
                               {report.roadmap.selectedHabits.map(habit => (
                                 <span key={habit} className="px-3 py-1.5 bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 rounded-lg text-xs font-bold shadow-sm">
@@ -1061,7 +1061,7 @@ export function ClientProgressReportView({
                         
                         {report.roadmap.routineChangeRequested && (
                           <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border-l-4 border-l-blue-500">
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-[#0A2E46] dark:text-slate-300 mb-1">Routine Modification</p>
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-[#0A2E46] dark:text-slate-300 mb-1">Routine Modification</p>
                             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                               {report.roadmap.routineModifications || "Routine updates requested."}
                             </p>
@@ -1076,14 +1076,14 @@ export function ClientProgressReportView({
                       <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                         <Target className="w-16 h-16 text-[#F06C22]" />
                       </div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#F06C22] mb-4 flex items-center gap-1.5">
+                      <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#F06C22] mb-4 flex items-center gap-1.5">
                         <Target className="w-4 h-4" /> Goal Setting Track: Performance
                       </div>
                       
                       <div className="grid md:grid-cols-2 gap-4 relative z-10">
                         {report.roadmap.emotionalAnchor && (
                           <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-1">The "Why"</p>
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-1">The "Why"</p>
                             <p className="text-sm font-medium italic text-slate-700 dark:text-slate-300 border-l-2 border-slate-300 dark:border-slate-600 pl-3">
                               "{report.roadmap.emotionalAnchor}"
                             </p>
@@ -1092,7 +1092,7 @@ export function ClientProgressReportView({
 
                         {report.roadmap.smartGoal && (
                           <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-1">SMART Goal</p>
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-1">SMART Goal</p>
                             <p className="text-sm font-bold text-[#0A2E46] dark:text-slate-200">
                               {report.roadmap.smartGoal}
                             </p>
@@ -1103,7 +1103,7 @@ export function ClientProgressReportView({
                       <div className="mt-4 grid md:grid-cols-2 gap-4 relative z-10">
                         {report.roadmap.targetMachineId && (
                           <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border-l-4 border-[#F06C22]">
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-[#F06C22] mb-1 flex items-center gap-1"><Dumbbell className="w-3 h-3"/> Target Machine</p>
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-[#F06C22] mb-1 flex items-center gap-1"><Dumbbell className="w-3 h-3"/> Target Machine</p>
                             <p className="text-sm font-black uppercase text-[#0A2E46] dark:text-slate-200">
                               {machines.find(m => m.id === report.roadmap?.targetMachineId)?.name || 'Specified Machine'}
                             </p>
@@ -1111,7 +1111,7 @@ export function ClientProgressReportView({
                         )}
                         {report.roadmap.goalActions && report.roadmap.goalActions.length > 0 && (
                           <div className="space-y-1">
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-1">Action Plan</p>
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-1">Action Plan</p>
                             <ul className="space-y-1">
                               {report.roadmap.goalActions.map(action => (
                                 <li key={action} className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
@@ -1125,7 +1125,7 @@ export function ClientProgressReportView({
                       
                       {report.roadmap.machinePlan && (
                         <div className="mt-4 bg-[#0A2E46] text-white p-4 rounded-xl shadow-sm relative z-10">
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-white/70 mb-1">Integration Plan</p>
+                          <p className="text-[11px] font-bold uppercase tracking-widest text-white/70 mb-1">Integration Plan</p>
                           <p className="text-sm">
                             {report.roadmap.machinePlan}
                           </p>
@@ -1139,14 +1139,14 @@ export function ClientProgressReportView({
                       <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                         <Search className="w-16 h-16 text-emerald-500" />
                       </div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-4 flex items-center gap-1.5">
+                      <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-4 flex items-center gap-1.5">
                         <ShieldAlert className="w-4 h-4" /> Refinement Track: Form & Technique
                       </div>
                       
                       <div className="grid md:grid-cols-2 gap-4 relative z-10 mb-4">
                         {report.roadmap.refinementFocusArea && (
                           <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl sm:border border-emerald-100 dark:border-emerald-800/50 shadow-sm flex items-center justify-between">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-800 dark:text-emerald-400">4 P's Focus</p>
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-800 dark:text-emerald-400">4 P's Focus</p>
                             <span className="text-lg font-black uppercase text-emerald-600 dark:text-emerald-300">
                               {report.roadmap.refinementFocusArea}
                             </span>
@@ -1154,7 +1154,7 @@ export function ClientProgressReportView({
                         )}
                         {report.roadmap.targetMachineId && (
                           <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-1">Target Machine</p>
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-1">Target Machine</p>
                             <p className="text-sm font-black uppercase text-[#0A2E46] dark:text-slate-200">
                               {machines.find(m => m.id === report.roadmap?.targetMachineId)?.name || 'Specified Machine'}
                             </p>
@@ -1164,7 +1164,7 @@ export function ClientProgressReportView({
 
                       {report.roadmap.routineIntervention && (
                         <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border-l-4 border-l-emerald-500 relative z-10">
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-[#0A2E46] dark:text-slate-300 mb-1">Intervention Strategy</p>
+                          <p className="text-[11px] font-bold uppercase tracking-widest text-[#0A2E46] dark:text-slate-300 mb-1">Intervention Strategy</p>
                           <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                             {report.roadmap.routineIntervention}
                           </p>
@@ -1181,12 +1181,12 @@ export function ClientProgressReportView({
               <div className="col-span-2 bg-[#FAF9F6] p-3 rounded-[20px] border border-slate-100 dark:border-slate-800 relative">
                 <div className="flex items-center gap-2 mb-1">
                   <FileText className="w-3 h-3 text-[#F06C22]" />
-                  <h4 className="text-[8px] font-bold uppercase tracking-[0.3em] text-[#0A2E46]">
+                  <h4 className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#0A2E46]">
                     Summative Analysis
                   </h4>
                 </div>
                 <div className="bg-white dark:bg-slate-900 rounded-xl p-2 shadow-inner min-h-[50px]">
-                  <p className="text-[10px] font-medium italic text-[#0A2E46] leading-relaxed">
+                  <p className="text-[11px] font-medium italic text-[#0A2E46] leading-relaxed">
                     {report.trainerNotes ||
                       "Incredible work this quarter. Your neurological adaptations are now clearly visible in the data. Your force output is reaching peak clinical efficiency. Keep showing up."}
                   </p>
@@ -1232,7 +1232,7 @@ export function ClientProgressReportView({
               <h1 className="text-xl font-bold uppercase italic tracking-tighter text-white">
                 Refining Report
               </h1>
-              <p className="text-[10px] font-bold text-[#68717A] uppercase tracking-widest mt-0.5">
+              <p className="text-[11px] font-bold text-[#68717A] uppercase tracking-widest mt-0.5">
                 {client.firstName}'s Performance Data
               </p>
             </div>
@@ -1273,7 +1273,7 @@ export function ClientProgressReportView({
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-[#68717A]">
+                      <Label className="text-[11px] font-bold uppercase tracking-widest text-[#68717A]">
                         Timeframe Start Date (Blank = All Time)
                       </Label>
                       {report.attendance.firstSessionDate && (
@@ -1283,7 +1283,7 @@ export function ClientProgressReportView({
                               report.attendance.firstSessionDate!,
                             )
                           }
-                          className="text-[9px] font-bold text-primary uppercase hover:underline"
+                          className="text-[11px] font-bold text-primary uppercase hover:underline"
                         >
                           Use First Session:{" "}
                           {new Date(
@@ -1300,14 +1300,14 @@ export function ClientProgressReportView({
                       }
                       className="h-12 rounded-xl font-medium border-2 border-slate-100 dark:border-slate-800 focus:border-[#F06C22] transition-all"
                     />
-                    <p className="text-[9px] text-[#68717A] italic mt-1 pb-2">
+                    <p className="text-[11px] text-[#68717A] italic mt-1 pb-2">
                       Changing this will auto-recalculate the metrics below
                       based on the selected timeframe.
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-[#68717A]">
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-[#68717A]">
                       Trainer Narrative (The Vibe)
                     </Label>
                     <Textarea
@@ -1328,7 +1328,7 @@ export function ClientProgressReportView({
                 </div>
 
                 <div className="space-y-3">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-[#68717A]">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest text-[#68717A]">
                     Report Metrics Configuration
                   </Label>
                   <div className="grid grid-cols-1 gap-2">
@@ -1422,12 +1422,12 @@ export function ClientProgressReportView({
                             <div className="w-4 h-4 rounded-full bg-white dark:bg-slate-900 shadow-sm" />
                           </button>
                           <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#0A2E46]">
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-[#0A2E46]">
                               {metric.label}
                             </p>
                             <p className="text-[12px] font-bold text-[#F06C22]">
                               {metric.value}{" "}
-                              <span className="text-[9px] text-[#68717A] uppercase">
+                              <span className="text-[11px] text-[#68717A] uppercase">
                                 {metric.unit}
                               </span>
                             </p>
@@ -1456,13 +1456,13 @@ export function ClientProgressReportView({
                   key={i}
                   className="flex flex-col p-6 rounded-3xl bg-slate-800 text-white shadow-xl"
                 >
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4">
                     Slot #{i + 1}
                   </p>
 
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label className="text-[10px] uppercase tracking-widest text-slate-400">
+                      <Label className="text-[11px] uppercase tracking-widest text-slate-400">
                         Machine Selector
                       </Label>
                       <Select
@@ -1483,7 +1483,7 @@ export function ClientProgressReportView({
                                 <div className="flex justify-between items-center w-full gap-4">
                                   <span className="font-medium">{m.name}</span>
                                   {stats && (
-                                    <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                                    <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">
                                       <span className="text-emerald-400 shrink-0">
                                         +{stats.percentageIncrease || 0}%
                                       </span>
@@ -1504,7 +1504,7 @@ export function ClientProgressReportView({
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-[10px] uppercase tracking-widest text-slate-400">
+                      <Label className="text-[11px] uppercase tracking-widest text-slate-400">
                         Metric Type
                       </Label>
                       <Select
@@ -1538,7 +1538,7 @@ export function ClientProgressReportView({
 
                     {h.metricType === "custom" && (
                       <div className="space-y-2">
-                        <Label className="text-[10px] uppercase tracking-widest text-[#F06C22]">
+                        <Label className="text-[11px] uppercase tracking-widest text-[#F06C22]">
                           Custom Metric
                         </Label>
                         <Input
@@ -1556,12 +1556,12 @@ export function ClientProgressReportView({
 
                     {h.machineId && h.machineId !== "none" && (
                       <div className="mt-4 p-4 bg-slate-900 rounded-xl border border-slate-700 shadow-inner">
-                        <Label className="text-[9px] uppercase tracking-widest text-slate-400 mb-2 block">
+                        <Label className="text-[11px] uppercase tracking-widest text-slate-400 mb-2 block">
                           Available Data To Highlight
                         </Label>
                         <ul className="space-y-2 text-[11px] font-medium text-slate-300">
                           <li className="flex justify-between items-center bg-slate-800/50 p-2 rounded">
-                            <span className="text-slate-400 uppercase tracking-widest text-[9px]">
+                            <span className="text-slate-400 uppercase tracking-widest text-[11px]">
                               Strength Gain:
                             </span>
                             <span className="font-bold text-[#F06C22]">
@@ -1569,7 +1569,7 @@ export function ClientProgressReportView({
                             </span>
                           </li>
                           <li className="flex justify-between items-center bg-slate-800/50 p-2 rounded">
-                            <span className="text-slate-400 uppercase tracking-widest text-[9px]">
+                            <span className="text-slate-400 uppercase tracking-widest text-[11px]">
                               Total Volume:
                             </span>
                             <span className="font-bold text-white">
@@ -1577,7 +1577,7 @@ export function ClientProgressReportView({
                             </span>
                           </li>
                           <li className="flex justify-between items-center bg-slate-800/50 p-2 rounded">
-                            <span className="text-slate-400 uppercase tracking-widest text-[9px]">
+                            <span className="text-slate-400 uppercase tracking-widest text-[11px]">
                               Flawless Sets:
                             </span>
                             <span className="font-bold text-emerald-400">
@@ -1585,7 +1585,7 @@ export function ClientProgressReportView({
                             </span>
                           </li>
                           <li className="flex justify-between items-center bg-slate-800/50 p-2 rounded">
-                            <span className="text-slate-400 uppercase tracking-widest text-[9px]">
+                            <span className="text-slate-400 uppercase tracking-widest text-[11px]">
                               Time Under Load:
                             </span>
                             <span className="font-bold text-white">
@@ -1652,7 +1652,7 @@ export function ClientProgressReportView({
                       <h3 className="text-2xl font-bold uppercase tracking-tighter text-white">
                         {data.title}
                       </h3>
-                      <p className="text-[10px] text-slate-400 uppercase tracking-wider mt-1 leading-relaxed">
+                      <p className="text-[11px] text-slate-400 uppercase tracking-wider mt-1 leading-relaxed">
                         {data.definition}
                       </p>
                     </div>
@@ -1660,7 +1660,7 @@ export function ClientProgressReportView({
                     <div className="space-y-3">
                       <div
                         className={cn(
-                          "flex justify-between items-center text-[10px] font-black uppercase tracking-widest",
+                          "flex justify-between items-center text-[11px] font-black uppercase tracking-widest",
                           colorClasses.text,
                         )}
                       >
@@ -1695,7 +1695,7 @@ export function ClientProgressReportView({
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest pl-1">
+                      <Label className="text-[11px] font-bold uppercase text-slate-400 tracking-widest pl-1">
                         Personalized Note (Optional)
                       </Label>
                       <Textarea
@@ -1748,7 +1748,7 @@ export function ClientProgressReportView({
                           }
                         }}
                         className={cn(
-                          "w-full text-[10px] font-black uppercase tracking-widest h-10 transition-all",
+                          "w-full text-[11px] font-black uppercase tracking-widest h-10 transition-all",
                           included
                             ? "bg-emerald-500 hover:bg-emerald-600 text-white"
                             : "bg-white/10 hover:bg-white/20 text-white",
@@ -1766,7 +1766,7 @@ export function ClientProgressReportView({
 
             {(report.performanceMatrix.includedNotes || []).length > 0 && (
               <div className="mt-8 p-6 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-inner">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-[#0A2E46] mb-4 block">
+                <Label className="text-[11px] font-bold uppercase tracking-widest text-[#0A2E46] mb-4 block">
                   Included Talking Points Summary
                 </Label>
                 <ul className="space-y-3">
@@ -1801,7 +1801,7 @@ export function ClientProgressReportView({
             <div className="space-y-8">
               {/* Track Selection */}
               <div className="space-y-4">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-[#68717A] ml-1">
+                <Label className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] ml-1">
                   Step 1: Select Diagnostic Track
                 </Label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1843,10 +1843,10 @@ export function ClientProgressReportView({
                           : "bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-200",
                       )}
                     >
-                      <p className="text-[10px] font-bold uppercase tracking-widest leading-none mb-1">
+                      <p className="text-[11px] font-bold uppercase tracking-widest leading-none mb-1">
                         {track.label}
                       </p>
-                      <p className="text-[8px] font-bold opacity-60 uppercase">
+                      <p className="text-[11px] font-bold opacity-60 uppercase">
                         {track.description}
                       </p>
                     </button>
@@ -1862,7 +1862,7 @@ export function ClientProgressReportView({
                   </h3>
 
                   <div className="space-y-4">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
                       Lifestyle Habits to Focus On
                     </Label>
                     <div className="flex flex-wrap gap-2">
@@ -1894,7 +1894,7 @@ export function ClientProgressReportView({
                               });
                             }}
                             className={cn(
-                              "px-3 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-colors cursor-pointer",
+                              "px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-widest border transition-colors cursor-pointer",
                               isSelected
                                 ? "bg-blue-500 text-white border-blue-500"
                                 : "bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-blue-400",
@@ -1936,7 +1936,7 @@ export function ClientProgressReportView({
                           )}
                         />
                       </button>
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-700 dark:text-slate-300">
+                      <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-700 dark:text-slate-300">
                         Routine Modification Requested?
                       </Label>
                     </div>
@@ -1969,7 +1969,7 @@ export function ClientProgressReportView({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                      <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-1">
                         The Emotional Anchor ("Why")
                       </Label>
                       <Textarea
@@ -1988,7 +1988,7 @@ export function ClientProgressReportView({
                       />
                     </div>
                     <div className="space-y-4">
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                      <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-1">
                         SMART Goal Category / Detail
                       </Label>
                       <Textarea
@@ -2009,12 +2009,12 @@ export function ClientProgressReportView({
                   </div>
 
                   <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-1">
                       Clinical Prescription
                     </Label>
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="space-y-4">
-                        <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
                           Target Machine Integration
                         </Label>
                         <Select
@@ -2043,7 +2043,7 @@ export function ClientProgressReportView({
                       </div>
 
                       <div className="space-y-4">
-                        <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
                           Recommended Actions
                         </Label>
                         <div className="flex flex-col gap-2">
@@ -2072,7 +2072,7 @@ export function ClientProgressReportView({
                                   });
                                 }}
                                 className={cn(
-                                  "px-3 py-2 rounded-xl text-left text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer",
+                                  "px-3 py-2 rounded-xl text-left text-[11px] font-bold uppercase tracking-widest border transition-colors cursor-pointer",
                                   isSelected
                                     ? "bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
                                     : "bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-blue-400",
@@ -2088,7 +2088,7 @@ export function ClientProgressReportView({
                   </div>
 
                   <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-1">
                       Machine Plan Mapping
                     </Label>
                     <Textarea
@@ -2118,7 +2118,7 @@ export function ClientProgressReportView({
 
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                      <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-1">
                         Performance Matrix Focus (The 4 Ps)
                       </Label>
                       <div className="grid grid-cols-2 gap-2">
@@ -2135,7 +2135,7 @@ export function ClientProgressReportView({
                               })
                             }
                             className={cn(
-                              "py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all text-center border-2",
+                              "py-3 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all text-center border-2",
                               report.roadmap?.refinementFocusArea === p
                                 ? "bg-blue-600 border-blue-600 text-white"
                                 : "bg-slate-50 border-slate-100 text-slate-400 hover:border-blue-200",
@@ -2148,7 +2148,7 @@ export function ClientProgressReportView({
                     </div>
 
                     <div className="space-y-4">
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                      <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-1">
                         Target Machine for Refinement
                       </Label>
                       <Select
@@ -2175,7 +2175,7 @@ export function ClientProgressReportView({
                   </div>
 
                   <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-1">
                       Routine Intervention
                     </Label>
                     <Textarea
@@ -2208,7 +2208,7 @@ export function ClientProgressReportView({
               </h2>
             </div>
             <div className="space-y-4">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-[#68717A]">
+              <Label className="text-[11px] font-bold uppercase tracking-widest text-[#68717A]">
                 Lead Practitioner Wrap-Up
               </Label>
               <Textarea

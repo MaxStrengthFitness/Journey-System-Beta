@@ -693,7 +693,7 @@ export function TrainerControlHubView({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div className="flex flex-col gap-1">
           <h2 className="text-3xl font-black tracking-tight uppercase italic text-slate-900 dark:text-white">Hub Settings</h2>
-          <p className="text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black tracking-widest leading-relaxed">
+          <p className="text-slate-500 dark:text-slate-400 uppercase text-[11px] font-black tracking-widest leading-relaxed">
             Manage your schedule sync and standard studio settings.
           </p>
         </div>
@@ -702,7 +702,7 @@ export function TrainerControlHubView({
           {setView && authTrainer && checkIsStudioLeader(authTrainer) && (
             <Button 
               onClick={() => setView('owner-dashboard')}
-              className="rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-800/60 dark:text-indigo-300 dark:hover:text-white dark:hover:bg-indigo-900/50 h-12 px-6 font-black uppercase text-[10px] tracking-widest shadow-sm dark:shadow-none transition-colors"
+              className="rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-800/60 dark:text-indigo-300 dark:hover:text-white dark:hover:bg-indigo-900/50 h-12 px-6 font-black uppercase text-[11px] tracking-widest shadow-sm dark:shadow-none transition-colors"
             >
               <Building2 className="w-4 h-4 mr-2" />
               Owner Portal
@@ -712,7 +712,7 @@ export function TrainerControlHubView({
             <Button 
               variant="outline" 
               onClick={onLogout}
-              className="rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-slate-800 h-12 px-6 font-black uppercase text-[10px] tracking-widest"
+              className="rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-slate-800 h-12 px-6 font-black uppercase text-[11px] tracking-widest"
             >
               <LogOut className="w-4 h-4 mr-2" />
               Switch Trainer
@@ -764,14 +764,14 @@ export function TrainerControlHubView({
                     </div>
                     <div>
                       <CardTitle className="text-2xl font-black text-slate-900 dark:text-white italic tracking-tight">Team Management</CardTitle>
-                      <CardDescription className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[10px] tracking-widest">Manage individual Schedule Sync URLs.</CardDescription>
+                      <CardDescription className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[11px] tracking-widest">Manage individual Schedule Sync URLs.</CardDescription>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {isAdmin && (
                       <Button 
                         onClick={() => setIsCreateModalOpen(true)}
-                        className="rounded-xl bg-orange-500 dark:bg-orange-600 text-white h-10 px-4 font-black uppercase text-[10px] tracking-widest gap-2 shadow-sm dark:shadow-none"
+                        className="rounded-xl bg-orange-500 dark:bg-orange-600 text-white h-10 px-4 font-black uppercase text-[11px] tracking-widest gap-2 shadow-sm dark:shadow-none"
                       >
                         <Plus className="w-4 h-4" />
                         Add New
@@ -781,7 +781,7 @@ export function TrainerControlHubView({
                       <Button 
                         variant="outline" 
                         onClick={onReorderTrainers}
-                        className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-900 dark:text-white h-10 px-4 font-black uppercase text-[10px] tracking-widest gap-2"
+                        className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-50 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-900 dark:text-white h-10 px-4 font-black uppercase text-[11px] tracking-widest gap-2"
                       >
                         <RefreshCcw className="w-3 h-3" />
                         Sort
@@ -838,7 +838,7 @@ export function TrainerControlHubView({
                                     </div>
                                     <div className="min-w-0">
                                       <p className="text-xs font-black text-slate-900 dark:text-white uppercase italic truncate">{t.fullName}</p>
-                                      <p className="text-[9px] font-bold uppercase tracking-widest text-sky-600 truncate mt-0.5">
+                                      <p className="text-[11px] font-bold uppercase tracking-widest text-sky-600 truncate mt-0.5">
                                         checkIsOwner(t) ? 'System Admin' : ROLE_LABELS[t.role] || 'Performance Trainer'
                                       </p>
                                     </div>
@@ -877,10 +877,10 @@ export function TrainerControlHubView({
                                   <div className="flex flex-wrap items-center gap-2">
                                     <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase italic leading-none">{currentSelectedTrainer.fullName}</h3>
                                     {checkIsOwner(currentSelectedTrainer) && (
-                                      <span className="bg-orange-50 dark:bg-orange-500/10 text-orange-500 border border-orange-200 dark:border-orange-500/30 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">Owner</span>
+                                      <span className="bg-orange-50 dark:bg-orange-500/10 text-orange-500 border border-orange-200 dark:border-orange-500/30 px-1.5 py-0.5 rounded text-[11px] font-black uppercase">Owner</span>
                                     )}
                                   </div>
-                                  <p className="text-[10px] font-bold uppercase tracking-widest text-sky-600 leading-none mt-2">
+                                  <p className="text-[11px] font-bold uppercase tracking-widest text-sky-600 leading-none mt-2">
                                     checkIsOwner(currentSelectedTrainer) ? 'System Admin' : ROLE_LABELS[currentSelectedTrainer.role] || 'Performance Trainer'
                                   </p>
                                 </div>
@@ -901,7 +901,7 @@ export function TrainerControlHubView({
 
                             {/* Home Studio Assignment */}
                             <div className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                              <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">Primary Home Studio</Label>
+                              <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">Primary Home Studio</Label>
                               <Select value={currentSelectedTrainer.primaryHomeStudioId || 'unassigned'} onValueChange={(val) => {
                                 if (!currentSelectedTrainer.id) return;
                                 handleUpdateHomeStudio(currentSelectedTrainer.id, val);
@@ -920,7 +920,7 @@ export function TrainerControlHubView({
 
                             {/* Accessible Studios (Cross-Training) */}
                             <div className="flex flex-col gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                              <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">Accessible Studios (Cross-Training)</Label>
+                              <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">Accessible Studios (Cross-Training)</Label>
                               <div className="flex flex-wrap gap-2">
                                 {(currentSelectedTrainer.accessibleStudioIds || []).length === 0 ? (
                                   <span className="text-xs text-slate-500 dark:text-slate-400 italic">No secondary locations assigned</span>
@@ -968,7 +968,7 @@ export function TrainerControlHubView({
                                   </Select>
                                 </div>
                               )}
-                              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
                                 Toggle secondary locations this trainer teaches at so their scheduled bookings propagate across those live floor calendars.
                               </p>
                             </div>
@@ -979,7 +979,7 @@ export function TrainerControlHubView({
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                                     <RefreshCcw className="w-3.5 h-3.5 text-sky-500" />
-                                    <h4 className="font-bold uppercase text-[9px] tracking-widest leading-none">MindBody Sync Connection</h4>
+                                    <h4 className="font-bold uppercase text-[11px] tracking-widest leading-none">MindBody Sync Connection</h4>
                                   </div>
                                   {currentSelectedTrainer.mindbody_ical_url && (
                                     <Button 
@@ -990,7 +990,7 @@ export function TrainerControlHubView({
                                         if (!currentSelectedTrainer.id) return;
                                         handleTrainerSync(currentSelectedTrainer.id);
                                       }}
-                                      className="h-7 text-[10px] flex items-center px-3 font-black uppercase text-sky-700 hover:text-sky-800 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-lg border border-sky-200 dark:border-sky-800"
+                                      className="h-7 text-[11px] flex items-center px-3 font-black uppercase text-sky-700 hover:text-sky-800 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-lg border border-sky-200 dark:border-sky-800"
                                     >
                                       {syncingTrainerId === currentSelectedTrainer.id ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
                                       Sync Now
@@ -1007,7 +1007,7 @@ export function TrainerControlHubView({
                                       className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white px-3 focus-visible:ring-sky-500"
                                     />
                                     <div className="flex items-center justify-end gap-1.5">
-                                      <Button variant="ghost" size="sm" onClick={() => setEditingIcalId(null)} className="h-8 px-3 font-bold uppercase text-[10px] rounded-lg tracking-widest text-slate-500 dark:text-slate-400">Cancel</Button>
+                                      <Button variant="ghost" size="sm" onClick={() => setEditingIcalId(null)} className="h-8 px-3 font-bold uppercase text-[11px] rounded-lg tracking-widest text-slate-500 dark:text-slate-400">Cancel</Button>
                                       <Button 
                                         size="sm"
                                         onClick={() => {
@@ -1015,7 +1015,7 @@ export function TrainerControlHubView({
                                           handleUpdateIcalUrl(currentSelectedTrainer.id, newIcalUrl);
                                         }}
                                         disabled={isUpdatingIcal}
-                                        className="bg-sky-500 hover:bg-sky-600 text-slate-900 dark:text-white h-8 px-4 rounded-lg font-black uppercase text-[10px] tracking-widest"
+                                        className="bg-sky-500 hover:bg-sky-600 text-slate-900 dark:text-white h-8 px-4 rounded-lg font-black uppercase text-[11px] tracking-widest"
                                       >
                                         {isUpdatingIcal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}
                                       </Button>
@@ -1026,7 +1026,7 @@ export function TrainerControlHubView({
                                     {currentSelectedTrainer.mindbody_ical_url ? (
                                       <>
                                         <Link className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                        <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium truncate flex-1">{currentSelectedTrainer.mindbody_ical_url}</span>
+                                        <span className="text-[11px] text-slate-600 dark:text-slate-400 font-medium truncate flex-1">{currentSelectedTrainer.mindbody_ical_url}</span>
                                         <Button 
                                           variant="ghost" 
                                           size="sm" 
@@ -1042,7 +1042,7 @@ export function TrainerControlHubView({
                                       </>
                                     ) : (
                                       <>
-                                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium italic select-none">No feed configured</span>
+                                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium italic select-none">No feed configured</span>
                                         <Button 
                                           variant="outline" 
                                           size="sm" 
@@ -1051,7 +1051,7 @@ export function TrainerControlHubView({
                                             setEditingIcalId(currentSelectedTrainer.id);
                                             setNewIcalUrl('');
                                           }}
-                                          className="h-8 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-50 hover:bg-slate-100 hover:text-slate-00 dark:hover:bg-slate-800 rounded-lg px-4 font-black uppercase text-[9px] tracking-widest"
+                                          className="h-8 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-50 hover:bg-slate-100 hover:text-slate-00 dark:hover:bg-slate-800 rounded-lg px-4 font-black uppercase text-[11px] tracking-widest"
                                         >
                                           Add Link
                                         </Button>
@@ -1101,26 +1101,26 @@ export function TrainerControlHubView({
                             </div>
                             <div>
                               <CardTitle className="text-2xl font-black text-slate-900 dark:text-white italic tracking-tight">Live Floor Status</CardTitle>
-                              <CardDescription className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[10px] tracking-widest">Active sessions and concurrency monitoring.</CardDescription>
+                              <CardDescription className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[11px] tracking-widest">Active sessions and concurrency monitoring.</CardDescription>
                             </div>
                           </div>
                           <div className="px-4 py-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
-                            <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest animate-pulse">● System Live</span>
+                            <span className="text-[11px] font-black uppercase text-emerald-500 tracking-widest animate-pulse">● System Live</span>
                           </div>
                         </div>
                       </CardHeader>
                       <CardContent className="p-8 space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="p-5 bg-emerald-50/50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-100 dark:border-emerald-900/10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1 leading-none">Total Active</p>
+                            <p className="text-[11px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1 leading-none">Total Active</p>
                             <p className="text-3xl font-black text-slate-900 dark:text-white italic mt-2 leading-none">{sessions.filter(s => s.status === 'In-Progress' && isSessionValid(s)).length}</p>
                           </div>
                           <div className="p-5 bg-amber-50/50 dark:bg-amber-950/30 rounded-2xl border border-amber-100 dark:border-amber-900/10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-1 leading-none">Stale Sessions</p>
+                            <p className="text-[11px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-1 leading-none">Stale Sessions</p>
                             <p className="text-3xl font-black text-amber-500 italic mt-2 leading-none">{sessions.filter(s => s.status === 'In-Progress' && !isSessionValid(s)).length}</p>
                           </div>
                           <div className="p-5 bg-sky-50/50 dark:bg-sky-950/30 rounded-2xl border border-sky-100 dark:border-sky-900/10">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-sky-600 dark:text-sky-400 mb-1 leading-none">Current Sync</p>
+                            <p className="text-[11px] font-black uppercase tracking-widest text-sky-600 dark:text-sky-400 mb-1 leading-none">Current Sync</p>
                             <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 italic mt-2.5 leading-none flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5 text-sky-500" />
                               {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1151,7 +1151,7 @@ export function TrainerControlHubView({
                                         <h4 className="font-bold text-slate-900 dark:text-white text-xs truncate max-w-[150px]">{client ? `${client.firstName} ${client.lastName}` : "Unassigned Session"}</h4>
                                         {!isValid && <span className="bg-amber-55 dark:bg-amber-950/20 text-amber-500 border border-amber-200/30 px-1 rounded-[4px] text-[7px] font-black uppercase">Abandoned</span>}
                                       </div>
-                                      <p className="text-[9px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1.5 mt-0.5 leading-none">
+                                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1.5 mt-0.5 leading-none">
                                         <Users className="w-3 h-3" /> TR: {session.trainerInitials || "---"} 
                                         <span className="text-slate-405 dark:text-slate-800">•</span>
                                         <Clock className="w-3 h-3" /> {session.lastHeartbeatAt ? (session.lastHeartbeatAt.toDate?.() || new Date(session.lastHeartbeatAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just Started"}
@@ -1169,7 +1169,7 @@ export function TrainerControlHubView({
                                           } catch (e: any) { alert(e.message); }
                                         }
                                       }}
-                                      className="h-8 px-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-500 hover:bg-amber-500/20 font-black uppercase text-[8px] tracking-widest border border-amber-200/40 opacity-0 group-hover:opacity-100 duration-200 transition-opacity shrink-0"
+                                      className="h-8 px-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-500 hover:bg-amber-500/20 font-black uppercase text-[11px] tracking-widest border border-amber-200/40 opacity-0 group-hover:opacity-100 duration-200 transition-opacity shrink-0"
                                     >
                                       Sweep
                                     </Button>
@@ -1196,7 +1196,7 @@ export function TrainerControlHubView({
                           </div>
                           <div>
                             <CardTitle className="text-2xl font-black text-slate-900 dark:text-white italic tracking-tight">Studio Configuration</CardTitle>
-                            <CardDescription className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[10px] tracking-widest">Manage franchise locations.</CardDescription>
+                            <CardDescription className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[11px] tracking-widest">Manage franchise locations.</CardDescription>
                           </div>
                         </div>
                       </CardHeader>
@@ -1256,7 +1256,7 @@ export function TrainerControlHubView({
                             </div>
                             <div>
                               <CardTitle className="text-2xl font-black text-slate-900 dark:text-white italic tracking-tight">Hub Announcements</CardTitle>
-                              <CardDescription className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[10px] tracking-widest">Share informative insights with your team.</CardDescription>
+                              <CardDescription className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[11px] tracking-widest">Share informative insights with your team.</CardDescription>
                             </div>
                           </div>
                         </CardHeader>
@@ -1270,7 +1270,7 @@ export function TrainerControlHubView({
                             
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div className="space-y-1">
-                                <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">Headline</Label>
+                                <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">Headline</Label>
                                 <Input 
                                   value={newAnnouncement.title}
                                   onChange={e => setNewAnnouncement(prev => ({ ...prev, title: e.target.value }))}
@@ -1279,7 +1279,7 @@ export function TrainerControlHubView({
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">Audience</Label>
+                                <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">Audience</Label>
                                 <Select 
                                   value={currentAudienceValue} 
                                   onValueChange={v => setNewAnnouncement(prev => ({ ...prev, studioId: v }))}
@@ -1300,7 +1300,7 @@ export function TrainerControlHubView({
                             </div>
 
                             <div className="space-y-1">
-                              <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">Short Snippet (Quick Header View)</Label>
+                              <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">Short Snippet (Quick Header View)</Label>
                               <Input 
                                 value={newAnnouncement.shortContent}
                                 onChange={e => setNewAnnouncement(prev => ({ ...prev, shortContent: e.target.value }))}
@@ -1310,7 +1310,7 @@ export function TrainerControlHubView({
                             </div>
 
                             <div className="space-y-1">
-                              <Label className="text-[10px] font-bold uppercase text-slate-555 dark:text-slate-400">Full Details (Expanded View)</Label>
+                              <Label className="text-[11px] font-bold uppercase text-slate-555 dark:text-slate-400">Full Details (Expanded View)</Label>
                               <Textarea 
                                 value={newAnnouncement.longContent}
                                 onChange={e => setNewAnnouncement(prev => ({ ...prev, longContent: e.target.value }))}
@@ -1322,12 +1322,12 @@ export function TrainerControlHubView({
                             <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800">
                               <div className="flex flex-wrap items-center gap-4">
                                 <div className="flex items-center gap-2">
-                                  <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mt-0.5">Priority:</Label>
+                                  <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mt-0.5">Priority:</Label>
                                   <Select 
                                     value={newAnnouncement.priority} 
                                     onValueChange={(v: any) => setNewAnnouncement(prev => ({ ...prev, priority: v }))}
                                   >
-                                    <SelectTrigger className="w-24 h-8 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-[10px] uppercase font-black rounded-lg">
+                                    <SelectTrigger className="w-24 h-8 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-[11px] uppercase font-black rounded-lg">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
@@ -1338,12 +1338,12 @@ export function TrainerControlHubView({
                                   </Select>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mt-0.5">Type:</Label>
+                                  <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mt-0.5">Type:</Label>
                                   <Select 
                                     value={newAnnouncement.type || 'news'} 
                                     onValueChange={(v: any) => setNewAnnouncement(prev => ({ ...prev, type: v }))}
                                   >
-                                    <SelectTrigger className="w-24 h-8 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-[10px] uppercase font-black rounded-lg">
+                                    <SelectTrigger className="w-24 h-8 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-[11px] uppercase font-black rounded-lg">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
@@ -1356,12 +1356,12 @@ export function TrainerControlHubView({
                                   </Select>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mt-0.5">Lifespan:</Label>
+                                  <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mt-0.5">Lifespan:</Label>
                                   <Select 
                                     value={lifespan} 
                                     onValueChange={v => setLifespan(v)}
                                   >
-                                    <SelectTrigger className="w-24 h-8 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-[10px] uppercase font-black rounded-lg">
+                                    <SelectTrigger className="w-24 h-8 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-[11px] uppercase font-black rounded-lg">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
@@ -1375,7 +1375,7 @@ export function TrainerControlHubView({
                               <Button 
                                 onClick={handleCreateAnnouncement}
                                 disabled={isCreatingAnnouncement || !newAnnouncement.title || !newAnnouncement.shortContent}
-                                className="bg-sky-500 hover:bg-sky-600 text-white font-black uppercase text-[10px] tracking-widest h-9 px-5 rounded-xl gap-1.5 shadow-sm"
+                                className="bg-sky-500 hover:bg-sky-600 text-white font-black uppercase text-[11px] tracking-widest h-9 px-5 rounded-xl gap-1.5 shadow-sm"
                               >
                                 {isCreatingAnnouncement ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                                 Publish
@@ -1385,7 +1385,7 @@ export function TrainerControlHubView({
 
                           {/* Announcements Feed */}
                           <div className="space-y-3.5">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 px-1">Active Messages</h3>
+                            <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 px-1">Active Messages</h3>
                             {announcements.length === 0 ? (
                               <div className="py-12 border border-slate-150 dark:border-slate-800/85 border-dashed rounded-[24px] flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 italic text-xs">
                                 No active announcements found.
@@ -1411,7 +1411,7 @@ export function TrainerControlHubView({
                                           </span>
                                         </div>
                                         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">{a.shortContent}</p>
-                                        <p className="text-[8px] text-slate-400 dark:text-slate-500 mt-2 font-bold uppercase tracking-widest">
+                                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2 font-bold uppercase tracking-widest">
                                           By {a.authorName} • {a.createdAt?.toDate?.()?.toLocaleDateString() || 'Recently'}
                                         </p>
                                       </div>
@@ -1442,7 +1442,7 @@ export function TrainerControlHubView({
                         </div>
                         <div>
                           <h3 className="text-2xl font-black text-slate-900 dark:text-white italic tracking-tight">Hardware & Equipment Configuration</h3>
-                          <p className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[10px] tracking-widest">Map, test, and calibrate live floor biometric machines.</p>
+                          <p className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[11px] tracking-widest">Map, test, and calibrate live floor biometric machines.</p>
                         </div>
                       </div>
                       <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl">
@@ -1491,7 +1491,7 @@ export function TrainerControlHubView({
                       </div>
                       <div>
                         <CardTitle className="text-2xl font-black text-slate-900 dark:text-white italic tracking-tight">Legacy Data Ingestion Pipeline</CardTitle>
-                        <CardDescription className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[10px] tracking-widest">Import historical client logs via CSV to populate the demographic engine.</CardDescription>
+                        <CardDescription className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[11px] tracking-widest">Import historical client logs via CSV to populate the demographic engine.</CardDescription>
                       </div>
                     </div>
                   </CardHeader>
@@ -1503,7 +1503,7 @@ export function TrainerControlHubView({
                            <Sparkles className="w-4 h-4 text-amber-500" />
                            Interface Theme
                          </Label>
-                         <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-sm mt-1">
+                         <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-sm mt-1">
                            Toggle between dark mode, light mode, or system default.
                          </p>
                       </div>
@@ -1527,7 +1527,7 @@ export function TrainerControlHubView({
                            <Bug className="w-4 h-4" />
                            Report a Bug
                          </Label>
-                         <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-sm mt-1 mb-4">
+                         <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-sm mt-1 mb-4">
                            Found an issue? Let us know so our engineering team can investigate.
                          </p>
                       </div>
@@ -1556,7 +1556,7 @@ export function TrainerControlHubView({
                         <Button 
                           onClick={submitBug}
                           disabled={!bugReport.description || isSubmittingBug}
-                          className="w-full bg-rose-500 hover:bg-rose-600 text-white font-black uppercase text-[10px] tracking-widest"
+                          className="w-full bg-rose-500 hover:bg-rose-600 text-white font-black uppercase text-[11px] tracking-widest"
                         >
                           {isSubmittingBug ? "Submitting..." : "Submit Bug Report"}
                         </Button>
@@ -1564,7 +1564,7 @@ export function TrainerControlHubView({
                     </div>
 
                     <div className="space-y-4">
-                      <Label htmlFor="legacy-upload" className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 px-1">Historical Workout Data (CSV)</Label>
+                      <Label htmlFor="legacy-upload" className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 px-1">Historical Workout Data (CSV)</Label>
                       <div className="relative group">
                         {/* High-end SaaS drop zone */}
                         <div className="w-full h-44 border-2 border-dashed border-slate-350 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 rounded-3xl flex flex-col items-center justify-center p-6 text-center transition-all duration-200 group-hover:bg-slate-100/70 dark:group-hover:bg-slate-900/60 group-hover:border-sky-450">
@@ -1580,7 +1580,7 @@ export function TrainerControlHubView({
                               </div>
                               <div className="space-y-1">
                                 <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Drag & drop or click to upload CSV</p>
-                                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Supports legacy FileMaker schemas & metrics</p>
+                                <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Supports legacy FileMaker schemas & metrics</p>
                               </div>
                             </div>
                           )}
@@ -1601,7 +1601,7 @@ export function TrainerControlHubView({
                         <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0 mt-0.5" />
                         <div>
                           <p className="font-black text-emerald-600 dark:text-emerald-400 uppercase italic tracking-wider text-sm">Import Success</p>
-                          <div className="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-2 mt-3 text-[9px]">
+                          <div className="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-2 mt-3 text-[11px]">
                             <p>Clients: <span className="font-mono text-xs text-slate-900 dark:text-white font-black">{legacyStats.clients}</span></p>
                             <p>Sessions: <span className="font-mono text-xs text-slate-900 dark:text-white font-black">{legacyStats.sessions}</span></p>
                             <p>Logs: <span className="font-mono text-xs text-slate-900 dark:text-white font-black">{legacyStats.logs}</span></p>
@@ -1643,10 +1643,10 @@ export function TrainerControlHubView({
               </p>
             </div>
             <div className="flex gap-3 w-full">
-              <Button onClick={() => setTrainerToDelete(null)} variant="outline" className="flex-1 rounded-xl h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white hover:bg-slate-100 text-slate-900 dark:text-white font-bold uppercase tracking-widest text-[10px]">
+              <Button onClick={() => setTrainerToDelete(null)} variant="outline" className="flex-1 rounded-xl h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white hover:bg-slate-100 text-slate-900 dark:text-white font-bold uppercase tracking-widest text-[11px]">
                 Cancel
               </Button>
-              <Button onClick={handleDeleteTrainer} variant="destructive" className="flex-1 rounded-xl h-12 bg-rose-600 hover:bg-rose-700 text-slate-900 dark:text-white font-black uppercase tracking-widest shadow-sm dark:shadow-none border-none text-[10px]">
+              <Button onClick={handleDeleteTrainer} variant="destructive" className="flex-1 rounded-xl h-12 bg-rose-600 hover:bg-rose-700 text-slate-900 dark:text-white font-black uppercase tracking-widest shadow-sm dark:shadow-none border-none text-[11px]">
                 Confirm
               </Button>
             </div>

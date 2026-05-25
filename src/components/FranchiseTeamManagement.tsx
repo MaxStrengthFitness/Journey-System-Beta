@@ -129,7 +129,7 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
           {isAdmin && (
             <Button 
               onClick={() => setIsCreateModalOpen(true)}
-              className="rounded-xl bg-orange-500 dark:bg-orange-600 text-white h-10 px-4 font-black uppercase text-[10px] tracking-widest gap-2 shadow-sm dark:shadow-none"
+              className="rounded-xl bg-orange-500 dark:bg-orange-600 text-white h-10 px-4 font-black uppercase text-[11px] tracking-widest gap-2 shadow-sm dark:shadow-none"
             >
               <Plus className="w-4 h-4" />
               Add New
@@ -179,7 +179,7 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-black text-slate-900 dark:text-white uppercase italic truncate">{t.fullName}</p>
-                        <p className={cn("text-[9px] font-bold uppercase tracking-widest truncate mt-0.5", getRoleColor(t.role).split(' ')[0])}>
+                        <p className={cn("text-[11px] font-bold uppercase tracking-widest truncate mt-0.5", getRoleColor(t.role).split(' ')[0])}>
                           {getRoleDisplayName(t.role)}
                         </p>
                       </div>
@@ -218,7 +218,7 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase italic leading-none">{currentSelectedTrainer.fullName}</h3>
                     </div>
-                    <p className={cn("text-[10px] font-bold uppercase tracking-widest leading-none mt-2", getRoleColor(currentSelectedTrainer.role).split(' ')[0])}>
+                    <p className={cn("text-[11px] font-bold uppercase tracking-widest leading-none mt-2", getRoleColor(currentSelectedTrainer.role).split(' ')[0])}>
                       {getRoleDisplayName(currentSelectedTrainer.role)}
                     </p>
                   </div>
@@ -239,7 +239,7 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
 
               {/* Home Studio Assignment */}
               <div className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">Primary Home Studio</Label>
+                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">Primary Home Studio</Label>
                 <Select value={currentSelectedTrainer.primaryHomeStudioId || 'unassigned'} onValueChange={(val) => {
                   if (!currentSelectedTrainer.id) return;
                   handleUpdateHomeStudio(currentSelectedTrainer.id, val);
@@ -258,7 +258,7 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
 
               {/* Accessible Studios (Cross-Training) */}
               <div className="flex flex-col gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">Accessible Studios (Cross-Training)</Label>
+                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">Accessible Studios (Cross-Training)</Label>
                 <div className="flex flex-wrap gap-2">
                   {(currentSelectedTrainer.accessibleStudioIds || []).length === 0 ? (
                     <span className="text-xs text-slate-500 dark:text-slate-400 italic">No secondary locations assigned</span>
@@ -306,14 +306,14 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
                     </Select>
                   </div>
                 )}
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
                   Toggle secondary locations this trainer teaches at so their scheduled bookings propagate across those live floor calendars.
                 </p>
               </div>
 
               {/* iCal feed and MindBody integrations */}
               <div className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">iCal Mindbody Sync URL</Label>
+                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">iCal Mindbody Sync URL</Label>
                 {editingIcalId === currentSelectedTrainer.id ? (
                   <div className="space-y-3">
                     <Input
@@ -354,13 +354,13 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
                           setNewIcalUrl(currentSelectedTrainer.thirdPartyCalendarUrl || '');
                           setEditingIcalId(currentSelectedTrainer.id);
                         }}
-                        className="h-8 text-[10px] font-bold uppercase tracking-widest"
+                        className="h-8 text-[11px] font-bold uppercase tracking-widest"
                      >
                         Edit
                      </Button>
                   </div>
                 )}
-                <p className="text-[10px] text-slate-400 italic">Paste the private trainer schedule iCal URL here to enable automated sync into the Daily Hub Calendar.</p>
+                <p className="text-[11px] text-slate-400 italic">Paste the private trainer schedule iCal URL here to enable automated sync into the Daily Hub Calendar.</p>
               </div>
 
             </div>
@@ -371,7 +371,7 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
                   <UserCog className="w-8 h-8 text-sky-200 dark:text-sky-900" />
                 </div>
                 <p className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">Select a Team Member</p>
-                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Choose a trainer from the roster list to view and manage their schedule and studio access.</p>
+                <p className="text-[11px] font-medium text-slate-500 uppercase tracking-widest">Choose a trainer from the roster list to view and manage their schedule and studio access.</p>
               </div>
             </div>
           )}

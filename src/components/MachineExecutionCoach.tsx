@@ -53,7 +53,7 @@ export function MachineExecutionCoach({ machine }: Props) {
             </div>
             <div>
               <h3 className="text-sm font-black uppercase tracking-widest text-[#F8F9FA]">Execution & Cueing</h3>
-              <p className="text-[10px] uppercase tracking-widest text-[#68717A] mt-0.5">AI-Powered Active Set Coaching</p>
+              <p className="text-[11px] uppercase tracking-widest text-[#68717A] mt-0.5">AI-Powered Active Set Coaching</p>
             </div>
           </div>
           
@@ -75,10 +75,10 @@ export function MachineExecutionCoach({ machine }: Props) {
           </Button>
 
           {!referenceData && (
-            <p className="text-[10px] text-red-400 font-bold tracking-widest text-center">Missing reference data for this machine.</p>
+            <p className="text-[11px] text-red-400 font-bold tracking-widest text-center">Missing reference data for this machine.</p>
           )}
           {error && (
-            <p className="text-[10px] text-red-500 font-bold tracking-widest text-center bg-red-500/10 p-2 rounded-lg">{error}</p>
+            <p className="text-[11px] text-red-500 font-bold tracking-widest text-center bg-red-500/10 p-2 rounded-lg">{error}</p>
           )}
         </CardContent>
       </Card>
@@ -93,7 +93,7 @@ export function MachineExecutionCoach({ machine }: Props) {
               <CardContent className="p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <ArrowDownUp className="w-4 h-4 text-[#115E8D]" />
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-800">1. Gradual Load Up</h4>
+                  <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">1. Gradual Load Up</h4>
                 </div>
                 <p className="text-sm font-semibold text-slate-700 leading-snug">
                   {result.gradualLoadUp}
@@ -106,15 +106,15 @@ export function MachineExecutionCoach({ machine }: Props) {
               <CardContent className="p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <RefreshCcw className="w-4 h-4 text-indigo-600" />
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-800">2. Turnaround Rules</h4>
+                  <h4 className="text-[11px] font-black uppercase tracking-widest text-indigo-800">2. Turnaround Rules</h4>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="bg-white p-3 rounded-xl border border-indigo-100/50">
-                    <span className="block text-[9px] font-black uppercase tracking-widest text-indigo-400 mb-1">Lower Turn (Stretch)</span>
+                    <span className="block text-[11px] font-black uppercase tracking-widest text-indigo-400 mb-1">Lower Turn (Stretch)</span>
                     <span className="text-sm font-semibold text-slate-700 leading-snug">{result.turnaroundRules.lowerTurn}</span>
                   </div>
                   <div className="bg-white p-3 rounded-xl border border-indigo-100/50">
-                    <span className="block text-[9px] font-black uppercase tracking-widest text-indigo-400 mb-1">Upper Turn (Contraction)</span>
+                    <span className="block text-[11px] font-black uppercase tracking-widest text-indigo-400 mb-1">Upper Turn (Contraction)</span>
                     <span className="text-sm font-semibold text-slate-700 leading-snug">{result.turnaroundRules.upperTurn}</span>
                   </div>
                 </div>
@@ -127,7 +127,7 @@ export function MachineExecutionCoach({ machine }: Props) {
               <CardContent className="p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <Volume2 className="w-4 h-4 text-[#38BDF8]" />
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-[#38BDF8]">3. Active Set Cues (What to say)</h4>
+                  <h4 className="text-[11px] font-black uppercase tracking-widest text-[#38BDF8]">3. Active Set Cues (What to say)</h4>
                 </div>
                 <ul className="space-y-3">
                   {result.activeSetCues.map((cue, idx) => (
@@ -146,7 +146,7 @@ export function MachineExecutionCoach({ machine }: Props) {
               <CardContent className="p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <Hand className="w-4 h-4 text-rose-600" />
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-rose-800">4. Failure & Exit</h4>
+                  <h4 className="text-[11px] font-black uppercase tracking-widest text-rose-800">4. Failure & Exit</h4>
                 </div>
                 <p className="text-sm font-semibold text-rose-900/90 leading-snug">
                   {result.failureAndExit}

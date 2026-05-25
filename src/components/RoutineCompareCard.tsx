@@ -15,25 +15,25 @@ export function RoutineCompareCard({ variant, label, title, meta }: RoutineCompa
   return (
     <div
       className={cn(
-        "relative flex flex-col p-3 rounded-xl border overflow-hidden h-[76px] justify-center",
+        "relative flex flex-col p-3 rounded-[14px] overflow-hidden justify-center h-[76px]",
         isScheduled
-          ? "bg-cyan-900/20 border-cyan/30"
-          : "bg-bg-dark-2 border-div-d"
+          ? "bg-bg-dark-2"
+          : "bg-surface-subtle border-transparent"
       )}
     >
       <div className="flex flex-col z-10">
         <span
           className={cn(
-            "text-[10px] uppercase font-display italic tracking-wider mb-0.5",
-            isScheduled ? "text-cyan" : "text-ink-d3"
+            "text-[11px] font-medium tracking-wide opacity-60 uppercase mb-1",
+            isScheduled ? "text-cyan" : "text-ink-d2"
           )}
         >
           {label}
         </span>
-        <span className="text-[16px] text-white uppercase font-display italic leading-none mb-1">
+        <span className="text-[16px] text-white uppercase font-black tracking-wide leading-none mb-1">
           {title}
         </span>
-        <span className={cn("text-[11px] font-display italic opacity-80", isScheduled ? "text-cyan/80" : "text-ink-d2")}>
+        <span className={cn("text-[11px] font-medium font-sans opacity-80", isScheduled ? "text-cyan/80" : "text-ink-d3")}>
           {meta}
         </span>
       </div>

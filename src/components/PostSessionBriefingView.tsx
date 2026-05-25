@@ -93,21 +93,21 @@ export function PostSessionBriefingView({
   };
 
   return (
-    <div className="fixed inset-0 h-[100dvh] w-full flex flex-col overflow-hidden bg-[#0A2E46] text-white z-[105]">
+    <div className="fixed inset-0 h-[100dvh] w-full flex flex-col overflow-hidden bg-bg-dark text-white z-[105]">
       {/* Header */}
-      <div className="shrink-0 px-6 py-8 border-b border-white/5 bg-[#0e171e]">
+      <div className="shrink-0 px-6 py-8 border-b border-div-d bg-surface-1">
         <div className="flex items-start justify-between">
           <div>
-            <div className="flex items-center gap-3 text-[#38BDF8] mb-2">
+            <div className="flex items-center gap-3 text-cyan mb-2">
               <Trophy className="w-5 h-5" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Victory HUD</span>
+              <span className="text-[11px] font-medium uppercase tracking-wide opacity-70">Victory HUD</span>
             </div>
-            <h2 className="text-4xl lg:text-5xl font-black uppercase tracking-tighter">
+            <h2 className="text-4xl lg:text-5xl font-bold uppercase tracking-tighter">
               Session Complete
             </h2>
-            <p className="text-slate-400 font-medium mt-2">
+            <p className="text-ink-d2 font-medium mt-2">
               Great work. Here are {client.firstName}'s numbers for today. {client.homeStudioId && (
-                <span className="text-slate-500 font-semibold text-xs bg-white/5 border border-white/10 px-2 py-0.5 rounded ml-2 uppercase tracking-wide">Studio: {client.homeStudioId}</span>
+                <span className="text-ink-d3 font-semibold text-xs bg-white/5 border border-div-d px-2 py-0.5 rounded ml-2 uppercase tracking-wide">Studio: {client.homeStudioId}</span>
               )}
             </p>
           </div>
@@ -117,50 +117,50 @@ export function PostSessionBriefingView({
       <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 custom-scrollbar">
         {/* Victory Metrics Board */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          <div className="bg-slate-800 border border-slate-700/50 rounded-2xl p-4 flex flex-col justify-center relative overflow-hidden shadow-lg">
-            <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-400 relative z-10">Today's Tonnage</span>
-            <span className="text-2xl sm:text-3xl font-black text-white tracking-tighter mt-1 relative z-10 truncate">
-              {(isNaN(totalTonnage) ? 0 : totalTonnage).toLocaleString()}<span className="text-sm text-slate-500 ml-1">lbs</span>
+          <div className="bg-surface-1 border border-div-d rounded-2xl p-4 flex flex-col justify-center relative overflow-hidden shadow-lg">
+            <span className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2 relative z-10">Today's Tonnage</span>
+            <span className="text-2xl sm:text-3xl font-bold text-white tracking-tighter mt-1 relative z-10 truncate">
+              {(isNaN(totalTonnage) ? 0 : totalTonnage).toLocaleString()}<span className="text-sm text-ink-d3 ml-1">lbs</span>
             </span>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700/50 rounded-2xl p-4 flex flex-col justify-center relative overflow-hidden shadow-lg">
-            <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-400 relative z-10">Today's Reps</span>
-            <span className="text-2xl sm:text-3xl font-black text-white tracking-tighter mt-1 relative z-10 truncate">
+          <div className="bg-surface-1 border border-div-d rounded-2xl p-4 flex flex-col justify-center relative overflow-hidden shadow-lg">
+            <span className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2 relative z-10">Today's Reps</span>
+            <span className="text-2xl sm:text-3xl font-bold text-white tracking-tighter mt-1 relative z-10 truncate">
               {totalReps}
             </span>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700/50 rounded-2xl p-4 flex flex-col justify-center relative overflow-hidden shadow-lg">
-            <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#38BDF8] relative z-10">Avg TUT / Rep</span>
-            <span className="text-2xl sm:text-3xl font-black text-white tracking-tighter mt-1 relative z-10 truncate">
-              {avgTutPerRep.toFixed(1)}<span className="text-sm text-slate-500 ml-1">s</span>
+          <div className="bg-surface-1 border border-div-d rounded-2xl p-4 flex flex-col justify-center relative overflow-hidden shadow-lg">
+            <span className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-cyan relative z-10">Avg TUT / Rep</span>
+            <span className="text-2xl sm:text-3xl font-bold text-white tracking-tighter mt-1 relative z-10 truncate">
+              {avgTutPerRep.toFixed(1)}<span className="text-sm text-ink-d3 ml-1">s</span>
             </span>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700/50 rounded-2xl p-4 flex flex-col justify-center relative overflow-hidden shadow-lg">
-            <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-400 relative z-10">Elite Sets</span>
-            <span className="text-2xl sm:text-3xl font-black text-emerald-500 tracking-tighter mt-1 relative z-10 flex items-baseline gap-1 truncate">
+          <div className="bg-surface-1 border border-div-d rounded-2xl p-4 flex flex-col justify-center relative overflow-hidden shadow-lg">
+            <span className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2 relative z-10">Elite Sets</span>
+            <span className="text-2xl sm:text-3xl font-bold text-emerald-500 tracking-tighter mt-1 relative z-10 flex items-baseline gap-1 truncate">
               {eliteSets} <span className="text-sm text-emerald-500/50 uppercase tracking-widest">/ {logs.length}</span>
             </span>
           </div>
 
-          <div className="bg-slate-800 border border-[#F06C22]/30 rounded-2xl p-4 flex flex-col justify-center relative overflow-hidden shadow-lg">
+          <div className="bg-surface-1 border border-cta/30 rounded-2xl p-4 flex flex-col justify-center relative overflow-hidden shadow-lg">
             <div className="absolute right-0 top-0 bottom-0 bg-gradient-to-l from-[#F06C22]/10 via-[#F06C22]/5 to-transparent w-full pointer-events-none" />
-            <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#F06C22]/80 relative z-10 flex items-center gap-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-cta/80 relative z-10 flex items-center gap-1.5">
               <Dumbbell className="w-3 h-3" /> Lifetime Volume
             </span>
-            <span className="text-2xl sm:text-3xl font-black text-[#F06C22] tracking-tighter mt-1 relative z-10 truncate">
+            <span className="text-2xl sm:text-3xl font-bold text-cta tracking-tighter mt-1 relative z-10 truncate">
               {(isNaN(lifetimeTonnage) ? 0 : lifetimeTonnage).toLocaleString()}<span className="text-sm opacity-50 ml-1">lbs</span>
             </span>
           </div>
 
-          <div className="bg-slate-800 border border-[#F06C22]/30 rounded-2xl p-4 flex flex-col justify-center relative overflow-hidden shadow-lg">
+          <div className="bg-surface-1 border border-cta/30 rounded-2xl p-4 flex flex-col justify-center relative overflow-hidden shadow-lg">
             <div className="absolute right-0 top-0 bottom-0 bg-gradient-to-l from-[#F06C22]/10 via-[#F06C22]/5 to-transparent w-full pointer-events-none" />
-            <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#F06C22]/80 relative z-10 flex items-center gap-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-cta/80 relative z-10 flex items-center gap-1.5">
               <Activity className="w-3 h-3" /> Lifetime Reps
             </span>
-            <span className="text-2xl sm:text-3xl font-black text-[#F06C22] tracking-tighter mt-1 relative z-10 truncate">
+            <span className="text-2xl sm:text-3xl font-bold text-cta tracking-tighter mt-1 relative z-10 truncate">
               {(isNaN(lifetimeReps) ? 0 : lifetimeReps).toLocaleString()}
             </span>
           </div>
@@ -169,20 +169,20 @@ export function PostSessionBriefingView({
         {/* Clinical Logging Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Client Subjective Feel */}
-          <div className="bg-[#0e171e] border border-slate-700/50 rounded-2xl p-4 md:p-6 shadow-lg space-y-3">
+          <div className="bg-surface-1 border border-div-d rounded-2xl p-4 md:p-6 shadow-lg space-y-3">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#68717A]">Recovery Tracking</span>
-              <h3 className="text-lg font-black text-white mt-1">How does the client feel?</h3>
+              <span className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d3">Recovery Tracking</span>
+              <h3 className="text-lg font-bold text-white mt-1">How does the client feel?</h3>
             </div>
             <div className="flex flex-wrap gap-2">
               {['Wiped Out', 'Good', 'Energized'].map(feel => (
                 <button
                   key={feel}
                   onClick={() => setClientFeel(feel)}
-                  className={`flex-1 py-3 px-4 rounded-xl font-black uppercase tracking-widest text-[10px] md:text-xs transition-all ${
+                  className={`flex-1 py-3 px-4 rounded-xl text-[11px] font-medium uppercase tracking-wide opacity-70 md:text-xs transition-all ${
                     clientFeel === feel 
-                      ? 'bg-[#38BDF8] text-[#0A2E46] shadow-[0_0_20px_rgba(56,189,248,0.2)]' 
-                      : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'
+                      ? 'bg-cyan text-ink-l1 shadow-[0_0_20px_rgba(56,189,248,0.2)]' 
+                      : 'bg-surface-1 border border-div-d text-ink-d2 hover:text-white hover:border-div-d'
                   }`}
                 >
                   {feel}
@@ -192,10 +192,10 @@ export function PostSessionBriefingView({
           </div>
 
           {/* Post-Session Notes */}
-          <div className="bg-[#0e171e] border border-slate-700/50 rounded-2xl p-4 md:p-6 shadow-lg space-y-3 flex flex-col">
+          <div className="bg-surface-1 border border-div-d rounded-2xl p-4 md:p-6 shadow-lg space-y-3 flex flex-col">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#68717A]">Clinical Log</span>
-              <h3 className="text-lg font-black text-white mt-1">Post-Session Notes</h3>
+              <span className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d3">Clinical Log</span>
+              <h3 className="text-lg font-bold text-white mt-1">Post-Session Notes</h3>
             </div>
             <div className="flex-1 flex flex-col gap-3">
               <Textarea 
@@ -203,18 +203,18 @@ export function PostSessionBriefingView({
                 value={noteContent}
                 onChange={e => setNoteContent(e.target.value)}
                 rows={3}
-                className="w-full bg-slate-900 border-slate-700 text-white resize-none"
+                className="w-full bg-bg-dark border-div-d text-white resize-none"
               />
               <div className="flex items-center gap-3">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 shrink-0">Priority for Next Time:</span>
+                <span className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2 shrink-0">Priority for Next Time:</span>
                 <select 
                   value={notePriority} 
                   onChange={(e) => setNotePriority(e.target.value as any)}
-                  className="w-[120px] bg-slate-900 border border-slate-700 text-white font-bold h-9 text-xs rounded-md px-3 outline-none focus:ring-1 focus:ring-[#38BDF8]"
+                  className="w-[120px] bg-bg-dark border border-div-d text-white font-bold h-9 text-xs rounded-md px-3 outline-none focus:ring-1 focus:ring-cyan"
                 >
                   <option value="High" className="font-bold text-amber-500">High</option>
                   <option value="Medium" className="font-bold">Medium</option>
-                  <option value="Low" className="font-bold text-slate-400">Low</option>
+                  <option value="Low" className="font-bold text-ink-d2">Low</option>
                 </select>
               </div>
             </div>
@@ -223,13 +223,13 @@ export function PostSessionBriefingView({
 
         {/* Next Scheduled Indicator */}
         <div className="pt-4">
-          <div className="bg-slate-800/50 border border-slate-700/30 rounded-2xl p-5 flex items-center justify-between">
+          <div className="bg-surface-2 border border-div-d rounded-2xl p-5 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#0e171e] border border-slate-700/50 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-surface-1 border border-div-d flex items-center justify-center">
                 <Calendar className={`w-6 h-6 ${nextSession ? 'text-emerald-500' : 'text-amber-500'}`} />
               </div>
               <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#68717A]">Upcoming</span>
+                <span className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d3">Upcoming</span>
                 {nextSession ? (
                   <h4 className="text-emerald-500 font-medium">
                     Next Session: {nextSession.startTime.toDate().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
@@ -247,11 +247,11 @@ export function PostSessionBriefingView({
       </div>
 
       {/* Sticky Footer */}
-      <div className="shrink-0 bg-slate-900 border-t border-slate-700 p-4 md:p-6 flex justify-end">
+      <div className="shrink-0 bg-bg-dark border-t border-div-d p-4 md:p-6 flex justify-end">
         <Button 
           onClick={handleFinalize}
           disabled={isSyncing}
-          className="w-full md:w-auto px-8 md:px-12 h-16 bg-[#F06C22] hover:bg-[#d95d18] text-white rounded-[1.5rem] shadow-[0_10px_30px_rgba(240,108,34,0.4)] transition-all font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:opacity-50"
+          className="w-full md:w-auto px-8 md:px-12 h-16 bg-cta hover:bg-cta-strong text-white rounded-3xl shadow-[0_10px_30px_var(--color-cta),0.4)] transition-all font-bold uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-bg-dark"
         >
           {isSyncing ? (
             'Syncing...'

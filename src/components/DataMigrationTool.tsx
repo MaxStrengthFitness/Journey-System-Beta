@@ -86,7 +86,7 @@ export function DataMigrationTool() {
         <Button 
           onClick={runMigration} 
           disabled={status === 'Migrating...'}
-          className="h-10 rounded-xl px-6 bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-widest text-[10px]"
+          className="h-10 rounded-xl px-6 bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-widest text-[11px]"
         >
           {status === 'Migrating...' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
           Run Migration
@@ -95,7 +95,7 @@ export function DataMigrationTool() {
           <span className={`text-sm font-black uppercase tracking-widest ${status === 'Completed successfully' ? 'text-emerald-500' : status === 'Error' ? 'text-red-500' : 'text-slate-500'}`}>
             {status}
           </span>
-          {errorMessage && <span className="text-[10px] text-red-400 font-bold max-w-md">{errorMessage}</span>}
+          {errorMessage && <span className="text-[11px] text-red-400 font-bold max-w-md">{errorMessage}</span>}
         </div>
       </div>
     </div>

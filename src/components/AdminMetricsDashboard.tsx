@@ -111,7 +111,7 @@ export function AdminMetricsDashboard({ onManageStudios }: { onManageStudios?: (
           {onManageStudios && (
             <Button 
               onClick={onManageStudios}
-              className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-950/50 font-bold uppercase tracking-widest text-[10px] h-10 px-4 shadow-sm"
+              className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-950/50 font-bold uppercase tracking-widest text-[11px] h-10 px-4 shadow-sm"
             >
               <Settings className="w-4 h-4 mr-2" />
               Manage Studios
@@ -124,7 +124,7 @@ export function AdminMetricsDashboard({ onManageStudios }: { onManageStudios?: (
             </button>
             <div className="px-3 py-1 flex items-center gap-2">
               <CalendarDays className="w-4 h-4 text-slate-400" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 w-[110px] text-center">
+              <span className="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 w-[110px] text-center">
                 {currentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
               </span>
             </div>
@@ -138,7 +138,7 @@ export function AdminMetricsDashboard({ onManageStudios }: { onManageStudios?: (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="bg-slate-900 dark:bg-slate-950 text-white rounded-[32px] border border-slate-800 shadow-sm p-6 overflow-hidden relative">
           <CardHeader className="p-0 pb-2">
-            <CardTitle className="text-[10px] font-bold tracking-widest text-slate-400 uppercase leading-none">Total Network Sessions</CardTitle>
+            <CardTitle className="text-[11px] font-bold tracking-widest text-slate-400 uppercase leading-none">Total Network Sessions</CardTitle>
           </CardHeader>
           <CardContent className="p-0 pt-2 flex items-baseline">
             <div className="text-5xl font-black tracking-tighter italic">{loading ? '-' : totalNetworkSessions}</div>
@@ -147,14 +147,14 @@ export function AdminMetricsDashboard({ onManageStudios }: { onManageStudios?: (
 
         <Card className="bg-indigo-650 dark:bg-indigo-950 text-white rounded-[32px] border border-indigo-500/20 shadow-sm p-6 overflow-hidden relative">
           <CardHeader className="p-0 pb-2">
-            <CardTitle className="text-[10px] font-bold tracking-widest text-indigo-200 uppercase flex items-center gap-2 leading-none">
+            <CardTitle className="text-[11px] font-bold tracking-widest text-indigo-200 uppercase flex items-center gap-2 leading-none">
               <Activity className="w-4 h-4 text-indigo-300" /> 
               Total Cross-Trains
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 pt-2">
             <div className="text-5xl font-black tracking-tighter italic">{loading ? '-' : crossTrainSessions}</div>
-            <p className="text-indigo-200 dark:text-indigo-400 text-[10px] mt-2 font-semibold uppercase tracking-wider">Sessions completed outside client home studio</p>
+            <p className="text-indigo-200 dark:text-indigo-400 text-[11px] mt-2 font-semibold uppercase tracking-wider">Sessions completed outside client home studio</p>
           </CardContent>
         </Card>
       </div>
@@ -172,22 +172,22 @@ export function AdminMetricsDashboard({ onManageStudios }: { onManageStudios?: (
               <CardTitle className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white italic">
                 {stat.name}
               </CardTitle>
-              <CardDescription className="text-[9px] font-bold uppercase tracking-widest text-emerald-500 leading-none mt-1">
+              <CardDescription className="text-[11px] font-bold uppercase tracking-widest text-emerald-500 leading-none mt-1">
                 Strict Demographic Adherence
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0 space-y-4">
               <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-4 flex justify-between items-center border border-slate-100 dark:border-slate-850">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider leading-relaxed">Credited Sessions<br/>(Home base)</span>
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider leading-relaxed">Credited Sessions<br/>(Home base)</span>
                 <span className="text-2xl font-black text-slate-900 dark:text-white italic">{loading ? '-' : stat.creditedCount}</span>
               </div>
               <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-4 flex justify-between items-center border border-slate-100 dark:border-slate-850">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider leading-relaxed">Total Foot Traffic<br/>(Physical Hosted)</span>
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider leading-relaxed">Total Foot Traffic<br/>(Physical Hosted)</span>
                 <span className="text-xl font-black text-slate-700 dark:text-slate-300 italic">{loading ? '-' : stat.hostedCount}</span>
               </div>
               {stat.hostedCrossTrains > 0 && (
                 <div className="flex justify-between items-center px-1 pt-1">
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Included Cross-Trains</span>
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Included Cross-Trains</span>
                   <span className="text-xs font-black text-indigo-500 dark:text-indigo-400 font-mono">+{stat.hostedCrossTrains}</span>
                 </div>
               )}

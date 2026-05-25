@@ -80,7 +80,7 @@ export const ActiveSessionTimer = memo(function ActiveSessionTimer({
         </button>
       )}
       <div className="flex flex-col items-start leading-none gap-0.5">
-        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+        <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
           {paused ? 'PAUSED' : 'ELAPSED'}
         </span>
         <span className={`tabular-nums font-mono text-2xl sm:text-3xl font-black ${paused ? 'text-amber-500' : 'text-slate-800 dark:text-slate-100'}`}>

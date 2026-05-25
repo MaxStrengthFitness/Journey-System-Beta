@@ -398,13 +398,13 @@ function MachineCard({
             )}
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest truncate">
               {machine.muscleGroup || dbMachineInfo?.target || kinematicClass}
             </span>
             <Badge
               variant="outline"
               className={cn(
-                "text-[8px] font-bold uppercase tracking-widest px-1.5 h-4 border-current leading-none",
+                "text-[11px] font-bold uppercase tracking-widest px-1.5 h-4 border-current leading-none",
                 colors.badge,
               )}
             >
@@ -466,7 +466,7 @@ function MachineCard({
                       )}
                     >
                       {note.isImportant && (
-                        <div className="text-[9px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-400 mb-1 flex items-center gap-1">
+                        <div className="text-[11px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-400 mb-1 flex items-center gap-1">
                           <TriangleAlert className="w-3 h-3" /> Maintenance
                           Required
                         </div>
@@ -474,7 +474,7 @@ function MachineCard({
                       <p className="text-xs text-slate-700 dark:text-slate-300 pr-8">
                         {note.content}
                       </p>
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-2">
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-2">
                         {note.authorName} •{" "}
                         {new Date(note.timestamp).toLocaleDateString()}
                       </p>
@@ -518,7 +518,7 @@ function MachineCard({
                 <Button
                   disabled={isSaving || !newNote.trim()}
                   onClick={handleAddNote}
-                  className="h-10 px-4 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 font-bold uppercase tracking-widest text-[10px]"
+                  className="h-10 px-4 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 font-bold uppercase tracking-widest text-[11px]"
                 >
                   Add
                 </Button>
@@ -537,7 +537,7 @@ function MachineCard({
         {!hasData ? (
           <div className="flex-1 flex flex-col items-center justify-center py-5 text-center px-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900/50">
             <CircleDashed className="w-6 h-6 text-slate-300 dark:text-slate-700 mb-2" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
               Not Performed
             </p>
           </div>
@@ -546,23 +546,23 @@ function MachineCard({
             <div className={cn("border-l-4 border-y border-r rounded-md p-2 px-3 bg-white dark:bg-slate-900 border-r-slate-100 border-y-slate-100 dark:border-r-slate-800 dark:border-y-slate-800", colors.border.replace('border-', 'border-l-'))}>
               <div className="flex gap-4">
                 <div>
-                  <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">
                     Starting
                   </Label>
                   <div className="text-xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tighter leading-none flex items-baseline gap-1">
                     {startingWeightDisplay}
-                    <span className="text-[8px] font-bold text-slate-400">
+                    <span className="text-[11px] font-bold text-slate-400">
                       LBS
                     </span>
                   </div>
                 </div>
                 <div>
-                  <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">
                     Current
                   </Label>
                   <div className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none flex items-baseline gap-1">
                     {currentWeightDisplay}
-                    <span className="text-[8px] font-bold text-slate-400">
+                    <span className="text-[11px] font-bold text-slate-400">
                       LBS
                     </span>
                   </div>
@@ -570,7 +570,7 @@ function MachineCard({
               </div>
             </div>
             <div className="text-right">
-              <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
+              <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
                 Configuration
               </Label>
               <div className="flex flex-col items-end gap-1">
@@ -580,14 +580,14 @@ function MachineCard({
                     <span
                       key={k}
                       className={cn(
-                        "text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded-md flex items-center justify-end min-w-[32px]",
+                        "text-[11px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded-md flex items-center justify-end min-w-[32px]",
                         isStandard
                           ? colors.activeText + " " + colors.bg
                           : "text-slate-500 bg-slate-100 dark:bg-slate-800",
                       )}
                     >
                       {v}{" "}
-                      <span className="opacity-50 text-[8px] ml-1">
+                      <span className="opacity-50 text-[11px] ml-1">
                         {k.substring(0, 3)}
                       </span>
                     </span>
@@ -611,7 +611,7 @@ function MachineCard({
                   }
                 }}
               >
-                <DialogTrigger className="h-10 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:border-slate-700 dark:text-slate-300 font-black uppercase tracking-widest text-[10px] flex items-center justify-center transition-colors">
+                <DialogTrigger className="h-10 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:border-slate-700 dark:text-slate-300 font-black uppercase tracking-widest text-[11px] flex items-center justify-center transition-colors">
                   <Activity className="w-3.5 h-3.5 mr-1.5" /> WGT
                 </DialogTrigger>
                 <DialogContent className="max-w-xs rounded-[32px] p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
@@ -626,7 +626,7 @@ function MachineCard({
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
                           Starting (LBS)
                         </Label>
                         <Input
@@ -640,7 +640,7 @@ function MachineCard({
                         />
                       </div>
                       <div>
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
                           Current (LBS)
                         </Label>
                         <Input
@@ -656,7 +656,7 @@ function MachineCard({
                     </div>
                     {((draftStartingWeight !== "" && Number(draftStartingWeight) === calculateSuggestedWeight()) || (draftCurrentWeight !== "" && Number(draftCurrentWeight) === calculateSuggestedWeight())) &&
                         calculateSuggestedWeight() > 0 && (
-                          <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-1 text-center uppercase tracking-widest">
+                          <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 mt-1 text-center uppercase tracking-widest">
                             Studio Standard
                           </p>
                         )}
@@ -685,7 +685,7 @@ function MachineCard({
                   }
                 }}
               >
-                <DialogTrigger className="h-10 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:border-slate-700 dark:text-slate-300 font-black uppercase tracking-widest text-[10px] flex items-center justify-center transition-colors">
+                <DialogTrigger className="h-10 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:border-slate-700 dark:text-slate-300 font-black uppercase tracking-widest text-[11px] flex items-center justify-center transition-colors">
                   <Settings2 className="w-3.5 h-3.5 mr-1.5" /> SET
                 </DialogTrigger>
                 <DialogContent className="max-w-md rounded-[32px] p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
@@ -705,7 +705,7 @@ function MachineCard({
                             draftSettings[opt] === standardSettings[opt];
                           return (
                             <div key={opt} className="space-y-1">
-                              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 pl-1">
+                              <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 pl-1">
                                 {opt}
                               </Label>
                               <Input
@@ -724,7 +724,7 @@ function MachineCard({
                                     : "",
                                 )}
                               />
-                              <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400 text-center mt-1 flex items-center justify-center gap-1">
+                              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 text-center mt-1 flex items-center justify-center gap-1">
                                 STD:{" "}
                                 <span
                                   className={cn(
@@ -743,7 +743,7 @@ function MachineCard({
                     )}
 
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">
+                      <Label className="text-[11px] font-black uppercase tracking-widest text-[#F06C22]">
                         Reason for Change (Required)
                       </Label>
                       <Input
@@ -779,7 +779,7 @@ function MachineCard({
                 onClick={handleInitializeClick}
                 disabled={isSaving}
                 className={cn(
-                  "w-full h-12 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all disabled:opacity-50 border",
+                  "w-full h-12 rounded-xl font-black uppercase tracking-widest text-[11px] transition-all disabled:opacity-50 border",
                   colors.bg,
                   colors.border,
                   colors.text,
@@ -806,7 +806,7 @@ function MachineCard({
                   <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
                           Starting (LBS)
                         </Label>
                         <Input
@@ -820,7 +820,7 @@ function MachineCard({
                         />
                       </div>
                       <div>
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
                           Current (LBS)
                         </Label>
                         <Input
@@ -836,7 +836,7 @@ function MachineCard({
                     </div>
                     {((draftStartingWeight !== "" && Number(draftStartingWeight) === calculateSuggestedWeight()) || (draftCurrentWeight !== "" && Number(draftCurrentWeight) === calculateSuggestedWeight())) &&
                       calculateSuggestedWeight() > 0 && (
-                        <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-1 text-center uppercase tracking-widest">
+                        <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 mt-1 text-center uppercase tracking-widest">
                           Studio Standard: {calculateSuggestedWeight()} LBS (
                           {clientExperienceLevel || "Beginner"})
                         </p>
@@ -848,7 +848,7 @@ function MachineCard({
                             draftSettings[opt] === standardSettings[opt];
                           return (
                             <div key={opt} className="space-y-1">
-                              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 pl-1">
+                              <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 pl-1">
                                 {opt}
                               </Label>
                               <Input

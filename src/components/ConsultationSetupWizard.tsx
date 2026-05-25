@@ -124,7 +124,7 @@ export function ConsultationSetupWizard({ clientName, onComplete, onCancel }: Co
                         </div>
                         
                         <div className="text-right flex flex-col items-end pl-4 border-l border-slate-200">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-[#68717A] mb-2">Starting Wt</span>
+                          <span className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] mb-2">Starting Wt</span>
                           <div className="bg-white border-2 border-[#E2E8F0] shadow-sm px-6 py-3 rounded-xl flex items-baseline gap-1.5">
                              <span className="text-4xl font-black tracking-tighter text-[#115E8D]">{weight}</span>
                              <span className="text-sm font-bold text-[#68717A] uppercase">lbs</span>
@@ -165,7 +165,7 @@ export function ConsultationSetupWizard({ clientName, onComplete, onCancel }: Co
             className="text-[#F06C22] hover:bg-[#F06C22]/10 font-black uppercase tracking-widest text-sm px-6 rounded-xl border-2 border-[#F06C22]/30 flex flex-col items-center py-2 h-auto"
           >
             <span className="leading-none">Skip Setup</span>
-            <span className="text-[8px] opacity-60 font-bold">Manual Profile</span>
+            <span className="text-[11px] opacity-60 font-bold">Manual Profile</span>
           </Button>
         </div>
         <Button 

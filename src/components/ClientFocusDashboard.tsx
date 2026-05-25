@@ -167,12 +167,12 @@ export function ClientFocusDashboard({ client, trainer, machines }: ClientFocusD
               <Crosshair className="w-5 h-5 text-[#F06C22]" />
               Client Focus Dashboard
             </h2>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">MSF Clinical Continuity Protocol</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">MSF Clinical Continuity Protocol</p>
           </div>
           
           <button 
             onClick={() => setIsAdding(true)}
-            className="flex items-center gap-2 bg-[#F06C22] hover:bg-[#F06C22]/90 text-white px-4 py-2 rounded-xl font-bold uppercase tracking-widest text-[10px] transition-all active:scale-95 shadow-lg shadow-orange-950/20"
+            className="flex items-center gap-2 bg-[#F06C22] hover:bg-[#F06C22]/90 text-white px-4 py-2 rounded-xl font-bold uppercase tracking-widest text-[11px] transition-all active:scale-95 shadow-lg shadow-orange-950/20"
           >
             <Plus className="w-4 h-4" />
             Assign New Focus
@@ -185,7 +185,7 @@ export function ClientFocusDashboard({ client, trainer, machines }: ClientFocusD
             <div className="flex items-center gap-2 mb-4 shrink-0">
               <AlertCircle className="w-4 h-4 text-[#F06C22]" />
               <h3 className="text-sm font-bold uppercase tracking-widest text-slate-100">Live Focus Missions</h3>
-              <span className="ml-auto bg-[#F06C22]/20 text-[#F06C22] text-[10px] px-2 py-0.5 rounded-full font-bold">{activeFocuses.length}</span>
+              <span className="ml-auto bg-[#F06C22]/20 text-[#F06C22] text-[11px] px-2 py-0.5 rounded-full font-bold">{activeFocuses.length}</span>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-slate-800">
@@ -193,7 +193,7 @@ export function ClientFocusDashboard({ client, trainer, machines }: ClientFocusD
                 <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-3xl p-8 text-center bg-slate-900/30">
                   <Target className="w-12 h-12 text-slate-700 dark:text-slate-300 mb-4 opacity-20" />
                   <p className="text-slate-700 dark:text-slate-300 font-bold text-sm uppercase tracking-widest">No active focus assigned</p>
-                  <p className="text-[10px] text-slate-700 dark:text-slate-300 mt-2 max-w-[200px]">Strategic training requires a singular clinical focus for every session.</p>
+                  <p className="text-[11px] text-slate-700 dark:text-slate-300 mt-2 max-w-[200px]">Strategic training requires a singular clinical focus for every session.</p>
                 </div>
               ) : (
                 activeFocuses.map(focus => {
@@ -204,7 +204,7 @@ export function ClientFocusDashboard({ client, trainer, machines }: ClientFocusD
                     <div key={focus.id} className="bg-slate-900/60 rounded-2xl border border-slate-800 overflow-hidden group hover:border-[#F06C22]/30 transition-all duration-300">
                       <div className="p-4">
                         <div className="flex items-start justify-between mb-3">
-                          <div className={cn("px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] flex items-center gap-1.5", def.bg, def.color)}>
+                          <div className={cn("px-2 py-1 rounded-lg text-[11px] font-black uppercase tracking-[0.15em] flex items-center gap-1.5", def.bg, def.color)}>
                             <def.icon className="w-3 h-3" />
                             {focus.category}
                           </div>
@@ -220,8 +220,8 @@ export function ClientFocusDashboard({ client, trainer, machines }: ClientFocusD
                         <div className="space-y-3">
                           {machine && (
                             <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-bold uppercase text-slate-800 dark:text-slate-200 tracking-widest">Target:</span>
-                              <span className="text-[10px] font-bold text-[#F06C22] bg-[#F06C22]/10 px-2 py-0.5 rounded-md">{machine.name}</span>
+                              <span className="text-[11px] font-bold uppercase text-slate-800 dark:text-slate-200 tracking-widest">Target:</span>
+                              <span className="text-[11px] font-bold text-[#F06C22] bg-[#F06C22]/10 px-2 py-0.5 rounded-md">{machine.name}</span>
                             </div>
                           )}
                           
@@ -231,15 +231,15 @@ export function ClientFocusDashboard({ client, trainer, machines }: ClientFocusD
                           
                           <div className="pt-3 border-t border-slate-800/50 flex items-center justify-between">
                             <div className="flex items-center gap-1.5">
-                              <div className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-[8px] font-bold text-[#F06C22]">
+                              <div className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-[11px] font-bold text-[#F06C22]">
                                 {focus.assignedBy}
                               </div>
-                              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Assigning Coach</span>
+                              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Assigning Coach</span>
                             </div>
                             
                             <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
                               <Clock className="w-3 h-3" />
-                              <span className="text-[9px] font-bold tracking-widest">
+                              <span className="text-[11px] font-bold tracking-widest">
                                 {focus.dateAssigned ? (focus.dateAssigned as any).toDate?.()?.toLocaleDateString() || 'Active' : 'Active'}
                               </span>
                             </div>
@@ -264,15 +264,15 @@ export function ClientFocusDashboard({ client, trainer, machines }: ClientFocusD
               {historyFocuses.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-700 dark:text-slate-300 opacity-40">
                   <AwardIcon className="w-10 h-10 mb-2" />
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em]">No history recorded</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em]">No history recorded</p>
                 </div>
               ) : (
                 historyFocuses.map(focus => (
                   <div key={focus.id} className="relative pl-6 pb-2 border-l border-slate-800">
                     <div className="absolute left-[-5px] top-0 w-2.5 h-2.5 rounded-full bg-green-500/50 border-2 border-[#0A2E46]" />
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">{focus.category}</span>
-                      <span className="text-[8px] font-bold text-slate-800 dark:text-slate-200">{focus.dateUpdated ? (focus.dateUpdated as any).toDate?.()?.toLocaleDateString() || '' : ''}</span>
+                      <span className="text-[11px] font-bold uppercase text-slate-500 tracking-widest">{focus.category}</span>
+                      <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">{focus.dateUpdated ? (focus.dateUpdated as any).toDate?.()?.toLocaleDateString() || '' : ''}</span>
                     </div>
                     <p className="text-[11px] font-medium text-slate-400 italic line-clamp-2">"{focus.clinicalNotes}"</p>
                   </div>
@@ -315,14 +315,14 @@ export function ClientFocusDashboard({ client, trainer, machines }: ClientFocusD
                             )}
                           >
                             <def.icon className={cn("w-5 h-5", isActive ? def.color : "opacity-40")} />
-                            <span className={cn("text-[10px] font-black uppercase tracking-widest", isActive ? "text-white" : "text-slate-600")}>{cat}</span>
+                            <span className={cn("text-[11px] font-black uppercase tracking-widest", isActive ? "text-white" : "text-slate-600")}>{cat}</span>
                           </button>
                         );
                       })}
                     </div>
 
                     <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Coach Helper:</p>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Coach Helper:</p>
                       <p className="text-xs font-medium text-slate-300 italic">
                         {CATEGORY_DEFINITIONS[newFocus.category as FocusCategory].helper}
                       </p>
@@ -330,7 +330,7 @@ export function ClientFocusDashboard({ client, trainer, machines }: ClientFocusD
 
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Target Machine (Optional)</label>
+                        <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-1">Target Machine (Optional)</label>
                         <select 
                           value={newFocus.targetMachineId}
                           onChange={(e) => setNewFocus({ ...newFocus, targetMachineId: e.target.value })}
@@ -344,7 +344,7 @@ export function ClientFocusDashboard({ client, trainer, machines }: ClientFocusD
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">The \"One Thing\" Clinical Focus</label>
+                        <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-1">The \"One Thing\" Clinical Focus</label>
                         <textarea
                           placeholder="What is the singular focus for this mission?"
                           value={newFocus.clinicalNotes}

@@ -67,7 +67,7 @@ export function TrainerMachineEditor({ machines }: { machines: Machine[] }) {
           </div>
           <div>
             <CardTitle className="text-2xl font-black text-slate-900 italic tracking-tight">Equipment Settings Setup</CardTitle>
-            <CardDescription className="text-slate-500 font-medium uppercase text-[10px] tracking-widest">Customize the standard adjustable settings recorded per machine.</CardDescription>
+            <CardDescription className="text-slate-500 font-medium uppercase text-[11px] tracking-widest">Customize the standard adjustable settings recorded per machine.</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -111,21 +111,21 @@ export function TrainerMachineEditor({ machines }: { machines: Machine[] }) {
                   <div className="flex flex-wrap gap-1.5 min-h-[24px]">
                     {m.settingOptions?.map((opt, idx2) => (
                       <div key={idx2} className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">
-                        <span className="text-[10px] font-bold text-[#F06C22] uppercase tracking-wider">
+                        <span className="text-[11px] font-bold text-[#F06C22] uppercase tracking-wider">
                           {opt}
                         </span>
                         {m.standardSettings?.[opt] && (
-                          <span className="text-[10px] font-semibold text-slate-600 bg-white px-1.5 rounded-sm">
+                          <span className="text-[11px] font-semibold text-slate-600 bg-white px-1.5 rounded-sm">
                             {m.standardSettings[opt]}
                           </span>
                         )}
                       </div>
                     ))}
                     {(!m.settingOptions || m.settingOptions.length === 0) && (
-                      <span className="text-[10px] text-slate-500 italic uppercase font-medium tracking-widest mt-1">No settings configured.</span>
+                      <span className="text-[11px] text-slate-500 italic uppercase font-medium tracking-widest mt-1">No settings configured.</span>
                     )}
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => startEditing(m)} className="w-full h-8 text-[10px] uppercase font-bold tracking-widest border-slate-300 text-slate-600 hover:bg-white hover:text-slate-900">
+                  <Button variant="outline" size="sm" onClick={() => startEditing(m)} className="w-full h-8 text-[11px] uppercase font-bold tracking-widest border-slate-300 text-slate-600 hover:bg-white hover:text-slate-900">
                     Edit Setting Options
                   </Button>
                 </div>

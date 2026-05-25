@@ -339,17 +339,17 @@ export function ClientHistoryCalendar({
             <div className="flex bg-slate-800 p-1 rounded-full border border-slate-700 shadow-sm">
                <button
                   onClick={() => setViewType('calendar')}
-                  className={cn("px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all", viewType === 'calendar' ? "bg-[#38BDF8] text-white shadow-sm" : "text-slate-400 hover:text-white")}
+                  className={cn("px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all", viewType === 'calendar' ? "bg-[#38BDF8] text-white shadow-sm" : "text-slate-400 hover:text-white")}
                >Calendar View</button>
                <button
                   onClick={() => setViewType('list')}
-                  className={cn("px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all", viewType === 'list' ? "bg-[#38BDF8] text-white shadow-sm" : "text-slate-400 hover:text-white")}
+                  className={cn("px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all", viewType === 'list' ? "bg-[#38BDF8] text-white shadow-sm" : "text-slate-400 hover:text-white")}
                >List View</button>
             </div>
             <Button 
                onClick={() => setShowManualLog(true)}
                variant="outline" 
-               className="border-[#F06C22]/50 text-[#F06C22] hover:bg-[#F06C22]/10 font-black tracking-widest uppercase text-[10px] h-12 rounded-2xl px-6"
+               className="border-[#F06C22]/50 text-[#F06C22] hover:bg-[#F06C22]/10 font-black tracking-widest uppercase text-[11px] h-12 rounded-2xl px-6"
              >
                <PlusCircle className="w-4 h-4 mr-2" /> Log Past Session
             </Button>
@@ -423,14 +423,14 @@ export function ClientHistoryCalendar({
                                   : "bg-slate-700/30 border-slate-700 text-slate-500"))
                           )}
                         >
-                          <span className="text-[10px] font-black italic">
+                          <span className="text-[11px] font-black italic">
                             {s.routineName?.toUpperCase().includes('B') 
                               ? 'B' 
                               : (s.routineName?.toUpperCase().includes('A') 
                                 ? 'A' 
                                 : (s.trainerId === 'legacy-trainer' || s.trainerInitials === 'Legacy' || s.trainerInitials === 'Chart' ? 'I' : '•'))}
                           </span>
-                          <span className="text-[9px] font-bold opacity-80">{s.trainerInitials || '--'}</span>
+                          <span className="text-[11px] font-bold opacity-80">{s.trainerInitials || '--'}</span>
                         </div>
                       ))}
                     </div>
@@ -478,19 +478,19 @@ export function ClientHistoryCalendar({
                    className="flex items-center gap-3 sm:gap-6 p-4 sm:p-6 rounded-[32px] bg-slate-800 border border-slate-700 cursor-pointer hover:border-white/30 transition-all hover:bg-slate-800/80 relative overflow-hidden flex-wrap sm:flex-nowrap"
                  >
                    {session.isCrossTrain && (
-                     <div className="absolute top-0 left-0 bg-indigo-500 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-br-xl shadow-sm z-10 flex items-center gap-1">
+                     <div className="absolute top-0 left-0 bg-indigo-500 text-white text-[11px] sm:text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-br-xl shadow-sm z-10 flex items-center gap-1">
                        <Network className="w-3 h-3" />
                        Cross-Train
                      </div>
                    )}
                    {isLegacy && (
-                     <div className="absolute top-0 right-0 bg-[#F06C22] text-white text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl shadow-sm z-10">
+                     <div className="absolute top-0 right-0 bg-[#F06C22] text-white text-[11px] sm:text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl shadow-sm z-10">
                        Imported
                      </div>
                    )}
                    <div className="flex flex-col items-center justify-center min-w-[80px]">
                       <span className="text-3xl font-black text-white">{sDate ? sDate.getDate() : '--'}</span>
-                      <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{sDate ? sDate.toLocaleDateString('default', { month: 'short' }) + " '" + sDate.getFullYear().toString().substring(2) : 'Invalid'}</span>
+                      <span className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{sDate ? sDate.toLocaleDateString('default', { month: 'short' }) + " '" + sDate.getFullYear().toString().substring(2) : 'Invalid'}</span>
                    </div>
                    
                    <div className="w-12 h-12 shrink-0 bg-slate-900 rounded-full flex items-center justify-center border border-slate-700 z-10">
@@ -500,11 +500,11 @@ export function ClientHistoryCalendar({
                    <div className="flex-1 min-w-0 flex flex-col justify-center">
                       <div className="flex items-center gap-3 mb-1 flex-wrap">
                         <span className="text-lg font-black text-white uppercase tracking-tighter shrink-0 flex items-center gap-2">
-                          <Badge variant="outline" className="text-[9px] font-black text-[#38BDF8] uppercase tracking-widest border-[#38BDF8]/30 bg-[#38BDF8]/10 py-0 leading-tight h-5">S{calculatedSessionNumber}</Badge>
+                          <Badge variant="outline" className="text-[11px] font-black text-[#38BDF8] uppercase tracking-widest border-[#38BDF8]/30 bg-[#38BDF8]/10 py-0 leading-tight h-5">S{calculatedSessionNumber}</Badge>
                           {isLegacy ? 'Import Session' : session.startTime && timestamp > 0 ? new Date(session.startTime?.toMillis?.() || session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (sDate ? '12:00 PM' : '--:--')}
                         </span>
                         {daysSincePrev !== null && (
-                          <Badge variant="outline" className="text-[9px] font-black text-[#38BDF8] uppercase tracking-widest border-[#38BDF8]/30 bg-[#38BDF8]/10">
+                          <Badge variant="outline" className="text-[11px] font-black text-[#38BDF8] uppercase tracking-widest border-[#38BDF8]/30 bg-[#38BDF8]/10">
                             {daysSincePrev === 1 ? '1 Day Since Last' : `${daysSincePrev} Days Since Last`}
                           </Badge>
                         )}
@@ -518,10 +518,10 @@ export function ClientHistoryCalendar({
                    </div>
                    
                    <div className="flex flex-col items-end justify-center shrink-0 ml-2 sm:ml-4">
-                     <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 text-right">Total Volume</span>
+                     <span className="text-[11px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1 text-right">Total Volume</span>
                      <div className="flex items-baseline gap-1">
                        <span className="text-xl sm:text-2xl font-black text-white">{totalVolume.toLocaleString()}</span>
-                       <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase">lbs</span>
+                       <span className="text-[11px] sm:text-[11px] font-bold text-slate-400 uppercase">lbs</span>
                      </div>
                    </div>
                  </div>
@@ -611,7 +611,7 @@ export function ClientHistoryCalendar({
                             setIsEditMode(false);
                          }}
                          className={cn(
-                           "px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border",
+                           "px-4 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all border",
                            activeSessionIndex === i 
                              ? "bg-[#38BDF8]/20 border-[#38BDF8]/50 text-[#38BDF8]" 
                              : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
@@ -665,13 +665,13 @@ export function ClientHistoryCalendar({
                                  <div>
                                    <div className="flex justify-between items-start gap-2">
                                      <h4 className="text-sm font-black uppercase tracking-tight text-white leading-none truncate mb-1">{machine?.name || 'Unknown'}</h4>
-                                     {isStaticHold && <span className="px-1.5 py-0.5 rounded-md bg-[#38BDF8]/20 text-[#38BDF8] text-[8px] font-black tracking-widest uppercase">TSC</span>}
+                                     {isStaticHold && <span className="px-1.5 py-0.5 rounded-md bg-[#38BDF8]/20 text-[#38BDF8] text-[11px] font-black tracking-widest uppercase">TSC</span>}
                                    </div>
                                    <p className="text-xs font-bold text-slate-400">
                                      {currentData.weight || '-'} lbs | {isCardio || isStaticHold ? currentData.seconds : currentData.reps} {isCardio || isStaticHold ? 'sec' : 'reps'}
                                    </p>
                                  </div>
-                                  <div className="mt-2 text-[10px] font-black tracking-widest uppercase flex gap-1 items-center">
+                                  <div className="mt-2 text-[11px] font-black tracking-widest uppercase flex gap-1 items-center">
                                      <span className="text-[#68717A]">Quality:</span>
                                      {quality === 1 && <span className="text-rose-500">Bad</span>}
                                      {quality === 2 && <span className="text-amber-500">Completed</span>}
@@ -696,14 +696,14 @@ export function ClientHistoryCalendar({
                                              handleLogEdit(log.id!, 'seconds', "0");
                                            }
                                          }}
-                                         className={cn("px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors",
+                                         className={cn("px-2 py-0.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-colors",
                                            isStaticHold ? "bg-[#38BDF8] text-white" : "bg-slate-800 text-slate-500 hover:text-white"
                                          )}
                                        >
                                          TSC
                                        </button>
                                     )}
-                                    {isCardio && <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Cardio</span>}
+                                    {isCardio && <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Cardio</span>}
                                   </div>
 
                                   {/* Weight Stepper */}
@@ -721,7 +721,7 @@ export function ClientHistoryCalendar({
                                          onChange={(e) => handleLogEdit(log.id!, 'weight', (parseFloat(e.target.value) || 0).toString())}
                                          className="w-16 min-w-[4rem] bg-transparent text-center text-xl font-black text-white focus:outline-none p-0"
                                        />
-                                       <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold leading-none mt-0.5">Lbs</span>
+                                       <span className="text-[11px] uppercase tracking-widest text-slate-500 font-bold leading-none mt-0.5">Lbs</span>
                                      </div>
                                      <button 
                                        onClick={() => handleLogEdit(log.id!, 'weight', (wVal + 2).toString())}
@@ -747,7 +747,7 @@ export function ClientHistoryCalendar({
                                          className="w-16 min-w-[4rem] bg-transparent text-center text-xl font-black text-white focus:outline-none p-0"
                                          disabled={isCardio && false} 
                                        />
-                                       <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold leading-none mt-0.5">{isCardio || isStaticHold ? 'Secs' : 'Reps'}</span>
+                                       <span className="text-[11px] uppercase tracking-widest text-slate-500 font-bold leading-none mt-0.5">{isCardio || isStaticHold ? 'Secs' : 'Reps'}</span>
                                      </div>
                                      <button 
                                        onClick={() => handleLogEdit(log.id!, isCardio || isStaticHold ? 'seconds' : 'reps', (rVal + 1).toString())}
@@ -759,7 +759,7 @@ export function ClientHistoryCalendar({
 
                                   {/* Quality Bar */}
                                   <div>
-                                     <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-1.5 block px-1">Quality Grade</span>
+                                     <span className="text-[11px] font-black uppercase text-slate-500 tracking-widest mb-1.5 block px-1">Quality Grade</span>
                                      <div className="flex gap-1">
                                         {[
                                           { label: 'Bad', val: 1, activeBg: 'bg-rose-500/20 text-rose-500 border-rose-500' },
@@ -772,7 +772,7 @@ export function ClientHistoryCalendar({
                                               key={btn.label}
                                               onClick={() => handleLogEdit(log.id!, 'repQuality', btn.val as RepQuality)}
                                               className={cn(
-                                                "flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all focus:outline-none border",
+                                                "flex-1 py-2 rounded-lg text-[11px] font-black uppercase tracking-tighter transition-all focus:outline-none border",
                                                 isActive ? btn.activeBg : "bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800"
                                               )}
                                             >
@@ -826,7 +826,7 @@ export function ClientHistoryCalendar({
                              <h4 className="text-xs font-black uppercase tracking-widest text-[#F06C22]">Client Status / Additional Context</h4>
                              {isEditMode && (
                                <Select defaultValue="Medium">
-                                 <SelectTrigger className="w-[100px] h-6 bg-slate-900 border-slate-700 text-[10px] uppercase font-black tracking-widest px-2 py-0 text-slate-400">
+                                 <SelectTrigger className="w-[100px] h-6 bg-slate-900 border-slate-700 text-[11px] uppercase font-black tracking-widest px-2 py-0 text-slate-400">
                                    <SelectValue placeholder="Priority" />
                                  </SelectTrigger>
                                  <SelectContent className="bg-slate-800 border-slate-700">
@@ -916,7 +916,7 @@ export function ClientHistoryCalendar({
           
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1">Session Date</label>
+              <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1">Session Date</label>
               <Input 
                 type="date" 
                 value={manualDate} 
@@ -925,7 +925,7 @@ export function ClientHistoryCalendar({
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1">Assigned Trainer</label>
+              <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1">Assigned Trainer</label>
               <select
                 value={manualTrainerId}
                 onChange={e => setManualTrainerId(e.target.value)}

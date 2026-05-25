@@ -26,7 +26,7 @@ export function ShiftToggle({
         )}
       >
         <span className="text-lg">AM</span>
-        <span className="text-[10px] opacity-80 uppercase tabular-nums">· {amCount} SESS</span>
+        <span className="text-[11px] opacity-80 uppercase tabular-nums">· {amCount} SESS</span>
       </button>
       <button
         onClick={() => onChange?.("PM")}
@@ -38,7 +38,7 @@ export function ShiftToggle({
         )}
       >
         <span className="text-lg">PM</span>
-        <span className="text-[10px] opacity-80 uppercase tabular-nums">· {pmCount} SESS</span>
+        <span className="text-[11px] opacity-80 uppercase tabular-nums">· {pmCount} SESS</span>
       </button>
     </div>
   );

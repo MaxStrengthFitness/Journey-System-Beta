@@ -167,7 +167,7 @@ export function ImportValidationModal({
             <label className="text-xs font-black text-slate-300 uppercase tracking-widest">
               Manual Override: Target Session Data
             </label>
-            <p className="text-[10px] text-slate-500 font-medium">
+            <p className="text-[11px] text-slate-500 font-medium">
               Verify the system extracted the correct chronological "last session". If a legacy typo placed a session out of order, you can manually select the correct starting weights for their next workout below.
             </p>
             <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>

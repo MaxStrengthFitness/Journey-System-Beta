@@ -195,6 +195,14 @@ export interface CurrentMachineMetric {
   lastSessionId?: string;
 }
 
+export interface ClientRetentionMeta {
+  excludedFromMIA?: boolean;
+  excludedReason?: string;
+  excludedBy?: string; // Trainer ID or Name
+  autoIncludeAfter?: any; // Timestamp or string Date
+  lastContactedDate?: any; // Timestamp or string Date
+}
+
 export interface Client {
   id?: string;
   mindbodyId?: string;
@@ -250,6 +258,7 @@ export interface Client {
   discoveryNotes?: string;
   currentMachineMetrics?: Record<string, CurrentMachineMetric>;
   createdAt?: any;
+  retentionMeta?: ClientRetentionMeta;
 }
 
 export interface Machine {
@@ -630,6 +639,11 @@ export interface Studio {
   createdAt?: any;
   networkId?: string; // Newly added to associate with a FranchiseNetwork
   machineSettings?: Record<string, Record<string, string>>; // studioStandardSettings per machine
+  retentionSettings?: {
+    atRiskThresholdDays: number;
+    miaThresholdDays: number;
+    autoExcludeAfterDays: number;
+  };
 }
 
 export interface HubAnnouncement {
@@ -714,4 +728,5 @@ export type View =
   | "chart-importer"
   | "leaderboard"
   | "admin-dashboard"
-  | "franchise-dashboard";
+  | "franchise-dashboard"
+  | "retention";

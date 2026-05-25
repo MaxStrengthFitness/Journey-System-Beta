@@ -15,7 +15,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-2xl">
         <p className="text-[#F06C22] font-bold uppercase tracking-tight mb-2 border-b border-slate-700 pb-1 text-xs">{label}</p>
         <div className="flex items-center justify-between gap-4 py-0.5">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-slate-300">
             Strength Increase
           </span>
           <span className="text-xs font-bold text-white">

@@ -37,7 +37,7 @@ export function OccupationSelect({ value, onChange, disabled }: OccupationSelect
       <SelectContent className="bg-slate-900 border-slate-700 rounded-xl max-h-[300px] shadow-2xl">
         {(Object.entries(groupedOccupations) as [string, OccupationalProfile[]][]).map(([category, occupations], idx, arr) => (
           <SelectGroup key={category}>
-            <SelectLabel className="text-[10px] uppercase tracking-wider text-slate-500 font-bold py-2 px-3 sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
+            <SelectLabel className="text-[11px] uppercase tracking-wider text-slate-500 font-bold py-2 px-3 sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
               {category}
             </SelectLabel>
             {occupations.map((occ) => (

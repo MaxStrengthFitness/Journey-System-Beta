@@ -79,7 +79,7 @@ export function SessionRoutineManagerModal({ isOpen, onOpenChange, currentMachin
       <DialogContent className="max-w-[95vw] sm:max-w-[95vw] md:max-w-[95vw] w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white p-0 overflow-hidden shadow-2xl rounded-3xl flex flex-col h-[70vh]">
         <DialogHeader className="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0 relative z-20">
           <DialogTitle className="text-xl md:text-2xl font-black uppercase tracking-widest text-slate-900 dark:text-white">Edit Routine Sequence</DialogTitle>
-          <DialogDescription className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[10px] md:text-xs mt-1 md:mt-2">
+          <DialogDescription className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[11px] md:text-xs mt-1 md:mt-2">
             Tap a machine to toggle it. Use arrows to reorder. Active sequence: <span className="text-[#F06C22]">{localIds.length}</span>.
           </DialogDescription>
         </DialogHeader>
@@ -129,7 +129,7 @@ export function SessionRoutineManagerModal({ isOpen, onOpenChange, currentMachin
                             exit={{ opacity: 0 }}
                             className="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-700 flex items-center justify-center group-hover:border-slate-400 dark:group-hover:border-slate-500 transition-colors"
                           >
-                            <span className="text-slate-400 dark:text-slate-500 font-black group-hover:text-slate-600 dark:group-hover:text-slate-400 transition-colors text-[10px] uppercase">+</span>
+                            <span className="text-slate-400 dark:text-slate-500 font-black group-hover:text-slate-600 dark:group-hover:text-slate-400 transition-colors text-[11px] uppercase">+</span>
                           </motion.div>
                         )}
                       </AnimatePresence>
@@ -141,7 +141,7 @@ export function SessionRoutineManagerModal({ isOpen, onOpenChange, currentMachin
                         {getShorthand(machine.name || '')}
                       </h3>
                       <div className="flex items-center gap-2 mt-0.5">
-                         <p className={`text-[8px] md:text-[9px] font-bold uppercase tracking-widest ${isSelected ? 'text-[#F06C22]' : 'text-slate-400 dark:text-slate-600'}`}>
+                         <p className={`text-[11px] md:text-[11px] font-bold uppercase tracking-widest ${isSelected ? 'text-[#F06C22]' : 'text-slate-400 dark:text-slate-600'}`}>
                            {isSelected ? '■ Active' : '□ Inactive'}
                          </p>
                       </div>

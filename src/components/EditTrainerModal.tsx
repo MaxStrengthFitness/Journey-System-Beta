@@ -153,7 +153,7 @@ export function EditTrainerModal({
         </DialogHeader>
         <div className="space-y-6 py-4">
           <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+            <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
               Full Name
             </Label>
             <Input
@@ -164,7 +164,7 @@ export function EditTrainerModal({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+              <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
                 Initials
               </Label>
               <Input
@@ -177,10 +177,10 @@ export function EditTrainerModal({
             <div className="space-y-4 border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-800/50">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+                  <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
                     PIN Lock Security
                   </Label>
-                  <p className="text-[9px] text-slate-400 dark:text-slate-500 font-medium">
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
                     Require a 4-digit PIN to login
                   </p>
                 </div>
@@ -194,7 +194,7 @@ export function EditTrainerModal({
               </div>
               {enablePin && (
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+                  <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
                     4-Digit PIN Code
                   </Label>
                   <Input
@@ -214,7 +214,7 @@ export function EditTrainerModal({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+            <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
               Intelligence Summary (Bio)
             </Label>
             <Textarea
@@ -226,7 +226,7 @@ export function EditTrainerModal({
           </div>
 
           <div className="space-y-3">
-            <Label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+            <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
               Certifications
             </Label>
             <div className="flex flex-wrap gap-2">
@@ -298,7 +298,7 @@ export function EditTrainerModal({
                           {studio.name}
                         </span>
                         {isHomeStudio && (
-                          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mt-0.5">
+                          <span className="text-[11px] font-black uppercase tracking-widest text-indigo-500 mt-0.5">
                             Primary Home Base
                           </span>
                         )}

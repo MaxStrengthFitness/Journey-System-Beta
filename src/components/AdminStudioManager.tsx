@@ -387,11 +387,11 @@ export function AdminStudioManager({
                 <h1 className="text-3xl md:text-4xl font-black uppercase italic tracking-tighter text-white">
                   Franchise Command
                 </h1>
-                <Badge className="bg-[#F06C22]/15 text-[#F06C22] border border-[#F06C22]/20 text-[9px] font-black uppercase tracking-widest px-2 py-0.5">
+                <Badge className="bg-[#F06C22]/15 text-[#F06C22] border border-[#F06C22]/20 text-[11px] font-black uppercase tracking-widest px-2 py-0.5">
                   Enterprise
                 </Badge>
               </div>
-              <p className="text-[10px] sm:text-xs font-black uppercase tracking-[0.25em] text-zinc-500 mt-1">
+              <p className="text-[11px] sm:text-xs font-black uppercase tracking-[0.25em] text-zinc-500 mt-1">
                 Cross-Studio Infrastructure & Role Mapping Matrix
               </p>
             </div>
@@ -400,7 +400,7 @@ export function AdminStudioManager({
             <Button
               variant="outline"
               onClick={onBack}
-              className="border-slate-850 hover:bg-slate-900 text-zinc-300 hover:text-white font-black uppercase tracking-widest text-[10px] h-12 rounded-2xl px-6 bg-slate-950 transition-all shadow-xl"
+              className="border-slate-850 hover:bg-slate-900 text-zinc-300 hover:text-white font-black uppercase tracking-widest text-[11px] h-12 rounded-2xl px-6 bg-slate-950 transition-all shadow-xl"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Overview
@@ -418,7 +418,7 @@ export function AdminStudioManager({
             {/* Context breadcrumb back */}
             <button
               onClick={() => setSelectedStudioId(null)}
-              className="flex items-center gap-2 text-[#F06C22] hover:text-[#F06C22]/80 transition-colors uppercase font-black text-[10px] tracking-widest"
+              className="flex items-center gap-2 text-[#F06C22] hover:text-[#F06C22]/80 transition-colors uppercase font-black text-[11px] tracking-widest"
             >
               <ArrowLeft className="w-4 h-4" />
               Return to Executive Registries
@@ -434,14 +434,14 @@ export function AdminStudioManager({
                     <h2 className="text-3xl font-black uppercase italic tracking-tight text-white leading-none mb-1">
                       {selectedStudio.name}
                     </h2>
-                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                    <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">
                       Station Security ID: {selectedStudio.id}
                     </span>
                   </div>
                 </div>
               </div>
               <div>
-                <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-widest text-[9px] font-black py-1 px-3 rounded-full">
+                <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-widest text-[11px] font-black py-1 px-3 rounded-full">
                   Territory Active
                 </Badge>
               </div>
@@ -460,7 +460,7 @@ export function AdminStudioManager({
                       <CardTitle className="text-lg font-black uppercase tracking-wider text-white">
                         Studio Infrastructure Setup
                       </CardTitle>
-                      <CardDescription className="text-zinc-500 text-[10px] uppercase font-bold tracking-widest mt-0.5">
+                      <CardDescription className="text-zinc-500 text-[11px] uppercase font-bold tracking-widest mt-0.5">
                         Parameters synchronizing physical location and systems
                       </CardDescription>
                     </div>
@@ -471,7 +471,7 @@ export function AdminStudioManager({
                       className="grid grid-cols-1 md:grid-cols-2 gap-6"
                     >
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#F06C22] ml-1">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-[#F06C22] ml-1">
                           Site Display Name
                         </Label>
                         <Input
@@ -481,7 +481,7 @@ export function AdminStudioManager({
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-zinc-500 ml-1">
                           Business Email
                         </Label>
                         <Input
@@ -491,7 +491,7 @@ export function AdminStudioManager({
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-zinc-500 ml-1">
                           Phone Number
                         </Label>
                         <Input
@@ -501,7 +501,7 @@ export function AdminStudioManager({
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-zinc-500 ml-1">
                           Operating Timezone
                         </Label>
                         <Input
@@ -511,7 +511,7 @@ export function AdminStudioManager({
                         />
                       </div>
                       <div className="md:col-span-2 space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-zinc-500 ml-1">
                           Physical Address
                         </Label>
                         <Input
@@ -521,7 +521,7 @@ export function AdminStudioManager({
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-zinc-500 ml-1">
                           MindBody Site ID
                         </Label>
                         <Input
@@ -540,7 +540,7 @@ export function AdminStudioManager({
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
+                            <Label className="text-[11px] font-black uppercase tracking-widest text-zinc-500 ml-1">
                               Assigned Business Owner
                             </Label>
                             <Select
@@ -564,7 +564,7 @@ export function AdminStudioManager({
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
+                            <Label className="text-[11px] font-black uppercase tracking-widest text-zinc-500 ml-1">
                               Designated Head Trainer
                             </Label>
                             <Select
@@ -622,7 +622,7 @@ export function AdminStudioManager({
                     </h3>
                     <Button
                       onClick={() => setIsAddingStaff(true)}
-                      className="bg-slate-900 hover:bg-slate-850 hover:text-white border border-slate-800 hover:border-[#F06C22]/30 text-[#F06C22] font-black uppercase tracking-widest text-[10px] h-10 px-4 rounded-xl shadow-xl transition-all"
+                      className="bg-slate-900 hover:bg-slate-850 hover:text-white border border-slate-800 hover:border-[#F06C22]/30 text-[#F06C22] font-black uppercase tracking-widest text-[11px] h-10 px-4 rounded-xl shadow-xl transition-all"
                     >
                       <Plus className="w-4 h-4 mr-1.5" />
                       Authorize Trainer
@@ -645,7 +645,7 @@ export function AdminStudioManager({
                             variant="ghost"
                             size="sm"
                             onClick={() => setIsAddingStaff(false)}
-                            className="text-[10px] font-black text-zinc-550 uppercase"
+                            className="text-[11px] font-black text-zinc-550 uppercase"
                           >
                             Cancel
                           </Button>
@@ -709,19 +709,19 @@ export function AdminStudioManager({
                               <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                                 <Badge
                                   className={cn(
-                                    "border text-[8px] font-black uppercase tracking-widest px-1.5 h-4",
+                                    "border text-[11px] font-black uppercase tracking-widest px-1.5 h-4",
                                     getRoleColor(trainer.role),
                                   )}
                                 >
                                   {getRoleDisplayName(trainer.role)}
                                 </Badge>
                                 {isOwner && (
-                                  <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[8px] font-black uppercase px-1.5 h-4">
+                                  <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[11px] font-black uppercase px-1.5 h-4">
                                     Franchise Principal
                                   </Badge>
                                 )}
                                 {isHead && (
-                                  <Badge className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[8px] font-black uppercase px-1.5 h-4">
+                                  <Badge className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[11px] font-black uppercase px-1.5 h-4">
                                     Studio Leader
                                   </Badge>
                                 )}
@@ -759,7 +759,7 @@ export function AdminStudioManager({
 
                   <div className="space-y-4">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-[#F06C22]">
                         Home Base Staff
                       </p>
                       <p className="text-2xl font-black text-white tracking-widest mt-0.5">
@@ -769,14 +769,14 @@ export function AdminStudioManager({
                           ).length
                         }
                       </p>
-                      <p className="text-[9px] font-medium text-zinc-500 leading-normal uppercase mt-1">
+                      <p className="text-[11px] font-medium text-zinc-500 leading-normal uppercase mt-1">
                         Trainers designated natively to this specific home
                         location.
                       </p>
                     </div>
 
                     <div className="pt-4 border-t border-slate-850">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-zinc-500">
                         Cross-Training Access
                       </p>
                       <p className="text-2xl font-black text-rose-400 tracking-widest mt-0.5">
@@ -789,7 +789,7 @@ export function AdminStudioManager({
                           ).length
                         }
                       </p>
-                      <p className="text-[9px] font-medium text-zinc-500 leading-normal uppercase mt-1">
+                      <p className="text-[11px] font-medium text-zinc-500 leading-normal uppercase mt-1">
                         Affiliated trainers with authorized cross-studio client
                         permissions.
                       </p>
@@ -844,7 +844,7 @@ export function AdminStudioManager({
                         <h3 className="text-xl font-black uppercase italic tracking-tight text-white leading-none">
                           Regional Franchise Builder
                         </h3>
-                        <p className="text-[10px] font-bold text-zinc-550 uppercase tracking-widest mt-1">
+                        <p className="text-[11px] font-bold text-zinc-550 uppercase tracking-widest mt-1">
                           Bootstrap new regional networks and link territories
                           under single ownership
                         </p>
@@ -856,7 +856,7 @@ export function AdminStudioManager({
                       className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end"
                     >
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-[#F06C22]">
                           Franchise Name
                         </Label>
                         <Input
@@ -868,7 +868,7 @@ export function AdminStudioManager({
                       </div>
 
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-[#F06C22]">
                           State
                         </Label>
                         <Input
@@ -880,7 +880,7 @@ export function AdminStudioManager({
                       </div>
 
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-[#F06C22]">
                           Franchise Principals (Owners)
                         </Label>
                         <Select
@@ -1003,13 +1003,13 @@ export function AdminStudioManager({
                                     {network.name}
                                   </h4>
                                   <div className="flex items-center gap-2 mt-0.5">
-                                    <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                                    <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">
                                       REGIONAL FRANCHISE NETWORK
                                     </p>
                                     {network.state && (
                                       <Badge
                                         variant="outline"
-                                        className="text-[8px] tracking-widest border-slate-700 text-zinc-400"
+                                        className="text-[11px] tracking-widest border-slate-700 text-zinc-400"
                                       >
                                         {network.state}
                                       </Badge>
@@ -1031,7 +1031,7 @@ export function AdminStudioManager({
                               <div className="flex items-center gap-2 bg-slate-950 p-3 rounded-xl border border-slate-850">
                                 <Crown className="w-4 h-4 text-amber-500 shrink-0" />
                                 <div className="text-left w-full">
-                                  <p className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1">
+                                  <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1">
                                     Franchise Principals
                                   </p>
                                   <div className="flex flex-wrap gap-1 mt-1">
@@ -1040,7 +1040,7 @@ export function AdminStudioManager({
                                         <Badge
                                           key={ro?.id}
                                           variant="secondary"
-                                          className="bg-slate-900 border border-slate-800 text-white hover:bg-slate-800 text-[10px]"
+                                          className="bg-slate-900 border border-slate-800 text-white hover:bg-slate-800 text-[11px]"
                                         >
                                           {ro?.fullName || "Unknown"}
                                         </Badge>
@@ -1056,7 +1056,7 @@ export function AdminStudioManager({
 
                               {/* Linked Studios */}
                               <div className="space-y-2 pt-2">
-                                <p className="text-[9px] font-bold text-[#F06C22] uppercase tracking-widest">
+                                <p className="text-[11px] font-bold text-[#F06C22] uppercase tracking-widest">
                                   Incorporated Studios ({assignedStudios.length}
                                   )
                                 </p>
@@ -1078,7 +1078,7 @@ export function AdminStudioManager({
                                             studio.id!,
                                           )
                                         }
-                                        className="text-[#F06C22] hover:text-[#F06C22]/80 font-black uppercase text-[8px] tracking-widest px-2.5 py-1 rounded h-auto flex items-center gap-1 hover:bg-[#F06C22]/10"
+                                        className="text-[#F06C22] hover:text-[#F06C22]/80 font-black uppercase text-[11px] tracking-widest px-2.5 py-1 rounded h-auto flex items-center gap-1 hover:bg-[#F06C22]/10"
                                       >
                                         <Unlink2 className="w-3 h-3" />
                                         Unlink
@@ -1087,7 +1087,7 @@ export function AdminStudioManager({
                                   ))}
 
                                   {assignedStudios.length === 0 && (
-                                    <p className="text-[10px] text-zinc-650 font-bold uppercase tracking-widest py-1 italic">
+                                    <p className="text-[11px] text-zinc-650 font-bold uppercase tracking-widest py-1 italic">
                                       No physical locations linked.
                                     </p>
                                   )}
@@ -1098,7 +1098,7 @@ export function AdminStudioManager({
                             {/* Link studio selection to this network */}
                             {independentStudios.length > 0 && (
                               <div className="pt-4 mt-6 border-t border-slate-850">
-                                <p className="text-[8px] font-black uppercase tracking-widest text-[#F06C22] mb-2 leading-none">
+                                <p className="text-[11px] font-black uppercase tracking-widest text-[#F06C22] mb-2 leading-none">
                                   Link Independent Location:
                                 </p>
                                 <Select
@@ -1109,7 +1109,7 @@ export function AdminStudioManager({
                                     )
                                   }
                                 >
-                                  <SelectTrigger className="bg-slate-950 border-slate-800 text-zinc-300 h-10 rounded-xl text-[10px] font-black uppercase tracking-wider">
+                                  <SelectTrigger className="bg-slate-950 border-slate-800 text-zinc-300 h-10 rounded-xl text-[11px] font-black uppercase tracking-wider">
                                     <SelectValue placeholder="Add Independent Location" />
                                   </SelectTrigger>
                                   <SelectContent className="bg-slate-900 border-slate-800 text-white">
@@ -1155,7 +1155,7 @@ export function AdminStudioManager({
                         <h3 className="text-xl font-black uppercase italic tracking-tight text-white leading-none">
                           Studio Location Registry
                         </h3>
-                        <p className="text-[10px] font-bold text-zinc-550 uppercase tracking-widest mt-1">
+                        <p className="text-[11px] font-bold text-zinc-550 uppercase tracking-widest mt-1">
                           Register new physical clinic locations into the
                           platform
                         </p>
@@ -1167,7 +1167,7 @@ export function AdminStudioManager({
                       className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end"
                     >
                       <div className="space-y-2 relative">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-[#F06C22]">
                           Physical Location Name
                         </Label>
                         <Input
@@ -1217,11 +1217,11 @@ export function AdminStudioManager({
                               <Building2 className="w-4 h-4" />
                             </span>
                             {parentNetwork ? (
-                              <span className="text-[8px] font-black uppercase bg-[#F06C22]/15 text-[#F06C22] px-2 py-0.5 rounded-full border border-[#F06C22]/20">
+                              <span className="text-[11px] font-black uppercase bg-[#F06C22]/15 text-[#F06C22] px-2 py-0.5 rounded-full border border-[#F06C22]/20">
                                 {parentNetwork.name}
                               </span>
                             ) : (
-                              <span className="text-[8px] font-black uppercase bg-zinc-800 text-zinc-500 px-2 py-0.5 rounded-full border border-zinc-700/30">
+                              <span className="text-[11px] font-black uppercase bg-zinc-800 text-zinc-500 px-2 py-0.5 rounded-full border border-zinc-700/30">
                                 Independent Clinic
                               </span>
                             )}
@@ -1232,7 +1232,7 @@ export function AdminStudioManager({
                           </h4>
                           <div className="flex items-center gap-1 text-zinc-500 mb-6 mt-1.5">
                             <MapPin className="w-3 h-3 shrink-0" />
-                            <span className="text-[9px] font-bold uppercase tracking-wider truncate">
+                            <span className="text-[11px] font-bold uppercase tracking-wider truncate">
                               {studio.address || "Address Not Configured"}
                             </span>
                           </div>
@@ -1240,7 +1240,7 @@ export function AdminStudioManager({
 
                         {/* Staff count footer */}
                         <div className="border-t border-slate-850/80 pt-4 flex items-center justify-between">
-                          <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                          <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">
                             AUTHORIZED STAFF:
                           </span>
                           <span className="text-sm font-black text-white">

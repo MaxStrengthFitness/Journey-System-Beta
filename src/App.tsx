@@ -55,6 +55,7 @@ import {
   Network,
   Building2,
   Gift,
+  ShieldAlert,
 } from "lucide-react";
 import axios from "axios";
 import { motion, AnimatePresence } from "motion/react";
@@ -134,12 +135,12 @@ import { ClientProfileView } from "./components/ClientProfileView";
 import { CalendarView } from "./components/CalendarView";
 import { PinLoginView } from "./components/PinLoginView";
 import { LegacyChartImporter } from "./components/LegacyChartImporter";
+import { RetentionDashboardView } from "./components/RetentionDashboardView";
 import { MachineLeaderboardDashboard } from "./components/MachineLeaderboardDashboard";
 import { ProfilesView } from "./components/ProfilesView";
 import { ClientDirectoryView } from "./components/ClientDirectoryView";
 import { TrainerProfileView } from "./components/TrainerProfileView";
 import { StudioSelectionView } from "./components/StudioSelectionView";
-import { PreSessionOverview } from "./components/PreSessionOverview";
 import { PostSessionBriefingView } from "./components/PostSessionBriefingView";
 import { BriefingScreen } from "./components/BriefingScreen";
 import { VictoryHUDScreen } from "./components/VictoryHUDScreen";
@@ -1168,6 +1169,22 @@ function AppContent({
     // setIsAddingClient removed as we use editingClient state or the new modal for creation
   };
 
+  const updateClient = async (clientId: string, updates: Partial<Client>) => {
+    try {
+      await updateDoc(doc(db, "clients", clientId), { ...updates, updatedAt: serverTimestamp() });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const updateStudio = async (studioId: string, updates: Partial<Studio>) => {
+    try {
+      await updateDoc(doc(db, "studios", studioId), { ...updates, updatedAt: serverTimestamp() });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleClientSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -1787,10 +1804,10 @@ function AppContent({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="w-56 rounded-[24px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2 shadow-2xl dark:shadow-none text-slate-700 dark:text-slate-300"
+                  className="w-56 rounded-[24px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark p-2 shadow-2xl dark:shadow-none text-slate-700 dark:text-slate-300"
                 >
                   <DropdownMenuGroup>
-                    <DropdownMenuLabel className="font-black uppercase text-[10px] tracking-widest px-3 py-2 text-slate-500 dark:text-slate-400">
+                    <DropdownMenuLabel className="font-black uppercase text-[11px] tracking-widest px-3 py-2 text-slate-500 dark:text-slate-400">
                       Active Profile
                     </DropdownMenuLabel>
                     <DropdownMenuItem
@@ -1798,14 +1815,14 @@ function AppContent({
                         setSelectedProfileTrainerId(null);
                         setCurrentView("trainer-profile");
                       }}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
+                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
                     >
                       <UserCircle className="w-4 h-4 text-sky-500" />
                       View Profile
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => setCurrentView("trainer-hub")}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
+                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
                     >
                       <Settings className="w-4 h-4" />
                       Settings
@@ -1816,7 +1833,7 @@ function AppContent({
                         onClick={() =>
                           setCurrentView("franchise-dashboard" as any)
                         }
-                        className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white text-indigo-400"
+                        className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white text-indigo-400"
                       >
                         <Network className="w-4 h-4" />
                         Franchise Dashboard
@@ -1826,7 +1843,7 @@ function AppContent({
                       checkIsAdmin(authTrainer, user.email || undefined)) && (
                       <DropdownMenuItem
                         onClick={() => setCurrentView("admin-dashboard" as any)}
-                        className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white text-orange-500"
+                        className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white text-orange-500"
                       >
                         <Network className="w-4 h-4" />
                         Admin Dashboard
@@ -1839,7 +1856,7 @@ function AppContent({
                   <DropdownMenuGroup>
                     <DropdownMenuItem
                       onClick={handleTrainerLock}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest text-orange-500 hover:bg-orange-500/10 dark:bg-orange-600/10 focus:bg-orange-500/10 dark:bg-orange-600/10 focus:text-orange-500 cursor-pointer"
+                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-orange-500 hover:bg-orange-500/10 dark:bg-orange-600/10 focus:bg-orange-500/10 dark:bg-orange-600/10 focus:text-orange-500 cursor-pointer"
                     >
                       <Lock className="w-4 h-4" />
                       Switch Trainer
@@ -1847,7 +1864,7 @@ function AppContent({
 
                     <DropdownMenuItem
                       onClick={() => setIsChangingStudio(true)}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
+                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
                     >
                       <Building2 className="w-4 h-4 text-amber-500" />
                       Switch Studio
@@ -1855,7 +1872,7 @@ function AppContent({
 
                     <DropdownMenuItem
                       onClick={handleLogout}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[10px] tracking-widest text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10 focus:text-rose-500 cursor-pointer"
+                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10 focus:text-rose-500 cursor-pointer"
                     >
                       <LogOut className="w-4 h-4" />
                       Log Out Facility
@@ -2115,6 +2132,22 @@ function AppContent({
                 initialTab={dashboardInitialTab}
               />
             )}
+            {currentView === "retention" && (
+              <RetentionDashboardView
+                clients={clients}
+                sessions={sessions}
+                trainers={trainers}
+                studio={studios.find(s => s.id === authTrainer?.primaryHomeStudioId)}
+                authTrainer={authTrainer}
+                onClose={() => setCurrentView("dashboard")}
+                onUpdateStudio={updateStudio}
+                onUpdateClient={updateClient}
+                onNavigateProfile={(clientId) => {
+                  setSelectedClientId(clientId);
+                  setCurrentView("profile");
+                }}
+              />
+            )}
             {currentView === "calendar" && (
               <CalendarView
                 schedules={schedules}
@@ -2144,7 +2177,7 @@ function AppContent({
         </main>
 
         {/* Navigation Bar */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-6 h-20 flex items-center justify-around z-[100]">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-6 h-20 flex items-center justify-around z-[100]">
           <NavButton
             active={currentView === "clients"}
             onClick={() => setCurrentView("clients")}
@@ -2204,12 +2237,20 @@ function AppContent({
 
           {(checkIsAdmin(authTrainer, user?.email || undefined) ||
             isOwner(authTrainer)) && (
-            <NavButton
-              active={currentView === "dashboard"}
-              onClick={() => setCurrentView("dashboard")}
-              icon={<TrendingUp className="w-6 h-6" />}
-              label="Insights"
-            />
+            <>
+              <NavButton
+                active={currentView === "dashboard"}
+                onClick={() => setCurrentView("dashboard")}
+                icon={<TrendingUp className="w-6 h-6" />}
+                label="Insights"
+              />
+              <NavButton
+                active={currentView === "retention"}
+                onClick={() => setCurrentView("retention")}
+                icon={<ShieldAlert className="w-6 h-6" />}
+                label="Retention"
+              />
+            </>
           )}
         </nav>
       </div>
@@ -2222,7 +2263,7 @@ function AppContent({
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-[32px] p-0 border-none shadow-2xl dark:shadow-none">
           {infoMachine && (
             <>
-              <DialogHeader className="p-8 bg-white dark:bg-slate-900 border-b relative">
+              <DialogHeader className="p-8 bg-white dark:bg-bg-dark border-b relative">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-xl text-primary shadow-sm dark:shadow-none">
                     {infoMachine.order}
@@ -2251,7 +2292,7 @@ function AppContent({
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
                           Target Muscles
                         </Label>
                         <Input
@@ -2266,7 +2307,7 @@ function AppContent({
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
                           Form Video URL
                         </Label>
                         <Input
@@ -2283,7 +2324,7 @@ function AppContent({
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                      <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
                         Standard Machine Settings (Tips)
                       </Label>
                       <Textarea
@@ -2300,7 +2341,7 @@ function AppContent({
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                      <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
                         Cueing Tips (Trainer to Trainer)
                       </Label>
                       <Textarea
@@ -2317,7 +2358,7 @@ function AppContent({
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                      <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
                         Deep Dive Notes
                       </Label>
                       <Textarea
@@ -2394,7 +2435,7 @@ function AppContent({
                         )}
                         <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end z-10">
                           <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-orange-500 mb-1">
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-orange-500 mb-1">
                               Targeted Muscles
                             </p>
                             <div className="flex flex-wrap gap-1.5">
@@ -2403,12 +2444,12 @@ function AppContent({
                                 .map((m) => (
                                   <Badge
                                     key={m}
-                                    className="bg-primary/90 text-primary-foreground border-none font-medium uppercase text-[9px] px-2 py-0.5"
+                                    className="bg-primary/90 text-primary-foreground border-none font-medium uppercase text-[11px] px-2 py-0.5"
                                   >
                                     {m.trim()}
                                   </Badge>
                                 )) || (
-                                <Badge className="bg-primary/90 text-primary-foreground border-none font-medium uppercase text-[9px] px-2 py-0.5">
+                                <Badge className="bg-primary/90 text-primary-foreground border-none font-medium uppercase text-[11px] px-2 py-0.5">
                                   Primary Target Area
                                 </Badge>
                               )}
@@ -2425,13 +2466,13 @@ function AppContent({
                           <div className="space-y-3">
                             <Button className="w-full justify-start h-12 rounded-xl bg-background border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all">
                               <Play className="w-4 h-4 mr-3" />
-                              <span className="font-bold text-[10px] uppercase tracking-widest">
+                              <span className="font-bold text-[11px] uppercase tracking-widest">
                                 View Form Guide Video
                               </span>
                             </Button>
                             <Button
                               variant="outline"
-                              className="w-full justify-start h-12 rounded-xl font-bold text-[10px] uppercase tracking-widest text-secondary hover:bg-secondary hover:text-secondary-foreground transition-all"
+                              className="w-full justify-start h-12 rounded-xl font-bold text-[11px] uppercase tracking-widest text-secondary hover:bg-secondary hover:text-secondary-foreground transition-all"
                             >
                               <MessageSquare className="w-4 h-4 mr-3" />
                               Send Resource to Client
@@ -2455,14 +2496,14 @@ function AppContent({
                               <p className="text-[12px] font-bold text-secondary">
                                 Age 20-30
                               </p>
-                              <p className="text-[10px] font-medium text-secondary/60 uppercase tracking-widest">
+                              <p className="text-[11px] font-medium text-secondary/60 uppercase tracking-widest">
                                 Female | Beginner
                               </p>
                             </div>
                           </div>
                           <div className="space-y-3">
                             <div>
-                              <div className="flex justify-between text-[10px] font-bold text-secondary mb-1">
+                              <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
                                 <span>Average Weight (45 lbs)</span>
                                 <span className="text-action">SD ±5</span>
                               </div>
@@ -2471,7 +2512,7 @@ function AppContent({
                               </div>
                             </div>
                             <div>
-                              <div className="flex justify-between text-[10px] font-bold text-secondary mb-1">
+                              <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
                                 <span>Average Reps (12)</span>
                                 <span className="text-action">SD ±2</span>
                               </div>
@@ -2488,14 +2529,14 @@ function AppContent({
                               <p className="text-[12px] font-bold text-secondary">
                                 Age 30-40
                               </p>
-                              <p className="text-[10px] font-medium text-secondary/60 uppercase tracking-widest">
+                              <p className="text-[11px] font-medium text-secondary/60 uppercase tracking-widest">
                                 Male | Advanced
                               </p>
                             </div>
                           </div>
                           <div className="space-y-3">
                             <div>
-                              <div className="flex justify-between text-[10px] font-bold text-secondary mb-1">
+                              <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
                                 <span>Average Weight (120 lbs)</span>
                                 <span className="text-primary">SD ±15</span>
                               </div>
@@ -2504,7 +2545,7 @@ function AppContent({
                               </div>
                             </div>
                             <div>
-                              <div className="flex justify-between text-[10px] font-bold text-secondary mb-1">
+                              <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
                                 <span>Average Reps (8)</span>
                                 <span className="text-primary">SD ±1.5</span>
                               </div>
@@ -2527,7 +2568,7 @@ function AppContent({
 
                         <div className="space-y-3">
                           {/* Simulated Collapsible Cards */}
-                          <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-slate-900 transition-colors cursor-pointer group">
+                          <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-bg-dark transition-colors cursor-pointer group">
                             <div className="flex justify-between items-center">
                               <p className="text-[12px] font-bold text-secondary">
                                 Marina's Cue
@@ -2539,7 +2580,7 @@ function AppContent({
                               mid-foot rather than the toes."
                             </p>
                           </div>
-                          <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-slate-900 transition-colors cursor-pointer group">
+                          <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-bg-dark transition-colors cursor-pointer group">
                             <div className="flex justify-between items-center">
                               <p className="text-[12px] font-bold text-secondary">
                                 Christian's Cue
@@ -2551,7 +2592,7 @@ function AppContent({
                               completely before pulling the weight down."
                             </p>
                           </div>
-                          <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-slate-900 transition-colors cursor-pointer group">
+                          <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-bg-dark transition-colors cursor-pointer group">
                             <div className="flex justify-between items-center">
                               <p className="text-[12px] font-bold text-secondary">
                                 Austin's Cue
@@ -2572,21 +2613,21 @@ function AppContent({
                           <AlertCircle className="w-4 h-4" />
                           Critical Setup Deviations
                         </h4>
-                        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border">
+                        <div className="bg-white dark:bg-bg-dark rounded-2xl p-6 border border-border">
                           <ul className="space-y-4">
                             <li className="space-y-2">
                               <div className="flex justify-between">
                                 <p className="text-[11px] font-bold text-secondary">
                                   Seat Too High
                                 </p>
-                                <span className="text-[9px] font-bold text-action">
+                                <span className="text-[11px] font-bold text-action">
                                   High Risk
                                 </span>
                               </div>
                               <div className="h-1.5 bg-background rounded-full overflow-hidden">
                                 <div className="h-full bg-action w-[75%]" />
                               </div>
-                              <p className="text-[10px] text-muted-foreground">
+                              <p className="text-[11px] text-muted-foreground">
                                 Places extreme stress on the lower back during
                                 extension.
                               </p>
@@ -2596,14 +2637,14 @@ function AppContent({
                                 <p className="text-[11px] font-bold text-secondary">
                                   Incomplete Range of Motion
                                 </p>
-                                <span className="text-[9px] font-bold text-amber-500">
+                                <span className="text-[11px] font-bold text-amber-500">
                                   Medium Risk
                                 </span>
                               </div>
                               <div className="h-1.5 bg-background rounded-full overflow-hidden">
                                 <div className="h-full bg-amber-500 w-[45%]" />
                               </div>
-                              <p className="text-[10px] text-muted-foreground">
+                              <p className="text-[11px] text-muted-foreground">
                                 Failing to fully lock out or fully stretch at
                                 the bottom.
                               </p>
@@ -2629,7 +2670,7 @@ function AppContent({
 
                     {/* Log Session Action */}
                     <div className="pt-4 border-t border-border flex justify-end">
-                      <Button className="bg-action hover:bg-action/90 text-action-foreground font-bold uppercase tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-action/20">
+                      <Button className="bg-action hover:bg-action/90 text-action-foreground font-bold uppercase tracking-widest text-[11px] h-12 px-8 rounded-xl shadow-lg shadow-action/20">
                         <Plus className="w-4 h-4 mr-2" />
                         Log Session / Add Data Points
                       </Button>
@@ -2657,7 +2698,7 @@ function AppContent({
                 <DialogTitle className="text-2xl font-black uppercase italic tracking-tighter">
                   New Clients Dashboard
                 </DialogTitle>
-                <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary/60">
+                <DialogDescription className="text-[11px] font-black uppercase tracking-widest text-primary/60">
                   Registered in{" "}
                   {new Date().toLocaleDateString([], {
                     month: "long",
@@ -2678,7 +2719,7 @@ function AppContent({
                       setCurrentView("profile");
                       setShowNewClientsDialog(false);
                     }}
-                    className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-2xl border border-transparent hover:border-primary/20 hover:bg-white dark:bg-slate-900 transition-all cursor-pointer group"
+                    className="flex items-center justify-between p-4 bg-white dark:bg-bg-dark rounded-2xl border border-transparent hover:border-primary/20 hover:bg-white dark:bg-bg-dark transition-all cursor-pointer group"
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center font-black text-primary border shadow-sm dark:shadow-none group-hover:scale-110 transition-transform">
@@ -2689,7 +2730,7 @@ function AppContent({
                         <p className="font-black uppercase tracking-tight text-sm">
                           {client.firstName} {client.lastName}
                         </p>
-                        <p className="text-[9px] font-bold text-muted-foreground uppercase">
+                        <p className="text-[11px] font-bold text-muted-foreground uppercase">
                           {client.occupation || "No occupation listed"}
                         </p>
                       </div>
@@ -2707,7 +2748,7 @@ function AppContent({
               </div>
             )}
           </div>
-          <DialogFooter className="p-6 bg-white dark:bg-slate-900 border-t">
+          <DialogFooter className="p-6 bg-white dark:bg-bg-dark border-t">
             <Button
               onClick={() => setShowNewClientsDialog(false)}
               className="rounded-xl font-bold uppercase tracking-widest w-full h-12"
@@ -2724,7 +2765,7 @@ function AppContent({
         onOpenChange={setIsReorderingTrainers}
       >
         <DialogContent className="max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none min-h-[400px]">
-          <DialogHeader className="p-8 bg-white dark:bg-slate-900 border-b">
+          <DialogHeader className="p-8 bg-white dark:bg-bg-dark border-b">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-primary/10 rounded-2xl">
                 <GripVertical className="w-6 h-6 text-primary" />
@@ -2733,7 +2774,7 @@ function AppContent({
                 <DialogTitle className="text-xl font-black uppercase italic tracking-tighter">
                   Team Presence Sorting
                 </DialogTitle>
-                <DialogDescription className="text-[10px] font-bold text-muted-foreground uppercase">
+                <DialogDescription className="text-[11px] font-bold text-muted-foreground uppercase">
                   Organize how trainers appear in the hub grid.
                 </DialogDescription>
               </div>
@@ -2743,7 +2784,7 @@ function AppContent({
             {sortedTrainers.map((trainer, idx) => (
               <div
                 key={trainer.id}
-                className="flex items-center gap-4 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-border/50 group"
+                className="flex items-center gap-4 p-4 bg-white dark:bg-bg-dark rounded-2xl border border-border/50 group"
               >
                 <div className="w-8 h-8 rounded-lg bg-background border flex items-center justify-center font-black text-xs text-muted-foreground">
                   {idx + 1}
@@ -2752,7 +2793,7 @@ function AppContent({
                   <p className="font-black uppercase tracking-tighter text-sm">
                     {trainer.fullName}
                   </p>
-                  <p className="text-[9px] font-bold text-muted-foreground uppercase italic">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase italic">
                     {trainer.initials}
                   </p>
                 </div>
@@ -2807,7 +2848,7 @@ function AppContent({
               </div>
             ))}
           </div>
-          <DialogFooter className="p-6 border-t bg-white dark:bg-slate-900">
+          <DialogFooter className="p-6 border-t bg-white dark:bg-bg-dark">
             <Button
               onClick={() => setIsReorderingTrainers(false)}
               className="rounded-xl font-bold uppercase tracking-widest w-full h-12"
@@ -2848,7 +2889,7 @@ function NavButton({
       >
         {icon}
       </div>
-      <span className="text-[10px] font-black uppercase tracking-tighter">
+      <span className="text-[11px] font-black uppercase tracking-tighter">
         {label}
       </span>
       {active && (
@@ -3195,7 +3236,7 @@ function TrainersView({
                         <p className="text-sm font-black uppercase">
                           {sc.clientName}
                         </p>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
                           {safeToDate(sc.startTime)?.toLocaleDateString([], {
                             month: "short",
                             day: "numeric",
@@ -3211,7 +3252,7 @@ function TrainersView({
                     {trainers.length > 0 && (
                       <div className="flex gap-2">
                         <select
-                          className="flex-1 bg-muted px-3 py-2 rounded-xl text-[10px] font-black uppercase"
+                          className="flex-1 bg-muted px-3 py-2 rounded-xl text-[11px] font-black uppercase"
                           onChange={(e) => {
                             const val = e.target.value;
                             if (val) {
@@ -3293,7 +3334,7 @@ function TrainersView({
                     </div>
                     <Badge
                       variant="secondary"
-                      className="font-mono text-[10px]"
+                      className="font-mono text-[11px]"
                     >
                       {upcomingSchedule.length} UPCOMING SESSIONS
                     </Badge>
@@ -3305,7 +3346,7 @@ function TrainersView({
                       </h3>
                       <div className="flex gap-4 mt-2">
                         <div className="space-y-0.5">
-                          <p className="text-[10px] font-black text-muted-foreground uppercase">
+                          <p className="text-[11px] font-black text-muted-foreground uppercase">
                             Total Sessions
                           </p>
                           <p className="text-sm font-black">
@@ -3313,14 +3354,14 @@ function TrainersView({
                           </p>
                         </div>
                         <div className="space-y-0.5">
-                          <p className="text-[10px] font-black text-muted-foreground uppercase">
+                          <p className="text-[11px] font-black text-muted-foreground uppercase">
                             Unique Clients
                           </p>
                           <p className="text-sm font-black">{uniqueClients}</p>
                         </div>
                         {mostTrainedClient && (
                           <div className="space-y-0.5">
-                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-tighter">
+                            <p className="text-[11px] font-black text-muted-foreground uppercase tracking-tighter">
                               Top Client
                             </p>
                             <p className="text-sm font-black truncate max-w-[80px]">
@@ -3340,7 +3381,7 @@ function TrainersView({
                           className="pt-4 border-t space-y-4"
                         >
                           <div className="space-y-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                            <p className="text-[11px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
                               <Calendar className="w-3 h-3" /> Upcoming Schedule
                             </p>
                             <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
@@ -3354,7 +3395,7 @@ function TrainersView({
                                       <p className="text-xs font-black uppercase truncate">
                                         {s.clientName}
                                       </p>
-                                      <p className="text-[9px] text-muted-foreground font-bold">
+                                      <p className="text-[11px] text-muted-foreground font-bold">
                                         {safeToDate(
                                           s.startTime,
                                         )?.toLocaleDateString([], {
@@ -3365,7 +3406,7 @@ function TrainersView({
                                       </p>
                                     </div>
                                     <div className="text-right">
-                                      <p className="text-[10px] font-black">
+                                      <p className="text-[11px] font-black">
                                         {safeToDate(
                                           s.startTime,
                                         )?.toLocaleTimeString([], {
@@ -3377,7 +3418,7 @@ function TrainersView({
                                   </div>
                                 ))
                               ) : (
-                                <p className="text-[10px] text-muted-foreground italic font-medium">
+                                <p className="text-[11px] text-muted-foreground italic font-medium">
                                   No upcoming sessions scheduled
                                 </p>
                               )}
@@ -3385,7 +3426,7 @@ function TrainersView({
                           </div>
 
                           <div className="space-y-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 flex items-center gap-2">
+                            <p className="text-[11px] font-black uppercase tracking-widest text-emerald-500 flex items-center gap-2">
                               <History className="w-3 h-3" /> Recent Activity
                             </p>
                             <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
@@ -3420,7 +3461,7 @@ function TrainersView({
                                               ? `${client.firstName} ${client.lastName}`
                                               : "Unknown Client"}
                                           </p>
-                                          <p className="text-[9px] text-muted-foreground font-bold">
+                                          <p className="text-[11px] text-muted-foreground font-bold">
                                             {(() => {
                                               const ts = parseSessionDate(
                                                 s.date,
@@ -3438,7 +3479,7 @@ function TrainersView({
                                           </p>
                                         </div>
                                         <div className="text-right">
-                                          <Badge className="bg-emerald-500/10 text-emerald-600 border-none text-[8px] h-4 py-0 uppercase">
+                                          <Badge className="bg-emerald-500/10 text-emerald-600 border-none text-[11px] h-4 py-0 uppercase">
                                             DONE
                                           </Badge>
                                         </div>
@@ -3446,7 +3487,7 @@ function TrainersView({
                                     );
                                   })
                               ) : (
-                                <p className="text-[10px] text-muted-foreground italic font-medium">
+                                <p className="text-[11px] text-muted-foreground italic font-medium">
                                   No recent sessions recorded
                                 </p>
                               )}
@@ -3456,7 +3497,7 @@ function TrainersView({
                           <div className="pt-4 border-t">
                             <Button
                               variant="outline"
-                              className="w-full h-11 rounded-xl text-[10px] font-black uppercase italic tracking-widest border-2 hover:bg-primary/5 hover:text-primary transition-all"
+                              className="w-full h-11 rounded-xl text-[11px] font-black uppercase italic tracking-widest border-2 hover:bg-primary/5 hover:text-primary transition-all"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setIsEditingAvailability(true);
@@ -3477,7 +3518,7 @@ function TrainersView({
             );
           })}
           {trainers.length === 0 && !isAdding && (
-            <div className="col-span-full py-20 text-center border-2 border-dashed rounded-3xl bg-white dark:bg-slate-900 opacity-40">
+            <div className="col-span-full py-20 text-center border-2 border-dashed rounded-3xl bg-white dark:bg-bg-dark opacity-40">
               <UserCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-xs font-black uppercase tracking-widest">
                 No trainers registered
@@ -3577,13 +3618,13 @@ function AvailabilityEditor({
         <div className="px-6 flex gap-2 border-b">
           <button
             onClick={() => setActiveTab("standard")}
-            className={`pb-2 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === "standard" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
+            className={`pb-2 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === "standard" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
           >
             Weekly Standard
           </button>
           <button
             onClick={() => setActiveTab("overrides")}
-            className={`pb-2 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === "overrides" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
+            className={`pb-2 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === "overrides" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
           >
             Date Overrides
           </button>
@@ -3603,7 +3644,7 @@ function AvailabilityEditor({
                 return (
                   <div
                     key={day}
-                    className="p-4 rounded-2xl bg-white dark:bg-slate-900 border space-y-3"
+                    className="p-4 rounded-2xl bg-white dark:bg-bg-dark border space-y-3"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-black uppercase italic tracking-tight">
@@ -3658,7 +3699,7 @@ function AvailabilityEditor({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-full text-[10px] font-black uppercase"
+                          className="w-full text-[11px] font-black uppercase"
                           onClick={() => {
                             updateStandardDay(day, {
                               slots: [
@@ -3739,7 +3780,7 @@ function AvailabilityEditor({
                             Status
                           </span>
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black uppercase">
+                            <span className="text-[11px] font-black uppercase">
                               {config.isOpen ? "Open" : "Closed"}
                             </span>
                             <Switch
@@ -3767,7 +3808,7 @@ function AvailabilityEditor({
                                 <Input
                                   type="time"
                                   value={slot.start}
-                                  className="h-8 text-[10px] font-bold"
+                                  className="h-8 text-[11px] font-bold"
                                   onChange={(e) => {
                                     const newOverrides = {
                                       ...availability.overrides,
@@ -3783,7 +3824,7 @@ function AvailabilityEditor({
                                 <Input
                                   type="time"
                                   value={slot.end}
-                                  className="h-8 text-[10px] font-bold"
+                                  className="h-8 text-[11px] font-bold"
                                   onChange={(e) => {
                                     const newOverrides = {
                                       ...availability.overrides,
@@ -3808,7 +3849,7 @@ function AvailabilityEditor({
           )}
         </div>
 
-        <DialogFooter className="p-6 border-t bg-white dark:bg-slate-900">
+        <DialogFooter className="p-6 border-t bg-white dark:bg-bg-dark">
           <Button
             variant="outline"
             onClick={onClose}
@@ -4346,7 +4387,7 @@ function ClientsView({
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-400" />
             <Input
               placeholder="Search clients..."
-              className="pl-12 h-12 rounded-2xl bg-white dark:bg-slate-900 border-none font-bold text-base text-slate-900 dark:text-white focus-visible:ring-sky-500"
+              className="pl-12 h-12 rounded-2xl bg-white dark:bg-bg-dark border-none font-bold text-base text-slate-900 dark:text-white focus-visible:ring-sky-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -4750,7 +4791,7 @@ function ClientsView({
         {!searchTerm ? (
           <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 p-6 space-y-10">
             {/* Header / Week Selector / Shift Toggle */}
-            <section className="bg-slate-900 rounded-[24px] md:rounded-[32px] p-4 md:p-6 shadow-[0_4px_30px_rgba(0,0,0,0.1)] border border-slate-700/50 space-y-6 shrink-0 relative overflow-hidden">
+            <section className="bg-bg-dark rounded-[24px] md:rounded-[32px] p-4 md:p-6 shadow-[0_4px_30px_rgba(0,0,0,0.1)] border border-slate-700/50 space-y-6 shrink-0 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 opacity-80 pointer-events-none"></div>
               <div className="relative flex flex-col xl:flex-row xl:items-center justify-between gap-6 z-10">
                 {/* Week Selector */}
@@ -4766,11 +4807,11 @@ function ClientsView({
                         onClick={() => setSelectedDate(date)}
                         className={`min-w-[85px] px-4 py-3 xl:py-4 rounded-xl flex flex-col items-center gap-1.5 transition-all border ${
                           isSelected
-                            ? "bg-[#38BDF8] border-[#38BDF8] text-slate-900 shadow-[0_0_20px_rgba(56,189,248,0.3)] scale-105 z-10"
-                            : "bg-slate-800/80 border-slate-700 text-slate-400 hover:border-[#38BDF8]/50 hover:bg-slate-800 hover:text-white"
+                            ? "bg-cyan border-cyan text-slate-900 shadow-[0_0_20px_rgba(56,189,248,0.3)] scale-105 z-10"
+                            : "bg-surface-2 border-slate-700 text-slate-400 hover:border-cyan/50 hover:bg-surface-1 hover:text-white"
                         }`}
                       >
-                        <span className="text-[10px] font-black uppercase tracking-widest leading-none opacity-80">
+                        <span className="text-[11px] font-black uppercase tracking-widest leading-none opacity-80">
                           {date.toLocaleDateString([], { weekday: "short" })}
                         </span>
                         <span
@@ -4788,7 +4829,7 @@ function ClientsView({
                 {/* Right Actions: Shift Selector & Refresh Button */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 self-start xl:self-center w-full sm:w-auto">
                   {/* Shift Selector */}
-                  <div className="relative flex p-1.5 bg-slate-800/80 rounded-2xl border border-slate-700 shadow-inner w-[320px] h-16 xl:h-20 shrink-0">
+                  <div className="relative flex p-1.5 bg-surface-2 rounded-2xl border border-slate-700 shadow-inner w-[320px] h-16 xl:h-20 shrink-0">
                     <div
                       className={cn(
                         "absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white rounded-[14px] shadow-sm transition-transform duration-300 ease-out z-0",
@@ -4811,7 +4852,7 @@ function ClientsView({
                       </span>
                       <span
                         className={cn(
-                          "text-[9px] xl:text-[10px] font-bold uppercase tracking-widest leading-none",
+                          "text-[11px] xl:text-[11px] font-bold uppercase tracking-widest leading-none",
                           activeTab === "morning"
                             ? "text-[#0A2E46]"
                             : "opacity-60",
@@ -4834,7 +4875,7 @@ function ClientsView({
                       </span>
                       <span
                         className={cn(
-                          "text-[9px] xl:text-[10px] font-bold uppercase tracking-widest leading-none",
+                          "text-[11px] xl:text-[11px] font-bold uppercase tracking-widest leading-none",
                           activeTab === "afternoon"
                             ? "text-orange-600"
                             : "opacity-60",
@@ -4869,21 +4910,21 @@ function ClientsView({
                 <div className="min-w-full relative">
                   {currentTimePos !== null && (
                     <div
-                      className="absolute left-0 right-0 border-t-2 border-orange-500 z-20 pointer-events-none shadow-[0_0_15px_#F06C22]"
+                      className="absolute left-0 right-0 h-[1px] bg-gradient-to-r from-cyan-500 via-orange-500 to-transparent z-20 pointer-events-none"
                       style={{
                         top: `calc(64px + (100% - 64px) * ${currentTimePos} / 100)`,
                       }}
                     >
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 bg-orange-500 dark:bg-orange-600 text-white text-[9px] font-black uppercase px-2 py-1 rounded-r-md tracking-widest flex items-center shadow-[0_0_10px_#F06C22]">
-                        <span className="w-2 h-2 rounded-full bg-white dark:bg-slate-900 mr-1 animate-pulse"></span>
-                        Current Time
+                      <div className="absolute left-0 -top-2.5 bg-orange-500 text-white text-[11px] font-black uppercase px-2 py-0.5 rounded-r-full shadow-sm flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                        NOW
                       </div>
                     </div>
                   )}
                   <table className="w-full border-collapse table-fixed h-full bg-white dark:bg-slate-950">
                     <thead className="relative z-30">
-                      <tr className="bg-slate-50 dark:bg-slate-900 border-b-2 border-slate-300 dark:border-slate-700 h-[84px] sm:h-[100px]">
-                        <th className="p-1 sm:p-2 border-r-2 border-slate-300 dark:border-slate-700 w-12 sm:w-16 sticky left-0 bg-slate-50 dark:bg-slate-900 z-40"></th>
+                      <tr className="bg-slate-50 dark:bg-bg-dark border-b-2 border-slate-300 dark:border-slate-700 h-[84px] sm:h-[100px]">
+                        <th className="p-1 sm:p-2 border-r-2 border-slate-300 dark:border-slate-700 w-12 sm:w-16 sticky left-0 bg-slate-50 dark:bg-bg-dark z-40"></th>
                         {visibleTrainersList.map((trainer) => {
                           const sessionCount = todaysSchedules.filter(
                             (s) =>
@@ -4895,10 +4936,10 @@ function ClientsView({
                           return (
                             <th
                               key={trainer.id}
-                              className="p-2 sm:p-3 border-r-2 border-slate-300 dark:border-slate-700 last:border-r-0 text-center sticky top-0 bg-slate-50 dark:bg-slate-900 shadow-sm w-1/5 min-w-[70px]"
+                              className="p-2 sm:p-3 border-r-2 border-slate-300 dark:border-slate-700 last:border-r-0 text-center sticky top-0 bg-slate-50 dark:bg-bg-dark shadow-sm w-1/5 min-w-[70px]"
                             >
                               <div className="flex flex-col items-center justify-center gap-1 sm:gap-2 pt-1">
-                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-900 dark:bg-[#38BDF8] border-2 border-white dark:border-slate-800 shadow-lg flex items-center justify-center">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-bg-dark dark:bg-cyan border-2 border-white dark:border-slate-800 shadow-lg flex items-center justify-center">
                                   <span className="text-[12px] sm:text-[14px] font-black text-white dark:text-slate-900 uppercase tracking-widest">
                                     {trainer.fullName.substring(0, 2)}
                                   </span>
@@ -4906,8 +4947,8 @@ function ClientsView({
                                 <span className="text-[11px] sm:text-[13px] font-black uppercase tracking-widest text-slate-900 dark:text-white leading-none whitespace-nowrap overflow-hidden text-ellipsis w-11/12">
                                   {trainer.fullName.split(" ")[0]}
                                 </span>
-                                <div className="bg-slate-200/50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded flex items-center gap-1 leading-none mt-0.5">
-                                  <span className="text-[9px] sm:text-[10px] font-bold tracking-widest whitespace-nowrap uppercase">
+                                <div className="bg-slate-200/50 dark:bg-surface-1 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded flex items-center gap-1 leading-none mt-0.5">
+                                  <span className="text-[11px] sm:text-[11px] font-bold tracking-widest whitespace-nowrap uppercase">
                                     {sessionCount} Sess.
                                   </span>
                                 </div>
@@ -4924,9 +4965,9 @@ function ClientsView({
                           return (
                             <tr
                               key={slot}
-                              className="border-b-2 border-slate-300 dark:border-slate-700 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/[0.05] transition-colors group relative h-[72px]"
+                              className="border-b-2 border-slate-300 dark:border-slate-700 last:border-0 hover:bg-slate-50 dark:hover:bg-surface-1/[0.05] transition-colors group relative h-[72px]"
                             >
-                              <td className="p-1 sm:p-2 text-center border-r-2 border-slate-300 dark:border-slate-700 sticky left-0 bg-slate-100 dark:bg-slate-800 z-10 relative box-border shadow-[2px_0_10px_rgba(0,0,0,0.05)]">
+                              <td className="p-1 sm:p-2 text-center border-r-2 border-slate-300 dark:border-slate-700 sticky left-0 bg-slate-100 dark:bg-surface-1 z-10 relative box-border shadow-[2px_0_10px_rgba(0,0,0,0.05)]">
                                 <div className="flex flex-col items-center justify-center">
                                   <span className="text-[12px] sm:text-[14px] font-black tracking-widest text-[#0A2E46] dark:text-white uppercase leading-none">
                                     {slot
@@ -4935,7 +4976,7 @@ function ClientsView({
                                       .replace(":00", "")
                                       .replace(":30", ":30")}
                                   </span>
-                                  <span className="text-[9px] font-bold text-[#F06C22] uppercase tracking-widest">
+                                  <span className="text-[11px] font-bold text-[#F06C22] uppercase tracking-widest">
                                     {slot.includes("AM") ? "AM" : "PM"}
                                   </span>
                                 </div>
@@ -5059,14 +5100,14 @@ function ClientsView({
                                           isUnavailable
                                             ? "bg-[repeating-linear-gradient(45deg,#f8fafc,#f8fafc_10px,#f1f5f9_10px,#f1f5f9_20px)] dark:bg-[repeating-linear-gradient(45deg,#0f172a,#0f172a_10px,#1e293b_10px,#1e293b_20px)] border-2 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-90"
                                             : isCompleted
-                                              ? "opacity-60 grayscale bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700/80 cursor-pointer"
+                                              ? "opacity-60 grayscale bg-slate-50 dark:bg-surface-2 border-2 border-slate-200 dark:border-slate-700/80 cursor-pointer"
                                               : isInSession
                                                 ? isMilestone
                                                   ? "bg-[#F06C22] border-2 border-[#F06C22] shadow-[0_0_15px_rgba(240,108,34,0.65)] cursor-pointer hover:shadow-[0_0_20px_rgba(240,108,34,0.8)] text-white"
-                                                  : "bg-[#38BDF8] border-2 border-[#38BDF8] shadow-[0_0_12px_rgba(56,189,248,0.5)] cursor-pointer hover:shadow-[0_0_16px_rgba(56,189,248,0.7)] text-slate-950"
+                                                  : "bg-cyan border-2 border-cyan shadow-[0_0_12px_rgba(56,189,248,0.5)] cursor-pointer hover:shadow-[0_0_16px_rgba(56,189,248,0.7)] text-slate-950"
                                                 : isMilestone
-                                                  ? "bg-white dark:bg-slate-800 border-2 border-[#F06C22]/85 shadow-[0_0_10px_rgba(240,108,34,0.4)] dark:shadow-[0_0_12px_rgba(240,108,34,0.55)] cursor-pointer hover:border-[#F06C22] hover:shadow-[0_0_16px_rgba(240,108,34,0.7)]"
-                                                  : "bg-white dark:bg-slate-800 border-2 border-[#38BDF8]/85 shadow-[0_0_8px_rgba(56,189,248,0.3)] dark:shadow-[0_0_10px_rgba(56,189,248,0.45)] cursor-pointer hover:border-[#38BDF8] hover:shadow-[0_0_14px_rgba(56,189,248,0.6)]",
+                                                  ? "bg-white dark:bg-surface-1 border-2 border-[#F06C22]/85 shadow-[0_0_10px_rgba(240,108,34,0.4)] dark:shadow-[0_0_12px_rgba(240,108,34,0.55)] cursor-pointer hover:border-[#F06C22] hover:shadow-[0_0_16px_rgba(240,108,34,0.7)]"
+                                                  : "bg-white dark:bg-surface-1 border-2 border-cyan/85 shadow-[0_0_8px_rgba(56,189,248,0.3)] dark:shadow-[0_0_10px_rgba(56,189,248,0.45)] cursor-pointer hover:border-cyan hover:shadow-[0_0_14px_rgba(56,189,248,0.6)]",
                                           hasAlert &&
                                             !isCompleted &&
                                             !isUnavailable
@@ -5082,7 +5123,7 @@ function ClientsView({
                                                   "leading-tight truncate",
                                                   "text-sm font-bold",
                                                   isUnavailable
-                                                    ? "text-slate-500 italic uppercase tracking-widest text-[10px]"
+                                                    ? "text-slate-500 italic uppercase tracking-widest text-[11px]"
                                                     : isInSession
                                                       ? isMilestone
                                                         ? "text-white font-black"
@@ -5108,14 +5149,14 @@ function ClientsView({
                                                 className={cn(
                                                   "inline-flex items-center text-[11px] sm:text-[12px] font-black leading-none px-1.5 py-0.5 rounded-md border",
                                                   isCompleted
-                                                    ? "text-slate-500/50 border-slate-200/50 bg-slate-100/50 dark:bg-slate-800/50"
+                                                    ? "text-slate-500/50 border-slate-200/50 bg-slate-100/50 dark:bg-surface-2"
                                                     : isInSession
                                                       ? isMilestone
                                                         ? "text-white bg-white/20 border-white/30 font-mono shadow-[0_0_5px_rgba(255,255,255,0.25)]"
                                                         : "text-slate-950 bg-black/10 border-black/20 font-mono"
                                                       : isMilestone
                                                         ? "text-[#F06C22] bg-[#F06C22]/10 border-[#F06C22]/30 shadow-[0_0_5px_rgba(240,108,34,0.15)] font-mono"
-                                                        : "text-[#38BDF8] bg-[#38BDF8]/10 border-[#38BDF8]/20",
+                                                        : "text-cyan bg-cyan/10 border-cyan/20",
                                                 )}
                                               >
                                                 {sessionNumber}
@@ -5125,8 +5166,8 @@ function ClientsView({
                                         </div>
                                       </div>
                                     ) : (
-                                      <div className="h-full w-full opacity-0 hover:opacity-[0.03] transition-opacity flex items-center justify-center p-2 bg-slate-900 rounded-lg pointer-events-none">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                                      <div className="h-full w-full opacity-0 hover:opacity-[0.03] transition-opacity flex items-center justify-center p-2 bg-bg-dark rounded-lg pointer-events-none">
+                                        <span className="text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
                                           Open
                                         </span>
                                       </div>
@@ -5186,7 +5227,7 @@ function ClientsView({
                   return (
                     <div
                       key={client.id}
-                      className="group relative flex flex-col bg-slate-50 dark:bg-slate-950 rounded-[2rem] border border-slate-200 dark:border-slate-800/80 p-5 hover:border-sky-500/40 hover:bg-white dark:hover:bg-slate-800/40 cursor-pointer transition-all shadow-xl"
+                      className="group relative flex flex-col bg-slate-50 dark:bg-slate-950 rounded-[2rem] border border-slate-200 dark:border-slate-800/80 p-5 hover:border-sky-500/40 hover:bg-white dark:hover:bg-surface-1/40 cursor-pointer transition-all shadow-xl"
                       onClick={() => {
                         onSelectClient(client.id!);
                         setView("profile");
@@ -5201,13 +5242,13 @@ function ClientsView({
                           <span className="font-bold text-slate-900 dark:text-slate-100 text-[15px] truncate leading-tight">
                             {client.firstName} {client.lastName}
                           </span>
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate flex items-center gap-1.5">
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate flex items-center gap-1.5">
                             <RefreshCcw className="w-2.5 h-2.5" /> Active
                           </span>
                         </div>
                       </div>
                       <div
-                        className={`mt-auto w-fit text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border ${tierInfo.css}`}
+                        className={`mt-auto w-fit text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border ${tierInfo.css}`}
                       >
                         {tierInfo.name}
                       </div>
@@ -5259,19 +5300,19 @@ function ClientsView({
                                 {clientName}
                               </h3>
                               {client.isActive ? (
-                                <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-none font-black text-[9px] uppercase">
+                                <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-none font-black text-[11px] uppercase">
                                   Active
                                 </Badge>
                               ) : (
                                 <Badge
                                   variant="secondary"
-                                  className="font-black text-[9px] uppercase"
+                                  className="font-black text-[11px] uppercase"
                                 >
                                   Inactive
                                 </Badge>
                               )}
                             </div>
-                            <div className="flex gap-4 text-[10px] font-bold text-muted-foreground uppercase">
+                            <div className="flex gap-4 text-[11px] font-bold text-muted-foreground uppercase">
                               <span>{client.height}</span>
                               <span>•</span>
                               <span>{client.weight || "--"} LBS</span>
@@ -5284,8 +5325,8 @@ function ClientsView({
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 grow-[2]">
                             {/* Last Session Info */}
-                            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-border/50 flex flex-col justify-between">
-                              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">
+                            <div className="bg-white dark:bg-bg-dark p-4 rounded-2xl border border-border/50 flex flex-col justify-between">
+                              <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mb-1">
                                 Previous Session
                               </p>
                               {last ? (
@@ -5300,7 +5341,7 @@ function ClientsView({
                                       },
                                     )}
                                   </p>
-                                  <p className="text-[10px] font-bold text-muted-foreground uppercase italic">
+                                  <p className="text-[11px] font-bold text-muted-foreground uppercase italic">
                                     TR: {last.trainerInitials}
                                   </p>
                                 </div>
@@ -5313,7 +5354,7 @@ function ClientsView({
 
                             {/* Next Session Info */}
                             <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10 flex flex-col justify-between">
-                              <p className="text-[9px] font-black uppercase tracking-widest text-primary mb-1">
+                              <p className="text-[11px] font-black uppercase tracking-widest text-primary mb-1">
                                 Next Scheduled
                               </p>
                               {next ? (
@@ -5333,7 +5374,7 @@ function ClientsView({
                                       minute: "2-digit",
                                     })}
                                   </p>
-                                  <p className="text-[10px] font-black text-primary/70 uppercase italic">
+                                  <p className="text-[11px] font-black text-primary/70 uppercase italic">
                                     TR: {next.trainerName}
                                   </p>
                                 </div>
@@ -5356,7 +5397,7 @@ function ClientsView({
                               }}
                             >
                               <History className="w-6 h-6" />
-                              <span className="text-[9px]">History</span>
+                              <span className="text-[11px]">History</span>
                             </Button>
                             <Button
                               className="h-20 w-20 rounded-2xl font-black flex flex-col gap-1 shadow-lg shadow-primary/20 uppercase"
@@ -5366,7 +5407,7 @@ function ClientsView({
                               }}
                             >
                               <Play className="w-6 h-6 fill-current" />
-                              <span className="text-[9px]">Start</span>
+                              <span className="text-[11px]">Start</span>
                             </Button>
                           </div>
                         </div>
@@ -5509,7 +5550,7 @@ function ClientsView({
                   ).length === 0 &&
                   dbSearchResultsLink.length === 0 &&
                   !isSearchingDbLink && (
-                    <p className="text-[10px] text-center py-4 text-muted-foreground italic font-medium">
+                    <p className="text-[11px] text-center py-4 text-muted-foreground italic font-medium">
                       No clients match your search
                     </p>
                   )}
@@ -5757,7 +5798,7 @@ function ClientHistoryView({
       animate={{ opacity: 1 }}
       className="flex flex-col gap-4 h-[calc(100vh-160px)] overflow-hidden"
     >
-      <div className="flex items-center justify-between bg-white dark:bg-slate-800 p-4 border rounded-2xl shadow-sm dark:shadow-none shrink-0">
+      <div className="flex items-center justify-between bg-white dark:bg-surface-1 p-4 border rounded-2xl shadow-sm dark:shadow-none shrink-0">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -5780,7 +5821,7 @@ function ClientHistoryView({
           <Button
             variant="outline"
             size="sm"
-            className="h-8 px-2 text-[8px] font-black uppercase text-amber-500 border-amber-500/20 hover:bg-amber-500/10"
+            className="h-8 px-2 text-[11px] font-black uppercase text-amber-500 border-amber-500/20 hover:bg-amber-500/10"
             onClick={generateMockHistory}
             disabled={isGeneratingMock}
           >
@@ -5796,32 +5837,32 @@ function ClientHistoryView({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 shrink-0">
         <Card className="md:col-span-2 rounded-2xl border-2 border-primary/5">
           <CardHeader className="py-2 px-4">
-            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
               Client Vitals
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3 grid grid-cols-2 md:grid-cols-4 gap-2">
             <div className="space-y-0.5">
-              <p className="text-[9px] font-bold text-muted-foreground uppercase">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase">
                 Height/Weight
               </p>
               <p className="text-xs font-black">
                 {client.height} / {client.weight || "--"} lbs
               </p>
               {client.occupation && (
-                <p className="text-[8px] font-bold text-primary/70 uppercase">
+                <p className="text-[11px] font-bold text-primary/70 uppercase">
                   Job: {client.occupation}
                 </p>
               )}
             </div>
             <div className="space-y-0.5">
-              <p className="text-[9px] font-bold text-muted-foreground uppercase">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase">
                 Phone
               </p>
               <p className="text-xs font-black">{client.phone || "--"}</p>
             </div>
             <div className="space-y-0.5">
-              <p className="text-[9px] font-bold text-muted-foreground uppercase">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase">
                 Emergency
               </p>
               <p className="text-xs font-black truncate">
@@ -5829,7 +5870,7 @@ function ClientHistoryView({
               </p>
             </div>
             <div className="space-y-0.5">
-              <p className="text-[9px] font-bold text-muted-foreground uppercase">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase">
                 Injuries/History
               </p>
               <p className="text-xs font-black truncate">
@@ -5841,7 +5882,7 @@ function ClientHistoryView({
 
         <Card className="rounded-2xl border-2 border-primary/5">
           <CardHeader className="py-2 px-4">
-            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
               Routine Filter
             </CardTitle>
           </CardHeader>
@@ -5850,7 +5891,7 @@ function ClientHistoryView({
               <Button
                 variant={selectedRoutineId === null ? "default" : "outline"}
                 size="sm"
-                className="h-6 px-2 text-[8px] font-black uppercase rounded-md"
+                className="h-6 px-2 text-[11px] font-black uppercase rounded-md"
                 onClick={() => setSelectedRoutineId(null)}
               >
                 View All
@@ -5860,7 +5901,7 @@ function ClientHistoryView({
                   key={r.id}
                   variant={selectedRoutineId === r.id ? "default" : "outline"}
                   size="sm"
-                  className="h-6 px-2 text-[8px] font-black uppercase rounded-md"
+                  className="h-6 px-2 text-[11px] font-black uppercase rounded-md"
                   onClick={() =>
                     setSelectedRoutineId(
                       selectedRoutineId === r.id ? null : r.id!,
@@ -5876,7 +5917,7 @@ function ClientHistoryView({
 
         <Card className="rounded-2xl border-2 border-primary/5">
           <CardHeader className="py-2 px-4">
-            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
               Top Trainers
             </CardTitle>
           </CardHeader>
@@ -5885,7 +5926,7 @@ function ClientHistoryView({
               <Button
                 variant={trainerFilter === null ? "default" : "outline"}
                 size="sm"
-                className="h-6 px-2 text-[8px] font-black uppercase rounded-md"
+                className="h-6 px-2 text-[11px] font-black uppercase rounded-md"
                 onClick={() => setTrainerFilter(null)}
               >
                 All
@@ -5897,7 +5938,7 @@ function ClientHistoryView({
                     key={initials}
                     variant={trainerFilter === initials ? "default" : "outline"}
                     size="sm"
-                    className="h-6 px-1.5 text-[8px] font-black uppercase rounded-md flex gap-1"
+                    className="h-6 px-1.5 text-[11px] font-black uppercase rounded-md flex gap-1"
                     onClick={() =>
                       setTrainerFilter(
                         trainerFilter === initials ? null : initials,
@@ -5918,12 +5959,12 @@ function ClientHistoryView({
         </Card>
       </div>
 
-      <div className="flex-1 overflow-hidden border rounded-xl bg-white dark:bg-slate-800 shadow-lg flex flex-col">
+      <div className="flex-1 overflow-hidden border rounded-xl bg-white dark:bg-surface-1 shadow-lg flex flex-col">
         <div className="overflow-auto flex-1 h-full scrollbar-thin scrollbar-thumb-muted-foreground/20">
           <table className="w-full border-collapse border-separate border-spacing-0 table-fixed">
             <thead className="sticky top-0 z-30">
               <tr>
-                <th className="p-1 px-3 text-left font-black uppercase tracking-tighter border-b border-r min-w-[120px] w-[120px] bg-muted/90 backdrop-blur-md sticky left-0 z-40 text-[9px] shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                <th className="p-1 px-3 text-left font-black uppercase tracking-tighter border-b border-r min-w-[120px] w-[120px] bg-muted/90 backdrop-blur-md sticky left-0 z-40 text-[11px] shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                   Exercise
                 </th>
                 {displaySessions.map((s) => {
@@ -5934,11 +5975,11 @@ function ClientHistoryView({
                   return (
                     <th
                       key={s.id}
-                      className={`p-1.5 text-center border-b border-r min-w-[70px] w-[70px] transition-all bg-white dark:bg-slate-900 backdrop-blur-sm ${s.id === selectedSessionId ? "bg-primary/10 ring-1 ring-inset ring-primary" : ""}`}
+                      className={`p-1.5 text-center border-b border-r min-w-[70px] w-[70px] transition-all bg-white dark:bg-bg-dark backdrop-blur-sm ${s.id === selectedSessionId ? "bg-primary/10 ring-1 ring-inset ring-primary" : ""}`}
                     >
                       <div className="flex flex-col items-center space-y-1">
                         <div className="bg-primary/10 border border-primary/20 rounded-md px-1.5 py-0.5 shadow-sm dark:shadow-none">
-                          <span className="text-primary font-black tabular-nums text-[10px] leading-none">
+                          <span className="text-primary font-black tabular-nums text-[11px] leading-none">
                             {sNum.toString().padStart(2, "0")}
                           </span>
                         </div>
@@ -5954,7 +5995,7 @@ function ClientHistoryView({
                     </th>
                   );
                 })}
-                <th className="p-1 text-center font-black uppercase text-[8px] border-b bg-white dark:bg-slate-900 sticky right-0 z-20 min-w-[50px] w-[50px]">
+                <th className="p-1 text-center font-black uppercase text-[11px] border-b bg-white dark:bg-bg-dark sticky right-0 z-20 min-w-[50px] w-[50px]">
                   +/-
                 </th>
               </tr>
@@ -5965,7 +6006,7 @@ function ClientHistoryView({
                   (s) => logs[`${s.id}_${machine.id}`],
                 );
                 const rowColor =
-                  mIdx % 2 === 0 ? "bg-white dark:bg-slate-800" : "bg-muted/5";
+                  mIdx % 2 === 0 ? "bg-white dark:bg-surface-1" : "bg-muted/5";
 
                 return (
                   <tr
@@ -5976,7 +6017,7 @@ function ClientHistoryView({
                       className={`p-1.5 px-3 border-r font-bold sticky left-0 z-20 ${rowColor} group-hover:bg-primary/5 shadow-[2px_0_5px_rgba(0,0,0,0.02)]`}
                     >
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase font-black tracking-tight leading-none truncate">
+                        <span className="text-[11px] uppercase font-black tracking-tight leading-none truncate">
                           {machine.name}
                         </span>
                         <div className="flex flex-wrap gap-0.5 mt-1 opacity-60">
@@ -6021,7 +6062,7 @@ function ClientHistoryView({
                               >
                                 {log.weight}
                               </div>
-                              <div className="text-[9px] font-bold text-muted-foreground leading-none">
+                              <div className="text-[11px] font-bold text-muted-foreground leading-none">
                                 {log.repsLeft !== undefined &&
                                 log.repsRight !== undefined ? (
                                   <span className="text-[7px] font-black">
@@ -6071,13 +6112,13 @@ function ClientHistoryView({
 
                         if (diff > 0)
                           return (
-                            <span className="text-emerald-500 text-[8px] font-black tracking-tighter leading-none">
+                            <span className="text-emerald-500 text-[11px] font-black tracking-tighter leading-none">
                               +{diff}
                             </span>
                           );
                         if (diff < 0)
                           return (
-                            <span className="text-red-500 text-[8px] font-black tracking-tighter leading-none">
+                            <span className="text-red-500 text-[11px] font-black tracking-tighter leading-none">
                               {diff}
                             </span>
                           );
@@ -6093,7 +6134,7 @@ function ClientHistoryView({
               })}
               {/* Session Notes History Row */}
               <tr className="bg-primary/5 hover:bg-primary/10 transition-colors h-12">
-                <td className="p-2 px-3 border-r font-black uppercase text-[9px] text-primary sticky left-0 z-20 bg-primary/5 group-hover:bg-primary/10 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                <td className="p-2 px-3 border-r font-black uppercase text-[11px] text-primary sticky left-0 z-20 bg-primary/5 group-hover:bg-primary/10 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
                   Session Notes
                 </td>
                 {displaySessions.map((s) => {
@@ -6141,7 +6182,7 @@ function ClientHistoryView({
           <Button
             variant="outline"
             size="sm"
-            className="rounded-full px-8 font-black uppercase text-[10px] tracking-widest border-2 hover:bg-primary/5 hover:text-primary transition-all"
+            className="rounded-full px-8 font-black uppercase text-[11px] tracking-widest border-2 hover:bg-primary/5 hover:text-primary transition-all"
             onClick={() => setHistoryLimit((prev) => prev + 12)}
           >
             Load Older Sessions
@@ -6159,8 +6200,8 @@ function ClientHistoryView({
       )}
 
       {/* Summary Legend */}
-      <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-slate-900 rounded-2xl shrink-0">
-        <div className="flex gap-6 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+      <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-bg-dark rounded-2xl shrink-0">
+        <div className="flex gap-6 text-[11px] font-black uppercase tracking-widest text-muted-foreground">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500" />
             <span>Improvement</span>
@@ -6174,7 +6215,7 @@ function ClientHistoryView({
             <span>Trainer Discussion</span>
           </div>
         </div>
-        <div className="text-[10px] font-black text-primary animate-pulse">
+        <div className="text-[11px] font-black text-primary animate-pulse">
           TAP NOTES TO DISCUSS PERFORMANCE
         </div>
       </div>
@@ -6219,7 +6260,7 @@ function ClientSelectionDialog({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Find client..."
-              className="pl-10 h-11 rounded-xl bg-white dark:bg-slate-900 border-none"
+              className="pl-10 h-11 rounded-xl bg-white dark:bg-bg-dark border-none"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
@@ -6239,7 +6280,7 @@ function ClientSelectionDialog({
                   <p className="font-black text-lg leading-tight uppercase">
                     {client.firstName} {client.lastName}
                   </p>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase opacity-60">
                     {client.height} • {client.weight || "--"} lbs
                   </p>
                 </div>
@@ -6291,7 +6332,7 @@ function MachineSettingsDialog({
         <div className="grid gap-6 py-4">
           {machine.settings && (
             <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">
+              <p className="text-[11px] font-black uppercase tracking-widest text-primary mb-2">
                 Standard Benchmarks (Reference)
               </p>
               <p className="text-xs font-bold italic leading-relaxed text-primary/80">
@@ -6458,9 +6499,9 @@ function PerformanceEntryDialog({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[400px] rounded-[32px] p-0 overflow-hidden border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl dark:shadow-none flex flex-col h-full max-h-[85vh] sm:max-h-[600px]">
+      <DialogContent className="sm:max-w-[400px] rounded-[32px] p-0 overflow-hidden border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark shadow-2xl dark:shadow-none flex flex-col h-full max-h-[85vh] sm:max-h-[600px]">
         {/* Header */}
-        <div className="bg-white dark:bg-slate-900 p-4 text-slate-900 dark:text-white relative overflow-hidden border-b border-slate-200 dark:border-slate-800 shrink-0">
+        <div className="bg-white dark:bg-bg-dark p-4 text-slate-900 dark:text-white relative overflow-hidden border-b border-slate-200 dark:border-slate-800 shrink-0">
           <div className="absolute top-0 right-0 p-8 opacity-5 rotate-12">
             <Zap className="w-24 h-24" />
           </div>
@@ -6474,12 +6515,12 @@ function PerformanceEntryDialog({
               </h2>
               <div className="flex items-center gap-2 mt-1">
                 {side && (
-                  <span className="text-orange-500 text-[9px] font-black uppercase tracking-widest leading-none">
+                  <span className="text-orange-500 text-[11px] font-black uppercase tracking-widest leading-none">
                     Rotation: {side}
                   </span>
                 )}
                 {side && <span className="w-1 h-1 bg-slate-600 rounded-full" />}
-                <p className="text-[9px] uppercase font-bold text-sky-500 tracking-widest leading-none">
+                <p className="text-[11px] uppercase font-bold text-sky-500 tracking-widest leading-none">
                   Entry HUD
                 </p>
               </div>
@@ -6494,7 +6535,7 @@ function PerformanceEntryDialog({
             <div className="bg-slate-50/40 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 flex items-center justify-center gap-x-5 gap-y-1.5 flex-wrap">
               {orderMachineSettings(settings).map(([key, value]) => (
                 <div key={key} className="flex items-center gap-1.5">
-                  <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">
+                  <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">
                     {key}:
                   </span>
                   <span className="text-[12px] font-black text-orange-500 italic">
@@ -6507,7 +6548,7 @@ function PerformanceEntryDialog({
 
           {/* Smart Stepper: Weight */}
           <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 flex flex-col items-center relative">
-            <Label className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest text-center block mb-2">
+            <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest text-center block mb-2">
               Weight (lbs)
             </Label>
             <div className="flex items-center justify-between w-full h-14 px-1">
@@ -6528,7 +6569,7 @@ function PerformanceEntryDialog({
                 />
                 {prevW > 0 && (
                   <div
-                    className={`mt-0.5 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md ${weightDelta > 0 ? "bg-emerald-500/20 text-emerald-400" : weightDelta < 0 ? "bg-rose-500/20 text-rose-400" : "bg-slate-700 text-slate-500 dark:text-slate-400"}`}
+                    className={`mt-0.5 text-[11px] font-black uppercase px-1.5 py-0.5 rounded-md ${weightDelta > 0 ? "bg-emerald-500/20 text-emerald-400" : weightDelta < 0 ? "bg-rose-500/20 text-rose-400" : "bg-slate-700 text-slate-500 dark:text-slate-400"}`}
                   >
                     {weightDelta > 0 ? "+" : ""}
                     {weightDelta} lbs ({weightDelta > 0 ? "+" : ""}
@@ -6549,16 +6590,16 @@ function PerformanceEntryDialog({
           <div className="grid grid-cols-1 gap-4">
             {/* Smart Stepper: Reps / Seconds */}
             <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 flex flex-col items-center relative">
-              <div className="flex items-center justify-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-1 mb-2.5 w-full max-w-[180px]">
+              <div className="flex items-center justify-center gap-1.5 bg-white dark:bg-bg-dark border border-slate-200 dark:border-slate-800 rounded-xl p-1 mb-2.5 w-full max-w-[180px]">
                 <button
                   onClick={() => setIsHold(false)}
-                  className={`flex-1 h-6 rounded-lg font-black uppercase text-[8px] tracking-widest transition-all ${!isHold ? "bg-sky-500 text-slate-900 dark:text-white" : "text-slate-600 hover:text-slate-500 dark:text-slate-400"}`}
+                  className={`flex-1 h-6 rounded-lg font-black uppercase text-[11px] tracking-widest transition-all ${!isHold ? "bg-sky-500 text-slate-900 dark:text-white" : "text-slate-600 hover:text-slate-500 dark:text-slate-400"}`}
                 >
                   REPS
                 </button>
                 <button
                   onClick={() => setIsHold(true)}
-                  className={`flex-1 h-6 rounded-lg font-black uppercase text-[8px] tracking-widest transition-all ${isHold ? "bg-sky-500 text-slate-900 dark:text-white" : "text-slate-600 hover:text-slate-500 dark:text-slate-400"}`}
+                  className={`flex-1 h-6 rounded-lg font-black uppercase text-[11px] tracking-widest transition-all ${isHold ? "bg-sky-500 text-slate-900 dark:text-white" : "text-slate-600 hover:text-slate-500 dark:text-slate-400"}`}
                 >
                   TSC
                 </button>
@@ -6600,7 +6641,7 @@ function PerformanceEntryDialog({
               ) : (
                 <div className="flex items-center gap-4 w-full px-1">
                   <div className="flex flex-col items-center flex-1 bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-slate-200 dark:border-slate-800">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 mb-1">
+                    <span className="text-[11px] font-black uppercase tracking-widest text-orange-500 mb-1">
                       Left ({isHold ? "SEC" : "REPS"})
                     </span>
                     <div className="flex items-center justify-between w-full h-10">
@@ -6633,7 +6674,7 @@ function PerformanceEntryDialog({
                     </div>
                   </div>
                   <div className="flex flex-col items-center flex-1 bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-slate-200 dark:border-slate-800">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 mb-1">
+                    <span className="text-[11px] font-black uppercase tracking-widest text-orange-500 mb-1">
                       Right ({isHold ? "SEC" : "REPS"})
                     </span>
                     <div className="flex items-center justify-between w-full h-10">
@@ -6671,25 +6712,25 @@ function PerformanceEntryDialog({
 
             {/* Quality Rating */}
             <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 flex flex-col items-center relative">
-              <Label className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest text-center block mb-2.5">
+              <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest text-center block mb-2.5">
                 Set Quality / RPE
               </Label>
               <div className="flex items-center gap-1.5 w-full h-9">
                 <button
                   onClick={() => setQuality(1)}
-                  className={`flex-1 h-full rounded-xl font-black uppercase text-[9px] tracking-widest transition-all ${quality === 1 ? "bg-rose-500 text-slate-900 dark:text-white shadow-[0_4px_10px_rgba(244,63,94,0.3)]" : "bg-white border border-slate-200 dark:border-slate-800 text-slate-600 hover:text-slate-500 dark:text-slate-400"}`}
+                  className={`flex-1 h-full rounded-xl font-black uppercase text-[11px] tracking-widest transition-all ${quality === 1 ? "bg-rose-500 text-slate-900 dark:text-white shadow-[0_4px_10px_rgba(244,63,94,0.3)]" : "bg-white border border-slate-200 dark:border-slate-800 text-slate-600 hover:text-slate-500 dark:text-slate-400"}`}
                 >
                   Poor
                 </button>
                 <button
                   onClick={() => setQuality(2)}
-                  className={`flex-1 h-full rounded-xl font-black uppercase text-[9px] tracking-widest transition-all ${quality === 2 ? "bg-amber-500 text-slate-900 dark:text-white shadow-[0_4px_10px_rgba(245,158,11,0.3)]" : "bg-white border border-slate-200 dark:border-slate-800 text-slate-600 hover:text-slate-500 dark:text-slate-400"}`}
+                  className={`flex-1 h-full rounded-xl font-black uppercase text-[11px] tracking-widest transition-all ${quality === 2 ? "bg-amber-500 text-slate-900 dark:text-white shadow-[0_4px_10px_rgba(245,158,11,0.3)]" : "bg-white border border-slate-200 dark:border-slate-800 text-slate-600 hover:text-slate-500 dark:text-slate-400"}`}
                 >
                   Good
                 </button>
                 <button
                   onClick={() => setQuality(3)}
-                  className={`flex-1 h-full rounded-xl font-black uppercase text-[9px] tracking-widest transition-all ${quality === 3 ? "bg-emerald-500 text-slate-900 dark:text-white shadow-[0_4px_10px_rgba(16,185,129,0.3)]" : "bg-white border border-slate-200 dark:border-slate-800 text-slate-600 hover:text-slate-500 dark:text-slate-400"}`}
+                  className={`flex-1 h-full rounded-xl font-black uppercase text-[11px] tracking-widest transition-all ${quality === 3 ? "bg-emerald-500 text-slate-900 dark:text-white shadow-[0_4px_10px_rgba(16,185,129,0.3)]" : "bg-white border border-slate-200 dark:border-slate-800 text-slate-600 hover:text-slate-500 dark:text-slate-400"}`}
                 >
                   Elite
                 </button>
@@ -6701,10 +6742,10 @@ function PerformanceEntryDialog({
           {pastMachineLogs.length > 0 && (
             <div className="bg-slate-50/30 border border-slate-200 dark:border-slate-800/50 dark:border-slate-800/50 rounded-xl p-2.5 flex flex-col gap-1.5">
               <div className="flex justify-between items-center px-1">
-                <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                   Trend History
                 </span>
-                <span className="text-[8px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
                   Last 3 Sets
                 </span>
               </div>
@@ -6729,13 +6770,13 @@ function PerformanceEntryDialog({
                   const oldW = parseFloat(olderEntry.log.weight || "0");
                   if (currW > oldW) {
                     arrow = (
-                      <span className="text-emerald-500 font-bold ml-1 text-[9px]">
+                      <span className="text-emerald-500 font-bold ml-1 text-[11px]">
                         ↑
                       </span>
                     );
                   } else if (currW < oldW) {
                     arrow = (
-                      <span className="text-rose-500 font-bold ml-1 text-[9px]">
+                      <span className="text-rose-500 font-bold ml-1 text-[11px]">
                         ↓
                       </span>
                     );
@@ -6747,7 +6788,7 @@ function PerformanceEntryDialog({
                     key={idx}
                     className="flex justify-between items-center text-[11px] bg-slate-50 dark:bg-slate-950 rounded-lg px-2 py-1.5 border border-slate-200 dark:border-slate-800/30"
                   >
-                    <span className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[9px]">
+                    <span className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[11px]">
                       {new Date(
                         parseSessionDate(entry.session.date),
                       ).toLocaleDateString("en-US", {
@@ -6757,7 +6798,7 @@ function PerformanceEntryDialog({
                     </span>
                     <span className="font-black text-slate-700 dark:text-slate-300 flex items-center tabular-nums">
                       {entry.log.weight}
-                      <span className="text-[9px] text-slate-500 dark:text-slate-400 ml-0.5">
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 ml-0.5">
                         lbs
                       </span>
                       <span className="mx-1.5 text-slate-700 dark:text-slate-300">
@@ -6774,7 +6815,7 @@ function PerformanceEntryDialog({
         </div>
 
         {/* Fixed Footer */}
-        <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0 grid grid-cols-2 gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.2)]">
+        <div className="p-4 bg-white dark:bg-bg-dark border-t border-slate-200 dark:border-slate-800 shrink-0 grid grid-cols-2 gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.2)]">
           <Button
             variant="outline"
             className="h-12 rounded-xl font-black uppercase text-[11px] tracking-widest border border-slate-300 dark:border-slate-700 bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 transition-all shadow-md"
@@ -6881,7 +6922,7 @@ function MachinesView({
           <h2 className="text-2xl font-bold tracking-tight uppercase text-secondary">
             Equipment & Analytics Index
           </h2>
-          <p className="text-secondary/80 text-[10px] font-medium uppercase tracking-widest">
+          <p className="text-secondary/80 text-[11px] font-medium uppercase tracking-widest">
             Global usage statistics & form guidance.
           </p>
         </div>
@@ -6897,10 +6938,10 @@ function MachinesView({
           return (
             <Card
               key={machine.id}
-              className="group rounded-2xl overflow-hidden border border-border/80 hover:border-primary/50 transition-all shadow-sm dark:shadow-none bg-white dark:bg-slate-800 flex flex-col"
+              className="group rounded-2xl overflow-hidden border border-border/80 hover:border-primary/50 transition-all shadow-sm dark:shadow-none bg-white dark:bg-surface-1 flex flex-col"
             >
               {/* Thumbnail Header Area */}
-              <div className="relative h-32 bg-white dark:bg-slate-900 overflow-hidden">
+              <div className="relative h-32 bg-white dark:bg-bg-dark overflow-hidden">
                 <img
                   src={machine.imageUrl || fallbackImgUrl}
                   alt={machine.name}
@@ -6922,13 +6963,13 @@ function MachinesView({
                   <h3 className="text-sm font-black uppercase tracking-tight text-secondary leading-tight line-clamp-1">
                     {machine.name}
                   </h3>
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-orange-500">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-orange-500">
                     {machine.fullName || machine.id?.replace(/_/g, " ")}
                   </p>
                 </div>
 
                 {/* Global Benchmark Compact */}
-                <div className="bg-white dark:bg-slate-900 rounded-lg p-2 border border-border/40">
+                <div className="bg-white dark:bg-bg-dark rounded-lg p-2 border border-border/40">
                   <p className="text-[7px] font-bold uppercase tracking-widest text-secondary mb-1.5 opacity-60">
                     Global Benchmark
                   </p>
@@ -6936,11 +6977,11 @@ function MachinesView({
                     <div className="text-left">
                       <p className="text-[12px] font-bold text-secondary leading-none">
                         {stats?.avgWeight || "--"}{" "}
-                        <span className="text-[8px] font-medium opacity-60">
+                        <span className="text-[11px] font-medium opacity-60">
                           lbs
                         </span>
                       </p>
-                      <p className="text-[8px] font-medium text-secondary/60 uppercase mt-0.5">
+                      <p className="text-[11px] font-medium text-secondary/60 uppercase mt-0.5">
                         Avg Wgt
                       </p>
                     </div>
@@ -6949,7 +6990,7 @@ function MachinesView({
                       <p className="text-[12px] font-bold text-secondary leading-none">
                         {stats?.avgReps || "--"}
                       </p>
-                      <p className="text-[8px] font-medium text-secondary/60 uppercase mt-0.5">
+                      <p className="text-[11px] font-medium text-secondary/60 uppercase mt-0.5">
                         Avg Reps
                       </p>
                     </div>
@@ -6957,18 +6998,18 @@ function MachinesView({
                     <div className="text-right">
                       <p className="text-[12px] font-bold text-primary leading-none">
                         {stats?.maxWeight || "--"}{" "}
-                        <span className="text-[8px] font-medium text-primary/60">
+                        <span className="text-[11px] font-medium text-primary/60">
                           lbs
                         </span>
                       </p>
-                      <p className="text-[8px] font-medium text-primary/60 uppercase mt-0.5">
+                      <p className="text-[11px] font-medium text-primary/60 uppercase mt-0.5">
                         Max
                       </p>
                     </div>
                   </div>
                   <div className="flex justify-between items-center pt-2 border-t border-border/40">
                     <div className="text-left">
-                      <p className="text-[10px] font-bold text-secondary leading-none">
+                      <p className="text-[11px] font-bold text-secondary leading-none">
                         {!isNaN(stats?.totalVolume)
                           ? stats.totalVolume.toLocaleString()
                           : "--"}{" "}
@@ -6981,7 +7022,7 @@ function MachinesView({
                       </p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[10px] font-bold text-secondary leading-none">
+                      <p className="text-[11px] font-bold text-secondary leading-none">
                         {stats?.avgSeconds ? stats.avgSeconds : "--"}{" "}
                         <span className="text-[7px] font-medium opacity-60">
                           s
@@ -6992,7 +7033,7 @@ function MachinesView({
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-bold text-secondary leading-none">
+                      <p className="text-[11px] font-bold text-secondary leading-none">
                         {stats?.usageCount || "--"}
                       </p>
                       <p className="text-[7px] font-medium text-secondary/60 uppercase mt-0.5">
@@ -7004,7 +7045,7 @@ function MachinesView({
 
                 <Button
                   variant="outline"
-                  className="w-full h-8 rounded-lg font-bold uppercase tracking-widest gap-1.5 bg-background border border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors text-[8px] sm:text-[9px]"
+                  className="w-full h-8 rounded-lg font-bold uppercase tracking-widest gap-1.5 bg-background border border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors text-[11px] sm:text-[11px]"
                   onClick={() => onOpenInfo(machine)}
                 >
                   <AlertCircle className="w-3 h-3" />
@@ -7091,16 +7132,16 @@ function ExerciseHistoryDialog({
                 return (
                   <div
                     key={log.id}
-                    className={`p-4 rounded-2xl border transition-all ${isOrigin ? "bg-primary/5 border-primary/20 ring-1 ring-primary/10" : "bg-white dark:bg-slate-800"}`}
+                    className={`p-4 rounded-2xl border transition-all ${isOrigin ? "bg-primary/5 border-primary/20 ring-1 ring-primary/10" : "bg-white dark:bg-surface-1"}`}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black text-muted-foreground uppercase">
+                        <span className="text-[11px] font-black text-muted-foreground uppercase">
                           {safeToDate(log.createdAt)?.toLocaleDateString() ||
                             "Recent"}
                         </span>
                         {isOrigin && (
-                          <Badge className="bg-primary text-slate-900 dark:text-white text-[8px] font-black rounded px-1.5 h-4 border-none uppercase">
+                          <Badge className="bg-primary text-slate-900 dark:text-white text-[11px] font-black rounded px-1.5 h-4 border-none uppercase">
                             Origin
                           </Badge>
                         )}
@@ -7109,7 +7150,7 @@ function ExerciseHistoryDialog({
                         {log.isStaticHold && (
                           <Badge
                             variant="outline"
-                            className="text-[8px] border-primary text-primary h-4"
+                            className="text-[11px] border-primary text-primary h-4"
                           >
                             Static
                           </Badge>
@@ -7122,18 +7163,18 @@ function ExerciseHistoryDialog({
 
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-0.5">
-                        <p className="text-[8px] font-black text-muted-foreground uppercase">
+                        <p className="text-[11px] font-black text-muted-foreground uppercase">
                           Weight
                         </p>
                         <p className="text-xl font-black">
                           {log.weight}{" "}
-                          <span className="text-[10px] font-normal italic">
+                          <span className="text-[11px] font-normal italic">
                             lbs
                           </span>
                         </p>
                       </div>
                       <div className="space-y-0.5">
-                        <p className="text-[8px] font-black text-muted-foreground uppercase">
+                        <p className="text-[11px] font-black text-muted-foreground uppercase">
                           {log.isStaticHold ? "Seconds" : "Reps"}
                         </p>
                         <p
@@ -7153,11 +7194,11 @@ function ExerciseHistoryDialog({
                         </p>
                       </div>
                       <div className="space-y-0.5">
-                        <p className="text-[8px] font-black text-muted-foreground uppercase">
+                        <p className="text-[11px] font-black text-muted-foreground uppercase">
                           Quality
                         </p>
                         <div
-                          className={`w-fit px-2 py-0.5 rounded-full text-[10px] font-black text-slate-900 dark:text-white ${
+                          className={`w-fit px-2 py-0.5 rounded-full text-[11px] font-black text-slate-900 dark:text-white ${
                             log.repQuality === 3
                               ? "bg-emerald-500"
                               : log.repQuality === 2
@@ -7179,7 +7220,7 @@ function ExerciseHistoryDialog({
                     </div>
 
                     {log.notes && (
-                      <div className="mt-3 text-[10px] bg-white dark:bg-slate-900 p-2 rounded-lg font-medium text-muted-foreground border-l-2 border-primary/30 italic">
+                      <div className="mt-3 text-[11px] bg-white dark:bg-bg-dark p-2 rounded-lg font-medium text-muted-foreground border-l-2 border-primary/30 italic">
                         "{log.notes}"
                       </div>
                     )}
@@ -7284,7 +7325,7 @@ function SessionNotesSidebar({
               <MessageSquare className="w-5 h-5 text-orange-500" /> Session
               Notes
             </h2>
-            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">
+            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">
               HUD Communication Panel
             </p>
           </div>
@@ -7292,7 +7333,7 @@ function SessionNotesSidebar({
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="rounded-full hover:bg-white dark:hover:bg-slate-800/10"
+            className="rounded-full hover:bg-white dark:hover:bg-surface-1/10"
           >
             <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
           </Button>
@@ -7302,7 +7343,7 @@ function SessionNotesSidebar({
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
               <History className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+              <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
                 Note History
               </span>
             </div>
@@ -7315,16 +7356,16 @@ function SessionNotesSidebar({
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-800">
-                        <span className="text-[8px] font-black text-orange-500">
+                      <div className="w-6 h-6 rounded-full bg-white dark:bg-bg-dark flex items-center justify-center border border-slate-200 dark:border-slate-800">
+                        <span className="text-[11px] font-black text-orange-500">
                           {note.trainerInitials}
                         </span>
                       </div>
-                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight">
+                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight">
                         Active Trainer
                       </span>
                     </div>
-                    <span className="text-[9px] font-bold text-slate-600 dark:text-slate-400">
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
                       {safeToDate(note.createdAt)?.toLocaleString([], {
                         month: "short",
                         day: "numeric",
@@ -7341,7 +7382,7 @@ function SessionNotesSidebar({
             ) : (
               <div className="py-12 text-center bg-slate-50 dark:bg-slate-950 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
                 <StickyNote className="w-8 h-8 text-slate-800 dark:text-slate-200 mx-auto mb-3" />
-                <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
                   No active communications found.
                 </p>
               </div>
@@ -7354,7 +7395,7 @@ function SessionNotesSidebar({
             <div className="space-y-2">
               <div className="flex items-center gap-2 mb-1">
                 <Edit3 className="w-3.5 h-3.5 text-orange-500" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
                   Tactical Update
                 </span>
               </div>
@@ -7368,16 +7409,16 @@ function SessionNotesSidebar({
 
             <div className="flex items-center justify-between gap-4">
               <div className="flex flex-col">
-                <span className="text-[8px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">
                   Authenticated:
                 </span>
-                <span className="text-[10px] font-bold text-orange-500">
+                <span className="text-[11px] font-bold text-orange-500">
                   {trainerInitials}
                 </span>
               </div>
               <Button
                 type="submit"
-                className="flex-1 h-12 bg-orange-500 dark:bg-orange-600 text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-xl shadow-xl shadow-orange-950/20 transition-all active:scale-95"
+                className="flex-1 h-12 bg-orange-500 dark:bg-orange-600 text-white font-black uppercase tracking-[0.2em] text-[11px] rounded-xl shadow-xl shadow-orange-950/20 transition-all active:scale-95"
               >
                 Save Tactical Note
               </Button>
@@ -8627,7 +8668,7 @@ function WorkoutTrackerView({
             } else {
               // If skipped, we don't start a session, just let the state refresh
               // which will cause the wizard to disappear because consultationCompleted is now true
-              setIsPreSessionMode(true); // Land them on the PreSessionOverview instead of hiding it
+              setIsPreSessionMode(true); // Land them on the BriefingScreen instead of hiding it
             }
           }}
           onCancel={() => {
@@ -8760,8 +8801,8 @@ function WorkoutTrackerView({
                   : "Initializing..."}
             </h3>
             <div className="flex items-center gap-2 mt-0.5 text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
-              <div className="w-5 h-5 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
-                <span className="text-[9px] font-bold">
+              <div className="w-5 h-5 rounded-full bg-white dark:bg-bg-dark flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
+                <span className="text-[11px] font-bold">
                   {authTrainer?.initials ||
                     currentSession?.trainerInitials ||
                     "??"}
@@ -8787,7 +8828,7 @@ function WorkoutTrackerView({
             <Button
               variant="outline"
               className={cn(
-                "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 h-10 px-3 transition-colors",
+                "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-10 px-3 transition-colors",
                 !showAllMachines
                   ? "bg-orange-500 text-white hover:bg-orange-600 dark:text-white border-transparent hover:text-white"
                   : "",
@@ -8800,7 +8841,7 @@ function WorkoutTrackerView({
 
             <Button
               variant="outline"
-              className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 h-10 px-3 hidden lg:flex transition-colors"
+              className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-10 px-3 hidden lg:flex transition-colors"
               onClick={() => setIsSessionRoutineManagerOpen(true)}
             >
               <Settings2 className="w-4 h-4 mr-2" />
@@ -9157,7 +9198,7 @@ function WorkoutTrackerView({
           <div className="p-6 space-y-4">
             {currentSession?.isUnassigned ? (
               <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1 mb-2">
+                <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground px-1 mb-2">
                   Unassigned Session Actions
                 </p>
                 <Button
@@ -9185,7 +9226,7 @@ function WorkoutTrackerView({
                 </Button>
                 <div className="py-2 flex items-center gap-4">
                   <div className="h-px bg-border flex-1" />
-                  <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">
+                  <span className="text-[11px] font-black text-muted-foreground uppercase tracking-widest">
                     Danger Zone
                   </span>
                   <div className="h-px bg-border flex-1" />
@@ -9208,13 +9249,13 @@ function WorkoutTrackerView({
                     value={currentSessionNotes}
                     onChange={(e) => setCurrentSessionNotes(e.target.value)}
                     placeholder="Log general observations here..."
-                    className="min-h-[100px] border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-500 dark:text-slate-400 focus-visible:ring-orange-500 focus-visible:border-orange-500"
+                    className="min-h-[100px] border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-500 dark:text-slate-400 focus-visible:ring-orange-500 focus-visible:border-orange-500"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Button
                     variant="outline"
-                    className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 dark:border-slate-800 dark:hover:bg-slate-800"
+                    className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 dark:border-slate-800 dark:hover:bg-surface-1"
                     onClick={() => setShowEndConfirmation(false)}
                   >
                     Keep Training
@@ -9253,7 +9294,7 @@ function WorkoutTrackerView({
         onOpenChange={setShowCancelConfirmation}
       >
         <DialogContent className="sm:max-w-[400px] rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
-          <div className="bg-white dark:bg-slate-900 p-8 text-slate-900 dark:text-white space-y-3">
+          <div className="bg-white dark:bg-bg-dark p-8 text-slate-900 dark:text-white space-y-3">
             <div className="w-12 h-12 bg-red-500 rounded-2xl flex items-center justify-center mb-2 shadow-[0_0_20px_rgba(239,68,68,0.4)]">
               <Trash2 className="w-6 h-6 text-slate-900 dark:text-white" />
             </div>
@@ -9266,10 +9307,10 @@ function WorkoutTrackerView({
             </p>
           </div>
 
-          <div className="p-6 grid grid-cols-2 gap-3 bg-white dark:bg-slate-900">
+          <div className="p-6 grid grid-cols-2 gap-3 bg-white dark:bg-bg-dark">
             <Button
               variant="outline"
-              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2"
               onClick={() => setShowCancelConfirmation(false)}
             >
               Resume Session
@@ -9284,11 +9325,11 @@ function WorkoutTrackerView({
         </DialogContent>
       </Dialog>
       {/* Workout Table Scroll Area */}
-      <div className="flex-1 overflow-hidden border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 shadow-sm flex flex-col">
+      <div className="flex-1 overflow-hidden border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-bg-dark shadow-sm flex flex-col">
         <div className="w-full h-full overflow-x-auto custom-scrollbar bg-slate-50 dark:bg-slate-950">
-          <table className="w-full text-left border-collapse table-fixed select-none min-w-[600px] h-full flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <table className="w-full text-left border-collapse table-fixed select-none min-w-[600px] h-full flex flex-col bg-white dark:bg-bg-dark border border-slate-200 dark:border-slate-800 shadow-sm">
             <thead className="flex w-full shrink-0">
-              <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 uppercase text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 leading-none h-[36px] w-full flex items-center">
+              <tr className="bg-slate-50 dark:bg-surface-1 border-b border-slate-200 dark:border-slate-700 uppercase text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 leading-none h-[36px] w-full flex items-center">
                 <th className="p-0 flex items-center justify-center w-[40px] shrink-0 border-r border-slate-200 dark:border-slate-700 h-full">
                   {currentSession ? (
                     <button
@@ -9369,7 +9410,7 @@ function WorkoutTrackerView({
                       activeMachineIds.length === 0 && (
                         <tr className="flex">
                           <td colSpan={5} className="p-4 text-center w-full">
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase">
                               Routine blank. Start selecting machines.
                             </p>
                           </td>
@@ -9468,7 +9509,7 @@ function WorkoutTrackerView({
                           Object.keys(settingsStr).length === 0
                         ) {
                           settingsDisplay = (
-                            <span className="text-slate-400 dark:text-slate-500 italic text-[10px]">
+                            <span className="text-slate-400 dark:text-slate-500 italic text-[11px]">
                               No Settings
                             </span>
                           );
@@ -9483,14 +9524,14 @@ function WorkoutTrackerView({
                                   key={k}
                                   className="flex gap-0.5 items-baseline"
                                 >
-                                  <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-medium">
+                                  <span className="text-slate-500 dark:text-slate-400 text-[11px] uppercase font-medium">
                                     {k}:
                                   </span>
-                                  <span className="font-medium text-slate-700 dark:text-slate-300 text-[10px] uppercase">
+                                  <span className="font-medium text-slate-700 dark:text-slate-300 text-[11px] uppercase">
                                     {v}
                                   </span>
                                   {i < sortedEntries.length - 1 && (
-                                    <span className="text-slate-300 dark:text-slate-600 ml-0.5 text-[10px]">
+                                    <span className="text-slate-300 dark:text-slate-600 ml-0.5 text-[11px]">
                                       •
                                     </span>
                                   )}
@@ -9503,19 +9544,19 @@ function WorkoutTrackerView({
                         return (
                           <tr
                             key={machine.id}
-                            className={`flex w-full group transition-colors h-[34px] sm:h-[36px] items-center border-b border-slate-100 dark:border-slate-800/50 last:border-b-0 border-l-[4px] bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50
+                            className={`flex w-full group transition-colors h-[34px] sm:h-[36px] items-center border-b border-slate-100 dark:border-slate-800/50 last:border-b-0 border-l-[4px] bg-white dark:bg-bg-dark hover:bg-slate-50 dark:hover:bg-surface-2
                               ${!isActive && !showAllMachines ? "opacity-30 grayscale hover:grayscale-0" : ""}
                               ${isFocusMachine ? "border-l-blue-500" : isCompleted && isActive ? "border-l-emerald-500" : "border-l-transparent"}`}
                           >
                             <td className="w-[40px] shrink-0 flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
                               {isActive ? (
                                 <div
-                                  className={`flex items-center justify-center rounded-md px-1.5 h-5 shadow-sm ${isFocusMachine ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold" : isCompleted ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" : "bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium"}`}
+                                  className={`flex items-center justify-center rounded-md px-1.5 h-5 shadow-sm ${isFocusMachine ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold" : isCompleted ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" : "bg-slate-100 dark:bg-surface-1 text-slate-500 font-medium"}`}
                                 >
                                   {isCompleted ? (
                                     <Check className="w-3 h-3" />
                                   ) : (
-                                    <span className="font-bold text-[9px] leading-none">
+                                    <span className="font-bold text-[11px] leading-none">
                                       {seqPosition}
                                     </span>
                                   )}
@@ -9549,7 +9590,7 @@ function WorkoutTrackerView({
                                 {isTorso ? (
                                   settingsDisplay
                                 ) : isCompleted ? (
-                                  <span className="font-medium text-[10px] text-slate-500 dark:text-slate-400">
+                                  <span className="font-medium text-[11px] text-slate-500 dark:text-slate-400">
                                     {currentLog.weight} lbs |{" "}
                                     {currentLog.repsLeft !== undefined &&
                                     currentLog.repsRight !== undefined ? (
@@ -9573,7 +9614,7 @@ function WorkoutTrackerView({
                                   <span className="font-medium text-xs text-slate-500 dark:text-slate-400">
                                     {prevLog.weight}
                                   </span>
-                                  <span className="font-medium text-[9px] text-slate-400 dark:text-slate-500 mt-[1px]">
+                                  <span className="font-medium text-[11px] text-slate-400 dark:text-slate-500 mt-[1px]">
                                     {prevLog.repsLeft !== undefined &&
                                     prevLog.repsRight !== undefined ? (
                                       `${prevLog.repsLeft}L|${prevLog.repsRight}R`
@@ -9605,14 +9646,14 @@ function WorkoutTrackerView({
                                     )}
                                 </div>
                               ) : (
-                                <span className="text-[9px] text-slate-600 dark:text-slate-400 font-medium">
+                                <span className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
                                   --
                                 </span>
                               )}
                             </td>
 
                             <td
-                              className={`w-[60px] shrink-0 cursor-pointer group/weight p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors ${isFocusMachine ? "bg-white dark:bg-slate-800 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50" : "bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                              className={`w-[60px] shrink-0 cursor-pointer group/weight p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50" : "bg-slate-50/50 dark:bg-surface-2 hover:bg-slate-100 dark:hover:bg-surface-1"}`}
                             >
                               {isTorso ? (
                                 <div className="flex flex-col items-center justify-center gap-0.5 w-full h-full">
@@ -9625,7 +9666,7 @@ function WorkoutTrackerView({
                                     }}
                                   >
                                     <span
-                                      className={`font-black text-[10px] ${logL.weight ? "text-slate-900 dark:text-slate-50" : "text-slate-400 dark:text-slate-500"}`}
+                                      className={`font-black text-[11px] ${logL.weight ? "text-slate-900 dark:text-slate-50" : "text-slate-400 dark:text-slate-500"}`}
                                     >
                                       {logL.weight || "--"}
                                     </span>
@@ -9640,7 +9681,7 @@ function WorkoutTrackerView({
                                     }}
                                   >
                                     <span
-                                      className={`font-black text-[10px] ${logR.weight ? "text-slate-900 dark:text-slate-50" : "text-slate-400 dark:text-slate-500"}`}
+                                      className={`font-black text-[11px] ${logR.weight ? "text-slate-900 dark:text-slate-50" : "text-slate-400 dark:text-slate-500"}`}
                                     >
                                       {logR.weight || "--"}
                                     </span>
@@ -9669,7 +9710,7 @@ function WorkoutTrackerView({
                             </td>
 
                             <td
-                              className={`w-[60px] shrink-0 cursor-pointer group/reps p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors relative ${isFocusMachine ? "bg-white dark:bg-slate-800 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50" : "bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                              className={`w-[60px] shrink-0 cursor-pointer group/reps p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors relative ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50" : "bg-slate-50/50 dark:bg-surface-2 hover:bg-slate-100 dark:hover:bg-surface-1"}`}
                             >
                               {isTorso ? (
                                 <div className="flex flex-col items-center justify-center gap-0.5 w-full h-full">
@@ -9682,7 +9723,7 @@ function WorkoutTrackerView({
                                     }}
                                   >
                                     <span
-                                      className={`font-black text-[10px] ${logL.reps || logL.seconds ? "text-slate-900 dark:text-slate-50" : "text-slate-400 dark:text-slate-500"}`}
+                                      className={`font-black text-[11px] ${logL.reps || logL.seconds ? "text-slate-900 dark:text-slate-50" : "text-slate-400 dark:text-slate-500"}`}
                                     >
                                       {logL.isStaticHold ? (
                                         <>
@@ -9706,7 +9747,7 @@ function WorkoutTrackerView({
                                     }}
                                   >
                                     <span
-                                      className={`font-black text-[10px] ${logR.reps || logR.seconds ? "text-slate-900 dark:text-slate-50" : "text-slate-400 dark:text-slate-500"}`}
+                                      className={`font-black text-[11px] ${logR.reps || logR.seconds ? "text-slate-900 dark:text-slate-50" : "text-slate-400 dark:text-slate-500"}`}
                                     >
                                       {logR.isStaticHold ? (
                                         <>
@@ -9737,7 +9778,7 @@ function WorkoutTrackerView({
                                       ) : currentLog.isStaticHold ? (
                                         <>
                                           {currentLog.seconds}
-                                          <span className="text-[9px] ml-0.5 lowercase opacity-70">
+                                          <span className="text-[11px] ml-0.5 lowercase opacity-70">
                                             s
                                           </span>
                                         </>
@@ -9757,12 +9798,12 @@ function WorkoutTrackerView({
                             </td>
 
                             <td
-                              className={`w-[60px] shrink-0 px-1 border-r border-slate-200 dark:border-slate-800/60 flex items-center justify-center h-full transition-colors ${isFocusMachine ? "bg-white dark:bg-slate-800 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" : "group-hover:bg-slate-50 dark:group-hover:bg-slate-800"}`}
+                              className={`w-[60px] shrink-0 px-1 border-r border-slate-200 dark:border-slate-800/60 flex items-center justify-center h-full transition-colors ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" : "group-hover:bg-slate-50 dark:group-hover:bg-surface-1"}`}
                             >
                               {isTorso ? (
                                 <div className="flex flex-col gap-1 items-center">
                                   <div
-                                    className={`flex rounded-full p-[1px] gap-[1px] ${isFocusMachine ? "bg-slate-100/80 border border-slate-200 dark:border-slate-700" : "bg-slate-100 dark:bg-slate-800"}`}
+                                    className={`flex rounded-full p-[1px] gap-[1px] ${isFocusMachine ? "bg-slate-100/80 border border-slate-200 dark:border-slate-700" : "bg-slate-100 dark:bg-surface-1"}`}
                                   >
                                     {[1, 2, 3].map((v) => {
                                       const isSelected = logL.repQuality === v;
@@ -9796,7 +9837,7 @@ function WorkoutTrackerView({
                                     })}
                                   </div>
                                   <div
-                                    className={`flex rounded-full p-[1px] gap-[1px] ${isFocusMachine ? "bg-slate-100/80 border border-slate-200 dark:border-slate-700" : "bg-slate-100 dark:bg-slate-800"}`}
+                                    className={`flex rounded-full p-[1px] gap-[1px] ${isFocusMachine ? "bg-slate-100/80 border border-slate-200 dark:border-slate-700" : "bg-slate-100 dark:bg-surface-1"}`}
                                   >
                                     {[1, 2, 3].map((v) => {
                                       const isSelected = logR.repQuality === v;
@@ -9832,7 +9873,7 @@ function WorkoutTrackerView({
                                 </div>
                               ) : (
                                 <div
-                                  className={`flex rounded-full p-[2px] gap-[2px] ${isFocusMachine ? "bg-slate-100/80 border border-slate-200 dark:border-slate-700" : "bg-slate-100 dark:bg-slate-800"}`}
+                                  className={`flex rounded-full p-[2px] gap-[2px] ${isFocusMachine ? "bg-slate-100/80 border border-slate-200 dark:border-slate-700" : "bg-slate-100 dark:bg-surface-1"}`}
                                 >
                                   {[1, 2, 3].map((v) => {
                                     const isSelected =
@@ -9908,7 +9949,7 @@ function WorkoutTrackerView({
 
       {currentSession && activeMachineIds.length > 0 && (
         <div className="fixed bottom-0 left-2 p-1 pointer-events-none opacity-20 z-[110]">
-          <span className="text-[8px] text-slate-800 dark:text-slate-200 font-mono tracking-widest">
+          <span className="text-[11px] text-slate-800 dark:text-slate-200 font-mono tracking-widest">
             {machineTimeElapsed}s
           </span>
         </div>

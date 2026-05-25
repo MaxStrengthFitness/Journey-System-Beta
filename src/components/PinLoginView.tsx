@@ -263,7 +263,7 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
         {!selectedTrainer && (
           <div className="text-center mb-12 flex flex-col items-center">
             <MaxStrengthLogo size="xl" className="mb-6" />
-            <span className="text-zinc-500 font-bold uppercase tracking-widest text-[9px] mt-2 block animate-pulse">
+            <span className="text-zinc-500 font-bold uppercase tracking-widest text-[11px] mt-2 block animate-pulse">
               Select Profile & Access the Hub
             </span>
           </div>
@@ -298,7 +298,7 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
                               </div>
                             )}
                           </div>
-                          <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-1">
+                          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mt-1">
                             {isOwner ? 'Operations Manager' : 'Performance Trainer'}
                           </p>
                         </div>
@@ -312,7 +312,7 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
               ) : (
                 <div className="flex flex-col items-center gap-4 py-12 px-6 bg-slate-900 rounded-[24px] border border-dashed border-slate-800">
                   <Loader2 className="w-8 h-8 animate-spin text-zinc-650" />
-                  <p className="text-[9px] font-black uppercase tracking-widest text-[#F06C22] text-center">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-[#F06C22] text-center">
                     Syncing Enterprise Profiles...
                   </p>
                 </div>
@@ -323,7 +323,7 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
                <div className="w-full flex justify-start mb-4">
                  <Button variant="ghost" size="sm" onClick={handleBack} className="text-zinc-500 hover:text-white transition-colors">
                     <ArrowLeft className="w-4 h-4 mr-2" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Back to Profiles</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest">Back to Profiles</span>
                  </Button>
                </div>
                
@@ -368,13 +368,13 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
                   {error && (
                     <div className="bg-rose-950/40 border border-rose-500/20 rounded-xl p-3 mb-5 flex items-center justify-center gap-2">
                       <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
-                      <p className="text-rose-400 text-[10px] font-semibold uppercase tracking-wider">{error}</p>
+                      <p className="text-rose-400 text-[11px] font-semibold uppercase tracking-wider">{error}</p>
                     </div>
                   )}
 
                   {lockoutTime && (
                     <div className="bg-[#F06C22]/10 border border-[#F06C22]/20 rounded-xl p-3 mb-5">
-                      <p className="text-[#F06C22] text-[10px] font-bold uppercase tracking-widest animate-pulse">
+                      <p className="text-[#F06C22] text-[11px] font-bold uppercase tracking-widest animate-pulse">
                         Terminal Locked for {secondsRemaining}s
                       </p>
                     </div>
@@ -435,13 +435,13 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
               ) : (
                 <LogIn className="w-5 h-5 text-[#F06C22]" />
               )}
-              <span className="text-[9px] font-black uppercase tracking-widest">
+              <span className="text-[11px] font-black uppercase tracking-widest">
                 {isLoggingIn ? 'Connecting...' : user ? 'Sign Out of Domain' : 'Corporate Identity Link'}
               </span>
             </Button>
             
             {user && (
-              <p className="text-[8px] font-bold text-zinc-650 lowercase tracking-widest select-all">{user.email}</p>
+              <p className="text-[11px] font-bold text-zinc-650 lowercase tracking-widest select-all">{user.email}</p>
             )}
           </div>
         )}

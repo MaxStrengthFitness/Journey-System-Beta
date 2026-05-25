@@ -125,7 +125,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
           <div className="flex items-center gap-2">
             <Button 
               onClick={() => setView('leaderboard')}
-              className="bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-white font-black uppercase tracking-widest text-[10px] md:text-xs"
+              className="bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-white font-black uppercase tracking-widest text-[11px] md:text-xs"
             >
               <Trophy className="w-4 h-4 mr-2" />
               Machine Leaderboard
@@ -134,7 +134,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
             <Dialog open={isWizardOpen} onOpenChange={setIsWizardOpen}>
               <DialogTrigger 
                 render={
-                  <Button className="bg-gradient-to-r from-emerald-500 to-emerald-700 hover:from-emerald-400 hover:to-emerald-600 text-white font-black uppercase tracking-widest text-[10px] md:text-xs">
+                  <Button className="bg-gradient-to-r from-emerald-500 to-emerald-700 hover:from-emerald-400 hover:to-emerald-600 text-white font-black uppercase tracking-widest text-[11px] md:text-xs">
                     <Wand2 className="w-4 h-4 mr-2" />
                     AI Setup Wizard
                   </Button>
@@ -179,7 +179,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                 {generatedGuide && (
                   <div className="mt-4 p-4 bg-slate-50 dark:bg-[#0e171e] border border-slate-200 dark:border-slate-700 rounded-xl max-h-[400px] overflow-y-auto space-y-4">
                     <div className="space-y-2">
-                       <h4 className="text-[10px] font-black uppercase tracking-widest text-[#38BDF8]">Target Muscles</h4>
+                       <h4 className="text-[11px] font-black uppercase tracking-widest text-[#38BDF8]">Target Muscles</h4>
                        <div className="flex flex-wrap gap-2">
                          {generatedGuide.targetMuscles.map((t: string) => (
                             <Badge key={t} className="bg-slate-200 dark:bg-white/10 text-slate-800 dark:text-white hover:bg-slate-300 dark:hover:bg-white/20 border-0">{t}</Badge>
@@ -188,7 +188,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                     </div>
                     
                     <div className="space-y-2">
-                       <h4 className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">Initial Adjustments</h4>
+                       <h4 className="text-[11px] font-black uppercase tracking-widest text-[#F06C22]">Initial Adjustments</h4>
                        <ul className="space-y-1">
                          {generatedGuide.initialAdjustments.map((a: string, i: number) => (
                             <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
@@ -199,7 +199,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                     </div>
 
                     <div className="space-y-2">
-                       <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 dark:text-emerald-400">Entry & Safety</h4>
+                       <h4 className="text-[11px] font-black uppercase tracking-widest text-emerald-500 dark:text-emerald-400">Entry & Safety</h4>
                        <ul className="space-y-1">
                          {generatedGuide.entryAndSafety.map((a: string, i: number) => (
                             <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
@@ -210,7 +210,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                     </div>
                     
                     <div className="space-y-2">
-                       <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-[#115E8D]">Alignment & Posture</h4>
+                       <h4 className="text-[11px] font-black uppercase tracking-widest text-indigo-600 dark:text-[#115E8D]">Alignment & Posture</h4>
                        <ul className="space-y-1">
                          {generatedGuide.alignmentAndPosture.map((a: string, i: number) => (
                             <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
@@ -221,7 +221,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                     </div>
 
                     <div className="space-y-2">
-                       <h4 className="text-[10px] font-black uppercase tracking-widest text-amber-500">Client Modifications</h4>
+                       <h4 className="text-[11px] font-black uppercase tracking-widest text-amber-500">Client Modifications</h4>
                        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm text-amber-800 dark:text-amber-200 flex items-start gap-2">
                           <UserCog className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                           <span>{generatedGuide.clientModifications}</span>
@@ -241,7 +241,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`w-full text-center px-2 py-2 rounded-lg text-[10px] md:text-xs font-black uppercase tracking-widest transition-all border ${
+              className={`w-full text-center px-2 py-2 rounded-lg text-[11px] md:text-xs font-black uppercase tracking-widest transition-all border ${
                 activeCategory === cat
                   ? 'bg-[#F06C22] text-white border-[#F06C22] shadow-[0_4px_15px_rgba(240,108,34,0.3)]'
                   : 'bg-white/5 text-[#94A3B8] border-white/10 hover:bg-white/10 hover:text-white'
@@ -279,7 +279,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                     }}
                   />
                   <div className="absolute top-2 left-2 z-20">
-                    <span className="text-[9px] font-black tracking-widest text-[#38BDF8] uppercase bg-[#0A2E46]/80 backdrop-blur-sm px-1.5 py-0.5 rounded shadow-sm border border-[#38BDF8]/20">
+                    <span className="text-[11px] font-black tracking-widest text-[#38BDF8] uppercase bg-[#0A2E46]/80 backdrop-blur-sm px-1.5 py-0.5 rounded shadow-sm border border-[#38BDF8]/20">
                       Idx {indexNumber}
                     </span>
                   </div>
@@ -292,21 +292,21 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                   </h3>
                   
                   {/* Highlighted Target Muscles */}
-                  <p className="text-[#F06C22] text-[10px] sm:text-xs font-black uppercase tracking-widest mb-3 line-clamp-1">
+                  <p className="text-[#F06C22] text-[11px] sm:text-xs font-black uppercase tracking-widest mb-3 line-clamp-1">
                     {machine.target || 'General Base'}
                   </p>
                   
                   {/* Quick-Cue Data Grid */}
                   <div className="grid grid-cols-1 gap-1.5 mb-4 flex-1">
                     <div className="bg-white/5 border border-white/10 rounded-md p-2">
-                       <span className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-[#68717A] mb-0.5">Setup</span>
-                       <span className="block text-[10px] sm:text-xs font-semibold text-[#F8F9FA] line-clamp-2 leading-tight">
+                       <span className="block text-[11px] sm:text-[11px] font-black uppercase tracking-widest text-[#68717A] mb-0.5">Setup</span>
+                       <span className="block text-[11px] sm:text-xs font-semibold text-[#F8F9FA] line-clamp-2 leading-tight">
                          {machine.setup}
                        </span>
                     </div>
                     <div className="bg-white/5 border border-white/10 rounded-md p-2">
-                       <span className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-[#68717A] mb-0.5">Turnarounds</span>
-                       <span className="block text-[10px] sm:text-xs font-semibold text-[#F8F9FA] line-clamp-2 leading-tight">
+                       <span className="block text-[11px] sm:text-[11px] font-black uppercase tracking-widest text-[#68717A] mb-0.5">Turnarounds</span>
+                       <span className="block text-[11px] sm:text-xs font-semibold text-[#F8F9FA] line-clamp-2 leading-tight">
                          {machine.execution}
                        </span>
                     </div>
@@ -314,7 +314,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                   
                   {/* Sleek Interaction Button */}
                   <div className="mt-auto">
-                     <Button variant="ghost" className="w-full bg-white/5 hover:bg-white/10 text-[#CBD5E1] hover:text-white border border-white/10 hover:border-white/20 transition-all text-[9px] sm:text-[10px] font-black uppercase tracking-widest h-8 rounded-md">
+                     <Button variant="ghost" className="w-full bg-white/5 hover:bg-white/10 text-[#CBD5E1] hover:text-white border border-white/10 hover:border-white/20 transition-all text-[11px] sm:text-[11px] font-black uppercase tracking-widest h-8 rounded-md">
                         Insights
                      </Button>
                   </div>
@@ -352,7 +352,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                   <div className="text-4xl font-black text-[#115E8D]/40 italic tabular-nums leading-none">
                     {activeMachineIndex.toString().padStart(2, '0')}
                   </div>
-                  <Badge variant="outline" className="bg-[#115E8D]/10 text-[#38BDF8] border-[#38BDF8]/20 uppercase text-[9px] font-black tracking-widest px-2 py-0.5">
+                  <Badge variant="outline" className="bg-[#115E8D]/10 text-[#38BDF8] border-[#38BDF8]/20 uppercase text-[11px] font-black tracking-widest px-2 py-0.5">
                     {activeMachine.category}
                   </Badge>
                 </div>
@@ -361,7 +361,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                     onClick={handleToggleEdit}
                     variant="ghost" 
                     className={cn(
-                      "h-8 px-4 text-[10px] font-black uppercase tracking-widest rounded-lg border transition-all",
+                      "h-8 px-4 text-[11px] font-black uppercase tracking-widest rounded-lg border transition-all",
                       isEditMode 
                         ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/30" 
                         : "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10 hover:text-white"
@@ -401,18 +401,18 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                     
                     <div className="mt-4 flex flex-wrap gap-2">
                        {!isEditMode && activeMachine.kinematicClassification && (
-                         <Badge className="bg-slate-700 text-slate-300 border-slate-600 uppercase text-[9px] font-black tracking-widest px-3 py-1">
+                         <Badge className="bg-slate-700 text-slate-300 border-slate-600 uppercase text-[11px] font-black tracking-widest px-3 py-1">
                            {activeMachine.kinematicClassification}
                          </Badge>
                        )}
                        {!isEditMode && activeMachine.setupGap && (
-                         <Badge className="bg-slate-700 text-slate-300 border-slate-600 uppercase text-[9px] font-black tracking-widest px-3 py-1">
+                         <Badge className="bg-slate-700 text-slate-300 border-slate-600 uppercase text-[11px] font-black tracking-widest px-3 py-1">
                            {activeMachine.setupGap}
                          </Badge>
                        )}
                        {isEditMode ? (
                          <div className="flex flex-col gap-2 w-full mt-2">
-                            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Target Muscles (Comma Separated)</span>
+                            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Target Muscles (Comma Separated)</span>
                             <input 
                               value={(editedMachine?.targetMuscles || []).join(', ')} 
                               onChange={(e) => updateField('targetMuscles', e.target.value.split(',').map((s: string) => s.trim()))}
@@ -421,7 +421,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                          </div>
                        ) : (
                          (activeMachine.targetMuscles || [activeMachine.target]).map((muscle: string, i: number) => (
-                           <Badge key={i} className="bg-[#115E8D]/30 text-[#38BDF8] border border-[#38BDF8]/20 uppercase text-[9px] font-black tracking-widest px-3 py-1">
+                           <Badge key={i} className="bg-[#115E8D]/30 text-[#38BDF8] border border-[#38BDF8]/20 uppercase text-[11px] font-black tracking-widest px-3 py-1">
                              {muscle}
                            </Badge>
                          ))
@@ -437,17 +437,17 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                   {/* CARD 2: Analytics & Telemetry (Col Span 2) */}
                   <div className="col-span-1 md:col-span-2 bg-slate-800/60 border border-slate-700/50 rounded-2xl p-5 flex flex-col justify-between shadow-lg">
                     <div>
-                      <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-3 block">Performance Analytics</span>
+                      <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-3 block">Performance Analytics</span>
                       <div className="space-y-4">
                         <div>
-                          <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] mb-1">Utilization</p>
+                          <p className="text-[11px] font-black uppercase text-slate-500 tracking-[0.2em] mb-1">Utilization</p>
                           <div className="flex items-baseline gap-2">
                             <span className="text-3xl font-black text-white">1,284</span>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total Reps</span>
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Total Reps</span>
                           </div>
                         </div>
                         <div>
-                          <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] mb-1">Avg Quality</p>
+                          <p className="text-[11px] font-black uppercase text-slate-500 tracking-[0.2em] mb-1">Avg Quality</p>
                           <div className="flex items-center gap-3">
                             <span className="text-3xl font-black text-emerald-400">2.8</span>
                             <div className="h-2 w-full bg-slate-900 rounded-full overflow-hidden border border-white/5">
@@ -458,7 +458,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                       </div>
                     </div>
                     <div className="mt-4 pt-4 border-t border-white/5">
-                       <p className="text-[10px] font-semibold text-slate-500 leading-tight italic">
+                       <p className="text-[11px] font-semibold text-slate-500 leading-tight italic">
                          "Consistent high performance across 24 unique client profiles."
                        </p>
                     </div>
@@ -467,11 +467,11 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                   {/* CARD 3: Biomechanical Notes (Col Span 4) */}
                   <div className="col-span-1 md:col-span-4 bg-slate-800/60 border border-slate-700/50 rounded-2xl p-5 flex flex-col shadow-lg">
                     <div className="flex items-center justify-between mb-3 shrink-0">
-                      <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-2">
+                      <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-2">
                         <Activity className="w-3.5 h-3.5 text-[#F06C22]" />
                         Biomechanical Notes & Execution
                       </span>
-                      <Button variant="ghost" className="h-6 px-2 text-[9px] font-black uppercase tracking-widest text-[#F06C22] hover:bg-[#F06C22]/10">
+                      <Button variant="ghost" className="h-6 px-2 text-[11px] font-black uppercase tracking-widest text-[#F06C22] hover:bg-[#F06C22]/10">
                         Expert Cues
                       </Button>
                     </div>
@@ -497,18 +497,18 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
 
                   {/* CARD 4: Setup & Alignment (Col Span 3) */}
                   <div className="col-span-1 md:col-span-3 bg-slate-800/60 border border-slate-700/50 rounded-2xl p-5 flex flex-col shadow-lg relative overflow-hidden">
-                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-3 flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-3 flex items-center gap-2 shrink-0">
                       <Settings2 className="w-3.5 h-3.5 text-[#38BDF8]" />
                       Setup & Alignment Strategy
                     </span>
                     <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar max-h-[250px]">
                       {syncedMachine?.standardSettings && Object.keys(syncedMachine.standardSettings).length > 0 && (
                         <div className="mb-4">
-                          <h4 className="text-[9px] font-black uppercase text-[#F06C22] tracking-widest mb-2 border-b border-white/10 pb-1">Standard Measurements</h4>
+                          <h4 className="text-[11px] font-black uppercase text-[#F06C22] tracking-widest mb-2 border-b border-white/10 pb-1">Standard Measurements</h4>
                           <div className="grid grid-cols-2 gap-2 mb-3">
                             {Object.entries(syncedMachine.standardSettings).map(([key, val]) => (
                                <div key={key} className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 shadow-inner">
-                                  <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{key}</p>
+                                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">{key}</p>
                                   <p className="text-white font-black text-sm">{String(val)}</p>
                                </div>
                             ))}
@@ -525,7 +525,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                         <ul className="space-y-2">
                            {(activeMachine.setupCues || [activeMachine.setup]).map((cue: string, i: number) => (
                             <li key={i} className="flex gap-3 items-center p-2 rounded-lg bg-white/5 border border-white/5">
-                              <span className="w-5 h-5 flex items-center justify-center rounded bg-slate-900 text-[10px] font-black text-[#38BDF8] border border-[#38BDF8]/20">{i+1}</span>
+                              <span className="w-5 h-5 flex items-center justify-center rounded bg-slate-900 text-[11px] font-black text-[#38BDF8] border border-[#38BDF8]/20">{i+1}</span>
                               <span className="text-xs text-slate-300 font-medium">{cue}</span>
                             </li>
                           ))}
@@ -539,7 +539,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                     "col-span-1 md:col-span-3 bg-slate-800/60 rounded-2xl p-5 flex flex-col shadow-lg border relative",
                     activeMachine.clinicalWarnings ? "border-rose-500/50" : "border-slate-700/50"
                   )}>
-                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-3 flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-3 flex items-center gap-2 shrink-0">
                       <ShieldCheck className="w-3.5 h-3.5 text-rose-500" />
                       Clinical Safety & Contraindications
                     </span>
@@ -556,7 +556,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                               placeholder="Contraindicated For (comma separated)..."
                               value={(editedMachine?.contraindicatedFor || []).join(', ')} 
                               onChange={(e) => updateField('contraindicatedFor', e.target.value.split(',').map((s: string) => s.trim()))}
-                              className="w-full bg-slate-900 border-slate-700 border rounded-lg text-[10px] text-slate-300 px-3 py-1.5 focus:border-[#F06C22] outline-none"
+                              className="w-full bg-slate-900 border-slate-700 border rounded-lg text-[11px] text-slate-300 px-3 py-1.5 focus:border-[#F06C22] outline-none"
                             />
                          </div>
                        ) : (
@@ -573,7 +573,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                             {activeMachine.contraindicatedFor && (
                               <div className="flex flex-wrap gap-1.5 mt-2">
                                 {activeMachine.contraindicatedFor.map((c: string, idx: number) => (
-                                  <Badge key={idx} variant="outline" className="border-rose-500/30 text-rose-400 bg-rose-500/5 text-[8px] uppercase tracking-widest font-black">
+                                  <Badge key={idx} variant="outline" className="border-rose-500/30 text-rose-400 bg-rose-500/5 text-[11px] uppercase tracking-widest font-black">
                                     {c}
                                   </Badge>
                                 ))}
@@ -590,7 +590,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                   {/* CARD 6: Sequencing Contraindications (Col Span 6) */}
                   {!isEditMode && activeMachine.sequencingContraindications && activeMachine.sequencingContraindications.length > 0 && (
                     <div className="col-span-1 md:col-span-6 bg-rose-950/20 border border-rose-900 rounded-2xl p-5 shadow-lg relative overflow-hidden">
-                      <span className="text-[10px] uppercase tracking-wider text-rose-400 font-black mb-3 flex items-center gap-2 shrink-0">
+                      <span className="text-[11px] uppercase tracking-wider text-rose-400 font-black mb-3 flex items-center gap-2 shrink-0">
                         <ShieldCheck className="w-4 h-4 text-rose-500" />
                         Sequencing Contraindications
                       </span>
@@ -615,13 +615,13 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                           </div>
                           <div>
                             <h3 className="text-xs md:text-sm font-black uppercase tracking-[0.2em] text-[#F8F9FA]">The AI Clinical Strategist</h3>
-                            <p className="text-[10px] text-slate-500 font-medium mt-1 font-mono uppercase tracking-widest">Generate neural-mapped setup protocols</p>
+                            <p className="text-[11px] text-slate-500 font-medium mt-1 font-mono uppercase tracking-widest">Generate neural-mapped setup protocols</p>
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
                         {!isEditMode && activeMachine.requiresHandoff && (
-                          <Badge className="bg-sky-900/30 text-sky-400 border-sky-500/50 text-[10px] uppercase tracking-widest font-black py-2 px-3 flex items-center gap-2">
+                          <Badge className="bg-sky-900/30 text-sky-400 border-sky-500/50 text-[11px] uppercase tracking-widest font-black py-2 px-3 flex items-center gap-2">
                             <Hand className="w-3.5 h-3.5" />
                             Intrapersonal Load Transfer Required
                           </Badge>
@@ -631,7 +631,7 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
                             setWizardSelectedMachine(activeMachine.id);
                             setIsWizardOpen(true);
                           }}
-                          className="bg-[#F06C22] hover:bg-[#D95B1B] text-white font-black uppercase tracking-widest text-[10px] h-11 px-8 rounded-full shadow-[0_8px_30px_rgba(240,108,34,0.3)] transition-all hover:scale-105 active:scale-95 flex items-center gap-2 group"
+                          className="bg-[#F06C22] hover:bg-[#D95B1B] text-white font-black uppercase tracking-widest text-[11px] h-11 px-8 rounded-full shadow-[0_8px_30px_rgba(240,108,34,0.3)] transition-all hover:scale-105 active:scale-95 flex items-center gap-2 group"
                         >
                           <Zap className="w-4 h-4 fill-white group-hover:animate-pulse" />
                           Generate Setup Strategy
@@ -647,17 +647,17 @@ export function MachineKnowledgeDashboard({ setView, machines }: { setView: (vie
               <div className="p-4 bg-[#061e30] border-t border-white/5 shrink-0 flex items-center justify-between">
                  <div className="flex gap-4">
                     <div className="text-center">
-                       <p className="text-[8px] uppercase tracking-widest text-slate-500 font-black">Base Male</p>
-                       <p className="text-sm font-black text-white">{activeMachine.baseMale} <span className="text-[9px] text-slate-500">LBS</span></p>
+                       <p className="text-[11px] uppercase tracking-widest text-slate-500 font-black">Base Male</p>
+                       <p className="text-sm font-black text-white">{activeMachine.baseMale} <span className="text-[11px] text-slate-500">LBS</span></p>
                     </div>
                     <div className="text-center">
-                       <p className="text-[8px] uppercase tracking-widest text-slate-500 font-black">Base Female</p>
-                       <p className="text-sm font-black text-white">{activeMachine.baseFemale} <span className="text-[9px] text-slate-500">LBS</span></p>
+                       <p className="text-[11px] uppercase tracking-widest text-slate-500 font-black">Base Female</p>
+                       <p className="text-sm font-black text-white">{activeMachine.baseFemale} <span className="text-[11px] text-slate-500">LBS</span></p>
                     </div>
                  </div>
                  <Button 
                     variant="link" 
-                    className="text-[#38BDF8] text-[10px] font-black uppercase tracking-widest hover:no-underline"
+                    className="text-[#38BDF8] text-[11px] font-black uppercase tracking-widest hover:no-underline"
                     onClick={() => {
                       // Navigate to full insights or something
                     }}

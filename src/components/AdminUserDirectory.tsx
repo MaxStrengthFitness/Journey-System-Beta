@@ -178,7 +178,7 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
               <h2 className="text-xl font-black uppercase italic tracking-tight text-slate-900 dark:text-white leading-none">
                 User Directory
               </h2>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1">
                 Manage Roles & System Access
               </p>
             </div>
@@ -187,7 +187,7 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
           <div className="flex items-center gap-3">
             <Button
               onClick={() => setIsCreateModalOpen(true)}
-              className="text-[10px] font-black uppercase tracking-widest h-10 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white"
+              className="text-[11px] font-black uppercase tracking-widest h-10 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white"
             >
               <Plus className="w-4 h-4 mr-2" />
               New User
@@ -195,7 +195,7 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
             <Button
               onClick={() => fetchUsers(true)}
               variant="outline"
-              className="text-[10px] font-black uppercase tracking-widest h-10 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
+              className="text-[11px] font-black uppercase tracking-widest h-10 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
             >
               View All Staff (Max 50)
             </Button>
@@ -242,7 +242,7 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
                     </h3>
                     <p
                       className={cn(
-                        "text-[10px] uppercase font-bold tracking-widest",
+                        "text-[11px] uppercase font-bold tracking-widest",
                         getRoleColor(user.role).split(" ")[0],
                       )}
                     >
@@ -255,7 +255,7 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
                   <Badge
                     variant="outline"
                     className={cn(
-                      "px-2 py-1 text-[9px] uppercase font-black",
+                      "px-2 py-1 text-[11px] uppercase font-black",
                       getRoleColor(user.role),
                     )}
                   >
@@ -272,7 +272,7 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
                           setEditingUserId(null);
                         }}
                       >
-                        <SelectTrigger className="w-36 h-9 text-[10px] font-bold uppercase rounded-lg">
+                        <SelectTrigger className="w-36 h-9 text-[11px] font-bold uppercase rounded-lg">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -289,7 +289,7 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
                       </Select>
                       <Button
                         variant="ghost"
-                        className="h-9 text-[10px]"
+                        className="h-9 text-[11px]"
                         onClick={() => setEditingUserId(null)}
                       >
                         Cancel

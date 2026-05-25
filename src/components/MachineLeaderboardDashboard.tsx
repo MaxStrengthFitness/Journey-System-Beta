@@ -301,7 +301,7 @@ export function MachineLeaderboardDashboard({
               </div>
               <div>
                 <h1 className="text-2xl font-black uppercase tracking-tighter italic">Machine Performance</h1>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                   <BarChart3 className="w-3 h-3" />
                   Real-Time Rank Intelligence
                 </p>
@@ -313,7 +313,7 @@ export function MachineLeaderboardDashboard({
                   <button 
                     onClick={() => setViewScope('studio')}
                     className={cn(
-                      "px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                      "px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
                       viewScope === 'studio' ? "bg-[#38BDF8] text-[#0A2E46]" : "text-slate-400 hover:text-white"
                     )}
                   >
@@ -322,7 +322,7 @@ export function MachineLeaderboardDashboard({
                   <button 
                     onClick={() => setViewScope('global')}
                     className={cn(
-                      "px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                      "px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
                       viewScope === 'global' ? "bg-[#F06C22] text-white" : "text-slate-400 hover:text-white"
                     )}
                   >
@@ -369,11 +369,11 @@ export function MachineLeaderboardDashboard({
             <>
               <section>
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-[10px] font-black uppercase tracking-[0.25em] text-[#38BDF8] flex items-center gap-3">
+                  <h2 className="text-[11px] font-black uppercase tracking-[0.25em] text-[#38BDF8] flex items-center gap-3">
                     <Sparkles className="w-4 h-4 fill-[#38BDF8]/20" />
                     {viewScope === 'global' ? 'Global Network Elite' : 'Studio Performance Hub'}
                   </h2>
-                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Live Aggregation</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Live Aggregation</p>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -396,12 +396,12 @@ export function MachineLeaderboardDashboard({
                            <span className="text-2xl font-black text-white italic">{entry.clientName[0]}</span>
                         </div>
                         <h3 className="text-xl font-black uppercase italic text-white tracking-tight mb-1">{entry.clientName}</h3>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-4">SYNCED RANKING</p>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">SYNCED RANKING</p>
                           <div className="text-4xl font-black text-white italic tracking-tighter leading-none">
                             {entry.weight} <span className="text-[12px] font-bold uppercase text-slate-500 not-italic tracking-widest">LBS</span>
                           </div>
                           <div className="py-2 px-4 bg-[#0A2E46] border border-[#38BDF8]/20 rounded-xl inline-flex items-center gap-3">
-                             <span className="text-[10px] font-black uppercase text-[#38BDF8] tracking-widest">G:{entry.gap || 0} • {entry.reps || 0} REPS</span>
+                             <span className="text-[11px] font-black uppercase text-[#38BDF8] tracking-widest">G:{entry.gap || 0} • {entry.reps || 0} REPS</span>
                           </div>
                         </div>
                     </motion.div>
@@ -417,7 +417,7 @@ export function MachineLeaderboardDashboard({
               <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
                    <div className="flex items-center justify-between">
-                     <h2 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-3">
+                     <h2 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-3">
                        <BarChart3 className="w-4 h-4 text-[#F06C22]" />
                        Real-Time Distribution
                      </h2>
@@ -459,7 +459,7 @@ export function MachineLeaderboardDashboard({
                             {Object.entries({ p99: percentiles.p99, p90: percentiles.p90, p75: percentiles.p75, p50: percentiles.p50 })
                               .map(([key, val]) => (
                                 <div key={key} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-xl border border-white/5">
-                                  <span className="text-[10px] font-black uppercase text-slate-500">{key.toUpperCase()} Rank</span>
+                                  <span className="text-[11px] font-black uppercase text-slate-500">{key.toUpperCase()} Rank</span>
                                   <span className="text-sm font-black text-[#38BDF8] italic">{val} LBS</span>
                                 </div>
                               ))}

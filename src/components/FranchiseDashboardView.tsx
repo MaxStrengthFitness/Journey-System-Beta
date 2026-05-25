@@ -149,9 +149,9 @@ export function FranchiseDashboardView({ authTrainer, allStudios, allTrainers, n
 
         {isSuperAdmin && (
           <div className="flex items-center gap-2">
-            <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">View Network:</Label>
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">View Network:</Label>
             <Select value={selectedNetworkId || ''} onValueChange={setSelectedNetworkId}>
-              <SelectTrigger className="w-[200px] h-10 font-bold uppercase text-[10px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl">
+              <SelectTrigger className="w-[200px] h-10 font-bold uppercase text-[11px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl">
                 <SelectValue placeholder="Select Network" />
               </SelectTrigger>
               <SelectContent>
@@ -213,7 +213,7 @@ export function FranchiseDashboardView({ authTrainer, allStudios, allTrainers, n
             <Megaphone className="w-5 h-5 text-[#F06C22]" />
             <div>
               <CardTitle className="text-xl font-black uppercase italic tracking-tight">Franchise Internal Announcements</CardTitle>
-              <CardDescription className="text-[10px] uppercase tracking-widest font-bold mt-1">Broadcast direct updates to your network</CardDescription>
+              <CardDescription className="text-[11px] uppercase tracking-widest font-bold mt-1">Broadcast direct updates to your network</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -221,7 +221,7 @@ export function FranchiseDashboardView({ authTrainer, allStudios, allTrainers, n
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Select Scope</Label>
+                <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Select Scope</Label>
                 <Select value={newAnnouncement.targetScope} onValueChange={(v: 'network' | 'studio') => setNewAnnouncement(p => ({ ...p, targetScope: v, targetId: v === 'network' ? 'all_owned' : ownedStudios[0]?.id }))}>
                   <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-xs">
                     <SelectValue />
@@ -235,7 +235,7 @@ export function FranchiseDashboardView({ authTrainer, allStudios, allTrainers, n
               
               {newAnnouncement.targetScope === 'studio' && (
                 <div className="space-y-2 animate-in fade-in">
-                   <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Select Studio</Label>
+                   <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Select Studio</Label>
                    <Select value={newAnnouncement.targetId} onValueChange={(v) => setNewAnnouncement(p => ({ ...p, targetId: v }))}>
                     <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-xs">
                       <SelectValue />
@@ -248,7 +248,7 @@ export function FranchiseDashboardView({ authTrainer, allStudios, allTrainers, n
               )}
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Headline</Label>
+                <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Headline</Label>
                 <Input 
                   value={newAnnouncement.title || ''} 
                   onChange={e => setNewAnnouncement(p => ({ ...p, title: e.target.value }))}
@@ -258,7 +258,7 @@ export function FranchiseDashboardView({ authTrainer, allStudios, allTrainers, n
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Main Message</Label>
+                <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Main Message</Label>
                 <Textarea 
                   value={newAnnouncement.longContent || ''} 
                   onChange={e => setNewAnnouncement(p => ({ ...p, longContent: e.target.value }))}
@@ -268,7 +268,7 @@ export function FranchiseDashboardView({ authTrainer, allStudios, allTrainers, n
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Short Summary (Ticker)</Label>
+                <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Short Summary (Ticker)</Label>
                 <Input 
                   placeholder="Appears on dashboard widgets..." 
                   className="h-10 bg-slate-50 dark:bg-slate-950"
@@ -279,9 +279,9 @@ export function FranchiseDashboardView({ authTrainer, allStudios, allTrainers, n
 
               <div className="flex flex-wrap gap-4">
                 <div className="flex-1 min-w-[120px] space-y-2">
-                  <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Type</Label>
+                  <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Type</Label>
                   <Select value={newAnnouncement.type || 'news'} onValueChange={(v: any) => setNewAnnouncement(p => ({ ...p, type: v }))}>
-                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[10px] tracking-widest border-slate-200 dark:border-slate-800">
+                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[11px] tracking-widest border-slate-200 dark:border-slate-800">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -293,9 +293,9 @@ export function FranchiseDashboardView({ authTrainer, allStudios, allTrainers, n
                   </Select>
                 </div>
                 <div className="flex-1 min-w-[120px] space-y-2">
-                  <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Urgency</Label>
+                  <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Urgency</Label>
                   <Select value={newAnnouncement.priority || 'low'} onValueChange={(v: any) => setNewAnnouncement(p => ({ ...p, priority: v }))}>
-                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[10px] tracking-widest border-slate-200 dark:border-slate-800">
+                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[11px] tracking-widest border-slate-200 dark:border-slate-800">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -305,9 +305,9 @@ export function FranchiseDashboardView({ authTrainer, allStudios, allTrainers, n
                   </Select>
                 </div>
                 <div className="flex-1 min-w-[120px] space-y-2">
-                  <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Lifespan</Label>
+                  <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Lifespan</Label>
                   <Select value={lifespan} onValueChange={v => setLifespan(v)}>
-                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[10px] tracking-widest border-slate-200 dark:border-slate-800">
+                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[11px] tracking-widest border-slate-200 dark:border-slate-800">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -330,7 +330,7 @@ export function FranchiseDashboardView({ authTrainer, allStudios, allTrainers, n
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-900/40 rounded-[24px] p-5 border border-slate-100 dark:border-slate-800 h-full max-h-[500px] overflow-y-auto w-full">
-              <h3 className="text-[10px] tracking-widest font-black uppercase text-slate-500 mb-4 sticky top-0 bg-slate-50 dark:bg-slate-900/40 py-1">Recent Transmissions</h3>
+              <h3 className="text-[11px] tracking-widest font-black uppercase text-slate-500 mb-4 sticky top-0 bg-slate-50 dark:bg-slate-900/40 py-1">Recent Transmissions</h3>
               <div className="space-y-3">
                 {announcements.length === 0 ? (
                   <p className="text-xs text-slate-400 font-medium py-8 text-center border-dashed border-2 dark:border-slate-800 rounded-2xl">No broadcasts sent yet.</p>
@@ -341,8 +341,8 @@ export function FranchiseDashboardView({ authTrainer, allStudios, allTrainers, n
                         <div>
                           <div className="flex flex-wrap items-center gap-2 mb-1">
                             <span className="font-black text-sm uppercase italic tracking-tight">{a.title}</span>
-                            {a.priority === 'high' && <Badge className="bg-rose-500 hover:bg-rose-600 text-white border-0 text-[8px] font-black uppercase px-1.5 h-4">Urgent</Badge>}
-                            <Badge variant="outline" className="bg-white/50 dark:bg-black/20 text-[8px] font-black uppercase tracking-widest px-1.5 border-current opacity-70">
+                            {a.priority === 'high' && <Badge className="bg-rose-500 hover:bg-rose-600 text-white border-0 text-[11px] font-black uppercase px-1.5 h-4">Urgent</Badge>}
+                            <Badge variant="outline" className="bg-white/50 dark:bg-black/20 text-[11px] font-black uppercase tracking-widest px-1.5 border-current opacity-70">
                               {a.type || 'news'}
                             </Badge>
                           </div>
@@ -353,7 +353,7 @@ export function FranchiseDashboardView({ authTrainer, allStudios, allTrainers, n
                         <p className="text-xs italic mt-1 opacity-80 line-clamp-3">{a.longContent}</p>
                       )}
                       <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-current border-opacity-10 justify-between">
-                        <span className="text-[9px] uppercase font-bold tracking-widest opacity-60">To: {a.targetScope === 'network' ? 'All Studios' : ownedStudios.find(s => s.id === a.studioId)?.name || 'Studio'}</span>
+                        <span className="text-[11px] uppercase font-bold tracking-widest opacity-60">To: {a.targetScope === 'network' ? 'All Studios' : ownedStudios.find(s => s.id === a.studioId)?.name || 'Studio'}</span>
                       </div>
                     </div>
                   ))

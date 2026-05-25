@@ -14,14 +14,14 @@ export const MaxStrengthLogo: React.FC<MaxStrengthLogoProps> = ({
   theme = 'light'
 }) => {
   const boxSize = {
-    sm: 'w-6 h-6 text-[10px]',
+    sm: 'w-6 h-6 text-[11px]',
     md: 'w-8 h-8 text-[12px]',
     lg: 'w-12 h-12 text-[18px]',
     xl: 'w-20 h-20 text-[32px]'
   }[size];
 
   const textSize = {
-    sm: 'text-[10px]',
+    sm: 'text-[11px]',
     md: 'text-[14px]',
     lg: 'text-[24px]',
     xl: 'text-[42px]'

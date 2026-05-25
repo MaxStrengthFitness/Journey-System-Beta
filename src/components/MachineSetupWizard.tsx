@@ -113,7 +113,7 @@ export function MachineSetupWizard({ client, machine }: Props) {
             </div>
             <div>
               <h3 className="text-sm font-black uppercase tracking-widest text-[#F8F9FA]">Clinical Strategy Engine</h3>
-              <p className="text-[10px] uppercase tracking-widest text-[#68717A] mt-0.5">Cross-Referencing Mechanics & Profile</p>
+              <p className="text-[11px] uppercase tracking-widest text-[#68717A] mt-0.5">Cross-Referencing Mechanics & Profile</p>
             </div>
           </div>
           
@@ -152,10 +152,10 @@ export function MachineSetupWizard({ client, machine }: Props) {
           </Button>
 
           {!referenceData && (
-            <p className="text-[10px] text-red-400 font-bold tracking-widest text-center mt-2">Missing reference data for this machine.</p>
+            <p className="text-[11px] text-red-400 font-bold tracking-widest text-center mt-2">Missing reference data for this machine.</p>
           )}
           {error && (
-            <p className="text-[10px] text-red-500 font-bold tracking-widest text-center bg-red-500/10 p-2 rounded-lg mt-2">{error}</p>
+            <p className="text-[11px] text-red-500 font-bold tracking-widest text-center bg-red-500/10 p-2 rounded-lg mt-2">{error}</p>
           )}
         </CardContent>
       </Card>
@@ -170,13 +170,13 @@ export function MachineSetupWizard({ client, machine }: Props) {
                <div className="w-3 h-3 rounded-full bg-amber-500" />
                <div className="w-3 h-3 rounded-full bg-emerald-500" />
              </div>
-             <span className="text-[10px] font-mono text-slate-500 ml-2">msf_clinical_guidance.sh</span>
+             <span className="text-[11px] font-mono text-slate-500 ml-2">msf_clinical_guidance.sh</span>
           </div>
           
           <CardContent className="p-5 font-mono text-sm">
             <div className="flex flex-wrap gap-2 mb-6">
               {result.targetMuscles.map(m => (
-                <Badge key={m} className="bg-slate-800 text-[#38BDF8] border border-[#38BDF8]/30 uppercase text-[9px] font-black tracking-widest px-3 py-1">
+                <Badge key={m} className="bg-slate-800 text-[#38BDF8] border border-[#38BDF8]/30 uppercase text-[11px] font-black tracking-widest px-3 py-1">
                   {m}
                 </Badge>
               ))}

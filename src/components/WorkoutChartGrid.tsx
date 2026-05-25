@@ -267,7 +267,7 @@ export function WorkoutChartGrid({
               {client.firstName} {client.lastName}
             </h1>
             <div className="flex items-center gap-3">
-              <Badge className="bg-[#F06C22] text-white text-[8px] font-bold uppercase tracking-[0.2em] px-2 h-4 border-none">
+              <Badge className="bg-[#F06C22] text-white text-[11px] font-bold uppercase tracking-[0.2em] px-2 h-4 border-none">
                 Expanded Matrix
               </Badge>
               <div className="hidden sm:flex gap-1.5 ml-4">
@@ -275,7 +275,7 @@ export function WorkoutChartGrid({
                   size="sm"
                   onClick={() => setActiveFilter('ALL')}
                   className={cn(
-                    "h-6 px-3 rounded-md text-[9px] font-black uppercase tracking-widest border-none transition-all",
+                    "h-6 px-3 rounded-md text-[11px] font-black uppercase tracking-widest border-none transition-all",
                     activeFilter === 'ALL' 
                       ? "bg-[#F06C22] text-white shadow-[0_0_10px_rgba(240,108,34,0.4)]" 
                       : "bg-slate-800 text-slate-500 hover:text-slate-300 hover:bg-slate-700"
@@ -287,7 +287,7 @@ export function WorkoutChartGrid({
                   size="sm"
                   onClick={() => setActiveFilter('A')}
                   className={cn(
-                    "h-6 px-3 rounded-md text-[9px] font-black uppercase tracking-widest border-none transition-all",
+                    "h-6 px-3 rounded-md text-[11px] font-black uppercase tracking-widest border-none transition-all",
                     activeFilter === 'A' 
                       ? "bg-[#F06C22] text-white shadow-[0_0_10px_rgba(240,108,34,0.4)]" 
                       : "bg-slate-800 text-slate-500 hover:text-slate-300 hover:bg-slate-700"
@@ -300,7 +300,7 @@ export function WorkoutChartGrid({
                     size="sm"
                     onClick={() => setActiveFilter('B')}
                     className={cn(
-                      "h-6 px-3 rounded-md text-[9px] font-black uppercase tracking-widest border-none transition-all",
+                      "h-6 px-3 rounded-md text-[11px] font-black uppercase tracking-widest border-none transition-all",
                       activeFilter === 'B' 
                         ? "bg-[#F06C22] text-white shadow-[0_0_10px_rgba(240,108,34,0.4)]" 
                         : "bg-slate-800 text-slate-500 hover:text-slate-300 hover:bg-slate-700"
@@ -314,7 +314,7 @@ export function WorkoutChartGrid({
                 <Button
                   size="sm"
                   onClick={() => onLoadMoreHistory ? onLoadMoreHistory() : setSessionLimit(prev => prev + 20)}
-                  className="h-6 px-3 rounded-md text-[9px] font-bold uppercase tracking-widest bg-[#38BDF8]/10 text-[#38BDF8] border border-[#38BDF8]/20 hover:bg-[#38BDF8]/20 transition-all font-mono"
+                  className="h-6 px-3 rounded-md text-[11px] font-bold uppercase tracking-widest bg-[#38BDF8]/10 text-[#38BDF8] border border-[#38BDF8]/20 hover:bg-[#38BDF8]/20 transition-all font-mono"
                 >
                   More History (+20)
                 </Button>
@@ -331,14 +331,14 @@ export function WorkoutChartGrid({
                  placeholder="SEARCH MACHINES..." 
                  value={machineSearchQuery}
                  onChange={(e) => setMachineSearchQuery(e.target.value)}
-                 className="h-10 bg-slate-800 border-2 border-slate-700 rounded-xl px-4 pl-10 text-[10px] font-bold uppercase tracking-widest text-white placeholder:text-slate-400 focus:outline-none focus:border-[#F06C22] w-[200px]"
+                 className="h-10 bg-slate-800 border-2 border-slate-700 rounded-xl px-4 pl-10 text-[11px] font-bold uppercase tracking-widest text-white placeholder:text-slate-400 focus:outline-none focus:border-[#F06C22] w-[200px]"
                />
                <Dumbbell className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
              </div>
            </div>
            
            <div className="text-right">
-              <p className="text-[8px] font-bold uppercase text-slate-700 dark:text-slate-300 tracking-widest leading-none mb-1">Historical Span</p>
+              <p className="text-[11px] font-bold uppercase text-slate-700 dark:text-slate-300 tracking-widest leading-none mb-1">Historical Span</p>
               <p className="text-lg sm:text-2xl font-bold italic text-white tracking-tighter leading-none">{sessions.length} Sessions</p>
            </div>
            <Activity className="w-8 h-8 text-[#F06C22] opacity-50 hidden sm:block" />
@@ -364,8 +364,8 @@ export function WorkoutChartGrid({
            </AreaChart>
          </ResponsiveContainer>
          <div className="absolute top-2 left-6 sm:left-8 flex flex-col">
-           <span className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Total Volume Trend</span>
-           <span className="text-[9px] text-slate-500 italic mt-0.5 max-w-xs truncate hidden sm:block">Charts reflect currently loaded history. Load more sessions to expand the timeline.</span>
+           <span className="text-[11px] font-bold uppercase text-slate-500 tracking-widest">Total Volume Trend</span>
+           <span className="text-[11px] text-slate-500 italic mt-0.5 max-w-xs truncate hidden sm:block">Charts reflect currently loaded history. Load more sessions to expand the timeline.</span>
          </div>
       </div>
 
@@ -402,11 +402,11 @@ export function WorkoutChartGrid({
                   >
                     <div className="flex flex-col items-center justify-center space-y-1">
                       <div className="bg-slate-900 border border-slate-700 rounded-md px-2 py-0.5 shadow-sm group-hover:border-[#F06C22]/50 transition-colors">
-                        <span className="text-[#F06C22] font-bold tabular-nums text-[10px] leading-none">
+                        <span className="text-[#F06C22] font-bold tabular-nums text-[11px] leading-none">
                           {sessionNum.toString().padStart(2, '0')}
                         </span>
                       </div>
-                      <p className="text-[10px] font-bold tracking-tighter text-slate-400 tabular-nums leading-none uppercase">
+                      <p className="text-[11px] font-bold tracking-tighter text-slate-400 tabular-nums leading-none uppercase">
                         {new Date(parseSessionDate(session.date)).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}
                       </p>
                     </div>
@@ -434,7 +434,7 @@ export function WorkoutChartGrid({
                     <div className="flex flex-col h-full justify-center space-y-0.5">
                       <div className="flex items-center gap-1.5 overflow-hidden">
                          <span className={cn(
-                            "text-[8px] font-black uppercase tracking-tighter leading-none truncate px-1.5 py-0.5 rounded-[4px] border shrink-0 inline-block max-w-[150px] flex items-center justify-between",
+                            "text-[11px] font-black uppercase tracking-tighter leading-none truncate px-1.5 py-0.5 rounded-[4px] border shrink-0 inline-block max-w-[150px] flex items-center justify-between",
                             getMuscleGroupColor(machine.name)
                          )}>
                             <span>{machine.name}</span>
@@ -454,7 +454,7 @@ export function WorkoutChartGrid({
                               <span className="text-[7px] font-bold uppercase tracking-tighter text-slate-400 group-hover/settings:text-[#F06C22] transition-colors line-clamp-1 truncate max-w-[40px]">
                                 {opt}:
                               </span>
-                              <span className="text-[9px] font-bold text-slate-200 tabular-nums leading-none">
+                              <span className="text-[11px] font-bold text-slate-200 tabular-nums leading-none">
                                 {val}
                               </span>
                            </div>
@@ -474,7 +474,7 @@ export function WorkoutChartGrid({
                          {log ? (
                            (log.reps === '0' && log.seconds === '0') ? (
                              <div className="flex items-center justify-center opacity-40 grayscale">
-                               <span className="text-[8px] font-bold pointer-events-none text-slate-700 dark:text-slate-300 tracking-tighter">[SKIPPED]</span>
+                               <span className="text-[11px] font-bold pointer-events-none text-slate-700 dark:text-slate-300 tracking-tighter">[SKIPPED]</span>
                              </div>
                            ) : (
                              <div className="flex flex-col items-center justify-center">
@@ -484,7 +484,7 @@ export function WorkoutChartGrid({
                                  </span>
                               </div>
                               <div className="inline-flex items-center gap-0.5 mt-0.5 px-1 py-0.5 bg-slate-800 rounded-[4px]">
-                                 <span className={`text-[9px] font-bold tabular-nums leading-none ${ log.repQuality === 3 ? 'text-emerald-600' : log.repQuality === 2 ? 'text-amber-600' : log.repQuality === 1 ? 'text-[#F06C22]' : 'text-slate-300' }`}>
+                                 <span className={`text-[11px] font-bold tabular-nums leading-none ${ log.repQuality === 3 ? 'text-emerald-600' : log.repQuality === 2 ? 'text-amber-600' : log.repQuality === 1 ? 'text-[#F06C22]' : 'text-slate-300' }`}>
                                    {log.repsLeft !== undefined && log.repsRight !== undefined ? (
                                       `${log.repsLeft}L|${log.repsRight}R`
                                     ) : (
@@ -522,7 +522,7 @@ export function WorkoutChartGrid({
       </div>
 
       {/* FOOTER / STATUS BAR */}
-      <footer className="h-16 bg-[#0A2E46] border-t-2 border-slate-700 px-8 flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase tracking-widest shrink-0">
+      <footer className="h-16 bg-[#0A2E46] border-t-2 border-slate-700 px-8 flex items-center justify-between text-slate-400 text-[11px] font-bold uppercase tracking-widest shrink-0">
          <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
                <div className="w-2 h-2 rounded-full bg-[#F06C22]" />

@@ -109,10 +109,10 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
         </div>
         <div className="flex space-x-3">
           <Button variant="outline" onClick={onBack} className="bg-transparent border-white/20 text-white hover:bg-white/10">Back to Profile</Button>
-          <Button onClick={() => setPreviewMode(true)} disabled={selectedSequence.length === 0} className="bg-sky-600 hover:bg-sky-500 text-white font-bold uppercase tracking-widest text-[10px]">
+          <Button onClick={() => setPreviewMode(true)} disabled={selectedSequence.length === 0} className="bg-sky-600 hover:bg-sky-500 text-white font-bold uppercase tracking-widest text-[11px]">
              <Share className="w-4 h-4 mr-2" /> Share / Present
           </Button>
-          <Button onClick={() => onSaveRoutine(selectedSequence)} className="bg-[#F06C22] hover:bg-[#D95B1B] text-white font-bold uppercase tracking-widest text-[10px]">
+          <Button onClick={() => onSaveRoutine(selectedSequence)} className="bg-[#F06C22] hover:bg-[#D95B1B] text-white font-bold uppercase tracking-widest text-[11px]">
             Save Routine
           </Button>
         </div>
@@ -136,7 +136,7 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
                 <span className="text-white">Analysis:</span> Client ({client.occupation || 'No job listed'}, {client.medicalHistory || 'No history'}) matched with {recommendedTemplate.targetDemographic}
               </div>
 
-              <Button onClick={() => loadTemplate(recommendedTemplate.id)} className="w-full bg-sky-600 hover:bg-sky-500 font-bold uppercase tracking-widest text-[10px]">
+              <Button onClick={() => loadTemplate(recommendedTemplate.id)} className="w-full bg-sky-600 hover:bg-sky-500 font-bold uppercase tracking-widest text-[11px]">
                 Apply Recommmended Template
               </Button>
             </CardContent>
@@ -151,7 +151,7 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
                 <Button key={t.id} variant="outline" onClick={() => loadTemplate(t.id)} className="w-full justify-start h-auto py-3 bg-slate-800/50 border-slate-700 hover:bg-slate-700 text-left hover:text-white">
                   <div>
                     <div className="font-bold text-xs uppercase tracking-wider text-slate-300">{t.name}</div>
-                    <div className="text-[10px] text-slate-500 font-normal mt-0.5 line-clamp-1">{t.objective}</div>
+                    <div className="text-[11px] text-slate-500 font-normal mt-0.5 line-clamp-1">{t.objective}</div>
                   </div>
                 </Button>
               ))}
@@ -159,7 +159,7 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
           </Card>
 
           <div className="pt-4 border-t border-slate-800">
-           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 ml-1">Machine Arsenal</h3>
+           <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 ml-1">Machine Arsenal</h3>
            <DragDropContext onDragEnd={handleDragEnd}>
               <Droppable droppableId="machines" isDropDisabled={true}>
                 {(provided) => (
@@ -175,7 +175,7 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
                           >
                             <div>
                                <div className="text-xs font-bold text-white uppercase tracking-wider">{machine.name}</div>
-                               <div className="text-[9px] text-slate-400 uppercase tracking-widest">{machine.kinematicClassification || 'N/A'}</div>
+                               <div className="text-[11px] text-slate-400 uppercase tracking-widest">{machine.kinematicClassification || 'N/A'}</div>
                             </div>
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-white hover:bg-slate-700" onClick={() => setSelectedSequence([...selectedSequence, machine.id])}>
                               <Plus className="w-4 h-4"/>
@@ -254,12 +254,12 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
                                      </div>
                                      <AccordionTrigger className="hover:no-underline py-3 px-2 flex-1 [&[data-state=open]>div>svg]:rotate-180">
                                         <div className="flex items-center gap-3 text-left">
-                                           <div className="w-6 h-6 rounded bg-slate-900 border border-slate-700 flex items-center justify-center text-[10px] font-black text-slate-400 shrink-0">
+                                           <div className="w-6 h-6 rounded bg-slate-900 border border-slate-700 flex items-center justify-center text-[11px] font-black text-slate-400 shrink-0">
                                               {index + 1}
                                            </div>
                                            <div>
                                              <div className={`font-black uppercase tracking-wider text-sm ${isErrorTarget ? 'text-rose-400' : 'text-white'}`}>{machine.name}</div>
-                                             <div className="text-[9px] uppercase tracking-widest text-[#38BDF8] flex items-center gap-2 mt-0.5">
+                                             <div className="text-[11px] uppercase tracking-widest text-[#38BDF8] flex items-center gap-2 mt-0.5">
                                                {machine.kinematicClassification || 'N/A'}
                                                {machine.setupGap && <span className="text-slate-400 border-l border-slate-600 pl-2">{machine.setupGap}</span>}
                                              </div>
@@ -267,7 +267,7 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
                                         </div>
                                      </AccordionTrigger>
                                      <div className="pr-3 flex items-center gap-2">
-                                       {machine.requiresHandoff && <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[9px] px-1 py-0 hidden sm:inline-flex" title="Handoff Required"><Hand className="w-3 h-3"/></Badge>}
+                                       {machine.requiresHandoff && <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[11px] px-1 py-0 hidden sm:inline-flex" title="Handoff Required"><Hand className="w-3 h-3"/></Badge>}
                                        <Button variant="ghost" size="icon" onClick={() => removeMachine(index)} className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-950/50 rounded-lg">
                                          <Trash2 className="w-4 h-4"/>
                                        </Button>
@@ -276,14 +276,14 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
                                   <AccordionContent className="bg-slate-900/50 p-4 border-t border-slate-700">
                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                        <div className="bg-slate-950 rounded-lg p-3 border border-slate-800">
-                                          <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">Setup Overrides</h5>
+                                          <h5 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">Setup Overrides</h5>
                                           <p className="text-xs text-slate-300 leading-relaxed font-medium">
                                             {machine.setupGap ? <span className="text-sky-400 block mb-1">Gap: {machine.setupGap}</span> : null}
                                             {ROUTINE_TEMPLATES.flatMap(t => t.sequence).find(s => s.machineId === machine.id)?.setupOverrides || machine.setup || 'Standard setup protocol.'}
                                           </p>
                                        </div>
                                        <div className="bg-slate-950 rounded-lg p-3 border border-slate-800">
-                                          <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">Execution & Posture</h5>
+                                          <h5 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">Execution & Posture</h5>
                                           <p className="text-xs text-slate-300 leading-relaxed font-medium">
                                             {machine.executionPosture && <span className={`block mb-1 ${machine.executionPosture.includes('Posterior') ? 'text-amber-400' : 'text-emerald-400'}`}>Posture: {machine.executionPosture}</span>}
                                             {ROUTINE_TEMPLATES.flatMap(t => t.sequence).find(s => s.machineId === machine.id)?.executionOverrides || machine.execution || 'Standard execution, maintain control.'}

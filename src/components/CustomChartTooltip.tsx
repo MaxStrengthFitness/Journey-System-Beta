@@ -9,7 +9,7 @@ export function CustomChartTooltip({ active, payload, label }: any) {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#0A2E46] border border-[#114B72] shadow-2xl p-4 flex flex-col gap-2 rounded-xl min-w-[140px]">
-        <p className="font-black String-widest uppercase text-[#38BDF8] text-[10px] mb-1 leading-none">{label}</p>
+        <p className="font-black String-widest uppercase text-[#38BDF8] text-[11px] mb-1 leading-none">{label}</p>
         {payload.map((entry: any, index: number) => (
           <div key={`item-${index}`} className="flex justify-between items-center gap-4">
             <span className="text-white text-xs font-bold">{entry.name}</span>

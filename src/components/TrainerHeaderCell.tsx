@@ -21,7 +21,7 @@ export function TrainerHeaderCell({
       <span className="font-display italic text-ink-l1 uppercase text-sm leading-none whitespace-nowrap">
         {name}
       </span>
-      <span className="font-display italic text-ink-l4 text-[10px] uppercase tabular-nums tracking-wider mt-0.5">
+      <span className="font-display italic text-ink-l4 text-[11px] uppercase tabular-nums tracking-wider mt-0.5">
         {sessionCount} SESS
       </span>
     </div>

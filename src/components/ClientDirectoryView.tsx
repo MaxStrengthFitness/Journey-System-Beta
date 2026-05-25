@@ -111,10 +111,10 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
 
   const renderTierBadge = (tier?: string) => {
     if (!tier || tier === "None") return null;
-    if (tier.toLowerCase().includes('18')) return <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 uppercase tracking-widest text-[9px] md:text-[10px] font-black px-2 py-0.5">Silver</Badge>;
-    if (tier.toLowerCase().includes('12')) return <Badge className="bg-[#F06C22]/10 text-[#d95d1a] dark:text-[#F06C22] border-[#F06C22]/20 uppercase tracking-widest text-[9px] md:text-[10px] font-black px-2 py-0.5">Orange</Badge>;
-    if (tier.toLowerCase().includes('6')) return <Badge className="bg-[#115E8D]/10 text-[#115E8D] dark:text-[#38BDF8] border-[#115E8D]/20 dark:border-[#38BDF8]/20 uppercase tracking-widest text-[9px] md:text-[10px] font-black px-2 py-0.5">Blue</Badge>;
-    return <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 uppercase tracking-widest text-[9px] md:text-[10px] font-black px-2 py-0.5">{tier}</Badge>;
+    if (tier.toLowerCase().includes('18')) return <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 uppercase tracking-widest text-[11px] md:text-[11px] font-black px-2 py-0.5">Silver</Badge>;
+    if (tier.toLowerCase().includes('12')) return <Badge className="bg-[#F06C22]/10 text-[#d95d1a] dark:text-[#F06C22] border-[#F06C22]/20 uppercase tracking-widest text-[11px] md:text-[11px] font-black px-2 py-0.5">Orange</Badge>;
+    if (tier.toLowerCase().includes('6')) return <Badge className="bg-[#115E8D]/10 text-[#115E8D] dark:text-[#38BDF8] border-[#115E8D]/20 dark:border-[#38BDF8]/20 uppercase tracking-widest text-[11px] md:text-[11px] font-black px-2 py-0.5">Blue</Badge>;
+    return <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 uppercase tracking-widest text-[11px] md:text-[11px] font-black px-2 py-0.5">{tier}</Badge>;
   };
 
   return (
@@ -167,7 +167,7 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
       <div className="max-w-4xl mx-auto w-full flex-1 overflow-y-auto custom-scrollbar pr-2 pb-24">
         {!searchQuery.trim() && (
           <div className="mb-4">
-            <h2 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+            <h2 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
               <History className="w-3.5 h-3.5" />
               Recently Profiled
             </h2>
@@ -211,19 +211,19 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
                         <div className="flex flex-col gap-1 mt-1">
                           {isCrossTrainer ? (
                             <div className="mt-1">
-                              <Badge className="bg-[#F06C22]/15 hover:bg-[#F06C22]/20 text-[#F06C22] border border-[#F06C22]/25 uppercase tracking-widest text-[8px] font-black h-5 py-0 px-2 rounded-full">
+                              <Badge className="bg-[#F06C22]/15 hover:bg-[#F06C22]/20 text-[#F06C22] border border-[#F06C22]/25 uppercase tracking-widest text-[11px] font-black h-5 py-0 px-2 rounded-full">
                                 Visiting: {originalStudioName}
                               </Badge>
                             </div>
                           ) : (
-                            <span className="text-[10px] md:text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                            <span className="text-[11px] md:text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
                               <MapPin className="w-3 h-3 text-[#F06C22]" />
                               {originalStudioName}
                             </span>
                           )}
                           {client.globalNotes && (
                             <div className="mt-0.5">
-                              <Badge variant="outline" className="border-amber-500/30 text-amber-600 dark:text-amber-500 uppercase tracking-widest text-[8px] font-black bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0">
+                              <Badge variant="outline" className="border-amber-500/30 text-amber-600 dark:text-amber-500 uppercase tracking-widest text-[11px] font-black bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0">
                                 Notes
                               </Badge>
                             </div>
@@ -245,10 +245,10 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
                         Session {client.sessionCount || 0}
                       </span>
                       <div className="flex flex-col gap-0.5">
-                        <span className="text-[10px] md:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">
+                        <span className="text-[11px] md:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">
                           Last: <span className="text-slate-700 dark:text-slate-300">{(client as any).lastSessionDate || 'N/A'}</span>
                         </span>
-                        <span className="text-[10px] md:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">
+                        <span className="text-[11px] md:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">
                           Next: <span className="text-slate-700 dark:text-slate-300">{(client as any).nextSessionDate || 'Unscheduled'}</span>
                         </span>
                       </div>
@@ -256,7 +256,7 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
                     
                     {/* Play Action */}
                     <div className="flex items-center gap-3">
-                      <span className="text-[10px] md:text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest group-hover:text-[#F06C22] transition-colors hidden sm:block">
+                      <span className="text-[11px] md:text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest group-hover:text-[#F06C22] transition-colors hidden sm:block">
                         Profile
                       </span>
                       <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center group-hover:bg-[#F06C22] group-hover:border-[#F06C22] transition-all shadow-sm">

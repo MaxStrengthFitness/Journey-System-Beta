@@ -46,7 +46,7 @@ export function AppHeader({
         {rightControls || (
           <>
             {!isLight && (
-              <button className="text-ink-d2 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
+              <button className="text-ink-d2 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-bg-dark">
                 <Moon className="w-5 h-5 fill-current" />
               </button>
             )}

@@ -107,7 +107,7 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
         </DialogHeader>
         <div className="space-y-6 py-4">
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+            <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
               Full Name
             </Label>
             <Input
@@ -130,7 +130,7 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+            <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
               Initials
             </Label>
             <Input
@@ -142,7 +142,7 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+            <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
               Primary Home Studio <span className="text-rose-500">*</span>
             </Label>
             <Select
@@ -168,10 +168,10 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
           <div className="space-y-4 border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50 dark:bg-slate-800/50">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
                   PIN Lock Security
                 </Label>
-                <p className="text-[9px] text-slate-500 font-bold uppercase">
+                <p className="text-[11px] text-slate-500 font-bold uppercase">
                   Require a 4-digit PIN for access
                 </p>
               </div>
@@ -185,7 +185,7 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
             </div>
             {enablePin && (
               <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-                <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
                   4-Digit PIN Code
                 </Label>
                 <Input
@@ -208,7 +208,7 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
               <Label className="text-sm font-bold text-slate-900 dark:text-white">
                 System Admin
               </Label>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase">
                 Grant full hub access
               </p>
             </div>

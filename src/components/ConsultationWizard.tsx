@@ -384,7 +384,7 @@ export function ConsultationWizard({ client, machines, authTrainer, trainers, on
                                   <SelectItem key={m.id} value={m.name} className="py-3">
                                     <div className="flex flex-col gap-1 items-start justify-start text-left">
                                       <span className="font-bold uppercase text-sm tracking-tight">{m.name}</span>
-                                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">{cat}</span>
+                                      <span className="text-[11px] text-muted-foreground uppercase font-semibold">{cat}</span>
                                     </div>
                                   </SelectItem>
                                 )
@@ -393,7 +393,7 @@ export function ConsultationWizard({ client, machines, authTrainer, trainers, on
                           </Select>
 
                           <div className="mt-1 mb-3">
-                            <Badge variant="secondary" className="text-[9px] uppercase font-bold tracking-widest bg-slate-200 text-slate-600 rounded-md">
+                            <Badge variant="secondary" className="text-[11px] uppercase font-bold tracking-widest bg-slate-200 text-slate-600 rounded-md">
                               {category}
                             </Badge>
                           </div>
@@ -406,7 +406,7 @@ export function ConsultationWizard({ client, machines, authTrainer, trainers, on
                         
                         <div className="flex items-center gap-4">
                           <div className="text-right flex flex-col items-end pl-4 border-l border-slate-200 shrink-0">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#68717A] mb-2">Starting Wt</span>
+                            <span className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] mb-2">Starting Wt</span>
                             <div className="bg-white border-2 border-[#E2E8F0] shadow-sm px-6 py-3 rounded-xl flex items-baseline gap-1.5 min-w-[120px] justify-center">
                                <span className="text-4xl font-black tracking-tighter text-[#115E8D]">{weight}</span>
                                <span className="text-sm font-bold text-[#68717A] uppercase">lbs</span>

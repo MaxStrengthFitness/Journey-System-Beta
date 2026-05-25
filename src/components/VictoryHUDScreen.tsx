@@ -65,8 +65,9 @@ export function VictoryHUDScreen({
   ];
 
   return (
-    <div className="w-[820px] h-[1180px] bg-bg-dark mx-auto relative flex flex-col font-sans overflow-hidden border border-div-d shadow-2xl">
-      <AppHeader variant="dark" trainerInitials={authTrainer?.initials || "AJ"} />
+    <div className="w-full h-full min-h-screen bg-bg-dark font-sans flex flex-col overflow-hidden">
+      <div className="max-w-[820px] mx-auto w-full h-full relative flex flex-col pb-24 border-x border-div-d shadow-2xl">
+        <AppHeader variant="dark" trainerInitials={authTrainer?.initials || "AJ"} />
 
       <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 flex flex-col pb-[120px]">
         {/* 2. Title block */}
@@ -79,7 +80,7 @@ export function VictoryHUDScreen({
           </h1>
           <div className="flex items-center gap-2 text-ink-d2 text-[13px]">
             <span>Great work · {client.firstName}'s numbers for today.</span>
-            <div className="font-mono text-[9px] bg-white/10 px-2 py-[3px] rounded-[10px] tracking-[0.04em] uppercase text-white ml-2">
+            <div className="font-mono text-[11px] bg-white/10 px-2 py-[3px] rounded-[10px] tracking-[0.04em] uppercase text-white ml-2">
               SESSION · {session.id.substring(0, 8)}…
             </div>
           </div>
@@ -117,7 +118,7 @@ export function VictoryHUDScreen({
           />
           
           <div className="flex items-center justify-between mt-1">
-            <span className="font-display italic text-[10px] text-ink-d3 uppercase tracking-wider">
+            <span className="font-display italic text-[11px] text-ink-d3 uppercase tracking-wider">
               PRIORITY FOR NEXT TIME
             </span>
             <button 
@@ -125,13 +126,13 @@ export function VictoryHUDScreen({
                 const next: Record<string, 'High' | 'Medium' | 'Low'> = { High: 'Low', Low: 'Medium', Medium: 'High' };
                 setPriority(next[priority]);
               }}
-              className={`font-display italic text-[11px] uppercase px-4 min-h-[44px] rounded-xl flex items-center gap-2 transition-colors ${
+              className={`font-display italic text-[11px] uppercase px-4 min-h-[44px] min-w-[44px] rounded-xl flex items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-bg-dark ${
                 priority === 'High' ? 'bg-orange-500/20 border border-orange-500/30 text-orange-400 hover:bg-orange-500/30' :
                 priority === 'Medium' ? 'bg-cyan/10 border border-cyan/30 text-cyan hover:bg-cyan/20' :
                 'bg-white/5 border border-white/10 text-white hover:bg-white/10'
               }`}
             >
-              {priority} <span className="text-[8px] opacity-70">▼</span>
+              {priority} <span className="text-[11px] opacity-70">▼</span>
             </button>
           </div>
         </div>
@@ -141,7 +142,9 @@ export function VictoryHUDScreen({
         label={isSyncing ? "SAVING..." : "FINALIZE & RETURN TO HUB"}
         icon={!isSyncing ? <span className="text-[13px] order-last ml-1">▶</span> : undefined}
         onClick={() => onFinalize({ clientFeel: feel, noteContent: notes, notePriority: priority })}
+        className="mb-8"
       />
+      </div>
     </div>
   );
 }

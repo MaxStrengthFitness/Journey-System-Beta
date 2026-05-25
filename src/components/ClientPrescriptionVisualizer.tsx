@@ -46,7 +46,7 @@ export function ClientPrescriptionVisualizer({ client, template, machineIds, onB
             </div>
             <div className="text-right">
               <div className="text-4xl font-black italic text-[#F06C22] leading-none mb-1">MSF</div>
-              <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Personalized Prescription</p>
+              <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">Personalized Prescription</p>
             </div>
           </div>
 
@@ -87,7 +87,7 @@ export function ClientPrescriptionVisualizer({ client, template, machineIds, onB
                     <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="text-xl font-black text-[#0A2E46] uppercase tracking-wide">{machine.name}</h4>
-                        <span className="text-[10px] font-bold uppercase tracking-widest bg-slate-100 text-slate-500 px-3 py-1 rounded-full">
+                        <span className="text-[11px] font-bold uppercase tracking-widest bg-slate-100 text-slate-500 px-3 py-1 rounded-full">
                           {friendlyType}
                         </span>
                       </div>
@@ -114,7 +114,7 @@ export function ClientPrescriptionVisualizer({ client, template, machineIds, onB
             <p className="text-sm font-medium text-slate-600 max-w-2xl mx-auto italic leading-relaxed">
               "Your routine consists of exactly {machineIds.length} exercises performed in a strict 30-minute window. We sequence pushing and pulling movements specifically to protect your joints and maximize the hypertrophic stimulus across your entire body without overlapping fatigue."
             </p>
-            <div className="mt-8 text-[10px] uppercase font-bold tracking-widest text-slate-400">
+            <div className="mt-8 text-[11px] uppercase font-bold tracking-widest text-slate-400">
                Medical Grade Science. Extraordinary Results.
             </div>
           </div>

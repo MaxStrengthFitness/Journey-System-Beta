@@ -603,7 +603,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
             <Maximize className="w-8 h-8 text-[#F06C22]" />
             OCR Legacy Pipeline
           </h1>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em]">
             Multimodal Chart Recognition Engine v3.1
           </p>
         </div>
@@ -646,7 +646,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
             <CardContent className="pt-6">
               <div className="mb-6 space-y-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Expected Sessions to Extract</label>
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">Expected Sessions to Extract</label>
                   <div className="flex items-center gap-4 bg-slate-900 border border-slate-700 rounded-xl p-3">
                     <Input 
                       type="number"
@@ -654,7 +654,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                       onChange={(e) => setExpectedSessions(parseInt(e.target.value) || 0)}
                       className="w-24 bg-slate-800 border-slate-700 text-center font-black text-lg focus:ring-[#F06C22] h-10"
                     />
-                    <p className="text-[10px] text-slate-400 font-medium leading-tight">
+                    <p className="text-[11px] text-slate-400 font-medium leading-tight">
                       Bounding cross-grid search space to maximize extraction speed.
                     </p>
                   </div>
@@ -680,18 +680,18 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                 />
                 <Upload className="w-10 h-10 text-slate-600 group-hover:text-[#F06C22] mb-3 transition-colors" />
                 <p className="text-sm font-black text-slate-300 uppercase tracking-tighter text-center">Drop Multiple Chart Images</p>
-                <p className="text-[10px] font-bold text-slate-500 uppercase mt-2 text-center">Batch Processing (Up to 8 Images)</p>
+                <p className="text-[11px] font-bold text-slate-500 uppercase mt-2 text-center">Batch Processing (Up to 8 Images)</p>
               </div>
 
               {files.length > 0 && (
                   <div className="mt-6 space-y-4">
                     <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Queue ({files.length})</p>
+                      <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">Queue ({files.length})</p>
                       <Button 
                         variant="ghost" 
                         size="sm" 
                         onClick={clearFiles}
-                        className="text-[9px] font-black text-red-500 hover:text-red-400 hover:bg-red-500/10 h-6 uppercase px-2"
+                        className="text-[11px] font-black text-red-500 hover:text-red-400 hover:bg-red-500/10 h-6 uppercase px-2"
                       >
                         Clear All
                       </Button>
@@ -734,13 +734,13 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
 
                       <div className="relative py-2 flex items-center">
                         <div className="flex-grow border-t border-slate-800"></div>
-                        <span className="flex-shrink mx-4 text-[8px] font-black uppercase text-slate-600 tracking-widest">OR</span>
+                        <span className="flex-shrink mx-4 text-[11px] font-black uppercase text-slate-600 tracking-widest">OR</span>
                         <div className="flex-grow border-t border-slate-800"></div>
                       </div>
 
                       <Button 
                         variant="ghost"
-                        className="w-full border border-slate-800 text-slate-400 font-bold h-12 tracking-widest uppercase text-[10px] hover:bg-slate-800 hover:text-white transition-all shadow-inner"
+                        className="w-full border border-slate-800 text-slate-400 font-bold h-12 tracking-widest uppercase text-[11px] hover:bg-slate-800 hover:text-white transition-all shadow-inner"
                         onClick={runSettingsOCR}
                         disabled={isScanningSettings || !selectedClientId || files.length === 0}
                       >
@@ -763,19 +763,19 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
               <CardTitle className="text-sm font-black uppercase tracking-widest text-[#F06C22]">
                 Validation HUD
               </CardTitle>
-              <CardDescription className="text-[10px] font-bold text-slate-400">
+              <CardDescription className="text-[11px] font-bold text-slate-400">
                 Verify extracted patterns before database commit
               </CardDescription>
             </div>
             {(validationSessions.length > 0 || extractedSettings.length > 0) && (
               <div className="flex gap-4 items-center">
                 <div className="text-right px-4 border-r border-slate-800">
-                  <p className="text-[10px] font-black text-white uppercase">{validationSessions.length > 0 ? `Sessions: ${validationSessions.length}` : 'Settings Mode'}</p>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Extraction Results</p>
+                  <p className="text-[11px] font-black text-white uppercase">{validationSessions.length > 0 ? `Sessions: ${validationSessions.length}` : 'Settings Mode'}</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-tighter">Extraction Results</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-black text-[#F06C22] uppercase">Settings: {extractedSettings.length}</p>
-                  <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">Verified Alignment</p>
+                  <p className="text-[11px] font-black text-[#F06C22] uppercase">Settings: {extractedSettings.length}</p>
+                  <p className="text-[11px] font-bold text-emerald-500 uppercase tracking-tighter">Verified Alignment</p>
                 </div>
               </div>
             )}
@@ -808,7 +808,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                             className="h-full bg-gradient-to-r from-[#F06C22] to-[#FF8C42] shadow-[0_0_15px_rgba(240,108,34,0.3)]"
                           />
                         </div>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest max-w-xs mx-auto">
+                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest max-w-xs mx-auto">
                           {isScanning ? 'Performing row-by-row clinical extraction. This may take 30-60 seconds.' : 'Extracting Seat, Gap, and Pad settings from Column 2.'}
                         </p>
                       </div>
@@ -844,7 +844,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                         <h3 className="text-sm font-black text-white uppercase tracking-widest">
                           {validationSessions.length > 0 ? 'Clinical History Consolidated' : 'Machine Settings Extracted'}
                         </h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5">
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5">
                           {validationSessions.length > 0 
                             ? `Successfully extracted ${Array.from(new Set(validationSessions.flatMap(s => s.machines.map(m => m.name)))).length} unique machines spanning ${validationSessions.length} total sessions.`
                             : `Successfully extracted configurations for ${extractedSettings.length} unique machines.`
@@ -852,7 +852,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                         </p>
                       </div>
                     </div>
-                    <Badge variant="outline" className="border-[#F06C22] text-[#F06C22] font-black uppercase text-[8px] px-3">
+                    <Badge variant="outline" className="border-[#F06C22] text-[#F06C22] font-black uppercase text-[11px] px-3">
                       CONTINUITY VERIFIED
                     </Badge>
                   </div>
@@ -860,9 +860,9 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                     {/* Extraction Frequency Panel */}
                     <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 mb-4">
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Historical Machine Settings</h3>
+                        <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Historical Machine Settings</h3>
                         {extractedSettings.length > 0 && (
-                          <Badge className="bg-[#F06C22] text-white text-[8px] font-black">
+                          <Badge className="bg-[#F06C22] text-white text-[11px] font-black">
                             {extractedSettings.length} MACHINES FOUND
                           </Badge>
                         )}
@@ -872,7 +872,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                           {extractedSettings.map((s, idx) => (
                             <div key={idx} className="bg-slate-800/50 border border-slate-700 rounded-lg p-2 flex flex-col gap-1">
-                              <p className="text-[9px] font-black text-[#F06C22] truncate uppercase">{s.machineId.replace(/_/g, ' ')}</p>
+                              <p className="text-[11px] font-black text-[#F06C22] truncate uppercase">{s.machineId.replace(/_/g, ' ')}</p>
                               <div className="flex flex-wrap gap-1">
                                 {s.seat && <span className="text-[7px] bg-slate-900 px-1 rounded text-slate-400">S:{s.seat}</span>}
                                 {s.gap && <span className="text-[7px] bg-slate-900 px-1 rounded text-slate-400">G:{s.gap}</span>}
@@ -889,7 +889,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                                         newSet[idx].startingWeight = e.target.value;
                                         setExtractedSettings(newSet);
                                       }}
-                                      className="w-full h-6 bg-slate-900 focus-visible:bg-slate-800 border focus-visible:border-[#F06C22] border-slate-700 rounded text-[9px] text-white px-1 text-center font-bold tabular-nums outline-none transition-colors"
+                                      className="w-full h-6 bg-slate-900 focus-visible:bg-slate-800 border focus-visible:border-[#F06C22] border-slate-700 rounded text-[11px] text-white px-1 text-center font-bold tabular-nums outline-none transition-colors"
                                       placeholder="--"
                                   />
                                 </div>
@@ -902,7 +902,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                                         newSet[idx].currentWeight = e.target.value;
                                         setExtractedSettings(newSet);
                                       }}
-                                      className="w-full h-6 bg-slate-900 focus-visible:bg-slate-800 border focus-visible:border-[#F06C22] border-slate-700 rounded text-[9px] text-white px-1 text-center font-bold tabular-nums outline-none transition-colors"
+                                      className="w-full h-6 bg-slate-900 focus-visible:bg-slate-800 border focus-visible:border-[#F06C22] border-slate-700 rounded text-[11px] text-white px-1 text-center font-bold tabular-nums outline-none transition-colors"
                                       placeholder="--"
                                   />
                                 </div>
@@ -911,13 +911,13 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                           ))}
                         </div>
                       ) : (
-                        <p className="text-[9px] text-slate-600 italic">No global settings extracted yet. Use the "Extract Machine Settings Only" button.</p>
+                        <p className="text-[11px] text-slate-600 italic">No global settings extracted yet. Use the "Extract Machine Settings Only" button.</p>
                       )}
                     </div>
 
                     {/* Extraction Frequency Panel */}
                     <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 mb-4">
-                      <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Machine Extraction Frequency</h3>
+                      <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Machine Extraction Frequency</h3>
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(
                           validationSessions.reduce((acc, sess) => {
@@ -927,7 +927,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                             return acc;
                           }, {} as Record<string, number>)
                         ).map(([name, count]) => (
-                          <Badge key={name} variant="secondary" className="bg-slate-800 text-slate-300 text-[9px] font-bold px-2 py-1 rounded-md border border-slate-700">
+                          <Badge key={name} variant="secondary" className="bg-slate-800 text-slate-300 text-[11px] font-bold px-2 py-1 rounded-md border border-slate-700">
                             {name}: {count} logs
                           </Badge>
                         ))}
@@ -939,7 +939,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                         <thead>
                           <tr>
                             <th className="sticky left-0 z-20 bg-[#0A2E46] border-r border-b border-slate-700 w-[200px] p-2 text-left">
-                              <span className="text-[10px] font-black italic uppercase text-[#F06C22]">Machine / Session</span>
+                              <span className="text-[11px] font-black italic uppercase text-[#F06C22]">Machine / Session</span>
                             </th>
                             {validationSessions.map(session => (
                               <th key={session.id} className={cn(
@@ -954,17 +954,17 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                                   <Trash2 className="w-[10px] h-[10px]" />
                                 </button>
                                 <div className="flex flex-col items-center">
-                                  <Badge className={cn("text-[9px] font-black h-4 px-1 rounded-sm mb-1", session.isInferredDate ? "bg-amber-600 border-none text-white" : "bg-slate-800 border-slate-700 text-white")}>
+                                  <Badge className={cn("text-[11px] font-black h-4 px-1 rounded-sm mb-1", session.isInferredDate ? "bg-amber-600 border-none text-white" : "bg-slate-800 border-slate-700 text-white")}>
                                     S#{session.sessionNumber}
                                   </Badge>
                                   <input 
                                     type="date"
-                                    className={cn("bg-slate-900 border focus:bg-slate-800 focus:border-[#F06C22] w-[90px] text-[10px] uppercase font-bold text-center outline-none transition-all rounded p-1", session.isInferredDate ? "border-amber-500/50 text-amber-400" : "border-slate-700 text-white")}
+                                    className={cn("bg-slate-900 border focus:bg-slate-800 focus:border-[#F06C22] w-[90px] text-[11px] uppercase font-bold text-center outline-none transition-all rounded p-1", session.isInferredDate ? "border-amber-500/50 text-amber-400" : "border-slate-700 text-white")}
                                     value={session.date}
                                     onChange={e => setValidationSessions(prev => prev.map(s => s.id === session.id ? { ...s, date: e.target.value, isInferredDate: false } : s))}
                                   />
                                   <input 
-                                    className="bg-transparent border-b border-transparent focus:border-[#F06C22] w-[40px] text-[9px] text-slate-400 text-center outline-none transition-all mt-0.5 uppercase"
+                                    className="bg-transparent border-b border-transparent focus:border-[#F06C22] w-[40px] text-[11px] text-slate-400 text-center outline-none transition-all mt-0.5 uppercase"
                                     value={session.trainer}
                                     placeholder="INI"
                                     onChange={e => setValidationSessions(prev => prev.map(s => s.id === session.id ? { ...s, trainer: e.target.value } : s))}
@@ -1011,7 +1011,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                                             placeholder="LBS"
                                             title="Weight (lbs)"
                                           />
-                                          <span className="text-slate-600 text-[8px] font-black">X</span>
+                                          <span className="text-slate-600 text-[11px] font-black">X</span>
                                           <input 
                                             className={cn("bg-transparent font-black w-10 text-center border-b border-transparent focus:bg-slate-800 focus:border-[#F06C22] hover:border-slate-700/50 focus:outline-none text-sm transition-all rounded-t-sm", log.isStaticHold ? "text-blue-400" : "text-white")}
                                             value={log.isStaticHold ? (log.timeUnderLoad ?? 0) : (log.reps ?? 0)}
@@ -1070,8 +1070,8 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                             {isFinalizing ? (
                               <div className="flex flex-col items-center gap-3 w-full max-w-md px-6">
                                 <div className="flex justify-between w-full mb-1">
-                                  <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">Database Sync Integrity</span>
-                                  <span className="text-[10px] font-black text-white uppercase">{finalizeProgress}%</span>
+                                  <span className="text-[11px] font-black text-white/60 uppercase tracking-widest">Database Sync Integrity</span>
+                                  <span className="text-[11px] font-black text-white uppercase">{finalizeProgress}%</span>
                                 </div>
                                 <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden border border-white/5">
                                   <motion.div 

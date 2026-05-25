@@ -25,14 +25,14 @@ export function BottomTabBar({ variant, activeTab }: BottomTabBarProps) {
             className={cn(
               "flex flex-col items-center justify-center w-[16%] min-h-[44px] h-full gap-1.5 transition-colors font-display italic tracking-widest",
               isActive 
-                ? (isLight ? "text-cyan" : "text-cta drop-shadow-[0_0_8px_rgba(243,116,39,0.5)]") 
+                ? "text-cyan drop-shadow-md"
                 : (isLight ? "text-ink-l3 hover:text-ink-l2" : "text-ink-d3 hover:text-ink-d2")
             )}
           >
             <div className={cn(
               "w-2 h-2 rounded-full",
               isActive 
-                ? (isLight ? "bg-cyan" : "bg-cta shadow-[0_0_8px_rgba(243,116,39,1)]") 
+                ? "bg-cyan shadow-[0_0_8px_var(--color-cyan)]" 
                 : "bg-transparent"
             )} />
             <span className="text-[11px] uppercase leading-none">{tab}</span>

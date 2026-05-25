@@ -17,7 +17,7 @@ export function DateChip({ dayOfWeek, dayOfMonth, isActive }: DateChipProps) {
           : "bg-div-d text-ink-d2 hover:text-ink-d1 hover:bg-white/10"
       )}
     >
-      <span className="text-[10px] uppercase tracking-wider opacity-80 leading-tight">
+      <span className="text-[11px] font-medium uppercase tracking-wide opacity-70 opacity-80 leading-tight">
         {dayOfWeek}
       </span>
       <span className="text-xl leading-none tabular">{dayOfMonth}</span>

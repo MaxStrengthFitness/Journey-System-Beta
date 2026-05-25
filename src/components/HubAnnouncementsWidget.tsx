@@ -144,7 +144,7 @@ export const HubAnnouncementsWidget: React.FC<HubAnnouncementsWidgetProps> = ({
               <DialogTitle className="text-2xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white">
                 Hub Announcements
               </DialogTitle>
-              <DialogDescription className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5">
+              <DialogDescription className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5">
                 Stay updated with the latest alerts, strategies, and notes
               </DialogDescription>
             </div>
@@ -191,12 +191,12 @@ export const HubAnnouncementsWidget: React.FC<HubAnnouncementsWidgetProps> = ({
                             {ann.title}
                           </h3>
                           {ann.priority === "high" && (
-                            <span className="text-[9px] bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                            <span className="text-[11px] bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
                               Urgent
                             </span>
                           )}
                           {!isRead && (
-                            <span className="text-[9px] bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                            <span className="text-[11px] bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
                               New
                             </span>
                           )}
@@ -212,19 +212,19 @@ export const HubAnnouncementsWidget: React.FC<HubAnnouncementsWidgetProps> = ({
                           </div>
                         )}
 
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider pt-2">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider pt-2">
                           <span className="flex items-center gap-1">
                             <User className="w-3 h-3" /> By {ann.authorName}
                           </span>
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" /> {dateString}
                           </span>
-                          <span className="bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800 px-1.5 py-0.5 rounded text-[8px] text-[#F06C22]">
+                          <span className="bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800 px-1.5 py-0.5 rounded text-[11px] text-[#F06C22]">
                             {ann.targetScope === 'universal' || ann.studioId === "all" ? "Universal" :
                              ann.targetScope === 'network' ? "Network-Wide" : "Studio Exclusive"}
                           </span>
                           {ann.type && (
-                            <span className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded text-[8px] text-slate-600 dark:text-slate-300">
+                            <span className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded text-[11px] text-slate-600 dark:text-slate-300">
                               {ann.type}
                             </span>
                           )}

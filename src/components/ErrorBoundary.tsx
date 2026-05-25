@@ -70,15 +70,15 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
               {errorDetails && (
                 <div className="w-full bg-black/40 rounded-2xl p-4 text-left border border-white/5 space-y-2 overflow-hidden">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-[#F06C22]">Error Diagnostics</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-[#F06C22]">Error Diagnostics</p>
                   <p className="text-[11px] font-mono text-slate-300 break-words line-clamp-3">
                     {errorDetails.error || 'Unknown Error'}
                   </p>
                   <div className="flex gap-4 pt-1">
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                       OP: <span className="text-sky-400">{errorDetails.operationType}</span>
                     </p>
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider truncate flex-1">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate flex-1">
                       PATH: <span className="text-sky-400">{errorDetails.path}</span>
                     </p>
                   </div>

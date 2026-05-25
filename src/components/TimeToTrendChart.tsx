@@ -25,7 +25,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
                   {entry.name}
                 </span>
                 <span className="text-sm font-bold text-white">
-                  {entry.value} <span className="text-[10px] text-slate-400">lbs</span>
+                  {entry.value} <span className="text-[11px] text-slate-400">lbs</span>
                 </span>
               </div>
             );

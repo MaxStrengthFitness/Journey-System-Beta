@@ -1085,12 +1085,12 @@ export function ClientProfileView({
                   <p className="text-xs font-bold uppercase tracking-tight">
                     Discovery Consultation Pending (Stage 2)
                   </p>
-                  <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">
+                  <p className="text-[11px] font-bold opacity-80 uppercase tracking-widest">
                     Complete clinical baseline and occupational matrix in the 'Details' tab.
                   </p>
                 </div>
                 <Button
-                  className="bg-[#F06C22] hover:bg-[#F06C22]/90 text-[10px] font-bold uppercase rounded-xl h-9 px-4 shadow-lg shadow-[#F06C22]/20"
+                  className="bg-[#F06C22] hover:bg-[#F06C22]/90 text-[11px] font-medium uppercase rounded-full h-9 px-4 shadow-lg shadow-[#F06C22]/20"
                   onClick={() => setActiveTab("details")}
                 >
                   Start Stage 2
@@ -1123,14 +1123,14 @@ export function ClientProfileView({
                   <p className="text-xs font-bold uppercase tracking-tight">
                     Report Required
                   </p>
-                  <p className="text-[10px] font-bold opacity-80">
+                  <p className="text-[11px] font-bold opacity-80">
                     This client has no progress report on file. Please perform
                     an evaluation.
                   </p>
                 </div>
                 <Button
                   variant="ghost"
-                  className="ml-auto text-[10px] font-bold uppercase hover:bg-red-500/10"
+                  className="ml-auto text-[11px] font-medium uppercase hover:bg-red-500/10"
                   onClick={() => setView("progress-report")}
                 >
                   Start Now
@@ -1163,7 +1163,7 @@ export function ClientProfileView({
                   <p className="text-xs font-bold uppercase tracking-tight">
                     Report Due {isOverdue ? "Yesterday" : `Soon`}
                   </p>
-                  <p className="text-[10px] font-bold opacity-80">
+                  <p className="text-[11px] font-bold opacity-80">
                     {isOverdue
                       ? `The 3-month progress report was due on ${nextDueDate.toLocaleDateString()}.`
                       : `The next progress report is due on ${nextDueDate.toLocaleDateString()} (in ${diffDays} days).`}
@@ -1171,7 +1171,7 @@ export function ClientProfileView({
                 </div>
                 <Button
                   variant="ghost"
-                  className={`ml-auto text-[10px] font-bold uppercase ${isOverdue ? "hover:bg-red-500/10" : "hover:bg-amber-500/10"}`}
+                  className={`ml-auto text-[11px] font-medium uppercase ${isOverdue ? "hover:bg-red-500/10" : "hover:bg-amber-500/10"}`}
                   onClick={() => setView("progress-report")}
                 >
                   Schedule Report
@@ -1184,7 +1184,7 @@ export function ClientProfileView({
       })()}
 
       {/* Session Status Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] shadow-sm px-8 py-8 mb-4 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 transition-colors duration-200">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm px-8 py-8 mb-4 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 transition-colors duration-200">
         <div className="flex items-start gap-4 z-10 shrink-0 min-w-0 w-full md:w-auto pr-[140px] xs:pr-[160px] sm:pr-[180px] md:pr-0">
           <Button
             onClick={() => {
@@ -1259,13 +1259,13 @@ export function ClientProfileView({
         <div className="absolute top-6 right-6 md:static flex flex-col md:flex-row items-center gap-3 z-20 shrink-0">
           {activeInProgressSession ? (
             <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap bg-amber-500 hover:bg-amber-600 rounded-xl font-black uppercase text-xs sm:text-sm tracking-widest h-10 sm:h-12 px-4 sm:px-6 shadow-sm border-none w-auto text-white transition-colors">
+              <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap bg-amber-500 hover:bg-amber-600 rounded-xl font-bold uppercase text-xs sm:text-sm tracking-widest h-10 sm:h-12 px-4 sm:px-6 shadow-sm border-none w-auto text-white transition-colors">
                   <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 animate-pulse" />
                   IN-PROGRESS ({activeInProgressSession.trainerInitials})
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[240px] rounded-2xl p-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                 <div className="px-3 py-2 mb-2 border-b border-slate-200 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase text-amber-500 tracking-widest">Active Session Detected</p>
+                  <p className="text-[11px] font-medium uppercase text-amber-500 tracking-widest">Active Session Detected</p>
                   <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200 mt-1">
                     Started by {activeInProgressSession.trainerInitials} at {new Date(activeInProgressSession.startTime?.toMillis?.() || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
@@ -1296,7 +1296,7 @@ export function ClientProfileView({
                 setView("workouts");
               }}
               disabled={isCheckingActiveSession}
-              className="bg-[#F06C22] hover:bg-[#F06C22]/90 rounded-xl font-black uppercase text-xs sm:text-sm tracking-widest h-10 sm:h-12 px-4 sm:px-6 shadow-sm border-none w-auto text-white dark:text-white"
+              className="bg-[#F06C22] hover:bg-[#F06C22]/90 rounded-xl font-bold uppercase text-xs sm:text-sm tracking-widest h-10 sm:h-12 px-4 sm:px-6 shadow-sm border-none w-auto text-white dark:text-white"
             >
               <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2" />
               {isCheckingActiveSession ? 'Checking...' : 'START SESSION'}
@@ -1357,7 +1357,7 @@ export function ClientProfileView({
                onClick={() => setShowFullChart(true)}
                size="sm"
                variant="outline"
-               className="h-10 px-5 text-[10px] uppercase font-bold tracking-widest text-slate-700 dark:text-slate-300 hover:text-[#115E8D] border-slate-300 shadow-sm transition-all hover:bg-slate-50 rounded-full"
+               className="h-10 px-5 text-[11px] uppercase font-bold tracking-widest text-slate-700 dark:text-slate-300 hover:text-[#115E8D] border-slate-300 shadow-sm transition-all hover:bg-slate-50 rounded-full"
              >
                <Maximize2 className="w-3.5 h-3.5 mr-1.5" /> Expanded Journey
              </Button>
@@ -1365,7 +1365,7 @@ export function ClientProfileView({
           <div className="w-full flex-1 overflow-x-auto overflow-y-auto bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 rounded-xl relative">
             <table className="w-full text-left border-collapse table-fixed select-none min-w-[700px]">
               <thead>
-                <tr className="bg-slate-800 dark:bg-slate-950 text-white uppercase text-[10px] font-bold tracking-widest leading-none h-[40px]">
+                <tr className="bg-slate-800 dark:bg-slate-950 text-white uppercase text-[11px] font-bold tracking-widest leading-none h-[40px]">
                   <th className="p-2 pl-4 w-[25%] border-r border-slate-700 dark:border-slate-800 truncate">
                     Equipment & Settings
                   </th>
@@ -1386,7 +1386,7 @@ export function ClientProfileView({
                         >
                           <div className="flex flex-col items-center space-y-0.5">
                             <div className="bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/10 rounded px-1 min-w-[20px] py-0.5 shadow-sm inline-flex items-center justify-center">
-                              <span className="font-bold tabular-nums text-[9px] leading-none text-white">
+                              <span className="font-bold tabular-nums text-[11px] leading-none text-white">
                                 {sNum.toString().padStart(2, '0')}
                               </span>
                             </div>
@@ -1433,7 +1433,7 @@ export function ClientProfileView({
                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#115E8D]/0 group-hover:bg-[#115E8D] transition-colors" />
                           <div className="flex flex-col justify-center h-full">
                             <div className="flex items-center gap-2 mb-1 max-w-full">
-                              <span className="font-black uppercase tracking-tighter text-[14px] leading-none truncate shrink-0 max-w-full inline-flex items-center">
+                              <span className="font-bold uppercase tracking-tighter text-[14px] leading-none truncate shrink-0 max-w-full inline-flex items-center">
                                 <span>{machine.name}</span>
                                 {isBig5Machine(machine.name) && (
                                   <Star className="w-3 h-3 ml-1.5 fill-amber-400 text-amber-500 inline shrink-0" />
@@ -1445,7 +1445,7 @@ export function ClientProfileView({
                                 <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
                               )}
                             </div>
-                            <div className="flex items-center gap-2 text-[10px] tracking-widest truncate leading-none uppercase mt-0.5 flex-wrap">
+                            <div className="flex items-center gap-2 text-[11px] tracking-widest truncate leading-none uppercase mt-0.5 flex-wrap">
                               {(() => {
                                 const settings = clientSettings[machine.id!]?.settings || {};
                                 
@@ -1528,11 +1528,11 @@ export function ClientProfileView({
                                     </div>
                                   </div>
                                   <div className="flex-1 flex items-center justify-center p-1 min-h-[20px]">
-                                    <span className={cn("font-extrabold text-[10px] leading-none", repsColor)}>
+                                    <span className={cn("font-extrabold text-[11px] leading-none", repsColor)}>
                                       {log.repsLeft !== undefined && log.repsRight !== undefined
                                         ? `${log.repsLeft}L|${log.repsRight}R`
                                         : log.isStaticHold ? (
-                                            <>{log.seconds}<span className="text-[8px] ml-0.5 lowercase font-medium opacity-80">s</span></>
+                                            <>{log.seconds}<span className="text-[11px] ml-0.5 lowercase font-medium opacity-80">s</span></>
                                           ) : (
                                             log.reps
                                           )}
@@ -1550,7 +1550,7 @@ export function ClientProfileView({
                         <td className="p-0 text-center bg-[#F9FAFB] dark:bg-slate-900/40 align-middle border-l border-slate-200 dark:border-slate-800 h-full w-[5%]">
                           {currentLog ? (
                             <div className={cn("flex flex-col items-center justify-center border-l-[3px] h-full w-full bg-white dark:bg-slate-900/60 shadow-sm transition-colors", colors.border.replace('border-', 'border-l-'))}>
-                                <span className={cn("font-black text-lg sm:text-xl tracking-tighter leading-none", colors.activeText)}>
+                                <span className={cn("font-bold text-lg sm:text-xl tracking-tighter leading-none", colors.activeText)}>
                                   {currentLog.weight}
                                 </span>
                             </div>
@@ -1595,7 +1595,7 @@ export function ClientProfileView({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="rounded-xl font-bold uppercase text-[10px] lg:text-[11px] tracking-widest h-10 px-6 border-[#38BDF8]/50 text-[#38BDF8] hover:bg-[#38BDF8]/10"
+                      className="rounded-full font-bold uppercase text-[11px] lg:text-[11px] tracking-widest h-10 px-6 border-[#38BDF8]/50 text-[#38BDF8] hover:bg-[#38BDF8]/10"
                       onClick={() => handleToggleRoutineB(true)}
                     >
                       Enable Optional Protocol
@@ -1622,7 +1622,7 @@ export function ClientProfileView({
                         <CardTitle className="text-lg lg:text-xl font-bold uppercase italic tracking-tighter">
                           {routineName}
                         </CardTitle>
-                        <CardDescription className="text-[9px] lg:text-[10px] font-bold uppercase tracking-widest text-[#F06C22]">
+                        <CardDescription className="text-[11px] lg:text-[11px] font-medium uppercase tracking-wide opacity-70 text-[#F06C22]">
                           Protocol Definition
                         </CardDescription>
                       </div>
@@ -1631,7 +1631,7 @@ export function ClientProfileView({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 lg:h-9 rounded-xl font-bold uppercase text-[9px] lg:text-[10px] tracking-widest border-[#38BDF8]/50 text-[#38BDF8] hover:bg-[#38BDF8]/10 px-3 lg:px-4"
+                        className="h-8 lg:h-9 rounded-full font-bold uppercase text-[11px] lg:text-[11px] tracking-widest border-[#38BDF8]/50 text-[#38BDF8] hover:bg-[#38BDF8]/10 px-3 lg:px-4"
                         onClick={() => setRoutineBuilderTarget(routineName)}
                       >
                         <Settings className="w-3 h-3 mr-1.5" />
@@ -1640,7 +1640,7 @@ export function ClientProfileView({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 lg:h-9 rounded-xl font-bold uppercase text-[9px] lg:text-[10px] tracking-widest border-dashed border-slate-200 dark:border-slate-800 dark:border-slate-600 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:bg-slate-800 hover:border-slate-500 px-3 lg:px-4"
+                        className="h-8 lg:h-9 rounded-full font-bold uppercase text-[11px] lg:text-[11px] tracking-widest border-dashed border-slate-200 dark:border-slate-800 dark:border-slate-600 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:bg-slate-800 hover:border-slate-500 px-3 lg:px-4"
                         onClick={() =>
                           handleApplyTemplate("STANDARD_MALE", routineName)
                         }
@@ -1663,7 +1663,7 @@ export function ClientProfileView({
                         }, {} as Record<string, Machine[]>)
                     ).map(([region, regionMachines]) => (
                       <div key={region} className="space-y-2 lg:space-y-3">
-                        <h4 className="text-[9px] lg:text-[10px] font-bold uppercase text-slate-500 dark:text-slate-600 dark:text-slate-400 tracking-widest border-b border-slate-200 dark:border-slate-800 dark:border-slate-700 pb-1 sticky top-0 bg-white dark:bg-slate-900 z-20">
+                        <h4 className="text-[11px] lg:text-[11px] font-medium uppercase text-slate-500 dark:text-slate-600 dark:text-slate-400 tracking-widest border-b border-slate-200 dark:border-slate-800 dark:border-slate-700 pb-1 sticky top-0 bg-white dark:bg-slate-900 z-20">
                           {region}
                         </h4>
                         <div className="grid grid-cols-2 min-[400px]:grid-cols-3 md:grid-cols-4 gap-1.5 lg:gap-2">
@@ -1688,7 +1688,7 @@ export function ClientProfileView({
                                   className={`w-6 h-6 lg:w-7 lg:h-7 rounded-md flex items-center justify-center shrink-0 transition-all ${ isIn ? "bg-[#115E8D] shadow-sm" : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 dark:text-slate-400 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-800 dark:border-slate-600" }`}
                                 >
                                   {isIn ? (
-                                    <span className="font-bold text-[9px] lg:text-[10px]">
+                                    <span className="font-bold text-[11px] lg:text-[11px]">
                                       {seqPosition}
                                     </span>
                                   ) : (
@@ -1697,7 +1697,7 @@ export function ClientProfileView({
                                 </div>
                                 <div className="min-w-0 flex-1 flex items-center">
                                   <span
-                                    className={`text-[10px] lg:text-[11px] font-black uppercase tracking-tight block leading-tight ${isIn ? "text-[#38BDF8]" : "text-slate-600 dark:text-slate-400"}`}
+                                    className={`text-[11px] lg:text-[11px] font-bold uppercase tracking-tight block leading-tight ${isIn ? "text-[#38BDF8]" : "text-slate-600 dark:text-slate-400"}`}
                                   >
                                     {machine.name}
                                   </span>
@@ -1712,7 +1712,7 @@ export function ClientProfileView({
                 </CardContent>
                 <CardFooter className="p-5 lg:p-6 pt-0 border-t border-slate-200 dark:border-slate-800 dark:border-slate-700 mt-2 lg:mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                   <div className="space-y-0.5 lg:space-y-1">
-                    <p className="text-[9px] lg:text-[10px] font-bold text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 uppercase">
+                    <p className="text-[11px] lg:text-[11px] font-bold text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 uppercase">
                       {stagedMachineIds[routineName]?.length || 0} Units
                       Assigned
                     </p>
@@ -1721,7 +1721,7 @@ export function ClientProfileView({
                         routines.find((r) => r.name === routineName)
                           ?.machineIds || [],
                       ) && (
-                      <p className="text-[7px] lg:text-[8px] font-bold text-[#F06C22] uppercase tracking-widest animate-pulse">
+                      <p className="text-[7px] lg:text-[11px] font-bold text-[#F06C22] uppercase tracking-widest animate-pulse">
                         Pending Changes
                       </p>
                     )}
@@ -1731,7 +1731,7 @@ export function ClientProfileView({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-red-500 hover:bg-red-500/10 hover:text-red-400 font-bold text-[9px] lg:text-[10px] uppercase h-8 lg:h-10 tracking-widest px-3"
+                        className="text-red-500 hover:bg-red-500/10 hover:text-red-400 font-bold text-[11px] lg:text-[11px] uppercase h-8 lg:h-10 tracking-widest px-3"
                         onClick={() => handleToggleRoutineB(false)}
                       >
                         Disable
@@ -1740,7 +1740,7 @@ export function ClientProfileView({
                     <Button
                       onClick={() => handleSaveRoutineConfig(routineName)}
                       disabled={isSavingRoutine[routineName]}
-                      className="h-8 lg:h-10 flex-1 sm:flex-none rounded-xl font-bold uppercase italic text-[9px] lg:text-[10px] tracking-widest px-4 lg:px-6 bg-[#F06C22] hover:bg-[#F06C22]/90 shadow-md lg:shadow-lg shadow-[#F06C22]/20"
+                      className="h-8 lg:h-10 flex-1 sm:flex-none rounded-xl font-bold uppercase italic text-[11px] lg:text-[11px] tracking-widest px-4 lg:px-6 bg-[#F06C22] hover:bg-[#F06C22]/90 shadow-md lg:shadow-lg shadow-[#F06C22]/20"
                     >
                       {isSavingRoutine[routineName]
                         ? "Saving..."
@@ -1779,13 +1779,13 @@ export function ClientProfileView({
                       Client Profile Notes
                     </CardTitle>
                   </div>
-                  <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-[#F06C22] mt-1">
+                  <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-[#F06C22] mt-1">
                     Persistent Free-Form Notes
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-6 space-y-4">
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1">
+                    <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-500 dark:text-slate-400 ml-1">
                       General Trainer Notes
                     </Label>
                     <Textarea
@@ -1799,7 +1799,7 @@ export function ClientProfileView({
                     <Button
                       disabled={isSavingNotes}
                       onClick={handleSaveNotes}
-                      className="h-10 px-6 rounded-xl bg-[#F06C22] hover:bg-[#ea580c] text-white font-bold uppercase italic text-[10px] tracking-widest shadow-[0_0_20px_rgba(240,108,34,0.2)] transition-all flex items-center gap-2"
+                      className="h-10 px-6 rounded-full bg-[#F06C22] hover:bg-[#ea580c] text-white font-bold uppercase italic text-[11px] tracking-widest shadow-[0_0_20px_rgba(240,108,34,0.2)] transition-all flex items-center gap-2"
                     >
                       <Save className="w-3.5 h-3.5" />
                       {isSavingNotes ? "Saving Notes..." : "Save Notes"}
@@ -1817,7 +1817,7 @@ export function ClientProfileView({
                       Session Timeline Notes
                     </CardTitle>
                   </div>
-                  <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-[#F06C22] mt-1">
+                  <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-[#F06C22] mt-1">
                     Pre, During & Post Session Records
                   </CardDescription>
                 </CardHeader>
@@ -1826,7 +1826,7 @@ export function ClientProfileView({
                     <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-slate-50 dark:bg-slate-950/40 rounded-2xl border-2 border-dashed border-slate-100 dark:border-slate-800/60">
                       <Clock className="w-10 h-10 text-slate-400 opacity-25 mb-3" />
                       <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">No timeline notes recorded</p>
-                      <p className="text-[9px] text-slate-500 mt-1 max-w-[200px]">Notes recorded before, during, or after workouts will automatically appear here as coaching documentation.</p>
+                      <p className="text-[11px] text-slate-500 mt-1 max-w-[200px]">Notes recorded before, during, or after workouts will automatically appear here as coaching documentation.</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -1837,17 +1837,17 @@ export function ClientProfileView({
                           
                           <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-800/40">
                             <div className="flex items-center justify-between gap-2 mb-2">
-                              <span className="text-[10px] font-black uppercase text-slate-900 dark:text-white tracking-widest">
+                              <span className="text-[11px] font-medium uppercase text-slate-900 dark:text-white tracking-widest">
                                 {item.title}
                               </span>
-                              <span className="text-[8px] font-bold text-slate-500">
+                              <span className="text-[11px] font-bold text-slate-500">
                                 {item.date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} at {item.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
                             <p className="text-xs text-slate-800 dark:text-slate-200 italic leading-relaxed whitespace-pre-line">
                               "{item.content}"
                             </p>
-                            <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/50 flex justify-between items-center text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                            <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/50 flex justify-between items-center text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                               <span>Coach: {item.trainer}</span>
                             </div>
                           </div>
@@ -1878,7 +1878,7 @@ export function ClientProfileView({
                   <Button 
                     variant="outline" 
                     onClick={() => setSessionLimit(prev => prev + 30)}
-                    className="border-[#38BDF8]/50 text-[#38BDF8] hover:bg-[#38BDF8]/10 font-bold tracking-widest uppercase text-[10px] h-12 rounded-2xl px-6"
+                    className="border-[#38BDF8]/50 text-[#38BDF8] hover:bg-[#38BDF8]/10 font-bold tracking-widest uppercase text-[11px] h-12 rounded-2xl px-6"
                   >
                     Load More Sessions
                   </Button>
@@ -1898,7 +1898,7 @@ export function ClientProfileView({
                   <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                     Progress Report Archive
                   </CardTitle>
-                  <CardDescription className="text-[10px] font-bold uppercase tracking-widest mt-1">
+                  <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 mt-1">
                     Evaluations, Goals & Outcomes
                   </CardDescription>
                 </div>
@@ -1906,7 +1906,7 @@ export function ClientProfileView({
                   onClick={() => setView("progress-report")}
                   variant="default"
                   size="sm"
-                  className="rounded-xl font-bold uppercase text-[10px] tracking-widest h-11 bg-primary"
+                  className="rounded-xl font-medium uppercase text-[11px] tracking-wide opacity-70 h-11 bg-primary"
                 >
                   <Plus className="w-4 h-4 mr-2" /> New Evaluation
                 </Button>
@@ -1927,11 +1927,11 @@ export function ClientProfileView({
                       >
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 rounded-2xl bg-muted/50 flex flex-col items-center justify-center border group-hover:bg-primary/5 group-hover:border-primary/20 transition-all font-bold uppercase italic text-primary">
-                            <span className="text-[10px] leading-none">
+                            <span className="text-[11px] leading-none">
                               {report.date.split("-")[1]}/
                               {report.date.split("-")[2]}
                             </span>
-                            <span className="text-[8px] opacity-30 mt-1">
+                            <span className="text-[11px] opacity-30 mt-1">
                               {report.date.split("-")[0]}
                             </span>
                           </div>
@@ -1946,16 +1946,16 @@ export function ClientProfileView({
                                     ? "default"
                                     : "secondary"
                                 }
-                                className={`px-1.5 py-0 h-4 text-[8px] font-bold uppercase border-none ${report.status === "Finalized" ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"}`}
+                                className={`px-1.5 py-0 h-4 text-[11px] font-bold uppercase border-none ${report.status === "Finalized" ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"}`}
                               >
                                 {report.status || "Finalized"}
                               </Badge>
                             </div>
                             <div className="flex items-center gap-4 mt-1">
-                              <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest bg-muted px-2 py-0.5 rounded">
+                              <span className="text-[11px] text-muted-foreground font-bold uppercase tracking-widest bg-muted px-2 py-0.5 rounded">
                                 Session #{report.sessionNumber || Math.round(report.attendance?.totalSessions) || "---"}
                               </span>
-                              <span className="text-[9px] text-muted-foreground font-bold uppercase flex items-center gap-1">
+                              <span className="text-[11px] text-muted-foreground font-bold uppercase flex items-center gap-1">
                                 <User className="w-2.5 h-2.5" />
                                 {report.trainerName || report.trainerInitials || "Team"}
                               </span>
@@ -1975,7 +1975,7 @@ export function ClientProfileView({
                                 }
                               }
                             }}
-                            className="rounded-xl font-bold uppercase italic text-[10px] tracking-widest text-red-500 hover:text-red-600 hover:bg-red-500/10 mr-2"
+                            className="rounded-xl font-bold uppercase italic text-[11px] tracking-widest text-red-500 hover:text-red-600 hover:bg-red-500/10 mr-2"
                           >
                             <Trash2 className="w-3 h-3 md:mr-2" />
                             <span className="hidden md:inline">Delete</span>
@@ -1984,7 +1984,7 @@ export function ClientProfileView({
                             variant="ghost"
                             size="sm"
                             onClick={() => onSelectReport(report.id!)}
-                            className="rounded-xl font-bold uppercase italic text-[10px] tracking-widest text-primary"
+                            className="rounded-xl font-bold uppercase italic text-[11px] tracking-widest text-primary"
                           >
                             {report.status === "Draft"
                               ? "Resume Draft"
@@ -2001,7 +2001,7 @@ export function ClientProfileView({
                     </p>
                     <Button
                       variant="outline"
-                      className="rounded-xl font-bold uppercase text-[10px] tracking-widest border-2 mt-4"
+                      className="rounded-full font-medium uppercase text-[11px] tracking-wide opacity-70 border-2 mt-4"
                       onClick={() => setView("progress-report")}
                     >
                       Perform First Evaluation
@@ -2060,61 +2060,61 @@ export function ClientProfileView({
 
             return (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="rounded-[32px] overflow-hidden border-2 shadow-sm bg-gradient-to-br from-card to-card hover:border-primary/30 transition-all group">
+                <Card className="rounded-3xl overflow-hidden border-2 shadow-sm bg-gradient-to-br from-card to-card hover:border-primary/30 transition-all group">
                   <CardContent className="p-6">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                         <CalendarDays className="w-4 h-4 text-primary" />
                       </div>
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Origin</p>
+                      <p className="text-[11px] uppercase tracking-widest font-bold text-muted-foreground">Origin</p>
                     </div>
                     <div className="text-2xl font-bold italic tracking-tighter text-foreground">{firstDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</div>
-                    <p className="text-[10px] font-bold text-muted-foreground mt-1 opacity-60">First Recorded App Session</p>
+                    <p className="text-[11px] font-bold text-muted-foreground mt-1 opacity-60">First Recorded App Session</p>
                   </CardContent>
                 </Card>
                 
-                <Card className="rounded-[32px] overflow-hidden border-2 shadow-sm bg-gradient-to-br from-card to-card hover:border-emerald-500/30 transition-all group">
+                <Card className="rounded-3xl overflow-hidden border-2 shadow-sm bg-gradient-to-br from-card to-card hover:border-emerald-500/30 transition-all group">
                   <CardContent className="p-6">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                         <TrendingUp className="w-4 h-4 text-emerald-500" />
                       </div>
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Frequency</p>
+                      <p className="text-[11px] uppercase tracking-widest font-bold text-muted-foreground">Frequency</p>
                     </div>
                     <div className="flex items-end gap-2">
                       <div className="text-3xl font-bold italic tracking-tighter text-foreground">{avgPerWeek30}</div>
                       <span className="text-xs font-bold uppercase mb-1.5 opacity-60">per week (30 Days)</span>
                     </div>
-                    <p className="text-[10px] font-bold text-emerald-600 mt-1 uppercase tracking-widest leading-none bg-emerald-500/10 w-fit px-2 py-1 rounded">Lifetime: {avgPerWeekLife} / wk</p>
+                    <p className="text-[11px] font-bold text-emerald-600 mt-1 uppercase tracking-widest leading-none bg-emerald-500/10 w-fit px-2 py-1 rounded">Lifetime: {avgPerWeekLife} / wk</p>
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-[32px] overflow-hidden border-2 shadow-sm bg-gradient-to-br from-card to-card hover:border-amber-500/30 transition-all group">
+                <Card className="rounded-3xl overflow-hidden border-2 shadow-sm bg-gradient-to-br from-card to-card hover:border-amber-500/30 transition-all group">
                   <CardContent className="p-6">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                         <Battery className="w-4 h-4 text-amber-500" />
                       </div>
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Recovery Avg</p>
+                      <p className="text-[11px] uppercase tracking-widest font-bold text-muted-foreground">Recovery Avg</p>
                     </div>
                     <div className="flex items-end gap-2">
                       <div className="text-3xl font-bold italic tracking-tighter text-foreground">{avgRestDays}</div>
                       <span className="text-xs font-bold uppercase mb-1.5 opacity-60">days</span>
                     </div>
-                    <p className="text-[10px] font-bold text-amber-600 mt-1 uppercase tracking-widest leading-none bg-amber-500/10 w-fit px-2 py-1 rounded">Between sessions</p>
+                    <p className="text-[11px] font-bold text-amber-600 mt-1 uppercase tracking-widest leading-none bg-amber-500/10 w-fit px-2 py-1 rounded">Between sessions</p>
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-[32px] overflow-hidden border-2 shadow-sm bg-gradient-to-br from-card to-card hover:border-indigo-500/30 transition-all group">
+                <Card className="rounded-3xl overflow-hidden border-2 shadow-sm bg-gradient-to-br from-card to-card hover:border-indigo-500/30 transition-all group">
                   <CardContent className="p-6">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                         <Clock className="w-4 h-4 text-indigo-500" />
                       </div>
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Preferred Time</p>
+                      <p className="text-[11px] uppercase tracking-widest font-bold text-muted-foreground">Preferred Time</p>
                     </div>
                     <div className="text-2xl font-bold italic tracking-tighter text-foreground">{favoriteTime}</div>
-                    <p className="text-[10px] font-bold text-indigo-600 mt-1 uppercase tracking-widest leading-none bg-indigo-500/10 w-fit px-2 py-1 rounded">Routine Dominance</p>
+                    <p className="text-[11px] font-bold text-indigo-600 mt-1 uppercase tracking-widest leading-none bg-indigo-500/10 w-fit px-2 py-1 rounded">Routine Dominance</p>
                   </CardContent>
                 </Card>
               </div>
@@ -2182,7 +2182,7 @@ export function ClientProfileView({
                 const data = payload[0].payload;
                 return (
                   <div className="bg-[#0A2E46] border border-slate-200 dark:border-slate-800 dark:border-slate-700 p-3 rounded-lg shadow-xl min-w-[200px]">
-                    <p className="text-[10px] uppercase tracking-widest text-[#68717A] mb-2">{data.date}</p>
+                    <p className="text-[11px] uppercase tracking-widest text-[#68717A] mb-2">{data.date}</p>
                     <div className="space-y-2">
                       {payload.map((entry: any, index: number) => {
                         const machine = machines.find(m => m.id === entry.dataKey);
@@ -2193,10 +2193,10 @@ export function ClientProfileView({
                           <div key={index} className="flex flex-col text-xs bg-slate-900/50 p-1.5 rounded">
                             <div className="flex justify-between items-center w-full">
                               <span style={{ color: entry.color }} className="font-bold truncate max-w-[120px]">{machine.name}</span>
-                              <span className="font-black text-white text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">+{entry.value}%</span>
+                              <span className="font-bold text-white text-[11px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">+{entry.value}%</span>
                             </div>
                             {weight !== undefined && baselineWeight !== undefined && (
-                              <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest text-[#68717A] mt-1">
+                              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-[#68717A] mt-1">
                                 <span>Start: <span className="text-white font-bold">{baselineWeight} lbs</span></span>
                                 <span>→</span>
                                 <span>Current: <span className="text-white font-bold">{weight} lbs</span></span>
@@ -2260,14 +2260,14 @@ export function ClientProfileView({
               <div className="space-y-6">
                  {/* Average Growth Summary Card */}
                 {machineGrowths.length > 0 && (
-                  <Card className="rounded-[24px] overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 border-l-4 border-l-[#10b981]">
+                  <Card className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 border-l-4 border-l-[#10b981]">
                     <CardContent className="p-6 flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full bg-[#10b981]/10 flex items-center justify-center">
                           <TrendingUp className="w-6 h-6 text-[#10b981]" />
                         </div>
                         <div>
-                          <p className="text-[10px] uppercase tracking-widest font-bold text-slate-500">Average Studio Growth</p>
+                          <p className="text-[11px] uppercase tracking-widest font-bold text-slate-500">Average Studio Growth</p>
                           <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total average increase across {machineGrowths.length} machines</p>
                         </div>
                       </div>
@@ -2319,7 +2319,7 @@ export function ClientProfileView({
                                  </div>
                                  <span className="text-[11px] font-bold uppercase truncate flex-1">{m.name}</span>
                                  {machineGrowths.find(x => x.id === m.id) && (
-                                   <span className="text-[10px] font-bold text-emerald-500">+{machineGrowths.find(x => x.id === m.id)?.growth}%</span>
+                                   <span className="text-[11px] font-bold text-emerald-500">+{machineGrowths.find(x => x.id === m.id)?.growth}%</span>
                                  )}
                                </DropdownMenuItem>
                              )
@@ -2428,7 +2428,7 @@ export function ClientProfileView({
               if (active && payload && payload.length) {
                 return (
                   <div className="bg-[#0A2E46] border border-slate-200 dark:border-slate-800 dark:border-slate-700 p-3 rounded-lg shadow-xl min-w-[120px]">
-                    <p className="text-[10px] uppercase tracking-widest text-[#68717A] mb-1">{label}</p>
+                    <p className="text-[11px] uppercase tracking-widest text-[#68717A] mb-1">{label}</p>
                     <p className="text-[#38BDF8] font-bold text-xl leading-none">{payload[0].value.toLocaleString()} <span className="text-xs">LBS</span></p>
                   </div>
                 );
@@ -2444,14 +2444,14 @@ export function ClientProfileView({
                       <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                         Total Volume Progression
                       </CardTitle>
-                      <CardDescription className="text-[10px] font-bold uppercase tracking-widest mt-1">
+                      <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 mt-1">
                         60-Day Work Capacity Trend
                       </CardDescription>
                       <p className="text-slate-700 dark:text-slate-300 dark:text-slate-400 dark:text-slate-500 text-sm mt-1 italic">
                         Charts reflect currently loaded history. Load more sessions to expand the timeline.
                       </p>
                     </div>
-                    <Badge variant="outline" className="text-[9px] font-bold bg-[#38BDF8]/10 text-[#38BDF8] border-[#38BDF8]/20">
+                    <Badge variant="outline" className="text-[11px] font-bold bg-[#38BDF8]/10 text-[#38BDF8] border-[#38BDF8]/20">
                       Workload
                     </Badge>
                   </div>
@@ -2511,7 +2511,7 @@ export function ClientProfileView({
                   <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                     Time Spent on Machines
                   </CardTitle>
-                  <CardDescription className="text-[10px] font-bold uppercase tracking-widest mt-1">
+                  <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 mt-1">
                     Efficiency & Pace Analytics
                   </CardDescription>
                 </div>
@@ -2534,7 +2534,7 @@ export function ClientProfileView({
 
                     return (
                       <div className="text-right">
-                        <p className="text-[9px] font-bold uppercase text-muted-foreground opacity-60">
+                        <p className="text-[11px] font-bold uppercase text-muted-foreground opacity-60">
                           Avg Session
                         </p>
                         <p className="text-sm font-bold italic text-primary">
@@ -2545,7 +2545,7 @@ export function ClientProfileView({
                   })()}
                   <Badge
                     variant="outline"
-                    className="text-[9px] font-bold bg-primary/10 text-primary border-primary/20"
+                    className="text-[11px] font-bold bg-primary/10 text-primary border-primary/20"
                   >
                     Efficiency
                   </Badge>
@@ -2564,16 +2564,16 @@ export function ClientProfileView({
                       className={`w-full p-4 text-left hover:bg-white transition-all group ${selectedTimingSessionId === s.id ? "bg-white shadow-sm ring-1 ring-primary/5" : ""}`}
                     >
                       <p
-                        className={`text-[10px] flex justify-between items-center font-bold uppercase tracking-tighter ${selectedTimingSessionId === s.id ? "text-primary" : "text-muted-foreground"}`}
+                        className={`text-[11px] flex justify-between items-center font-bold uppercase tracking-tighter ${selectedTimingSessionId === s.id ? "text-primary" : "text-muted-foreground"}`}
                       >
                         <span>{s.date}</span>
-                        <span className="text-[8px] opacity-70 font-bold">{(s.legacy_filemaker_id || s.trainerId === 'legacy-trainer' || s.trainerInitials === 'Legacy' || s.trainerInitials === 'Chart') ? 'Imported' : s.startTime ? new Date(s.startTime?.toMillis?.() || s.startTime).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                        <span className="text-[11px] opacity-70 font-bold">{(s.legacy_filemaker_id || s.trainerId === 'legacy-trainer' || s.trainerInitials === 'Legacy' || s.trainerInitials === 'Chart') ? 'Imported' : s.startTime ? new Date(s.startTime?.toMillis?.() || s.startTime).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                       </p>
                       <p className="text-xs font-bold truncate mt-1">
                         {s.routineName || "Session"}
                       </p>
                       {s.startTime && s.endTime && (
-                        <p className="text-[9px] font-bold text-muted-foreground/60 uppercase mt-1">
+                        <p className="text-[11px] font-bold text-muted-foreground/60 uppercase mt-1">
                           {Math.round(
                             (getMillis(s.endTime) - getMillis(s.startTime)) /
                               60000,
@@ -2587,7 +2587,7 @@ export function ClientProfileView({
                   0 && (
                   <div className="p-8 text-center opacity-20">
                     <Clock className="w-8 h-8 mx-auto mb-2" />
-                    <p className="text-[10px] font-bold uppercase tracking-widest leading-tight">
+                    <p className="text-[11px] font-medium uppercase tracking-wide opacity-70 leading-tight">
                       No data
                     </p>
                   </div>
@@ -2693,19 +2693,19 @@ export function ClientProfileView({
                           <p className="font-bold uppercase text-sm mb-2">{data.machineName}</p>
                           <div className="space-y-1">
                             <div className="flex justify-between gap-6">
-                              <span className="text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase">Estimated TUT/Rep:</span>
+                              <span className="text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 text-[11px] font-medium uppercase">Estimated TUT/Rep:</span>
                               <span className="text-[#38BDF8] text-sm font-bold">{data.estimatedTutPerRep}s</span>
                             </div>
                             <div className="flex justify-between gap-6">
-                              <span className="text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase">Reps:</span>
+                              <span className="text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 text-[11px] font-medium uppercase">Reps:</span>
                               <span className="text-xs font-bold">{data.isStatic ? 'Static Hold' : data.reps}</span>
                             </div>
                             <div className="flex justify-between gap-6">
-                              <span className="text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase">Gross Time:</span>
+                              <span className="text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 text-[11px] font-medium uppercase">Gross Time:</span>
                               <span className="text-xs font-bold">{formatMMSS(data.grossTimeSeconds)}</span>
                             </div>
                             <div className="flex justify-between gap-6">
-                              <span className="text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase">Net Active:</span>
+                              <span className="text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 text-[11px] font-medium uppercase">Net Active:</span>
                               <span className="text-xs font-bold">{formatMMSS(data.netActiveTime)}</span>
                             </div>
                           </div>
@@ -2722,7 +2722,7 @@ export function ClientProfileView({
                           <h4 className="text-lg font-bold uppercase italic text-primary">
                             {focusSession.date}
                           </h4>
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                          <p className="text-[11px] font-bold text-muted-foreground uppercase">
                             {focusSession.routineName || "Free Protocol"}
                           </p>
                         </div>
@@ -2736,7 +2736,7 @@ export function ClientProfileView({
                               )}
                               m
                             </p>
-                            <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">
+                            <p className="text-[11px] font-bold text-muted-foreground uppercase opacity-60">
                               Total Duration
                             </p>
                           </div>
@@ -2800,13 +2800,13 @@ export function ClientProfileView({
                 <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                   The 'Why' (Goals & Motivation)
                 </CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-[#38BDF8]">
+                <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-[#38BDF8]">
                   Discovery & Intent Path
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-8 space-y-6">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
+                  <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
                     Discovery Notes (Stage 1)
                   </Label>
                   <Textarea
@@ -2819,7 +2819,7 @@ export function ClientProfileView({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
+                  <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
                     Primary Training Goals & Deep Intent
                   </Label>
                   <Textarea
@@ -2840,14 +2840,14 @@ export function ClientProfileView({
                 <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                   Lifestyle & Environment
                 </CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-[#38BDF8]">
+                <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-[#38BDF8]">
                   External Stressors & Physical Context
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-8 space-y-6">
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
+                    <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
                       Occupation
                     </Label>
                     <OccupationSelect
@@ -2867,7 +2867,7 @@ export function ClientProfileView({
                         }
                         className="data-[state=checked]:bg-[#38BDF8]"
                       />
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-300">
+                      <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-300">
                         Retired
                       </Label>
                     </div>
@@ -2875,7 +2875,7 @@ export function ClientProfileView({
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
+                  <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
                     Daily Activity Level
                   </Label>
                   <Select
@@ -2898,7 +2898,7 @@ export function ClientProfileView({
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
+                  <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
                     Systemic Recovery (Sleep/Stress)
                   </Label>
                   <Select
@@ -2919,7 +2919,7 @@ export function ClientProfileView({
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
+                  <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
                     Experience Level
                   </Label>
                   <Select
@@ -2948,7 +2948,7 @@ export function ClientProfileView({
                 <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                   The Clinical Baseline (Medical)
                 </CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-[#38BDF8]">
+                <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-[#38BDF8]">
                   Orthopedic & Safety Flags
                 </CardDescription>
               </CardHeader>
@@ -2965,7 +2965,7 @@ export function ClientProfileView({
                     <div className="space-y-6">
                       {infoForm.clinicalFlags && infoForm.clinicalFlags.length > 0 && (
                         <div className="w-full flex flex-col gap-2 mb-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 dark:border-slate-700 shadow-sm">
-                          <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500">
+                          <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500">
                             Active Health Flags
                           </Label>
                           <div className="flex flex-wrap gap-2">
@@ -2992,7 +2992,7 @@ export function ClientProfileView({
 
                       <div className="grid lg:grid-cols-2 gap-8">
                         <div className="space-y-4">
-                          <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
+                          <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
                             Select Pertinent Health Flags
                           </Label>
                         <div className="w-full space-y-2">
@@ -3041,7 +3041,7 @@ export function ClientProfileView({
                       
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
+                          <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
                             Ailments, Injuries & Limitations
                           </Label>
                           <Textarea
@@ -3067,7 +3067,7 @@ export function ClientProfileView({
             {/* 4. Client Information */}
             <Card className="rounded-[40px] shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 flex flex-col h-full">
               <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-800">
-                <CardTitle className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">
+                <CardTitle className="text-2xl font-bold uppercase tracking-tighter text-slate-900 dark:text-white">
                   Client Information
                 </CardTitle>
                 <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-500">
@@ -3085,13 +3085,13 @@ export function ClientProfileView({
                          value={infoForm.firstName || ""}
                          onChange={(e) => setInfoForm((f) => ({ ...f, firstName: e.target.value }))}
                          placeholder="First"
-                         className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-black px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
+                         className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-bold px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
                        />
                        <Input
                          value={infoForm.lastName || ""}
                          onChange={(e) => setInfoForm((f) => ({ ...f, lastName: e.target.value }))}
                          placeholder="Last"
-                         className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-black px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
+                         className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-bold px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
                        />
                      </div>
                   </div>
@@ -3103,7 +3103,7 @@ export function ClientProfileView({
                     <Input
                       value={infoForm.email || ""}
                       onChange={(e) => setInfoForm((f) => ({ ...f, email: e.target.value }))}
-                      className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-black px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
+                      className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-bold px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
                     />
                   </div>
                   
@@ -3120,7 +3120,7 @@ export function ClientProfileView({
                            age: e.target.value ? parseInt(e.target.value) : null,
                          }))
                        }
-                       className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-black px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
+                       className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-bold px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
                      />
                   </div>
 
@@ -3130,7 +3130,7 @@ export function ClientProfileView({
                       value={infoForm.packageTier || "None"}
                       onValueChange={(v: any) => setInfoForm(f => ({ ...f, packageTier: v }))}
                     >
-                      <SelectTrigger className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-black px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100 data-[placeholder]:text-slate-400">
+                      <SelectTrigger className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-bold px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100 data-[placeholder]:text-slate-400">
                         <SelectValue placeholder="Select Tier" />
                       </SelectTrigger>
                       <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold p-2">
@@ -3187,7 +3187,7 @@ export function ClientProfileView({
                           }));
                         }
                       }}
-                      className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-black px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
+                      className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-bold px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
                     />
                   </div>
                 </div>
@@ -3204,7 +3204,7 @@ export function ClientProfileView({
                     <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                       Reminders
                     </CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-[#38BDF8]">
+                    <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-[#38BDF8]">
                       Alerts & Follow-ups
                     </CardDescription>
                   </div>
@@ -3213,7 +3213,7 @@ export function ClientProfileView({
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 dark:border-slate-700 rounded-3xl p-6 shadow-sm">
                     <div className="grid grid-cols-1 gap-4 mb-4">
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
+                        <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
                           Event Type
                         </Label>
                         <Select
@@ -3236,7 +3236,7 @@ export function ClientProfileView({
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
+                        <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
                           Date
                         </Label>
                         <Input
@@ -3253,7 +3253,7 @@ export function ClientProfileView({
                       </div>
                     </div>
                     <div className="space-y-2 mb-4">
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
+                      <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
                         Event Title
                       </Label>
                       <Input
@@ -3269,7 +3269,7 @@ export function ClientProfileView({
                       />
                     </div>
                     <div className="space-y-2 mb-6">
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
+                      <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
                         Notes
                       </Label>
                       <Textarea
@@ -3291,7 +3291,7 @@ export function ClientProfileView({
                         !newEventForm.date ||
                         isSavingEvent
                       }
-                      className="w-full bg-[#38BDF8] hover:bg-[#0ea5e9] font-bold uppercase tracking-widest text-xs h-12 rounded-2xl transition-all"
+                      className="w-full bg-[#38BDF8] hover:bg-[#0ea5e9] font-bold uppercase tracking-widest text-xs h-12 rounded-full transition-all"
                     >
                       {isSavingEvent ? "Adding..." : "Add Event"}
                     </Button>
@@ -3299,7 +3299,7 @@ export function ClientProfileView({
 
                   {client?.events && client.events.length > 0 ? (
                     <div className="space-y-3 mt-8">
-                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1 mb-4">
+                      <h4 className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1 mb-4">
                         Scheduled Events
                       </h4>
                       {client.events
@@ -3317,7 +3317,7 @@ export function ClientProfileView({
                               <div className="flex flex-col">
                                 <span
                                   className={cn(
-                                    "text-[9px] font-black uppercase tracking-widest mb-1",
+                                    "text-[11px] font-bold uppercase tracking-widest mb-1",
                                     event.priority === "High"
                                       ? "text-red-400"
                                       : event.priority === "Medium"
@@ -3332,7 +3332,7 @@ export function ClientProfileView({
                                 </span>
                               </div>
                               <div className="flex flex-col items-end">
-                                <span className="text-[10px] font-bold tracking-widest uppercase text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 mb-1">
+                                <span className="text-[11px] font-bold tracking-widest uppercase text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 mb-1">
                                   {new Date(
                                     parseSessionDate(event.date)
                                   ).toLocaleDateString()}
@@ -3361,22 +3361,105 @@ export function ClientProfileView({
             </div>
 
             <div className="space-y-6">
+              <Card className="rounded-2xl shadow-sm bg-surface-1 border border-div-d">
+                <CardHeader className="p-8 border-b border-div-d">
+                  <CardTitle className="text-xl font-bold uppercase italic tracking-tighter text-white">
+                    Retention Status
+                  </CardTitle>
+                  <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-cyan">
+                    MIA Tracking & Overrides
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-8 space-y-6">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between bg-surface-2 p-4 rounded-xl border border-div-d">
+                      <div>
+                        <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">
+                          Exclude from MIA Tracking
+                        </Label>
+                        <p className="text-[11px] font-bold opacity-40 uppercase tracking-tighter mt-0.5 text-ink-d3">
+                          Temporarily pause retention alerts
+                        </p>
+                      </div>
+                      <Switch
+                        checked={infoForm.retentionMeta?.excludedFromMIA || false}
+                        onCheckedChange={(v) => {
+                          setInfoForm((f) => ({
+                            ...f,
+                            retentionMeta: {
+                              ...f.retentionMeta,
+                              excludedFromMIA: v,
+                              excludedBy: v ? authTrainer?.fullName : undefined,
+                            }
+                          }));
+                        }}
+                        className="data-[state=checked]:bg-cyan"
+                      />
+                    </div>
+
+                    {infoForm.retentionMeta?.excludedFromMIA && (
+                      <div className="bg-surface-2 p-4 rounded-xl border border-div-d space-y-4">
+                        <div className="flex flex-col gap-2">
+                          <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">Reason</Label>
+                          <Select
+                            value={infoForm.retentionMeta.excludedReason || ""}
+                            onValueChange={(val) => setInfoForm((f) => ({
+                              ...f,
+                              retentionMeta: {
+                                ...f.retentionMeta,
+                                excludedReason: val
+                              }
+                            }))}
+                          >
+                            <SelectTrigger className="w-full bg-surface-1 border border-div-d rounded-xl min-h-[44px] text-white focus:ring-2 focus:ring-cyan focus:ring-offset-2 focus:ring-offset-bg-dark">
+                              <SelectValue placeholder="Select reason..." />
+                            </SelectTrigger>
+                            <SelectContent className="bg-surface-2 text-white border-div-d">
+                              <SelectItem value="Vacation">Vacation</SelectItem>
+                              <SelectItem value="Medical / Injury">Medical / Injury</SelectItem>
+                              <SelectItem value="Snowbird / Seasonal Relocation">Snowbird / Seasonal Relocation</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">Auto-Resume Date</Label>
+                          <input
+                            type="date"
+                            value={infoForm.retentionMeta.autoIncludeAfter ? new Date(infoForm.retentionMeta.autoIncludeAfter).toISOString().split('T')[0] : ""}
+                            onChange={(e) => setInfoForm((f) => ({
+                              ...f,
+                              retentionMeta: {
+                                ...f.retentionMeta,
+                                autoIncludeAfter: e.target.value ? new Date(e.target.value).toISOString() : undefined
+                              }
+                            }))}
+                            className="flex min-h-[44px] w-full rounded-xl border border-div-d bg-surface-1 px-3 py-2 text-[14px] text-white focus:outline-none focus:ring-2 focus:ring-cyan focus:ring-offset-2 focus:ring-offset-bg-dark"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card className="rounded-[40px] shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                 <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-800">
                   <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                     Account Actions
                   </CardTitle>
-                  <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-[#38BDF8]">
+                  <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-[#38BDF8]">
                     Protocol & Membership Management
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-8 space-y-6">
                   <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
                     <div>
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500">
+                      <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500">
                         Active Account
                       </Label>
-                      <p className="text-[8px] font-bold opacity-40 uppercase tracking-tighter mt-0.5 text-slate-300">
+                      <p className="text-[11px] font-bold opacity-40 uppercase tracking-tighter mt-0.5 text-slate-300">
                         Toggle client visibility in lists
                       </p>
                     </div>
@@ -3408,7 +3491,7 @@ export function ClientProfileView({
                     <Button
                       disabled={isSavingInfo}
                       onClick={handleSaveInfo}
-                      className="w-full h-12 rounded-2xl bg-[#F06C22] hover:bg-[#ea580c] font-bold uppercase italic text-xs tracking-widest shadow-[0_0_20px_rgba(240,108,34,0.3)] transition-all"
+                      className="w-full h-12 rounded-full bg-[#F06C22] hover:bg-[#ea580c] font-bold uppercase italic text-xs tracking-widest shadow-[0_0_20px_rgba(240,108,34,0.3)] transition-all"
                     >
                       {isSavingInfo ? "Processing..." : "Save All Changes"}
                     </Button>
@@ -3416,7 +3499,7 @@ export function ClientProfileView({
                     <div className="pt-4 mt-2 border-t border-slate-200 dark:border-slate-800">
                       <Button
                         variant="outline"
-                        className="w-full h-10 rounded-xl border-red-500/20 text-red-500 hover:bg-red-500/10 hover:text-red-400 font-bold uppercase tracking-widest text-[9px] transition-all bg-transparent shadow-none"
+                        className="w-full h-10 rounded-full border-red-500/20 text-red-500 hover:bg-red-500/10 hover:text-red-400 font-bold uppercase tracking-widest text-[11px] transition-all bg-transparent shadow-none"
                         onClick={() => setIsDeleting(true)}
                       >
                         <Trash2 className="w-3.5 h-3.5 mr-2" />
@@ -3434,7 +3517,7 @@ export function ClientProfileView({
                       <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                         Debug Tools
                       </CardTitle>
-                      <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-amber-500/80">
+                      <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-amber-500/80">
                         Administrative Utilities
                       </CardDescription>
                     </div>
@@ -3458,7 +3541,7 @@ export function ClientProfileView({
                       <Database className="w-4 h-4 mr-2" />
                       Provision Mock Client Data
                     </Button>
-                    <p className="text-[9px] text-center text-amber-500/40 font-bold uppercase tracking-widest">
+                    <p className="text-[11px] text-center text-amber-500/40 font-bold uppercase tracking-widest">
                       Creates a new test entity with full history
                     </p>
                   </CardContent>
@@ -3497,7 +3580,7 @@ export function ClientProfileView({
               <h2 className="text-2xl font-bold uppercase italic tracking-tighter leading-none">
                 Confirm Deletion
               </h2>
-              <p className="text-[10px] font-bold uppercase tracking-widest mt-2 opacity-80">
+              <p className="text-[11px] font-medium uppercase tracking-wide opacity-70 mt-2 opacity-80">
                 This action is permanent
               </p>
             </div>
@@ -3515,7 +3598,7 @@ export function ClientProfileView({
             <div className="flex flex-col gap-3">
               <Button
                 variant="destructive"
-                className="h-14 rounded-2xl font-bold uppercase italic tracking-widest text-xs shadow-xl shadow-red-200"
+                className="h-14 rounded-full font-bold uppercase italic tracking-widest text-xs shadow-xl shadow-red-200"
                 onClick={() => {
                   if (client.id) onDelete(client.id);
                   setIsDeleting(false);
@@ -3525,7 +3608,7 @@ export function ClientProfileView({
               </Button>
               <Button
                 variant="ghost"
-                className="h-12 rounded-2xl font-bold text-muted-foreground"
+                className="h-12 rounded-full font-bold text-muted-foreground"
                 onClick={() => setIsDeleting(false)}
               >
                 Go Back
@@ -3577,13 +3660,13 @@ export function ClientProfileView({
               <Button
                 variant="outline"
                 onClick={() => setIsEditingSessionCount(false)}
-                className="flex-1 border-slate-200 dark:border-slate-800 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 text-slate-300 hover: hover:bg-slate-700 rounded-xl font-bold uppercase tracking-widest text-[10px]"
+                className="flex-1 border-slate-200 dark:border-slate-800 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 text-slate-300 hover: hover:bg-slate-700 rounded-xl font-bold uppercase tracking-widest text-[11px]"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSaveSessionCount}
-                className="flex-[2] bg-[#38BDF8] hover:bg-[#0284c7] rounded-xl font-bold uppercase tracking-widest text-[10px]"
+                className="flex-[2] bg-[#38BDF8] hover:bg-[#0284c7] rounded-full font-bold uppercase tracking-widest text-[11px]"
               >
                 Save
               </Button>

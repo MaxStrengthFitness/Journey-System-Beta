@@ -126,14 +126,14 @@ export function AdminHubAnnouncements({ studios, authTrainer }: Props) {
               </div>
               <div>
                 <CardTitle className="text-2xl font-black text-slate-900 dark:text-white italic tracking-tight">Create Announcement</CardTitle>
-                <CardDescription className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[10px] tracking-widest">Broadcast global updates to all studios.</CardDescription>
+                <CardDescription className="text-slate-500 dark:text-slate-400 font-medium uppercase text-[11px] tracking-widest">Broadcast global updates to all studios.</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Headline</Label>
+                <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Headline</Label>
                 <Input 
                   value={newAnnouncement.title || ''} 
                   onChange={e => setNewAnnouncement(p => ({ ...p, title: e.target.value }))}
@@ -143,7 +143,7 @@ export function AdminHubAnnouncements({ studios, authTrainer }: Props) {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Main Message</Label>
+                <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Main Message</Label>
                 <Textarea 
                   value={newAnnouncement.longContent || ''} 
                   onChange={e => setNewAnnouncement(p => ({ ...p, longContent: e.target.value }))}
@@ -153,7 +153,7 @@ export function AdminHubAnnouncements({ studios, authTrainer }: Props) {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Short Update (Ticker Feed)</Label>
+                <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Short Update (Ticker Feed)</Label>
                 <Input 
                   value={newAnnouncement.shortContent || ''} 
                   onChange={e => setNewAnnouncement(p => ({ ...p, shortContent: e.target.value }))}
@@ -164,9 +164,9 @@ export function AdminHubAnnouncements({ studios, authTrainer }: Props) {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Target Scope</Label>
+                <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Target Scope</Label>
                 <Select value={newAnnouncement.targetScope} onValueChange={(v: 'universal' | 'network' | 'studio') => setNewAnnouncement(p => ({ ...p, targetScope: v, studioId: v === 'universal' ? 'all' : studios[0]?.id }))}>
-                  <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[10px] tracking-widest border-slate-200 dark:border-slate-800">
+                  <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[11px] tracking-widest border-slate-200 dark:border-slate-800">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -178,9 +178,9 @@ export function AdminHubAnnouncements({ studios, authTrainer }: Props) {
 
               {newAnnouncement.targetScope === 'studio' && (
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Select Studio</Label>
+                  <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Select Studio</Label>
                   <Select value={newAnnouncement.studioId} onValueChange={(v) => setNewAnnouncement(p => ({ ...p, studioId: v }))}>
-                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[10px] tracking-widest border-slate-200 dark:border-slate-800">
+                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[11px] tracking-widest border-slate-200 dark:border-slate-800">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -192,9 +192,9 @@ export function AdminHubAnnouncements({ studios, authTrainer }: Props) {
 
               <div className="flex flex-wrap gap-4">
                 <div className="flex-1 min-w-[120px] space-y-2">
-                  <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Type</Label>
+                  <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Type</Label>
                   <Select value={newAnnouncement.type || 'news'} onValueChange={(v: any) => setNewAnnouncement(p => ({ ...p, type: v }))}>
-                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[10px] tracking-widest border-slate-200 dark:border-slate-800">
+                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[11px] tracking-widest border-slate-200 dark:border-slate-800">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -206,9 +206,9 @@ export function AdminHubAnnouncements({ studios, authTrainer }: Props) {
                   </Select>
                 </div>
                 <div className="flex-1 min-w-[120px] space-y-2">
-                  <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Urgency</Label>
+                  <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Urgency</Label>
                   <Select value={newAnnouncement.priority || 'low'} onValueChange={(v: any) => setNewAnnouncement(p => ({ ...p, priority: v }))}>
-                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[10px] tracking-widest border-slate-200 dark:border-slate-800">
+                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[11px] tracking-widest border-slate-200 dark:border-slate-800">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -218,9 +218,9 @@ export function AdminHubAnnouncements({ studios, authTrainer }: Props) {
                   </Select>
                 </div>
                 <div className="flex-1 min-w-[120px] space-y-2">
-                  <Label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Lifespan</Label>
+                  <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Lifespan</Label>
                   <Select value={lifespan} onValueChange={setLifespan}>
-                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[10px] tracking-widest border-slate-200 dark:border-slate-800">
+                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[11px] tracking-widest border-slate-200 dark:border-slate-800">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -235,7 +235,7 @@ export function AdminHubAnnouncements({ studios, authTrainer }: Props) {
               <Button 
                 onClick={handleCreateAnnouncement}
                 disabled={isCreatingAnnouncement || !newAnnouncement.title || !newAnnouncement.shortContent}
-                className="w-full bg-sky-500 hover:bg-sky-600 text-white font-black uppercase text-[10px] tracking-widest h-10 rounded-xl gap-2 mt-4"
+                className="w-full bg-sky-500 hover:bg-sky-600 text-white font-black uppercase text-[11px] tracking-widest h-10 rounded-xl gap-2 mt-4"
               >
                 {isCreatingAnnouncement ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 Publish Global Message
@@ -246,7 +246,7 @@ export function AdminHubAnnouncements({ studios, authTrainer }: Props) {
 
         {/* List of active announcements */}
         <div className="space-y-4">
-          <Label className="text-[10px] uppercase font-bold tracking-widest text-slate-500 ml-1">Active Global Messages</Label>
+          <Label className="text-[11px] uppercase font-bold tracking-widest text-slate-500 ml-1">Active Global Messages</Label>
           <div className="space-y-3">
             {announcements.length === 0 ? (
               <div className="text-center py-8 text-slate-500 text-xs italic bg-slate-50 dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 border-dashed">No active messages</div>
@@ -257,8 +257,8 @@ export function AdminHubAnnouncements({ studios, authTrainer }: Props) {
                     <div>
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         <span className="font-black text-sm uppercase italic tracking-tight">{a.title}</span>
-                        {a.priority === 'high' && <Badge className="bg-rose-500 hover:bg-rose-600 text-white border-0 text-[8px] font-black uppercase px-1.5 h-4">Urgent</Badge>}
-                        <Badge variant="outline" className="bg-white/50 dark:bg-black/20 text-[8px] font-black uppercase tracking-widest px-1.5 border-current opacity-70">
+                        {a.priority === 'high' && <Badge className="bg-rose-500 hover:bg-rose-600 text-white border-0 text-[11px] font-black uppercase px-1.5 h-4">Urgent</Badge>}
+                        <Badge variant="outline" className="bg-white/50 dark:bg-black/20 text-[11px] font-black uppercase tracking-widest px-1.5 border-current opacity-70">
                           {a.type || 'news'}
                         </Badge>
                       </div>
@@ -267,7 +267,7 @@ export function AdminHubAnnouncements({ studios, authTrainer }: Props) {
                     <Button 
                       variant="ghost" 
                       onClick={() => handleArchive(a.id!)}
-                      className="absolute right-2 top-2 h-7 px-2 text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
+                      className="absolute right-2 top-2 h-7 px-2 text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
                     >
                       Archive
                     </Button>
@@ -276,8 +276,8 @@ export function AdminHubAnnouncements({ studios, authTrainer }: Props) {
                     <p className="text-xs italic mt-1 opacity-80 line-clamp-3">{a.longContent}</p>
                   )}
                   <div className="flex items-center gap-2 mt-2 pt-2 border-t border-current border-opacity-10">
-                    <span className="text-[9px] uppercase font-bold tracking-widest opacity-60">To: {a.targetScope === 'universal' ? 'Global Network' : studios.find(s => s.id === a.studioId)?.name || 'Studio'}</span>
-                    <span className="text-[9px] uppercase font-bold tracking-widest opacity-60 ml-auto">By: {a.authorName}</span>
+                    <span className="text-[11px] uppercase font-bold tracking-widest opacity-60">To: {a.targetScope === 'universal' ? 'Global Network' : studios.find(s => s.id === a.studioId)?.name || 'Studio'}</span>
+                    <span className="text-[11px] uppercase font-bold tracking-widest opacity-60 ml-auto">By: {a.authorName}</span>
                   </div>
                 </div>
               ))

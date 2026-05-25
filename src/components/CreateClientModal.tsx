@@ -177,7 +177,7 @@ export function CreateClientModal({ clients, initialName = '', onClose, onClient
             <h3 className="text-xs font-black uppercase tracking-widest text-[#F06C22] border-b border-slate-800 pb-2">Step 1: Contact Information</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">First Name</Label>
+                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">First Name</Label>
                 <Input 
                   value={firstName} onChange={e => setFirstName(e.target.value)}
                   className="h-12 bg-slate-800 border-slate-700 text-white placeholder:text-slate-600 focus:border-[#F06C22] rounded-xl font-bold"
@@ -185,7 +185,7 @@ export function CreateClientModal({ clients, initialName = '', onClose, onClient
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Last Name</Label>
+                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">Last Name</Label>
                 <Input 
                   value={lastName} onChange={e => setLastName(e.target.value)}
                   className="h-12 bg-slate-800 border-slate-700 text-white placeholder:text-slate-600 focus:border-[#F06C22] rounded-xl font-bold"
@@ -196,7 +196,7 @@ export function CreateClientModal({ clients, initialName = '', onClose, onClient
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Phone</Label>
+                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">Phone</Label>
                 <Input 
                   value={phone} onChange={e => setPhone(e.target.value)}
                   className="h-12 bg-slate-800 border-slate-700 text-white placeholder:text-slate-600 focus:border-[#F06C22] rounded-xl font-bold"
@@ -204,7 +204,7 @@ export function CreateClientModal({ clients, initialName = '', onClose, onClient
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Email (Optional)</Label>
+                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">Email (Optional)</Label>
                 <Input 
                   value={email} onChange={e => setEmail(e.target.value)}
                   className="h-12 bg-slate-800 border-slate-700 text-white placeholder:text-slate-600 focus:border-[#F06C22] rounded-xl font-bold"
@@ -215,7 +215,7 @@ export function CreateClientModal({ clients, initialName = '', onClose, onClient
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Gender (Optional)</Label>
+                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">Gender (Optional)</Label>
                 <select
                   value={gender} onChange={e => setGender(e.target.value)}
                   className="w-full h-12 bg-slate-800 border border-slate-700 text-white focus:border-[#F06C22] focus:ring-0 rounded-xl font-bold px-3"
@@ -228,7 +228,7 @@ export function CreateClientModal({ clients, initialName = '', onClose, onClient
                 </select>
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Age (Optional)</Label>
+                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">Age (Optional)</Label>
                 <Input 
                   value={age} onChange={e => setAge(e.target.value)}
                   className="h-12 bg-slate-800 border-slate-700 text-white placeholder:text-slate-600 focus:border-[#F06C22] rounded-xl font-bold"
@@ -239,7 +239,7 @@ export function CreateClientModal({ clients, initialName = '', onClose, onClient
 
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Home Studio (Optional)</Label>
+                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">Home Studio (Optional)</Label>
                 <select
                   value={homeStudioId} onChange={e => setHomeStudioId(e.target.value)}
                   className="w-full h-12 bg-slate-800 border border-slate-700 text-white focus:border-[#F06C22] focus:ring-0 rounded-xl font-bold px-3"
@@ -257,7 +257,7 @@ export function CreateClientModal({ clients, initialName = '', onClose, onClient
           <div className="space-y-4">
             <h3 className="text-xs font-black uppercase tracking-widest text-[#F06C22] border-b border-slate-800 pb-2">Discovery Notes</h3>
             <div className="space-y-2 mt-4">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Initial Context & Questions</Label>
+              <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">Initial Context & Questions</Label>
               <Textarea 
                 value={discoveryNotes}
                 onChange={e => setDiscoveryNotes(e.target.value)}
@@ -288,7 +288,7 @@ export function CreateClientModal({ clients, initialName = '', onClose, onClient
                   </div>
                   <div className="flex flex-col">
                     <p className={cn("text-[15px] font-black uppercase tracking-tight", routeToImporter ? 'text-[#F06C22]' : 'text-slate-300')}>Route to Legacy Chart Importer</p>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Send immediately to historical data ingestion after creation.</p>
+                    <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">Send immediately to historical data ingestion after creation.</p>
                   </div>
                 </div>
             </div>
@@ -300,7 +300,7 @@ export function CreateClientModal({ clients, initialName = '', onClose, onClient
           <Button 
             variant="ghost" 
             onClick={onClose}
-            className="flex-1 h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] text-slate-500 hover:text-white hover:bg-slate-800 transition-all border border-slate-800"
+            className="flex-1 h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] text-slate-500 hover:text-white hover:bg-slate-800 transition-all border border-slate-800"
           >
             Cancel
           </Button>

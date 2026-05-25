@@ -34,7 +34,7 @@ export function BentoStatTile({
         "col-span-4 row-span-2 flex flex-col justify-end p-[14px] px-3.5 rounded-2xl bg-gradient-to-br from-cta to-cta-strong shadow-[0_12px_32px_var(--color-cta)] relative overflow-hidden",
         isZeroError && "opacity-50 grayscale"
       )}>
-        <span className="font-display italic text-[9px] uppercase tracking-widest text-white/70 mb-1 z-10">
+        <span className="font-display italic text-[11px] uppercase tracking-widest text-white/70 mb-1 z-10">
           {label}
         </span>
         <div className="flex items-baseline gap-1.5 leading-none z-10">
@@ -44,7 +44,7 @@ export function BentoStatTile({
           {unit && <span className="font-display italic text-[13px] text-white/80">{unit}</span>}
         </div>
         {delta && (
-          <span className="font-display italic text-[10px] text-white/95 mt-1 uppercase tracking-wide z-10">
+          <span className="font-display italic text-[11px] text-white/95 mt-1 uppercase tracking-wide z-10">
             {delta.text}
           </span>
         )}
@@ -60,7 +60,7 @@ export function BentoStatTile({
         : "bg-bg-dark-2 border-div-d",
       isZeroError && "opacity-40"
     )}>
-      <span className="font-display italic text-[9px] uppercase tracking-widest text-ink-d3 mb-1">
+      <span className="font-display italic text-[11px] uppercase tracking-widest text-ink-d3 mb-1">
         {label}
       </span>
       
@@ -77,7 +77,7 @@ export function BentoStatTile({
         {(unit || meta) && (
           <span className={cn(
             "font-display italic text-[12px] leading-none opacity-80",
-            (variant === 'elevated' && meta) ? "text-ink-d3 font-sans opacity-100 italic-none text-[10px]" : "text-ink-d3"
+            (variant === 'elevated' && meta) ? "text-ink-d3 font-sans opacity-100 italic-none text-[11px]" : "text-ink-d3"
           )}>
             {unit || meta}
           </span>
@@ -90,7 +90,7 @@ export function BentoStatTile({
 
       {delta && !progress && (
         <span className={cn(
-          "font-display italic text-[10px] uppercase tracking-wide mt-1.5 leading-none",
+          "font-display italic text-[11px] uppercase tracking-wide mt-1.5 leading-none",
           delta.tone === 'up' ? "text-green" :
           delta.tone === 'down' ? "text-red" : "text-ink-d3"
         )}>

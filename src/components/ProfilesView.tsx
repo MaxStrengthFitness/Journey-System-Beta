@@ -230,7 +230,7 @@ export function ProfilesView({
                   </div>
                   <div>
                     <h3 className="text-2xl font-black uppercase italic tracking-tight leading-none">{trainer.fullName}</h3>
-                    <p className="text-[10px] font-black uppercase text-primary tracking-widest mt-2 px-3 py-1 bg-primary/10 rounded-full inline-block">Professional Trainer</p>
+                    <p className="text-[11px] font-black uppercase text-primary tracking-widest mt-2 px-3 py-1 bg-primary/10 rounded-full inline-block">Professional Trainer</p>
                   </div>
                 </div>
                 <CardContent className="p-6 space-y-6">
@@ -238,14 +238,14 @@ export function ProfilesView({
                      <div className="flex items-center gap-3 p-3 rounded-2xl bg-muted/30">
                        <Briefcase className="w-5 h-5 text-muted-foreground" />
                        <div>
-                         <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Team Role</p>
+                         <p className="text-[11px] font-black uppercase text-muted-foreground tracking-widest">Team Role</p>
                          <p className="text-sm font-bold uppercase">HIT Specialist</p>
                        </div>
                      </div>
                      <div className="flex items-center gap-3 p-3 rounded-2xl bg-muted/30">
                        <Settings className="w-5 h-5 text-muted-foreground" />
                        <div>
-                         <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Legacy ID</p>
+                         <p className="text-[11px] font-black uppercase text-muted-foreground tracking-widest">Legacy ID</p>
                          <p className="text-sm font-bold uppercase">{trainer.legacy_filemaker_id || 'N/A'}</p>
                        </div>
                      </div>
@@ -253,11 +253,11 @@ export function ProfilesView({
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 text-center">
-                      <p className="text-[9px] font-black uppercase text-muted-foreground mb-1">Sessions</p>
+                      <p className="text-[11px] font-black uppercase text-muted-foreground mb-1">Sessions</p>
                       <p className="text-2xl font-black text-primary">{trainerData?.trainerSessions.length || 0}</p>
                     </div>
                     <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100 text-center">
-                      <p className="text-[9px] font-black uppercase text-muted-foreground mb-1">Upcoming</p>
+                      <p className="text-[11px] font-black uppercase text-muted-foreground mb-1">Upcoming</p>
                       <p className="text-2xl font-black text-indigo-600">{trainerData?.trainerSchedules.length || 0}</p>
                     </div>
                   </div>
@@ -268,13 +268,13 @@ export function ProfilesView({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <RefreshCcw className="w-4 h-4 text-primary" />
-                          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">MindBody Sync</p>
+                          <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">MindBody Sync</p>
                         </div>
                         {!isEditingLink && (
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="h-8 text-[9px] font-black uppercase tracking-widest"
+                            className="h-8 text-[11px] font-black uppercase tracking-widest"
                             onClick={() => {
                               setIsEditingLink(true);
                               setNewLinkUrl(trainer.mindbody_ical_url || '');
@@ -295,7 +295,7 @@ export function ProfilesView({
                           />
                           <div className="flex gap-2">
                             <Button 
-                              className="grow h-10 rounded-xl font-black uppercase text-[10px] tracking-widest"
+                              className="grow h-10 rounded-xl font-black uppercase text-[11px] tracking-widest"
                               onClick={async () => {
                                 if (!trainer.id) return;
                                 setIsSavingLink(true);
@@ -317,7 +317,7 @@ export function ProfilesView({
                             </Button>
                             <Button 
                               variant="ghost" 
-                              className="h-10 rounded-xl font-black uppercase text-[10px] tracking-widest"
+                              className="h-10 rounded-xl font-black uppercase text-[11px] tracking-widest"
                               onClick={() => setIsEditingLink(false)}
                             >
                               Cancel
@@ -327,7 +327,7 @@ export function ProfilesView({
                       ) : (
                         <div className="p-3 rounded-2xl bg-muted/30 flex items-center gap-3 overflow-hidden">
                           <LinkIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-                          <span className="text-[10px] font-medium text-muted-foreground truncate">
+                          <span className="text-[11px] font-medium text-muted-foreground truncate">
                             {trainer.mindbody_ical_url || 'No synchronization link setup'}
                           </span>
                         </div>
@@ -337,7 +337,7 @@ export function ProfilesView({
 
                   <Button 
                     variant="outline" 
-                    className="w-full h-12 rounded-2xl font-black uppercase tracking-widest text-[10px]"
+                    className="w-full h-12 rounded-2xl font-black uppercase tracking-widest text-[11px]"
                     onClick={() => setView('trainer-hub')}
                   >
                     Go to Trainer Settings
@@ -345,7 +345,7 @@ export function ProfilesView({
 
                   {onTrainerLogin && authTrainer?.id !== trainer.id && (
                     <Button 
-                      className="w-full h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-200 border-none group relative overflow-hidden"
+                      className="w-full h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-200 border-none group relative overflow-hidden"
                       onClick={() => {
                         onTrainerLogin(trainer);
                         setActiveProfile(null);
@@ -374,18 +374,18 @@ export function ProfilesView({
                          <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 bg-card rounded-2xl border-2 border-transparent hover:border-primary/20 hover:shadow-xl transition-all group">
                             <div className="flex items-center gap-4">
                                <div className="w-12 h-12 rounded-xl bg-muted/50 flex flex-col items-center justify-center shrink-0">
-                                  <span className="text-[10px] font-black text-muted-foreground leading-none">{s.startTime.toDate().toLocaleDateString([], { month: 'short' })}</span>
+                                  <span className="text-[11px] font-black text-muted-foreground leading-none">{s.startTime.toDate().toLocaleDateString([], { month: 'short' })}</span>
                                   <span className="text-lg font-black leading-none">{s.startTime.toDate().getDate()}</span>
                                </div>
                                <div>
                                   <p className="font-black uppercase tracking-tight text-lg leading-none group-hover:text-primary transition-colors">{s.clientName}</p>
-                                  <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1 tracking-widest">{s.serviceName}</p>
+                                  <p className="text-[11px] font-bold text-muted-foreground uppercase mt-1 tracking-widest">{s.serviceName}</p>
                                </div>
                             </div>
                             <div className="mt-4 sm:mt-0 flex items-center gap-3">
                                <div className="text-right">
                                   <p className="text-sm font-black uppercase leading-none">{s.startTime.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                  <Badge variant="outline" className="text-[8px] font-black uppercase mt-1">Confirmed</Badge>
+                                  <Badge variant="outline" className="text-[11px] font-black uppercase mt-1">Confirmed</Badge>
                                </div>
                                <ChevronRight className="w-5 h-5 opacity-20 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                             </div>
@@ -413,7 +413,7 @@ export function ProfilesView({
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6">
               <div>
                 <h2 className="text-3xl sm:text-4xl font-black uppercase italic tracking-tighter leading-none">Studio Profiles</h2>
-                <p className="text-[10px] sm:text-[11px] font-black uppercase text-muted-foreground tracking-[0.2em] opacity-60 mt-2 leading-none">Team & Client Operations Directory</p>
+                <p className="text-[11px] sm:text-[11px] font-black uppercase text-muted-foreground tracking-[0.2em] opacity-60 mt-2 leading-none">Team & Client Operations Directory</p>
               </div>
               <div className="w-full md:w-96 relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -440,7 +440,7 @@ export function ProfilesView({
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="h-9 rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 bg-amber-500/5 border-amber-500/20 text-amber-600 hover:bg-amber-500/10"
+                    className="h-9 rounded-xl font-black uppercase text-[11px] tracking-widest gap-2 bg-amber-500/5 border-amber-500/20 text-amber-600 hover:bg-amber-500/10"
                     onClick={handleGenerateMock}
                     disabled={isGeneratingMock}
                   >
@@ -481,7 +481,7 @@ export function ProfilesView({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="rounded-xl border-2">
                               <DropdownMenuItem 
-                                className="text-destructive focus:text-destructive font-black uppercase text-[10px] tracking-widest p-3 gap-2"
+                                className="text-destructive focus:text-destructive font-black uppercase text-[11px] tracking-widest p-3 gap-2"
                                 onClick={() => {
                                   if (!trainerItem.id) return;
                                   handleDeleteTrainer(trainerItem.id, trainerItem.fullName);
@@ -506,7 +506,7 @@ export function ProfilesView({
                           </div>
                           <div className="space-y-0.5 sm:space-y-1 min-w-0 w-full">
                             <p className="font-black uppercase italic tracking-tighter truncate group-hover:text-primary transition-colors text-base sm:text-lg leading-tight">{trainerItem.fullName}</p>
-                            <Badge variant="outline" className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest px-1.5 h-4 sm:h-5">{upcCount} UPCOMING</Badge>
+                            <Badge variant="outline" className="text-[7px] sm:text-[11px] font-black uppercase tracking-widest px-1.5 h-4 sm:h-5">{upcCount} UPCOMING</Badge>
                           </div>
                         </CardContent>
                       </Card>
@@ -531,20 +531,20 @@ export function ProfilesView({
                     <DropdownMenuTrigger 
                       className={cn(
                         buttonVariants({ variant: "ghost", size: "sm" }),
-                        "h-10 rounded-xl px-4 gap-2 font-black uppercase text-[10px] tracking-widest"
+                        "h-10 rounded-xl px-4 gap-2 font-black uppercase text-[11px] tracking-widest"
                       )}
                     >
                       <ArrowUpDown className="w-3.5 h-3.5" />
                       Sort: {sortOption === 'recent' ? 'Recent Activity' : sortOption === 'new' ? 'New Profiles' : 'Upcoming'}
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="rounded-2xl border-2 p-1 w-56">
-                      <DropdownMenuItem onClick={() => setSortOption('recent')} className="rounded-xl font-bold uppercase text-[10px] tracking-widest p-3">
+                      <DropdownMenuItem onClick={() => setSortOption('recent')} className="rounded-xl font-bold uppercase text-[11px] tracking-widest p-3">
                         Recent Activity
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSortOption('new')} className="rounded-xl font-bold uppercase text-[10px] tracking-widest p-3">
+                      <DropdownMenuItem onClick={() => setSortOption('new')} className="rounded-xl font-bold uppercase text-[11px] tracking-widest p-3">
                         New Profiles
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSortOption('upcoming')} className="rounded-xl font-bold uppercase text-[10px] tracking-widest p-3">
+                      <DropdownMenuItem onClick={() => setSortOption('upcoming')} className="rounded-xl font-bold uppercase text-[11px] tracking-widest p-3">
                         Upcoming Sessions
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -571,19 +571,19 @@ export function ProfilesView({
                               <div>
                                 <h4 className="text-xl sm:text-2xl font-black uppercase italic tracking-tighter leading-none group-hover:text-primary transition-colors">{client.firstName} {client.lastName}</h4>
                                 <div className="flex items-center gap-2 sm:gap-3 mt-1.5">
-                                  <Badge variant="outline" className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest bg-muted/50 border-none px-1.5 sm:px-2 h-4">{client.occupation || 'Private Profile'}</Badge>
-                                  <span className="text-[8px] sm:text-[9px] font-bold text-muted-foreground uppercase">SESSIONS: {client.remainingSessions}</span>
+                                  <Badge variant="outline" className="text-[7px] sm:text-[11px] font-black uppercase tracking-widest bg-muted/50 border-none px-1.5 sm:px-2 h-4">{client.occupation || 'Private Profile'}</Badge>
+                                  <span className="text-[11px] sm:text-[11px] font-bold text-muted-foreground uppercase">SESSIONS: {client.remainingSessions}</span>
                                 </div>
                               </div>
                             </div>
 
                             <div className="grid grid-cols-2 grow-[2] w-full sm:w-auto p-4 sm:p-0">
                               <div className="flex flex-col justify-center px-4 sm:px-6 border-l py-2 sm:py-4 min-w-[120px] sm:min-w-[140px]">
-                                <p className="text-[8px] sm:text-[9px] font-black uppercase text-muted-foreground tracking-widest mb-1 leading-none">Last Log</p>
+                                <p className="text-[11px] sm:text-[11px] font-black uppercase text-muted-foreground tracking-widest mb-1 leading-none">Last Log</p>
                                 <p className="text-xs sm:text-sm font-black italic">{client.lastSessionTime > 0 ? new Date(client.lastSessionTime).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'No Record'}</p>
                               </div>
                               <div className="flex flex-col justify-center px-4 sm:px-6 border-l py-2 sm:py-4 min-w-[120px] sm:min-w-[140px]">
-                                <p className="text-[8px] sm:text-[9px] font-black uppercase text-primary tracking-widest mb-1 leading-none">Upcoming</p>
+                                <p className="text-[11px] sm:text-[11px] font-black uppercase text-primary tracking-widest mb-1 leading-none">Upcoming</p>
                                 <p className="text-xs sm:text-sm font-black italic text-primary leading-none">
                                   {client.nextSessionTime !== Infinity 
                                     ? new Date(client.nextSessionTime).toLocaleDateString([], { month: 'short', day: 'numeric' })

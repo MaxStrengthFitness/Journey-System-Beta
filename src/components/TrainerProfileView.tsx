@@ -99,19 +99,19 @@ export function TrainerProfileView({
             <UserCircle className="w-12 h-12" />
           </div>
           <div className="flex flex-col gap-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#38BDF8] italic leading-none">Tactical Command Center</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#38BDF8] italic leading-none">Tactical Command Center</p>
             <h2 className="text-4xl font-black tracking-tighter uppercase italic text-white">{trainer.fullName}</h2>
             <div className="flex items-center gap-3 mt-1">
-              <Badge variant="outline" className="rounded-md border-slate-700 text-slate-300 bg-slate-800 font-black uppercase text-[9px] h-5">
+              <Badge variant="outline" className="rounded-md border-slate-700 text-slate-300 bg-slate-800 font-black uppercase text-[11px] h-5">
                 {trainer.initials}
               </Badge>
               {(trainer.role === 'StudioOwner' || trainer.role === 'Admin' || trainer.role === 'Overseer') && (
-                 <Badge className="rounded-md bg-amber-500 hover:bg-amber-600 text-white font-black uppercase text-[9px] h-5 shadow-[0_0_10px_rgba(245,158,11,0.5)] border-none">
+                 <Badge className="rounded-md bg-amber-500 hover:bg-amber-600 text-white font-black uppercase text-[11px] h-5 shadow-[0_0_10px_rgba(245,158,11,0.5)] border-none">
                   Owner
                 </Badge>
               )}
               {trainer.role === 'Admin' && (
-                 <Badge className="rounded-md bg-sky-500 hover:bg-sky-600 text-white font-black uppercase text-[9px] h-5 shadow-[0_0_10px_rgba(56,189,248,0.5)] border-none">
+                 <Badge className="rounded-md bg-sky-500 hover:bg-sky-600 text-white font-black uppercase text-[11px] h-5 shadow-[0_0_10px_rgba(56,189,248,0.5)] border-none">
                   Admin
                 </Badge>
               )}
@@ -123,7 +123,7 @@ export function TrainerProfileView({
             <Button 
               variant="outline" 
               onClick={() => setIsEditModalOpen(true)}
-              className="h-14 px-6 rounded-2xl font-black uppercase text-[10px] sm:text-xs border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500 hover:text-white transition-all shadow-xl shadow-black/20"
+              className="h-14 px-6 rounded-2xl font-black uppercase text-[11px] sm:text-xs border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500 hover:text-white transition-all shadow-xl shadow-black/20"
             >
               <Edit2 className="w-4 h-4 mr-2" />
               Edit Profile
@@ -132,7 +132,7 @@ export function TrainerProfileView({
           <Button 
             variant="outline" 
             onClick={() => setView('calendar')}
-            className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-[#38BDF8] hover:text-white hover:border-[#38BDF8] transition-all shadow-xl shadow-black/20"
+            className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-[11px] sm:text-xs border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-[#38BDF8] hover:text-white hover:border-[#38BDF8] transition-all shadow-xl shadow-black/20"
           >
             Studio Calendar
             <Calendar className="w-4 h-4 ml-3 opacity-60" />
@@ -146,7 +146,7 @@ export function TrainerProfileView({
           <div className="lg:col-span-2 space-y-6">
             <div className="flex flex-col gap-1">
               <h3 className="text-2xl font-black uppercase italic text-white tracking-tighter">Professional Dossier</h3>
-              <p className="text-[#38BDF8] text-[10px] font-black uppercase tracking-widest">Authorized expertise & qualifications</p>
+              <p className="text-[#38BDF8] text-[11px] font-black uppercase tracking-widest">Authorized expertise & qualifications</p>
             </div>
 
             <Card className="rounded-[40px] bg-slate-900/50 border-slate-700 shadow-2xl overflow-hidden backdrop-blur-sm">
@@ -156,7 +156,7 @@ export function TrainerProfileView({
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-[#38BDF8]">
                     <ShieldCheck className="w-5 h-5" />
-                    <h4 className="text-[10px] font-black uppercase tracking-widest leading-none">Intelligence Summary</h4>
+                    <h4 className="text-[11px] font-black uppercase tracking-widest leading-none">Intelligence Summary</h4>
                   </div>
                   <p className="text-slate-300 text-sm leading-relaxed font-medium italic border-l-2 border-slate-700 pl-4 py-1">
                     {trainer.bio || "No tactical biography provided. Field experience and specialized training confirmed through system authorization."}
@@ -168,17 +168,17 @@ export function TrainerProfileView({
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 text-[#38BDF8]">
                       <Award className="w-5 h-5" />
-                      <h4 className="text-[10px] font-black uppercase tracking-widest leading-none">Combat Grade Certifications</h4>
+                      <h4 className="text-[11px] font-black uppercase tracking-widest leading-none">Combat Grade Certifications</h4>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {trainer.certifications && trainer.certifications.length > 0 ? (
                         trainer.certifications.map((cert, idx) => (
-                          <Badge key={idx} variant="outline" className="rounded-xl border-slate-700 bg-slate-800/80 text-white font-bold px-3 py-1.5 text-[10px]">
+                          <Badge key={idx} variant="outline" className="rounded-xl border-slate-700 bg-slate-800/80 text-white font-bold px-3 py-1.5 text-[11px]">
                             {cert}
                           </Badge>
                         ))
                       ) : (
-                        <p className="text-slate-500 text-[10px] uppercase font-bold italic tracking-widest">Level 1 Practitioner</p>
+                        <p className="text-slate-500 text-[11px] uppercase font-bold italic tracking-widest">Level 1 Practitioner</p>
                       )}
                     </div>
                   </div>
@@ -187,17 +187,17 @@ export function TrainerProfileView({
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 text-[#38BDF8]">
                       <Clock className="w-5 h-5" />
-                      <h4 className="text-[10px] font-black uppercase tracking-widest leading-none">Service Timeline</h4>
+                      <h4 className="text-[11px] font-black uppercase tracking-widest leading-none">Service Timeline</h4>
                     </div>
                     <div className="space-y-3">
                       <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                        <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Duty Start Date</span>
+                        <span className="text-slate-500 text-[11px] font-black uppercase tracking-widest">Duty Start Date</span>
                         <span className="text-white font-bold text-xs">
                           {trainer.employmentStartDate ? new Date(trainer.employmentStartDate.toDate?.() || trainer.employmentStartDate).toLocaleDateString() : "Baseline Personnel"}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Total Ops Vol</span>
+                        <span className="text-slate-500 text-[11px] font-black uppercase tracking-widest">Total Ops Vol</span>
                         <span className="text-white font-bold text-xs">{recentSessions.length} Logged Sessions</span>
                       </div>
                     </div>
@@ -210,14 +210,14 @@ export function TrainerProfileView({
           <div className="space-y-6">
             <div className="flex flex-col gap-1">
               <h3 className="text-2xl font-black uppercase italic text-white tracking-tighter">Network Access</h3>
-              <p className="text-amber-500 text-[10px] font-black uppercase tracking-widest">Verified Multi-Location Footprint</p>
+              <p className="text-amber-500 text-[11px] font-black uppercase tracking-widest">Verified Multi-Location Footprint</p>
             </div>
 
             <div className="space-y-4">
               {/* Home Studio */}
               <div className="p-6 rounded-[32px] bg-slate-900 border-2 border-indigo-500/30 shadow-xl relative overflow-hidden group">
                 <Building2 className="w-12 h-12 absolute -right-3 -top-3 text-white/[0.03] group-hover:text-indigo-500/[0.05] transition-all" />
-                <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <p className="text-[11px] font-black text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                   <MapPin className="w-3 h-3" />
                   Primary Home Base
                 </p>
@@ -229,29 +229,29 @@ export function TrainerProfileView({
               {/* Other Access */}
               <div className="p-6 rounded-[32px] bg-slate-900/50 border border-slate-700 space-y-4">
                 <div>
-                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">Station Access (Permanent)</p>
+                  <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3">Station Access (Permanent)</p>
                   <div className="flex flex-wrap gap-2">
                     {trainer.accessibleStudioIds?.filter(id => id !== trainer.primaryHomeStudioId).map(id => (
-                      <Badge key={id} variant="secondary" className="bg-slate-800 text-slate-300 font-bold uppercase text-[9px] px-2 py-1 border-none">
+                      <Badge key={id} variant="secondary" className="bg-slate-800 text-slate-300 font-bold uppercase text-[11px] px-2 py-1 border-none">
                         {studios.find(s => s.id === id)?.name || id}
                       </Badge>
                     ))}
                     {(!trainer.accessibleStudioIds || trainer.accessibleStudioIds.filter(id => id !== trainer.primaryHomeStudioId).length === 0) && (
-                      <p className="text-slate-600 text-[9px] font-black uppercase italic">Single Base Clearance</p>
+                      <p className="text-slate-600 text-[11px] font-black uppercase italic">Single Base Clearance</p>
                     )}
                   </div>
                 </div>
 
                 <div className="pt-4 border-t border-slate-800">
-                  <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-3">Guest Credentials (Temporary)</p>
+                  <p className="text-[11px] font-black text-amber-500 uppercase tracking-widest mb-3">Guest Credentials (Temporary)</p>
                   <div className="flex flex-wrap gap-2">
                     {trainer.activeGuestStudioIds?.map(id => (
-                      <Badge key={id} variant="outline" className="border-amber-500/30 text-amber-500 font-bold uppercase text-[9px] px-2 py-1 bg-amber-500/5">
+                      <Badge key={id} variant="outline" className="border-amber-500/30 text-amber-500 font-bold uppercase text-[11px] px-2 py-1 bg-amber-500/5">
                         {studios.find(s => s.id === id)?.name || id}
                       </Badge>
                     ))}
                     {(!trainer.activeGuestStudioIds || trainer.activeGuestStudioIds.length === 0) && (
-                      <p className="text-slate-600 text-[9px] font-black uppercase italic">No Active Guest Ops</p>
+                      <p className="text-slate-600 text-[11px] font-black uppercase italic">No Active Guest Ops</p>
                     )}
                   </div>
                 </div>
@@ -265,7 +265,7 @@ export function TrainerProfileView({
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-1">
               <h3 className="text-2xl font-black uppercase italic text-white tracking-tighter">Daily Roster</h3>
-              <p className="text-[#38BDF8] text-[10px] font-black uppercase tracking-widest">Upcoming appointments • {upcomingSchedules.length} Scheduled</p>
+              <p className="text-[#38BDF8] text-[11px] font-black uppercase tracking-widest">Upcoming appointments • {upcomingSchedules.length} Scheduled</p>
             </div>
           </div>
           
@@ -308,7 +308,7 @@ export function TrainerProfileView({
                       
                       <div className="flex flex-col items-end gap-2 shrink-0">
                         {isToday && (
-                           <Badge className="bg-rose-500 text-white font-black uppercase text-[9px] px-2 shadow-[0_0_10px_rgba(244,63,94,0.4)] border-none">
+                           <Badge className="bg-rose-500 text-white font-black uppercase text-[11px] px-2 shadow-[0_0_10px_rgba(244,63,94,0.4)] border-none">
                               Today
                            </Badge>
                         )}
@@ -334,7 +334,7 @@ export function TrainerProfileView({
                       </div>
                       <div className="flex items-center gap-1.5 ml-1">
                         <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                        <span className="text-[10px] font-bold uppercase text-slate-500">
+                        <span className="text-[11px] font-bold uppercase text-slate-500">
                           {sTime.toLocaleDateString([], { month: 'short', day: 'numeric' })}
                         </span>
                       </div>
@@ -361,7 +361,7 @@ export function TrainerProfileView({
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-1">
               <h3 className="text-xl font-black uppercase italic text-white tracking-tighter">Recently Logged</h3>
-              <p className="text-emerald-500 text-[10px] font-black uppercase tracking-widest">Historical sessions</p>
+              <p className="text-emerald-500 text-[11px] font-black uppercase tracking-widest">Historical sessions</p>
             </div>
           </div>
           
@@ -398,11 +398,11 @@ export function TrainerProfileView({
                     <div className="flex justify-between items-center mt-auto">
                         <div className="flex items-center gap-1.5 text-slate-500">
                           <Calendar className="w-3.5 h-3.5" />
-                          <span className="text-[10px] font-bold uppercase">
+                          <span className="text-[11px] font-bold uppercase">
                             {sessionDate.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
                           </span>
                         </div>
-                        <Badge variant="outline" className="text-emerald-500 border-none bg-emerald-500/10 font-black uppercase text-[9px] tracking-widest px-2 shadow-inner">
+                        <Badge variant="outline" className="text-emerald-500 border-none bg-emerald-500/10 font-black uppercase text-[11px] tracking-widest px-2 shadow-inner">
                           Logged
                         </Badge>
                     </div>
@@ -412,7 +412,7 @@ export function TrainerProfileView({
             ) : (
               <div className="col-span-full text-center py-12 bg-slate-800/30 border-2 border-dashed border-slate-700 rounded-[32px] flex flex-col items-center gap-3">
                 <TrendingDown className="w-10 h-10 text-slate-600 mb-2" />
-                <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed text-slate-500">No recent activity recorded.</p>
+                <p className="text-[11px] font-black uppercase tracking-widest leading-relaxed text-slate-500">No recent activity recorded.</p>
               </div>
             )}
           </div>

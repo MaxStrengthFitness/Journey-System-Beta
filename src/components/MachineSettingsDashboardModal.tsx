@@ -98,7 +98,7 @@ export function MachineSettingsDashboardModal({
       const data = payload[0].payload;
       return (
         <div className="bg-[#0f172a] border border-[#1e293b] p-3 rounded-lg shadow-xl">
-          <p className="text-[10px] uppercase tracking-widest text-[#68717A] mb-1">{data.sessionDate}</p>
+          <p className="text-[11px] uppercase tracking-widest text-[#68717A] mb-1">{data.sessionDate}</p>
           <div className="flex items-end gap-2">
             <p className="text-[#F06C22] font-black text-xl leading-none">{data.weight} <span className="text-xs">LBS</span></p>
           </div>
@@ -136,7 +136,7 @@ export function MachineSettingsDashboardModal({
             <div className="flex flex-col gap-1">
               <div className="text-5xl sm:text-6xl font-black text-[#F06C22] leading-none tracking-tighter mt-2">
                 {currentWeight > 0 ? `${currentWeight} LBS` : "---"}
-                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-[#F06C22]/50 ml-3 relative -top-4 sm:-top-5">
+                <span className="text-[11px] sm:text-xs font-bold uppercase tracking-widest text-[#F06C22]/50 ml-3 relative -top-4 sm:-top-5">
                   Current Weight
                 </span>
               </div>
@@ -146,7 +146,7 @@ export function MachineSettingsDashboardModal({
                     <TrendingUp className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm">PR: {maxWeight} LBS</span>
                     <span className="text-[#68717A] font-medium text-xs">× {prLog.reps} reps</span>
-                    {prDisplayDate && <span className="text-[#68717A] text-[10px] uppercase tracking-widest ml-2">({prDisplayDate})</span>}
+                    {prDisplayDate && <span className="text-[#68717A] text-[11px] uppercase tracking-widest ml-2">({prDisplayDate})</span>}
                   </div>
                   
                   {currentLog?.totalTimeUnderLoad !== undefined && (
@@ -161,7 +161,7 @@ export function MachineSettingsDashboardModal({
                             Dynamic Time Under Load: {currentLog.totalTimeUnderLoad} sec
                           </span>
                           {currentLog.averageTimePerRep !== undefined && (
-                            <span className="text-[#68717A] font-medium text-[10px] uppercase tracking-widest mt-0.5">
+                            <span className="text-[#68717A] font-medium text-[11px] uppercase tracking-widest mt-0.5">
                               Avg Time/Rep: {currentLog.averageTimePerRep} sec
                             </span>
                           )}
@@ -178,7 +178,7 @@ export function MachineSettingsDashboardModal({
         {/* Trend Visualization (Middle Section) */}
         <div className="p-6 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#68717A]">
+            <h3 className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-[#68717A]">
               Load Progression
             </h3>
           </div>
@@ -227,7 +227,7 @@ export function MachineSettingsDashboardModal({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             {targetMachine?.settingOptions?.map((opt) => (
               <div key={opt} className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-[#68717A] ml-1 flex justify-between items-center pr-1">
+                <label className="text-[11px] font-black uppercase tracking-widest text-[#68717A] ml-1 flex justify-between items-center pr-1">
                   <span>{opt}</span>
                   {standardSettings[opt] && (
                     <span className="text-slate-400 dark:text-slate-500 font-semibold" title="Standard Setting">STD: {standardSettings[opt]}</span>
