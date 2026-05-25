@@ -244,7 +244,10 @@ export function ClientHistoryCalendar({
              reps: '0',
              seconds: '0',
              machineSettings: {},
-             createdAt: new Date().toISOString()
+             createdAt: new Date().toISOString(),
+             studioId: activeStudioId || clientHomeStudioId || '',
+             homeStudioId: clientHomeStudioId || activeStudioId || '',
+             clientHomeStudioId: clientHomeStudioId || activeStudioId || ''
            };
            batch.set(logRef, mockLog);
          }
@@ -673,9 +676,9 @@ export function ClientHistoryCalendar({
                                  </div>
                                   <div className="mt-2 text-[11px] font-black tracking-widest uppercase flex gap-1 items-center">
                                      <span className="text-[#68717A]">Quality:</span>
-                                     {quality === 1 && <span className="text-rose-500">Bad</span>}
+                                     {quality === 1 && <span className="text-rose-500">Poor</span>}
                                      {quality === 2 && <span className="text-amber-500">Completed</span>}
-                                     {quality === 3 && <span className="text-emerald-500">Good</span>}
+                                     {quality === 3 && <span className="text-emerald-500">Max Strength</span>}
                                      {quality === 0 && <span className="text-slate-600">N/A</span>}
                                   </div>
                                </div>
@@ -762,9 +765,9 @@ export function ClientHistoryCalendar({
                                      <span className="text-[11px] font-black uppercase text-slate-500 tracking-widest mb-1.5 block px-1">Quality Grade</span>
                                      <div className="flex gap-1">
                                         {[
-                                          { label: 'Bad', val: 1, activeBg: 'bg-rose-500/20 text-rose-500 border-rose-500' },
+                                          { label: 'Poor', val: 1, activeBg: 'bg-rose-500/20 text-rose-500 border-rose-500' },
                                           { label: 'Completed', val: 2, activeBg: 'bg-amber-500/20 text-amber-500 border-amber-500' },
-                                          { label: 'Good', val: 3, activeBg: 'bg-emerald-500/20 text-emerald-500 border-emerald-500' }
+                                          { label: 'Max Strength', val: 3, activeBg: 'bg-emerald-500/20 text-emerald-500 border-emerald-500' }
                                         ].map(btn => {
                                           const isActive = quality === btn.val;
                                           return (

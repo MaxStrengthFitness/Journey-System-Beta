@@ -1,59 +1,120 @@
-252:    <div className="fixed inset-0 bg-[#0A2E46] z-[100] flex flex-col overflow-hidden font-sans">
-255:        <div className="flex items-center gap-6">
-265:          <div className="space-y-0.5">
-269:            <div className="flex items-center gap-3">
-273:              <div className="hidden sm:flex gap-1.5 ml-4">
-313:                <div className="h-6 w-[1px] bg-slate-700/50 mx-2 self-center hidden sm:block" />
-321:              </div>
-322:            </div>
-323:          </div>
-324:        </div>
-326:        <div className="flex items-center gap-4 sm:gap-8">
-327:           <div className="hidden md:flex items-center mr-4">
-328:             <div className="relative">
-337:             </div>
-338:           </div>
-340:           <div className="text-right">
-343:           </div>
-345:        </div>
-349:      <div className="h-16 sm:h-24 bg-[#0e171e] shrink-0 border-b border-slate-800 relative z-40">
-366:         <div className="absolute top-2 left-6 sm:left-8 flex flex-col">
-369:         </div>
-370:      </div>
-373:      <div ref={scrollContainerRef} className="flex-1 overflow-auto relative bg-[#0e171e] custom-scrollbar scroll-smooth">
-379:                 <div className="flex flex-col">
-381:                 </div>
-403:                    <div className="flex flex-col items-center justify-center space-y-1">
-404:                      <div className="bg-slate-900 border border-slate-700 rounded-md px-2 py-0.5 shadow-sm group-hover:border-[#F06C22]/50 transition-colors">
-408:                      </div>
-412:                    </div>
-423:          <tbody className="divide-y divide-slate-800/50">
-434:                    <div className="flex flex-col h-full justify-center space-y-0.5">
-435:                      <div className="flex items-center gap-1.5 overflow-hidden">
-448:                      </div>
-451:                      <div className="flex flex-wrap gap-x-2 gap-y-0 bg-slate-900/50 px-1 py-0.5 rounded-md border border-slate-700 transition-all group/settings mt-0.5">
-453:                           <div key={opt} className="flex items-baseline gap-0.5">
-460:                           </div>
-465:                      </div>
-466:                    </div>
-476:                             <div className="flex items-center justify-center opacity-40 grayscale">
-478:                             </div>
-480:                             <div className="flex flex-col items-center justify-center">
-481:                              <div className="flex items-baseline gap-0.5">
-485:                              </div>
-486:                              <div className="inline-flex items-center gap-0.5 mt-0.5 px-1 py-0.5 bg-slate-800 rounded-[4px]">
-497:                              </div>
-499:                                <div className="text-[7px] font-bold text-[#F06C22] uppercase tracking-tighter mt-0.5 leading-none">
-501:                                </div>
-503:                           </div>
-506:                           <div className="flex items-center justify-center opacity-10">
-507:                              <div className="w-1 h-1 rounded-full bg-slate-600" />
-508:                           </div>
-522:      </div>
-526:         <div className="flex items-center gap-6">
-527:            <div className="flex items-center gap-2">
-528:               <div className="w-2 h-2 rounded-full bg-[#F06C22]" />
-530:            </div>
-531:            <div className="w-px h-6 bg-slate-800" />
-533:         </div>
-549:    </div>
+import React, { useState, useEffect, useMemo, useRef } from "react";
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [authTrainer, setAuthTrainer] = useState<Trainer | null>(null);
+  const [studios, setStudios] = useState<Studio[]>([]);
+  const [trainers, setTrainers] = useState<Trainer[]>([]);
+  const [networks, setNetworks] = useState<FranchiseNetwork[]>([]);
+  const [tokenRole, setTokenRole] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [currentView, setCurrentView] = useState<View>("clients");
+  const [newClientOnboardingName, setNewClientOnboardingName] = useState<
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedClientDoc, setSelectedClientDoc] = useState<Client | null>(
+  const [hasQuotaError, setHasQuotaError] = useState(false);
+  const [lastQuotaErrorMessage, setLastQuotaErrorMessage] = useState("");
+  const [dashboardInitialTab, setDashboardInitialTab] = useState<
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [selectedProfileTrainerId, setSelectedProfileTrainerId] = useState<
+    useState<View>("trainer-hub");
+  const [machines, setMachines] = useState<Machine[]>(DEFAULT_MACHINES);
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [liveRosterClients, setLiveRosterClients] = useState<Client[]>([]);
+  const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+  const [trainerFocuses, setTrainerFocuses] = useState<TrainerFocus[]>([]);
+  const [announcements, setAnnouncements] = useState<HubAnnouncement[]>([]);
+  const [isAddingTrainer, setIsAddingTrainer] = useState(false);
+  const [showNewClientsDialog, setShowNewClientsDialog] = useState(false);
+  const [isReorderingTrainers, setIsReorderingTrainers] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [isIntroSession, setIsIntroSession] = useState(false);
+  const [isRefreshingSchedule, setIsRefreshingSchedule] = useState(false);
+  const [clientFormData, setClientFormData] = useState({
+  const [showClientPicker, setShowClientPicker] = useState(false);
+  const [infoMachineId, setInfoMachineId] = useState<string | null>(null);
+  const [isEditingMachineInfo, setIsEditingMachineInfo] = useState(false);
+  const [machineInfoDraft, setMachineInfoDraft] = useState<Partial<Machine>>(
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [formData, setFormData] = useState({
+  const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(
+  const [isEditingAvailability, setIsEditingAvailability] = useState(false);
+  const [availability, setAvailability] = useState<TrainerAvailability>(
+  const [activeTab, setActiveTab] = useState<"standard" | "overrides">(
+  const [newOverrideDate, setNewOverrideDate] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dbSearchResults, setDbSearchResults] = useState<Client[]>([]);
+  const [isSearchingDb, setIsSearchingDb] = useState(false);
+  const [trainerFilter, setTrainerFilter] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<"morning" | "afternoon">(() => {
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [linkingSession, setLinkingSession] = useState<any | null>(null);
+  const [isLinking, setIsLinking] = useState(false);
+  const [searchTermLink, setSearchTermLink] = useState("");
+  const [dbSearchResultsLink, setDbSearchResultsLink] = useState<Client[]>([]);
+  const [isSearchingDbLink, setIsSearchingDbLink] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+  const [logs, setLogs] = useState<Record<string, ExerciseLog>>({});
+  const [sessionNotes, setSessionNotes] = useState<
+    useState<WorkoutSession | null>(null);
+  const [routines, setRoutines] = useState<Routine[]>([]);
+  const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(
+  const [trainerStats, setTrainerStats] = useState<Record<string, number>>({});
+  const [trainerFilter, setTrainerFilter] = useState<string | null>(null);
+  const [historyLimit, setHistoryLimit] = useState(12);
+  const [allSessions, setAllSessions] = useState<WorkoutSession[]>([]);
+  const [isGeneratingMock, setIsGeneratingMock] = useState(false);
+  const [search, setSearch] = useState("");
+  const [settings, setSettings] = useState<Record<string, string>>(
+  const [reason, setReason] = useState("");
+  const [current, setCurrent] = useState<number>(initialWeight);
+  const [reps, setReps] = useState<number | string>(initialReps);
+  const [repsRt, setRepsRt] = useState<number | string>(initialRepsRight);
+  const [quality, setQuality] = useState<number>(currentQuality || 0);
+  const [isHold, setIsHold] = useState(isStaticHold || false);
+  const [allLogs, setAllLogs] = useState<ExerciseLog[]>([]);
+  const [history, setHistory] = useState<ExerciseLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [noteContent, setNoteContent] = useState("");
+  const [history, setHistory] = useState<SessionNote[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+  const [logs, setLogs] = useState<Record<string, ExerciseLog>>({});
+  const [routines, setRoutines] = useState<Routine[]>([]);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [currentSession, setCurrentSession] = useState<WorkoutSession | null>(
+  const [activeMachineIds, setActiveMachineIds] = useState<string[]>([]);
+  const [clientMachineSettings, setClientMachineSettings] = useState<
+  const [focusRecords, setFocusRecords] = useState<FocusRecord[]>([]);
+  const [sessionNotes, setSessionNotes] = useState<SessionNote[]>([]);
+  const [currentSessionNotes, setCurrentSessionNotes] = useState<string>("");
+  const [isEditingRoutine, setIsEditingRoutine] = useState(false);
+  const [showRoutinePicker, setShowRoutinePicker] = useState(false);
+  const [editingSettingsMachineId, setEditingSettingsMachineId] = useState<
+  const [editingWeightMachineId, setEditingWeightMachineId] = useState<
+  const [historyMachineId, setHistoryMachineId] = useState<string | null>(null);
+  const [isSettingUpRoutine, setIsSettingUpRoutine] = useState(false);
+  const [showAllMachines, setShowAllMachines] = useState(true);
+  const [routineMachines, setRoutineMachines] = useState<string[]>([]);
+  const [lastRoutineLogs, setLastRoutineLogs] = useState<
+  const [isPreSessionMode, setIsPreSessionMode] = useState(false);
+  const [isAdjustingProtocol, setIsAdjustingProtocol] = useState(false);
+  const [adjustmentNote, setAdjustmentNote] = useState("");
+  const [adjustmentScope, setAdjustmentScope] = useState<"once" | "permanent">(
+  const [adjustedMachineIds, setAdjustedMachineIds] = useState<string[]>([]);
+    useState<RoutineType>("A");
+  const [targetRoutine, setTargetRoutine] = useState<Routine | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const [machineTimeElapsed, setMachineTimeElapsed] = useState<number>(0);
+  const [isShowingSessionNotes, setIsShowingSessionNotes] = useState(false);
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
+  const [isPostSessionMode, setIsPostSessionMode] = useState(false);
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
+    useState<WorkoutSession | null>(null);
+    useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+    useState<SessionType>("Standard");
+  const [editingWeightSide, setEditingWeightSide] = useState<

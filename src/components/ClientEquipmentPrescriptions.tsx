@@ -144,9 +144,12 @@ function MachineCard({
   const handleInitializeClick = () => {
     const suggestedWeight = calculateSuggestedWeight().toString();
     const initialSettings: Record<string, string> = {};
-    options.forEach(
-      (opt: string) => (initialSettings[opt] = standardSettings[opt] || ""),
-    );
+    options.forEach((opt: string) => {
+      initialSettings[opt] = standardSettings[opt] || "";
+      if (opt.toLowerCase().trim() === "gap" && !initialSettings[opt]) {
+        initialSettings[opt] = "0";
+      }
+    });
 
     setDraftStartingWeight(suggestedWeight);
     setDraftCurrentWeight(suggestedWeight);
@@ -574,11 +577,11 @@ function MachineCard({
                 Configuration
               </Label>
               <div className="flex flex-col items-end gap-1">
-                {Object.entries(currentSettings).map(([k, v]) => {
-                  const isStandard = v === standardSettings[k];
+                {orderMachineSettings(currentSettings, standardSettings, options).map(([shortKey, v, originalKey]) => {
+                  const isStandard = v === standardSettings[originalKey];
                   return (
                     <span
-                      key={k}
+                      key={originalKey}
                       className={cn(
                         "text-[11px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded-md flex items-center justify-end min-w-[32px]",
                         isStandard
@@ -588,7 +591,7 @@ function MachineCard({
                     >
                       {v}{" "}
                       <span className="opacity-50 text-[11px] ml-1">
-                        {k.substring(0, 3)}
+                        {shortKey}
                       </span>
                     </span>
                   );
@@ -680,7 +683,36 @@ function MachineCard({
                 onOpenChange={(open) => {
                   setSettingsDialogOpen(open);
                   if (open) {
-                    setDraftSettings(currentSettings);
+                    const normalizedCurrentSettings: Record<string, string> = {};
+                    options.forEach((opt: string) => {
+                      const lowerOpt = opt.toLowerCase().trim();
+                      const hasChest = lowerOpt.includes('chest');
+                      const hasBack = lowerOpt.includes('back');
+                      
+                      const foundKey = Object.keys(currentSettings).find(k => {
+                        const lk = k.toLowerCase().trim();
+                        if (lk === lowerOpt) return true;
+                        if (hasChest && lk.includes('back')) return true;
+                        if (hasBack && lk.includes('chest')) return true;
+                        return false;
+                      });
+                      
+                      if (foundKey) {
+                        normalizedCurrentSettings[opt] = String(currentSettings[foundKey]);
+                      } else {
+                        normalizedCurrentSettings[opt] = "";
+                      }
+
+                      if (lowerOpt === "gap" && (normalizedCurrentSettings[opt] === undefined || normalizedCurrentSettings[opt] === null || normalizedCurrentSettings[opt] === "")) {
+                        const stdGapKey = standardSettings ? Object.keys(standardSettings).find(k => k.toLowerCase() === 'gap') : undefined;
+                        if (stdGapKey && standardSettings && standardSettings[stdGapKey] !== undefined && standardSettings[stdGapKey] !== null && standardSettings[stdGapKey] !== '') {
+                          normalizedCurrentSettings[opt] = String(standardSettings[stdGapKey]);
+                        } else {
+                          normalizedCurrentSettings[opt] = "0";
+                        }
+                      }
+                    });
+                    setDraftSettings(normalizedCurrentSettings);
                     setReason("");
                   }
                 }}

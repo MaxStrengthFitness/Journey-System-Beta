@@ -160,6 +160,7 @@ export async function completeWorkoutSession(
       sessionId: currentSession.id,
       clientId: selectedClient.id,
       homeStudioId: homeStudioId,
+      studioId: homeStudioId,
       trainerId: authTrainer.id,
       trainerInitials: authTrainer.initials || authTrainer.fullName.substring(0, 2).toUpperCase(),
       content: postData.noteContent,
@@ -202,6 +203,7 @@ export async function completeWorkoutSession(
         clientId: selectedClient?.id || '',
         homeStudioId: homeStudioId,
         clientHomeStudioId: homeStudioId,
+        studioId: logData.studioId || homeStudioId,
         updatedAt: serverTimestamp()
       });
     } else if (log.id) {
@@ -212,6 +214,7 @@ export async function completeWorkoutSession(
         clientId: selectedClient?.id || '',
         homeStudioId: homeStudioId,
         clientHomeStudioId: homeStudioId,
+        studioId: logData.studioId || homeStudioId,
         updatedAt: serverTimestamp()
       });
     }

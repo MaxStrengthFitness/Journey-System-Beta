@@ -110,7 +110,7 @@ import { WorkoutChartGrid } from "./WorkoutChartGrid";
 import { ClientHistoryCalendar } from "./ClientHistoryCalendar";
 import { OccupationSelect } from "./OccupationSelect";
 import { getErgonomicRisk } from "../data/occupational-matrix";
-import { cn, parseSessionDate, getMillis, calculateExerciseVolume, getMuscleGroupColor, isBig5Machine } from "../lib/utils";
+import { cn, parseSessionDate, getMillis, calculateExerciseVolume, getMuscleGroupColor, isBig5Machine, orderMachineSettings } from "../lib/utils";
 import { RoutineBuilderView } from "./RoutineBuilderView";
 import { CLINICAL_FLAGS_MATRIX } from "../data/clinical-matrix";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
@@ -259,8 +259,9 @@ export function ClientProfileView({
         machineId: editingSettings.machineId,
         settings: editingSettings.settings,
         updatedBy: auth.currentUser?.email || 'Unknown',
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+        updatedAt: serverTimestamp(),
+          studioId: (clients.find(c => c.id === clientId)?.homeStudioId) || ''
+    }, { merge: true });
       setEditingSettings(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `clientMachineSettings/${editingSettings.machineId}`);
@@ -583,6 +584,7 @@ export function ClientProfileView({
           name: routineName,
           machineIds,
           createdAt: serverTimestamp(),
+            studioId: (clients.find(c => c.id === clientId)?.homeStudioId) || ''
         });
       }
     } catch (error) {
@@ -950,7 +952,8 @@ export function ClientProfileView({
         newMachineIds: routineEditData.machineIds,
         trainerId: authTrainer?.id || "unknown",
         createdAt: serverTimestamp(),
-      });
+          studioId: (clients.find(c => c.id === clientId)?.homeStudioId) || ''
+    });
 
       setIsEditingRoutine(null);
     } catch (error) {
@@ -1257,6 +1260,15 @@ export function ClientProfileView({
         </div>
 
         <div className="absolute top-6 right-6 md:static flex flex-col md:flex-row items-center gap-3 z-20 shrink-0">
+          <Button
+            onClick={() => setView("clinical-review")}
+            variant="outline"
+            className="rounded-xl font-bold uppercase text-xs sm:text-sm tracking-widest h-10 sm:h-12 px-4 shadow-sm border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
+            <Activity className="w-4 h-4 mr-1.5" />
+            Clinical Review
+          </Button>
+
           {activeInProgressSession ? (
             <DropdownMenu>
               <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap bg-amber-500 hover:bg-amber-600 rounded-xl font-bold uppercase text-xs sm:text-sm tracking-widest h-10 sm:h-12 px-4 sm:px-6 shadow-sm border-none w-auto text-white transition-colors">
@@ -1445,33 +1457,22 @@ export function ClientProfileView({
                                 <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
                               )}
                             </div>
-                            <div className="flex items-center gap-2 text-[11px] tracking-widest truncate leading-none uppercase mt-0.5 flex-wrap">
-                              {(() => {
-                                const settings = clientSettings[machine.id!]?.settings || {};
-                                
-                                const getShort = (n: string) => {
-                                  const lower = n.trim().toLowerCase();
-                                  if (lower === 'gap') return 'G';
-                                  if (lower === 'chestpad' || lower === 'chest pad') return 'C';
-                                  if (lower === 'backpad' || lower === 'back pad' || lower === 'backrest') return 'B';
-                                  if (lower === 'backpad 2' || lower === 'back pad 2') return 'B2';
-                                  if (lower === 'seat') return 'S';
-                                  if (lower === 'handles' || lower === 'handle') return 'H';
-                                  if (lower === 'start position' || lower === 'start') return 'SP';
-                                  if (lower === 'range' || lower === 'rom') return 'R';
-                                  return lower.substring(0, 2).toUpperCase();
-                                };
-
-                                const mappedSettings = Object.entries(settings).map(([k, v]) => ({ short: getShort(k), val: v }));
-
-                                return mappedSettings.map((s, i) => (
-                                  <span key={i} className="inline-flex items-baseline bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded-[4px]">
-                                     <span className="font-semibold text-slate-400 font-sans mr-[2px]">{s.short}:</span>
-                                     <span className="font-bold text-slate-800 dark:text-slate-200">{s.val}</span>
-                                  </span>
-                                ));
-                              })()}
-                            </div>
+                             <div className="flex items-center gap-2 text-[11px] tracking-widest truncate leading-none uppercase mt-0.5 flex-wrap">
+                               {(() => {
+                                 const settings = clientSettings[machine.id!]?.settings || {};
+                                 const currentStudio = studios?.find(s => s.id === activeStudioId);
+                                 const stdSettings = currentStudio?.machineSettings?.[machine.id!] || machine.standardSettings || {};
+                                 const options = machine.settingOptions || [];
+                                 const sortedEntries = orderMachineSettings(settings, stdSettings, options);
+                                 
+                                 return sortedEntries.map(([k, v], i) => (
+                                   <span key={i} className="inline-flex items-baseline bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded-[4px]">
+                                      <span className="font-semibold text-slate-400 font-sans mr-[2px]">{k}:</span>
+                                      <span className="font-bold text-slate-800 dark:text-slate-200">{v}</span>
+                                   </span>
+                                 ));
+                               })()}
+                             </div>
                           </div>
                         </td>
                         {displaySessions.map((s, sIdx) => {

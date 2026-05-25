@@ -99,6 +99,18 @@ service cloud.firestore {
       return data.get('homeStudioId', data.get('studioId', null));
     }
 
+    function isTrainerOfStudioOrClient(studioId, clientId) {
+      return isSuperAdmin() || isFranchiseOwner() || (
+        isAuthenticated() && (
+          (studioId != null && isTrainerOfStudio(studioId)) ||
+          (clientId != null && exists(/databases/$(database)/documents/clients/$(clientId)) && (
+            getStudioIdFromData(get(/databases/$(database)/documents/clients/$(clientId)).data) != null &&
+            isTrainerOfStudio(getStudioIdFromData(get(/databases/$(database)/documents/clients/$(clientId)).data))
+          ))
+        )
+      );
+    }
+
     function hasRequiredFields(fields) {
       return request.resource.data.keys().hasAll(fields);
     }
@@ -111,7 +123,7 @@ service cloud.firestore {
       return hasRequiredFields(['fullName', 'initials', 'pin', 'primaryHomeStudioId']) &&
              data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
              data.initials is string && data.initials.size() >= 2 && data.initials.size() <= 4 &&
-             data.pin is string && data.pin.matches('^[0-9]{4,6}$') &&
+             data.pin is string && data.pin.matches('^[0-9a-fA-F]{4,64}$') &&
              data.primaryHomeStudioId is string && data.primaryHomeStudioId.size() > 0 && data.primaryHomeStudioId.size() < 100 &&
              (!('mindbody_ical_url' in data) || data.mindbody_ical_url == null || (data.mindbody_ical_url is string && data.mindbody_ical_url.size() < 500)) &&
              (!('role' in data) || data.role == null || data.role is string) &&
@@ -135,10 +147,9 @@ service cloud.firestore {
     }
 
     function isValidSession(data) {
-      return hasRequiredFields(['sessionNumber', 'date', 'trainerInitials', 'sessionType', 'status']) &&
-             data.sessionNumber is number &&
-             data.date is string &&
-             data.trainerInitials is string;
+      return (!data.keys().hasAll(['sessionNumber']) || data.sessionNumber is number) &&
+             (!data.keys().hasAll(['date']) || data.date is string) &&
+             (!data.keys().hasAll(['trainerInitials']) || data.trainerInitials is string);
     }
 
     // Since updates can be partial list updates, we enforce type-safety for incoming fields
@@ -192,11 +203,17 @@ service cloud.firestore {
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pin', 'pinHash', 'requiresPinReset', 'updatedAt'])
                     );
       allow delete: if isSuperAdmin();
+
+      match /machineRoster/{machineId} {
+        allow read: if isTrainerOfStudio(studioId);
+        allow write: if isStudioOwnerOrHeadTrainer(studioId);
+      }
+  
     }
 
     // CLIENTS: Securely allows general directory access to authenticated systems / staff
     match /clients/{clientId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isSuperAdmin() || isFranchiseOwner() || (getStudioIdFromData(resource.data) != null && isTrainerOfStudio(getStudioIdFromData(resource.data))));
       allow create: if isAuthenticated() && 
                     isValidClient(request.resource.data) && 
                     (isSuperAdmin() || (getStudioIdFromData(request.resource.data) != null && isTrainerOfStudio(getStudioIdFromData(request.resource.data))));
@@ -208,8 +225,9 @@ service cloud.firestore {
 
     // DISK SETTINGS: Machine settings assigned to specific athletes
     match /clientMachineSettings/{settingId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated();
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
+      allow update: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null)) && (resource == null || getStudioIdFromData(resource.data) == getStudioIdFromData(request.resource.data));
       allow delete: if isSuperAdmin() || isFranchiseOwner() || isAuthenticated();
     }
 
@@ -225,26 +243,27 @@ service cloud.firestore {
     }
 
     match /machineSettingChanges/{changeId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
     }
 
     // ROUTINES & ADJUSTMENTS
     match /routines/{routineId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated();
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
+      allow update: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null)) && (resource == null || getStudioIdFromData(resource.data) == getStudioIdFromData(request.resource.data));
       allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
     match /routineAdjustments/{adjustmentId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
     }
 
     // TRAINING SESSIONS
     match /sessions/{sessionId} {
       allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && isValidSession(request.resource.data);
+      allow create, update: if isAuthenticated();
       allow delete: if isSuperAdmin() || isFranchiseOwner();
 
       match /logs/{logId} {
@@ -254,14 +273,15 @@ service cloud.firestore {
 
     // EXERCISE LOGS
     match /exerciseLogs/{logId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && isValidLog(request.resource.data);
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isValidLog(request.resource.data) && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
+      allow update: if isAuthenticated() && isValidLog(request.resource.data) && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null)) && (resource == null || getStudioIdFromData(resource.data) == getStudioIdFromData(request.resource.data));
       allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
     // CALENDAR SCHEDULES
     match /schedules/{scheduleId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isSuperAdmin() || isFranchiseOwner() || (resource.data.studioId != null && isTrainerOfStudio(resource.data.studioId)));
       allow create, update: if (
         isFranchiseOwner() || 
         isSuperAdmin() ||
@@ -272,8 +292,9 @@ service cloud.firestore {
     
     // CLINICAL NOTES
     match /sessionNotes/{noteId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated();
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
+      allow update: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null)) && (resource == null || getStudioIdFromData(resource.data) == getStudioIdFromData(request.resource.data));
       allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
@@ -281,6 +302,14 @@ service cloud.firestore {
       allow read, write: if isSuperAdmin() || request.auth.uid == userId;
     }
 
+    
+    // AUDIT LOGS
+    match /auditLogs/{logId} {
+      allow read: if isSuperAdmin() || isFranchiseOwner();
+      allow create: if isAuthenticated();
+      allow update, delete: if isSuperAdmin();
+    }
+  
     match /leaderboards/{docId} {
       allow read: if isAuthenticated();
       allow write: if isSuperAdmin();
@@ -288,20 +317,23 @@ service cloud.firestore {
 
     // SPECIAL ATHLETE FOCUS PATTERNS
     match /trainerFocuses/{focusId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated();
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
+      allow update: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null)) && (resource == null || getStudioIdFromData(resource.data) == getStudioIdFromData(request.resource.data));
       allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
     match /progressReports/{reportId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated();
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
+      allow update: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null)) && (resource == null || getStudioIdFromData(resource.data) == getStudioIdFromData(request.resource.data));
       allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
     match /focusRecords/{focusId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated();
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
+      allow update: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null)) && (resource == null || getStudioIdFromData(resource.data) == getStudioIdFromData(request.resource.data));
       allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
@@ -322,6 +354,11 @@ service cloud.firestore {
     match /aggregations/{aggId} {
       allow read: if isAuthenticated();
       allow write: if isSuperAdmin();
+    }
+
+    match /clinicalIncidents/{incidentId} {
+      allow read: if isSuperAdmin() || (resource.data.studioId != null && isTrainerOfStudio(resource.data.studioId));
+      allow write: if isSuperAdmin() || (request.resource.data.studioId != null && isTrainerOfStudio(request.resource.data.studioId));
     }
 
     // BUG REPORTS

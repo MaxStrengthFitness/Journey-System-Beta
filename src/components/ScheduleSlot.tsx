@@ -33,7 +33,7 @@ export function ScheduleSlot({ clientName, isNextUp }: ScheduleSlotProps) {
   );
 
   return (
-    <TooltipProvider delayDuration={200}>
+    <TooltipProvider delay={200}>
       <Tooltip>
         <TooltipTrigger asChild>
           {content}

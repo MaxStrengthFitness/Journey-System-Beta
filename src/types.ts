@@ -27,6 +27,45 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   Trainer: "Life Transformer",
 };
 
+export type RPE = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+export interface ClinicalTagDefinition {
+  id: string;
+  kind: 'Form' | 'Symptom' | 'Behavior';
+  machineId?: string;
+  region?: 'Upper' | 'Lower' | 'Core' | 'Spine' | 'Systemic';
+  label: string;
+  cue?: string;
+  fourPCategory?: 'Posture' | 'Pace' | 'Path' | 'Purpose';
+}
+
+export interface PreSessionCheckIn {
+  sorenessLevel?: 1 | 2 | 3 | 4 | 5;
+  sorenessRegions?: string[];
+  sleepHours?: number;
+  stressLevel?: 1 | 2 | 3 | 4 | 5;
+  hydration?: 'low' | 'ok' | 'good';
+  note?: string;
+}
+
+export type ClientFeel = 'Wiped Out' | 'Good' | 'Energized';
+
+export interface ClinicalIncident {
+  id?: string;
+  clientId: string;
+  studioId: string;
+  sessionId?: string;
+  machineId?: string;
+  region: string;
+  severity: 'mild' | 'moderate' | 'stop_session';
+  description: string;
+  actionTaken?: string;
+  resolvedAt?: any;
+  surfaceUntil?: any;
+  reportedByTrainerId: string;
+  createdAt: any;
+}
+
 /**
  * Represents a group of studios owned by a Studio Owner or managed as a region.
  */
@@ -173,6 +212,7 @@ export interface ClinicalSafetyFlag {
   id: string;
   category: string;
   conditionName: string;
+  label?: string;
   severity: string;
   protocolHandling: {
     instruction: string;
@@ -267,6 +307,7 @@ export interface Machine {
   fullName?: string;
   settings?: string; // Repurposed as "Standard Setup Tips"
   settingOptions?: string[]; // e.g. ["Seat", "Pads", "Backrest"]
+  targetRepRange?: string;
   standardSettings?: Record<string, string>; // e.g. {"Seat": "5", "Pads": "2"}
   standardWeights?: {
     Beginner?: number | string;
@@ -298,6 +339,7 @@ export interface Machine {
 }
 
 export interface MachineSettingChange {
+  studioId?: string;
   id?: string;
   machineId: string;
   clientId: string;
@@ -309,6 +351,7 @@ export interface MachineSettingChange {
 }
 
 export interface Routine {
+  studioId?: string;
   id?: string;
   clientId: string;
   name: string;
@@ -318,6 +361,7 @@ export interface Routine {
 }
 
 export interface RoutineAdjustment {
+  studioId?: string;
   id?: string;
   routineId: string;
   clientId: string;
@@ -350,7 +394,9 @@ export interface WorkoutSession {
   /** Activity checkpoint updated during logs to detect abandonment (Lazy Cleanup) */
   lastHeartbeatAt?: any;
   notes?: string; // Original notes field (deprecated in favor of sub-collection)
-  clientFeel?: string;
+  clientFeel?: ClientFeel | string;
+  preSessionCheckIn?: PreSessionCheckIn;
+  postFeel?: { physical: 1|2|3|4|5; mental: 1|2|3|4|5; overallRPE?: RPE };
   startTime?: any;
   endTime?: any;
   status: "In-Progress" | "Completed";
@@ -365,6 +411,7 @@ export interface WorkoutSession {
 }
 
 export interface SessionNote {
+  studioId?: string;
   id?: string;
   sessionId: string;
   clientId?: string;
@@ -378,6 +425,9 @@ export interface SessionNote {
 export type RepQuality = 1 | 2 | 3;
 
 export interface ExerciseLog {
+  studioId?: string;
+  homeStudioId?: string;
+  clientHomeStudioId?: string;
   id?: string;
   sessionId: string;
   clientId?: string;
@@ -385,6 +435,9 @@ export interface ExerciseLog {
   suggestedOrder?: number;
   weight?: string;
   reps?: string;
+  loadLb?: string;
+  outcomeTut?: string;
+  outcomeReps?: string;
   repsLeft?: number;
   repsRight?: number;
   seconds?: string;
@@ -400,6 +453,15 @@ export interface ExerciseLog {
   machineSettings?: Record<string, string>; // Settings used for this specific set
   createdAt?: any;
   updatedAt?: any;
+  rpe?: RPE;
+  rpeNote?: string;
+  eccentricSeconds?: number;
+  concentricSeconds?: number;
+  pauseSeconds?: number;
+  clinicalTags?: string[];
+  symptoms?: { region: string; intensity: 1|2|3|4|5; onsetRep?: number; note?: string }[];
+  setupReason?: 'client_self_set' | 'trainer_fix' | 'protocol_progression' | 'comfort_adjust';
+  setupWasCorrect?: boolean;
 }
 
 export interface MachineNote {
@@ -419,6 +481,7 @@ export interface SettingsHistoryEntry {
 }
 
 export interface ClientMachineSetting {
+  studioId?: string;
   id?: string;
   clientId: string;
   machineId: string;
@@ -439,7 +502,7 @@ export interface ScheduleEntry {
   clientName: string;
   trainerId?: string;
   trainerName: string;
-  studioId?: string;
+  studioId: string;
   startTime: any;
   endTime: any;
   status: "Scheduled" | "Completed" | "Cancelled" | "No-Show";
@@ -458,6 +521,7 @@ export type HighlightMetricType =
   | "custom";
 
 export interface ProgressReport {
+  studioId?: string;
   id?: string;
   clientId: string;
   trainerId: string;
@@ -599,6 +663,7 @@ export type FocusCategory = "Posture" | "Pace" | "Path" | "Purpose";
 export type FocusStatus = "Active" | "Achieved" | "Deleted";
 
 export interface FocusRecord {
+  studioId?: string;
   id: string;
   clientId: string;
   category: FocusCategory;
@@ -612,6 +677,7 @@ export interface FocusRecord {
 }
 
 export interface TrainerFocus {
+  studioId?: string;
   id?: string;
   clientId: string;
   trainerId: string;
@@ -720,6 +786,8 @@ export type View =
   | "dashboard"
   | "profile"
   | "chart"
+  | "progress-report"
+  | "clinical-review"
   | "trainer-profile"
   | "progress-report"
   | "consultation-wizard"
@@ -730,3 +798,14 @@ export type View =
   | "admin-dashboard"
   | "franchise-dashboard"
   | "retention";
+
+export interface AuditLogEntry {
+  id?: string;
+  action: string;
+  collection: string;
+  documentId: string;
+  userId: string;
+  studioId?: string;
+  details?: Record<string, any>;
+  timestamp: any;
+}

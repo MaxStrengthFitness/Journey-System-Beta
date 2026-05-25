@@ -204,8 +204,9 @@ export function WorkoutChartGrid({
         machineId: editingSettings.machineId,
         settings: editingSettings.settings,
         updatedBy: auth.currentUser?.email || 'Unknown',
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+        updatedAt: serverTimestamp(),
+          studioId: (clients.find(c => c.id === clientId)?.homeStudioId) || ''
+    }, { merge: true });
       setEditingSettings(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `clientMachineSettings/${editingSettings.machineId}`);
@@ -449,19 +450,23 @@ export function WorkoutChartGrid({
 
                       {/* Settings Component */}
                       <div className="flex flex-wrap gap-x-2 gap-y-0 bg-slate-900/50 px-1 py-0.5 rounded-md border border-slate-700 transition-all group/settings mt-0.5">
-                         {clientSettings.find(s => s.machineId === machine.id)?.settings && orderMachineSettings(clientSettings.find(s => s.machineId === machine.id)?.settings || {}).map(([opt, val]) => (
-                           <div key={opt} className="flex items-baseline gap-0.5">
+                        {(() => {
+                          const studioObj = studios?.find(s => s.id === activeStudioId);
+                          const stdSettings = studioObj?.machineSettings?.[machine.id!] || machine.standardSettings || {};
+                          const options = machine.settingOptions || [];
+                          const sortedEntries = orderMachineSettings(currentSettings || {}, stdSettings, options);
+                          
+                          return sortedEntries.map(([opt, val], idx) => (
+                            <div key={idx} className="flex items-baseline gap-0.5">
                               <span className="text-[7px] font-bold uppercase tracking-tighter text-slate-400 group-hover/settings:text-[#F06C22] transition-colors line-clamp-1 truncate max-w-[40px]">
                                 {opt}:
                               </span>
                               <span className="text-[11px] font-bold text-slate-200 tabular-nums leading-none">
                                 {val}
                               </span>
-                           </div>
-                         ))}
-                         {(!currentSettings || Object.keys(currentSettings).length === 0) && (
-                            <span className="text-[7px] font-bold uppercase text-slate-300 italic">No config</span>
-                         )}
+                            </div>
+                          ));
+                        })()}
                       </div>
                     </div>
                   </th>

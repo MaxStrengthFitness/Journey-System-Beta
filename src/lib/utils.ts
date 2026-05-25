@@ -231,30 +231,103 @@ export function isBig5Machine(machineName: string = ''): boolean {
 }
 
 /**
- * Orders machine settings entries for display.
- * Requested order: gap, back pad, chest pad, seat.
- * Any other settings are placed after in alphabetical order.
+ * Orders machine settings entries for display and shortens key to the first letter.
+ * Strict Order: Gap (0) -> Back pad/Chest pad (1) -> Seat (2) -> Others (500) -> Handles (1000).
  */
-export function orderMachineSettings(settings: Record<string, string> | undefined | null): [string, string][] {
-  if (!settings) return [];
+export function orderMachineSettings(
+  settings: Record<string, string> | undefined | null,
+  standardSettings?: Record<string, string> | null,
+  options?: string[] | null
+): [string, string, string][] {
+  const mergedSettings = { ...(settings || {}) };
   
-  const PREFERRED_ORDER = ['gap', 'back pad', 'chest pad', 'seat'];
+  // 1. If options are provided, normalize "Back/Chest Pad" key mismatches dynamically
+  if (options && options.length > 0) {
+    const hasChestInOptions = options.some(o => o.toLowerCase().includes('chest'));
+    const hasBackInOptions = options.some(o => o.toLowerCase().includes('back'));
+    
+    for (const rawKey of Object.keys(mergedSettings)) {
+      const lowerKey = rawKey.toLowerCase().trim();
+      
+      if (hasChestInOptions && !hasBackInOptions && lowerKey.includes('back')) {
+        const chestOpt = options.find(o => o.toLowerCase().includes('chest'))!;
+        const val = mergedSettings[rawKey];
+        delete mergedSettings[rawKey];
+        mergedSettings[chestOpt] = val;
+      } else if (hasBackInOptions && !hasChestInOptions && lowerKey.includes('chest')) {
+        const backOpt = options.find(o => o.toLowerCase().includes('back'))!;
+        const val = mergedSettings[rawKey];
+        delete mergedSettings[rawKey];
+        mergedSettings[backOpt] = val;
+      }
+    }
+  }
+
+  // 2. Ensure "Gap" is ALWAYS present (unless explicitly not wanted, but should always show gap)
+  const existingGapKey = Object.keys(mergedSettings).find(k => k.toLowerCase() === 'gap');
+  let gapValue: string | undefined = undefined;
   
-  const entries = Object.entries(settings);
-  return entries.sort(([keyA], [keyB]) => {
-    let indexA = PREFERRED_ORDER.findIndex(k => keyA.toLowerCase().includes(k));
-    let indexB = PREFERRED_ORDER.findIndex(k => keyB.toLowerCase().includes(k));
+  if (existingGapKey) {
+    const val = mergedSettings[existingGapKey];
+    if (val !== undefined && val !== null && val !== '') {
+      gapValue = String(val);
+    }
+  }
+  
+  if (gapValue === undefined) {
+    // Look up in standardSettings (studio-standard)
+    const stdGapKey = standardSettings ? Object.keys(standardSettings).find(k => k.toLowerCase() === 'gap') : undefined;
+    if (stdGapKey && standardSettings && standardSettings[stdGapKey] !== undefined && standardSettings[stdGapKey] !== null && standardSettings[stdGapKey] !== '') {
+      gapValue = String(standardSettings[stdGapKey]);
+    } else {
+      gapValue = "0"; // Default fallback to 0 as very common or if gap is not inputted
+    }
+  }
+  
+  if (existingGapKey) {
+    mergedSettings[existingGapKey] = gapValue;
+  } else {
+    // Explicitly add "Gap" if not present
+    mergedSettings["Gap"] = gapValue;
+  }
+
+  const entries = Object.entries(mergedSettings);
+  
+  // 3. Sort using raw keys based on strict scoring logic
+  const sorted = entries.sort(([keyA], [keyB]) => {
+    const scoreA = getSettingOrderScore(keyA);
+    const scoreB = getSettingOrderScore(keyB);
     
-    // If exact matches are preferred, we can use exact matching, but includes handles things like 'Back Pad'
-    
-    if (indexA === -1) indexA = 999;
-    if (indexB === -1) indexB = 999;
-    
-    if (indexA !== indexB) {
-      return indexA - indexB; // Lower index comes first
+    if (scoreA !== scoreB) {
+      return scoreA - scoreB;
     }
     
     return keyA.localeCompare(keyB);
   });
+  
+  // 4. Convert keys to just the first letter (upper-cased) for visual shorthand, and also return the original key to preserve context if needed!
+  return sorted.map(([key, val]) => {
+    const shortKey = key.trim().substring(0, 1).toUpperCase();
+    return [shortKey, val, key];
+  }) as [string, string, string][];
+}
+
+function getSettingOrderScore(key: string): number {
+  const k = key.trim().toLowerCase();
+  
+  // Gap always first
+  if (k.includes('gap') || k === 'g') return 0;
+  
+  // Back pad or chest pad
+  if (k.includes('back') || k.includes('chest') || k === 'b' || k === 'c') return 1;
+  
+  // Seat
+  if (k.includes('seat') || k === 's') return 2;
+  
+  // Handles always last
+  if (k.includes('handle') || k === 'h') return 1000;
+  
+  // Others in between
+  return 500;
 }
 

@@ -637,7 +637,8 @@ export function TrainerControlHubView({
               reps,
               notes,
               machineSettings: settingsStr ? parseMachineSettings(settingsStr) : {},
-              createdAt: Timestamp.fromDate(sessionDate)
+              createdAt: Timestamp.fromDate(sessionDate),
+              studioId: activeStudioId || authTrainer?.primaryHomeStudioId || 'unassigned'
             });
             logCount++;
             opCount++;
@@ -651,7 +652,8 @@ export function TrainerControlHubView({
                 machineId,
                 settings,
                 updatedBy: trainerInitials,
-                updatedAt: Timestamp.fromDate(sessionDate)
+                updatedAt: Timestamp.fromDate(sessionDate),
+                studioId: activeStudioId || authTrainer?.primaryHomeStudioId || 'unassigned'
               }, { merge: true });
               opCount++;
             }

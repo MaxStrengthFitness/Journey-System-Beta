@@ -119,7 +119,7 @@ export function ClientFocusDashboard({ client, trainer, machines }: ClientFocusD
     if (!newFocus.category || !newFocus.clinicalNotes) return;
 
     try {
-      await addDoc(collection(db, 'focusRecords'), {
+      await addDoc(collection(db, "focusRecords"), {
         clientId: client.id,
         category: newFocus.category,
         targetMachineId: newFocus.targetMachineId || null,
@@ -127,8 +127,9 @@ export function ClientFocusDashboard({ client, trainer, machines }: ClientFocusD
         status: 'Active',
         assignedBy: trainer.initials,
         trainerId: trainer.id,
-        dateAssigned: serverTimestamp()
-      });
+        dateAssigned: serverTimestamp(),
+          studioId: client?.homeStudioId || ''
+    });
       setIsAdding(false);
       setNewFocus({ category: 'Posture', targetMachineId: '', clinicalNotes: '' });
     } catch (error) {

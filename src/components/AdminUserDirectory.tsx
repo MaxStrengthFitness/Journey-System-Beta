@@ -39,11 +39,21 @@ import {
   ShieldCheck,
   Loader2,
   Plus,
+  Home,
+  Key,
+  Sparkles,
+  Lock,
+  Mail,
+  Filter,
+  Building2,
+  CalendarDays,
+  Activity,
 } from "lucide-react";
 import { OperationType, handleFirestoreError, DocumentIdMissingError } from "../lib/firestore-errors";
 import { useDebounce } from "../hooks/useDebounce";
 import { cn, getRoleColor, getRoleDisplayName } from "@/lib/utils";
 import { CreateTrainerModal } from "./CreateTrainerModal";
+import { EditTrainerModal } from "./EditTrainerModal";
 
 interface Props {
   studios: Studio[];
@@ -56,27 +66,28 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
 
   const [users, setUsers] = useState<Trainer[]>([]);
   const [loading, setLoading] = useState(false);
-  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Filters state
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [studioFilter, setStudioFilter] = useState<string>("all");
 
   // Fetch logic
   const fetchUsers = async (viewAll: boolean = false) => {
     setLoading(true);
     try {
       let q;
-      if (viewAll) {
-        q = query(collection(db, "trainers"), limit(50));
-      } else if (debouncedSearch.trim() !== "") {
+      if (viewAll || debouncedSearch.trim() === "") {
+        q = query(collection(db, "trainers"), limit(100));
+      } else {
         const term = debouncedSearch.toLowerCase().trim();
         q = query(
           collection(db, "trainers"),
           where("searchTokens", "array-contains", term),
-          limit(50),
+          limit(100),
         );
-      } else {
-        setUsers([]);
-        setLoading(false);
-        return;
       }
 
       const snap = await getDocs(q);
@@ -92,22 +103,21 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
     }
   };
 
+  // Initial load on mount and when search term updates
   useEffect(() => {
     if (debouncedSearch.length >= 2) {
       fetchUsers(false);
-    } else if (debouncedSearch.length === 0 && users.length > 0) {
-      setUsers([]); // Clear when search goes empty
+    } else if (debouncedSearch.length === 0) {
+      fetchUsers(true); // Load all by default if search is cleared
     }
   }, [debouncedSearch]);
 
-  const handleUpdateRole = async (userId: string | undefined | null, newRole: string) => {
+  const handleUpdateTrainerFields = async (updatedFields: Partial<Trainer>) => {
+    if (!editingTrainer || !editingTrainer.id) return;
     try {
-      if (!userId) {
-        throw new DocumentIdMissingError("trainers", OperationType.UPDATE);
-      }
-      await updateDoc(doc(db, "trainers", userId), { role: newRole });
+      await updateDoc(doc(db, "trainers", editingTrainer.id), updatedFields);
       setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, role: newRole as UserRole } : u)),
+        prev.map((u) => (u.id === editingTrainer.id ? { ...u, ...updatedFields } : u)),
       );
       await onRefresh?.("trainers");
     } catch (err) {
@@ -166,20 +176,36 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
     }
   };
 
+  const getStudioName = (studioId: string) => {
+    const studio = studios.find((s) => s.id === studioId);
+    return studio ? studio.name : "Unknown Studio";
+  };
+
+  // Perform multi-axis filtration
+  const filteredUsers = users.filter((user) => {
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    const matchesStudio =
+      studioFilter === "all" ||
+      user.primaryHomeStudioId === studioFilter ||
+      user.accessibleStudioIds?.includes(studioFilter) ||
+      user.activeGuestStudioIds?.includes(studioFilter);
+    return matchesRole && matchesStudio;
+  });
+
   return (
     <div className="space-y-6">
       <Card className="rounded-[32px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-6 overflow-visible">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 rounded-xl flex flex-col items-center justify-center">
-              <UserCog className="w-5 h-5" />
+              <UserCog className="w-5 h-5 animate-pulse" />
             </div>
             <div>
               <h2 className="text-xl font-black uppercase italic tracking-tight text-slate-900 dark:text-white leading-none">
-                User Directory
+                Staff & User Directory
               </h2>
               <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                Manage Roles & System Access
+                Manage Roles, Studio Involvements & Credentials
               </p>
             </div>
           </div>
@@ -187,7 +213,7 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
           <div className="flex items-center gap-3">
             <Button
               onClick={() => setIsCreateModalOpen(true)}
-              className="text-[11px] font-black uppercase tracking-widest h-10 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white"
+              className="text-[11px] font-black uppercase tracking-widest h-10 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm"
             >
               <Plus className="w-4 h-4 mr-2" />
               New User
@@ -197,133 +223,214 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
               variant="outline"
               className="text-[11px] font-black uppercase tracking-widest h-10 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
             >
-              View All Staff (Max 50)
+              Force Directory Refresh
             </Button>
           </div>
         </div>
 
-        <div className="relative mb-8">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <Input
-            type="text"
-            placeholder="Search by name or email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-12 h-14 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-2xl font-bold font-sans text-sm outline-none focus:border-indigo-500/50"
-          />
+        {/* Dual Axis Controls Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-8">
+          {/* Main search bar */}
+          <div className="relative md:col-span-6">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="Search by name or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-12 h-12 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-2xl font-bold font-sans text-sm focus:border-indigo-500"
+            />
+          </div>
+
+          {/* Role Filter */}
+          <div className="md:col-span-3">
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="h-12 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-black uppercase tracking-wider">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="truncate">Role: {roleFilter === "all" ? "All Roles" : getRoleDisplayName(roleFilter as UserRole)}</span>
+                </div>
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800">
+                <SelectItem value="all" className="font-bold uppercase text-[11px]">All Roles</SelectItem>
+                <SelectItem value="LifeTransformer" className="font-bold uppercase text-[11px]">Life Transformer</SelectItem>
+                <SelectItem value="StudioLeader" className="font-bold uppercase text-[11px]">Studio Leader</SelectItem>
+                <SelectItem value="Owner" className="font-bold uppercase text-[11px]">Owner</SelectItem>
+                <SelectItem value="Founder" className="font-bold uppercase text-[11px]">Founder</SelectItem>
+                <SelectItem value="Admin" className="font-bold uppercase text-[11px]">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Studio Filter */}
+          <div className="md:col-span-3">
+            <Select value={studioFilter} onValueChange={setStudioFilter}>
+              <SelectTrigger className="h-12 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-black uppercase tracking-wider">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="truncate">Studio: {studioFilter === "all" ? "All Locations" : getStudioName(studioFilter)}</span>
+                </div>
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800">
+                <SelectItem value="all" className="font-bold uppercase text-[11px]">All Locations</SelectItem>
+                {studios.map((s) => (
+                  <SelectItem key={s.id} value={s.id || ""} className="font-bold uppercase text-[11px]">
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           {loading ? (
-            <div className="flex justify-center py-8 text-indigo-500">
-              <Loader2 className="w-6 h-6 animate-spin" />
+            <div className="flex justify-center py-12 text-indigo-500">
+              <Loader2 className="w-8 h-8 animate-spin" />
             </div>
-          ) : users.length === 0 ? (
-            <div className="py-8 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl">
-              <User className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                No users found. Try searching or View All.
+          ) : filteredUsers.length === 0 ? (
+            <div className="py-12 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-3xl">
+              <User className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
+              <p className="text-sm font-black uppercase tracking-widest text-slate-400">
+                No users match the search filters.
+              </p>
+              <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider font-bold">
+                Try adjustment of your search term or selection controls.
               </p>
             </div>
           ) : (
-            users.map((user) => (
-              <div
-                key={user.id}
-                className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-950 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center font-bold text-slate-600 dark:text-slate-400">
-                    {user.initials ||
-                      user.fullName.substring(0, 2).toUpperCase()}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white">
-                      {user.fullName}
-                    </h3>
-                    <p
-                      className={cn(
-                        "text-[11px] uppercase font-bold tracking-widest",
-                        getRoleColor(user.role).split(" ")[0],
-                      )}
-                    >
-                      {getRoleDisplayName(user.role)}
-                    </p>
-                  </div>
-                </div>
+            filteredUsers.map((user) => {
+              const hasPinSet = !!(user.pin || user.pinHash);
+              const otherAccess = (user.accessibleStudioIds || []).filter(
+                (id) => id !== user.primaryHomeStudioId,
+              );
+              const guestAccess = user.activeGuestStudioIds || [];
 
-                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "px-2 py-1 text-[11px] uppercase font-black",
-                      getRoleColor(user.role),
+              return (
+                <div
+                  key={user.id}
+                  className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 rounded-3xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/40 dark:bg-slate-900/30 hover:bg-white dark:hover:bg-slate-950 transition-all shadow-sm"
+                >
+                  {/* Basic Profile Description */}
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-sm shadow-sm shrink-0">
+                      {user.initials || user.fullName.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div className="space-y-1.5 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-black text-slate-900 dark:text-white tracking-tight truncate text-base leading-none">
+                          {user.fullName}
+                        </h3>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "px-2.5 py-0.5 text-[10px] uppercase font-black tracking-widest rounded-md",
+                            getRoleColor(user.role),
+                          )}
+                        >
+                          {getRoleDisplayName(user.role)}
+                        </Badge>
+                        {hasPinSet && (
+                          <Badge
+                            variant="secondary"
+                            className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 border border-emerald-100/50 dark:border-emerald-900/40 px-2 py-0.5 text-[9px] font-extrabold uppercase rounded-md flex items-center gap-1"
+                          >
+                            <Lock className="w-2.5 h-2.5" /> PIN Locked
+                          </Badge>
+                        )}
+                        {user.isVisibleOnCalendar === false && (
+                          <Badge
+                            variant="outline"
+                            className="bg-yellow-50 dark:bg-yellow-950/20 text-yellow-600 border-yellow-200/50 px-2 py-0.5 text-[9px] font-extrabold uppercase rounded-md"
+                          >
+                            Hidden on Calendar
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Details row */}
+                      <div className="flex flex-wrap items-center gap-y-1.5 gap-x-4 text-xs font-bold text-slate-500 dark:text-slate-400">
+                        {user.email && (
+                          <span className="flex items-center gap-1">
+                            <Mail className="w-3.5 h-3.5 text-slate-400" />
+                            {user.email}
+                          </span>
+                        )}
+                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+                          Initials: {user.initials}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Studio Involvements Dashboard Display */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-white dark:bg-slate-900/20 border border-slate-100 dark:border-slate-800/60 p-3 rounded-2xl lg:min-w-[340px] max-w-full">
+                    {/* Primary Studio */}
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400 flex items-center gap-1">
+                        <Home className="w-3 h-3 text-[#F06C22]" /> Primary Facility
+                      </span>
+                      <span className="block text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wide">
+                        {getStudioName(user.primaryHomeStudioId)}
+                      </span>
+                    </div>
+
+                    {/* Shared/Guest Staffing columns */}
+                    {(otherAccess.length > 0 || guestAccess.length > 0) && (
+                      <div className="h-px sm:h-8 w-full sm:w-px bg-slate-100 dark:bg-slate-800 shrink-0" />
                     )}
-                  >
-                    {getRoleDisplayName(user.role)}
-                  </Badge>
 
-                  {editingUserId === user.id ? (
-                    <div className="flex items-center gap-2">
-                      <Select
-                        value={user.role || "LifeTransformer"}
-                        onValueChange={(val) => {
-                          if (!user.id) return;
-                          handleUpdateRole(user.id, val);
-                          setEditingUserId(null);
-                        }}
-                      >
-                        <SelectTrigger className="w-36 h-9 text-[11px] font-bold uppercase rounded-lg">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="LifeTransformer">
-                            Life Transformer
-                          </SelectItem>
-                          <SelectItem value="StudioLeader">
-                            Studio Leader
-                          </SelectItem>
-                          <SelectItem value="Owner">Owner</SelectItem>
-                          <SelectItem value="Founder">Founder</SelectItem>
-                          <SelectItem value="Admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="ghost"
-                        className="h-9 text-[11px]"
-                        onClick={() => setEditingUserId(null)}
-                      >
-                        Cancel
-                      </Button>
+                    <div className="space-y-1 min-w-0">
+                      {otherAccess.length > 0 && (
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#F06C22] shrink-0 flex items-center gap-0.5">
+                            <Key className="w-2.5 h-2.5" /> Staff:
+                          </span>
+                          <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 truncate max-w-[200px]">
+                            {otherAccess.map((id) => getStudioName(id)).join(", ")}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {guestAccess.length > 0 && (
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-[9px] font-extrabold uppercase tracking-widest text-indigo-500 shrink-0 flex items-center gap-0.5">
+                            <Sparkles className="w-2.5 h-2.5" /> Guest:
+                          </span>
+                          <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 truncate max-w-[200px]">
+                            {guestAccess.map((id) => getStudioName(id)).join(", ")}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9 rounded-lg"
-                        onClick={() => {
-                          if (!user.id) return;
-                          setEditingUserId(user.id);
-                        }}
-                      >
-                        <Edit className="w-4 h-4 text-slate-500" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9 rounded-lg hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30"
-                        onClick={() => {
-                          if (!user.id) return;
-                          handleDeleteUser(user.id);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4 text-slate-400" />
-                      </Button>
-                    </div>
-                  )}
+                  </div>
+
+                  {/* Actions Column */}
+                  <div className="flex items-center justify-end gap-2.5 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-10 rounded-xl px-4 text-xs font-black uppercase tracking-wider flex items-center gap-1 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      onClick={() => {
+                        setEditingTrainer(user);
+                        setIsEditModalOpen(true);
+                      }}
+                    >
+                      <Edit className="w-3.5 h-3.5 text-slate-500" />
+                      Configure
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-800 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30"
+                      onClick={() => handleDeleteUser(user.id)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-slate-400" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </Card>
@@ -332,6 +439,14 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
         isOpen={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
         onSubmit={handleCreateUser}
+      />
+
+      <EditTrainerModal
+        trainer={editingTrainer}
+        studios={studios}
+        isOpen={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        onSave={handleUpdateTrainerFields}
       />
     </div>
   );

@@ -70,7 +70,7 @@ export function PostSessionBriefingView({
     return m > 0 ? `${m}m ${s}s` : `${s}s`;
   };
 
-  const eliteSets = logs.filter(l => l.repQuality === 3).length;
+  const maxStrengthSets = logs.filter(l => l.repQuality === 3).length;
 
   // Lifetime Metrics
   const lifetimeTonnage = Math.round(allLogs.reduce((acc, log) => acc + calculateExerciseVolume(log), 0));
@@ -139,9 +139,9 @@ export function PostSessionBriefingView({
           </div>
 
           <div className="bg-surface-1 border border-div-d rounded-2xl p-4 flex flex-col justify-center relative overflow-hidden shadow-lg">
-            <span className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2 relative z-10">Elite Sets</span>
+            <span className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2 relative z-10">Max Strength Sets</span>
             <span className="text-2xl sm:text-3xl font-bold text-emerald-500 tracking-tighter mt-1 relative z-10 flex items-baseline gap-1 truncate">
-              {eliteSets} <span className="text-sm text-emerald-500/50 uppercase tracking-widest">/ {logs.length}</span>
+              {maxStrengthSets} <span className="text-sm text-emerald-500/50 uppercase tracking-widest">/ {logs.length}</span>
             </span>
           </div>
 

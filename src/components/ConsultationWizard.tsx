@@ -82,12 +82,13 @@ export function ConsultationWizard({ client, machines, authTrainer, trainers, on
       }).filter(Boolean) as string[];
 
       // 3. Create Demo Routine doc
-      const routineRef = await addDoc(collection(db, 'routines'), {
+      const routineRef = await addDoc(collection(db, "routines"), {
         clientId: client.id,
         name: 'Demo Routine',
         machineIds: customMachineIds,
-        createdAt: serverTimestamp()
-      });
+        createdAt: serverTimestamp(),
+          studioId: client?.homeStudioId || ''
+    });
 
       // 4. Create Active Session
       const trainerInitials = authTrainer?.initials || trainers[0]?.initials || '??';
@@ -109,14 +110,15 @@ export function ConsultationWizard({ client, machines, authTrainer, trainers, on
       });
 
       // 5. Add setup note
-      await addDoc(collection(db, 'sessionNotes'), {
+      await addDoc(collection(db, "sessionNotes"), {
         sessionId: sessionRef.id,
         clientId: client.id,
         trainerId: authTrainer?.id || '',
         trainerInitials: trainerInitials,
         content: `Demo Consultation. Age: ${age}, Skill: ${skillLevel}. Goals: ${goals}`,
-        createdAt: serverTimestamp()
-      });
+        createdAt: serverTimestamp(),
+          studioId: client?.homeStudioId || ''
+    });
 
       onComplete(client.id!);
     } catch (e) {

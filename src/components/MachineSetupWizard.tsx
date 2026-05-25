@@ -69,7 +69,7 @@ export function MachineSetupWizard({ client, machine }: Props) {
 - Settings: ${lastLog.machineSettings ? Object.entries(lastLog.machineSettings).map(([k, v]) => `${k}: ${v}`).join(', ') : 'N/A'}
 - Weight: ${lastLog.weight} lbs
 - Reps: ${lastLog.reps}
-- Quality: ${lastLog.repQuality}/3 (1=Bad, 2=Completed, 3=Good)`;
+- Quality: ${lastLog.repQuality}/3 (1=Poor, 2=Completed, 3=Max Strength)`;
         }
       } catch (historyErr) {
         console.warn("Could not retrieve historical context for wizard:", historyErr);

@@ -4,6 +4,7 @@ import { StickyCTA } from "./StickyCTA";
 import { FeelToggle } from "./FeelToggle";
 import { BentoStatTile } from "./BentoStatTile";
 import { Client, WorkoutSession, ExerciseLog, Trainer, ScheduleEntry } from "../types";
+import { safeToDate } from "../lib/utils";
 
 export interface VictoryHUDScreenProps {
   client: Client;
@@ -30,34 +31,53 @@ export function VictoryHUDScreen({
   const [notes, setNotes] = useState('');
   const [priority, setPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
 
+  // Multi-format support for stats (handles both legacy import schemas and active live logged workout documents)
+  const getLogLoad = (l: ExerciseLog) => parseFloat(l.loadLb || l.weight || '0') || 0;
+  const getLogReps = (l: ExerciseLog) => {
+    if (l.isTSC || l.isStaticHold) return 0;
+    return parseFloat(l.outcomeReps || l.reps || '0') || 0;
+  };
+  const getLogTut = (l: ExerciseLog) => {
+    return parseFloat(l.outcomeTut || l.seconds || ((l.isTSC || l.isStaticHold) ? l.reps : '') || '0') || 0;
+  };
+
   // Calculate actual total tonnage from today's logs
-  const totalTonnage = logs.reduce((sum, l) => sum + (l.loadLb || 0) * (l.outcomeReps || 0), 0);
+  const totalTonnage = logs.reduce((sum, l) => sum + (getLogLoad(l) * getLogReps(l)), 0);
   
   // Calculate average TUT
-  const totalTimeUnderTension = logs.reduce((sum, l) => sum + (l.outcomeTut || 0), 0);
-  const totalReps = logs.reduce((sum, l) => sum + (l.outcomeReps || 0), 0);
+  const totalTimeUnderTension = logs.reduce((sum, l) => sum + getLogTut(l), 0);
+  const totalReps = logs.reduce((sum, l) => sum + getLogReps(l), 0);
   const avgTutPerRep = totalReps > 0 ? (totalTimeUnderTension / totalReps).toFixed(1) : '0';
 
-  // Calculate elite sets (assuming quality >= 4 or whatever logic is used)
-  const eliteSets = logs.filter(l => (l.repQuality || 0) >= 4).length;
+  // Calculate max strength sets (assuming quality >= 3 based on 1-3 scale)
+  const maxStrengthSets = logs.filter(l => (l.repQuality || 0) >= 3).length;
   const totalSets = logs.length;
 
-  // Total session duration
-  const durationMs = (session.endTime || Date.now()) - session.startTime;
-  const durationMins = Math.floor(durationMs / 60000);
-  const durationSecs = Math.floor((durationMs % 60000) / 1000);
-  const durationFormat = `${durationMins}:${durationSecs.toString().padStart(2, '0')}`;
+  // Total session duration calculated safely matching potential Firestore/local states
+  const startD = safeToDate(session.startTime) || safeToDate(session.createdAt);
+  const endD = safeToDate(session.endTime) || new Date();
+  
+  let durationFormat = "0:00";
+  if (startD) {
+    const durationMs = Math.max(0, endD.getTime() - startD.getTime());
+    // Clamp to 12 hours max to prevent overflow errors
+    if (durationMs < 1000 * 60 * 60 * 12) {
+      const durationMins = Math.floor(durationMs / 60000);
+      const durationSecs = Math.floor((durationMs % 60000) / 1000);
+      durationFormat = `${durationMins}:${durationSecs.toString().padStart(2, '0')}`;
+    }
+  }
 
   // Lifetime stats
-  const lifetimeVolume = allLogs.reduce((sum, l) => sum + (l.loadLb || 0) * (l.outcomeReps || 0), 0);
-  const lifetimeReps = allLogs.reduce((sum, l) => sum + (l.outcomeReps || 0), 0);
+  const lifetimeVolume = allLogs.reduce((sum, l) => sum + (getLogLoad(l) * getLogReps(l)), 0);
+  const lifetimeReps = allLogs.reduce((sum, l) => sum + getLogReps(l), 0);
   const sessionCount = new Set(allLogs.map(l => l.sessionId)).size;
   const avgRepsPerSession = sessionCount > 0 ? (lifetimeReps / sessionCount).toFixed(1) : '0';
 
   const tiles = [
     { id: 'tonnage',      label: "TODAY'S TONNAGE",  value: totalTonnage,    unit: 'lb', variant: 'hero' as const },
     { id: 'tut',          label: 'AVG TUT / REP',    value: avgTutPerRep,  unit: 's',   variant: 'default' as const },
-    { id: 'elite',        label: 'ELITE SETS',       value: eliteSets.toString(),    meta: `/ ${totalSets}`, progress: { current: eliteSets, target: totalSets }, variant: 'default' as const },
+    { id: 'elite',        label: 'MAX STRENGTH SETS', value: maxStrengthSets.toString(), meta: `/ ${totalSets}`, progress: { current: maxStrengthSets, target: totalSets }, variant: 'default' as const },
     { id: 'reps',         label: 'TOTAL REPS',       value: totalReps,                  variant: 'default' as const },
     { id: 'duration',     label: 'DURATION',         value: durationFormat,             variant: 'default' as const },
     { id: 'lifetimeVol',  label: 'LIFETIME VOLUME',  value: lifetimeVolume.toLocaleString(), unit: 'lb', meta: `${sessionCount} sessions`, variant: 'elevated' as const },

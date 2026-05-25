@@ -152,6 +152,7 @@ import { AdminDashboardView } from "./components/AdminDashboardView";
 import { FranchiseDashboardView } from "./components/FranchiseDashboardView";
 import { CreateClientModal } from "./components/CreateClientModal";
 import { ClientProgressReportView } from "./components/ClientProgressReportView";
+import { ClientClinicalReviewPreloader } from "./components/ClientClinicalReviewPreloader";
 import { SessionRoutineManagerModal } from "./components/SessionRoutineManagerModal";
 import { MachineKnowledgeDashboard } from "./components/MachineKnowledgeDashboard";
 import { MaxStrengthLogo } from "./components/MaxStrengthLogo";
@@ -1058,6 +1059,7 @@ function AppContent({
           weight: "0",
           reps: "",
           createdAt: serverTimestamp(),
+            studioId: activeStudioId
         });
       }
 
@@ -1484,14 +1486,16 @@ function AppContent({
         name: "A",
         machineIds: routineAIds,
         createdAt: serverTimestamp(),
-      });
+          studioId: activeStudioId
+    });
 
       await addDoc(collection(db, "routines"), {
         clientId: demoClientId,
         name: "B",
         machineIds: routineBIds,
         createdAt: serverTimestamp(),
-      });
+          studioId: activeStudioId
+    });
 
       // 3. Generate 2 months of history (16 sessions)
       const now = new Date();
@@ -2045,6 +2049,20 @@ function AppContent({
                 activeStudioId={activeStudioId}
               />
             )}
+            {currentView === "clinical-review" &&
+              selectedClientId &&
+              authTrainer && (
+                <ClientClinicalReviewPreloader
+                  client={clients.find((c) => c.id === selectedClientId)!}
+                  machines={machines}
+                  onOpenBriefing={() => {
+                    setCurrentView("workouts");
+                  }}
+                  onClose={() => {
+                    setCurrentView("profile");
+                  }}
+                />
+              )}
             {currentView === "progress-report" &&
               selectedClientId &&
               authTrainer && (
@@ -5777,7 +5795,8 @@ function ClientHistoryView({
             reps: (8 + Math.floor(Math.random() * 4)).toString(),
             repQuality: 2,
             createdAt: Timestamp.fromDate(date),
-          });
+              studioId: (clients.find(c => c.id === clientId)?.homeStudioId) || ''
+        });
         }
       }
       alert("Mock history generated successfully. Reloading...");
@@ -6441,6 +6460,7 @@ function PerformanceEntryDialog({
   onClose: () => void;
   machineSettings?: ClientMachineSetting;
 }) {
+  const { activeStudio } = useActiveStudio();
   const prevLog = pastMachineLogs[0]?.log;
   const prevWeight = prevLog?.weight || "0";
 
@@ -6531,10 +6551,13 @@ function PerformanceEntryDialog({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
           {/* Settings Shorthand Bar */}
-          {hasSettings && (
-            <div className="bg-slate-50/40 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 flex items-center justify-center gap-x-5 gap-y-1.5 flex-wrap">
-              {orderMachineSettings(settings).map(([key, value]) => (
-                <div key={key} className="flex items-center gap-1.5">
+          <div className="bg-slate-50/40 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 flex items-center justify-center gap-x-5 gap-y-1.5 flex-wrap">
+            {(() => {
+              const stdSettings = activeStudio?.machineSettings?.[machine.id!] || machine.standardSettings || {};
+              const options = machine.settingOptions || [];
+              const sorted = orderMachineSettings(settings, stdSettings, options);
+              return sorted.map(([key, value, originalKey], i) => (
+                <div key={originalKey || i} className="flex items-center gap-1.5">
                   <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">
                     {key}:
                   </span>
@@ -6542,9 +6565,9 @@ function PerformanceEntryDialog({
                     {value}
                   </span>
                 </div>
-              ))}
-            </div>
-          )}
+              ));
+            })()}
+          </div>
 
           {/* Smart Stepper: Weight */}
           <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 flex flex-col items-center relative">
@@ -6726,13 +6749,13 @@ function PerformanceEntryDialog({
                   onClick={() => setQuality(2)}
                   className={`flex-1 h-full rounded-xl font-black uppercase text-[11px] tracking-widest transition-all ${quality === 2 ? "bg-amber-500 text-slate-900 dark:text-white shadow-[0_4px_10px_rgba(245,158,11,0.3)]" : "bg-white border border-slate-200 dark:border-slate-800 text-slate-600 hover:text-slate-500 dark:text-slate-400"}`}
                 >
-                  Good
+                  Completed
                 </button>
                 <button
                   onClick={() => setQuality(3)}
                   className={`flex-1 h-full rounded-xl font-black uppercase text-[11px] tracking-widest transition-all ${quality === 3 ? "bg-emerald-500 text-slate-900 dark:text-white shadow-[0_4px_10px_rgba(16,185,129,0.3)]" : "bg-white border border-slate-200 dark:border-slate-800 text-slate-600 hover:text-slate-500 dark:text-slate-400"}`}
                 >
-                  Elite
+                  Max Strength
                 </button>
               </div>
             </div>
@@ -7209,9 +7232,9 @@ function ExerciseHistoryDialog({
                           }`}
                         >
                           {log.repQuality === 3
-                            ? "ELITE"
+                            ? "MAX STRENGTH"
                             : log.repQuality === 2
-                              ? "GOOD"
+                              ? "COMPLETED"
                               : log.repQuality === 1
                                 ? "POOR"
                                 : "NONE"}
@@ -7295,6 +7318,7 @@ function SessionNotesSidebar({
         trainerInitials: trainerInitials,
         content: noteContent.trim(),
         createdAt: serverTimestamp(),
+        studioId: session.hostedAtStudioId || session.clientHomeStudioId || currentTrainer?.primaryHomeStudioId || "",
       });
       setNoteContent("");
     } catch (error) {
@@ -7469,7 +7493,7 @@ function WorkoutTrackerView({
   setIsSyncing: (v: boolean) => void;
   isIntroSession?: boolean;
 }) {
-  const { activeStudioId: contextActiveStudioId } = useActiveStudio();
+  const { activeStudioId: contextActiveStudioId, activeStudio } = useActiveStudio();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [logs, setLogs] = useState<Record<string, ExerciseLog>>({});
   const [routines, setRoutines] = useState<Routine[]>([]);
@@ -8124,7 +8148,8 @@ function WorkoutTrackerView({
             name: routineName,
             machineIds: customMachines || [],
             createdAt: serverTimestamp(),
-          });
+              studioId: selectedClient?.homeStudioId || ''
+        });
           routineId = newRoutineRef.id;
 
           if (routineType === "B") {
@@ -8204,6 +8229,7 @@ function WorkoutTrackerView({
           date: new Date().toLocaleDateString(),
           content: `[Protocol Adjustment]: ${adjustmentNote}`,
           createdAt: serverTimestamp(),
+            studioId: selectedClient?.homeStudioId || ''
         });
       }
 
@@ -8251,6 +8277,7 @@ function WorkoutTrackerView({
             clientId,
             homeStudioId: clientHomeStudioId, // Explicit homeStudioId security stamp
             clientHomeStudioId: clientHomeStudioId,
+            studioId: currentStudioId || clientHomeStudioId,
             machineId: mId,
             machineSettings:
               currentSettings[mId]?.settings || prevLog?.machineSettings || {},
@@ -8551,7 +8578,8 @@ function WorkoutTrackerView({
         newSettings,
         reason,
         createdAt: serverTimestamp(),
-      });
+          studioId: selectedClient?.homeStudioId || ''
+    });
 
       // Save historic record in sidecar subcollection to keep documents optimized
       await addDoc(collection(db, "machines", machineId, "settingHistory"), {
@@ -9263,6 +9291,12 @@ function WorkoutTrackerView({
                   <Button
                     className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20 bg-red-600 text-white hover:bg-red-700"
                     onClick={() => {
+                      if (currentSession) {
+                        setCurrentSession({
+                          ...currentSession,
+                          endTime: new Date(),
+                        });
+                      }
                       setShowEndConfirmation(false);
                       setIsPostSessionMode(true);
                     }}
@@ -9502,44 +9536,40 @@ function WorkoutTrackerView({
 
                         // Parse Settings
                         const settingsStr =
-                          clientMachineSettings[machine.id!]?.settings;
-                        let settingsDisplay;
-                        if (
-                          !settingsStr ||
-                          Object.keys(settingsStr).length === 0
-                        ) {
-                          settingsDisplay = (
-                            <span className="text-slate-400 dark:text-slate-500 italic text-[11px]">
-                              No Settings
-                            </span>
-                          );
-                        } else {
-                          const sortedEntries =
-                            orderMachineSettings(settingsStr);
+                          clientMachineSettings[machine.id!]?.settings || {};
+                        const stdSettings =
+                          activeStudio?.machineSettings?.[machine.id!] ||
+                          machine.standardSettings ||
+                          {};
+                        const options = machine.settingOptions || [];
+                        const sortedEntries = orderMachineSettings(
+                          settingsStr,
+                          stdSettings,
+                          options,
+                        );
 
-                          settingsDisplay = (
-                            <div className="flex gap-1.5 items-center">
-                              {sortedEntries.map(([k, v], i) => (
-                                <span
-                                  key={k}
-                                  className="flex gap-0.5 items-baseline"
-                                >
-                                  <span className="text-slate-500 dark:text-slate-400 text-[11px] uppercase font-medium">
-                                    {k}:
-                                  </span>
-                                  <span className="font-medium text-slate-700 dark:text-slate-300 text-[11px] uppercase">
-                                    {v}
-                                  </span>
-                                  {i < sortedEntries.length - 1 && (
-                                    <span className="text-slate-300 dark:text-slate-600 ml-0.5 text-[11px]">
-                                      •
-                                    </span>
-                                  )}
+                        const settingsDisplay = (
+                          <div className="flex gap-1.5 items-center flex-wrap">
+                            {sortedEntries.map(([k, v, originalKey], i) => (
+                              <span
+                                key={originalKey || i}
+                                className="flex gap-0.5 items-baseline"
+                              >
+                                <span className="text-slate-500 dark:text-slate-400 text-[11px] uppercase font-medium">
+                                  {k}:
                                 </span>
-                              ))}
-                            </div>
-                          );
-                        }
+                                <span className="font-medium text-slate-700 dark:text-slate-300 text-[11px] uppercase">
+                                  {v}
+                                </span>
+                                {i < sortedEntries.length - 1 && (
+                                  <span className="text-slate-300 dark:text-slate-600 ml-0.5 text-[11px]">
+                                    •
+                                  </span>
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                        );
 
                         return (
                           <tr

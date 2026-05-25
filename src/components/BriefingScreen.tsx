@@ -35,6 +35,7 @@ function SortableSequenceItem({
   showAddMachine,
   onRemove
 }: {
+  key?: React.Key;
   id: string;
   children: React.ReactNode;
   showAddMachine: boolean;

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { hashPin } from "../lib/auth-utils";
+import { generateSearchTokens } from "@/lib/utils";
+import { Trainer, Studio, UserRole } from "../types";
 import {
   Dialog,
   DialogContent,
@@ -10,321 +12,396 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { X, Plus, Network } from "lucide-react";
-import { Trainer, Studio } from "../types";
-import { arrayUnion, arrayRemove, doc, updateDoc } from "firebase/firestore";
-import { db } from "../firebase";
 import { Switch } from "@/components/ui/switch";
-import { generateSearchTokens } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Building2, Key, Users2, Shield, Eye, Calendar, Mail, UserIcon } from "lucide-react";
 
-interface EditTrainerModalProps {
-  trainer: Trainer;
+interface Props {
+  trainer: Trainer | null;
   authTrainer?: Trainer | null;
-  studios?: Studio[];
+  studios: Studio[];
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (updates: Partial<Trainer>) => void;
+  onSave: (updatedData: Partial<Trainer>) => Promise<void> | void;
 }
 
-export function EditTrainerModal({
-  trainer,
-  authTrainer,
-  studios = [],
-  isOpen,
-  onOpenChange,
-  onSave,
-}: EditTrainerModalProps) {
-  const [fullName, setFullName] = useState(trainer.fullName);
-  const [initials, setInitials] = useState(trainer.initials);
-  const [pin, setPin] = useState(trainer.pin || "");
-  const [enablePin, setEnablePin] = useState(
-    !!trainer.pin || !!trainer.pinHash,
-  );
-  const [bio, setBio] = useState(trainer.bio || "");
-  const [certifications, setCertifications] = useState<string[]>(
-    trainer.certifications || [],
-  );
-  const [newCert, setNewCert] = useState("");
+export function EditTrainerModal({ trainer, authTrainer, studios, isOpen, onOpenChange, onSave }: Props) {
+  const [fullName, setFullName] = useState("");
+  const [initials, setInitials] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<UserRole>("LifeTransformer");
+  
+  const [pin, setPin] = useState("");
+  const [enablePin, setEnablePin] = useState(false);
+  
+  const [primaryHomeStudioId, setPrimaryHomeStudioId] = useState("");
+  const [accessibleStudioIds, setAccessibleStudioIds] = useState<string[]>([]);
+  const [activeGuestStudioIds, setActiveGuestStudioIds] = useState<string[]>([]);
+  const [isVisibleOnCalendar, setIsVisibleOnCalendar] = useState(true);
+  
+  const [saving, setSaving] = useState(false);
 
-  // Update state when trainer changes
+  // Load current values of the trainer being edited
   useEffect(() => {
-    if (isOpen) {
-      setFullName(trainer.fullName);
-      setInitials(trainer.initials);
+    if (trainer && isOpen) {
+      setFullName(trainer.fullName || "");
+      setInitials(trainer.initials || "");
+      setEmail(trainer.email || "");
+      setRole(trainer.role || "LifeTransformer");
+      
+      const hasPin = !!(trainer.pin || trainer.pinHash);
+      setEnablePin(hasPin);
       setPin(trainer.pin || "");
-      setEnablePin(!!trainer.pin || !!trainer.pinHash);
-      setBio(trainer.bio || "");
-      setCertifications(trainer.certifications || []);
-      setNewCert("");
+      
+      setPrimaryHomeStudioId(trainer.primaryHomeStudioId || "");
+      setAccessibleStudioIds(trainer.accessibleStudioIds || []);
+      setActiveGuestStudioIds(trainer.activeGuestStudioIds || []);
+      setIsVisibleOnCalendar(trainer.isVisibleOnCalendar !== false);
     }
   }, [trainer, isOpen]);
 
-  const handleAddCert = () => {
-    if (newCert.trim() && !certifications.includes(newCert.trim())) {
-      setCertifications([...certifications, newCert.trim()]);
-      setNewCert("");
-    }
+  const handleAccessibleStudioToggle = (studioId: string) => {
+    setAccessibleStudioIds((prev) =>
+      prev.includes(studioId) ? prev.filter((id) => id !== studioId) : [...prev, studioId]
+    );
   };
 
-  const handleRemoveCert = (cert: string) => {
-    setCertifications(certifications.filter((c) => c !== cert));
+  const handleGuestStudioToggle = (studioId: string) => {
+    setActiveGuestStudioIds((prev) =>
+      prev.includes(studioId) ? prev.filter((id) => id !== studioId) : [...prev, studioId]
+    );
   };
 
-  const handleSubmit = async () => {
-    if (!fullName || !initials) return;
-    if (enablePin && pin.length !== 4) return;
-
-    let finalPin = "";
-    let finalPinHash = "";
-
-    if (enablePin) {
-      if (pin && pin !== trainer.pin) {
-        finalPinHash = await hashPin(pin);
-        finalPin = ""; // Keep plaintext empty for security if hashed
-      } else {
-        finalPin = trainer.pin || "";
-        finalPinHash = trainer.pinHash || "";
-      }
+  const handleSave = async () => {
+    if (!fullName || !initials || !primaryHomeStudioId) {
+      alert("Validation Error: Full Name, Initials, and Primary Home Studio are required.");
+      return;
     }
 
-    const searchTokens = generateSearchTokens(fullName);
+    if (enablePin && pin.length > 0 && pin.length !== 4) {
+      alert("Validation Error: PIN must be exactly 4 digits long.");
+      return;
+    }
 
-    onSave({
-      fullName,
-      initials,
-      pin: finalPin,
-      pinHash: finalPinHash,
-      bio,
-      certifications,
-      searchTokens,
-    });
-
-    onOpenChange(false);
-  };
-
-  const toggleStudioAccess = async (
-    studioId: string,
-    isGrantingAccess: boolean,
-  ) => {
-    if (!trainer.id) return;
+    setSaving(true);
     try {
-      const ref = doc(db, "trainers", trainer.id);
-      await updateDoc(ref, {
-        accessibleStudioIds: isGrantingAccess
-          ? arrayUnion(studioId)
-          : arrayRemove(studioId),
-      });
-      // the snapshot listener in App.tsx will automatically update
-    } catch (err) {
-      console.error("Failed to toggle studio access", err);
+      let pinHashValue = trainer?.pinHash || "";
+      let pinValue = pin;
+
+      if (!enablePin) {
+        pinValue = "";
+        pinHashValue = "";
+      } else if (pin && pin !== trainer?.pin) {
+        // PIN changed, let's rehash
+        pinHashValue = await hashPin(pin);
+      }
+
+      const searchTokens = generateSearchTokens(fullName);
+
+      // Force primaryHomeStudioId to be in accessibleStudioIds
+      const finalAccessible = [...new Set([primaryHomeStudioId, ...accessibleStudioIds])];
+      
+      const payload: Partial<Trainer> = {
+        fullName: fullName.trim(),
+        initials: initials.trim(),
+        email: email.trim(),
+        role,
+        pin: pinValue,
+        pinHash: pinHashValue,
+        primaryHomeStudioId,
+        accessibleStudioIds: finalAccessible,
+        activeGuestStudioIds,
+        isVisibleOnCalendar,
+        searchTokens,
+      };
+
+      await onSave(payload);
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Failed to update trainer profile", error);
+      alert("An error occurred while updating the trainer profile.");
+    } finally {
+      setSaving(false);
     }
   };
-
-  const isSuperAdmin = authTrainer?.role === "Admin" || authTrainer?.role === "Founder" || authTrainer?.role === "Overseer";
-  const role = authTrainer?.role;
-  const isSystemAdmin = role === "Admin" || isSuperAdmin;
-  const isOverseer = role === "Overseer";
-  const isStudioOwner = role === "StudioOwner";
-  const isHeadTrainer = role === "HeadTrainer";
-
-  const assignableStudios = studios.filter((s) => {
-    if (isSystemAdmin || isOverseer) return true;
-    if (isStudioOwner) {
-      return (
-        authTrainer?.primaryHomeStudioId === s.id ||
-        authTrainer?.ownedStudioIds?.includes(s.id!)
-      );
-    }
-    if (isHeadTrainer) {
-      return authTrainer?.primaryHomeStudioId === s.id;
-    }
-    return false;
-  });
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white">
-            Edit Profile
+      <DialogContent className="sm:max-w-[550px] bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl overflow-y-auto max-h-[90vh]">
+        <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+          <DialogTitle className="text-2xl font-black italic uppercase text-slate-900 dark:text-white tracking-widest flex items-center gap-2">
+            <Users2 className="w-6 h-6 text-[#F06C22]" />
+            Edit Trainer Profile
           </DialogTitle>
+          <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">
+            Updating: {trainer?.fullName || "Staff Profile"}
+          </p>
         </DialogHeader>
+
         <div className="space-y-6 py-4">
-          <div className="space-y-2">
-            <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
-              Full Name
-            </Label>
-            <Input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-12 font-medium"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+          {/* Identity Fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+              <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest flex items-center gap-1">
+                <UserIcon className="w-3 h-3 text-indigo-500" />
+                Full Name
+              </Label>
+              <Input
+                value={fullName}
+                onChange={(e) => {
+                  setFullName(e.target.value);
+                  const parts = e.target.value.split(" ");
+                  if (parts.length > 1) {
+                    setInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase());
+                  } else if (parts[0]) {
+                    setInitials(parts[0].substring(0, 2).toUpperCase());
+                  } else {
+                    setInitials("");
+                  }
+                }}
+                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-11"
+                placeholder="e.g. Amanda Jones"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
                 Initials
               </Label>
               <Input
                 value={initials}
                 onChange={(e) => setInitials(e.target.value.toUpperCase())}
-                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-12 uppercase font-medium"
+                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-11 uppercase font-bold"
+                placeholder="AJ"
                 maxLength={3}
               />
-            </div>
-            <div className="space-y-4 border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-800/50">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
-                    PIN Lock Security
-                  </Label>
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-                    Require a 4-digit PIN to login
-                  </p>
-                </div>
-                <Switch
-                  checked={enablePin}
-                  onCheckedChange={(checked) => {
-                    setEnablePin(checked);
-                    if (!checked) setPin("");
-                  }}
-                />
-              </div>
-              {enablePin && (
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
-                    4-Digit PIN Code
-                  </Label>
-                  <Input
-                    value={pin}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, "");
-                      if (val.length <= 4) setPin(val);
-                    }}
-                    className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-10 font-mono"
-                    maxLength={4}
-                    placeholder="Enter 4 digits"
-                    type="password"
-                  />
-                </div>
-              )}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
-              Intelligence Summary (Bio)
+            <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest flex items-center gap-1">
+              <Mail className="w-3 h-3 text-indigo-500" />
+              Email Address
             </Label>
-            <Textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl min-h-[100px] resize-none font-medium"
-              placeholder="Field experience and specialized training..."
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-11"
+              placeholder="trainer@example.com"
             />
           </div>
 
-          <div className="space-y-3">
-            <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest">
-              Certifications
-            </Label>
-            <div className="flex flex-wrap gap-2">
-              {certifications.map((cert) => (
-                <Badge
-                  key={cert}
-                  variant="outline"
-                  className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold px-3 py-1.5 flex items-center gap-1"
-                >
-                  {cert}
-                  <button
-                    onClick={() => handleRemoveCert(cert)}
-                    className="text-slate-400 hover:text-red-500"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </Badge>
-              ))}
+          {/* Role selector & visibility */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest flex items-center gap-1">
+                <Shield className="w-3 h-3 text-indigo-500" />
+                Permissions Role
+              </Label>
+              <Select value={role} onValueChange={(val) => setRole(val as UserRole)}>
+                <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-11 text-sm font-bold">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700 font-sans">
+                  <SelectItem value="LifeTransformer" className="font-bold">Life Transformer</SelectItem>
+                  <SelectItem value="StudioLeader" className="font-bold">Studio Leader</SelectItem>
+                  <SelectItem value="Owner" className="font-bold">Owner</SelectItem>
+                  <SelectItem value="Founder" className="font-bold">Founder</SelectItem>
+                  <SelectItem value="Admin" className="font-bold">Admin</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex items-center gap-2">
-              <Input
-                value={newCert}
-                onChange={(e) => setNewCert(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddCert();
-                  }
-                }}
-                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-10 flex-1 font-medium"
-                placeholder="e.g. CPT, NSCA"
-              />
-              <Button
-                type="button"
-                onClick={handleAddCert}
-                variant="outline"
-                className="rounded-xl h-10 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm shrink-0 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-white"
-              >
-                <Plus className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-              </Button>
+
+            <div className="space-y-2">
+              <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest flex items-center gap-1">
+                <Building2 className="w-3 h-3 text-indigo-500" />
+                Primary Studio
+              </Label>
+              <Select value={primaryHomeStudioId} onValueChange={setPrimaryHomeStudioId}>
+                <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-11 text-sm font-bold">
+                  <SelectValue placeholder="Select primary home studio" />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700 font-sans">
+                  {studios.map((s) => (
+                    <SelectItem key={s.id} value={s.id || ""} className="font-bold">
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          {/* Cross-Training & Studio Access */}
-          {assignableStudios.length > 0 && (
-            <div className="space-y-3 pt-6 border-t border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2 mb-4">
-                <Network className="w-5 h-5 text-indigo-500" />
-                <Label className="text-[12px] font-black uppercase text-slate-900 dark:text-white tracking-widest">
-                  Cross-Training & Studio Access
-                </Label>
+          {/* Visibility and custom toggles */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="space-y-0.5">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-[#F06C22]" /> Display on Calendar
+              </span>
+              <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">
+                Should clients/staff see this trainer on the booking calendar
+              </p>
+            </div>
+            <Switch checked={isVisibleOnCalendar} onCheckedChange={setIsVisibleOnCalendar} />
+          </div>
+
+          {/* PIN Lock Security */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Key className="w-4 h-4 text-[#F06C22]" /> Pin Lock Code
+                </span>
+                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">
+                  Enforces PIN challenge at workout or hub login
+                </p>
               </div>
+              <Switch checked={enablePin} onCheckedChange={(checked) => {
+                setEnablePin(checked);
+                if (!checked) setPin("");
+              }} />
+            </div>
 
-              <div className="grid gap-3">
-                {assignableStudios.map((studio) => {
-                  const hasAccess =
-                    trainer.accessibleStudioIds?.includes(studio.id!) ||
-                    trainer.primaryHomeStudioId === studio.id;
-                  const isHomeStudio =
-                    trainer.primaryHomeStudioId === studio.id;
+            {enablePin && (
+              <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-700">
+                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+                  4-Digit Numeric PIN
+                </Label>
+                <Input
+                  type="password"
+                  value={pin}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
+                    if (val.length <= 4) setPin(val);
+                  }}
+                  className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-10 font-bold tracking-widest text-center text-lg"
+                  placeholder="••••"
+                  maxLength={4}
+                />
+                <p className="text-[10px] text-yellow-600 dark:text-yellow-400/80 font-bold uppercase mt-1">
+                  Leave unchanged unless updating the PIN code.
+                </p>
+              </div>
+            )}
+          </div>
 
+          {/* Complex Studio Involvements */}
+          <div className="space-y-4 pt-2">
+            <h4 className="text-xs font-black uppercase italic tracking-widest text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1.5 flex items-center gap-1.5">
+              <Building2 className="w-4 h-4 text-indigo-500" />
+              Studio Involvements & Connections
+            </h4>
+
+            {/* Permanent Accessible Studios */}
+            <div className="space-y-2">
+              <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+                Permanent Staff Access (Accessible Studios)
+              </Label>
+              <p className="text-[10px] text-slate-400 font-bold uppercase mb-2">
+                Allows editing, clock-in, and full scheduling control at these facilities.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-slate-50 dark:bg-slate-800/20 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                {studios.map((s) => {
+                  const isPrimary = s.id === primaryHomeStudioId;
+                  const isChecked = isPrimary || accessibleStudioIds.includes(s.id || "");
                   return (
                     <div
-                      key={studio.id}
-                      className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl"
+                      key={`access-${s.id}`}
+                      className={`flex items-center gap-2.5 p-2 rounded-xl border transition-all ${
+                        isPrimary
+                          ? "bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200/50 dark:border-indigo-800/40 opacity-80"
+                          : isChecked
+                          ? "bg-slate-100/80 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                          : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700"
+                      }`}
                     >
-                      <div className="flex flex-col">
-                        <span className="font-bold text-slate-900 dark:text-white text-sm">
-                          {studio.name}
-                        </span>
-                        {isHomeStudio && (
-                          <span className="text-[11px] font-black uppercase tracking-widest text-indigo-500 mt-0.5">
-                            Primary Home Base
+                      <Checkbox
+                        id={`access-${s.id}`}
+                        checked={isChecked}
+                        disabled={isPrimary}
+                        onCheckedChange={() => s.id && handleAccessibleStudioToggle(s.id)}
+                        className="rounded border-slate-300 dark:border-slate-700 data-[state=checked]:bg-[#F06C22] data-[state=checked]:border-[#F06C22]"
+                      />
+                      <label
+                        htmlFor={`access-${s.id}`}
+                        className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none flex-1 truncate"
+                      >
+                        {s.name}
+                        {isPrimary && (
+                          <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] bg-indigo-500/10 text-indigo-500 font-extrabold uppercase">
+                            Home
                           </span>
                         )}
-                      </div>
-                      <Switch
-                        checked={hasAccess}
-                        disabled={isHomeStudio}
-                        onCheckedChange={(checked) =>
-                          toggleStudioAccess(studio.id!, checked)
-                        }
-                        className={hasAccess ? "bg-indigo-500" : "bg-slate-200 dark:bg-slate-700"}
-                      />
+                      </label>
                     </div>
                   );
                 })}
               </div>
             </div>
-          )}
+
+            {/* Temporary/Active Guest Involvements */}
+            <div className="space-y-2 pt-2">
+              <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+                Active Guest Access (Guest Studios)
+              </Label>
+              <p className="text-[10px] text-slate-400 font-bold uppercase mb-2">
+                Temporary access or subbing privileges at designated studios.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-slate-50 dark:bg-slate-800/20 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                {studios.map((s) => {
+                  const isChecked = activeGuestStudioIds.includes(s.id || "");
+                  return (
+                    <div
+                      key={`guest-${s.id}`}
+                      className={`flex items-center gap-2.5 p-2 rounded-xl border transition-all ${
+                        isChecked
+                          ? "bg-slate-100/80 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                          : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700"
+                      }`}
+                    >
+                      <Checkbox
+                        id={`guest-${s.id}`}
+                        checked={isChecked}
+                        onCheckedChange={() => s.id && handleGuestStudioToggle(s.id)}
+                        className="rounded border-slate-300 dark:border-slate-700 data-[state=checked]:bg-[#F06C22] data-[state=checked]:border-[#F06C22]"
+                      />
+                      <label
+                        htmlFor={`guest-${s.id}`}
+                        className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none flex-1 truncate"
+                      >
+                        {s.name}
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
-        <DialogFooter className="pt-4 border-t border-slate-200 dark:border-slate-800">
+
+        <DialogFooter className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-2">
           <Button
-            onClick={handleSubmit}
-            disabled={!fullName || !initials || (enablePin && pin.length !== 4)}
-            className="w-full bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 font-black uppercase tracking-widest text-xs h-12 rounded-xl transition-all shadow-md"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+            className="text-[11px] font-black uppercase tracking-widest h-12 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
           >
-            Save Changes
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving || !fullName || !initials || !primaryHomeStudioId}
+            className="bg-[#F06C22] hover:bg-[#d95b16] text-white font-black uppercase text-xs h-12 rounded-xl transition-all shadow-[0_0_20px_rgba(240,108,34,0.3)] min-w-[150px]"
+          >
+            {saving ? "Saving Changes..." : "Save Trainer Profile"}
           </Button>
         </DialogFooter>
       </DialogContent>

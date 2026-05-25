@@ -433,7 +433,10 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
             machineSettings: vLog.settings ? parseMachineSettings(vLog.settings) : {},
             repQuality: 2,
             createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
+            updatedAt: serverTimestamp(),
+            studioId: hostedAtStudioId,
+            homeStudioId: hostedAtStudioId,
+            clientHomeStudioId: hostedAtStudioId
           };
           currentBatch.set(logRef, logData);
           opCount++;

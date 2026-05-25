@@ -1,11 +1,12 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-interface StickyCTAProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface StickyCTAProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   label: string;
   icon?: React.ReactNode;
   bottomOffset?: string;
   className?: string;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
 }
 
 export function StickyCTA({ label, icon, bottomOffset = "0", className, ...props }: StickyCTAProps) {
