@@ -48,8 +48,36 @@ import {
   Cake,
   UserCheck,
   Award,
-  Target
+  Target,
+  X,
+  GripVertical,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  Search,
+  Layout,
+  Timer,
+  Orbit,
+  MessageSquare,
+  CheckCircle2
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  KeyboardSensor,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { generateMockClientWithHistory } from "../lib/mockDataGenerator";
 import { motion, AnimatePresence } from "motion/react";
 import { AreaChart, Area, LineChart, Line, BarChart, Bar, ReferenceLine, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
@@ -88,12 +116,15 @@ import {
 } from "@/components/ui/select";
 import { ROUTINE_TEMPLATES, RoutineTemplateType } from "../constants";
 import { ClientFocusDashboard } from "./ClientFocusDashboard";
+import { ClientClinicalReviewPreloader } from "./ClientClinicalReviewPreloader";
+import { ClientInfoTab } from "./ClientInfoTab";
 import {
   Client,
   Machine,
   WorkoutSession,
   ExerciseLog,
   Routine,
+  RoutineAdjustment,
   View,
   ClientMachineSetting,
   TrainerFocus,
@@ -104,7 +135,9 @@ import {
   ClinicalSafetyFlag,
   Studio,
   SessionNote,
+  ClinicalIncident,
 } from "../types";
+import { StickyCTA } from "./StickyCTA";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { WorkoutChartGrid } from "./WorkoutChartGrid";
 import { ClientHistoryCalendar } from "./ClientHistoryCalendar";
@@ -116,6 +149,49 @@ import { CLINICAL_FLAGS_MATRIX } from "../data/clinical-matrix";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { useActiveSessionCheck } from "../hooks/useActiveSessionCheck";
 import { isOwner as checkIsOwner } from '../lib/permissions';
+import { FocusCategory } from "../types";
+
+const JOURNAL_CATEGORY_DEFINITIONS: Record<FocusCategory, { 
+  icon: any, 
+  color: string, 
+  bg: string, 
+  border: string,
+  description: string,
+  helper: string
+}> = {
+  Posture: { 
+    icon: Layout, 
+    color: "text-blue-500 dark:text-blue-400", 
+    bg: "bg-blue-500/10", 
+    border: "border-blue-500/20",
+    description: "Rigid midsection and stable setup to prevent energy leaks and ensure precise loading.",
+    helper: "Chest up? Posterior pelvic tilt? No momentum?"
+  },
+  Pace: { 
+    icon: Timer, 
+    color: "text-amber-500 dark:text-amber-400", 
+    bg: "bg-amber-500/10", 
+    border: "border-amber-500/20",
+    description: "Smooth, continuous 6-to-10-second speed. No resting at turnarounds.",
+    helper: "Constant tension. No 'clunking' at the end of the range."
+  },
+  Path: { 
+    icon: Orbit, 
+    color: "text-purple-500 dark:text-purple-400", 
+    bg: "bg-purple-500/10", 
+    border: "border-purple-500/20",
+    description: "Maintaining limbs in the exact prescribed plane to force target muscle work.",
+    helper: "Straight lines. No shifting load to fresh muscles."
+  },
+  Purpose: { 
+    icon: Target, 
+    color: "text-cta", 
+    bg: "bg-cta/10", 
+    border: "border-cta/20",
+    description: "Internal focus. Creating maximum tension by moving through resistance.",
+    helper: "Mind-muscle connection. Intentional squeezing."
+  }
+};
 
 export function ClientProfileView({
   clientId,
@@ -176,6 +252,26 @@ export function ClientProfileView({
   const [highlightRoutine, setHighlightRoutine] = useState<"A" | "B" | null>(
     null,
   );
+
+  // Routines Redesign additions
+  const [routineAdjustments, setRoutineAdjustments] = useState<RoutineAdjustment[]>([]);
+  const [selectedRoutineTodayId, setSelectedRoutineTodayId] = useState<string | null>(null);
+
+  // States for routine edit drawer
+  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
+  const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
+  const [editDrawerMachineIds, setEditDrawerMachineIds] = useState<string[]>([]);
+  const [editingRoutineName, setEditingRoutineName] = useState<string>("");
+  const [originalMachineIdsSnapshot, setOriginalMachineIdsSnapshot] = useState<string[]>([]);
+  const [drawerReason, setDrawerReason] = useState<string>("");
+  const [isSavingDrawer, setIsSavingDrawer] = useState(false);
+  const [machineSearchQuery, setMachineSearchQuery] = useState("");
+
+  // States for toggle B reason dialog
+  const [isToggleReasonDialogOpen, setIsToggleReasonDialogOpen] = useState(false);
+  const [pendingToggleBValue, setPendingToggleBValue] = useState<boolean | null>(null);
+  const [toggleBReason, setToggleBReason] = useState<string>("");
+  const [isSavingToggle, setIsSavingToggle] = useState(false);
   const [historyPage, setHistoryPage] = useState(0);
   const [showFullChart, setShowFullChart] = useState(false);
   const [sessionLimit, setSessionLimit] = useState(10);
@@ -215,10 +311,36 @@ export function ClientProfileView({
     return () => window.removeEventListener('open-bulk-import', handleOpenImport);
   }, []);
 
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("journey");
+  const [isInfoSheetOpen, setIsInfoSheetOpen] = useState(false);
+
+  useEffect(() => {
+    setIsInfoSheetOpen(false);
+  }, [clientId]);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => e.key === "Escape" && setIsInfoSheetOpen(false);
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, []);
   const [clientNotesInput, setClientNotesInput] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [sessionNotes, setSessionNotes] = useState<SessionNote[]>([]);
+  
+  // Coaching Journal states
+  const [focusRecords, setFocusRecords] = useState<FocusRecord[]>([]);
+  const [clinicalIncidents, setClinicalIncidents] = useState<ClinicalIncident[]>([]);
+  const [activeTypeFilter, setActiveTypeFilter] = useState<"All" | "Focus" | "Notes" | "Incidents" >("All");
+  const [activeTrainerFilter, setActiveTrainerFilter] = useState<string>("All");
+  const [activeWindowFilter, setActiveWindowFilter] = useState<"7d" | "30d" | "90d" | "All">("All");
+  const [isAddJournalOpen, setIsAddJournalOpen] = useState(false);
+  const [newJournalType, setNewType] = useState<"Focus" | "Note">("Focus");
+  const [newFocusCategory, setNewFocusCategory] = useState<FocusCategory>("Posture");
+  const [newTargetMachineId, setNewTargetMachineId] = useState<string>("none");
+  const [newFocusNotes, setNewFocusNotes] = useState<string>("");
+  const [newNotePriority, setNewNotePriority] = useState<"High" | "Medium" | "Low">("Medium");
+  const [newNoteContent, setNewNoteContent] = useState<string>("");
+  const [isSavingJournalEntry, setIsSavingJournalEntry] = useState(false);
   const [activeMachine, setActiveMachine] = useState<string | null>(null);
   const [selectedChartMachines, setSelectedChartMachines] = useState<string[]>([]);
   const [hasInitializedChartMachines, setHasInitializedChartMachines] = useState(false);
@@ -423,6 +545,344 @@ export function ClientProfileView({
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `clients/${clientId}`);
     }
+  };
+
+  // Coaching Journal lookup maps for O(1) trainer lookup
+  const trainerMap = useMemo(() => {
+    return new Map(trainers.map((t) => [t.id, t]));
+  }, [trainers]);
+
+  const initialsMap = useMemo(() => {
+    return new Map(trainers.map((t) => [t.initials.toUpperCase(), t]));
+  }, [trainers]);
+
+  // Deterministic chip color classes for trainer initials (Utilizing Design Tokens)
+  const getTrainerChipClasses = (initials: string) => {
+    const chars = (initials || "TR").toUpperCase();
+    const sum = chars.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const styles = [
+      "bg-cyan/10 text-cyan dark:bg-cyan/20 border-cyan/20",
+      "bg-cta/10 text-[#F06C22] dark:text-[#F06C22] dark:bg-cta/20 border-cta/20",
+      "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 dark:bg-emerald-500/20 border-emerald-500/10",
+      "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 dark:bg-indigo-500/20 border-indigo-500/10",
+      "bg-purple-500/10 text-purple-600 dark:text-purple-400 dark:bg-purple-500/20 border-purple-500/10",
+      "bg-pink-500/10 text-pink-600 dark:text-pink-400 dark:bg-pink-500/20 border-pink-500/10",
+    ];
+    return styles[sum % styles.length];
+  };
+
+  // Discriminated union type representing an entry in Sandra's coaching journal.
+  type JournalEntry = 
+    | {
+        id: string;
+        type: "focus";
+        date: Date;
+        trainerId: string;
+        trainer: string;
+        content: string;
+        category: FocusCategory;
+        status: "Active" | "Achieved";
+        targetMachineId?: string;
+        raw: FocusRecord;
+      }
+    | {
+        id: string;
+        type: "note";
+        date: Date;
+        trainerId: string;
+        trainer: string;
+        content: string;
+        priority: "High" | "Medium" | "Low";
+      }
+    | {
+        id: string;
+        type: "session_note";
+        date: Date;
+        trainerId: string;
+        trainer: string;
+        content: string;
+        priority?: "High" | "Medium" | "Low";
+      }
+    | {
+        id: string;
+        type: "incident";
+        date: Date;
+        trainerId: string;
+        trainer: string;
+        content: string;
+        resolvedAt?: any;
+        raw: ClinicalIncident;
+      };
+
+  // Compile and merge all disparate intelligence source logs chronologically
+  const mergedJournalEntries = useMemo(() => {
+    const list: JournalEntry[] = [];
+
+    // A. Focus Records
+    focusRecords.forEach((f) => {
+      let d = new Date();
+      if (f.dateAssigned) {
+        d = f.dateAssigned.toDate ? f.dateAssigned.toDate() : new Date(f.dateAssigned);
+      }
+      const tId = f.trainerId || (f.assignedBy ? (initialsMap.get(f.assignedBy.toUpperCase())?.id || "unknown") : "unknown");
+      list.push({
+        id: f.id,
+        type: "focus",
+        date: d,
+        trainerId: tId,
+        trainer: f.assignedBy || "TR",
+        content: f.clinicalNotes,
+        category: f.category,
+        status: f.status,
+        targetMachineId: f.targetMachineId || undefined,
+        raw: f,
+      });
+    });
+
+    // B. Explicit sessionNotes collection logs
+    sessionNotes.forEach((sn) => {
+      let d = new Date();
+      if (sn.createdAt) {
+        d = sn.createdAt.toDate ? sn.createdAt.toDate() : new Date(sn.createdAt);
+      }
+      const tId = sn.trainerId || (sn.trainerInitials ? (initialsMap.get(sn.trainerInitials.toUpperCase())?.id || "unknown") : "unknown");
+      list.push({
+        id: sn.id || Math.random().toString(),
+        type: "session_note",
+        date: d,
+        trainerId: tId,
+        trainer: sn.trainerInitials || "TR",
+        content: sn.content,
+        priority: sn.priority || "Medium",
+      });
+    });
+
+    // C. Traditional workout standard notes merged as session_note
+    sessions.forEach((s) => {
+      if (s.notes && s.notes.trim()) {
+        let d = new Date();
+        if (s.startTime) {
+          d = s.startTime.toDate ? s.startTime.toDate() : new Date(s.startTime);
+        } else if (s.date) {
+          d = new Date(s.date + "T12:00:00");
+        }
+        const tId = s.trainerId || (s.trainerInitials ? (initialsMap.get(s.trainerInitials.toUpperCase())?.id || "unknown") : "unknown");
+        list.push({
+          id: `session-briefing-${s.id}`,
+          type: "session_note",
+          date: d,
+          trainerId: tId,
+          trainer: s.trainerInitials || "TR",
+          content: s.notes,
+        });
+      }
+    });
+
+    // D. Global notes from core profile fields
+    if (client?.notes && client.notes.trim()) {
+      let d = new Date();
+      const anyClient = client as any;
+      if (anyClient.updatedAt) {
+        d = anyClient.updatedAt.toDate ? anyClient.updatedAt.toDate() : new Date(anyClient.updatedAt);
+      } else if (anyClient.createdAt) {
+        d = anyClient.createdAt.toDate ? anyClient.createdAt.toDate() : new Date(anyClient.createdAt);
+      }
+      list.push({
+        id: "profile-global-notes",
+        type: "note",
+        date: d,
+        trainerId: "profile-fields",
+        trainer: "SYS",
+        content: client.notes,
+        priority: "Medium",
+      });
+    }
+
+    // E. Clinical safety incident records
+    clinicalIncidents.forEach((ci) => {
+      let d = new Date();
+      if (ci.createdAt) {
+        d = ci.createdAt.toDate ? ci.createdAt.toDate() : new Date(ci.createdAt);
+      }
+      const tId = ci.reportedByTrainerId || "unknown";
+      list.push({
+        id: ci.id || Math.random().toString(),
+        type: "incident",
+        date: d,
+        trainerId: tId,
+        trainer: trainerMap.get(tId)?.initials || "TR",
+        content: ci.description,
+        resolvedAt: ci.resolvedAt,
+        raw: ci,
+      });
+    });
+
+    // Order chronological descending (newest first)
+    return list.sort((a, b) => b.date.getTime() - a.date.getTime());
+  }, [focusRecords, sessionNotes, sessions, client, clinicalIncidents, trainerMap, initialsMap]);
+
+  // Derive per-trainer entry summary states (O(1) with indexed lookup)
+  const perTrainerSummary = useMemo(() => {
+    const summaryMap = new Map<string, {
+      trainerId: string;
+      trainerInitials: string;
+      trainerName: string;
+      currentFocus: string | null;
+      entryCount: number;
+      lastEntryDate: Date | null;
+    }>();
+
+    mergedJournalEntries.forEach((entry) => {
+      if (entry.trainerId === "profile-fields" || entry.trainerId === "unknown") return;
+
+      const trainerObj = trainerMap.get(entry.trainerId) || initialsMap.get(entry.trainer.toUpperCase());
+      const tId = trainerObj?.id || entry.trainerId;
+      const tName = trainerObj?.fullName || entry.trainer || "Coach";
+      const tInitials = trainerObj?.initials || entry.trainer || "TR";
+
+      if (!summaryMap.has(tId)) {
+        summaryMap.set(tId, {
+          trainerId: tId,
+          trainerInitials: tInitials.toUpperCase(),
+          trainerName: tName,
+          currentFocus: null,
+          entryCount: 0,
+          lastEntryDate: null,
+        });
+      }
+
+      const summary = summaryMap.get(tId)!;
+      summary.entryCount += 1;
+
+      if (!summary.lastEntryDate || entry.date > summary.lastEntryDate) {
+        summary.lastEntryDate = entry.date;
+      }
+    });
+
+    focusRecords.forEach((f) => {
+      if (f.status === "Active") {
+        const trainerObj = trainerMap.get(f.trainerId) || initialsMap.get(f.assignedBy.toUpperCase());
+        const tId = trainerObj?.id || f.trainerId;
+        if (tId && summaryMap.has(tId)) {
+          const summary = summaryMap.get(tId)!;
+          if (!summary.currentFocus) {
+            summary.currentFocus = `${f.category}${f.targetMachineId ? ` on ${machines.find(m => m.id === f.targetMachineId)?.name || 'unit'}` : ''}: "${f.clinicalNotes}"`;
+          }
+        }
+      }
+    });
+
+    return Array.from(summaryMap.values());
+  }, [mergedJournalEntries, focusRecords, trainerMap, initialsMap, machines]);
+
+  // Final filtered list based on the active state of filter widgets
+  const filteredJournalEntries = useMemo(() => {
+    let list = mergedJournalEntries;
+
+    if (activeTypeFilter === "Focus") {
+      list = list.filter((e) => e.type === "focus");
+    } else if (activeTypeFilter === "Notes") {
+      list = list.filter((e) => e.type === "note" || e.type === "session_note");
+    } else if (activeTypeFilter === "Incidents") {
+      list = list.filter((e) => e.type === "incident");
+    }
+
+    if (activeTrainerFilter !== "All") {
+      list = list.filter((e) => {
+        const trainerObj = trainerMap.get(e.trainerId) || initialsMap.get(e.trainer.toUpperCase());
+        const tId = trainerObj?.id || e.trainerId;
+        const targetTrainerObj = trainerMap.get(activeTrainerFilter) || initialsMap.get(activeTrainerFilter.toUpperCase());
+        const targetId = targetTrainerObj?.id || activeTrainerFilter;
+        return tId === targetId;
+      });
+    }
+
+    if (activeWindowFilter !== "All") {
+      const msInDay = 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      const limitDays = activeWindowFilter === "7d" ? 7 : activeWindowFilter === "30d" ? 30 : 90;
+      list = list.filter((e) => {
+        const diffDays = (now - e.date.getTime()) / msInDay;
+        return diffDays <= limitDays;
+      });
+    }
+
+    return list;
+  }, [mergedJournalEntries, activeTypeFilter, activeTrainerFilter, activeWindowFilter, trainerMap, initialsMap]);
+
+  // Submits a new journal entry into clinical database logs
+  const handleSubmitJournalEntry = async () => {
+    if (!clientId || !client) return;
+    setIsSavingJournalEntry(true);
+    try {
+      if (newJournalType === "Focus") {
+        if (!newFocusCategory || !newFocusNotes.trim()) {
+          setIsSavingJournalEntry(false);
+          return;
+        }
+
+        await addDoc(collection(db, "focusRecords"), {
+          clientId,
+          category: newFocusCategory,
+          targetMachineId: newTargetMachineId === "none" ? null : newTargetMachineId,
+          clinicalNotes: newFocusNotes.trim(),
+          status: "Active",
+          assignedBy: authTrainer?.initials || "TR",
+          trainerId: authTrainer?.id || "unknown",
+          dateAssigned: serverTimestamp(),
+          studioId: client.homeStudioId || "",
+        });
+      } else {
+        if (!newNoteContent.trim()) {
+          setIsSavingJournalEntry(false);
+          return;
+        }
+
+        await addDoc(collection(db, "sessionNotes"), {
+          clientId,
+          content: newNoteContent.trim(),
+          priority: newNotePriority,
+          trainerId: authTrainer?.id || "unknown",
+          trainerInitials: authTrainer?.initials || "TR",
+          createdAt: serverTimestamp(),
+          studioId: client.homeStudioId || "",
+        });
+      }
+
+      setNewFocusNotes("");
+      setNewNoteContent("");
+      setNewFocusCategory("Posture");
+      setNewTargetMachineId("none");
+      setNewNotePriority("Medium");
+      setIsAddJournalOpen(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, newJournalType === "Focus" ? "focusRecords" : "sessionNotes");
+    } finally {
+      setIsSavingJournalEntry(false);
+    }
+  };
+
+  // Toggle active focus status off to Achieved ledger status
+  const handleMarkFocusAchieved = async (id: string) => {
+    try {
+      await updateDoc(doc(db, "focusRecords", id), {
+        status: "Achieved",
+        dateUpdated: serverTimestamp(),
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `focusRecords/${id}`);
+    }
+  };
+
+  // Human-readable relative date string
+  const getDaysAgo = (d: Date | null) => {
+    if (!d) return "no entries";
+    const diffMs = Date.now() - d.getTime();
+    if (diffMs < 0) return "today";
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return "today";
+    if (diffDays === 1) return "1 day ago";
+    return `${diffDays} days ago`;
   };
 
   const getCombinedTimelineNotes = () => {
@@ -647,6 +1107,600 @@ export function ClientProfileView({
     fetchRoutines();
   }, [clientId, hasQuotaError]);
 
+  useEffect(() => {
+    if (!clientId || hasQuotaError) return;
+
+    const q = query(
+      collection(db, "routineAdjustments"),
+      where("clientId", "==", clientId)
+    );
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const adjustments = snap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as RoutineAdjustment[];
+      // Sort desc by createdAt, handling firestore Timestamp properly
+      adjustments.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis?.() || (typeof a.createdAt === 'number' ? a.createdAt : 0);
+        const timeB = b.createdAt?.toMillis?.() || (typeof b.createdAt === 'number' ? b.createdAt : 0);
+        return timeB - timeA;
+      });
+      setRoutineAdjustments(adjustments);
+    }, (error) => {
+      console.error("Error fetching routine adjustments:", error);
+    });
+
+    return () => unsubscribe();
+  }, [clientId, hasQuotaError]);
+
+  useEffect(() => {
+    if (activeInProgressSession?.routineId) {
+      setSelectedRoutineTodayId(activeInProgressSession.routineId);
+    } else if (client?.preferredTodayRoutineId) {
+      setSelectedRoutineTodayId(client.preferredTodayRoutineId);
+    } else {
+      setSelectedRoutineTodayId(null);
+    }
+  }, [activeInProgressSession?.routineId, client?.preferredTodayRoutineId]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEndDrawer = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active && over && active.id !== over.id) {
+      setEditDrawerMachineIds((items) => {
+        const oldIndex = items.indexOf(active.id as string);
+        const newIndex = items.indexOf(over.id as string);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  const handleOpenEditDrawer = (r: Routine) => {
+    setEditingRoutineId(r.id || null);
+    setEditingRoutineName(r.name);
+    setEditDrawerMachineIds([...r.machineIds]);
+    setOriginalMachineIdsSnapshot([...r.machineIds]);
+    setDrawerReason("");
+    setMachineSearchQuery("");
+    setIsEditDrawerOpen(true);
+  };
+
+  const handleSaveEditDrawer = async () => {
+    if (!editingRoutineId || !clientId) return;
+    if (drawerReason.trim().length < 12) return;
+
+    setIsSavingDrawer(true);
+    try {
+      const routineName = editingRoutineId.includes("-a") || editingRoutineId.includes("A") || editingRoutineName === "Routine A" ? "Routine A" : "Routine B";
+      
+      let finalId = editingRoutineId;
+      if (editingRoutineId.startsWith("temp-")) {
+        const docRef = await addDoc(collection(db, "routines"), {
+          clientId,
+          name: routineName,
+          machineIds: editDrawerMachineIds,
+          createdAt: serverTimestamp(),
+          studioId: client?.homeStudioId || activeStudioId || ""
+        });
+        finalId = docRef.id;
+
+        await addDoc(collection(db, "routineAdjustments"), {
+          clientId,
+          routineId: finalId,
+          previousMachineIds: [],
+          newMachineIds: editDrawerMachineIds,
+          trainerId: authTrainer?.id || "unknown",
+          notes: drawerReason,
+          studioId: client?.homeStudioId || activeStudioId || "",
+          changeType: "created",
+          createdAt: serverTimestamp()
+        });
+      } else {
+        await updateDoc(doc(db, "routines", editingRoutineId), {
+          machineIds: editDrawerMachineIds,
+          updatedAt: serverTimestamp()
+        });
+
+        await addDoc(collection(db, "routineAdjustments"), {
+          clientId,
+          routineId: editingRoutineId,
+          previousMachineIds: originalMachineIdsSnapshot,
+          newMachineIds: editDrawerMachineIds,
+          trainerId: authTrainer?.id || "unknown",
+          notes: drawerReason,
+          studioId: client?.homeStudioId || activeStudioId || "",
+          changeType: "machines",
+          createdAt: serverTimestamp()
+        });
+      }
+
+      // Re-trigger routines fetch
+      const qRoutines = query(
+        collection(db, "routines"),
+        where("clientId", "==", clientId)
+      );
+      const snap = await getDocs(qRoutines);
+      setRoutines(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Routine));
+
+      setIsEditDrawerOpen(false);
+      setDrawerReason("");
+    } catch (error) {
+      console.error("Error saving routine edit drawer:", error);
+    } finally {
+      setIsSavingDrawer(false);
+    }
+  };
+
+  const handlePromptToggleB = (checked: boolean) => {
+    setPendingToggleBValue(checked);
+    setToggleBReason("");
+    setIsToggleReasonDialogOpen(true);
+  };
+
+  const handleConfirmToggleB = async () => {
+    if (pendingToggleBValue === null || !clientId) return;
+    if (toggleBReason.trim().length < 12) return;
+
+    setIsSavingToggle(true);
+    try {
+      await updateDoc(doc(db, "clients", clientId), {
+        isRoutineBActive: pendingToggleBValue
+      });
+
+      const routineName = "Routine B";
+      let routine = routines.find(r => r.name === routineName);
+      let routineId = routine?.id || "temp-b";
+
+      if (routineId === "temp-b") {
+        const docRef = await addDoc(collection(db, "routines"), {
+          clientId,
+          name: routineName,
+          machineIds: [],
+          createdAt: serverTimestamp(),
+          studioId: client?.homeStudioId || activeStudioId || ""
+        });
+        routineId = docRef.id;
+      }
+
+      await addDoc(collection(db, "routineAdjustments"), {
+        clientId,
+        routineId,
+        previousMachineIds: routine?.machineIds || [],
+        newMachineIds: routine?.machineIds || [],
+        trainerId: authTrainer?.id || "unknown",
+        notes: toggleBReason,
+        studioId: client?.homeStudioId || activeStudioId || "",
+        changeType: pendingToggleBValue ? "enabled" : "disabled",
+        createdAt: serverTimestamp()
+      });
+
+      if (client) {
+        client.isRoutineBActive = pendingToggleBValue;
+      }
+
+      // Re-trigger routines fetch
+      const qRoutines = query(
+        collection(db, "routines"),
+        where("clientId", "==", clientId)
+      );
+      const snap = await getDocs(qRoutines);
+      setRoutines(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Routine));
+
+      setIsToggleReasonDialogOpen(false);
+      setToggleBReason("");
+    } catch (err) {
+      console.error("Error toggling Routine B:", err);
+    } finally {
+      setIsSavingToggle(false);
+    }
+  };
+
+  const handleUseToday = async (routine: Routine) => {
+    if (!clientId) return;
+    
+    let rotId = routine.id;
+    if (rotId.startsWith("temp-")) {
+      const rotName = rotId === "temp-a" ? "Routine A" : "Routine B";
+      const docRef = await addDoc(collection(db, "routines"), {
+        clientId,
+        name: rotName,
+        machineIds: [],
+        createdAt: serverTimestamp(),
+        studioId: client?.homeStudioId || activeStudioId || ""
+      });
+      rotId = docRef.id;
+
+      const qRoutines = query(
+        collection(db, "routines"),
+        where("clientId", "==", clientId)
+      );
+      const snap = await getDocs(qRoutines);
+      setRoutines(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Routine));
+    }
+
+    try {
+      await updateDoc(doc(db, "clients", clientId), {
+        preferredTodayRoutineId: rotId
+      });
+      
+      if (activeInProgressSession?.id) {
+        await updateDoc(doc(db, "sessions", activeInProgressSession.id), {
+          routineId: rotId
+        });
+      }
+      
+      setSelectedRoutineTodayId(rotId || null);
+    } catch (err) {
+      console.error("Error setting routine today:", err);
+    }
+  };
+
+  const calculateChangesThisMonth = useCallback((adjustments: RoutineAdjustment[]) => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    return adjustments.filter(adj => {
+      if (!adj.createdAt) return false;
+      const time = adj.createdAt.toMillis?.() || (typeof adj.createdAt === 'number' ? adj.createdAt : 0);
+      if (!time) return false;
+      const d = new Date(time);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    }).length;
+  }, []);
+
+  const getAdjustmentDiff = useCallback((adj: RoutineAdjustment) => {
+    const addedIds = adj.newMachineIds.filter(id => !adj.previousMachineIds.includes(id));
+    const removedIds = adj.previousMachineIds.filter(id => !adj.newMachineIds.includes(id));
+
+    const addedNames = addedIds.map(id => machines.find(m => m.id === id)?.name || "Unknown").filter(Boolean);
+    const removedNames = removedIds.map(id => machines.find(m => m.id === id)?.name || "Unknown").filter(Boolean);
+
+    return { addedNames, removedNames };
+  }, [machines]);
+
+  const availableMachines = useMemo(() => {
+    return machines.filter(m => {
+      if (editDrawerMachineIds.includes(m.id!)) return false;
+      if (machineSearchQuery) {
+        const q = machineSearchQuery.toLowerCase();
+        const nameMatch = m.name?.toLowerCase().includes(q);
+        const fullNameMatch = m.fullName?.toLowerCase().includes(q);
+        const regionMatch = m.anatomicalRegion?.toLowerCase().includes(q);
+        return nameMatch || fullNameMatch || regionMatch;
+      }
+      return true;
+    });
+  }, [machines, editDrawerMachineIds, machineSearchQuery]);
+
+  const getSelectedRoutineLabel = () => {
+    if (!selectedRoutineTodayId) return "";
+    const found = routines.find(r => r.id === selectedRoutineTodayId);
+    if (found) return found.name.toUpperCase();
+    if (selectedRoutineTodayId.includes("-a") || selectedRoutineTodayId.includes("A")) return "ROUTINE A";
+    if (selectedRoutineTodayId.includes("-b") || selectedRoutineTodayId.includes("B")) return "ROUTINE B";
+    return "ROUTINE";
+  };
+
+  const renderRoutineCard = (routineName: "Routine A" | "Routine B") => {
+    const raw = routines.find((r) => r.name === routineName);
+    const routine: Routine = raw || {
+      id: routineName === "Routine A" ? "temp-a" : "temp-b",
+      name: routineName,
+      clientId: clientId || "",
+      machineIds: [],
+      studioId: client?.homeStudioId || "",
+    };
+
+    const isB = routineName === "Routine B";
+    const isBActive = !isB || !!client?.isRoutineBActive;
+    
+    const getLastChangedText = () => {
+      const adjs = routineAdjustments.filter(a => a.routineId === routine.id);
+      if (adjs.length === 0) {
+        if (routine.updatedAt) {
+          return `last changed long ago`;
+        }
+        return `no changes logged yet`;
+      }
+      const latest = adjs[0];
+      const trainer = trainers.find(t => t.id === latest.trainerId);
+      const trainerInitials = trainer?.initials || latest.trainerId?.substring(0, 2).toUpperCase() || "TR";
+      
+      let diffDays = 0;
+      if (latest.createdAt) {
+        const time = latest.createdAt.toMillis?.() || (typeof latest.createdAt === 'number' ? latest.createdAt : 0);
+        if (time) {
+          const diffMs = Date.now() - time;
+          diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        }
+      }
+
+      if (diffDays <= 0) {
+        return `last changed today by ${trainerInitials}`;
+      } else if (diffDays === 1) {
+        return `last changed 1 day ago by ${trainerInitials}`;
+      } else {
+        return `last changed ${diffDays} days ago by ${trainerInitials}`;
+      }
+    };
+
+    const isTodaySelected = selectedRoutineTodayId === routine.id;
+
+    return (
+      <Card
+        key={routineName}
+        className={cn(
+          "bg-bg-l-card border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-all overflow-hidden flex flex-col relative",
+          isTodaySelected && "ring-2 ring-cyan shadow-[0_0_20px_rgba(6,182,212,0.3)] border-cyan/40",
+          !isBActive && "opacity-60 grayscale-[15%]"
+        )}
+      >
+        {isTodaySelected && (
+          <div className="absolute top-0 left-0 right-0 h-1 bg-cyan" />
+        )}
+
+        <CardHeader className="p-5 lg:p-6 pb-4 border-b border-slate-100 dark:border-slate-800/40 bg-slate-50/50 dark:bg-slate-900/40">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  "w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold font-sans italic shadow-sm text-white",
+                  isB ? "bg-cta shadow-cta/20" : "bg-cyan shadow-cyan/20"
+                )}
+              >
+                {routineName.split(" ")[1]}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-lg lg:text-xl font-bold uppercase tracking-tight text-slate-800 dark:text-neutral-100">
+                    {routineName}
+                  </CardTitle>
+                  {isB && (
+                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 select-none">
+                      <span className={cn("inline-block w-1.5 h-1.5 rounded-full", client?.isRoutineBActive ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                        {client?.isRoutineBActive ? "Protocol B Active" : "B Inactive"}
+                      </span>
+                      <Switch
+                        checked={!!client?.isRoutineBActive}
+                        onCheckedChange={(checked) => handlePromptToggleB(checked)}
+                        className="scale-75 touch-none pointer-events-auto"
+                      />
+                    </div>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400 font-mono tracking-wide mt-0.5">
+                  {routine.machineIds.length} {routine.machineIds.length === 1 ? 'unit' : 'units'} assignment · {getLastChangedText()}
+                </p>
+              </div>
+            </div>
+            
+            {isBActive && (
+              <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 animate-fade-in animate-duration-150">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 rounded-xl font-bold uppercase text-[11px] tracking-wider border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all px-4"
+                  onClick={() => handleOpenEditDrawer(routine)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant={isTodaySelected ? "default" : "outline"}
+                  size="sm"
+                  className={cn(
+                    "h-9 rounded-xl font-bold uppercase text-[11px] tracking-wider transition-all px-4",
+                    isTodaySelected 
+                      ? "bg-cyan hover:bg-cyan/90 border-transparent text-white" 
+                      : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  )}
+                  onClick={() => handleUseToday(routine)}
+                >
+                  {isTodaySelected ? "Active Today" : "Use Today"}
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-5 lg:p-6 flex-1">
+          {routine.machineIds.length === 0 ? (
+            <div className="py-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800/40 rounded-xl bg-slate-50/40 dark:bg-slate-900/10 flex flex-col items-center justify-center p-4">
+              <p className="text-xs text-slate-400 font-medium font-sans uppercase tracking-widest mb-3">No Machines Assigned</p>
+              {isBActive && (
+                <Button 
+                  onClick={() => handleOpenEditDrawer(routine)}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs font-bold uppercase tracking-wider rounded-xl border-slate-200 dark:border-slate-800"
+                >
+                  Configure Routine
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {routine.machineIds.map((machineId, idx) => {
+                const machine = machines.find((m) => m.id === machineId);
+                if (!machine) return null;
+                
+                const metric = client?.currentMachineMetrics?.[machineId];
+                const weightVal = metric?.weight || "--";
+                const repsVal = metric?.reps || metric?.seconds || "--";
+                const isHold = metric?.isStaticHold;
+
+                return (
+                  <div 
+                    key={`${machineId}-${idx}`}
+                    className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-mono font-bold text-slate-500 dark:text-slate-400 shrink-0">
+                        {idx + 1}
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold uppercase tracking-tight text-slate-800 dark:text-neutral-200 block">
+                          {machine.name}
+                        </span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium uppercase tracking-wider">
+                          {machine.anatomicalRegion || "Other Region"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-mono font-bold text-slate-700 dark:text-neutral-300">
+                        {weightVal !== "--" ? `${weightVal} lb` : "--"}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono block">
+                        {repsVal !== "--" ? `${repsVal}${isHold ? "s Hold" : " reps"}` : "--"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const [isJournalExpanded, setIsJournalExpanded] = useState(false);
+
+  const renderRoutineJournalList = () => {
+    const changesThisMonth = calculateChangesThisMonth(routineAdjustments);
+
+    return (
+      <Card className="col-span-full bg-slate-50/10 dark:bg-bg-l-card border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm mt-4 p-5 lg:p-6">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <History className="w-5 h-5 text-slate-500" />
+            <h3 className="text-sm font-bold uppercase tracking-tight text-slate-800 dark:text-neutral-200">
+              Routine Adjustment Journal
+            </h3>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsJournalExpanded(!isJournalExpanded)}
+            className="rounded-xl font-bold uppercase text-[11px] tracking-wider border-slate-200 dark:border-slate-800"
+          >
+            {isJournalExpanded ? "Collapse Journal" : "Open Journal"}
+            <span className="ml-2 bg-slate-100 dark:bg-slate-850 text-slate-600 dark:text-slate-350 px-2 py-0.5 rounded-full text-[10px]">
+              {changesThisMonth} {changesThisMonth === 1 ? "change" : "changes"} this month
+            </span>
+            {isJournalExpanded ? (
+              <ChevronUp className="w-3.5 h-3.5 ml-1.5" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5 ml-1.5" />
+            )}
+          </Button>
+        </div>
+
+        {isJournalExpanded && (
+          <div className="mt-5 space-y-4 max-h-[350px] overflow-y-auto pr-1">
+            {routineAdjustments.length === 0 ? (
+              <p className="text-xs text-slate-400 font-medium uppercase tracking-wide text-center py-6">
+                No adjustments recorded in clinical logs
+              </p>
+            ) : (
+              routineAdjustments.map((adj) => {
+                const { addedNames, removedNames } = getAdjustmentDiff(adj);
+                
+                let dateText = "Date unknown";
+                if (adj.createdAt) {
+                  const time = adj.createdAt.toMillis?.() || (typeof adj.createdAt === 'number' ? adj.createdAt : 0);
+                  if (time) {
+                    dateText = new Date(time).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric"
+                    });
+                  }
+                }
+
+                const trainerObj = trainers.find(t => t.id === adj.trainerId);
+                const initials = trainerObj?.initials || adj.trainerId?.substring(0, 2).toUpperCase() || "TR";
+                const isToggle = adj.changeType === "enabled" || adj.changeType === "disabled";
+
+                return (
+                  <div 
+                    key={adj.id} 
+                    className="p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/30 space-y-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between gap-2 border-b border-slate-200/40 dark:border-slate-800/40 pb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center w-7 h-7 bg-slate-200 dark:bg-slate-850 text-[11px] font-bold font-mono text-slate-700 dark:text-neutral-300 rounded-[#10px]">
+                          {initials}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-700 dark:text-neutral-200">
+                            {trainerObj?.fullName || adj.trainerId}
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-medium">
+                            {dateText}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="font-mono text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-550 dark:text-slate-400 px-2 py-0.5 rounded uppercase">
+                        {adj.changeType || "machines"}
+                      </span>
+                    </div>
+
+                    {!isToggle && (addedNames.length > 0 || removedNames.length > 0) && (
+                      <div className="space-y-1 py-1">
+                        {addedNames.length > 0 && (
+                          <p className="text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight flex items-center gap-1">
+                            <span className="text-emerald-500 font-extrabold">+ ADDED:</span> 
+                            <span className="font-medium text-slate-700 dark:text-slate-300">{addedNames.join(", ")}</span>
+                          </p>
+                        )}
+                        {removedNames.length > 0 && (
+                          <p className="text-red-500 dark:text-red-400 font-bold uppercase tracking-tight flex items-center gap-1">
+                            <span className="text-red-400 font-extrabold">- REMOVED:</span> 
+                            <span className="font-medium text-slate-700 dark:text-slate-300">{removedNames.join(", ")}</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {isToggle && (
+                      <p className={cn(
+                        "font-bold uppercase tracking-wide",
+                        adj.changeType === "enabled" ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-450"
+                      )}>
+                        Protocol Routine B {adj.changeType === "enabled" ? "Enabled" : "Disabled"}
+                      </p>
+                    )}
+
+                    {adj.notes && (
+                      <p className="italic text-slate-600 dark:text-neutral-300 bg-white/40 dark:bg-slate-900/40 p-2.5 rounded-lg border border-slate-200/20">
+                        "{adj.notes}"
+                      </p>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+      </Card>
+    );
+  };
+
   const fetchLogsForSessions = async (sessionIds: string[]) => {
     if (sessionIds.length === 0) return [];
     const chunks = [];
@@ -672,9 +1726,9 @@ export function ClientProfileView({
     if (!clientId || hasQuotaError) return;
 
     if (
-      activeTab !== "overview" &&
+      activeTab !== "journey" &&
       activeTab !== "history" &&
-      activeTab !== "statistics"
+      activeTab !== "clinical"
     ) {
       return;
     }
@@ -819,7 +1873,7 @@ export function ClientProfileView({
 
   useEffect(() => {
     if (!clientId || hasQuotaError) return;
-    if (activeTab !== "overview" && activeTab !== "focus") return;
+    if (activeTab !== "journey" && activeTab !== "focus") return;
 
     const fetchFocuses = async () => {
       try {
@@ -841,11 +1895,43 @@ export function ClientProfileView({
     };
 
     fetchFocuses();
-  }, [clientId]);
+
+    // Subscribe to Focus Records
+    const focusRecsQ = query(
+      collection(db, "focusRecords"),
+      where("clientId", "==", clientId),
+      orderBy("dateAssigned", "desc")
+    );
+    const unsubscribeFocusRecs = onSnapshot(focusRecsQ, (snap) => {
+      setFocusRecords(
+        snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as FocusRecord)
+      );
+    }, (err) => {
+      handleFirestoreError(err, OperationType.GET, "focusRecords");
+    });
+
+    // Subscribe to Clinical Incidents
+    const incidentsQ = query(
+      collection(db, "clinicalIncidents"),
+      where("clientId", "==", clientId)
+    );
+    const unsubscribeIncidents = onSnapshot(incidentsQ, (snap) => {
+      setClinicalIncidents(
+        snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as ClinicalIncident)
+      );
+    }, (err) => {
+      handleFirestoreError(err, OperationType.GET, "clinicalIncidents");
+    });
+
+    return () => {
+      unsubscribeFocusRecs();
+      unsubscribeIncidents();
+    };
+  }, [clientId, activeTab]);
 
   useEffect(() => {
     if (!clientId || hasQuotaError || !user) return;
-    if (activeTab !== "statistics") return;
+    if (activeTab !== "clinical") return;
 
     const q = query(
       collection(db, "progressReports"),
@@ -1322,22 +2408,22 @@ export function ClientProfileView({
         className="w-full flex-1 flex flex-col min-h-0"
         onValueChange={setActiveTab}
       >
-        <div className="mb-3 w-full">
-          <div className="overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar md:overflow-visible">
-            <TabsList className="bg-slate-100/30 dark:bg-slate-900/40 p-1 rounded-xl flex flex-nowrap md:grid md:grid-cols-7 w-max md:w-full gap-1 lg:gap-1.5 h-auto">
+        <div className="mb-6 w-full border-b border-div-l">
+          <div className="overflow-x-auto pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar">
+            <TabsList className="bg-transparent p-0 flex flex-nowrap md:grid md:grid-cols-7 w-max md:w-full h-11 border-none gap-0">
               {[
-                { val: "overview", label: "Journey" },
-                { val: "equipment", label: "Equipment" },
+                { val: "journey", label: "Journey" },
                 { val: "routines", label: "Routines" },
-                { val: "focus", label: "Focus & Notes" },
-                { val: "details", label: "Info" },
+                { val: "equipment", label: "Equipment" },
+                { val: "focus", label: "Focus" },
                 { val: "history", label: "History" },
-                { val: "statistics", label: "Stats" },
+                { val: "info", label: "Info" },
+                { val: "clinical", label: "Clinical" },
               ].map((tab) => (
                 <TabsTrigger
                   key={tab.val}
                   value={tab.val}
-                  className="flex-none md:flex-1 min-w-[75px] md:min-w-0 md:w-full rounded-lg h-[36px] md:h-[40px] px-2 sm:px-4 font-bold text-xs sm:text-sm text-slate-700 dark:text-slate-300 hover:text-slate-700 dark:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 bg-transparent data-[state=active]:bg-slate-100 data-[state=active]:dark:bg-slate-800 data-[state=active]:text-slate-900 data-[state=active]:dark:text-white transition-all snap-center text-center truncate"
+                  className="relative flex-none md:flex-1 h-11 px-6 font-display italic text-[13px] font-bold uppercase tracking-widest text-ink-l3 hover:text-ink-l1 data-[state=active]:bg-bg-dark data-[state=active]:text-white transition-all snap-center text-center cursor-pointer select-none rounded-none border-b-2 border-transparent data-[state=active]:border-cta"
                 >
                   {tab.label}
                 </TabsTrigger>
@@ -1345,6 +2431,23 @@ export function ClientProfileView({
             </TabsList>
           </div>
         </div>
+
+        <TabsContent value="info">
+          {client && (
+            <div className="pt-4">
+              <ClientInfoTab
+                client={client}
+                infoForm={infoForm}
+                setInfoForm={setInfoForm}
+                isSavingInfo={isSavingInfo}
+                handleSaveInfo={handleSaveInfo}
+                authTrainer={authTrainer}
+                setIsDeleting={setIsDeleting}
+                setView={setView}
+              />
+            </div>
+          )}
+        </TabsContent>
 
         <TabsContent value="equipment">
            <ClientEquipmentPrescriptions 
@@ -1360,7 +2463,7 @@ export function ClientProfileView({
         </TabsContent>
 
         <TabsContent
-          value="overview"
+          value="journey"
           className="mt-0 flex-1 overflow-hidden min-h-0 flex flex-col rounded-xl relative"
         >
           <div className="flex items-center justify-between mb-3 px-2 flex-none">
@@ -1571,296 +2674,703 @@ export function ClientProfileView({
           </div>
         </TabsContent>
 
-      <TabsContent value="routines">
-        <div className="grid gap-4 xl:gap-6 lg:grid-cols-2">
-          {["Routine A", "Routine B"].map((routineName) => {
-            const routine = routines.find((r) => r.name === routineName);
-            const isActiveB =
-              routineName === "Routine B" && client?.isRoutineBActive;
-            const isDisabled =
-              routineName === "Routine B" && !client?.isRoutineBActive;
+      <TabsContent value="routines" className="mt-0 flex-1 min-h-0 focus-visible:outline-none">
+        <div className="grid gap-6 lg:grid-cols-2 items-start">
+          {/* Render Routine A Card */}
+          {renderRoutineCard("Routine A")}
 
-            if (isDisabled) {
-              return (
-                <Card
-                  key={routineName}
-                  className="rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 dark:border-slate-700 bg-white dark:bg-slate-900 dark:bg-slate-900/40 flex items-center justify-center p-8 lg:p-12 opacity-70 shadow-sm"
-                >
-                  <div className="text-center space-y-4">
-                    <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-full bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 flex items-center justify-center mx-auto border border-slate-200 dark:border-slate-800 dark:border-slate-700">
-                      <Settings className="w-6 h-6 lg:w-8 lg:h-8 text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:text-slate-400" />
-                    </div>
-                    <p className="text-xs lg:text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-slate-600 dark:text-slate-400">
-                      Routine B Inactive
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-full font-bold uppercase text-[11px] lg:text-[11px] tracking-widest h-10 px-6 border-[#38BDF8]/50 text-[#38BDF8] hover:bg-[#38BDF8]/10"
-                      onClick={() => handleToggleRoutineB(true)}
-                    >
-                      Enable Optional Protocol
-                    </Button>
-                  </div>
-                </Card>
-              );
-            }
+          {/* Render Routine B Card */}
+          {renderRoutineCard("Routine B")}
 
-            return (
-              <Card
-                key={routineName}
-                className={`rounded-3xl border shadow-2xl overflow-hidden flex flex-col ${routineName === "Routine B" ? "border-[#F06C22]/30 bg-white dark:bg-slate-900 dark:bg-slate-900/90" : "border-slate-200 dark:border-slate-700 dark:bg-slate-900"} shadow-sm`}
-              >
-                <CardHeader className="p-5 lg:p-6 pb-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center text-xl font-bold italic shadow-lg ${routineName === "Routine B" ? "bg-[#F06C22] shadow-[#F06C22]/20" : "bg-[#115E8D] shadow-[#115E8D]/20"}`}
-                      >
-                        {routineName.split(" ")[1]}
-                      </div>
-                      <div>
-                        <CardTitle className="text-lg lg:text-xl font-bold uppercase italic tracking-tighter">
-                          {routineName}
-                        </CardTitle>
-                        <CardDescription className="text-[11px] lg:text-[11px] font-medium uppercase tracking-wide opacity-70 text-[#F06C22]">
-                          Protocol Definition
-                        </CardDescription>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 self-start sm:self-auto">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 lg:h-9 rounded-full font-bold uppercase text-[11px] lg:text-[11px] tracking-widest border-[#38BDF8]/50 text-[#38BDF8] hover:bg-[#38BDF8]/10 px-3 lg:px-4"
-                        onClick={() => setRoutineBuilderTarget(routineName)}
-                      >
-                        <Settings className="w-3 h-3 mr-1.5" />
-                        AI Builder
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 lg:h-9 rounded-full font-bold uppercase text-[11px] lg:text-[11px] tracking-widest border-dashed border-slate-200 dark:border-slate-800 dark:border-slate-600 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:bg-slate-800 hover:border-slate-500 px-3 lg:px-4"
-                        onClick={() =>
-                          handleApplyTemplate("STANDARD_MALE", routineName)
-                        }
-                      >
-                        Template
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-5 lg:p-6 pt-0">
-                  <div className="py-2 space-y-4 lg:space-y-5">
-                    {Object.entries(
-                      machines
-                        .sort((a, b) => (a.order || 0) - (b.order || 0))
-                        .reduce((acc, machine) => {
-                          const region = machine.anatomicalRegion || 'Other';
-                          if (!acc[region]) acc[region] = [];
-                          acc[region].push(machine);
-                          return acc;
-                        }, {} as Record<string, Machine[]>)
-                    ).map(([region, regionMachines]) => (
-                      <div key={region} className="space-y-2 lg:space-y-3">
-                        <h4 className="text-[11px] lg:text-[11px] font-medium uppercase text-slate-500 dark:text-slate-600 dark:text-slate-400 tracking-widest border-b border-slate-200 dark:border-slate-800 dark:border-slate-700 pb-1 sticky top-0 bg-white dark:bg-slate-900 z-20">
-                          {region}
-                        </h4>
-                        <div className="grid grid-cols-2 min-[400px]:grid-cols-3 md:grid-cols-4 gap-1.5 lg:gap-2">
-                          {regionMachines.map((machine) => {
-                            const routineMachineIds =
-                              stagedMachineIds[routineName] || [];
-                            const isIn = routineMachineIds.includes(machine.id!);
-                            const seqPosition = isIn
-                              ? routineMachineIds.indexOf(machine.id!) + 1
-                              : null;
-
-                            return (
-                              <button
-                                key={machine.id}
-                                onClick={() =>
-                                  toggleMachineInRoutine(routineName, machine.id!)
-                                }
-                                className={`flex items-center min-h-[56px] gap-1.5 lg:gap-2 p-1.5 lg:p-2 rounded-xl border transition-all text-left relative group ${ isIn ? "bg-[#115E8D]/20 border-[#115E8D] shadow-sm z-10" : "bg-slate-50 dark:bg-slate-800 border-transparent opacity-60 hover:opacity-100 hover:border-slate-200 dark:border-slate-700" }`}
-                                title={machine.name}
-                              >
-                                <div
-                                  className={`w-6 h-6 lg:w-7 lg:h-7 rounded-md flex items-center justify-center shrink-0 transition-all ${ isIn ? "bg-[#115E8D] shadow-sm" : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 dark:text-slate-400 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-800 dark:border-slate-600" }`}
-                                >
-                                  {isIn ? (
-                                    <span className="font-bold text-[11px] lg:text-[11px]">
-                                      {seqPosition}
-                                    </span>
-                                  ) : (
-                                    <Plus className="w-3 h-3 lg:w-3.5 lg:h-3.5 opacity-40 group-hover:opacity-100" />
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1 flex items-center">
-                                  <span
-                                    className={`text-[11px] lg:text-[11px] font-bold uppercase tracking-tight block leading-tight ${isIn ? "text-[#38BDF8]" : "text-slate-600 dark:text-slate-400"}`}
-                                  >
-                                    {machine.name}
-                                  </span>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-                <CardFooter className="p-5 lg:p-6 pt-0 border-t border-slate-200 dark:border-slate-800 dark:border-slate-700 mt-2 lg:mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                  <div className="space-y-0.5 lg:space-y-1">
-                    <p className="text-[11px] lg:text-[11px] font-bold text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 uppercase">
-                      {stagedMachineIds[routineName]?.length || 0} Units
-                      Assigned
-                    </p>
-                    {JSON.stringify(stagedMachineIds[routineName]) !==
-                      JSON.stringify(
-                        routines.find((r) => r.name === routineName)
-                          ?.machineIds || [],
-                      ) && (
-                      <p className="text-[7px] lg:text-[11px] font-bold text-[#F06C22] uppercase tracking-widest animate-pulse">
-                        Pending Changes
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 lg:gap-3 w-full sm:w-auto">
-                    {routineName === "Routine B" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-500 hover:bg-red-500/10 hover:text-red-400 font-bold text-[11px] lg:text-[11px] uppercase h-8 lg:h-10 tracking-widest px-3"
-                        onClick={() => handleToggleRoutineB(false)}
-                      >
-                        Disable
-                      </Button>
-                    )}
-                    <Button
-                      onClick={() => handleSaveRoutineConfig(routineName)}
-                      disabled={isSavingRoutine[routineName]}
-                      className="h-8 lg:h-10 flex-1 sm:flex-none rounded-xl font-bold uppercase italic text-[11px] lg:text-[11px] tracking-widest px-4 lg:px-6 bg-[#F06C22] hover:bg-[#F06C22]/90 shadow-md lg:shadow-lg shadow-[#F06C22]/20"
-                    >
-                      {isSavingRoutine[routineName]
-                        ? "Saving..."
-                        : "Apply Routine"}
-                    </Button>
-                  </div>
-                </CardFooter>
-              </Card>
-            );
-          })}
+          {/* Collapsible Routine Audit Journal */}
+          {renderRoutineJournalList()}
         </div>
+
+        {/* Sticky Selected Routine Indicator */}
+        {selectedRoutineTodayId && (
+          <div className="mt-6 flex justify-center">
+            <StickyCTA
+              label={`${getSelectedRoutineLabel()} SELECTED`}
+              onClick={() => {
+                setView("workouts");
+              }}
+            />
+          </div>
+        )}
+
+        {/* Dialog/Modal for Routine B Toggle Reason */}
+        <Dialog open={isToggleReasonDialogOpen} onOpenChange={setIsToggleReasonDialogOpen}>
+          <DialogContent className="rounded-2xl max-w-md p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold uppercase tracking-tight text-slate-950 dark:text-white font-display italic">
+                Reason Required for Protocol B Change
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500 mt-1">
+                Please provide a brief justification to explain why you are {pendingToggleBValue ? "enabling" : "disabling"} the optional Routine B protocol for {client?.firstName}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-4 space-y-4">
+              <Textarea
+                value={toggleBReason}
+                onChange={(e) => setToggleBReason(e.target.value)}
+                placeholder="e.g., Sandra is experiencing shoulder tightness; setting up B as a low-impact chest day."
+                rows={3}
+                className="rounded-xl border-div-l bg-slate-50/50 dark:bg-slate-950/20 text-xs text-slate-800 dark:text-neutral-200 resize-none"
+              />
+              <div className="flex justify-between items-center text-[10px]">
+                <span className="text-slate-400 font-medium">Be brief and clinical for Sandra's logs.</span>
+                <span className={cn(
+                  "font-semibold tracking-wide",
+                  toggleBReason.trim().length >= 12 ? "text-emerald-500" : "text-amber-500"
+                )}>
+                  {toggleBReason.trim().length}/12 characters minimum
+                </span>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3 border-t border-div-l/40 pt-4">
+              <Button
+                variant="ghost"
+                onClick={() => setIsToggleReasonDialogOpen(false)}
+                className="rounded-xl uppercase font-bold text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmToggleB}
+                disabled={toggleBReason.trim().length < 12 || isSavingToggle}
+                className="bg-cta text-white hover:bg-cta-strong rounded-xl uppercase font-bold text-xs shadow-md shadow-cta/15"
+              >
+                {isSavingToggle ? "Saving..." : "Confirm Switch"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* RoutineEditDrawer Bottom Sheet Slide-Up Dialog */}
+        <Dialog open={isEditDrawerOpen} onOpenChange={setIsEditDrawerOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-6 bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl border border-div-l">
+            <DialogHeader className="pb-4 border-b border-div-l shrink-0">
+              <div className="flex items-center justify-between">
+                <DialogTitle className="text-xl font-bold uppercase tracking-tight text-slate-900 dark:text-neutral-100 italic font-display">
+                  Edit {editingRoutineName}
+                </DialogTitle>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setIsEditDrawerOpen(false)}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <DialogDescription className="text-xs text-slate-500 mt-1">
+                Adjust the machine order, remove/add machines, and provide a mandatory reason explaining this clinical adjustment.
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Drawer Body: Sortable Machines List and Add Machine form */}
+            <div className="flex-1 overflow-y-auto py-4 space-y-6">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 font-mono">
+                  Sequence Order (Drag to Reorder)
+                </h3>
+                
+                {editDrawerMachineIds.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic py-4">No units in routine. Tap Add Machine below.</p>
+                ) : (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEndDrawer}
+                  >
+                    <SortableContext
+                      items={editDrawerMachineIds}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="space-y-2">
+                        {editDrawerMachineIds.map((machineId, idx) => {
+                          const machine = machines.find(m => m.id === machineId);
+                          if (!machine) return null;
+
+                          return (
+                            <SortableRoutineMachineRow
+                              key={machineId}
+                              id={machineId}
+                              machineName={machine.name || "Unknown Machine"}
+                              weightText=""
+                              repsText=""
+                              isEditMode={true}
+                              onRemove={() => {
+                                setEditDrawerMachineIds(prev => prev.filter(id => id !== machineId));
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                )}
+              </div>
+
+              {/* Add Machine Search Picker */}
+              <div className="pt-4 border-t border-div-l/40">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 font-mono">
+                  Add Machine Unit
+                </h3>
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                  <Input
+                    value={machineSearchQuery}
+                    onChange={(e) => setMachineSearchQuery(e.target.value)}
+                    placeholder="Search by machine name or body region..."
+                    className="pl-9 rounded-xl border-div-l text-xs h-10 bg-slate-50/50 dark:bg-slate-950/20"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[160px] overflow-y-auto p-2 bg-slate-50 dark:bg-slate-900/30 rounded-xl border border-div-l/30">
+                  {availableMachines.length === 0 ? (
+                    <p className="col-span-full text-xs text-slate-400 text-center py-4">No matching machines</p>
+                  ) : (
+                    availableMachines.map(m => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          setEditDrawerMachineIds(prev => [...prev, m.id!]);
+                          setMachineSearchQuery(""); // clear search on add
+                        }}
+                        className="flex items-center gap-1.5 p-2 bg-white dark:bg-slate-900 border border-div-l/50 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-left transition-colors text-xs font-medium uppercase tracking-tight text-slate-700 dark:text-neutral-300"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        <span className="truncate">{m.name}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Reason Area */}
+              <div className="pt-4 border-t border-div-l/40 bg-slate-50/20 dark:bg-slate-950/20 p-4 rounded-xl">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-neutral-350 mb-2 font-display">
+                  Why are you making this change? <span className="text-red-500">*</span>
+                </label>
+                <Textarea
+                  value={drawerReason}
+                  onChange={(e) => setDrawerReason(e.target.value)}
+                  placeholder="e.g., Decreasing spinal load post L4 herniation flare-up; swapping leg press for leg extension today."
+                  rows={3}
+                  className="rounded-xl border-div-l bg-white dark:bg-slate-900 resize-none text-xs text-slate-800 dark:text-neutral-100"
+                />
+                <div className="flex justify-between items-center mt-2">
+                  <p className="text-[10px] text-slate-400">
+                    Provide a brief clinical rationale for Sandra's profile logs.
+                  </p>
+                  <p className={cn(
+                    "text-[10px] font-semibold tracking-wide",
+                    drawerReason.trim().length >= 12 ? "text-emerald-500" : "text-amber-500"
+                  )}>
+                    {drawerReason.trim().length}/12 characters
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-div-l flex justify-end gap-3 shrink-0">
+              <Button
+                variant="ghost"
+                onClick={() => setIsEditDrawerOpen(false)}
+                className="rounded-xl uppercase font-bold text-xs"
+              >
+                Close
+              </Button>
+              <Button
+                onClick={handleSaveEditDrawer}
+                disabled={drawerReason.trim().length < 12 || isSavingDrawer}
+                className="bg-cta text-white hover:bg-cta-strong rounded-xl uppercase font-bold text-xs shadow-md shadow-cta/15"
+              >
+                {isSavingDrawer ? "Saving Changes..." : "Apply Routine"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </TabsContent>
 
         <TabsContent value="focus" className="mt-0 flex-1 min-h-0 focus-visible:outline-none">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-            {/* Focus Dashboard on Left Side */}
-            <div className="lg:col-span-7 bg-[#0A2E46] rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 p-1 overflow-hidden h-[750px]">
-              {client && authTrainer && (
-                <ClientFocusDashboard 
-                  client={client} 
-                  trainer={authTrainer} 
-                  machines={machines} 
-                />
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-6">
+            
+            {/* Header Content & Trigger */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+              <div>
+                <h2 className="text-xl font-black tracking-tight text-slate-100 dark:text-slate-900 font-display italic uppercase">Coaching Journal</h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  {client?.firstName} {client?.lastName} · {filteredJournalEntries.length} filtered records under {perTrainerSummary.length} active coach profiles
+                </p>
+              </div>
+
+              {/* Action Button */}
+              <Button
+                onClick={() => setIsAddJournalOpen(true)}
+                className="h-11 px-5 rounded-xl bg-cta text-white hover:bg-cta-strong font-black uppercase text-xs tracking-wider shadow-md shadow-cta/15 flex items-center gap-2 self-start md:self-auto cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Journal Entry</span>
+              </Button>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 py-5 border-b border-slate-200/60 items-start">
+              
+              {/* Type Filter */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono">Stream Type</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {(["All", "Focus", "Notes", "Incidents"] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setActiveTypeFilter(t)}
+                      className={cn(
+                        "h-11 px-4 text-xs font-semibold uppercase tracking-wider rounded-xl border transition-all cursor-pointer",
+                        activeTypeFilter === t
+                          ? "bg-slate-950 text-white border-transparent"
+                          : "bg-slate-50 border-slate-200/60 hover:bg-slate-100 text-slate-600"
+                      )}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Coach Selector */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono">Filter by Coach</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    onClick={() => setActiveTrainerFilter("All")}
+                    className={cn(
+                      "h-11 px-4 text-xs font-semibold uppercase tracking-wider rounded-xl border transition-all cursor-pointer",
+                      activeTrainerFilter === "All"
+                        ? "bg-slate-950 text-white border-transparent"
+                        : "bg-slate-50 border-slate-200/60 hover:bg-slate-100 text-slate-600"
+                    )}
+                  >
+                    All
+                  </button>
+                  {perTrainerSummary.map((summary) => (
+                    <button
+                      key={summary.trainerId}
+                      onClick={() => setActiveTrainerFilter(summary.trainerId)}
+                      className={cn(
+                        "h-11 px-4 text-xs font-semibold uppercase tracking-wider rounded-xl border transition-all flex items-center gap-2 cursor-pointer",
+                        activeTrainerFilter === summary.trainerId
+                          ? "bg-primary text-white border-transparent"
+                          : "bg-slate-50 border-slate-200/60 hover:bg-slate-100 text-slate-600"
+                      )}
+                    >
+                      <span className="w-5 h-5 rounded-md bg-slate-200/50 flex items-center justify-center font-mono font-bold text-[10px] text-slate-700 shrink-0">
+                        {summary.trainerInitials}
+                      </span>
+                      <span>{summary.trainerInitials}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Date Filter */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono">Date Range</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {(["7d", "30d", "90d", "All"] as const).map((w) => (
+                    <button
+                      key={w}
+                      onClick={() => setActiveWindowFilter(w)}
+                      className={cn(
+                        "h-11 px-4 text-xs font-semibold uppercase tracking-wider rounded-xl border transition-all cursor-pointer",
+                        activeWindowFilter === w
+                          ? "bg-slate-950 text-white border-transparent"
+                          : "bg-slate-50 border-slate-200/60 hover:bg-slate-100 text-slate-600"
+                      )}
+                    >
+                      {w}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Per-Trainer Highlights */}
+            <div className="py-4">
+              <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase font-mono mb-4">Active Coach Directives</h3>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {perTrainerSummary.map((summary) => (
+                  <button
+                    key={summary.trainerId}
+                    onClick={() => setActiveTrainerFilter(summary.trainerId === activeTrainerFilter ? "All" : summary.trainerId)}
+                    className={cn(
+                      "p-4 rounded-xl border text-left transition-all bg-slate-50/55 hover:bg-slate-50 border-slate-200/70 hover:border-slate-300 relative group flex gap-3.5 cursor-pointer",
+                      activeTrainerFilter === summary.trainerId && "ring-2 ring-cyan border-transparent shadow bg-white"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-lg font-bold shrink-0 flex items-center justify-center font-sans tracking-wide text-xs",
+                      getTrainerChipClasses(summary.trainerInitials)
+                    )}>
+                      {summary.trainerInitials}
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <p className="text-xs font-bold uppercase tracking-tight text-slate-800 truncate">{summary.trainerName}</p>
+                      <p className="text-[10px] text-slate-400 font-medium">
+                        {summary.entryCount} {summary.entryCount === 1 ? "entry" : "entries"} · {getDaysAgo(summary.lastEntryDate)}
+                      </p>
+                      <div className="mt-2 border-t border-slate-200/40 pt-2 text-[11px] leading-snug">
+                        {summary.currentFocus ? (
+                          <div className="text-slate-600">
+                            <span className="font-bold text-slate-700 uppercase tracking-wide">Focus:</span> {summary.currentFocus}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic">No active custom-focus recorded</span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Timeline Area */}
+            <div className="space-y-4 pt-4 border-t border-slate-100">
+              <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase font-mono mb-2">Chronological Timeline Ledger</h3>
+              
+              {filteredJournalEntries.length === 0 ? (
+                <div className="py-16 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/30 flex flex-col items-center justify-center">
+                  <Clock className="w-11 h-11 text-slate-400 opacity-40 mb-3" />
+                  <p className="text-xs font-bold tracking-wider text-slate-400 uppercase">No Timeline Entries Found</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Try relaxing some of your filter criteria.</p>
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  {filteredJournalEntries.map((entry) => {
+                    // Borders based on entry types
+                    let borderClass = "border-l-div-l";
+                    if (entry.type === "focus") {
+                      borderClass = "border-l-[5px] border-l-cyan";
+                    } else if (entry.type === "session_note") {
+                      borderClass = "border-l-[5px] border-l-cta";
+                    } else if (entry.type === "incident") {
+                      borderClass = entry.resolvedAt ? "border-l-[5px] border-l-yellow" : "border-l-[5px] border-l-red";
+                    }
+
+                    return (
+                      <div
+                        key={entry.id}
+                        className={cn(
+                          "flex flex-col sm:flex-row sm:items-start gap-4 p-4 rounded-xl border bg-slate-50 border-slate-200 pl-5 transition-colors relative overflow-hidden",
+                          borderClass
+                        )}
+                      >
+                        <div className="flex-1 space-y-3">
+                          {/* Heading row */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[11px] font-mono text-slate-500 font-semibold">
+                              {entry.date.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })} at {entry.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                            
+                            <span className={cn(
+                              "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider",
+                              getTrainerChipClasses(entry.trainer)
+                            )}>
+                              Coach: {entry.trainer}
+                            </span>
+
+                            <Badge className={cn(
+                              "text-[9px] uppercase tracking-wider font-extrabold font-mono",
+                              entry.type === "focus" && "bg-cyan/10 text-cyan border-none",
+                              entry.type === "note" && "bg-slate-200 text-slate-700 border-none",
+                              entry.type === "session_note" && "bg-cta/10 text-cta border-none",
+                              entry.type === "incident" && "bg-red/10 text-red border-none"
+                            )}>
+                              {entry.type === "focus" ? "Directive" : entry.type === "note" ? "Global Note" : entry.type === "session_note" ? "Session Brief" : "Clinical Safety"}
+                            </Badge>
+
+                            {entry.type === "focus" && (
+                              <Badge className="text-[9px] uppercase tracking-widest bg-slate-100 text-slate-800 font-extrabold border-none">
+                                {entry.category}
+                              </Badge>
+                            )}
+
+                            {entry.type === "note" && (entry as any).priority && (
+                              <Badge className={cn(
+                                "text-[9px] uppercase tracking-widest border-none font-bold",
+                                (entry as any).priority === "High" ? "bg-red/15 text-red" : (entry as any).priority === "Medium" ? "bg-yellow/15 text-yellow-700" : "bg-green/15 text-green"
+                              )}>
+                                {(entry as any).priority} Priority
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Content paragraph */}
+                          <div>
+                            {entry.type === "focus" && (
+                              <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider font-bold text-slate-400 font-mono mb-1">
+                                <span>Coaching Focus: Actionable Cue</span>
+                                {entry.targetMachineId && (
+                                  <span className="text-cyan font-semibold">
+                                    · {machines.find(m => m.id === entry.targetMachineId)?.name || 'Machine Action'}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            <p className="text-xs text-slate-800 leading-relaxed font-medium whitespace-pre-line">
+                              {entry.content}
+                            </p>
+                          </div>
+
+                          {/* Interactive statuses */}
+                          {entry.type === "focus" && (
+                            <div className="pt-2 border-t border-slate-200/40 flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-slate-400 font-semibold">
+                                  Category definition: {JOURNAL_CATEGORY_DEFINITIONS[entry.category]?.description}
+                                </span>
+                              </div>
+
+                              {entry.status === "Active" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMarkFocusAchieved(entry.id)}
+                                  className="h-8 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider text-green hover:bg-green/10 border border-green/20 ml-auto flex items-center gap-1.5 shrink-0 shadow-sm cursor-pointer"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  Mark Achieved
+                                </button>
+                              ) : (
+                                <div className="flex items-center gap-1 text-green font-bold text-[10px] uppercase tracking-wider ml-auto bg-green/10 px-2.5 py-1 rounded-lg border border-green/20 shrink-0">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Achieved Ledgered</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {entry.type === "incident" && (
+                            <div className="pt-2 border-t border-slate-200/40 flex items-center gap-2 text-xs">
+                              {entry.resolvedAt ? (
+                                <span className="text-green font-bold uppercase tracking-wider flex items-center gap-1">
+                                  <CheckCircle2 className="w-3.5 h-3.5" /> Resolved
+                                </span>
+                              ) : (
+                                <span className="text-red font-black uppercase tracking-wider flex items-center gap-1 animate-pulse">
+                                  <AlertCircle className="w-3.5 h-3.5" /> UNRESOLVED SAFETY INCIDENT
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
 
-            {/* Notes Workspace on Right Side */}
-            <div className="lg:col-span-5 space-y-6 h-[750px] flex flex-col min-h-0">
-              
-              {/* Core Notes area */}
-              <Card className="rounded-3xl shadow-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden flex-none">
-                <CardHeader className="p-6 border-b border-slate-200 dark:border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <Save className="w-5 h-5 text-[#F06C22]" />
-                    <CardTitle className="text-lg font-bold uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
-                      Client Profile Notes
-                    </CardTitle>
-                  </div>
-                  <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-[#F06C22] mt-1">
-                    Persistent Free-Form Notes
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-6 space-y-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-500 dark:text-slate-400 ml-1">
-                      General Trainer Notes
-                    </Label>
-                    <Textarea
-                      value={clientNotesInput}
-                      onChange={(e) => setClientNotesInput(e.target.value)}
-                      placeholder="Enter custom training notes, physical cues, preferences, or other free-form details here..."
-                      className="min-h-[140px] text-sm p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100"
-                    />
-                  </div>
-                  <div className="flex justify-end pt-1">
-                    <Button
-                      disabled={isSavingNotes}
-                      onClick={handleSaveNotes}
-                      className="h-10 px-6 rounded-full bg-[#F06C22] hover:bg-[#ea580c] text-white font-bold uppercase italic text-[11px] tracking-widest shadow-[0_0_20px_rgba(240,108,34,0.2)] transition-all flex items-center gap-2"
-                    >
-                      <Save className="w-3.5 h-3.5" />
-                      {isSavingNotes ? "Saving Notes..." : "Save Notes"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Historic Notes area - including pre, during and post session notes! */}
-              <Card className="rounded-3xl shadow-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex-1 overflow-hidden flex flex-col min-h-0">
-                <CardHeader className="p-6 border-b border-slate-200 dark:border-slate-800 shrink-0">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-[#F06C22]" />
-                    <CardTitle className="text-lg font-bold uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
-                      Session Timeline Notes
-                    </CardTitle>
-                  </div>
-                  <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-[#F06C22] mt-1">
-                    Pre, During & Post Session Records
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-6 overflow-y-auto flex-1 custom-scrollbar min-h-0 space-y-4">
-                  {getCombinedTimelineNotes().length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-slate-50 dark:bg-slate-950/40 rounded-2xl border-2 border-dashed border-slate-100 dark:border-slate-800/60">
-                      <Clock className="w-10 h-10 text-slate-400 opacity-25 mb-3" />
-                      <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">No timeline notes recorded</p>
-                      <p className="text-[11px] text-slate-500 mt-1 max-w-[200px]">Notes recorded before, during, or after workouts will automatically appear here as coaching documentation.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {getCombinedTimelineNotes().map((item, index) => (
-                        <div key={item.id} className="relative pl-6 border-l-2 border-slate-200 dark:border-slate-800 last:border-l-0 pb-1">
-                          {/* Dot accent */}
-                          <div className="absolute -left-[6px] top-1.5 w-[10px] h-[10px] rounded-full bg-[#F06C22]" />
-                          
-                          <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-800/40">
-                            <div className="flex items-center justify-between gap-2 mb-2">
-                              <span className="text-[11px] font-medium uppercase text-slate-900 dark:text-white tracking-widest">
-                                {item.title}
-                              </span>
-                              <span className="text-[11px] font-bold text-slate-500">
-                                {item.date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} at {item.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-800 dark:text-slate-200 italic leading-relaxed whitespace-pre-line">
-                              "{item.content}"
-                            </p>
-                            <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/50 flex justify-between items-center text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
-                              <span>Coach: {item.trainer}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
           </div>
         </TabsContent>
+
+        {/* Add Entry sheet/dialog */}
+        <Dialog open={isAddJournalOpen} onOpenChange={setIsAddJournalOpen}>
+          <DialogContent className="max-w-xl w-full bg-white rounded-3xl p-6 border border-slate-100 shadow-2xl">
+            <DialogHeader className="border-b border-slate-100 pb-4">
+              <DialogTitle className="text-lg font-black uppercase italic tracking-tight text-slate-900 font-display">
+                New clinical/coaching entry
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500 font-medium">
+                Add an actionable coaching focus directive or a detailed progress session note for {client?.firstName}.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-5 py-4">
+              {/* Type Switcher */}
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono">
+                  Entry Ledger Category
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewType("Focus")}
+                    className={cn(
+                      "h-11 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all cursor-pointer",
+                      newJournalType === "Focus"
+                        ? "bg-cyan/10 border-cyan text-cyan"
+                        : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-600"
+                    )}
+                  >
+                    Clinical Focus Directive
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewType("Note")}
+                    className={cn(
+                      "h-11 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all cursor-pointer",
+                      newJournalType === "Note"
+                        ? "bg-cta/15 border-cta text-cta"
+                        : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-600"
+                    )}
+                  >
+                    Session / Clinical Note
+                  </button>
+                </div>
+              </div>
+
+              {/* Focus Specific Fields */}
+              {newJournalType === "Focus" ? (
+                <>
+                  {/* Category Pill Picker */}
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono">
+                      The 4 P's Category Definition
+                    </Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(["Posture", "Pace", "Path", "Purpose"] as FocusCategory[]).map((cat) => {
+                        const def = JOURNAL_CATEGORY_DEFINITIONS[cat];
+                        const IconComponent = def.icon;
+                        const isSelected = newFocusCategory === cat;
+                        return (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setNewFocusCategory(cat)}
+                            className={cn(
+                              "p-3 rounded-xl border text-left transition-all flex items-start gap-2.5 cursor-pointer",
+                              isSelected
+                                ? "bg-white border-2 border-cyan ring-1 ring-cyan"
+                                : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                            )}
+                          >
+                            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", def.bg)}>
+                              <IconComponent className={cn("w-4 h-4", def.color)} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold uppercase text-slate-800 tracking-tight leading-none mb-1">
+                                {cat}
+                              </p>
+                              <p className="text-[9px] text-slate-400 leading-tight font-medium line-clamp-2">
+                                {def.helper}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Machine optional field */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="target-machine" className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono">
+                      Target Equipment Unit (Optional)
+                    </Label>
+                    <Select
+                      value={newTargetMachineId}
+                      onValueChange={setNewTargetMachineId}
+                    >
+                      <SelectTrigger id="target-machine" className="h-11 rounded-xl bg-slate-50 border-slate-200 text-slate-900 border font-medium">
+                        <SelectValue placeholder="Global / Client Profile" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border border-slate-200 rounded-xl text-slate-900 font-medium">
+                        <SelectItem value="none">Global / Client Profile Level</SelectItem>
+                        {machines.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Focus Directive Notes */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="clinical-notes" className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono">
+                      Clinical focus cue instructions
+                    </Label>
+                    <Textarea
+                      id="clinical-notes"
+                      value={newFocusNotes}
+                      onChange={(e) => setNewFocusNotes(e.target.value)}
+                      placeholder="e.g., Maintain 8s rhythm. Emphasize scapular retraction at extreme range. Avoid shoulder rolling."
+                      className="min-h-[100px] text-xs p-3 rounded-xl bg-slate-50 border-slate-200 text-slate-900 focus-visible:ring-cyan text-medium leading-relaxed"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Priority selector */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono">
+                      Log Priority Level
+                    </Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["High", "Medium", "Low"] as const).map((prio) => (
+                        <button
+                          key={prio}
+                          type="button"
+                          onClick={() => setNewNotePriority(prio)}
+                          className={cn(
+                            "h-11 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all cursor-pointer",
+                            newNotePriority === prio
+                              ? prio === "High"
+                                ? "bg-red/15 border-red text-red-700"
+                                : prio === "Medium"
+                                  ? "bg-yellow/15 border-yellow text-yellow-800"
+                                  : "bg-green/10 border-green text-green-700"
+                              : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-600"
+                          )}
+                        >
+                          {prio} Priority
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Content area */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="note-content" className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono">
+                      Progress entry content
+                    </Label>
+                    <Textarea
+                      id="note-content"
+                      value={newNoteContent}
+                      onChange={(e) => setNewNoteContent(e.target.value)}
+                      placeholder="Enter detailed clinical session documentation, progress updates, trainer observations..."
+                      className="min-h-[140px] text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus-visible:ring-cta text-medium leading-relaxed"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer triggers */}
+            <div className="border-t border-slate-100 pt-4 flex items-center justify-end gap-2 shrink-0">
+              <Button
+                variant="outline"
+                onClick={() => setIsAddJournalOpen(false)}
+                className="h-11 px-5 rounded-xl border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmitJournalEntry}
+                disabled={isSavingJournalEntry}
+                className={cn(
+                  "h-11 px-6 rounded-xl text-white font-extrabold uppercase tracking-widest text-xs",
+                  newJournalType === "Focus" ? "bg-cyan hover:bg-cyan/95" : "bg-cta hover:bg-cta-strong"
+                )}
+              >
+                {isSavingJournalEntry ? "Saving Ledger..." : "Save Log Entry"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <TabsContent value="history" className="h-[750px] relative pb-20 overflow-y-auto custom-scrollbar">
           <div className="space-y-6">
@@ -1891,7 +3401,18 @@ export function ClientProfileView({
 
 
 
-        <TabsContent value="statistics" className="space-y-6">
+        <TabsContent value="clinical" className="mt-0 flex-1 min-h-[500px] focus-visible:outline-none">
+          {client && (
+            <ClientClinicalReviewPreloader
+              client={client}
+              machines={machines}
+              onOpenBriefing={() => setView("workouts")}
+              onClose={() => setActiveTab("journey")}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="statistics_disabled" className="hidden">
           <Card className="rounded-[40px] border-2 shadow-xl overflow-hidden min-h-[300px]">
             <CardHeader className="p-8 border-b">
               <div className="flex justify-between items-center">
@@ -2793,7 +4314,7 @@ export function ClientProfileView({
               </div>
             </CardContent>
           </Card>
-        </TabsContent>        <TabsContent value="details">
+        </TabsContent>        <TabsContent value="details_disabled" className="hidden">
           <div className="grid gap-6 lg:grid-cols-2 mb-6">
             {/* 1. The "Why" (Goals & Motivation) */}
             <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700">
@@ -3678,5 +5199,92 @@ export function ClientProfileView({
 
 
     </motion.div>
+  );
+}
+
+interface SortableRoutineMachineRowProps {
+  key?: any;
+  id: string;
+  machineName: string;
+  weightText: string;
+  repsText: string;
+  isEditMode?: boolean;
+  onRemove?: () => void;
+}
+
+export function SortableRoutineMachineRow({
+  id,
+  machineName,
+  weightText,
+  repsText,
+  isEditMode,
+  onRemove,
+}: SortableRoutineMachineRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : "auto",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800/60 transition-all",
+        isDragging && "opacity-95 scale-[1.02] shadow-md ring-2 ring-cyan/30 z-50 bg-white dark:bg-slate-850 border-cyan/40"
+      )}
+    >
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        {isEditMode ? (
+          <div
+            {...attributes}
+            {...listeners}
+            className="flex items-center justify-center h-12 w-12 cursor-grab active:cursor-grabbing bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 rounded-lg shrink-0 touch-none"
+            title="Drag to reorder"
+          >
+            <GripVertical className="w-5 h-5 text-slate-400 dark:text-slate-500" />
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-7 w-7 rounded bg-slate-100 dark:bg-slate-800 text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 shrink-0">
+            •
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold uppercase tracking-tight text-slate-800 dark:text-neutral-200 truncate">
+            {machineName}
+          </p>
+          {!isEditMode && weightText && (
+            <p className="text-[10px] text-slate-400 font-mono">
+              {weightText} × {repsText}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {isEditMode && onRemove && (
+        <Button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          variant="ghost"
+          size="sm"
+          className="h-10 w-10 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg shrink-0"
+        >
+          <X className="w-4 h-4" />
+        </Button>
+      )}
+    </div>
   );
 }

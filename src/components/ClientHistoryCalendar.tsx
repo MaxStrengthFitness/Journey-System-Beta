@@ -41,6 +41,23 @@ import { cn, parseSessionDate, calculateExerciseVolume } from '../lib/utils';
 import { OperationType, handleFirestoreError } from '../lib/firestore-errors';
 import { useActiveStudio } from '../ActiveStudioContext';
 
+function getTrainerChipStyles(initials: string) {
+  if (!initials) return "bg-ink-l2 text-white";
+  const colors = [
+    "bg-cyan text-white",
+    "bg-cta text-white",
+    "bg-green text-ink-l1",
+    "bg-amber text-white",
+    "bg-ink-l2 text-white"
+  ];
+  let hash = 0;
+  for (let i = 0; i < initials.length; i++) {
+    hash = initials.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % colors.length;
+  return colors[index];
+}
+
 export function ClientHistoryCalendar({ 
   clientId, 
   clientHomeStudioId,
@@ -310,49 +327,49 @@ export function ClientHistoryCalendar({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0A2E46] overflow-hidden rounded-[40px] border border-white/10 shadow-2xl p-2 sm:p-6 text-white">
+    <div className="flex flex-col h-full bg-bg-l overflow-hidden rounded-[40px] border border-div-l shadow-2xl p-2 sm:p-6 text-ink-l1">
         <div className="flex items-center justify-between mb-8 shrink-0">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-[#F06C22]/10 rounded-2xl flex items-center justify-center border border-[#F06C22]/20 shadow-[0_0_15px_rgba(240,108,34,0.1)] shrink-0">
-              <CalendarIcon className="w-7 h-7 text-[#F06C22]" />
+            <div className="w-14 h-14 bg-cta/10 rounded-2xl flex items-center justify-center border border-cta/20 shadow-sm shrink-0">
+              <CalendarIcon className="w-7 h-7 text-cta" />
             </div>
             <div>
               <div className="flex items-center gap-4">
-                <h2 className="text-3xl font-black italic uppercase tracking-tighter leading-none shrink-0">
+                <h2 className="text-3xl font-black italic uppercase tracking-tighter leading-none shrink-0 font-display">
                   {viewType === 'calendar' ? (viewDate instanceof Date && !isNaN(viewDate.getTime()) ? viewDate.toLocaleString('default', { month: 'long' }) : 'Invalid Date') : 'Client History'}
                 </h2>
                 {viewType === 'calendar' && (
                   <div className="flex gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="text-[#68717A] hover:text-white hover:bg-white/10 rounded-2xl h-8 w-8 transition-all">
+                    <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="text-ink-l3 hover:text-ink-l1 hover:bg-slate-100 rounded-2xl h-8 w-8 transition-all">
                       <ChevronLeft className="w-5 h-5" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={handleNextMonth} className="text-[#68717A] hover:text-white hover:bg-white/10 rounded-2xl h-8 w-8 transition-all">
+                    <Button variant="ghost" size="icon" onClick={handleNextMonth} className="text-ink-l3 hover:text-ink-l1 hover:bg-slate-100 rounded-2xl h-8 w-8 transition-all">
                       <ChevronRight className="w-5 h-5" />
                     </Button>
                   </div>
                 )}
               </div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#68717A] mt-1">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-ink-l3 mt-1">
                 {viewType === 'calendar' ? viewDate.getFullYear() : `${sessions.length} Sessions Total`}
               </p>
             </div>
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="flex bg-slate-800 p-1 rounded-full border border-slate-700 shadow-sm">
+            <div className="flex bg-slate-100 p-1 rounded-full border border-div-l shadow-sm">
                <button
                   onClick={() => setViewType('calendar')}
-                  className={cn("px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all", viewType === 'calendar' ? "bg-[#38BDF8] text-white shadow-sm" : "text-slate-400 hover:text-white")}
+                  className={cn("px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all", viewType === 'calendar' ? "bg-cyan text-white shadow-sm" : "text-ink-l3 hover:text-ink-l1")}
                >Calendar View</button>
                <button
                   onClick={() => setViewType('list')}
-                  className={cn("px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all", viewType === 'list' ? "bg-[#38BDF8] text-white shadow-sm" : "text-slate-400 hover:text-white")}
+                  className={cn("px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all", viewType === 'list' ? "bg-cyan text-white shadow-sm" : "text-ink-l3 hover:text-ink-l1")}
                >List View</button>
             </div>
             <Button 
                onClick={() => setShowManualLog(true)}
                variant="outline" 
-               className="border-[#F06C22]/50 text-[#F06C22] hover:bg-[#F06C22]/10 font-black tracking-widest uppercase text-[11px] h-12 rounded-2xl px-6"
+               className="border-cta/50 text-cta hover:bg-cta/10 font-black tracking-widest uppercase text-[11px] h-12 rounded-2xl px-6 bg-white"
              >
                <PlusCircle className="w-4 h-4 mr-2" /> Log Past Session
             </Button>
@@ -364,12 +381,12 @@ export function ClientHistoryCalendar({
             <div className="grid grid-cols-7 gap-2 mb-2 shrink-0">
               {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(d => (
                 <div key={d} className="text-center pb-2">
-                  <span className="text-xs font-black uppercase tracking-widest text-[#68717A]">{d}</span>
+                  <span className="text-xs font-black uppercase tracking-widest text-ink-l3">{d}</span>
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-2 flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar pb-6">
+            <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar pb-6 flex flex-col gap-2">
               {(() => {
                 const year = viewDate.getFullYear();
                 const month = viewDate.getMonth();
@@ -380,66 +397,98 @@ export function ClientHistoryCalendar({
                 for (let i = 0; i < firstDay; i++) matrix.push(null);
                 for (let i = 1; i <= totalDays; i++) matrix.push(new Date(year, month, i));
 
-                return matrix.map((date, idx) => {
-                if (!date) return <div key={`empty-${idx}`} className="min-h-[100px]" />;
-                
-                const daySessions = sessionsOnDay(date);
-                const timestamp = selectedSession ? parseSessionDate(selectedSession.date) : 0;
-                const isSelected = selectedSession && timestamp > 0 && isSameDay(new Date(timestamp), date);
-                const today = isSameDay(new Date(), date);
+                // Chunk matrix into weeks (7 days per week)
+                const weeks: (Date | null)[][] = [];
+                for (let i = 0; i < matrix.length; i += 7) {
+                  weeks.push(matrix.slice(i, i + 7));
+                }
 
-                return (
-                  <div 
-                    key={idx}
-                    onClick={() => {
-                      if (daySessions.length > 0) {
-                        setSelectedDaySessions(daySessions);
-                        setActiveSessionIndex(0);
-                      }
-                    }}
-                    className={cn(
-                      "min-h-[100px] p-4 rounded-3xl border transition-all relative group flex flex-col items-center justify-between",
-                      daySessions.length > 0 ? "cursor-pointer hover:border-white/30" : "cursor-default",
-                      isSelected ? "bg-[#F06C22]/10 border-[#F06C22] shadow-[0_0_30px_rgba(240,108,34,0.15)]" : "bg-white/[0.02] border-white/5 hover:border-white/10",
-                      today && !isSelected && "bg-[#115E8D]/10 border-[#115E8D]/30"
-                    )}
-                  >
-                    <span className={cn(
-                      "text-xl font-black leading-none",
-                      isSelected ? "text-[#F06C22]" : today ? "text-[#38BDF8]" : daySessions.length > 0 ? "text-white" : "text-white/20"
-                    )}>
-                      {date.getDate()}
-                    </span>
-                    
-                    <div className="flex flex-col gap-1 w-full mt-auto">
-                      {daySessions.map((s, sIdx) => (
-                        <div 
-                          key={s.id || sIdx} 
-                          className={cn(
-                            "h-6 rounded-xl px-2 flex items-center justify-between border shadow-sm",
-                            s.routineName?.toUpperCase().includes('B') 
-                              ? "bg-[#F06C22]/20 border-[#F06C22]/30 text-[#F06C22]" 
-                              : (s.routineName?.toUpperCase().includes('A') 
-                                ? "bg-[#115E8D]/20 border-[#115E8D]/30 text-[#38BDF8]"
-                                : (s.trainerId === 'legacy-trainer' || s.trainerInitials === 'Legacy' || s.trainerInitials === 'Chart'
-                                  ? "bg-slate-700/50 border-[#F06C22]/30 text-[#F06C22]/70"
-                                  : "bg-slate-700/30 border-slate-700 text-slate-500"))
-                          )}
-                        >
-                          <span className="text-[11px] font-black italic">
-                            {s.routineName?.toUpperCase().includes('B') 
-                              ? 'B' 
-                              : (s.routineName?.toUpperCase().includes('A') 
-                                ? 'A' 
-                                : (s.trainerId === 'legacy-trainer' || s.trainerInitials === 'Legacy' || s.trainerInitials === 'Chart' ? 'I' : '•'))}
-                          </span>
-                          <span className="text-[11px] font-bold opacity-80">{s.trainerInitials || '--'}</span>
-                        </div>
-                      ))}
+                return weeks.map((week, wIdx) => {
+                  // Determine if this weekly row contains the currently active/selected day, or today as fallback
+                  const selectedTimestamp = selectedSession ? parseSessionDate(selectedSession.date) : 0;
+                  const selectedDate = selectedTimestamp > 0 ? new Date(selectedTimestamp) : null;
+                  const isWeekActive = week.some(date => 
+                    date && (
+                      (selectedDate && isSameDay(date, selectedDate)) || 
+                      (!selectedDate && isSameDay(date, new Date()))
+                    )
+                  );
+
+                  return (
+                    <div 
+                      key={`week-${wIdx}`} 
+                      className={cn(
+                        "grid grid-cols-7 gap-2 p-1 rounded-3xl transition-all duration-200",
+                        isWeekActive ? "bg-bg-l-card border border-div-l shadow-sm" : ""
+                      )}
+                    >
+                      {week.map((date, idx) => {
+                        if (!date) return <div key={`empty-${wIdx}-${idx}`} className="min-h-[100px]" />;
+                        
+                        const daySessions = sessionsOnDay(date);
+                        const timestamp = selectedSession ? parseSessionDate(selectedSession.date) : 0;
+                        const isSelected = selectedSession && timestamp > 0 && isSameDay(new Date(timestamp), date);
+                        const today = isSameDay(new Date(), date);
+
+                        return (
+                          <div 
+                            key={`day-${idx}`}
+                            onClick={() => {
+                              if (daySessions.length > 0) {
+                                setSelectedDaySessions(daySessions);
+                                setActiveSessionIndex(0);
+                              }
+                            }}
+                            className={cn(
+                              "min-h-[100px] p-4 rounded-2xl border transition-all relative group flex flex-col justify-between selection-none",
+                              daySessions.length > 0 ? "cursor-pointer hover:bg-slate-50" : "cursor-default",
+                              isSelected 
+                                ? "bg-bg-dark border-bg-dark text-ink-d1 shadow-md" 
+                                : "bg-bg-l-card border-div-l hover:border-div-l/80",
+                              today ? "ring-2 ring-green" : ""
+                            )}
+                          >
+                            <span className={cn(
+                              "text-[18px] font-black leading-none font-sans absolute top-3 left-3",
+                              isSelected ? "text-ink-d1" : "text-ink-l1"
+                            )}>
+                              {date.getDate()}
+                            </span>
+                            
+                            {daySessions.length > 0 && (() => {
+                              const s = daySessions[0];
+                              const isB = s.routineName?.toUpperCase().includes('B');
+                              const isA = s.routineName?.toUpperCase().includes('A');
+                              const letter = isB ? 'B' : (isA ? 'A' : '•');
+                              const routineBg = isB ? 'bg-cta text-white' : (isA ? 'bg-cyan text-white' : 'bg-ink-l3 text-white');
+                              
+                              return (
+                                <div className={cn(
+                                  "w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black uppercase absolute top-2.5 right-2.5 shadow-sm",
+                                  routineBg
+                                )}>
+                                  {letter}
+                                </div>
+                              );
+                            })()}
+
+                            {daySessions.length > 0 && (() => {
+                              const initials = daySessions[0].trainerInitials || '--';
+                              return (
+                                <div className={cn(
+                                  "w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black uppercase absolute bottom-2.5 right-2.5 shadow-sm",
+                                  getTrainerChipStyles(initials)
+                                )}>
+                                  {initials}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        );
+                      })}
                     </div>
-                  </div>
-                );
-              });
+                  );
+                });
               })()}
             </div>
           </>
@@ -478,42 +527,42 @@ export function ClientHistoryCalendar({
                      setSelectedDaySessions([session]);
                      setActiveSessionIndex(0);
                    }}
-                   className="flex items-center gap-3 sm:gap-6 p-4 sm:p-6 rounded-[32px] bg-slate-800 border border-slate-700 cursor-pointer hover:border-white/30 transition-all hover:bg-slate-800/80 relative overflow-hidden flex-wrap sm:flex-nowrap"
+                   className="flex items-center gap-3 sm:gap-6 p-4 sm:p-6 rounded-[32px] bg-bg-l-card border border-div-l cursor-pointer hover:border-cta/30 transition-all hover:bg-slate-50 shadow-sm text-ink-l1 relative overflow-hidden flex-wrap sm:flex-nowrap"
                  >
                    {session.isCrossTrain && (
-                     <div className="absolute top-0 left-0 bg-indigo-500 text-white text-[11px] sm:text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-br-xl shadow-sm z-10 flex items-center gap-1">
+                     <div className="absolute top-0 left-0 bg-cyan text-white text-[11px] sm:text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-br-xl shadow-sm z-10 flex items-center gap-1">
                        <Network className="w-3 h-3" />
                        Cross-Train
                      </div>
                    )}
                    {isLegacy && (
-                     <div className="absolute top-0 right-0 bg-[#F06C22] text-white text-[11px] sm:text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl shadow-sm z-10">
+                     <div className="absolute top-0 right-0 bg-cta text-white text-[11px] sm:text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl shadow-sm z-10">
                        Imported
                      </div>
                    )}
                    <div className="flex flex-col items-center justify-center min-w-[80px]">
-                      <span className="text-3xl font-black text-white">{sDate ? sDate.getDate() : '--'}</span>
-                      <span className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{sDate ? sDate.toLocaleDateString('default', { month: 'short' }) + " '" + sDate.getFullYear().toString().substring(2) : 'Invalid'}</span>
+                      <span className="text-3xl font-black text-ink-l1 font-display">{sDate ? sDate.getDate() : '--'}</span>
+                      <span className="text-[11px] font-black uppercase text-ink-l3 tracking-widest">{sDate ? sDate.toLocaleDateString('default', { month: 'short' }) + " '" + sDate.getFullYear().toString().substring(2) : 'Invalid'}</span>
                    </div>
                    
-                   <div className="w-12 h-12 shrink-0 bg-slate-900 rounded-full flex items-center justify-center border border-slate-700 z-10">
-                     <span className="text-sm font-black text-slate-300">{session.trainerInitials || 'TR'}</span>
+                   <div className={cn("w-12 h-12 shrink-0 rounded-full flex items-center justify-center border border-div-l/50 z-10 font-black", getTrainerChipStyles(session.trainerInitials))}>
+                     <span className="text-sm font-black">{session.trainerInitials || 'TR'}</span>
                    </div>
 
                    <div className="flex-1 min-w-0 flex flex-col justify-center">
                       <div className="flex items-center gap-3 mb-1 flex-wrap">
-                        <span className="text-lg font-black text-white uppercase tracking-tighter shrink-0 flex items-center gap-2">
-                          <Badge variant="outline" className="text-[11px] font-black text-[#38BDF8] uppercase tracking-widest border-[#38BDF8]/30 bg-[#38BDF8]/10 py-0 leading-tight h-5">S{calculatedSessionNumber}</Badge>
+                        <span className="text-lg font-black text-ink-l1 uppercase tracking-tighter shrink-0 flex items-center gap-2">
+                          <Badge variant="outline" className="text-[11px] font-black text-cyan uppercase tracking-widest border-cyan/30 bg-cyan/10 py-0 leading-tight h-5">S{calculatedSessionNumber}</Badge>
                           {isLegacy ? 'Import Session' : session.startTime && timestamp > 0 ? new Date(session.startTime?.toMillis?.() || session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (sDate ? '12:00 PM' : '--:--')}
                         </span>
                         {daysSincePrev !== null && (
-                          <Badge variant="outline" className="text-[11px] font-black text-[#38BDF8] uppercase tracking-widest border-[#38BDF8]/30 bg-[#38BDF8]/10">
+                          <Badge variant="outline" className="text-[11px] font-black text-cyan uppercase tracking-widest border-cyan/30 bg-cyan/10">
                             {daysSincePrev === 1 ? '1 Day Since Last' : `${daysSincePrev} Days Since Last`}
                           </Badge>
                         )}
                       </div>
                       
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1 truncate">
+                      <p className="text-[11px] font-bold text-ink-l3 uppercase tracking-widest mt-1 truncate">
                         {session.routineName ? `Routine ${session.routineName}` : (isLegacy ? 'Imported Session' : '')}
                         {(session.routineName || isLegacy) && shorthandMachines ? ' • ' : ''}
                         {shorthandMachines || (!session.routineName && !isLegacy ? 'No Machines Logged' : '')}
@@ -521,10 +570,10 @@ export function ClientHistoryCalendar({
                    </div>
                    
                    <div className="flex flex-col items-end justify-center shrink-0 ml-2 sm:ml-4">
-                     <span className="text-[11px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1 text-right">Total Volume</span>
+                     <span className="text-[11px] sm:text-[11px] font-bold text-ink-l3 uppercase tracking-widest mb-1 text-right font-sans">Total Volume</span>
                      <div className="flex items-baseline gap-1">
-                       <span className="text-xl sm:text-2xl font-black text-white">{totalVolume.toLocaleString()}</span>
-                       <span className="text-[11px] sm:text-[11px] font-bold text-slate-400 uppercase">lbs</span>
+                       <span className="text-xl sm:text-2xl font-black text-ink-l1 font-display">{totalVolume.toLocaleString()}</span>
+                       <span className="text-[11px] sm:text-[11px] font-bold text-ink-l3 uppercase">lbs</span>
                      </div>
                    </div>
                  </div>
@@ -541,14 +590,14 @@ export function ClientHistoryCalendar({
           setEditedLogs({});
         }
       }}>
-        <DialogContent className="max-w-4xl sm:max-w-4xl max-h-[95vh] w-full border border-slate-700 rounded-2xl bg-[#0A2E46] p-0 overflow-hidden shadow-2xl flex flex-col">
+        <DialogContent className="max-w-4xl sm:max-w-4xl max-h-[95vh] w-full border border-div-l rounded-2xl bg-bg-l p-0 overflow-hidden shadow-2xl flex flex-col text-ink-l1">
           {selectedSession && (
             <>
               {/* Header Banner */}
-              <div className="bg-slate-900 border-b border-slate-700 px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 transition-all">
+              <div className="bg-bg-l-card border-b border-div-l px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 transition-all">
                 <div>
-                  <h2 className="text-xl font-black uppercase text-white tracking-widest flex items-center gap-2">
-                    <span className="text-[#38BDF8]">
+                  <h2 className="text-xl font-black uppercase tracking-widest flex items-center gap-2 font-display">
+                    <span className="text-cyan">
                       {(() => {
                         if (!selectedSession) return '';
                         const timestamp = parseSessionDate(selectedSession.date);
@@ -559,18 +608,18 @@ export function ClientHistoryCalendar({
                       })()}
                     </span>
                   </h2>
-                  <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1 flex items-center gap-2">
-                     <Badge variant="outline" className="border-slate-700 text-slate-300">TR: {selectedSession.trainerInitials || 'N/A'}</Badge> 
+                  <p className="text-sm font-bold text-ink-l3 uppercase tracking-widest mt-1 flex items-center gap-2">
+                     <Badge variant="outline" className="border-div-l text-ink-l2 bg-slate-50">TR: {selectedSession.trainerInitials || 'N/A'}</Badge> 
                      {selectedSessionLogs.length} Units Logged
                   </p>
                 </div>
                 
                 <div className="flex items-center gap-4">
-                  <div className="bg-slate-800 px-4 py-2 rounded-xl border border-slate-700 flex items-center gap-2">
-                    <span className="text-xs font-black uppercase text-slate-500 tracking-widest">Routine:</span>
+                  <div className="bg-bg-l px-4 py-2 rounded-xl border border-div-l flex items-center gap-2 shadow-xs">
+                    <span className="text-[11.5px] font-black uppercase text-ink-l3 tracking-widest font-sans">Routine:</span>
                     <span className={cn(
-                      "text-xl font-black italic uppercase leading-none",
-                      selectedSession.routineName?.includes('B') ? "text-[#F06C22]" : "text-[#38BDF8]"
+                      "text-xl font-black italic uppercase leading-none font-display",
+                      selectedSession.routineName?.toUpperCase().includes('B') ? "text-cta" : "text-cyan"
                     )}>
                       {selectedSession.routineName || 'Special'}
                     </span>
@@ -592,7 +641,7 @@ export function ClientHistoryCalendar({
                         setEditedSessionNotes(selectedSession.notes || '');
                         setIsEditMode(true);
                       }}
-                      className="font-black uppercase tracking-widest h-10 px-6 rounded-xl border-white/20 text-white bg-white/10 hover:bg-white/20 transition-all shrink-0"
+                      className="font-black uppercase tracking-widest h-10 px-6 rounded-xl border-div-l text-ink-l1 bg-white hover:bg-slate-50 transition-all shrink-0 text-[11px] shadow-xs"
                     >
                       Enter Edit Mode
                     </Button>
@@ -600,9 +649,55 @@ export function ClientHistoryCalendar({
                 </div>
               </div>
 
+              {/* Pinned Analytics Header Strip */}
+              <div className="bg-bg-l-card border-b border-div-l px-6 py-2.5 flex items-center justify-between sm:justify-start gap-4 flex-wrap shrink-0">
+                {/* Routine Chip */}
+                <div className="flex items-center gap-2 bg-bg-l border border-div-l rounded-2xl px-3 py-1.5 shadow-xs">
+                  <span className="text-[11px] font-black uppercase text-ink-l3 tracking-widest font-sans">Routine:</span>
+                  <div className={cn(
+                    "w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black uppercase text-white shadow-xs font-sans",
+                    selectedSession.routineName?.toUpperCase().includes('B') 
+                      ? "bg-cta" 
+                      : (selectedSession.routineName?.toUpperCase().includes('A') 
+                        ? "bg-cyan" 
+                        : "bg-ink-l3")
+                  )}>
+                    {selectedSession.routineName?.toUpperCase().includes('B') ? 'B' : (selectedSession.routineName?.toUpperCase().includes('A') ? 'A' : '•')}
+                  </div>
+                </div>
+
+                {/* Trainer Chip */}
+                <div className="flex items-center gap-2 bg-bg-l border border-div-l rounded-2xl px-3 py-1.5 shadow-xs">
+                  <span className="text-[11px] font-black uppercase text-ink-l3 tracking-widest font-sans">Trainer:</span>
+                  <div className={cn("w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black uppercase shadow-xs font-sans", getTrainerChipStyles(selectedSession.trainerInitials || '--'))}>
+                    {selectedSession.trainerInitials || '--'}
+                  </div>
+                </div>
+
+                {/* Session count / logs badge */}
+                <div className="flex items-center gap-2 bg-bg-l border border-div-l rounded-2xl px-3 py-1.5 shadow-xs">
+                  <span className="text-[11px] font-black uppercase text-ink-l3 tracking-widest font-sans">Units:</span>
+                  <span className="text-[11px] font-black uppercase text-ink-l1 font-display bg-slate-100 rounded-md px-1.5 py-0.5 border border-div-l/50">
+                    {selectedSessionLogs.length} Checked
+                  </span>
+                </div>
+
+                {/* Total tonnage volume volume */}
+                <div className="flex items-center gap-2 bg-bg-l border border-div-l rounded-2xl px-3 py-1.5 shadow-xs sm:ml-auto">
+                  <span className="text-[11px] font-black uppercase text-ink-l3 tracking-widest font-sans">Total Volume:</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-sm font-black text-cta font-display">{(() => {
+                      const selectedSessionTotalVolume = Math.round(selectedSessionLogs.reduce((acc, log) => acc + calculateExerciseVolume(log), 0));
+                      return selectedSessionTotalVolume.toLocaleString();
+                    })()}</span>
+                    <span className="text-[11px] font-bold text-ink-l3 uppercase font-sans">lbs</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Multi-Session Tabs if > 1 */}
               {selectedDaySessions.length > 1 && (
-                <div className="bg-[#0A2E46]/90 border-b border-slate-700 px-6 py-2 flex gap-2 shrink-0 overflow-x-auto hide-scrollbar">
+                <div className="bg-bg-l border-b border-div-l px-6 py-2 flex gap-2 shrink-0 overflow-x-auto hide-scrollbar">
                    {selectedDaySessions.map((sess, i) => {
                      const globalIdx = sessions.findIndex(s => s.id === sess.id);
                      const sessNum = globalIdx >= 0 ? sessions.length - globalIdx : '?';
@@ -616,8 +711,8 @@ export function ClientHistoryCalendar({
                          className={cn(
                            "px-4 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all border",
                            activeSessionIndex === i 
-                             ? "bg-[#38BDF8]/20 border-[#38BDF8]/50 text-[#38BDF8]" 
-                             : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
+                             ? "bg-cyan/10 border-cyan/50 text-cyan" 
+                             : "bg-bg-l-card border-div-l text-ink-l3 hover:text-ink-l1"
                          )}
                        >
                           S{sessNum} - {sess.legacy_filemaker_id ? 'Imported' : sess.startTime ? new Date(sess.startTime?.toMillis?.() || sess.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'No Time'}
@@ -627,7 +722,7 @@ export function ClientHistoryCalendar({
                 </div>
               )}
 
-              <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#0A2E46] min-h-0">
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-bg-l min-h-0">
                 {selectedSessionLogs.length > 0 ? (
                   <div className="max-w-7xl mx-auto space-y-6 pb-6">
                     {/* Machine Grid */}
@@ -642,10 +737,10 @@ export function ClientHistoryCalendar({
                           ? rawQuality 
                           : (rawQuality > 0 ? 2 : 0);
                         
-                        let displayBorder = "border-slate-700 bg-slate-800";
-                        if (quality === 3) displayBorder = "border-emerald-500 bg-emerald-500/10";
-                        else if (quality === 2) displayBorder = "border-amber-500 bg-amber-500/10";
-                        else if (quality === 1) displayBorder = "border-rose-500 bg-rose-500/10";
+                        let displayBorder = "border-div-l bg-bg-l-card text-ink-l1";
+                        if (quality === 3) displayBorder = "border-green bg-green/10 text-ink-l1";
+                        else if (quality === 2) displayBorder = "border-amber bg-amber/10 text-ink-l1";
+                        else if (quality === 1) displayBorder = "border-cta bg-cta/10 text-ink-l1";
 
                         const isCardio = machine?.name.toLowerCase().includes('cardio') || log.type === 'Cardio';
                         const isStaticHold = Boolean(currentData.isStaticHold);
@@ -667,25 +762,25 @@ export function ClientHistoryCalendar({
                                <div className="flex flex-col h-full justify-between">
                                  <div>
                                    <div className="flex justify-between items-start gap-2">
-                                     <h4 className="text-sm font-black uppercase tracking-tight text-white leading-none truncate mb-1">{machine?.name || 'Unknown'}</h4>
-                                     {isStaticHold && <span className="px-1.5 py-0.5 rounded-md bg-[#38BDF8]/20 text-[#38BDF8] text-[11px] font-black tracking-widest uppercase">TSC</span>}
+                                     <h4 className="text-sm font-black uppercase tracking-tight text-ink-l1 leading-none truncate mb-1 font-display">{machine?.name || 'Unknown'}</h4>
+                                     {isStaticHold && <span className="px-1.5 py-0.5 rounded-md bg-cyan/10 text-cyan text-[11px] font-black tracking-widest uppercase">TSC</span>}
                                    </div>
-                                   <p className="text-xs font-bold text-slate-400">
+                                   <p className="text-xs font-semibold text-ink-l2">
                                      {currentData.weight || '-'} lbs | {isCardio || isStaticHold ? currentData.seconds : currentData.reps} {isCardio || isStaticHold ? 'sec' : 'reps'}
                                    </p>
                                  </div>
                                   <div className="mt-2 text-[11px] font-black tracking-widest uppercase flex gap-1 items-center">
-                                     <span className="text-[#68717A]">Quality:</span>
-                                     {quality === 1 && <span className="text-rose-500">Poor</span>}
-                                     {quality === 2 && <span className="text-amber-500">Completed</span>}
-                                     {quality === 3 && <span className="text-emerald-500">Max Strength</span>}
-                                     {quality === 0 && <span className="text-slate-600">N/A</span>}
+                                     <span className="text-ink-l3">Quality:</span>
+                                     {quality === 1 && <span className="text-cta">Poor</span>}
+                                     {quality === 2 && <span className="text-amber">Completed</span>}
+                                     {quality === 3 && <span className="text-green">Max Strength</span>}
+                                     {quality === 0 && <span className="text-ink-l3">N/A</span>}
                                   </div>
                                </div>
                              ) : (
                                <div className="flex flex-col gap-3">
-                                  <div className="flex justify-between items-center bg-slate-900/50 p-2 rounded-xl">
-                                    <h4 className="text-xs font-black uppercase tracking-widest text-white leading-none truncate">{machine?.name || 'Unknown'}</h4>
+                                  <div className="flex justify-between items-center bg-slate-100 p-2 rounded-xl">
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-ink-l1 leading-none truncate font-display">{machine?.name || 'Unknown'}</h4>
                                     {!isCardio && (
                                        <button
                                          onClick={() => {
@@ -700,20 +795,20 @@ export function ClientHistoryCalendar({
                                            }
                                          }}
                                          className={cn("px-2 py-0.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-colors",
-                                           isStaticHold ? "bg-[#38BDF8] text-white" : "bg-slate-800 text-slate-500 hover:text-white"
+                                           isStaticHold ? "bg-cyan text-white shadow-xs" : "bg-white border border-div-l text-ink-l3 hover:text-ink-l1"
                                          )}
                                        >
                                          TSC
                                        </button>
                                     )}
-                                    {isCardio && <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Cardio</span>}
+                                    {isCardio && <span className="text-[11px] font-bold text-ink-l3 uppercase tracking-widest">Cardio</span>}
                                   </div>
 
                                   {/* Weight Stepper */}
-                                  <div className="bg-slate-900 border border-slate-700 rounded-xl p-1.5 flex items-center justify-between shrink-0">
+                                  <div className="bg-bg-l border border-div-l rounded-xl p-1.5 flex items-center justify-between shrink-0">
                                      <button 
                                        onClick={() => handleLogEdit(log.id!, 'weight', Math.max(0, wVal - 2).toString())}
-                                       className="w-10 h-10 shrink-0 flex items-center justify-center text-slate-400 bg-slate-800 rounded-lg hover:bg-slate-700 hover:text-white transition-all focus:outline-none"
+                                       className="w-10 h-10 shrink-0 flex items-center justify-center text-ink-l2 bg-slate-100 rounded-lg hover:bg-slate-200 hover:text-ink-l1 transition-all focus:outline-none"
                                      >
                                        <span className="text-xl font-medium leading-none mb-1">-2</span>
                                      </button>
@@ -722,23 +817,23 @@ export function ClientHistoryCalendar({
                                          type="number"
                                          value={wVal || ''}
                                          onChange={(e) => handleLogEdit(log.id!, 'weight', (parseFloat(e.target.value) || 0).toString())}
-                                         className="w-16 min-w-[4rem] bg-transparent text-center text-xl font-black text-white focus:outline-none p-0"
+                                         className="w-16 min-w-[4rem] bg-transparent text-center text-xl font-black text-ink-l1 focus:outline-none p-0"
                                        />
-                                       <span className="text-[11px] uppercase tracking-widest text-slate-500 font-bold leading-none mt-0.5">Lbs</span>
+                                       <span className="text-[11px] uppercase tracking-widest text-ink-l3 font-bold leading-none mt-0.5 font-sans">Lbs</span>
                                      </div>
                                      <button 
                                        onClick={() => handleLogEdit(log.id!, 'weight', (wVal + 2).toString())}
-                                       className="w-10 h-10 shrink-0 flex items-center justify-center text-slate-400 bg-slate-800 rounded-lg hover:bg-slate-700 hover:text-white transition-all focus:outline-none"
+                                       className="w-10 h-10 shrink-0 flex items-center justify-center text-ink-l2 bg-slate-100 rounded-lg hover:bg-slate-200 hover:text-ink-l1 transition-all focus:outline-none"
                                      >
                                        <span className="text-xl font-medium leading-none mb-1">+2</span>
                                      </button>
                                   </div>
 
                                   {/* Reps/Time Stepper */}
-                                  <div className="bg-slate-900 border border-slate-700 rounded-xl p-1.5 flex items-center justify-between shrink-0">
+                                  <div className="bg-bg-l border border-div-l rounded-xl p-1.5 flex items-center justify-between shrink-0">
                                      <button 
                                        onClick={() => handleLogEdit(log.id!, isCardio || isStaticHold ? 'seconds' : 'reps', Math.max(0, rVal - 1).toString())}
-                                       className="w-10 h-10 shrink-0 flex items-center justify-center text-slate-400 bg-slate-800 rounded-lg hover:bg-slate-700 hover:text-white transition-all focus:outline-none"
+                                       className="w-10 h-10 shrink-0 flex items-center justify-center text-ink-l2 bg-slate-100 rounded-lg hover:bg-slate-200 hover:text-ink-l1 transition-all focus:outline-none"
                                      >
                                        <span className="text-xl font-medium leading-none mb-1">-1</span>
                                      </button>
@@ -747,14 +842,14 @@ export function ClientHistoryCalendar({
                                          type="number"
                                          value={rVal || ''}
                                          onChange={(e) => handleLogEdit(log.id!, isCardio || isStaticHold ? 'seconds' : 'reps', (parseFloat(e.target.value) || 0).toString())}
-                                         className="w-16 min-w-[4rem] bg-transparent text-center text-xl font-black text-white focus:outline-none p-0"
+                                         className="w-16 min-w-[4rem] bg-transparent text-center text-xl font-black text-ink-l1 focus:outline-none p-0"
                                          disabled={isCardio && false} 
                                        />
-                                       <span className="text-[11px] uppercase tracking-widest text-slate-500 font-bold leading-none mt-0.5">{isCardio || isStaticHold ? 'Secs' : 'Reps'}</span>
+                                       <span className="text-[11px] uppercase tracking-widest text-ink-l3 font-bold leading-none mt-0.5 font-sans">{isCardio || isStaticHold ? 'Secs' : 'Reps'}</span>
                                      </div>
                                      <button 
                                        onClick={() => handleLogEdit(log.id!, isCardio || isStaticHold ? 'seconds' : 'reps', (rVal + 1).toString())}
-                                       className="w-10 h-10 shrink-0 flex items-center justify-center text-slate-400 bg-slate-800 rounded-lg hover:bg-slate-700 hover:text-white transition-all focus:outline-none"
+                                       className="w-10 h-10 shrink-0 flex items-center justify-center text-ink-l2 bg-slate-100 rounded-lg hover:bg-slate-200 hover:text-ink-l1 transition-all focus:outline-none"
                                      >
                                        <span className="text-xl font-medium leading-none mb-1">+1</span>
                                      </button>
@@ -762,12 +857,12 @@ export function ClientHistoryCalendar({
 
                                   {/* Quality Bar */}
                                   <div>
-                                     <span className="text-[11px] font-black uppercase text-slate-500 tracking-widest mb-1.5 block px-1">Quality Grade</span>
+                                     <span className="text-[11px] font-black uppercase text-ink-l3 tracking-widest mb-1.5 block px-1 font-sans">Quality Grade</span>
                                      <div className="flex gap-1">
                                         {[
-                                          { label: 'Poor', val: 1, activeBg: 'bg-rose-500/20 text-rose-500 border-rose-500' },
-                                          { label: 'Completed', val: 2, activeBg: 'bg-amber-500/20 text-amber-500 border-amber-500' },
-                                          { label: 'Max Strength', val: 3, activeBg: 'bg-emerald-500/20 text-emerald-500 border-emerald-500' }
+                                          { label: 'Poor', val: 1, activeBg: 'bg-cta/10 text-cta border-cta shadow-xs' },
+                                          { label: 'Completed', val: 2, activeBg: 'bg-amber/10 text-amber border-amber shadow-xs' },
+                                          { label: 'Max Strength', val: 3, activeBg: 'bg-green/10 text-green border-green shadow-xs' }
                                         ].map(btn => {
                                           const isActive = quality === btn.val;
                                           return (
@@ -776,7 +871,7 @@ export function ClientHistoryCalendar({
                                               onClick={() => handleLogEdit(log.id!, 'repQuality', btn.val as RepQuality)}
                                               className={cn(
                                                 "flex-1 py-2 rounded-lg text-[11px] font-black uppercase tracking-tighter transition-all focus:outline-none border",
-                                                isActive ? btn.activeBg : "bg-slate-900 border-slate-700 text-slate-500 hover:bg-slate-800"
+                                                isActive ? btn.activeBg : "bg-bg-l border-div-l text-ink-l3 hover:bg-slate-50"
                                               )}
                                             >
                                               {btn.label}
@@ -793,18 +888,18 @@ export function ClientHistoryCalendar({
                     </div>
 
                     {/* Integrated Session Briefings */}
-                    <div className="mt-8 rounded-2xl bg-slate-800/80 border border-slate-700 p-4 sm:p-6 shadow-xl">
+                    <div className="mt-8 rounded-2xl bg-bg-l-card border border-div-l p-4 sm:p-6 shadow-xl text-ink-l1">
                       <div className="flex items-center gap-3 mb-6">
-                        <div className="w-8 h-8 rounded-xl bg-[#F06C22]/20 border border-[#F06C22]/30 flex items-center justify-center">
-                          <span className="text-[#F06C22] font-black">N</span>
+                        <div className="w-8 h-8 rounded-xl bg-cta/10 border border-cta/30 flex items-center justify-center">
+                          <span className="text-cta font-black font-sans">N</span>
                         </div>
-                        <h3 className="text-sm sm:text-base font-black uppercase tracking-[0.2em] text-[#F8F9FA]">Session Briefings & Notes</h3>
+                        <h3 className="text-sm sm:text-base font-black uppercase tracking-[0.2em] text-ink-l1 font-display">Session Briefings & Notes</h3>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="flex flex-col gap-2">
                            <div className="flex justify-between items-center mb-1">
-                             <h4 className="text-xs font-black uppercase tracking-widest text-[#38BDF8]">Notes Overview</h4>
+                             <h4 className="text-xs font-black uppercase tracking-widest text-cyan font-sans">Notes Overview</h4>
                            </div>
                            {isEditMode ? (
                              <Textarea
@@ -814,9 +909,9 @@ export function ClientHistoryCalendar({
                                className="min-h-[140px] bg-slate-900 border-slate-700 border text-white placeholder:text-slate-600 resize-none focus-visible:ring-1 focus-visible:ring-[#F06C22] font-medium text-sm leading-relaxed p-4 rounded-xl shadow-inner"
                              />
                            ) : (
-                             <div className="min-h-[140px] bg-slate-900 border border-slate-700 rounded-xl p-4">
-                               <p className="whitespace-pre-wrap text-slate-300 font-medium text-sm leading-relaxed">
-                                 {selectedSession.notes || <span className="text-slate-600 italic">No historical briefings recorded.</span>}
+                             <div className="min-h-[140px] bg-bg-l border border-div-l rounded-xl p-4">
+                               <p className="whitespace-pre-wrap text-ink-l2 font-medium text-sm leading-relaxed font-sans">
+                                 {selectedSession.notes || <span className="text-ink-l4 italic font-sans text-xs">No historical briefings recorded.</span>}
                                </p>
                              </div>
                            )}
@@ -826,7 +921,7 @@ export function ClientHistoryCalendar({
                             For now, using the combined notes as the primary field for this session edit interface. */}
                         <div className="flex flex-col gap-2">
                            <div className="flex justify-between items-center mb-1">
-                             <h4 className="text-xs font-black uppercase tracking-widest text-[#F06C22]">Client Status / Additional Context</h4>
+                             <h4 className="text-cta font-sans font-black uppercase tracking-widest">Client Status / Additional Context</h4>
                              {isEditMode && (
                                <Select defaultValue="Medium">
                                  <SelectTrigger className="w-[100px] h-6 bg-slate-900 border-slate-700 text-[11px] uppercase font-black tracking-widest px-2 py-0 text-slate-400">
@@ -846,8 +941,8 @@ export function ClientHistoryCalendar({
                                className="min-h-[140px] bg-slate-900 border-slate-700 border text-white placeholder:text-slate-600 resize-none focus-visible:ring-1 focus-visible:ring-[#F06C22] font-medium text-sm leading-relaxed p-4 rounded-xl shadow-inner"
                              />
                            ) : (
-                             <div className="min-h-[140px] bg-slate-900 border border-slate-700 rounded-xl p-4 flex items-center justify-center">
-                               <span className="text-slate-600 italic text-sm font-medium">Context stored in historical notes.</span>
+                             <div className="min-h-[140px] bg-bg-l border border-div-l rounded-xl p-4 flex items-center justify-center font-sans">
+                               <span className="text-ink-l4 italic text-sm font-medium font-sans">Context stored in historical notes.</span>
                              </div>
                            )}
                         </div>

@@ -284,6 +284,7 @@ export interface Client {
   notes?: string;
   events?: ClientEvent[];
   isRoutineBActive?: boolean;
+  preferredTodayRoutineId?: string;
   remainingSessions: number;
   legacy_filemaker_id?: string;
   mindbody_name?: string;
@@ -358,6 +359,7 @@ export interface Routine {
   machineIds: string[];
   machineNotes?: Record<string, string>; // Machine ID -> Routine-specific Note
   createdAt?: any;
+  updatedAt?: any;
 }
 
 export interface RoutineAdjustment {
@@ -370,6 +372,7 @@ export interface RoutineAdjustment {
   trainerId: string;
   notes?: string;
   createdAt: any;
+  changeType?: "created" | "machines" | "enabled" | "disabled";
 }
 
 export type SessionType = "Standard" | "Onboarding" | "Reset";
