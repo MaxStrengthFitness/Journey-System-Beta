@@ -30,6 +30,35 @@ export interface MachineKnowledge {
 }
 
 export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
+  // Neck
+  "4_way_neck": {
+    id: "4_way_neck",
+    name: "4-Way Neck",
+    kinematicClassification: "Simple Push/Pull",
+    executionPosture: "Upright Neutral",
+    requiresHandoff: false,
+    category: "Cervical",
+    baseMale: 20,
+    baseFemale: 10,
+    setup: "Adjust seat so head aligns with the pad. Brace torso.",
+    execution: "Move head against resistance in the desired direction (flexion, extension, lateral).",
+    target: "Neck Muscles",
+    targetMuscles: [
+      "Neck - Cervical Flexion/Extension/Lateral"
+    ],
+    synergists: [
+      "Trapezius"
+    ],
+    setupCues: [
+      "Adjust seat height to align the head comfortably within the pad."
+    ],
+    executionCues: [
+      "Brace torso and execute a smooth, controlled motion with the head."
+    ],
+    clinicalWarnings: [
+      "Use extremely light loads. Stop immediately if any cervical pain is felt."
+    ]
+  },
   // Lower Body
   "leg_press": {
     id: "leg_press",
@@ -89,7 +118,7 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
   },
   "leg_curl": {
     id: "leg_curl",
-    name: "Leg Curl",
+    name: "Seated Leg Curl",
     imageUrl: legCurlImg,
     kinematicClassification: "Simple Pull",
     executionPosture: "Chest Up / Anterior Pelvic Tilt",
@@ -150,7 +179,7 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
   },
   "leg_extension": {
     id: "leg_extension",
-    name: "Leg Extension",
+    name: "Seated Leg Extension",
     imageUrl: legExtensionImg,
     kinematicClassification: "Simple Push",
     executionPosture: "Chest Up / Anterior Pelvic Tilt",
@@ -213,7 +242,7 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
   // Hips
   "abduction": {
     id: "abduction",
-    name: "Abduction",
+    name: "Hip Abductor",
     imageUrl: abductionImg,
     kinematicClassification: "Simple Push",
     executionPosture: "Chest Up / Anterior Pelvic Tilt",
@@ -270,7 +299,7 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
   },
   "adduction": {
     id: "adduction",
-    name: "Adduction",
+    name: "Hip Adductor",
     imageUrl: adductionImg,
     kinematicClassification: "Simple Pull",
     executionPosture: "Chest Up / Anterior Pelvic Tilt",
@@ -484,7 +513,7 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
   },
   "chest_flye": {
     id: "chest_flye",
-    name: "Chest Flye",
+    name: "Pec Fly",
     kinematicClassification: "Simple Push",
     executionPosture: "Chest Up / Anterior Pelvic Tilt",
     requiresHandoff: false,
@@ -531,7 +560,7 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
   },
   "triceps_extension": {
     id: "triceps_extension",
-    name: "Triceps Extension",
+    name: "Seated Tricep",
     kinematicClassification: "Simple Push",
     executionPosture: "Posterior Pelvic Tilt / Contracted Abdomen",
     requiresHandoff: false,
@@ -643,7 +672,7 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
   },
   "pulldown": {
     id: "pulldown",
-    name: "Pulldown (Torso Arm)",
+    name: "Torso Arm",
     kinematicClassification: "Compound Pull",
     executionPosture: "Chest Up / Anterior Pelvic Tilt",
     requiresHandoff: true,
@@ -698,7 +727,7 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
   },
   "pullover": {
     id: "pullover",
-    name: "Pullover",
+    name: "Seated Pullover",
     kinematicClassification: "Simple Pull",
     executionPosture: "Posterior Pelvic Tilt / Contracted Abdomen",
     requiresHandoff: true,
@@ -751,7 +780,7 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
   },
   "simple_row": {
     id: "simple_row",
-    name: "Simple Row",
+    name: "Rowing Back",
     kinematicClassification: "Simple Pull",
     executionPosture: "Chest Up / Anterior Pelvic Tilt",
     requiresHandoff: false,
@@ -802,7 +831,7 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
   },
   "biceps_curl": {
     id: "biceps_curl",
-    name: "Biceps Curl",
+    name: "Seated Bicep Curl",
     kinematicClassification: "Simple Pull",
     executionPosture: "Chest Up / Anterior Pelvic Tilt",
     requiresHandoff: false,
@@ -849,7 +878,7 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
   // Trunk/Spine/Core
   "lumbar_extension": {
     id: "lumbar_extension",
-    name: "Lumbar Extension",
+    name: "Low Back",
     kinematicClassification: "Simple Pull",
     executionPosture: "Chest Up / Anterior Pelvic Tilt",
     requiresHandoff: false,
@@ -903,7 +932,7 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
   },
   "abdominals": {
     id: "abdominals",
-    name: "Abdominals",
+    name: "Seated Abdominal",
     kinematicClassification: "Simple Push",
     executionPosture: "Posterior Pelvic Tilt / Contracted Abdomen",
     requiresHandoff: true,
@@ -957,7 +986,7 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
   },
   "torso_rotation": {
     id: "torso_rotation",
-    name: "Torso Rotation",
+    name: "Rotary Torso",
     kinematicClassification: "Simple Rotary",
     executionPosture: "Posterior Pelvic Tilt / Contracted Abdomen",
     requiresHandoff: false,

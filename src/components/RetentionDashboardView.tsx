@@ -76,18 +76,44 @@ export function RetentionDashboardView({
       
       const entry = { client: c, lastSession, trainer, diffDays, lastDate };
 
-      if (c.retentionMeta?.excludedFromMIA) {
-        excludedArr.push(entry);
+      // Check active absences
+      const activeAbsence = c.events?.some(e => {
+        if (e.type !== "Vacation" && e.type !== "Medical" && e.type !== "Snowbird") return false;
+        if (!e.date) return false;
+        let start = safeToDate(e.date);
+        start.setHours(0,0,0,0);
+        let end = e.endDate ? safeToDate(e.endDate) : start;
+        end.setHours(23,59,59,999);
+        return now >= start && now <= end;
+      });
+
+      if (c.retentionMeta?.excludedFromMIA || activeAbsence) {
+        excludedArr.push({ ...entry, excludedReason: activeAbsence ? 'Active Absence Event' : c.retentionMeta?.excludedReason });
       } else if (c.remainingSessions > 0) {
+        // Find recent check-ins for "At Risk" flags
+        const recentSessions = sessions.filter(s => s.clientId === c.id).sort((a,b)=>safeToDate(b.date).getTime() - safeToDate(a.date).getTime()).slice(0, 3);
+        const poorRecoveryCount = recentSessions.filter(s => {
+           if (!s.preSessionCheckIn) return false;
+           return s.preSessionCheckIn.sleepQuality === 'poor' || s.preSessionCheckIn.stressLevel! >= 4;
+        }).length;
+        const lowSessions = c.remainingSessions <= 3;
+        
+        let isAtRiskOverride = false;
+        if (poorRecoveryCount >= 2 || lowSessions) {
+          isAtRiskOverride = true;
+        }
+
         if (diffDays >= settings.miaThresholdDays) {
           if (diffDays <= settings.autoExcludeAfterDays) {
             miaArr.push(entry);
           } else {
-            // Logic would normally auto-exclude them. We just exclude them here in view for now.
-            excludedArr.push({ ...entry, autoExcluded: true });
+             excludedArr.push({ ...entry, autoExcluded: true });
           }
         } else if (diffDays >= settings.atRiskThresholdDays && diffDays < settings.miaThresholdDays) {
           atRiskArr.push(entry);
+        } else if (isAtRiskOverride) {
+          // Even if they are perfectly on time, they might be At Risk!
+          atRiskArr.push({ ...entry, isFlaggedRisk: true });
         }
       }
     });
@@ -259,6 +285,11 @@ export function RetentionDashboardView({
                               <span className="text-[11px] text-ink-d3 truncate">
                                 Trainer: {item.trainer?.fullName}
                               </span>
+                              {(item as any).isFlaggedRisk && (
+                                <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 border border-amber-500/50">
+                                  Flagged Risk
+                                </span>
+                              )}
                             </div>
                             {item.client.retentionMeta?.lastContactedDate && (
                               <div className="text-[11px] text-cyan mt-1 flex items-center gap-1">
@@ -266,9 +297,9 @@ export function RetentionDashboardView({
                                 Contacted: {safeToDate(item.client.retentionMeta.lastContactedDate).toLocaleDateString()}
                               </div>
                             )}
-                            {item.client.retentionMeta?.excludedReason && (
+                            {((item as any).excludedReason || item.client.retentionMeta?.excludedReason) && (
                               <div className="text-[11px] text-ink-d3 mt-1 italic">
-                                Excluded: {item.client.retentionMeta.excludedReason}
+                                Excluded: {(item as any).excludedReason || item.client.retentionMeta?.excludedReason}
                               </div>
                             )}
                           </div>

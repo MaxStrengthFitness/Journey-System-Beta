@@ -131,6 +131,7 @@ export function BriefingScreen({
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [showAddMachine, setShowAddMachine] = useState(false);
   const [sleepQuality, setSleepQuality] = useState<SleepQuality | undefined>(undefined);
+  const [stressLevel, setStressLevel] = useState<1 | 2 | 3 | 4 | 5 | undefined>(undefined);
   const [bodyStates, setBodyStates] = useState<BodyStateTag[]>([]);
 
   const routineA = routines.find(r => r.name.includes('Routine A'));
@@ -212,6 +213,7 @@ export function BriefingScreen({
   const handleStart = () => {
     const checkIn: PreSessionCheckIn = {};
     if (sleepQuality) checkIn.sleepQuality = sleepQuality;
+    if (stressLevel) checkIn.stressLevel = stressLevel;
     if (bodyStates.length > 0) checkIn.bodyStates = bodyStates;
 
     onStart(
@@ -365,6 +367,37 @@ export function BriefingScreen({
                         }`}
                       >
                         {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Stress — 1-5 scale */}
+              <div className="space-y-2 mb-4">
+                <label className="text-[11px] uppercase tracking-widest text-ink-d2 font-bold ml-1 block">
+                  Stress Level (1-5)
+                </label>
+                <div className="flex w-full gap-2">
+                  {([1, 2, 3, 4, 5] as const).map((lvl) => {
+                    const isActive = stressLevel === lvl;
+                    return (
+                      <button
+                        key={lvl}
+                        type="button"
+                        onClick={() =>
+                          setStressLevel((prev) =>
+                            prev === lvl ? undefined : lvl
+                          )
+                        }
+                        aria-pressed={isActive}
+                        className={`flex-1 h-12 rounded-xl text-[13px] font-bold uppercase tracking-wide transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan ${
+                          isActive
+                            ? 'bg-cyan text-bg-dark shadow-lg'
+                            : 'bg-surface-2 text-ink-d2 border border-div-d hover:bg-bg-dark-3 hover:text-white'
+                        }`}
+                      >
+                        {lvl}
                       </button>
                     );
                   })}

@@ -31,7 +31,8 @@ import {
   Radar,
   PolarGrid,
   PolarAngleAxis,
-  PolarRadiusAxis
+  PolarRadiusAxis,
+  Legend
 } from "recharts";
 
 export interface ClientClinicalReviewViewProps {
@@ -64,6 +65,61 @@ export function ClientClinicalReviewView({
     [client, logs, sessions, focusRecords, incidents, clinicalTags, machines, windowDays]
   );
   
+  const recoveryData = useMemo(() => {
+    const monthMap = new Map<string, { label: string; sortKey: string; totalSleep: number; countSleep: number; totalStress: number; countStress: number }>();
+
+    sessions.forEach((s) => {
+      if (!s.preSessionCheckIn) return;
+      const ci = s.preSessionCheckIn;
+      
+      let dateRaw: any = s.startTime || s.createdAt || s.date;
+      let dt = new Date();
+      if (dateRaw?.toDate) {
+        dt = dateRaw.toDate();
+      } else if (typeof dateRaw === "string") {
+        dt = new Date(dateRaw);
+      } else if (typeof dateRaw === "number") {
+        dt = new Date(dateRaw);
+      } else {
+        return; // Unable to parse date
+      }
+
+      if (isNaN(dt.getTime())) return;
+
+      const monthKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+      const monthLabel = dt.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+
+      if (!monthMap.has(monthKey)) {
+        monthMap.set(monthKey, { label: monthLabel, sortKey: monthKey, totalSleep: 0, countSleep: 0, totalStress: 0, countStress: 0 });
+      }
+
+      const entry = monthMap.get(monthKey)!;
+
+      if (ci.sleepQuality) {
+        let val = 0;
+        if (ci.sleepQuality === "poor") val = 1;
+        else if (ci.sleepQuality === "average") val = 3;
+        else if (ci.sleepQuality === "optimal") val = 5;
+
+        entry.totalSleep += val;
+        entry.countSleep += 1;
+      }
+
+      if (ci.stressLevel) {
+        entry.totalStress += ci.stressLevel;
+        entry.countStress += 1;
+      }
+    });
+
+    const sorted = Array.from(monthMap.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+
+    return sorted.map((s) => ({
+      name: s.label,
+      sleep: s.countSleep > 0 ? parseFloat((s.totalSleep / s.countSleep).toFixed(1)) : null,
+      stress: s.countStress > 0 ? parseFloat((s.totalStress / s.countStress).toFixed(1)) : null,
+    }));
+  }, [sessions]);
+
   const clientName = `${client.firstName} ${client.lastName}`;
   const openIncidents = incidents.filter(i => !i.resolvedAt && i.clientId === client.id);
 
@@ -285,52 +341,33 @@ export function ClientClinicalReviewView({
               </div>
             </div>
 
-            {/* PRE-SESSION STATE */}
+            {/* DAILY RECOVERY CHECK-IN */}
             <div className="bg-surface-1 rounded-3xl p-6 border border-div-d flex flex-col gap-4">
-              <h3 className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">Pre-Session Readiness</h3>
+              <h3 className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">Lifetime Recovery Tracker</h3>
               
-              {metrics.preSessionCheckIns.length > 0 ? (
-                <div className="flex-1 min-h-[200px]">
-                  {/* Simplistic mock chart for readiness - ideally using Recharts composed chart but keeping it simple */}
-                  <div className="h-full flex items-end gap-2 px-2 pb-6 relative">
-                     <div className="absolute inset-0 flex flex-col justify-between py-6">
-                        <div className="border-b border-div-l/50 h-0 w-full" />
-                        <div className="border-b border-div-l/50 h-0 w-full" />
-                        <div className="border-b border-div-l/50 h-0 w-full" />
-                     </div>
-                     {metrics.preSessionCheckIns.map((ci, i) => {
-                        const sleep = ci.checkIn?.sleepHours || 0;
-                        const soreness = ci.checkIn?.sorenessLevel || 0;
-                        return (
-                          <div key={i} className="flex-1 flex flex-col justify-end items-center gap-1 z-10 group relative min-h-[44px]">
-                             {/* Soreness bar */}
-                             {soreness > 0 && <div className="w-full max-w-[20px] bg-red-500/50 rounded-t-sm" style={{ height: `${soreness * 15}%` }} />}
-                             {/* Sleep dot */}
-                             <div className="absolute bottom-[20%] w-2 h-2 rounded-full bg-cyan ring-2 ring-bg-dark" style={{ bottom: `${Math.min(sleep * 10, 100)}%` }} />
-                             
-                             <div className="opacity-0 group-hover:opacity-100 absolute -top-12 bg-surface-2 p-2 rounded-lg border border-div-l text-[11px] text-white whitespace-nowrap z-20 pointer-events-none">
-                                Sleep: {sleep}hr | Sore: {soreness}/5
-                             </div>
-                          </div>
-                        )
-                     })}
-                  </div>
-                  <div className="flex justify-center gap-6 mt-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-cyan" />
-                      <span className="text-[11px] text-ink-d2 uppercase tracking-widest font-bold">Sleep (Hrs)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                       <div className="w-2 h-2 bg-red-500/50" />
-                       <span className="text-[11px] text-ink-d2 uppercase tracking-widest font-bold">Soreness</span>
-                    </div>
-                  </div>
+              {recoveryData.length > 0 ? (
+                <div className="flex-1 min-h-[250px] flex flex-col">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={recoveryData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--div-l)" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--ink-d3)", fontWeight: 'bold' }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: "var(--ink-d3)" }} axisLine={false} tickLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: "var(--bg-dark)", border: "1px solid var(--div-d)", borderRadius: "8px" }}
+                        itemStyle={{ fontSize: "12px", fontWeight: "bold" }}
+                        labelStyle={{ color: "var(--cyan)", fontSize: "12px", fontWeight: "bold" }}
+                      />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', paddingTop: '10px' }} />
+                      <Line type="monotone" name="Sleep (1=Poor, 5=Optimal)" dataKey="sleep" stroke="var(--cyan)" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" name="Stress (1=Low, 5=High)" dataKey="stress" stroke="#F59E0B" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-div-l rounded-2xl">
                    <ActivitySquare className="w-8 h-8 text-ink-d3 mb-3" />
                    <p className="text-[12px] font-bold text-ink-d2 uppercase tracking-widest">No Check-in Data</p>
-                   <p className="text-sm text-ink-d3 mt-2">Check-in metrics (sleep, soreness) will appear here when collected before sessions.</p>
+                   <p className="text-sm text-ink-d3 mt-2">Daily Recovery Check-in metrics (sleep, stress, body state) will appear here when collected before sessions.</p>
                 </div>
               )}
             </div>

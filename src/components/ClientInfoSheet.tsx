@@ -25,6 +25,7 @@ interface ClientInfoSheetProps {
   onOpenChange: (open: boolean) => void;
   client: Client;
   authTrainer: Trainer | null;
+  defaultTab?: string;
 }
 
 export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
@@ -32,15 +33,18 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
   onOpenChange,
   client,
   authTrainer,
+  defaultTab,
 }) => {
-  const { studios } = useActiveStudio();
+  const { availableStudios: studios } = useActiveStudio();
   const [formData, setFormData] = useState<Partial<Client>>({});
   const [dirtyFields, setDirtyFields] = useState<Set<keyof Client>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState("identity");
 
   // Initialize form state
   useEffect(() => {
     if (isOpen && client) {
+      setActiveTab(defaultTab || "identity");
       setFormData({
         firstName: client.firstName || "",
         lastName: client.lastName || "",
@@ -191,7 +195,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
            </div>
         </SheetHeader>
 
-        <Tabs defaultValue="identity" className="flex-1 flex flex-col overflow-hidden">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
           <div className="px-6 pt-4 border-b border-div-l">
             <TabsList className="bg-transparent border-none p-0 flex flex-nowrap overflow-x-auto no-scrollbar gap-4 h-10 w-full justify-start">
               <TabsTrigger value="identity" className="data-[state=active]:bg-cyan/10 data-[state=active]:text-cyan data-[state=active]:shadow-none rounded-xl text-ink-l3 text-[11px] font-bold uppercase tracking-widest h-8 px-4 transition-all border border-transparent data-[state=active]:border-cyan/20 shrink-0">Identity</TabsTrigger>
@@ -517,12 +521,23 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
                           onChange={e => updateEvent(event.id!, "title", e.target.value)} 
                           className="font-bold border-div-l h-10" placeholder="Event Title"
                         />
-                        <Input 
-                          type="date" 
-                          value={event.date} 
-                          onChange={e => updateEvent(event.id!, "date", e.target.value)} 
-                          className="border-div-l text-xs font-bold h-10" 
-                        />
+                        <div className="flex flex-col gap-1">
+                          <Input 
+                            type="date" 
+                            value={event.date} 
+                            onChange={e => updateEvent(event.id!, "date", e.target.value)} 
+                            className="border-div-l text-xs font-bold h-10" 
+                          />
+                          {(event.type === 'Vacation' || event.type === 'Medical' || event.type === 'Snowbird' || event.type === 'Alert' || event.endDate) && (
+                            <Input 
+                              type="date" 
+                              value={event.endDate || ''} 
+                              onChange={e => updateEvent(event.id!, "endDate", e.target.value)} 
+                              className="border-div-l text-xs font-bold h-10" 
+                              placeholder="End Date"
+                            />
+                          )}
+                        </div>
                       </div>
                       <div className="grid grid-cols-[120px_1fr] gap-3">
                         <Select value={event.type} onValueChange={v => updateEvent(event.id!, "type", v)}>
@@ -531,8 +546,11 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Other">Other</SelectItem>
+                            <SelectItem value="Alert">Alert</SelectItem>
                             <SelectItem value="Surgery">Surgery</SelectItem>
+                            <SelectItem value="Medical">Medical</SelectItem>
                             <SelectItem value="Vacation">Vacation</SelectItem>
+                            <SelectItem value="Snowbird">Snowbird</SelectItem>
                             <SelectItem value="Pregnancy">Pregnancy</SelectItem>
                             <SelectItem value="Goal">Goal</SelectItem>
                             <SelectItem value="Progress Report">Progress Report</SelectItem>

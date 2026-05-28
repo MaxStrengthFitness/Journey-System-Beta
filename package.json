@@ -37,6 +37,7 @@
     "node-ical": "^0.26.0",
     "papaparse": "^5.5.3",
     "react": "^19.0.0",
+    "react-body-highlighter": "^2.0.5",
     "react-dom": "^19.0.0",
     "recharts": "^3.8.1",
     "shadcn": "^4.2.0",

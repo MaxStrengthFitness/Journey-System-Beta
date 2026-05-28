@@ -14,7 +14,7 @@ export type AnatomyView = 'front' | 'side' | 'back';
 export type MuscleId =
   // Anterior
   | 'pecs' | 'delts-front' | 'biceps' | 'forearms'
-  | 'abs' | 'obliques' | 'adductors' | 'quads'
+  | 'abs' | 'obliques' | 'adductors' | 'abductors' | 'quads'
   // Posterior
   | 'traps' | 'delts-rear' | 'rhomboids' | 'lats'
   | 'triceps' | 'lower-back' | 'glutes' | 'hamstrings' | 'calves'
@@ -175,9 +175,9 @@ export const MACHINE_ANATOMY: Record<string, MachineAnatomyMap> = {
   // ─── HIP ISOLATION ────────────────────────────────
   abduction: {
     machineId: 'abduction',
-    preferredView: 'front',
-    primary: ['glutes'],
-    secondary: [],
+    preferredView: 'back',
+    primary: ['abductors'],
+    secondary: ['glutes'],
     movementPattern: 'Hip Isolation',
     clinicalNote: 'Hip abduction — gluteus medius and minimus isolation.',
   },
@@ -216,6 +216,14 @@ export const MACHINE_ANATOMY: Record<string, MachineAnatomyMap> = {
   },
 
   // ─── CERVICAL ─────────────────────────────────────
+  '4_way_neck': {
+    machineId: '4_way_neck',
+    preferredView: 'side',
+    primary: ['neck'],
+    secondary: ['traps'],
+    movementPattern: 'Cervical',
+    clinicalNote: 'Multi-directional cervical stimulation.',
+  },
   cervical_extension: {
     machineId: 'cervical_extension',
     preferredView: 'side',

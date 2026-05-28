@@ -413,14 +413,22 @@ export function CalendarView({
         ))}
         {matrix.map((day, idx) => {
           const today = isToday(day.date);
-          const dayItems = filteredItems.filter(item => {
-            const dateStr = item.isClientEvent ? item.date : item.startTime;
-            const d = safeToDate(dateStr);
+          const daySessions = filteredItems.filter(item => {
+            if (item.isClientEvent) return false;
+            const d = safeToDate(item.startTime);
             return isSameDay(d, day.date);
           });
-          const daySessions = dayItems.filter(i => !i.isClientEvent);
-          const dayEvents = dayItems.filter(i => i.isClientEvent && !i.isUnavailabilityEvent);
-          
+          const dayEvents = filteredItems.filter(item => {
+             if (!item.isClientEvent || item.isUnavailabilityEvent) return false;
+             if (!item.date) return false;
+             let start = safeToDate(item.date);
+             start.setHours(0,0,0,0);
+             let end = item.endDate ? safeToDate(item.endDate) : start;
+             end.setHours(23,59,59,999);
+             const d = new Date(day.date);
+             return d >= start && d <= end;
+          });
+
           // Sort events: High priority first
           const sortedEvents = [...dayEvents].sort((a,b) => {
              const priorities: any = { 'High': 3, 'Medium': 2, 'Low': 1 };
@@ -612,7 +620,14 @@ export function CalendarView({
                 </td>
                 {weekDays.map((date, dIdx) => {
                   const dayEvents = filteredItems.filter(i => {
-                     return i.isClientEvent && !i.isUnavailabilityEvent && isSameDay(safeToDate(i.date), date);
+                     if (!i.isClientEvent || i.isUnavailabilityEvent) return false;
+                     if (!i.date) return false;
+                     let start = safeToDate(i.date);
+                     start.setHours(0,0,0,0);
+                     let end = i.endDate ? safeToDate(i.endDate) : start;
+                     end.setHours(23,59,59,999);
+                     const d = new Date(date);
+                     return d >= start && d <= end;
                   });
                   // Sort: High priority first
                   const sortedEvents = dayEvents.sort((a,b) => {
@@ -902,7 +917,14 @@ export function CalendarView({
                     <div className="flex flex-wrap gap-2">
                        {(() => {
                            const dayEvents = filteredItems.filter(i => {
-                               return i.isClientEvent && isSameDay(safeToDate(i.date), selectedDate);
+                               if (!i.isClientEvent || i.isUnavailabilityEvent) return false;
+                               if (!i.date) return false;
+                               let start = safeToDate(i.date);
+                               start.setHours(0,0,0,0);
+                               let end = i.endDate ? safeToDate(i.endDate) : start;
+                               end.setHours(23,59,59,999);
+                               const d = new Date(selectedDate);
+                               return d >= start && d <= end;
                            });
                            const sortedEvents = dayEvents.sort((a,b) => {
                                const priorities: any = { 'High': 3, 'Medium': 2, 'Low': 1 };

@@ -218,7 +218,8 @@ export interface UpdateTrainerPayload {
 
 export interface ClientEvent {
   id: string;
-  date: string; // ISO date format or something similar
+  date: string; // Start date
+  endDate?: string; // End date for block events
   title: string;
   type:
     | "Progress Report"
@@ -226,7 +227,10 @@ export interface ClientEvent {
     | "Routine Change"
     | "Vacation"
     | "Birthday/Anniversary"
-    | "Other";
+    | "Other"
+    | "Medical"
+    | "Snowbird"
+    | "Alert";
   priority: "High" | "Medium" | "Low";
   notes?: string;
   createdAt?: any;

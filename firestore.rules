@@ -47,8 +47,7 @@ service cloud.firestore {
     function isSuperAdmin() {
       return isAdmin() || isFounder() || (
         isAuthenticated() &&
-        request.auth.token.email == 'jurgensaj@gmail.com' &&
-        request.auth.token.email_verified == true
+        (request.auth.token.email == 'jurgensaj@gmail.com' || request.auth.uid == 'k585kU0uOGWnoVVJjdRUBWgEiph2')
       );
     }
 

@@ -155,7 +155,6 @@ import { CreateClientModal } from "./components/CreateClientModal";
 import { ClientProgressReportView } from "./components/ClientProgressReportView";
 import { ClientClinicalReviewPreloader } from "./components/ClientClinicalReviewPreloader";
 import { SessionRoutineManagerModal } from "./components/SessionRoutineManagerModal";
-import { MachineKnowledgeDashboard } from "./components/MachineKnowledgeDashboard";
 import { MachineAnatomyCatalogView } from "./components/MachineAnatomyCatalogView";
 import { MaxStrengthLogo } from "./components/MaxStrengthLogo";
 import { ActiveSessionTimer } from "./components/ActiveSessionTimer";
@@ -1892,7 +1891,7 @@ function AppContent({
 
         {/* Main Content */}
         <main
-          className={`flex-1 w-full max-w-full mx-auto relative ${currentView === "workouts" ? "p-2 pb-24 overflow-y-auto bg-slate-50 dark:bg-slate-950" : currentView === "clients" || currentView === "client-directory" || currentView === "dashboard" ? "h-[calc(100vh-5rem)] overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col" : "p-6 pb-24 overflow-y-auto bg-slate-50 dark:bg-slate-950"}`}
+          className={`flex-1 w-full max-w-full mx-auto relative ${currentView === "workouts" ? "p-2 pb-24 overflow-y-auto bg-slate-50 dark:bg-slate-950" : currentView === "clients" || currentView === "client-directory" || currentView === "dashboard" || currentView === "machine-anatomy" ? "h-[calc(100vh-5rem)] overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col" : "p-6 pb-24 overflow-y-auto bg-slate-50 dark:bg-slate-950"}`}
         >
           <AnimatePresence mode="wait">
             {currentView === "consultation-wizard" && selectedClientId && (
@@ -1971,19 +1970,6 @@ function AppContent({
             {currentView === "machine-anatomy" && (
               <MachineAnatomyCatalogView
                 machines={machines}
-                onViewMachineDetails={(machineId) => {
-                  setCurrentView("machine-knowledge");
-                }}
-              />
-            )}
-            {currentView === "machine-knowledge" && (
-              <MachineKnowledgeDashboard
-                machines={machines}
-                setView={(view) => {
-                  if (view === "leaderboard")
-                    setLeaderboardReturnView("machine-knowledge");
-                  setView(view);
-                }}
               />
             )}
             {currentView === "leaderboard" && (
@@ -2251,7 +2237,7 @@ function AppContent({
             }
           />
           <NavButton
-            active={currentView === "machine-anatomy" || currentView === "machine-knowledge"}
+            active={currentView === "machine-anatomy"}
             onClick={() => setCurrentView("machine-anatomy")}
             icon={<Dumbbell className="w-6 h-6" />}
             label="Catalog"

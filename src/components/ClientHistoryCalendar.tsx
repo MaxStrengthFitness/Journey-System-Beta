@@ -36,7 +36,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { WorkoutSession, ExerciseLog, Machine, Trainer, RepQuality, Studio } from '../types';
+import { WorkoutSession, ExerciseLog, Machine, Trainer, RepQuality, Studio, ClientEvent } from '../types';
 import { cn, parseSessionDate, calculateExerciseVolume } from '../lib/utils';
 import { OperationType, handleFirestoreError } from '../lib/firestore-errors';
 import { useActiveStudio } from '../ActiveStudioContext';
@@ -64,14 +64,16 @@ export function ClientHistoryCalendar({
   machines,
   trainers,
   user,
-  allLogs = []
+  allLogs = [],
+  clientEvents = [],
 }: { 
   clientId: string, 
   clientHomeStudioId?: string,
   machines: Machine[],
   trainers: Trainer[],
   user?: any,
-  allLogs?: ExerciseLog[]
+  allLogs?: ExerciseLog[],
+  clientEvents?: ClientEvent[]
 }) {
   const { activeStudioId } = useActiveStudio();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
@@ -160,6 +162,17 @@ export function ClientHistoryCalendar({
       if (timestamp === 0) return false;
       const d = new Date(timestamp);
       return isSameDay(d, date);
+    });
+  };
+
+  const eventsOnDay = (date: Date) => {
+    return clientEvents.filter(e => {
+      if (!e.date) return false;
+      const start = new Date(e.date);
+      start.setHours(0,0,0,0);
+      const end = e.endDate ? new Date(e.endDate) : start;
+      end.setHours(23,59,59,999);
+      return date >= start && date <= end;
     });
   };
 
@@ -426,6 +439,7 @@ export function ClientHistoryCalendar({
                         if (!date) return <div key={`empty-${wIdx}-${idx}`} className="min-h-[100px]" />;
                         
                         const daySessions = sessionsOnDay(date);
+                        const dayEvents = eventsOnDay(date);
                         const timestamp = selectedSession ? parseSessionDate(selectedSession.date) : 0;
                         const isSelected = selectedSession && timestamp > 0 && isSameDay(new Date(timestamp), date);
                         const today = isSameDay(new Date(), date);
@@ -445,12 +459,14 @@ export function ClientHistoryCalendar({
                               isSelected 
                                 ? "bg-bg-dark border-bg-dark text-ink-d1 shadow-md" 
                                 : "bg-bg-l-card border-div-l hover:border-div-l/80",
-                              today ? "ring-2 ring-green" : ""
+                              today ? "ring-2 ring-green" : "",
+                              (dayEvents.some(e => e.type === "Vacation" || e.type === "Medical" || e.type === "Snowbird")) ? "bg-red-50/50 border-red-100" : ""
                             )}
                           >
                             <span className={cn(
-                              "text-[18px] font-black leading-none font-sans absolute top-3 left-3",
-                              isSelected ? "text-ink-d1" : "text-ink-l1"
+                              "text-[18px] font-black leading-none font-sans absolute top-3 left-3 z-10",
+                              isSelected ? "text-ink-d1" : "text-ink-l1",
+                              (dayEvents.some(e => e.type === "Vacation" || e.type === "Medical" || e.type === "Snowbird")) ? "text-red-500" : ""
                             )}>
                               {date.getDate()}
                             </span>
@@ -476,13 +492,27 @@ export function ClientHistoryCalendar({
                               const initials = daySessions[0].trainerInitials || '--';
                               return (
                                 <div className={cn(
-                                  "w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black uppercase absolute bottom-2.5 right-2.5 shadow-sm",
+                                  "w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black uppercase absolute bottom-2.5 right-2.5 shadow-sm z-10",
                                   getTrainerChipStyles(initials)
                                 )}>
                                   {initials}
                                 </div>
                               );
                             })()}
+
+                            {dayEvents.length > 0 && (
+                              <div className="absolute bottom-2 left-2 right-12 flex flex-col gap-1 z-10 w-fit max-w-[80%]">
+                                {dayEvents.map(e => (
+                                  <div key={e.id} className={cn("text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded text-white overflow-hidden text-ellipsis whitespace-nowrap", 
+                                    e.type === 'Alert' ? 'bg-amber-500' :
+                                    e.type === 'Medical' || e.type === 'Snowbird' || e.type === 'Vacation' ? 'bg-red-500' :
+                                    'bg-cyan-500'
+                                  )}>
+                                    {e.title || e.type}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         );
                       })}

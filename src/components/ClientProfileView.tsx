@@ -313,6 +313,7 @@ export function ClientProfileView({
 
   const [activeTab, setActiveTab] = useState("journey");
   const [isInfoSheetOpen, setIsInfoSheetOpen] = useState(false);
+  const [infoSheetTab, setInfoSheetTab] = useState("identity");
   const [journeyDensity, setJourneyDensity] = useState<"Compact" | "Comfortable" | "Full">(() => {
     if (typeof window !== "undefined" && clientId) {
       return (localStorage.getItem(`journeyDensity_${clientId}`) as any) || "Comfortable";
@@ -1902,7 +1903,7 @@ export function ClientProfileView({
 
   useEffect(() => {
     if (!clientId || hasQuotaError) return;
-    if (activeTab !== "journey" && activeTab !== "focus") return;
+    if (activeTab !== "journey" && activeTab !== "journal") return;
 
     const fetchFocuses = async () => {
       try {
@@ -2376,7 +2377,10 @@ export function ClientProfileView({
 
         <div className="absolute top-6 right-6 md:static flex flex-col md:flex-row items-center gap-3 z-20 shrink-0">
           <Button
-            onClick={() => setIsInfoSheetOpen(true)}
+            onClick={() => {
+              setInfoSheetTab("identity");
+              setIsInfoSheetOpen(true);
+            }}
             variant="outline"
             className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 h-10 sm:h-12 w-10 sm:w-12 p-0 flex items-center justify-center transition-colors shadow-sm"
             title="Client Info"
@@ -2453,7 +2457,7 @@ export function ClientProfileView({
                 { val: "journey", label: "Journey" },
                 { val: "routines", label: "Routines" },
                 { val: "equipment", label: "Equipment" },
-                { val: "focus", label: "Focus" },
+                { val: "journal", label: "Journal" },
                 { val: "history", label: "History" },
                 { val: "clinical", label: "Clinical" },
               ].map((tab) => (
@@ -2945,7 +2949,7 @@ export function ClientProfileView({
         </Dialog>
       </TabsContent>
 
-        <TabsContent value="focus" className="mt-0 flex-1 min-h-0 focus-visible:outline-none">
+        <TabsContent value="journal" className="mt-0 flex-1 min-h-0 focus-visible:outline-none">
           <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-6">
             
             {/* Header Content & Trigger */}
@@ -2957,14 +2961,27 @@ export function ClientProfileView({
                 </p>
               </div>
 
-              {/* Action Button */}
-              <Button
-                onClick={() => setIsAddJournalOpen(true)}
-                className="h-11 px-5 rounded-xl bg-cta text-white hover:bg-cta-strong font-black uppercase text-xs tracking-wider shadow-md shadow-cta/15 flex items-center gap-2 self-start md:self-auto cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Journal Entry</span>
-              </Button>
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 self-start md:self-auto">
+                <Button
+                  onClick={() => {
+                    setInfoSheetTab("events");
+                    setIsInfoSheetOpen(true);
+                  }}
+                  variant="outline"
+                  className="h-11 px-5 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-black uppercase text-xs tracking-wider cursor-pointer shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  <span>Events & Alerts</span>
+                </Button>
+                <Button
+                  onClick={() => setIsAddJournalOpen(true)}
+                  className="h-11 px-5 rounded-xl bg-cta text-white hover:bg-cta-strong font-black uppercase text-xs tracking-wider shadow-md shadow-cta/15 flex items-center gap-2 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Journal Entry</span>
+                </Button>
+              </div>
             </div>
 
             {/* Filter Bar */}
@@ -3226,6 +3243,126 @@ export function ClientProfileView({
               )}
             </div>
 
+          <Card className="rounded-[40px] border-2 shadow-xl overflow-hidden min-h-[300px]">
+            <CardHeader className="p-8 border-b">
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
+                    Progress Report Archive
+                  </CardTitle>
+                  <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 mt-1">
+                    Evaluations, Goals & Outcomes
+                  </CardDescription>
+                </div>
+                <Button
+                  onClick={() => setView("progress-report")}
+                  variant="default"
+                  size="sm"
+                  className="rounded-xl font-medium uppercase text-[11px] tracking-wide opacity-70 h-11 bg-primary"
+                >
+                  <Plus className="w-4 h-4 mr-2" /> New Evaluation
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y relative max-h-[400px] overflow-y-auto custom-scrollbar">
+                {progressReports.length > 0 ? (
+                  progressReports
+                    .sort(
+                      (a, b) =>
+                        parseSessionDate(b.date) - parseSessionDate(a.date),
+                    )
+                    .map((report) => (
+                      <div
+                        key={report.id}
+                        className="p-6 hover:bg-muted/30 transition-colors group flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-muted/50 flex flex-col items-center justify-center border group-hover:bg-primary/5 group-hover:border-primary/20 transition-all font-bold uppercase italic text-primary">
+                            <span className="text-[11px] leading-none">
+                              {report.date.split("-")[1]}/
+                              {report.date.split("-")[2]}
+                            </span>
+                            <span className="text-[11px] opacity-30 mt-1">
+                              {report.date.split("-")[0]}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-bold italic uppercase tracking-tight text-foreground">
+                                Client Progress Evaluation
+                              </p>
+                              <Badge
+                                variant={
+                                  report.status === "Finalized"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                                className={`px-1.5 py-0 h-4 text-[11px] font-bold uppercase border-none ${report.status === "Finalized" ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"}`}
+                              >
+                                {report.status || "Finalized"}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-4 mt-1">
+                              <span className="text-[11px] text-muted-foreground font-bold uppercase tracking-widest bg-muted px-2 py-0.5 rounded">
+                                Session #{report.sessionNumber || Math.round(report.attendance?.totalSessions) || "---"}
+                              </span>
+                              <span className="text-[11px] text-muted-foreground font-bold uppercase flex items-center gap-1">
+                                <User className="w-2.5 h-2.5" />
+                                {report.trainerName || report.trainerInitials || "Team"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              if (confirm('Are you sure you want to delete this progress report?')) {
+                                try {
+                                  await deleteDoc(doc(db, 'progressReports', report.id!));
+                                } catch (err) {
+                                  handleFirestoreError(err, OperationType.DELETE, 'progressReports');
+                                }
+                              }
+                            }}
+                            className="rounded-xl font-bold uppercase italic text-[11px] tracking-widest text-red-500 hover:text-red-600 hover:bg-red-500/10 mr-2"
+                          >
+                            <Trash2 className="w-3 h-3 md:mr-2" />
+                            <span className="hidden md:inline">Delete</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onSelectReport(report.id!)}
+                            className="rounded-xl font-bold uppercase italic text-[11px] tracking-widest text-primary"
+                          >
+                            {report.status === "Draft"
+                              ? "Resume Draft"
+                              : "View / Present"}
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                ) : (
+                  <div className="p-12 text-center space-y-4">
+                    <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto opacity-20" />
+                    <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">
+                      No progress reports registered in archive
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="rounded-full font-medium uppercase text-[11px] tracking-wide opacity-70 border-2 mt-4"
+                      onClick={() => setView("progress-report")}
+                    >
+                      Perform First Evaluation
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
           </div>
         </TabsContent>
 
@@ -3433,6 +3570,7 @@ export function ClientProfileView({
                   trainers={trainers}
                   user={user}
                   allLogs={allLogs}
+                  clientEvents={client?.events || []}
                 />
                 
                 <div className="flex justify-center pb-8">
@@ -3463,126 +3601,6 @@ export function ClientProfileView({
         </TabsContent>
 
         <TabsContent value="statistics_disabled" className="hidden">
-          <Card className="rounded-[40px] border-2 shadow-xl overflow-hidden min-h-[300px]">
-            <CardHeader className="p-8 border-b">
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
-                    Progress Report Archive
-                  </CardTitle>
-                  <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 mt-1">
-                    Evaluations, Goals & Outcomes
-                  </CardDescription>
-                </div>
-                <Button
-                  onClick={() => setView("progress-report")}
-                  variant="default"
-                  size="sm"
-                  className="rounded-xl font-medium uppercase text-[11px] tracking-wide opacity-70 h-11 bg-primary"
-                >
-                  <Plus className="w-4 h-4 mr-2" /> New Evaluation
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y relative max-h-[400px] overflow-y-auto custom-scrollbar">
-                {progressReports.length > 0 ? (
-                  progressReports
-                    .sort(
-                      (a, b) =>
-                        parseSessionDate(b.date) - parseSessionDate(a.date),
-                    )
-                    .map((report) => (
-                      <div
-                        key={report.id}
-                        className="p-6 hover:bg-muted/30 transition-colors group flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-2xl bg-muted/50 flex flex-col items-center justify-center border group-hover:bg-primary/5 group-hover:border-primary/20 transition-all font-bold uppercase italic text-primary">
-                            <span className="text-[11px] leading-none">
-                              {report.date.split("-")[1]}/
-                              {report.date.split("-")[2]}
-                            </span>
-                            <span className="text-[11px] opacity-30 mt-1">
-                              {report.date.split("-")[0]}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-bold italic uppercase tracking-tight text-foreground">
-                                Client Progress Evaluation
-                              </p>
-                              <Badge
-                                variant={
-                                  report.status === "Finalized"
-                                    ? "default"
-                                    : "secondary"
-                                }
-                                className={`px-1.5 py-0 h-4 text-[11px] font-bold uppercase border-none ${report.status === "Finalized" ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"}`}
-                              >
-                                {report.status || "Finalized"}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-4 mt-1">
-                              <span className="text-[11px] text-muted-foreground font-bold uppercase tracking-widest bg-muted px-2 py-0.5 rounded">
-                                Session #{report.sessionNumber || Math.round(report.attendance?.totalSessions) || "---"}
-                              </span>
-                              <span className="text-[11px] text-muted-foreground font-bold uppercase flex items-center gap-1">
-                                <User className="w-2.5 h-2.5" />
-                                {report.trainerName || report.trainerInitials || "Team"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={async () => {
-                              if (confirm('Are you sure you want to delete this progress report?')) {
-                                try {
-                                  await deleteDoc(doc(db, 'progressReports', report.id!));
-                                } catch (err) {
-                                  handleFirestoreError(err, OperationType.DELETE, 'progressReports');
-                                }
-                              }
-                            }}
-                            className="rounded-xl font-bold uppercase italic text-[11px] tracking-widest text-red-500 hover:text-red-600 hover:bg-red-500/10 mr-2"
-                          >
-                            <Trash2 className="w-3 h-3 md:mr-2" />
-                            <span className="hidden md:inline">Delete</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onSelectReport(report.id!)}
-                            className="rounded-xl font-bold uppercase italic text-[11px] tracking-widest text-primary"
-                          >
-                            {report.status === "Draft"
-                              ? "Resume Draft"
-                              : "View / Present"}
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                ) : (
-                  <div className="p-12 text-center space-y-4">
-                    <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto opacity-20" />
-                    <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">
-                      No progress reports registered in archive
-                    </p>
-                    <Button
-                      variant="outline"
-                      className="rounded-full font-medium uppercase text-[11px] tracking-wide opacity-70 border-2 mt-4"
-                      onClick={() => setView("progress-report")}
-                    >
-                      Perform First Evaluation
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Consistency & Training Frequency Insights */}
           {(() => {
@@ -5130,6 +5148,7 @@ export function ClientProfileView({
           onOpenChange={setIsInfoSheetOpen}
           client={client}
           authTrainer={authTrainer}
+          defaultTab={infoSheetTab}
         />
       )}
 
