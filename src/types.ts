@@ -117,6 +117,7 @@ export interface Trainer {
   id: string;
   fullName: string;
   initials: string;
+  brandColor?: string;
   pin: string;
   pinHash?: string;
   requiresPinReset?: boolean;

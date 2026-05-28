@@ -14,6 +14,9 @@ export interface ReviewMetrics {
   setupCorrectPercentage: number;
   lastSeenDaysAgo: number | null;
   sessionsRemaining: number;
+  volumeByDate: { date: string; volume: number }[];
+  rpeDistribution: { name: string; value: number; fill: string }[];
+  volumeByRegion: { region: string; volume: number }[];
 }
 
 export function computeClinicalMetrics(
@@ -65,8 +68,17 @@ export function computeClinicalMetrics(
 
   const sessionRPEs: Record<string, number[]> = {};
   const symptomsByRegion: Record<string, any[]> = {};
+  const sessionVolumes: Record<string, number> = {};
+  const regionVolumes: Record<string, number> = {};
   
   const tagCounts: Record<string, number> = {};
+  
+  const rpeCounts = {
+    '1-3': 0,
+    '4-6': 0,
+    '7-8': 0,
+    '9-10': 0
+  };
   const tagCountsByWeek: Record<number, Record<string, number>> = {};
   
   const machineLogCounts: Record<string, ExerciseLog[]> = {};
@@ -74,14 +86,35 @@ export function computeClinicalMetrics(
   logsInWindow.forEach(log => {
     const weight = parseInt(log.weight || "0", 10);
     const reps = parseInt(log.reps || "0", 10);
-    if (!isNaN(weight) && !isNaN(reps)) {
-      totalTonnage += weight * reps;
+    const volume = (!isNaN(weight) && !isNaN(reps)) ? weight * reps : 0;
+    
+    if (volume > 0) {
+      totalTonnage += volume;
       totalReps += reps;
+      
+      // Keep track for Volume By Date
+      if (log.sessionId) {
+        if (!sessionVolumes[log.sessionId]) sessionVolumes[log.sessionId] = 0;
+        sessionVolumes[log.sessionId] += volume;
+      }
+
+      // Keep track for Volume By Region
+      const machine = machines.find(m => m.id === log.machineId);
+      const region = machine?.anatomicalRegion || 'Unknown';
+      if (!regionVolumes[region]) regionVolumes[region] = 0;
+      regionVolumes[region] += volume;
     }
 
     if (log.repQuality === 3) eliteReps++;
     else if (log.repQuality === 2) goodReps++;
     else if (log.repQuality === 1) poorReps++;
+
+    if (log.rpe !== undefined) {
+      if (log.rpe <= 3) rpeCounts['1-3']++;
+      else if (log.rpe <= 6) rpeCounts['4-6']++;
+      else if (log.rpe <= 8) rpeCounts['7-8']++;
+      else rpeCounts['9-10']++;
+    }
 
     if (log.setupWasCorrect !== undefined) {
       totalSetupsEvaluated++;
@@ -210,6 +243,27 @@ export function computeClinicalMetrics(
       return { focus: f, matchCount };
     });
 
+  const volumeByDate = sessionsInWindow.slice().reverse().map(s => {
+    const vol = sessionVolumes[s.id!] || 0;
+    const dateObj = new Date(s.date);
+    return {
+      date: dateObj.toLocaleDateString('default', { month: 'short', day: 'numeric' }),
+      volume: vol
+    };
+  });
+
+  const rpeDistribution = [
+    { name: 'RPE 1-3', value: rpeCounts['1-3'], fill: 'var(--cyan)' },
+    { name: 'RPE 4-6', value: rpeCounts['4-6'], fill: 'var(--amber)' },
+    { name: 'RPE 7-8', value: rpeCounts['7-8'], fill: 'var(--cta)' },
+    { name: 'RPE 9-10', value: rpeCounts['9-10'], fill: 'var(--red)' }
+  ].filter(b => b.value > 0);
+
+  const volumeByRegion = Object.keys(regionVolumes).map(region => ({
+    region,
+    volume: regionVolumes[region]
+  })).sort((a, b) => b.volume - a.volume);
+
   return {
     totalTonnage,
     totalReps,
@@ -223,6 +277,9 @@ export function computeClinicalMetrics(
     activeFociWithMatchCount,
     setupCorrectPercentage,
     lastSeenDaysAgo,
-    sessionsRemaining: client.remainingSessions || 0
+    sessionsRemaining: client.remainingSessions || 0,
+    volumeByDate,
+    rpeDistribution,
+    volumeByRegion
   };
 }

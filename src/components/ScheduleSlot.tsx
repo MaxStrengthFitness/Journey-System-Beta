@@ -35,9 +35,7 @@ export function ScheduleSlot({ clientName, isNextUp }: ScheduleSlotProps) {
   return (
     <TooltipProvider delay={200}>
       <Tooltip>
-        <TooltipTrigger asChild>
-          {content}
-        </TooltipTrigger>
+        <TooltipTrigger render={content} />
         <TooltipContent side="top" className="bg-slate-900 text-white border-slate-800 text-[11px] font-sans font-medium uppercase tracking-wide">
           <p>{clientName}</p>
         </TooltipContent>

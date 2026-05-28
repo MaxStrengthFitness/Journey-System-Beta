@@ -23,7 +23,15 @@ import {
   Tooltip,
   ResponsiveContainer,
   BarChart,
-  Bar
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis
 } from "recharts";
 
 export interface ClientClinicalReviewViewProps {
@@ -177,7 +185,7 @@ export function ClientClinicalReviewView({
                         <Line type="monotone" dataKey="value" stroke="var(--cyan)" strokeWidth={2} dot={false} />
                       </LineChart>
                     </ResponsiveContainer>
-                    <div className="text-center text-[10px] uppercase font-bold text-ink-d3 tracking-widest mt-1">Avg RPE Trend</div>
+                    <div className="text-center text-[11px] uppercase font-bold text-ink-d3 tracking-widest mt-1">Avg RPE Trend</div>
                  </div>
                )}
             </div>
@@ -191,7 +199,7 @@ export function ClientClinicalReviewView({
                     <tr>
                       <th className="pb-2 w-1/3"></th>
                       {metrics.formTagCountsByWeek.map(w => (
-                         <th key={w.weekIndex} className="text-[10px] font-bold text-ink-d3 uppercase text-center pb-2 px-1">{w._weekLabel}</th>
+                         <th key={w.weekIndex} className="text-[11px] font-bold text-ink-d3 uppercase text-center pb-2 px-1">{w._weekLabel}</th>
                       ))}
                     </tr>
                   </thead>
@@ -210,7 +218,7 @@ export function ClientClinicalReviewView({
                                 <td key={w.weekIndex} className="p-1 text-center align-middle">
                                   <button 
                                     onClick={() => console.log('Drill down tags for week', w.weekIndex, tagId)}
-                                    className="w-full min-h-[44px] rounded bg-cyan/20 border border-cyan hover:bg-cyan/40 transition-colors flex items-center justify-center font-mono text-[10px] text-white"
+                                    className="w-full min-h-[44px] rounded bg-cyan/20 border border-cyan hover:bg-cyan/40 transition-colors flex items-center justify-center font-mono text-[11px] text-white"
                                     style={{ backgroundColor: count > 0 ? `rgba(56, 189, 248, ${intensity})` : 'transparent', opacity: count > 0 ? 1 : 0.3 }}
                                     disabled={count === 0}
                                   >
@@ -260,7 +268,7 @@ export function ClientClinicalReviewView({
               <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto no-scrollbar pr-2">
                 {Object.entries(metrics.symptomsByRegion).map(([region, syms]) => (
                    <div key={region} className="bg-surface-2 rounded-xl p-3 border border-div-l">
-                     <span className="text-[10px] text-amber-500/80 font-bold uppercase tracking-widest">{region}</span>
+                     <span className="text-[11px] text-amber-500/80 font-bold uppercase tracking-widest">{region}</span>
                      {(syms as any[]).map((s, i) => (
                        <div key={i} className="flex justify-between text-sm mt-1 border-t border-div-l/50 pt-1 first:border-0 first:pt-0">
                          <span className="text-white">{s.note || `Intensity ${s.intensity}`}</span>
@@ -300,7 +308,7 @@ export function ClientClinicalReviewView({
                              {/* Sleep dot */}
                              <div className="absolute bottom-[20%] w-2 h-2 rounded-full bg-cyan ring-2 ring-bg-dark" style={{ bottom: `${Math.min(sleep * 10, 100)}%` }} />
                              
-                             <div className="opacity-0 group-hover:opacity-100 absolute -top-12 bg-surface-2 p-2 rounded-lg border border-div-l text-[10px] text-white whitespace-nowrap z-20 pointer-events-none">
+                             <div className="opacity-0 group-hover:opacity-100 absolute -top-12 bg-surface-2 p-2 rounded-lg border border-div-l text-[11px] text-white whitespace-nowrap z-20 pointer-events-none">
                                 Sleep: {sleep}hr | Sore: {soreness}/5
                              </div>
                           </div>
@@ -310,11 +318,11 @@ export function ClientClinicalReviewView({
                   <div className="flex justify-center gap-6 mt-4">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-cyan" />
-                      <span className="text-[10px] text-ink-d2 uppercase tracking-widest font-bold">Sleep (Hrs)</span>
+                      <span className="text-[11px] text-ink-d2 uppercase tracking-widest font-bold">Sleep (Hrs)</span>
                     </div>
                     <div className="flex items-center gap-2">
                        <div className="w-2 h-2 bg-red-500/50" />
-                       <span className="text-[10px] text-ink-d2 uppercase tracking-widest font-bold">Soreness</span>
+                       <span className="text-[11px] text-ink-d2 uppercase tracking-widest font-bold">Soreness</span>
                     </div>
                   </div>
                 </div>
@@ -337,12 +345,12 @@ export function ClientClinicalReviewView({
                  {metrics.activeFociWithMatchCount.map((f, i) => (
                    <div key={i} className="bg-surface-2 border border-div-l rounded-xl p-4 flex justify-between items-center">
                      <div>
-                       <span className="text-[10px] text-cyan font-bold uppercase tracking-widest">{f.focus.category}</span>
+                       <span className="text-[11px] text-cyan font-bold uppercase tracking-widest">{f.focus.category}</span>
                        <p className="text-white text-sm font-medium mt-1">{f.focus.notes}</p>
                      </div>
                      <div className="text-right">
                         <div className="text-2xl font-display italic text-white">{f.matchCount}</div>
-                        <div className="text-[10px] text-ink-d3 font-bold uppercase tracking-widest">Tags in window</div>
+                        <div className="text-[11px] text-ink-d3 font-bold uppercase tracking-widest">Tags in window</div>
                      </div>
                    </div>
                  ))}
@@ -387,7 +395,7 @@ export function ClientClinicalReviewView({
                      </div>
 
                      <div className="mt-4 pt-4 border-t border-div-l">
-                        <span className="text-[10px] text-ink-d3 font-bold uppercase tracking-widest block mb-1">Dominant Form</span>
+                        <span className="text-[11px] text-ink-d3 font-bold uppercase tracking-widest block mb-1">Dominant Form</span>
                         <div className="text-[11px] text-amber-500 font-medium truncate">
                            {topTagDef ? topTagDef.label : 'None recorded'}
                         </div>
@@ -401,6 +409,108 @@ export function ClientClinicalReviewView({
                  </div>
                )}
             </div>
+          </div>
+
+          {/* STATS ABSORPTION (New clinical tiles) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* Strength Trends */}
+            <div className="bg-surface-1 rounded-3xl p-6 border border-div-d flex flex-col gap-4">
+              <h3 className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">Strength Trends</h3>
+              <div className="h-[200px] w-full mt-auto">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={metrics.volumeByDate}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--div-l)" vertical={false} />
+                    <XAxis dataKey="date" stroke="var(--ink-d3)" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis width={35} stroke="var(--ink-d3)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `${val/1000}k`} />
+                    <Tooltip contentStyle={{ backgroundColor: 'var(--surface-2)', borderColor: 'var(--div-l)', borderRadius: '8px', color: 'var(--ink-d1)', fontSize: '11px' }} itemStyle={{ color: 'var(--cyan)' }} />
+                    <Line type="monotone" dataKey="volume" stroke="var(--cyan)" strokeWidth={3} dot={{ fill: 'var(--cyan)', r: 4, strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Rep Quality & RPE Distribution */}
+            <div className="bg-surface-1 rounded-3xl p-6 border border-div-d flex flex-col gap-4">
+              <h3 className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">Quality & RPE</h3>
+              <div className="flex-1 flex flex-col gap-6">
+                <div className="h-[120px] w-full relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Elite', value: metrics.repQualityBreakdown.elite, fill: 'var(--green)' },
+                          { name: 'Good', value: metrics.repQualityBreakdown.good, fill: 'var(--amber)' },
+                          { name: 'Poor', value: metrics.repQualityBreakdown.poor, fill: 'var(--red)' }
+                        ].filter(d => d.value > 0)}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={55}
+                        dataKey="value"
+                        stroke="none"
+                      />
+                      <Tooltip contentStyle={{ backgroundColor: 'var(--surface-2)', borderColor: 'var(--div-l)', borderRadius: '8px', color: 'var(--ink-d1)', fontSize: '11px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col">
+                    <span className="text-xl font-black text-white leading-none">{metrics.repQualityBreakdown.elite + metrics.repQualityBreakdown.good + metrics.repQualityBreakdown.poor}</span>
+                    <span className="text-[11px] uppercase tracking-widest text-ink-d3 font-bold mt-1">Sets</span>
+                  </div>
+                </div>
+
+                {metrics.rpeDistribution.length > 0 && (
+                  <div className="h-[80px] w-full flex items-center gap-4">
+                    <div className="h-[80px] w-[80px] relative shrink-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={metrics.rpeDistribution}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={25}
+                            outerRadius={35}
+                            dataKey="value"
+                            stroke="none"
+                          />
+                          <Tooltip contentStyle={{ backgroundColor: 'var(--surface-2)', borderColor: 'var(--div-l)', borderRadius: '8px', color: 'var(--ink-d1)', fontSize: '11px' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="flex-1 flex flex-col justify-center gap-1.5">
+                      {metrics.rpeDistribution.map(rpe => (
+                        <div key={rpe.name} className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: rpe.fill }} />
+                          <span className="text-[11px] uppercase font-bold text-ink-d2 tracking-widest">{rpe.name}</span>
+                          <span className="ml-auto text-[11px] font-bold text-white">{rpe.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Muscle Focus Distribution */}
+            <div className="bg-surface-1 rounded-3xl p-6 border border-div-d flex flex-col gap-4">
+              <h3 className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">Muscle Focus</h3>
+              <div className="h-[200px] w-full mt-auto">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={metrics.volumeByRegion} layout="vertical" margin={{ top: 0, right: 0, bottom: 0, left: 30 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--div-l)" horizontal={true} vertical={false} />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="region" type="category" stroke="var(--ink-d3)" fontSize={11} tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={{ backgroundColor: 'var(--surface-2)', borderColor: 'var(--div-l)', borderRadius: '8px', color: 'var(--ink-d1)', fontSize: '11px' }} cursor={{ fill: 'var(--surface-2)' }} />
+                    <Bar dataKey="volume" radius={[0, 4, 4, 0]}>
+                      {metrics.volumeByRegion.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={`var(--chart-${(index % 5) + 1})`} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
           </div>
 
         </div>

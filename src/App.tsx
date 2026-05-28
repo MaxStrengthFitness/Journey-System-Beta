@@ -108,6 +108,7 @@ import {
   Studio,
   HubAnnouncement,
   FranchiseNetwork,
+  PreSessionCheckIn,
 } from "./types";
 import { OperationType, handleFirestoreError } from "./lib/firestore-errors";
 // Removing duplicate cn import
@@ -8123,6 +8124,7 @@ function WorkoutTrackerView({
     customMachines?: string[],
     adjustmentNote?: string,
     permanentSave?: boolean,
+    preSessionCheckIn?: PreSessionCheckIn
   ) => {
     if (!clientId) return;
     const nextNum = (selectedClient?.sessionCount || 0) + 1;
@@ -8185,7 +8187,7 @@ function WorkoutTrackerView({
         currentStudioId !== null &&
         clientHomeStudioId !== currentStudioId;
 
-      const docRef = await addDoc(collection(db, "sessions"), {
+      const sessionData: any = {
         clientId,
         homeStudioId: clientHomeStudioId, // Explicit homeStudioId security stamp
         routineId: routineId || null,
@@ -8203,7 +8205,13 @@ function WorkoutTrackerView({
         status: "In-Progress",
         startTime: serverTimestamp(),
         createdAt: serverTimestamp(),
-      });
+      };
+      
+      if (preSessionCheckIn) {
+        sessionData.preSessionCheckIn = preSessionCheckIn;
+      }
+
+      const docRef = await addDoc(collection(db, "sessions"), sessionData);
 
       const clientUpdateData: any = {};
       if (routineType === "B" && !selectedClient?.isRoutineBActive) {
@@ -8715,8 +8723,8 @@ function WorkoutTrackerView({
         lastSession={
           sessions.filter((s) => s.status === "Completed")[0] || null
         }
-        onStart={(routineType, customMachines, note) =>
-          startNewSession(routineType, undefined, customMachines, note)
+        onStart={(routineType, customMachines, note, checkIn) =>
+          startNewSession(routineType, undefined, customMachines, note, false, checkIn)
         }
         onClose={() => {
           setIsPreSessionMode(false);

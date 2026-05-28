@@ -1121,7 +1121,7 @@ export function ClientEquipmentPrescriptions({
 
           {/* Mass Apply Trigger */}
           <Dialog open={massApplyOpen} onOpenChange={setMassApplyOpen}>
-            <DialogTrigger asChild>
+            <DialogTrigger render={
               <Button
                 id="mass-apply-trigger"
                 type="button"
@@ -1129,7 +1129,7 @@ export function ClientEquipmentPrescriptions({
               >
                 Mass-apply standard settings
               </Button>
-            </DialogTrigger>
+            } />
             <DialogContent className="max-w-md rounded-[32px] p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
               <DialogHeader className="mb-4 text-left">
                 <DialogTitle className="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">

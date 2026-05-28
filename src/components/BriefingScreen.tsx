@@ -8,7 +8,7 @@ import { SequenceRow } from "./SequenceRow";
 import { cn } from "@/lib/utils";
 import { AppHeader } from "./AppHeader";
 import { StickyCTA } from "./StickyCTA";
-import { Machine, Routine, SessionNote, Trainer, Client, WorkoutSession, TrainerFocus, FocusRecord, ExerciseLog } from "../types";
+import { Machine, Routine, SessionNote, Trainer, Client, WorkoutSession, TrainerFocus, FocusRecord, ExerciseLog, PreSessionCheckIn } from "../types";
 import { CLINICAL_FLAGS_MATRIX } from "../data/clinical-matrix";
 import { safeToDate } from "../lib/utils";
 import {
@@ -98,7 +98,7 @@ export interface BriefingScreenProps {
   client: Client;
   targetRoutine: Routine | null;
   lastSession: WorkoutSession | null;
-  onStart: (routineType: 'A' | 'B' | 'Free', customMachines?: string[], note?: string) => void;
+  onStart: (routineType: 'A' | 'B' | 'Free', customMachines?: string[], note?: string, checkIn?: PreSessionCheckIn) => void;
   onClose: () => void;
   machines: Machine[];
   routines: Routine[];
@@ -129,6 +129,8 @@ export function BriefingScreen({
   const [adjustmentNote, setAdjustmentNote] = useState('');
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [showAddMachine, setShowAddMachine] = useState(false);
+  const [sleepHours, setSleepHours] = useState<number | ''>('');
+  const [sorenessLevel, setSorenessLevel] = useState<number | ''>('');
 
   const routineA = routines.find(r => r.name.includes('Routine A'));
   const routineB = routines.find(r => r.name.includes('Routine B'));
@@ -207,10 +209,15 @@ export function BriefingScreen({
   };
 
   const handleStart = () => {
+    const checkIn: PreSessionCheckIn = {};
+    if (typeof sleepHours === 'number') checkIn.sleepHours = sleepHours;
+    if (typeof sorenessLevel === 'number') checkIn.sorenessLevel = sorenessLevel as any;
+
     onStart(
       selectedRoutineType === 'Create_B' ? 'B' : selectedRoutineType === 'Create_A' ? 'A' : selectedRoutineType as any, 
       isAdjusting || ['Free', 'Create_A', 'Create_B'].includes(selectedRoutineType) ? adjustedMachineIds : undefined, 
-      adjustmentNote
+      adjustmentNote,
+      checkIn
     );
   };
 
@@ -321,6 +328,50 @@ export function BriefingScreen({
                 ))}
               </div>
             )}
+            
+            {/* Pre-Session Check-in */}
+            <div className="mt-4 bg-surface-1 rounded-xl p-4 relative z-10 border border-div-d">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-ink-d2 uppercase mb-3">
+                <Activity className="w-3.5 h-3.5" /> DAILY RECOVERY CHECK-IN (OPTIONAL)
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1 space-y-2">
+                  <label className="text-[11px] uppercase tracking-widest text-ink-d2 font-bold ml-1">Sleep (Hours)</label>
+                  <input 
+                    type="number"
+                    min="0"
+                    max="24"
+                    step="0.5"
+                    value={sleepHours}
+                    onChange={(e) => setSleepHours(e.target.value ? Number(e.target.value) : '')}
+                    placeholder="e.g., 7.5"
+                    className="w-full h-[44px] bg-bg-dark border border-div-d rounded-xl text-white text-sm px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan transition-all"
+                  />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <label className="text-[11px] uppercase tracking-widest text-ink-d2 font-bold ml-1">Soreness (1-5)</label>
+                  <input 
+                    type="number"
+                    min="1"
+                    max="5"
+                    value={sorenessLevel}
+                    onChange={(e) => setSorenessLevel(e.target.value ? Number(e.target.value) : '')}
+                    placeholder="1=Low, 5=High"
+                    className="w-full h-[44px] bg-bg-dark border border-div-d rounded-xl text-white text-sm px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan transition-all"
+                  />
+                </div>
+              </div>
+              <div className="mt-4 space-y-2">
+                <label className="text-[11px] uppercase tracking-widest text-ink-d2 font-bold ml-1">Pre-Session Notes (Optional)</label>
+                <textarea 
+                  value={adjustmentNote}
+                  onChange={(e) => setAdjustmentNote(e.target.value)}
+                  placeholder="How is the client feeling? Any adjustments to the routine?"
+                  className="w-full min-h-[80px] bg-bg-dark border border-div-d rounded-xl text-white text-sm p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan transition-all resize-y"
+                />
+              </div>
+            </div>
+            
           </div>
 
           {/* 3. Routine compare strip */}

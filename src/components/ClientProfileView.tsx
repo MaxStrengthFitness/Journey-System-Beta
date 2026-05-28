@@ -117,7 +117,7 @@ import {
 import { ROUTINE_TEMPLATES, RoutineTemplateType } from "../constants";
 import { ClientFocusDashboard } from "./ClientFocusDashboard";
 import { ClientClinicalReviewPreloader } from "./ClientClinicalReviewPreloader";
-import { ClientInfoTab } from "./ClientInfoTab";
+import { ClientInfoSheet } from "./ClientInfoSheet";
 import {
   Client,
   Machine,
@@ -313,6 +313,35 @@ export function ClientProfileView({
 
   const [activeTab, setActiveTab] = useState("journey");
   const [isInfoSheetOpen, setIsInfoSheetOpen] = useState(false);
+  const [journeyDensity, setJourneyDensity] = useState<"Compact" | "Comfortable" | "Full">(() => {
+    if (typeof window !== "undefined" && clientId) {
+      return (localStorage.getItem(`journeyDensity_${clientId}`) as any) || "Comfortable";
+    }
+    return "Comfortable";
+  });
+
+  useEffect(() => {
+    if (clientId) {
+      localStorage.setItem(`journeyDensity_${clientId}`, journeyDensity);
+    }
+  }, [journeyDensity, clientId]);
+
+  function getTrainerChipStyles(initials: string) {
+    if (!initials) return "bg-ink-l2 text-white";
+    const colors = [
+      "bg-cyan text-white",
+      "bg-cta text-white",
+      "bg-green text-ink-l1",
+      "bg-amber text-white",
+      "bg-ink-l2 text-white"
+    ];
+    let hash = 0;
+    for (let i = 0; i < initials.length; i++) {
+      hash = initials.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+  }
 
   useEffect(() => {
     setIsInfoSheetOpen(false);
@@ -2347,6 +2376,15 @@ export function ClientProfileView({
 
         <div className="absolute top-6 right-6 md:static flex flex-col md:flex-row items-center gap-3 z-20 shrink-0">
           <Button
+            onClick={() => setIsInfoSheetOpen(true)}
+            variant="outline"
+            className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 h-10 sm:h-12 w-10 sm:w-12 p-0 flex items-center justify-center transition-colors shadow-sm"
+            title="Client Info"
+          >
+            <Settings className="w-5 h-5" />
+          </Button>
+
+          <Button
             onClick={() => setView("clinical-review")}
             variant="outline"
             className="rounded-xl font-bold uppercase text-xs sm:text-sm tracking-widest h-10 sm:h-12 px-4 shadow-sm border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -2410,14 +2448,13 @@ export function ClientProfileView({
       >
         <div className="mb-6 w-full border-b border-div-l">
           <div className="overflow-x-auto pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar">
-            <TabsList className="bg-transparent p-0 flex flex-nowrap md:grid md:grid-cols-7 w-max md:w-full h-11 border-none gap-0">
+            <TabsList className="bg-transparent p-0 flex flex-nowrap md:grid md:grid-cols-6 w-max md:w-full h-11 border-none gap-0">
               {[
                 { val: "journey", label: "Journey" },
                 { val: "routines", label: "Routines" },
                 { val: "equipment", label: "Equipment" },
                 { val: "focus", label: "Focus" },
                 { val: "history", label: "History" },
-                { val: "info", label: "Info" },
                 { val: "clinical", label: "Clinical" },
               ].map((tab) => (
                 <TabsTrigger
@@ -2431,23 +2468,6 @@ export function ClientProfileView({
             </TabsList>
           </div>
         </div>
-
-        <TabsContent value="info">
-          {client && (
-            <div className="pt-4">
-              <ClientInfoTab
-                client={client}
-                infoForm={infoForm}
-                setInfoForm={setInfoForm}
-                isSavingInfo={isSavingInfo}
-                handleSaveInfo={handleSaveInfo}
-                authTrainer={authTrainer}
-                setIsDeleting={setIsDeleting}
-                setView={setView}
-              />
-            </div>
-          )}
-        </TabsContent>
 
         <TabsContent value="equipment">
            <ClientEquipmentPrescriptions 
@@ -2468,20 +2488,42 @@ export function ClientProfileView({
         >
           <div className="flex items-center justify-between mb-3 px-2 flex-none">
              <h3 className="text-[13px] font-bold uppercase text-slate-800 dark:text-slate-200 tracking-widest pl-1 border-l-4 border-[#F06C22]">Recent Journey</h3>
-             <Button
-               onClick={() => setShowFullChart(true)}
-               size="sm"
-               variant="outline"
-               className="h-10 px-5 text-[11px] uppercase font-bold tracking-widest text-slate-700 dark:text-slate-300 hover:text-[#115E8D] border-slate-300 shadow-sm transition-all hover:bg-slate-50 rounded-full"
-             >
-               <Maximize2 className="w-3.5 h-3.5 mr-1.5" /> Expanded Journey
-             </Button>
+             <div className="flex items-center gap-3">
+               <div className="flex p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                 <button 
+                   onClick={() => setJourneyDensity("Compact")}
+                   className={cn("px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors", journeyDensity === "Compact" ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
+                 >
+                   Compact
+                 </button>
+                 <button 
+                   onClick={() => setJourneyDensity("Comfortable")}
+                   className={cn("px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors", journeyDensity === "Comfortable" ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
+                 >
+                   Comfortable
+                 </button>
+                 <button 
+                   onClick={() => setJourneyDensity("Full")}
+                   className={cn("px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors", journeyDensity === "Full" ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
+                 >
+                   Full
+                 </button>
+               </div>
+               <Button
+                 onClick={() => setShowFullChart(true)}
+                 size="sm"
+                 variant="outline"
+                 className="h-10 px-5 text-[11px] uppercase font-bold tracking-widest text-slate-700 dark:text-slate-300 hover:text-[#115E8D] border-slate-300 shadow-sm transition-all hover:bg-slate-50 rounded-full"
+               >
+                 <Maximize2 className="w-3.5 h-3.5 mr-1.5" /> Expanded Journey
+               </Button>
+             </div>
           </div>
           <div className="w-full flex-1 overflow-x-auto overflow-y-auto bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 rounded-xl relative">
             <table className="w-full text-left border-collapse table-fixed select-none min-w-[700px]">
               <thead>
-                <tr className="bg-slate-800 dark:bg-slate-950 text-white uppercase text-[11px] font-bold tracking-widest leading-none h-[40px]">
-                  <th className="p-2 pl-4 w-[25%] border-r border-slate-700 dark:border-slate-800 truncate">
+                <tr className="bg-bg-dark text-ink-d1 uppercase text-[11px] font-bold tracking-widest leading-none h-[40px] border-b border-div-d">
+                  <th className="p-2 pl-4 w-[25%] border-r border-div-d truncate">
                     Equipment & Settings
                   </th>
                   {sessions
@@ -2497,28 +2539,33 @@ export function ClientProfileView({
                       return (
                         <th
                           key={s.id}
-                          className="p-1.5 text-center border-r border-slate-700 dark:border-slate-800 truncate w-[10%] opacity-90"
+                          className="p-1 px-2 text-center border-r border-div-d truncate w-[10%] opacity-90"
                         >
-                          <div className="flex flex-col items-center space-y-0.5">
-                            <div className="bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/10 rounded px-1 min-w-[20px] py-0.5 shadow-sm inline-flex items-center justify-center">
+                          <div className="flex flex-col items-center justify-center space-y-1 py-1">
+                            <div className="bg-white/10 rounded-md px-1.5 min-w-[20px] py-0.5 shadow-sm inline-flex items-center justify-center mb-1">
                               <span className="font-bold tabular-nums text-[11px] leading-none text-white">
                                 {sNum.toString().padStart(2, '0')}
                               </span>
                             </div>
-                            <span className="text-[7.5px] text-slate-300 dark:text-slate-400 font-bold uppercase tracking-tighter">
+                            <span className="text-[11px] text-ink-d2 font-bold uppercase tracking-tight">
                               {s.date ? new Date(parseSessionDate(s.date)).toLocaleDateString("en-US", {
                                 month: "short",
                                 day: "numeric",
                               }) : "--"}
                             </span>
-                            <span className="text-[7px] text-[#38BDF8] dark:text-[#38BDF8] font-bold uppercase tracking-widest">
+                            <span className="text-[11px] text-[#38BDF8] dark:text-[#38BDF8] font-bold uppercase tracking-widest">
                               {(s.legacy_filemaker_id || s.trainerId === 'legacy-trainer' || s.trainerInitials === 'Legacy' || s.trainerInitials === 'Chart') ? 'Imported' : s.startTime ? new Date(s.startTime?.toMillis?.() || s.startTime).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' }) : ''}
                             </span>
+                            {s.trainerInitials && (
+                              <div className={cn("w-6 h-6 mt-1 rounded-full flex items-center justify-center text-[11px] font-extrabold uppercase shrink-0", getTrainerChipStyles(s.trainerInitials))}>
+                                {s.trainerInitials.substring(0, 2)}
+                              </div>
+                            )}
                           </div>
                         </th>
                       );
                     })}
-                  <th className="p-2 text-center bg-slate-800 dark:bg-slate-950 truncate w-[5%] border-l border-slate-700 dark:border-slate-800 text-slate-400">
+                  <th className="p-2 text-center bg-bg-dark truncate w-[5%] border-l border-div-d text-ink-d1">
                     <Target className="w-5 h-5 mx-auto" />
                   </th>
                 </tr>
@@ -2617,31 +2664,41 @@ export function ClientProfileView({
                             }
                           }
 
+                          if (journeyDensity === "Compact") {
+                            bgClass = "bg-transparent";
+                            borderColor = "border-transparent";
+                          }
+
                           return (
                             <td
                               key={s.id}
-                              className={cn("p-0 border-r border-slate-200 dark:border-slate-800 align-middle h-full", bgClass)}
+                              className={cn("p-0 border-r border-slate-200 dark:border-slate-800 align-middle h-full transition-colors", bgClass)}
                             >
                               {log ? (
                                 <div className="flex flex-col w-full h-full text-center">
-                                  <div className={cn("flex-1 flex flex-col items-center justify-center border-b p-1 min-h-[22px]", borderColor)}>
-                                    <div className="flex items-center">
-                                      <span className={cn("font-bold font-sans text-[12px] sm:text-[13px] tracking-tight leading-none", labelColor)}>
+                                  <div className={cn("flex-1 flex flex-col items-center justify-center p-1", journeyDensity !== "Compact" ? "border-b min-h-[22px]" : "h-full", borderColor)}>
+                                    <div className="flex items-center flex-col justify-center gap-0.5">
+                                      <span className={cn("font-bold font-sans tracking-tight leading-none", journeyDensity === "Compact" ? "text-[14px]" : "text-[12px] sm:text-[13px]", labelColor)}>
                                         {log.weight}
                                       </span>
+                                      {journeyDensity === "Full" && log.rpe && (
+                                        <span className="text-[9px] bg-black/5 dark:bg-white/5 px-1 rounded-[3px] text-slate-500 font-semibold tracking-widest leading-none mt-0.5 py-[2px] uppercase">RPE {log.rpe}</span>
+                                      )}
                                     </div>
                                   </div>
-                                  <div className="flex-1 flex items-center justify-center p-1 min-h-[20px]">
-                                    <span className={cn("font-extrabold text-[11px] leading-none", repsColor)}>
-                                      {log.repsLeft !== undefined && log.repsRight !== undefined
-                                        ? `${log.repsLeft}L|${log.repsRight}R`
-                                        : log.isStaticHold ? (
-                                            <>{log.seconds}<span className="text-[11px] ml-0.5 lowercase font-medium opacity-80">s</span></>
-                                          ) : (
-                                            log.reps
-                                          )}
-                                    </span>
-                                  </div>
+                                  {journeyDensity !== "Compact" && (
+                                    <div className="flex-1 flex items-center justify-center p-1 min-h-[20px]">
+                                      <span className={cn("font-extrabold text-[11px] leading-none", repsColor)}>
+                                        {log.repsLeft !== undefined && log.repsRight !== undefined
+                                          ? `${log.repsLeft}L|${log.repsRight}R`
+                                          : log.isStaticHold ? (
+                                              <>{log.seconds}<span className="text-[11px] ml-0.5 lowercase font-medium opacity-80">s</span></>
+                                            ) : (
+                                              log.reps
+                                            )}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <div className="h-full w-full flex items-center justify-center">
@@ -2651,20 +2708,13 @@ export function ClientProfileView({
                             </td>
                           );
                         })}
-                        <td className="p-0 text-center bg-[#F9FAFB] dark:bg-slate-900/40 align-middle border-l border-slate-200 dark:border-slate-800 h-full w-[5%]">
-                          {currentLog ? (
-                            <div className={cn("flex flex-col items-center justify-center border-l-[3px] h-full w-full bg-white dark:bg-slate-900/60 shadow-sm transition-colors", colors.border.replace('border-', 'border-l-'))}>
-                                <span className={cn("font-bold text-lg sm:text-xl tracking-tighter leading-none", colors.activeText)}>
-                                  {currentLog.weight}
-                                </span>
-                            </div>
-                          ) : (
-                            <div className="h-full w-full flex items-center justify-center p-1.5 border-l-[3px] border-l-transparent">
-                              <span className="text-slate-400 dark:text-slate-500 italic text-[11px] font-semibold whitespace-nowrap">
-                                        --
-                              </span>
-                            </div>
-                          )}
+                        <td className="p-0 text-center bg-[#F9FAFB] dark:bg-slate-900/40 align-middle border-l border-slate-200 dark:border-slate-800 h-full w-[5%] relative">
+                           <div className="flex flex-col items-center justify-center h-full w-full opacity-70 transition-opacity hover:opacity-100 py-1.5 border-l-[3px] border-l-transparent">
+                             <Target className="w-3.5 h-3.5 mb-1.5 text-slate-400" />
+                             <span className="font-bold text-[11px] text-slate-600 dark:text-slate-400">
+                               {clientSettings[machine.id!]?.targetWeight || client?.currentMachineMetrics?.[machine.id!]?.weight || "-"}
+                             </span>
+                           </div>
                         </td>
                       </tr>
                     );
@@ -3703,7 +3753,7 @@ export function ClientProfileView({
               if (active && payload && payload.length) {
                 const data = payload[0].payload;
                 return (
-                  <div className="bg-[#0A2E46] border border-slate-200 dark:border-slate-800 dark:border-slate-700 p-3 rounded-lg shadow-xl min-w-[200px]">
+                  <div className="bg-[#0A2E46] border border-slate-200 dark:border-slate-700 p-3 rounded-lg shadow-xl min-w-[200px]">
                     <p className="text-[11px] uppercase tracking-widest text-[#68717A] mb-2">{data.date}</p>
                     <div className="space-y-2">
                       {payload.map((entry: any, index: number) => {
@@ -3949,7 +3999,7 @@ export function ClientProfileView({
             const CustomVolumeTooltip = ({ active, payload, label }: any) => {
               if (active && payload && payload.length) {
                 return (
-                  <div className="bg-[#0A2E46] border border-slate-200 dark:border-slate-800 dark:border-slate-700 p-3 rounded-lg shadow-xl min-w-[120px]">
+                  <div className="bg-[#0A2E46] border border-slate-200 dark:border-slate-700 p-3 rounded-lg shadow-xl min-w-[120px]">
                     <p className="text-[11px] uppercase tracking-widest text-[#68717A] mb-1">{label}</p>
                     <p className="text-[#38BDF8] font-bold text-xl leading-none">{payload[0].value.toLocaleString()} <span className="text-xs">LBS</span></p>
                   </div>
@@ -4211,7 +4261,7 @@ export function ClientProfileView({
                     if (active && payload && payload.length) {
                       const data = payload[0].payload;
                       return (
-                        <div className="bg-[#0A2E46] border border-slate-200 dark:border-slate-800 dark:border-slate-700 p-4 rounded-xl shadow-xl">
+                        <div className="bg-[#0A2E46] border border-slate-200 dark:border-slate-700 p-4 rounded-xl shadow-xl">
                           <p className="font-bold uppercase text-sm mb-2">{data.machineName}</p>
                           <div className="space-y-1">
                             <div className="flex justify-between gap-6">
@@ -4317,8 +4367,8 @@ export function ClientProfileView({
         </TabsContent>        <TabsContent value="details_disabled" className="hidden">
           <div className="grid gap-6 lg:grid-cols-2 mb-6">
             {/* 1. The "Why" (Goals & Motivation) */}
-            <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700">
-              <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-800 dark:border-slate-700">
+            <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+              <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-700">
                 <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                   The 'Why' (Goals & Motivation)
                 </CardTitle>
@@ -4336,7 +4386,7 @@ export function ClientProfileView({
                     onChange={(e) =>
                       setInfoForm((f) => ({ ...f, discoveryNotes: e.target.value }))
                     }
-                    className="min-h-[100px] rounded-2xl font-bold p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8] resize-none"
+                    className="min-h-[100px] rounded-2xl font-bold p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus-visible:ring-[#38BDF8] resize-none"
                     placeholder="Context from initial contact..."
                   />
                 </div>
@@ -4349,7 +4399,7 @@ export function ClientProfileView({
                     onChange={(e) =>
                       setInfoForm((f) => ({ ...f, globalNotes: e.target.value }))
                     }
-                    className="min-h-[140px] rounded-2xl font-bold p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
+                    className="min-h-[140px] rounded-2xl font-bold p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
                     placeholder="What are we really solving for? (e.g. 'I want to be able to pick up my grandkids without back pain')..."
                   />
                 </div>
@@ -4357,8 +4407,8 @@ export function ClientProfileView({
             </Card>
 
             {/* 2. Lifestyle & Environment */}
-            <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700">
-              <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-800 dark:border-slate-700">
+            <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+              <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-700">
                 <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                   Lifestyle & Environment
                 </CardTitle>
@@ -4406,10 +4456,10 @@ export function ClientProfileView({
                       setInfoForm((f) => ({ ...f, activityLevel: v as any }))
                     }
                   >
-                    <SelectTrigger className="w-full h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
+                    <SelectTrigger className="w-full h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
                       <SelectValue placeholder="Select Activity" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700 rounded-xl">
+                    <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl">
                       <SelectItem value="Sedentary">Sedentary</SelectItem>
                       <SelectItem value="Light">Light</SelectItem>
                       <SelectItem value="Moderate">Moderate</SelectItem>
@@ -4429,10 +4479,10 @@ export function ClientProfileView({
                       setInfoForm((f) => ({ ...f, recoveryMetric: v as any }))
                     }
                   >
-                    <SelectTrigger className="w-full h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
+                    <SelectTrigger className="w-full h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
                       <SelectValue placeholder="Select Recovery" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700 rounded-xl">
+                    <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl">
                       <SelectItem value="Poor">Poor</SelectItem>
                       <SelectItem value="Average">Average</SelectItem>
                       <SelectItem value="Optimal">Optimal</SelectItem>
@@ -4450,10 +4500,10 @@ export function ClientProfileView({
                       setInfoForm((f) => ({ ...f, trainingPedigree: v as any }))
                     }
                   >
-                    <SelectTrigger className="w-full h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
+                    <SelectTrigger className="w-full h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
                       <SelectValue placeholder="Select Experience" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700 rounded-xl">
+                    <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl">
                       <SelectItem value="Novice">Novice (No lifting experience)</SelectItem>
                       <SelectItem value="Intermediate">Intermediate (Standard gym experience)</SelectItem>
                       <SelectItem value="Advanced">Advanced (Extensive free weights/machines)</SelectItem>
@@ -4465,8 +4515,8 @@ export function ClientProfileView({
             </Card>
 
             {/* 3. The Clinical Baseline (Medical) */}
-            <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700 lg:col-span-2">
-              <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-800 dark:border-slate-700">
+            <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 lg:col-span-2">
+              <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-700">
                 <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                   The Clinical Baseline (Medical)
                 </CardTitle>
@@ -4486,7 +4536,7 @@ export function ClientProfileView({
                   return (
                     <div className="space-y-6">
                       {infoForm.clinicalFlags && infoForm.clinicalFlags.length > 0 && (
-                        <div className="w-full flex flex-col gap-2 mb-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 dark:border-slate-700 shadow-sm">
+                        <div className="w-full flex flex-col gap-2 mb-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
                           <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500">
                             Active Health Flags
                           </Label>
@@ -4574,7 +4624,7 @@ export function ClientProfileView({
                                 clinicalNotes: e.target.value,
                               }))
                             }
-                            className="min-h-[200px] rounded-2xl font-bold p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8] transition-all"
+                            className="min-h-[200px] rounded-2xl font-bold p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus-visible:ring-[#38BDF8] transition-all"
                             placeholder="Detail any orthopedic history or clinical considerations..."
                           />
                         </div>
@@ -4720,8 +4770,8 @@ export function ClientProfileView({
 
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-1 space-y-6">
-               <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700 overflow-hidden">
-                <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-800 dark:border-slate-700 flex flex-row items-center justify-between">
+               <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 overflow-hidden">
+                <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-700 flex flex-row items-center justify-between">
                   <div>
                     <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                       Reminders
@@ -4732,7 +4782,7 @@ export function ClientProfileView({
                   </div>
                 </CardHeader>
                 <CardContent className="p-8 space-y-6">
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 dark:border-slate-700 rounded-3xl p-6 shadow-sm">
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 shadow-sm">
                     <div className="grid grid-cols-1 gap-4 mb-4">
                       <div className="space-y-2">
                         <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500 ml-1">
@@ -4744,10 +4794,10 @@ export function ClientProfileView({
                             setNewEventForm({ ...newEventForm, type: v })
                           }
                         >
-                          <SelectTrigger className="w-full h-12 bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700 font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
+                          <SelectTrigger className="w-full h-12 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
                             <SelectValue placeholder="Select Type..." />
                           </SelectTrigger>
-                          <SelectContent className="bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700 rounded-xl">
+                          <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl">
                             <SelectItem value="Progress Report">Progress Report</SelectItem>
                             <SelectItem value="InBody Scan">InBody Scan</SelectItem>
                             <SelectItem value="Routine Change">Routine Change</SelectItem>
@@ -4770,7 +4820,7 @@ export function ClientProfileView({
                               date: e.target.value,
                             }))
                           }
-                          className="h-12 rounded-2xl font-bold px-4 bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
+                          className="h-12 rounded-2xl font-bold px-4 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
                         />
                       </div>
                     </div>
@@ -4787,7 +4837,7 @@ export function ClientProfileView({
                           }))
                         }
                         placeholder="Brief description..."
-                        className="h-12 rounded-2xl font-bold px-4 bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
+                        className="h-12 rounded-2xl font-bold px-4 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
                       />
                     </div>
                     <div className="space-y-2 mb-6">
@@ -4802,7 +4852,7 @@ export function ClientProfileView({
                             notes: e.target.value,
                           }))
                         }
-                        className="min-h-[80px] rounded-3xl font-medium p-4 bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700 focus-visible:ring-[#38BDF8] resize-none"
+                        className="min-h-[80px] rounded-3xl font-medium p-4 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-[#38BDF8] resize-none"
                         placeholder="Optional details..."
                       />
                     </div>
@@ -4976,7 +5026,7 @@ export function ClientProfileView({
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-8 space-y-6">
-                  <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
                     <div>
                       <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-200 dark:text-slate-400 dark:text-slate-500">
                         Active Account
@@ -5073,6 +5123,15 @@ export function ClientProfileView({
           </div>
         </TabsContent>
       </Tabs>
+
+      {isInfoSheetOpen && client && (
+        <ClientInfoSheet
+          isOpen={isInfoSheetOpen}
+          onOpenChange={setIsInfoSheetOpen}
+          client={client}
+          authTrainer={authTrainer}
+        />
+      )}
 
       <AnimatePresence>
         {showFullChart && clientId && (
@@ -5174,7 +5233,7 @@ export function ClientProfileView({
                 type="number"
                 value={sessionCountInput}
                 onChange={(e) => setSessionCountInput(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 border-slate-200 dark:border-slate-800 dark:border-slate-700 font-bold text-lg h-12 focus-visible:ring-[#38BDF8]"
+                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-lg h-12 focus-visible:ring-[#38BDF8]"
                 placeholder="0"
               />
             </div>
@@ -5182,7 +5241,7 @@ export function ClientProfileView({
               <Button
                 variant="outline"
                 onClick={() => setIsEditingSessionCount(false)}
-                className="flex-1 border-slate-200 dark:border-slate-800 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-800 text-slate-300 hover: hover:bg-slate-700 rounded-xl font-bold uppercase tracking-widest text-[11px]"
+                className="flex-1 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl font-bold uppercase tracking-widest text-[11px]"
               >
                 Cancel
               </Button>
