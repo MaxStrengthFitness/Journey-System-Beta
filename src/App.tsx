@@ -156,6 +156,7 @@ import { ClientProgressReportView } from "./components/ClientProgressReportView"
 import { ClientClinicalReviewPreloader } from "./components/ClientClinicalReviewPreloader";
 import { SessionRoutineManagerModal } from "./components/SessionRoutineManagerModal";
 import { MachineKnowledgeDashboard } from "./components/MachineKnowledgeDashboard";
+import { MachineAnatomyCatalogView } from "./components/MachineAnatomyCatalogView";
 import { MaxStrengthLogo } from "./components/MaxStrengthLogo";
 import { ActiveSessionTimer } from "./components/ActiveSessionTimer";
 import { ThemeToggle } from "./components/ThemeToggle";
@@ -1967,6 +1968,14 @@ function AppContent({
                 isRefreshingSchedule={isRefreshingSchedule}
               />
             )}
+            {currentView === "machine-anatomy" && (
+              <MachineAnatomyCatalogView
+                machines={machines}
+                onViewMachineDetails={(machineId) => {
+                  setCurrentView("machine-knowledge");
+                }}
+              />
+            )}
             {currentView === "machine-knowledge" && (
               <MachineKnowledgeDashboard
                 machines={machines}
@@ -2242,8 +2251,8 @@ function AppContent({
             }
           />
           <NavButton
-            active={currentView === "machine-knowledge"}
-            onClick={() => setCurrentView("machine-knowledge")}
+            active={currentView === "machine-anatomy" || currentView === "machine-knowledge"}
+            onClick={() => setCurrentView("machine-anatomy")}
             icon={<Dumbbell className="w-6 h-6" />}
             label="Catalog"
           />

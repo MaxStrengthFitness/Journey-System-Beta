@@ -39,10 +39,33 @@ export interface ClinicalTagDefinition {
   fourPCategory?: 'Posture' | 'Pace' | 'Path' | 'Purpose';
 }
 
+export type SleepQuality = 'poor' | 'average' | 'optimal';
+export type BodyRegionState = 'stiff' | 'prime';
+
+export interface BodyStateTag {
+  /** Free string at the type boundary so legacy data validates.
+   *  New UI enforces the BODY_REGIONS enum at the picker. */
+  region: string;
+  state: BodyRegionState;
+  /** Reserved for future intensity grading. */
+  intensity?: 1 | 2 | 3;
+}
+
 export interface PreSessionCheckIn {
-  sorenessLevel?: 1 | 2 | 3 | 4 | 5;
-  sorenessRegions?: string[];
+  /** @deprecated Use `sleepQuality`. Retained for legacy session reads. */
   sleepHours?: number;
+  /** @deprecated Use `bodyStates`. Retained for legacy session reads. */
+  sorenessLevel?: 1 | 2 | 3 | 4 | 5;
+  /** @deprecated Use `bodyStates`. Retained for legacy session reads. */
+  sorenessRegions?: string[];
+
+  /** Qualitative sleep signal. `undefined` = trainer did not capture. */
+  sleepQuality?: SleepQuality;
+
+  /** Per-region body state tags. `undefined` = not captured;
+   *  `[]` = trainer affirmatively reviewed and recorded nothing. */
+  bodyStates?: BodyStateTag[];
+
   stressLevel?: 1 | 2 | 3 | 4 | 5;
   hydration?: 'low' | 'ok' | 'good';
   note?: string;
@@ -796,6 +819,7 @@ export type View =
   | "progress-report"
   | "consultation-wizard"
   | "machine-knowledge"
+  | "machine-anatomy"
   | "client-directory"
   | "chart-importer"
   | "leaderboard"

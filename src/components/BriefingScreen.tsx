@@ -8,7 +8,8 @@ import { SequenceRow } from "./SequenceRow";
 import { cn } from "@/lib/utils";
 import { AppHeader } from "./AppHeader";
 import { StickyCTA } from "./StickyCTA";
-import { Machine, Routine, SessionNote, Trainer, Client, WorkoutSession, TrainerFocus, FocusRecord, ExerciseLog, PreSessionCheckIn } from "../types";
+import { Machine, Routine, SessionNote, Trainer, Client, WorkoutSession, TrainerFocus, FocusRecord, ExerciseLog, PreSessionCheckIn, SleepQuality, BodyStateTag } from "../types";
+import { BodyStateTracker } from "./BodyStateTracker";
 import { CLINICAL_FLAGS_MATRIX } from "../data/clinical-matrix";
 import { safeToDate } from "../lib/utils";
 import {
@@ -129,8 +130,8 @@ export function BriefingScreen({
   const [adjustmentNote, setAdjustmentNote] = useState('');
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [showAddMachine, setShowAddMachine] = useState(false);
-  const [sleepHours, setSleepHours] = useState<number | ''>('');
-  const [sorenessLevel, setSorenessLevel] = useState<number | ''>('');
+  const [sleepQuality, setSleepQuality] = useState<SleepQuality | undefined>(undefined);
+  const [bodyStates, setBodyStates] = useState<BodyStateTag[]>([]);
 
   const routineA = routines.find(r => r.name.includes('Routine A'));
   const routineB = routines.find(r => r.name.includes('Routine B'));
@@ -210,8 +211,8 @@ export function BriefingScreen({
 
   const handleStart = () => {
     const checkIn: PreSessionCheckIn = {};
-    if (typeof sleepHours === 'number') checkIn.sleepHours = sleepHours;
-    if (typeof sorenessLevel === 'number') checkIn.sorenessLevel = sorenessLevel as any;
+    if (sleepQuality) checkIn.sleepQuality = sleepQuality;
+    if (bodyStates.length > 0) checkIn.bodyStates = bodyStates;
 
     onStart(
       selectedRoutineType === 'Create_B' ? 'B' : selectedRoutineType === 'Create_A' ? 'A' : selectedRoutineType as any, 
@@ -331,39 +332,62 @@ export function BriefingScreen({
             
             {/* Pre-Session Check-in */}
             <div className="mt-4 bg-surface-1 rounded-xl p-4 relative z-10 border border-div-d">
-              <div className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-ink-d2 uppercase mb-3">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-ink-d2 uppercase mb-4">
                 <Activity className="w-3.5 h-3.5" /> DAILY RECOVERY CHECK-IN (OPTIONAL)
               </div>
-              <div className="flex gap-4">
-                <div className="flex-1 space-y-2">
-                  <label className="text-[11px] uppercase tracking-widest text-ink-d2 font-bold ml-1">Sleep (Hours)</label>
-                  <input 
-                    type="number"
-                    min="0"
-                    max="24"
-                    step="0.5"
-                    value={sleepHours}
-                    onChange={(e) => setSleepHours(e.target.value ? Number(e.target.value) : '')}
-                    placeholder="e.g., 7.5"
-                    className="w-full h-[44px] bg-bg-dark border border-div-d rounded-xl text-white text-sm px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan transition-all"
-                  />
-                </div>
-                <div className="flex-1 space-y-2">
-                  <label className="text-[11px] uppercase tracking-widest text-ink-d2 font-bold ml-1">Soreness (1-5)</label>
-                  <input 
-                    type="number"
-                    min="1"
-                    max="5"
-                    value={sorenessLevel}
-                    onChange={(e) => setSorenessLevel(e.target.value ? Number(e.target.value) : '')}
-                    placeholder="1=Low, 5=High"
-                    className="w-full h-[44px] bg-bg-dark border border-div-d rounded-xl text-white text-sm px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan transition-all"
-                  />
+
+              {/* Sleep — qualitative pill group */}
+              <div className="space-y-2 mb-4">
+                <label className="text-[11px] uppercase tracking-widest text-ink-d2 font-bold ml-1 block">
+                  Sleep
+                </label>
+                <div className="flex w-full gap-2">
+                  {([
+                    { value: 'poor', label: 'Poor' },
+                    { value: 'average', label: 'Average' },
+                    { value: 'optimal', label: 'Optimal' },
+                  ] as { value: SleepQuality; label: string }[]).map((opt) => {
+                    const isActive = sleepQuality === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() =>
+                          setSleepQuality((prev) =>
+                            prev === opt.value ? undefined : opt.value
+                          )
+                        }
+                        aria-pressed={isActive}
+                        className={`flex-1 h-12 rounded-xl text-[13px] font-bold uppercase tracking-wide transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan ${
+                          isActive
+                            ? 'bg-cyan text-bg-dark shadow-lg'
+                            : 'bg-surface-2 text-ink-d2 border border-div-d hover:bg-bg-dark-3 hover:text-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-              <div className="mt-4 space-y-2">
-                <label className="text-[11px] uppercase tracking-widest text-ink-d2 font-bold ml-1">Pre-Session Notes (Optional)</label>
-                <textarea 
+
+              {/* Body State — per-region tags */}
+              <div className="space-y-2 mb-4">
+                <label className="text-[11px] uppercase tracking-widest text-ink-d2 font-bold ml-1 block">
+                  Body State
+                </label>
+                <BodyStateTracker
+                  value={bodyStates}
+                  onChange={setBodyStates}
+                />
+              </div>
+
+              {/* Pre-Session Notes (UNCHANGED from existing implementation) */}
+              <div className="space-y-2">
+                <label className="text-[11px] uppercase tracking-widest text-ink-d2 font-bold ml-1">
+                  Pre-Session Notes (Optional)
+                </label>
+                <textarea
                   value={adjustmentNote}
                   onChange={(e) => setAdjustmentNote(e.target.value)}
                   placeholder="How is the client feeling? Any adjustments to the routine?"
