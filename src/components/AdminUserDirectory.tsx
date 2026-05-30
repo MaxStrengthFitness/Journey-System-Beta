@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -29,6 +30,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import {
   Search,
@@ -48,10 +56,18 @@ import {
   Building2,
   CalendarDays,
   Activity,
+  Check,
+  X,
+  Phone,
+  MessageSquare,
+  Clock,
+  ShieldAlert,
+  Inbox,
+  UserCheck,
 } from "lucide-react";
 import { OperationType, handleFirestoreError, DocumentIdMissingError } from "../lib/firestore-errors";
 import { useDebounce } from "../hooks/useDebounce";
-import { cn, getRoleColor, getRoleDisplayName } from "@/lib/utils";
+import { cn, getRoleColor, getRoleDisplayName, generateSearchTokens } from "@/lib/utils";
 import { CreateTrainerModal } from "./CreateTrainerModal";
 import { EditTrainerModal } from "./EditTrainerModal";
 
@@ -69,6 +85,166 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
   const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Pending Access Requests state
+  const [requests, setRequests] = useState<any[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  
+  // State for rejecting/deleting access requests
+  const [rejectingRequest, setRejectingRequest] = useState<any | null>(null);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [deletingRequest, setDeletingRequest] = useState<any | null>(null);
+  const [isDeleteRequestModalOpen, setIsDeleteRequestModalOpen] = useState(false);
+
+  // State for deleting user profiles
+  const [deletingUser, setDeletingUser] = useState<Trainer | null>(null);
+  const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
+
+  // State for approval modal
+  const [approvingRequest, setApprovingRequest] = useState<any | null>(null);
+  const [approvingHomeStudioId, setApprovingHomeStudioId] = useState("");
+  const [approvingRole, setApprovingRole] = useState<UserRole>("LifeTransformer");
+  const [approvingInitials, setApprovingInitials] = useState("");
+  const [approvingCalendarVisible, setApprovingCalendarVisible] = useState(true);
+  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+
+  const fetchRequests = async () => {
+    setLoadingRequests(true);
+    try {
+      const q = query(
+        collection(db, "access_requests"),
+        where("status", "==", "Pending")
+      );
+      const snap = await getDocs(q);
+      const data = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+      setRequests(data);
+    } catch (err) {
+      console.error("Error fetching access requests:", err);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  const confirmRejectRequest = async () => {
+    if (!rejectingRequest) return;
+    try {
+      await updateDoc(doc(db, "access_requests", rejectingRequest.id), {
+        status: "Rejected",
+        updatedAt: new Date().toISOString(),
+      });
+      setRequests((prev) => prev.filter((r) => r.id !== rejectingRequest.id));
+      setIsRejectModalOpen(false);
+      setRejectingRequest(null);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, "access_requests");
+    }
+  };
+
+  const confirmDeleteRequest = async () => {
+    if (!deletingRequest) return;
+    try {
+      await deleteDoc(doc(db, "access_requests", deletingRequest.id));
+      setRequests((prev) => prev.filter((r) => r.id !== deletingRequest.id));
+      setIsDeleteRequestModalOpen(false);
+      setDeletingRequest(null);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, "access_requests");
+    }
+  };
+
+  const handleOpenApproval = (req: any) => {
+    setApprovingRequest(req);
+    // Default to first studio
+    setApprovingHomeStudioId(studios[0]?.id || "");
+    
+    // Derive initials
+    const nameParts = req.fullName.trim().split(" ");
+    let initials = "";
+    if (nameParts.length > 1) {
+      initials = (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+    } else if (nameParts[0]) {
+      initials = nameParts[0].substring(0, 2).toUpperCase();
+    }
+    setApprovingInitials(initials);
+    
+    // Assign mapped role
+    const requested = req.roleRequested;
+    if (requested === "StudioOwner") {
+      setApprovingRole("StudioOwner");
+    } else if (requested === "Trainer" || requested === "LifeTransformer") {
+      setApprovingRole("LifeTransformer");
+    } else if (requested === "Administrative") {
+      setApprovingRole("Admin");
+    } else {
+      setApprovingRole("LifeTransformer");
+    }
+    
+    setApprovingCalendarVisible(true);
+    setIsApproveModalOpen(true);
+  };
+
+  const handleConfirmApproval = async () => {
+    if (!approvingRequest || !approvingHomeStudioId || !approvingInitials) {
+      alert("Please fill in all required fields (Initials & Primary Facility).");
+      return;
+    }
+    if (approvingInitials.length < 2) {
+      alert("Initials must be at least 2 characters.");
+      return;
+    }
+
+    try {
+      const searchTokens = generateSearchTokens(approvingRequest.fullName);
+      
+      const trainerData = {
+        fullName: approvingRequest.fullName,
+        initials: approvingInitials.trim(),
+        pin: "",
+        pinHash: "",
+        role: approvingRole,
+        primaryHomeStudioId: approvingHomeStudioId,
+        accessibleStudioIds: [approvingHomeStudioId],
+        activeGuestStudioIds: [],
+        isVisibleOnCalendar: approvingCalendarVisible,
+        email: approvingRequest.email.trim().toLowerCase(),
+        searchTokens,
+        systemStatus: "active",
+        createdAt: new Date().toISOString(),
+      };
+
+      // 1. Write Trainer to firestore
+      const trainerRef = await addDoc(collection(db, "trainers"), trainerData);
+
+      // 2. Mark access request as Approved
+      await updateDoc(doc(db, "access_requests", approvingRequest.id), {
+        status: "Approved",
+        approvedTrainerId: trainerRef.id,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // 3. Update local directory state
+      const newTrainer: Trainer = {
+        id: trainerRef.id,
+        ...trainerData,
+      };
+      
+      setUsers((prev) => [newTrainer, ...prev]);
+      setRequests((prev) => prev.filter((r) => r.id !== approvingRequest.id));
+      setIsApproveModalOpen(false);
+      setApprovingRequest(null);
+      
+      await onRefresh?.("trainers");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, "trainers");
+    }
+  };
 
   // Filters state
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -125,23 +301,22 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
     }
   };
 
-  const handleDeleteUser = async (userId: string | undefined | null) => {
+  const confirmDeleteUser = async () => {
+    if (!deletingUser || !deletingUser.id) return;
     try {
-      if (!userId) {
-        throw new DocumentIdMissingError("trainers", OperationType.DELETE);
-      }
-      if (
-        !window.confirm(
-          "Are you sure you want to permanently delete this user? This action cannot be reversed.",
-        )
-      )
-        return;
-      await deleteDoc(doc(db, "trainers", userId));
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      await deleteDoc(doc(db, "trainers", deletingUser.id));
+      setUsers((prev) => prev.filter((u) => u.id !== deletingUser.id));
+      setIsDeleteUserModalOpen(false);
+      setDeletingUser(null);
       await onRefresh?.("trainers");
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, "trainers");
     }
+  };
+
+  const handleDeleteUser = (user: Trainer) => {
+    setDeletingUser(user);
+    setIsDeleteUserModalOpen(true);
   };
 
   const handleCreateUser = async (trainerData: CreateTrainerPayload) => {
@@ -194,6 +369,116 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Pending Access Requests Panel */}
+      {requests.length > 0 && (
+        <Card className="rounded-[32px] bg-gradient-to-r from-amber-500/10 to-orange-500/10 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-500/20 dark:border-amber-950/40 shadow-md p-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center animate-pulse">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-black uppercase italic tracking-tight text-slate-800 dark:text-amber-100 leading-none">
+                  Pending Authentication Requests ({requests.length})
+                </h2>
+                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">
+                  New staffs or trainers requesting access to the Max Strength system
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchRequests}
+              className="text-[10px] gap-2 font-black uppercase tracking-widest h-8 rounded-lg border-amber-500/30 text-slate-700 dark:text-amber-300 dark:hover:bg-amber-950/30 bg-white dark:bg-slate-900"
+            >
+              <Loader2 className={cn("w-3 h-3", loadingRequests && "animate-spin")} />
+              Sync Requests
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {requests.map((req) => (
+              <div
+                key={req.id}
+                className="flex flex-col justify-between p-5 rounded-3xl border border-slate-200/60 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/60 backdrop-blur-md shadow-sm space-y-4"
+              >
+                <div className="space-y-3">
+                  {/* Title & Role */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-extrabold text-slate-900 dark:text-white text-base leading-tight truncate">
+                        {req.fullName}
+                      </h3>
+                      <span className="text-[10px] text-slate-500 font-semibold block truncate mt-0.5">
+                        {req.email || "No Email Provided"}
+                      </span>
+                    </div>
+                    <Badge className="bg-amber-500/10 hover:bg-amber-500/15 text-amber-600 dark:text-[#ff9800] border border-amber-500/20 self-start px-2 py-0.5 text-[9px] uppercase font-black tracking-widest rounded-md shrink-0">
+                      {req.roleRequested || "Trainer"}
+                    </Badge>
+                  </div>
+
+                  {/* Body fields */}
+                  <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300 font-medium">
+                    {req.phone && (
+                      <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>{req.phone}</span>
+                      </div>
+                    )}
+                    {req.reason && (
+                      <div className="flex items-start gap-2 bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/50 mt-1 italic">
+                        <MessageSquare className="w-3.5 h-3.5 mt-0.5 text-slate-400 shrink-0" />
+                        <p className="flex-1 text-[11px] leading-relaxed break-words">
+                          "{req.reason}"
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Actions row */}
+                <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/40">
+                  <Button
+                    onClick={() => handleOpenApproval(req)}
+                    size="sm"
+                    className="flex-1 h-9 rounded-xl text-[10px] font-black uppercase tracking-widest bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    <UserCheck className="w-3.5 h-3.5" />
+                    Approve Access
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setRejectingRequest(req);
+                      setIsRejectModalOpen(true);
+                    }}
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950/20 text-slate-400 hover:border-amber-200 dark:hover:border-amber-900 shrink-0 flex items-center justify-center"
+                    title="Reject Request"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setDeletingRequest(req);
+                      setIsDeleteRequestModalOpen(true);
+                    }}
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 p-0 rounded-xl border-slate-200 dark:border-slate-800 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/20 text-slate-400 hover:border-rose-200 dark:hover:border-rose-900 shrink-0 flex items-center justify-center"
+                    title="Delete Request Permanently"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       <Card className="rounded-[32px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-6 overflow-visible">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
@@ -423,7 +708,7 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
                       variant="outline"
                       size="icon"
                       className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-800 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30"
-                      onClick={() => handleDeleteUser(user.id)}
+                      onClick={() => handleDeleteUser(user)}
                     >
                       <Trash2 className="w-3.5 h-3.5 text-slate-400" />
                     </Button>
@@ -448,6 +733,235 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
         onOpenChange={setIsEditModalOpen}
         onSave={handleUpdateTrainerFields}
       />
+
+      {/* Access Request Approval Modal */}
+      <Dialog open={isApproveModalOpen} onOpenChange={setIsApproveModalOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black italic uppercase text-slate-900 dark:text-white tracking-widest flex items-center gap-2">
+              <UserCheck className="w-6 h-6 text-emerald-500" />
+              Configure Roster Account
+            </DialogTitle>
+          </DialogHeader>
+          
+          {approvingRequest && (
+            <div className="space-y-4 py-3">
+              <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-500 block">
+                  Approving Access For
+                </span>
+                <span className="text-sm font-black text-slate-800 dark:text-slate-200 block mt-0.5">
+                  {approvingRequest.fullName}
+                </span>
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block truncate mt-0.5">
+                  {approvingRequest.email}
+                </span>
+              </div>
+
+              {/* Home Studio */}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+                  Primary Facility <span className="text-rose-500">*</span>
+                </Label>
+                <Select
+                  value={approvingHomeStudioId}
+                  onValueChange={setApprovingHomeStudioId}
+                >
+                  <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-11 text-sm font-bold">
+                    <SelectValue placeholder="Select primary studio..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-705 text-slate-900 dark:text-white max-h-[300px]">
+                    {studios.map((studio) => (
+                      <SelectItem
+                        key={studio.id}
+                        value={studio.id || ""}
+                        className="focus:bg-[#38BDF8] focus:text-slate-950 cursor-pointer text-xs font-bold uppercase"
+                      >
+                        {studio.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Initials */}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+                  Trainer Initials <span className="text-rose-500">*</span>
+                </Label>
+                <Input
+                  value={approvingInitials}
+                  onChange={(e) => setApprovingInitials(e.target.value.toUpperCase())}
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-11 uppercase font-black"
+                  placeholder="Initials (e.g., JD)"
+                  maxLength={3}
+                />
+              </div>
+
+              {/* Roster Assignment Role */}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+                  System Role
+                </Label>
+                <Select
+                  value={approvingRole}
+                  onValueChange={(val) => setApprovingRole(val as UserRole)}
+                >
+                  <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-11 text-sm font-bold">
+                    <SelectValue placeholder="Select system role..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
+                    <SelectItem value="LifeTransformer" className="font-bold uppercase text-[10px]">Life Transformer (Standard)</SelectItem>
+                    <SelectItem value="StudioLeader" className="font-bold uppercase text-[10px]">Studio Leader</SelectItem>
+                    <SelectItem value="Owner" className="font-bold uppercase text-[10px]">Owner</SelectItem>
+                    <SelectItem value="Admin" className="font-bold uppercase text-[10px]">System Administrator</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Calendar Visibility */}
+              <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/30 border border-slate-150 dark:border-slate-800 rounded-xl">
+                <div className="space-y-0.5">
+                  <Label className="text-xs font-black text-slate-800 dark:text-white">
+                    Visible on Calendar
+                  </Label>
+                  <p className="text-[9px] text-slate-500 font-bold uppercase">
+                    Allow clients to schedule sessions
+                  </p>
+                </div>
+                <Switch
+                  checked={approvingCalendarVisible}
+                  onCheckedChange={setApprovingCalendarVisible}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              onClick={handleConfirmApproval}
+              disabled={!approvingHomeStudioId || !approvingInitials || approvingInitials.length < 2}
+              className="w-full bg-[#F06C22] hover:bg-[#d95b16] text-white font-black uppercase text-xs h-11 rounded-xl transition-all shadow-[0_4px_12px_rgba(240,108,34,0.3)]"
+            >
+              Commit Approval & Build Profile
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Request Confirmation Modal */}
+      <Dialog open={isRejectModalOpen} onOpenChange={setIsRejectModalOpen}>
+        <DialogContent className="sm:max-w-[400px] bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black italic uppercase text-slate-900 dark:text-white tracking-widest flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-amber-500" />
+              Reject Request
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
+              Are you sure you want to reject the request from <span className="text-amber-500 font-extrabold">{rejectingRequest?.fullName}</span>?
+            </p>
+            <p className="text-xs text-slate-400 font-medium leading-relaxed">
+              This request will be deactivated and archived as "Rejected". They will not be granted access to the rosters or calendar.
+            </p>
+          </div>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsRejectModalOpen(false);
+                setRejectingRequest(null);
+              }}
+              className="flex-1 rounded-xl uppercase text-xs font-black tracking-widest text-slate-700 dark:text-slate-300"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmRejectRequest}
+              className="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-black uppercase text-xs h-10 rounded-xl transition-all shadow-md"
+            >
+              Confirm Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Request Permanently Confirmation Modal */}
+      <Dialog open={isDeleteRequestModalOpen} onOpenChange={setIsDeleteRequestModalOpen}>
+        <DialogContent className="sm:max-w-[400px] bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black italic uppercase text-slate-900 dark:text-white tracking-widest flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-rose-500" />
+              Delete Request
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
+              Are you sure you want to permanently delete the request from <span className="text-rose-500 font-extrabold">{deletingRequest?.fullName}</span>?
+            </p>
+            <p className="text-xs text-slate-400 font-medium leading-relaxed">
+              This will completely erase the access request document from the database. This action is irreversible.
+            </p>
+          </div>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeleteRequestModalOpen(false);
+                setDeletingRequest(null);
+              }}
+              className="flex-1 rounded-xl uppercase text-xs font-black tracking-widest text-slate-700 dark:text-slate-300"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteRequest}
+              className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-black uppercase text-xs h-10 rounded-xl transition-all shadow-md"
+            >
+              Confirm Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User/Trainer Profile Confirmation Modal */}
+      <Dialog open={isDeleteUserModalOpen} onOpenChange={setIsDeleteUserModalOpen}>
+        <DialogContent className="sm:max-w-[400px] bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black italic uppercase text-slate-900 dark:text-white tracking-widest flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-rose-500" />
+              Delete Profile
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
+              Are you sure you want to permanently delete the profile for <span className="text-rose-500 font-extrabold">{deletingUser?.fullName}</span>?
+            </p>
+            <p className="text-xs text-slate-400 font-medium leading-relaxed">
+              This will permanently delete their staff roster account from the workspace. This action is irreversible.
+            </p>
+          </div>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeleteUserModalOpen(false);
+                setDeletingUser(null);
+              }}
+              className="flex-1 rounded-xl uppercase text-xs font-black tracking-widest text-slate-700 dark:text-slate-300"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteUser}
+              className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-black uppercase text-xs h-10 rounded-xl transition-all shadow-md"
+            >
+              Confirm Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -740,6 +740,11 @@ export interface Studio {
     atRiskThresholdDays: number;
     miaThresholdDays: number;
     autoExcludeAfterDays: number;
+    sleepPoorCountThreshold?: number;
+    poorMachineLogsThreshold?: number;
+    stressLowCountThreshold?: number;
+    stressLowValueThreshold?: number;
+    noStrengthGainsDays?: number;
   };
 }
 

@@ -219,7 +219,7 @@ export function ClientClinicalReviewView({
                   </div>
                </div>
 
-               <div className="space-y-2 mt-4">
+               <div className="space-y-2 mt-2">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-green text-[13px] font-bold uppercase tracking-wider">Max Strength</span>
                     <span className="text-white font-mono">{metrics.repQualityBreakdown.elite}</span>
@@ -231,6 +231,41 @@ export function ClientClinicalReviewView({
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-red-500 text-[13px] font-bold uppercase tracking-wider">Poor</span>
                     <span className="text-white font-mono">{metrics.repQualityBreakdown.poor}</span>
+                  </div>
+               </div>
+
+               {/* Muscle Group Tonnage Tracker */}
+               <div className="mt-2 pt-3 border-t border-div-l/50">
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-ink-d3 mb-2">Muscle Group Tonnage</h4>
+                  <div className="space-y-2.5 w-full">
+                    {metrics.broadMuscleGroupVolumes?.map(g => {
+                      const pct = metrics.totalTonnage > 0 ? (g.volume / metrics.totalTonnage) * 100 : 0;
+                      
+                      const barColor = 
+                        g.category === "Lower Body" ? "bg-emerald-500" :
+                        g.category === "Upper Body" ? "bg-cyan" :
+                        g.category === "Core & Spine" ? "bg-orange-500" : "bg-indigo-500";
+
+                      return (
+                        <div key={g.category} className="flex flex-col gap-1">
+                          <div className="flex justify-between items-center text-[11px]">
+                            <span className="text-white font-sans font-medium flex items-center gap-1.5">
+                              <span className={cn("w-1.5 h-1.5 rounded-full inline-block", barColor)} />
+                              {g.category}
+                            </span>
+                            <span className="font-mono text-ink-d1 font-semibold">
+                              {g.volume.toLocaleString()} lb <span className="text-ink-d3 font-sans text-[9px] font-normal ml-0.5">({Math.round(pct)}%)</span>
+                            </span>
+                          </div>
+                          <div className="w-full bg-white/5 rounded-full h-[4px] overflow-hidden">
+                            <div className={cn("h-full rounded-full transition-all duration-300", barColor)} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {(!metrics.broadMuscleGroupVolumes || metrics.broadMuscleGroupVolumes.length === 0) && (
+                      <span className="text-ink-d3 italic text-[11px]">No tonnage recorded in window.</span>
+                    )}
                   </div>
                </div>
 

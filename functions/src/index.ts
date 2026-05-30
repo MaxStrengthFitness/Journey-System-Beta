@@ -11,7 +11,7 @@ const db = admin.firestore();
 export const calculateFacilityAnalytics = functions.pubsub
   .schedule("0 2 * * *")
   .timeZone("Etc/UTC")
-  .onRun(async (context) => {
+  .onRun(async (context: any) => {
     await calculateAndSaveFacilitySummary();
   });
 
@@ -127,7 +127,7 @@ async function calculateAndSaveFacilitySummary() {
  * HTTPS Callable Cloud Function to assign roles to users as Custom Claims.
  * Restricts updates to Admins, Founders, or the configured system override IDs.
  */
-export const setCustomUserClaims = functions.https.onCall(async (data, context) => {
+export const setCustomUserClaims = functions.https.onCall(async (data: any, context: any) => {
   // 1. Guard against unauthenticated requests
   if (!context.auth) {
     throw new functions.https.HttpsError(

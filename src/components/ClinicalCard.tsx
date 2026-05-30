@@ -24,7 +24,7 @@ export function ClinicalCard({
   return (
     <div
       className={cn(
-        "flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden h-full transition-all group border-y lg:border border-l-4",
+        "flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden h-full transition-all group border border-slate-200 dark:border-slate-800 border-l-4",
         borderColor,
         className
       )}

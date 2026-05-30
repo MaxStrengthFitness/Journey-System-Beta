@@ -429,7 +429,7 @@ function MachineCard({
                 e.stopPropagation();
                 if (onCollapse) onCollapse();
               }}
-              className="h-11 min-w-[44px] px-3.5 rounded-xl border border-div-l bg-surface-2 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest text-[11px]"
+              className="h-11 min-w-[44px] px-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-300 font-black uppercase tracking-widest text-[11px]"
             >
               Minimize
             </Button>
@@ -566,25 +566,25 @@ function MachineCard({
           </div>
         ) : (
           <div className="flex items-start justify-between">
-            <div className={cn("border-l-4 border-y border-r rounded-md p-2 px-3 bg-white dark:bg-slate-900 border-r-slate-100 border-y-slate-100 dark:border-r-slate-800 dark:border-y-slate-800", colors.border.replace('border-', 'border-l-'))}>
+            <div className={cn("border-l-4 border border-slate-200 dark:border-slate-800 rounded-md p-2 px-3 bg-white dark:bg-slate-950", baseColorStyles.border)}>
               <div className="flex gap-4">
                 <div>
-                  <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 block mb-0.5">
                     Starting
                   </Label>
                   <div className="text-xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tighter leading-none flex items-baseline gap-1">
-                    {startingWeightDisplay}
+                    {startingWeightDisplay || "--"}
                     <span className="text-[11px] font-bold text-slate-400">
                       LBS
                     </span>
                   </div>
                 </div>
                 <div>
-                  <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 block mb-0.5">
                     Current
                   </Label>
                   <div className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none flex items-baseline gap-1">
-                    {currentWeightDisplay}
+                    {currentWeightDisplay || startingWeightDisplay || "--"}
                     <span className="text-[11px] font-bold text-slate-400">
                       LBS
                     </span>
@@ -606,7 +606,7 @@ function MachineCard({
                         "text-[11px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded-md flex items-center justify-end min-w-[32px]",
                         isStandard
                           ? colors.activeText + " " + colors.bg
-                          : "text-slate-500 bg-slate-100 dark:bg-slate-800",
+                          : "text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80",
                       )}
                     >
                       {v}{" "}
@@ -833,7 +833,7 @@ function MachineCard({
                 className={cn(
                   "w-full h-12 rounded-xl font-black uppercase tracking-widest text-[11px] transition-all disabled:opacity-50 border",
                   colors.bg,
-                  colors.border,
+                  baseColorStyles.border,
                   colors.text,
                   "hover:opacity-80 border-opacity-50",
                 )}
@@ -961,11 +961,27 @@ export function ClientEquipmentPrescriptions({
 
   const { activeStudio } = useActiveStudio();
 
-  const sortedMachines = [...(machines || [])].sort(
-    (a: any, b: any) => (a.order || 999) - (b.order || 999),
-  );
-
   const safeClientSettings = clientSettings || {};
+
+  const isMachinePerformed = (m: any) => {
+    const cPreset = safeClientSettings[m.id];
+    const hasWeight = cPreset && (
+      (cPreset.startingWeight !== undefined && cPreset.startingWeight !== null && cPreset.startingWeight !== "") || 
+      (cPreset.currentWeight !== undefined && cPreset.currentWeight !== null && cPreset.currentWeight !== "")
+    );
+    const hasSettings = cPreset && cPreset.settings && Object.keys(cPreset.settings).length > 0;
+    const hasLogs = allLogs && allLogs.some((l: any) => l.machineId === m.id);
+    return !!(hasWeight || hasSettings || hasLogs);
+  };
+
+  const sortedMachines = [...(machines || [])].sort((a: any, b: any) => {
+    const aPerformed = isMachinePerformed(a);
+    const bPerformed = isMachinePerformed(b);
+    if (aPerformed !== bPerformed) {
+      return aPerformed ? -1 : 1;
+    }
+    return Number(a.order || 999) - Number(b.order || 995);
+  });
 
   // KPI calculations
   const machinesWithSettingsCount = sortedMachines.filter((machine: any) => {
@@ -1058,7 +1074,7 @@ export function ClientEquipmentPrescriptions({
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
         <div className="grid grid-cols-3 gap-3 flex-1 min-w-0">
           {/* Tile 1: % config */}
-          <div className="h-20 bg-bg-l-card border border-div-l rounded-2xl px-4 flex flex-col justify-center shadow-sm">
+          <div className="h-20 bg-bg-l-card dark:bg-slate-900 border border-div-l dark:border-slate-800 rounded-2xl px-4 flex flex-col justify-center shadow-sm">
             <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 leading-none mb-1">
               Configured
             </span>
@@ -1068,7 +1084,7 @@ export function ClientEquipmentPrescriptions({
           </div>
 
           {/* Tile 2: % starting logged */}
-          <div className="h-20 bg-bg-l-card border border-div-l rounded-2xl px-4 flex flex-col justify-center shadow-sm">
+          <div className="h-20 bg-bg-l-card dark:bg-slate-900 border border-div-l dark:border-slate-800 rounded-2xl px-4 flex flex-col justify-center shadow-sm">
             <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 leading-none mb-1">
               Starting Logged
             </span>
@@ -1078,7 +1094,7 @@ export function ClientEquipmentPrescriptions({
           </div>
 
           {/* Tile 3: clinical warnings */}
-          <div className="h-20 bg-bg-l-card border border-div-l rounded-2xl px-4 flex flex-col justify-center shadow-sm">
+          <div className="h-20 bg-bg-l-card dark:bg-slate-900 border border-div-l dark:border-slate-800 rounded-2xl px-4 flex flex-col justify-center shadow-sm">
             <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 leading-none mb-1">
               Warning Alerts
             </span>
@@ -1090,7 +1106,7 @@ export function ClientEquipmentPrescriptions({
 
         <div className="flex items-center gap-3 shrink-0">
           {/* Compact / Full View Switcher */}
-          <div className="flex bg-surface-2 border border-div-l rounded-xl p-0.5 h-11 items-center relative">
+          <div className="flex bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl p-0.5 h-11 items-center relative gap-0.5">
             <button
               id="toggle-compact"
               type="button"
@@ -1195,6 +1211,7 @@ export function ClientEquipmentPrescriptions({
             const currentWeightDisplay = clientSetting?.currentWeight !== undefined ? clientSetting.currentWeight : "";
             const startingWeightDisplay = clientSetting?.startingWeight !== undefined ? clientSetting.startingWeight : "";
             const currentSettings = clientSetting?.settings || {};
+            const baseColorStyles = getMachineStyle(machine.name);
 
             const gapKey = Object.keys(currentSettings).find(k => k.toLowerCase().trim() === 'gap');
             const isRomSet = !!(gapKey && currentSettings[gapKey]);
@@ -1218,7 +1235,10 @@ export function ClientEquipmentPrescriptions({
               <div
                 key={machine.id}
                 onClick={() => handleToggleExpand(machine.id)}
-                className="h-[110px] rounded-xl bg-bg-l-card dark:bg-slate-900 border border-div-l dark:border-slate-800 p-4 flex flex-col justify-between cursor-pointer hover:border-cta/50 transition-all select-none relative group"
+                className={cn(
+                  "h-[110px] rounded-xl bg-bg-l-card dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 flex flex-col justify-between cursor-pointer hover:border-[#F06C22]/50 transition-all select-none relative group border-l-4",
+                  baseColorStyles.border
+                )}
               >
                 <div className="flex items-start justify-between gap-2 min-w-0">
                   <div className="min-w-0 flex-1">

@@ -3,8 +3,9 @@ import { AppHeader } from "./AppHeader";
 import { StickyCTA } from "./StickyCTA";
 import { FeelToggle } from "./FeelToggle";
 import { BentoStatTile } from "./BentoStatTile";
-import { Client, WorkoutSession, ExerciseLog, Trainer, ScheduleEntry } from "../types";
+import { Client, WorkoutSession, ExerciseLog, Trainer, ScheduleEntry, Machine } from "../types";
 import { safeToDate } from "../lib/utils";
+import { getBroadMuscleGroup } from "../lib/clinical-review-utils";
 
 export interface VictoryHUDScreenProps {
   client: Client;
@@ -15,6 +16,7 @@ export interface VictoryHUDScreenProps {
   authTrainer: Trainer | null;
   onFinalize: (postData: { clientFeel: string; noteContent: string; notePriority: 'High' | 'Medium' | 'Low' }) => void;
   isSyncing?: boolean;
+  machines?: Machine[];
 }
 
 export function VictoryHUDScreen({ 
@@ -25,7 +27,8 @@ export function VictoryHUDScreen({
   schedules = [],
   authTrainer,
   onFinalize,
-  isSyncing 
+  isSyncing,
+  machines = []
 }: VictoryHUDScreenProps) {
   const [feel, setFeel] = useState<'great' | 'good' | 'fatigued' | 'sore' | 'pain'>('good');
   const [notes, setNotes] = useState('');
@@ -44,6 +47,30 @@ export function VictoryHUDScreen({
   // Calculate actual total tonnage from today's logs
   const totalTonnage = logs.reduce((sum, l) => sum + (getLogLoad(l) * getLogReps(l)), 0);
   
+  // Calculate today's broad muscle grouping breakdown
+  const todayBroad: Record<string, number> = {
+    "Lower Body": 0,
+    "Upper Body": 0,
+    "Core & Spine": 0,
+    "Other": 0
+  };
+
+  logs.forEach(l => {
+    const machine = machines.find(m => m.id === l.machineId);
+    const region = machine?.anatomicalRegion || "";
+    const name = machine?.name || "";
+    const group = getBroadMuscleGroup(region, name);
+    const tonnage = getLogLoad(l) * getLogReps(l);
+    todayBroad[group] += tonnage;
+  });
+
+  const todayBroadList = [
+    { name: "Lower Body", value: todayBroad["Lower Body"], color: "bg-emerald-500" },
+    { name: "Upper Body", value: todayBroad["Upper Body"], color: "bg-cyan" },
+    { name: "Core & Spine", value: todayBroad["Core & Spine"], color: "bg-orange-500" },
+    { name: "Other", value: todayBroad["Other"], color: "bg-indigo-500" }
+  ].filter(item => item.value > 0 || item.name !== "Other");
+
   // Calculate average TUT
   const totalTimeUnderTension = logs.reduce((sum, l) => sum + getLogTut(l), 0);
   const totalReps = logs.reduce((sum, l) => sum + getLogReps(l), 0);
@@ -75,7 +102,7 @@ export function VictoryHUDScreen({
   const avgRepsPerSession = sessionCount > 0 ? (lifetimeReps / sessionCount).toFixed(1) : '0';
 
   const tiles = [
-    { id: 'tonnage',      label: "TODAY'S TONNAGE",  value: totalTonnage,    unit: 'lb', variant: 'hero' as const },
+    { id: 'tonnage',      label: "TODAY'S TONNAGE",  value: totalTonnage,    unit: 'lb', variant: 'hero' as const, broadBreakdown: todayBroadList },
     { id: 'tut',          label: 'AVG TUT / REP',    value: avgTutPerRep,  unit: 's',   variant: 'default' as const },
     { id: 'elite',        label: 'MAX STRENGTH SETS', value: maxStrengthSets.toString(), meta: `/ ${totalSets}`, progress: { current: maxStrengthSets, target: totalSets }, variant: 'default' as const },
     { id: 'reps',         label: 'TOTAL REPS',       value: totalReps,                  variant: 'default' as const },

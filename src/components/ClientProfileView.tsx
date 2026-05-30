@@ -24,7 +24,7 @@ import {
   Mail,
   MapPin,
   Activity,
-  Settings,
+  Contact,
   ChevronLeft,
   ChevronRight,
   Edit3,
@@ -2303,8 +2303,8 @@ export function ClientProfileView({
       })()}
 
       {/* Session Status Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm px-8 py-8 mb-4 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 transition-colors duration-200">
-        <div className="flex items-start gap-4 z-10 shrink-0 min-w-0 w-full md:w-auto pr-[140px] xs:pr-[160px] sm:pr-[180px] md:pr-0">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm px-4 sm:px-6 py-4 sm:py-5 mb-4 flex flex-wrap items-center justify-between gap-4 transition-colors duration-200">
+        <div className="flex items-start gap-3 sm:gap-4 z-10 min-w-0 flex-1">
           <Button
             onClick={() => {
               setSelectedClientId(null);
@@ -2312,34 +2312,34 @@ export function ClientProfileView({
             }}
             variant="ghost"
             size="icon"
-            className="shrink-0 text-slate-400 dark:text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 -ml-2 h-10 w-10 sm:h-12 sm:w-12 rounded-full mt-1"
+            className="shrink-0 text-slate-400 dark:text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 -ml-2 h-9 w-9 sm:h-11 sm:w-11 rounded-full mt-1"
           >
-            <ChevronLeft className="w-6 h-6 md:w-8 md:h-8" />
+            <ChevronLeft className="w-5 h-5 sm:w-7 sm:h-7" />
           </Button>
-          <div className="flex flex-col min-w-0 items-start mt-1.5">
-            <div className="flex items-center gap-3 mb-1">
-              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-none m-0 truncate text-slate-900 dark:text-white">
+          <div className="flex flex-col min-w-0 items-start mt-1">
+            <div className="flex items-center gap-2 sm:gap-3 mb-1 flex-wrap">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight leading-none m-0 truncate text-slate-900 dark:text-white">
                 {client.firstName} {client.lastName}
               </h2>
               {(client.notes || (client.clinicalFlags && client.clinicalFlags.length > 0)) && (
-                <AlertTriangle className="w-6 h-6 text-red-500 animate-pulse shrink-0" />
+                <AlertTriangle className="w-5 h-5 text-red-500 animate-pulse shrink-0" />
               )}
-              <div className="bg-slate-900 text-white dark:bg-slate-50 dark:text-slate-900 rounded-full px-4 py-1 font-mono text-lg shadow-sm ml-2 hidden sm:block shrink-0">
-                {calculatedSessionCount} <span className="opacity-50 text-sm">/ {calculatedSessionCount + (client.remainingSessions ?? 0)}</span>
+              <div className="bg-slate-900 text-white dark:bg-slate-50 dark:text-slate-900 rounded-full px-3 py-0.5 font-mono text-xs sm:text-sm lg:text-base shadow-sm shrink-0">
+                {calculatedSessionCount} <span className="opacity-50 text-[10px] sm:text-xs">/ {calculatedSessionCount + (client.remainingSessions ?? 0)}</span>
               </div>
             </div>
             
-            <div className="flex items-center gap-4 text-slate-500 dark:text-slate-400 text-sm font-medium mt-3 flex-wrap">
+            <div className="flex items-center gap-3 sm:gap-4 text-slate-500 dark:text-slate-400 text-xs font-medium mt-2 flex-wrap">
               {client.dateOfBirth && (
-                 <div className="flex items-center gap-1.5">
-                   <Cake className="w-4 h-4 text-slate-400" />
-                   Born: {new Date(client.dateOfBirth + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                 <div className="flex items-center gap-1.5 whitespace-nowrap">
+                   <Cake className="w-3.5 h-3.5 text-slate-400" />
+                   Born: <span className="text-slate-700 dark:text-slate-300">{new Date(client.dateOfBirth + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                  </div>
               )}
               
-              <div className="flex items-center gap-1.5">
-                <UserCheck className="w-4 h-4 text-slate-400" />
-                Lead Transformer: {(() => {
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                <UserCheck className="w-3.5 h-3.5 text-slate-400" />
+                Lead: <span className="text-slate-700 dark:text-slate-300">{(() => {
                   const trainerCount: Record<string, number> = {};
                   sessions.forEach(s => {
                     if (s.trainerId) trainerCount[s.trainerId] = (trainerCount[s.trainerId] || 0) + 1;
@@ -2358,49 +2358,40 @@ export function ClientProfileView({
                     return t ? t.fullName : "N/A";
                   }
                   return "N/A";
-                })()}
+                })()}</span>
               </div>
               
               <div className="hidden sm:block w-px h-4 bg-slate-200 dark:bg-slate-700"></div>
-
-              <div className="flex items-center gap-1.5">
-                <CalendarDays className="w-4 h-4 text-slate-400" />
-                Joined: {client.firstSessionDate ? new Date(client.firstSessionDate.toDate?.() || client.firstSessionDate).toLocaleDateString([], { month: 'short', year: 'numeric' }) : "--"}
+ 
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
+                Joined: <span className="text-slate-700 dark:text-slate-300">{client.firstSessionDate ? new Date(client.firstSessionDate.toDate?.() || client.firstSessionDate).toLocaleDateString([], { month: 'short', year: 'numeric' }) : "--"}</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <History className="w-4 h-4 text-slate-400" />
-                Last: {sessions[0]?.date ? new Date(parseSessionDate(sessions[0].date)).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "--"}
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                <History className="w-3.5 h-3.5 text-slate-400" />
+                Last: <span className="text-slate-700 dark:text-slate-300">{sessions[0]?.date ? new Date(parseSessionDate(sessions[0].date)).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "--"}</span>
               </div>
             </div>
           </div>
         </div>
-
-        <div className="absolute top-6 right-6 md:static flex flex-col md:flex-row items-center gap-3 z-20 shrink-0">
+ 
+        <div className="flex flex-row items-center gap-2 sm:gap-3 z-20 shrink-0 ml-auto sm:ml-0 mt-1 sm:mt-0">
           <Button
             onClick={() => {
               setInfoSheetTab("identity");
               setIsInfoSheetOpen(true);
             }}
             variant="outline"
-            className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 h-10 sm:h-12 w-10 sm:w-12 p-0 flex items-center justify-center transition-colors shadow-sm"
+            className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 h-9 sm:h-11 w-9 sm:w-11 p-0 flex items-center justify-center transition-colors shadow-sm"
             title="Client Info"
           >
-            <Settings className="w-5 h-5" />
+            <Contact className="w-4.5 sm:w-5 h-4.5 sm:h-5" />
           </Button>
-
-          <Button
-            onClick={() => setView("clinical-review")}
-            variant="outline"
-            className="rounded-xl font-bold uppercase text-xs sm:text-sm tracking-widest h-10 sm:h-12 px-4 shadow-sm border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-          >
-            <Activity className="w-4 h-4 mr-1.5" />
-            Clinical Review
-          </Button>
-
+ 
           {activeInProgressSession ? (
             <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap bg-amber-500 hover:bg-amber-600 rounded-xl font-bold uppercase text-xs sm:text-sm tracking-widest h-10 sm:h-12 px-4 sm:px-6 shadow-sm border-none w-auto text-white transition-colors">
-                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 animate-pulse" />
+              <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap bg-amber-500 hover:bg-amber-600 rounded-xl font-bold uppercase text-[10px] sm:text-xs tracking-widest h-9 sm:h-11 px-3 sm:px-5 shadow-sm border-none w-auto text-white transition-colors">
+                  <Clock className="w-4 h-4 mr-1.5 animate-pulse" />
                   IN-PROGRESS ({activeInProgressSession.trainerInitials})
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[240px] rounded-2xl p-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
@@ -2436,9 +2427,9 @@ export function ClientProfileView({
                 setView("workouts");
               }}
               disabled={isCheckingActiveSession}
-              className="bg-[#F06C22] hover:bg-[#F06C22]/90 rounded-xl font-bold uppercase text-xs sm:text-sm tracking-widest h-10 sm:h-12 px-4 sm:px-6 shadow-sm border-none w-auto text-white dark:text-white"
+              className="bg-[#F06C22] hover:bg-[#F06C22]/90 rounded-xl font-bold uppercase text-[10px] sm:text-xs tracking-widest h-9 sm:h-11 px-3 sm:px-5 shadow-sm border-none w-auto text-white dark:text-white"
             >
-              <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2" />
+              <Play className="w-4 h-4 mr-1.5" />
               {isCheckingActiveSession ? 'Checking...' : 'START SESSION'}
             </Button>
           )}
@@ -2576,6 +2567,21 @@ export function ClientProfileView({
               </thead>
               <tbody className="text-slate-900 dark:text-slate-100 border-t border-slate-200 dark:border-slate-800">
                 {machines
+                  .filter((machine) => {
+                    if (journeyDensity !== "Compact") return true;
+
+                    // "compact should only show machines they have preformed or have target and or starting weights for"
+                    const machineLogs = allLogs.filter((l) => l.machineId === machine.id);
+                    const hasPerformed = machineLogs.length > 0;
+
+                    const targetWeight = clientSettings[machine.id!]?.targetWeight || client?.currentMachineMetrics?.[machine.id!]?.weight;
+                    const hasTarget = targetWeight !== undefined && targetWeight !== null && targetWeight !== "" && targetWeight !== "-";
+
+                    const startingWeight = clientSettings[machine.id!]?.startingWeight;
+                    const hasStarting = startingWeight !== undefined && startingWeight !== null && startingWeight !== "";
+
+                    return hasPerformed || hasTarget || hasStarting;
+                  })
                   .sort((a, b) => (a.order || 0) - (b.order || 0))
                   .map((machine, idx) => {
                     const machineLogs = allLogs.filter(
@@ -2644,33 +2650,36 @@ export function ClientProfileView({
                             labelColor = isLast ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300";
                             repsColor = isLast ? "text-slate-600 dark:text-slate-400" : "text-slate-500 dark:text-slate-500";
                             
-                            if (log.repQuality === 3) {
-                              bgClass = "bg-emerald-200 dark:bg-emerald-500/20";
-                              borderColor = "border-emerald-400 dark:border-emerald-500/30";
-                              if (isLast) {
-                                labelColor = "text-emerald-900 dark:text-emerald-100";
-                                repsColor = "text-emerald-800 dark:text-emerald-300";
-                              }
-                            } else if (log.repQuality === 2) {
-                              bgClass = "bg-amber-200 dark:bg-amber-500/20";
-                              borderColor = "border-amber-400 dark:border-amber-500/30";
-                              if (isLast) {
-                                labelColor = "text-amber-900 dark:text-amber-100";
-                                repsColor = "text-amber-800 dark:text-amber-300";
-                              }
-                            } else if (log.repQuality === 1) {
-                              bgClass = "bg-rose-200 dark:bg-rose-500/20";
-                              borderColor = "border-rose-400 dark:border-rose-500/30";
-                              if (isLast) {
-                                labelColor = "text-rose-900 dark:text-rose-100";
-                                repsColor = "text-rose-800 dark:text-rose-300";
+                            if (journeyDensity === "Full" || journeyDensity === "Compact") {
+                              if (log.repQuality === 3) {
+                                bgClass = "bg-emerald-200 dark:bg-emerald-500/20";
+                                borderColor = "border-emerald-400 dark:border-emerald-500/30";
+                                if (isLast) {
+                                  labelColor = "text-emerald-900 dark:text-emerald-100";
+                                  repsColor = "text-emerald-800 dark:text-emerald-300";
+                                }
+                              } else if (log.repQuality === 2) {
+                                bgClass = "bg-amber-200 dark:bg-amber-500/20";
+                                borderColor = "border-amber-400 dark:border-amber-500/30";
+                                if (isLast) {
+                                  labelColor = "text-amber-900 dark:text-amber-100";
+                                  repsColor = "text-amber-800 dark:text-amber-300";
+                                }
+                              } else if (log.repQuality === 1) {
+                                bgClass = "bg-rose-200 dark:bg-rose-500/20";
+                                borderColor = "border-rose-400 dark:border-rose-500/30";
+                                if (isLast) {
+                                  labelColor = "text-rose-900 dark:text-rose-100";
+                                  repsColor = "text-rose-800 dark:text-rose-300";
+                                }
                               }
                             }
                           }
 
                           if (journeyDensity === "Compact") {
-                            bgClass = "bg-transparent";
-                            borderColor = "border-transparent";
+                            if (bgClass === "bg-transparent") {
+                              borderColor = "border-transparent";
+                            }
                           }
 
                           return (

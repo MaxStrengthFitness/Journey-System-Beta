@@ -129,6 +129,7 @@ import {
 } from "./lib/sync-utils";
 import { getLatestTargetWeight } from "./lib/historical-utils";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import AccessRequestView from "./components/AccessRequestView";
 import { generateMockClientWithHistory } from "./lib/mockDataGenerator";
 import { TrainerControlHubView } from "./components/TrainerControlHubView";
 import { InsightsDashboardView } from "./components/InsightsDashboardView";
@@ -563,6 +564,13 @@ export default function App() {
 
           setAuthTrainer(trainerData);
 
+          if (!trainerData) {
+            // Logged-in user is not a registered trainer or super admin!
+            // End authentication cycle and do NOT make calls to secure databases to prevent permission-denied crashes.
+            setIsAuthReady(true);
+            return;
+          }
+
           const studioSnap = await getDocs(collection(db, "studios"));
           setStudios(
             studioSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Studio),
@@ -665,6 +673,7 @@ function AppContent({
   tokenRole: string | null;
 }) {
   const { theme } = useTheme();
+  const [showUnauthRequest, setShowUnauthRequest] = useState(false);
   const {
     activeStudioId,
     activeStudio,
@@ -1635,6 +1644,14 @@ function AppContent({
     }
   };
 
+  if (showUnauthRequest) {
+    return (
+      <AccessRequestView 
+        onClose={() => setShowUnauthRequest(false)} 
+      />
+    );
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-[#1c1d1f] flex flex-col items-center justify-center p-6 focus:outline-none relative overflow-hidden">
@@ -1698,12 +1715,28 @@ function AppContent({
           </div>
         </motion.div>
 
-        <div className="absolute bottom-6 w-full text-center z-10 px-6">
-          <p className="text-slate-900 dark:text-white/30 text-xs tracking-wider uppercase font-medium">
+        <div className="absolute bottom-6 w-full text-center z-10 px-6 flex flex-col items-center gap-3">
+          <p className="text-slate-900 dark:text-white/30 text-[10px] sm:text-xs tracking-wider uppercase font-medium">
             Master/Admin Credentials Required for Administrative Portal Access
           </p>
+          <button
+            onClick={() => setShowUnauthRequest(true)}
+            className="text-[#ff9800] hover:text-[#ffa726] font-black text-xs uppercase tracking-widest cursor-pointer transition-colors hover:underline active:scale-95"
+          >
+            No Account? Request Access Directly
+          </button>
         </div>
       </div>
+    );
+  }
+
+  // Intercept authenticated but unauthorized users
+  if (user && !authTrainer) {
+    return (
+      <AccessRequestView 
+        authenticatedUser={user} 
+        onLogout={handleLogout} 
+      />
     );
   }
 
@@ -8757,6 +8790,7 @@ function WorkoutTrackerView({
         authTrainer={authTrainer}
         onFinalize={finalizeEndSession}
         isSyncing={isSyncing}
+        machines={machines}
       />
     );
   }

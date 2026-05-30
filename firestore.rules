@@ -360,6 +360,12 @@ service cloud.firestore {
       allow write: if isSuperAdmin() || (request.resource.data.studioId != null && isTrainerOfStudio(request.resource.data.studioId));
     }
 
+    // ACCESS REQUESTS
+    match /access_requests/{requestId} {
+      allow create: if true;
+      allow read, update, delete: if isSuperAdmin();
+    }
+
     // BUG REPORTS
     match /bug_reports/{reportId} {
       allow read: if isSuperAdmin();
