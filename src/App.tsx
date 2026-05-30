@@ -499,6 +499,7 @@ const getMachineImageUrl = (machineId?: string): string => {
 type RoutineType = "A" | "B" | "Free";
 
 import { ActiveStudioProvider, useActiveStudio } from "./ActiveStudioContext";
+import { MindbodyHealthProvider } from "./contexts/MindbodyHealthContext";
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -621,29 +622,31 @@ export default function App() {
   }
 
   return (
-    <ActiveStudioProvider
-      studios={studios}
-      networks={networks}
-      authTrainer={authTrainer}
-      isAdmin={tokenRole === "Admin" || authTrainer?.role === "Admin" || tokenRole === "Founder" || authTrainer?.role === "Founder"}
-      userEmail={user?.email || undefined}
-      tokenRole={tokenRole || authTrainer?.role || undefined}
-      onLogout={handleLogout}
-    >
-      <AppContent
-        user={user}
-        authTrainer={authTrainer}
-        setAuthTrainer={setAuthTrainer}
+    <MindbodyHealthProvider>
+      <ActiveStudioProvider
         studios={studios}
-        setStudios={setStudios}
-        trainers={trainers}
-        setTrainers={setTrainers}
         networks={networks}
-        setNetworks={setNetworks}
-        handleLogout={handleLogout}
-        tokenRole={tokenRole}
-      />
-    </ActiveStudioProvider>
+        authTrainer={authTrainer}
+        isAdmin={tokenRole === "Admin" || authTrainer?.role === "Admin" || tokenRole === "Founder" || authTrainer?.role === "Founder"}
+        userEmail={user?.email || undefined}
+        tokenRole={tokenRole || authTrainer?.role || undefined}
+        onLogout={handleLogout}
+      >
+        <AppContent
+          user={user}
+          authTrainer={authTrainer}
+          setAuthTrainer={setAuthTrainer}
+          studios={studios}
+          setStudios={setStudios}
+          trainers={trainers}
+          setTrainers={setTrainers}
+          networks={networks}
+          setNetworks={setNetworks}
+          handleLogout={handleLogout}
+          tokenRole={tokenRole}
+        />
+      </ActiveStudioProvider>
+    </MindbodyHealthProvider>
   );
 }
 
