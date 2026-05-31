@@ -2,6 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
+// testing coderabbit integration
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { migrateClientMachineMetrics } from "./lib/migration-utils";
