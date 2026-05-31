@@ -834,7 +834,8 @@ export type View =
   | "leaderboard"
   | "admin-dashboard"
   | "franchise-dashboard"
-  | "retention";
+  | "retention"
+  | "mindbody-sandbox";
 
 export interface AuditLogEntry {
   id?: string;

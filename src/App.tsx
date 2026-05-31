@@ -501,6 +501,8 @@ type RoutineType = "A" | "B" | "Free";
 import { ActiveStudioProvider, useActiveStudio } from "./ActiveStudioContext";
 import { MindbodyHealthProvider } from "./contexts/MindbodyHealthContext";
 
+import { MindbodySandbox } from "./components/mindbody/MindbodySandbox";
+
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -2223,6 +2225,9 @@ function AppContent({
                 }}
               />
             )}
+            {currentView === "mindbody-sandbox" && (
+              <MindbodySandbox />
+            )}
           </AnimatePresence>
         </main>
 
@@ -2283,6 +2288,12 @@ function AppContent({
             onClick={() => setCurrentView("calendar")}
             icon={<Calendar className="w-6 h-6" />}
             label="Calendar"
+          />
+          <NavButton
+            active={currentView === "mindbody-sandbox"}
+            onClick={() => setCurrentView("mindbody-sandbox")}
+            icon={<Zap className="w-6 h-6" />}
+            label="MB Demo"
           />
 
           {(checkIsAdmin(authTrainer, user?.email || undefined) ||

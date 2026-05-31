@@ -85,6 +85,36 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* --- MINDBODY INTEGRATION TOKENS — append to existing @theme inline { } --- */
+@theme inline {
+    --color-mb-state-scheduled:    var(--mb-state-scheduled);
+    --color-mb-state-arrived:      var(--mb-state-arrived);
+    --color-mb-state-active:       var(--mb-state-active);
+    --color-mb-state-completed:    var(--mb-state-completed);
+    --color-mb-state-early-cancel: var(--mb-state-early-cancel);
+    --color-mb-state-late-cancel:  var(--mb-state-late-cancel);
+    --color-mb-state-no-show:      var(--mb-state-no-show);
+    --color-mb-state-reschedule:   var(--mb-state-reschedule);
+
+    --color-mb-sync-fresh:    var(--mb-sync-fresh);
+    --color-mb-sync-syncing:  var(--mb-sync-syncing);
+    --color-mb-sync-stale:    var(--mb-sync-stale);
+    --color-mb-sync-error:    var(--mb-sync-error);
+    --color-mb-sync-offline:  var(--mb-sync-offline);
+
+    --color-mb-access-home:    var(--mb-access-home);
+    --color-mb-access-foreign: var(--mb-access-foreign);
+    --color-mb-access-pending: var(--mb-access-pending);
+    --color-mb-access-granted: var(--mb-access-granted);
+    --color-mb-access-denied:  var(--mb-access-denied);
+
+    --color-mb-origin-mindbody: var(--mb-origin-mindbody);
+    --color-mb-origin-journey:  var(--mb-origin-journey);
+    --color-mb-origin-system:   var(--mb-origin-system);
+}
+
+
+
 :root {
     --background: #F8FAFC;
     --foreground: #0F172A;
@@ -151,6 +181,38 @@
     --green:       #4FDB8E;
     --red:         #E84F4F;
     --amber:       #F5A623;
+
+    /* --- MINDBODY INTEGRATION TOKENS — append to existing :root { } --- */
+    --mb-state-scheduled:    #94A3B8;
+    --mb-state-arrived:      var(--cyan);
+    --mb-state-active:       var(--cta);
+    --mb-state-completed:    var(--green);
+    --mb-state-early-cancel: var(--ink-l3);
+    --mb-state-late-cancel:  var(--amber);
+    --mb-state-no-show:      var(--red);
+    --mb-state-reschedule:   var(--yellow);
+
+    --mb-sync-fresh:   var(--green);
+    --mb-sync-syncing: var(--cyan);
+    --mb-sync-stale:   var(--amber);
+    --mb-sync-error:   var(--red);
+    --mb-sync-offline: var(--secondary);
+
+    --mb-access-home:    transparent;
+    --mb-access-foreign: var(--amber);
+    --mb-access-pending: var(--cyan);
+    --mb-access-granted: var(--green);
+    --mb-access-denied:  var(--red);
+
+    --mb-origin-mindbody: var(--brand);
+    --mb-origin-journey:  var(--cta);
+    --mb-origin-system:   #68717A;
+
+    --mb-card-pad:         1.25rem;
+    --mb-roster-row-h:     64px;
+    --mb-ledger-rail-w:    4px;
+    --mb-motion-hydrate:   220ms;
+    --mb-motion-state-shift: 400ms;
 }
 
 .dark {
@@ -190,6 +252,10 @@
     --sidebar-accent-foreground: #38BDF8;
     --sidebar-border: #334155;
     --sidebar-ring: #38BDF8;
+
+    /* --- MINDBODY INTEGRATION TOKENS — append to existing .dark { } --- */
+    --mb-state-early-cancel: var(--ink-d3);
+    --mb-access-foreign:     var(--yellow);
 }
 
 @layer base {
