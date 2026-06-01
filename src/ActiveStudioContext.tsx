@@ -77,10 +77,10 @@ export function ActiveStudioProvider({
     // If not logged in as a trainer, show all studios
     if (!authTrainer) return studios;
     
-    // Super Admin or Franchise Owner/Overseer see all studios
+    // Super Admin or Founder/Overseer see all studios
     const isGlobalUser = isAdmin || 
       authTrainer.role === 'Admin' || 
-      authTrainer.role === 'FranchiseOwner' || 
+      authTrainer.role === 'Founder' || 
       authTrainer.role === 'Overseer';
       
     if (isGlobalUser) return studios;
@@ -92,8 +92,19 @@ export function ActiveStudioProvider({
       ...(authTrainer.activeGuestStudioIds || []),
       ...(authTrainer.ownedStudioIds || [])
     ]);
+
+    // Also include studios from any networks this trainer owns
+    networks.forEach(n => {
+      if ((n.ownerIds || []).includes(authTrainer.id!) || n.ownerId === authTrainer.id) {
+        (n.studioIds || []).forEach(id => allowedIds.add(id));
+      }
+    });
     
-    return studios.filter(s => s.id && allowedIds.has(s.id));
+    // For FranchiseOwner (Owner role) or others, only show their allowed studios plus any where they are listed as ownerId
+    return studios.filter(s => 
+      (s.id && allowedIds.has(s.id)) || 
+      s.ownerId === authTrainer.id
+    );
   }, [authTrainer, studios, isAdmin]);
 
   const activeStudio = React.useMemo(() => {

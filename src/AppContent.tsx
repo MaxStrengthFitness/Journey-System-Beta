@@ -5285,7 +5285,8 @@ function ClientHistoryView({
 
     const fetchLogs = async () => {
       try {
-        const sessionIds = sessionIdsStr.split(",");
+        const sessionIds = sessionIdsStr.split(",").filter(Boolean);
+        if (sessionIds.length === 0) return;
         const logsQuery = query(
           collection(db, "exerciseLogs"),
           where("sessionId", "in", sessionIds),
@@ -6675,11 +6676,11 @@ function ExerciseHistoryDialog({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !machine.id || !clientId) return;
     const q = query(
       collection(db, "exerciseLogs"),
       where("clientId", "==", clientId),
-      where("machineId", "==", machine.id!),
+      where("machineId", "==", machine.id),
       orderBy("createdAt", "desc"),
     );
 
@@ -6859,7 +6860,7 @@ function SessionNotesSidebar({
   const trainerInitials = currentTrainer?.initials || "??";
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !session.id) return;
     const q = query(
       collection(db, "sessionNotes"),
       where("sessionId", "==", session.id),
@@ -7569,7 +7570,8 @@ function WorkoutTrackerView({
 
   useEffect(() => {
     if (sessions.length > 0) {
-      const sessionIds = sessions.map((s) => s.id!);
+      const sessionIds = sessions.map((s) => s.id!).filter(Boolean);
+      if (sessionIds.length === 0) return;
       const logsQuery = query(
         collection(db, "exerciseLogs"),
         where("sessionId", "in", sessionIds),

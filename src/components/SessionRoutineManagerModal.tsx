@@ -2,8 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Machine } from '../types';
-import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
+import { SequenceRow } from './SequenceRow';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Props {
   isOpen: boolean;
@@ -13,21 +30,55 @@ interface Props {
   onSave: (machineIds: string[]) => void;
 }
 
-const getShorthand = (name: string) => {
-  return name
-    .replace(/Seated /gi, '')
-    .replace(/Standing /gi, '')
-    .replace(/Machine/gi, '')
-    .replace(/Extension/gi, 'Ext')
-    .replace(/Abdominal/gi, 'Abs')
-    .replace(/Shoulder/gi, 'Shldr')
-    .replace(/Pullover/gi, 'Pull O.')
-    .replace(/Pulldown/gi, 'Pull D.')
-    .trim();
-};
+function SortableSequenceItem({
+  id,
+  children,
+  showAddMachine,
+  onRemove
+}: {
+  key?: React.Key;
+  id: string;
+  children: React.ReactNode;
+  showAddMachine: boolean;
+  onRemove: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="relative group">
+      <div className="flex items-center gap-2 mb-2">
+        {showAddMachine && (
+          <button
+            onClick={onRemove}
+            className="w-[52px] h-[52px] flex-shrink-0 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-[10px] flex items-center justify-center transition-colors border border-rose-500/20"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+        <div className="flex-1 touch-none" {...attributes} {...listeners}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function SessionRoutineManagerModal({ isOpen, onOpenChange, currentMachineIds, machines, onSave }: Props) {
   const [localIds, setLocalIds] = useState<string[]>([]);
+  const [showAddMachine, setShowAddMachine] = useState(true);
 
   useEffect(() => {
     if (isOpen) {
@@ -35,159 +86,124 @@ export function SessionRoutineManagerModal({ isOpen, onOpenChange, currentMachin
     }
   }, [isOpen, currentMachineIds]);
 
-  const toggleMachine = (id: string) => {
-    if (localIds.includes(id)) {
-      setLocalIds(localIds.filter(i => i !== id));
-    } else {
-      setLocalIds([...localIds, id]);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setLocalIds((items) => {
+        const oldIndex = items.indexOf(active.id as string);
+        const newIndex = items.indexOf(over.id as string);
+        return arrayMove(items, oldIndex, newIndex);
+      });
     }
   };
 
-  const moveEarlier = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    const idx = localIds.indexOf(id);
-    if (idx > 0) {
-      const newIds = [...localIds];
-      [newIds[idx], newIds[idx - 1]] = [newIds[idx - 1], newIds[idx]];
-      setLocalIds(newIds);
-    }
+  const removeMachine = (index: number) => {
+    const updated = [...localIds];
+    updated.splice(index, 1);
+    setLocalIds(updated);
   };
 
-  const moveLater = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    const idx = localIds.indexOf(id);
-    if (idx > -1 && idx < localIds.length - 1) {
-      const newIds = [...localIds];
-      [newIds[idx], newIds[idx + 1]] = [newIds[idx + 1], newIds[idx]];
-      setLocalIds(newIds);
+  const addMachine = (machineId: string) => {
+    if (!localIds.includes(machineId)) {
+      setLocalIds([...localIds, machineId]);
     }
   };
-
-  const sortedMachines = [...machines].sort((a, b) => {
-    const aSelected = localIds.includes(a.id!);
-    const bSelected = localIds.includes(b.id!);
-    if (aSelected && !bSelected) return -1;
-    if (!aSelected && bSelected) return 1;
-    if (aSelected && bSelected) {
-      return localIds.indexOf(a.id!) - localIds.indexOf(b.id!);
-    }
-    return (a.name || '').localeCompare(b.name || '');
-  });
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-[95vw] md:max-w-[95vw] w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white p-0 overflow-hidden shadow-2xl rounded-3xl flex flex-col h-[70vh]">
-        <DialogHeader className="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0 relative z-20">
-          <DialogTitle className="text-xl md:text-2xl font-black uppercase tracking-widest text-slate-900 dark:text-white">Edit Routine Sequence</DialogTitle>
-          <DialogDescription className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[11px] md:text-xs mt-1 md:mt-2">
-            Tap a machine to toggle it. Use arrows to reorder. Active sequence: <span className="text-[#F06C22]">{localIds.length}</span>.
+      <DialogContent className="max-w-[34rem] sm:max-w-[34rem] w-full bg-bg-dark border border-div-d text-white p-0 overflow-hidden shadow-2xl rounded-3xl flex flex-col h-[80vh] md:h-[70vh]">
+        <DialogHeader className="p-4 md:p-6 bg-bg-dark border-b border-div-d shrink-0 relative z-20">
+          <DialogTitle className="text-xl md:text-2xl font-display italic font-black uppercase tracking-widest text-white">Edit Routine Sequence</DialogTitle>
+          <DialogDescription className="text-ink-d3 font-bold uppercase tracking-widest text-[11px] md:text-xs mt-1 md:mt-2">
+            Drag to reorder. Tap X to remove.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50 dark:bg-slate-950/50">
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2 md:gap-3">
-            <AnimatePresence>
-              {sortedMachines.map((machine) => {
-                const isSelected = localIds.includes(machine.id!);
-                const selectedIndex = localIds.indexOf(machine.id!);
+        <div className="flex-1 overflow-y-auto bg-bg-dark p-4 md:p-6 custom-scrollbar">
+          <div className="flex flex-col">
+            {localIds.length === 0 ? (
+               <div className="flex flex-col items-center justify-center p-12 min-h-[200px] border border-dashed border-div-l rounded-2xl bg-bg-l-card mt-2 text-ink-l">
+                 No machines in sequence. Add some below.
+               </div>
+            ) : (
+              <DndContext 
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+              <SortableContext 
+                items={localIds}
+                strategy={verticalListSortingStrategy}
+              >
+                {localIds.map((machineId, idx) => {
+                  const machine = machines.find(m => m.id === machineId);
+                  if (!machine) return null;
+                  
+                  const isTSC = machine.targetRepRange?.toLowerCase().includes('tsc') || 
+                                machine.targetRepRange?.toLowerCase().includes('static') ||
+                                machine.targetRepRange?.toLowerCase().includes('time');
+                  
+                  const displayMachine = {
+                    idx: idx + 1,
+                    name: machine.name,
+                    lastLb: null,
+                    lastReps: null,
+                    lastUnit: isTSC ? 'sec' : 'reps',
+                    isTSC: isTSC
+                  };
 
-                return (
-                  <motion.div
-                    layout
-                    key={machine.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.2 }}
-                    onClick={() => toggleMachine(machine.id!)}
-                    className={`
-                      group cursor-pointer relative overflow-hidden rounded-lg border-2 transition-all w-full h-full min-h-[4.5rem] flex items-center p-2.5 md:p-3
-                      ${isSelected 
-                        ? 'bg-orange-50/50 dark:bg-[#0A2E46] border-[#F06C22] shadow-[0_0_15px_rgba(240,108,34,0.15)] opacity-100 z-10 text-slate-900 dark:text-white' 
-                        : 'bg-white dark:bg-[#115E8D]/10 border-slate-200 dark:border-slate-800/50 opacity-60 hover:opacity-100 hover:bg-slate-50 dark:hover:bg-[#115E8D]/20 hover:border-slate-300 dark:hover:border-slate-700 text-slate-500 dark:text-slate-400'
-                      }
-                    `}
-                  >
-                    {/* Left Side Sequence Indicator */}
-                    <div className="mr-3 md:mr-4 shrink-0 relative">
-                      <AnimatePresence mode="wait">
-                        {isSelected ? (
-                          <motion.div 
-                            key="selected"
-                            initial={{ scale: 0.5, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.5, opacity: 0 }}
-                            className="w-8 h-8 rounded-full bg-[#F06C22] text-white flex items-center justify-center text-sm font-black shadow-[0_0_10px_rgba(240,108,34,0.5)]"
-                          >
-                             {selectedIndex + 1}
-                          </motion.div>
-                        ) : (
-                          <motion.div 
-                            key="unselected"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-700 flex items-center justify-center group-hover:border-slate-400 dark:group-hover:border-slate-500 transition-colors"
-                          >
-                            <span className="text-slate-400 dark:text-slate-500 font-black group-hover:text-slate-600 dark:group-hover:text-slate-400 transition-colors text-[11px] uppercase">+</span>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-
-                    {/* Machine Details */}
-                    <div className={`flex-1 text-left flex flex-col justify-center ${isSelected ? 'pr-6 md:pr-8' : ''}`}>
-                      <h3 className={`text-xs md:text-sm font-black uppercase tracking-widest leading-tight ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300'}`} title={machine.name}>
-                        {getShorthand(machine.name || '')}
-                      </h3>
-                      <div className="flex items-center gap-2 mt-0.5">
-                         <p className={`text-[11px] md:text-[11px] font-bold uppercase tracking-widest ${isSelected ? 'text-[#F06C22]' : 'text-slate-400 dark:text-slate-600'}`}>
-                           {isSelected ? '■ Active' : '□ Inactive'}
-                         </p>
-                      </div>
-                    </div>
-                    
-                    {/* Reorder Controls */}
-                    {isSelected && (
-                      <div className="absolute right-1.5 md:right-3 flex flex-col gap-1 items-center justify-center">
-                        <button 
-                          onClick={(e) => moveEarlier(e, machine.id!)} 
-                          className="p-1 rounded bg-slate-200 dark:bg-slate-800 hover:bg-[#F06C22] text-slate-600 dark:text-slate-300 hover:text-white disabled:opacity-30 transition-colors shadow-sm disabled:hover:bg-slate-200 dark:disabled:hover:bg-slate-800 disabled:cursor-not-allowed"
-                          disabled={selectedIndex === 0}
-                          title="Move Earlier"
-                        >
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                        </button>
-                        <button 
-                          onClick={(e) => moveLater(e, machine.id!)} 
-                          className="p-1 rounded bg-slate-200 dark:bg-slate-800 hover:bg-[#F06C22] text-slate-600 dark:text-slate-300 hover:text-white disabled:opacity-30 transition-colors shadow-sm disabled:hover:bg-slate-200 dark:disabled:hover:bg-slate-800 disabled:cursor-not-allowed"
-                          disabled={selectedIndex === localIds.length - 1}
-                          title="Move Later"
-                        >
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+                  return (
+                    <SortableSequenceItem 
+                      key={machineId}
+                      id={machineId}
+                      showAddMachine={showAddMachine}
+                      onRemove={() => removeMachine(idx)}
+                    >
+                      <SequenceRow machine={displayMachine as any} />
+                    </SortableSequenceItem>
+                  );
+                })}
+              </SortableContext>
+            </DndContext>
+            )}
+            
+            {showAddMachine && (
+              <div className="mt-4 p-4 border border-dashed border-cyan/20 rounded-xl bg-cyan/5">
+                 <div className="text-[11px] font-medium tracking-wide opacity-60 text-cyan mb-3 uppercase">ADD MACHINE</div>
+                 <div className="flex flex-wrap gap-2">
+                   {machines.filter(m => !localIds.includes(m.id!)).map(m => (
+                      <button 
+                        key={m.id}
+                        onClick={() => addMachine(m.id!)}
+                        className="text-[12px] font-medium text-white bg-surface-2 hover:bg-surface-1 border border-div-d px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
+                      >
+                         <Plus className="w-3.5 h-3.5 text-cyan" /> {m.name}
+                      </button>
+                   ))}
+                 </div>
+              </div>
+            )}
           </div>
         </div>
 
-        <DialogFooter className="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0 relative z-20 flex flex-row items-center justify-end gap-3">
+        <DialogFooter className="p-4 md:p-6 bg-surface-1 border-t border-div-d shrink-0 relative z-20 flex flex-row items-center justify-end gap-3">
           <Button 
-            variant="outline" 
+            variant="ghost" 
             onClick={() => onOpenChange(false)}
-            className="border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-white tracking-widest uppercase font-black"
+            className="text-ink hover:text-white uppercase font-bold tracking-widest text-[11px]"
           >
             Cancel
           </Button>
           <Button 
             onClick={() => { onSave(localIds); onOpenChange(false); }}
-            className="bg-[#F06C22] hover:bg-[#D95B16] text-white font-black tracking-widest uppercase ml-4 px-8 shadow-[0_0_15px_rgba(240,108,34,0.3)]"
+            className="bg-cta hover:bg-cta-strong text-white font-system font-bold uppercase tracking-widest shadow-md text-[11px]"
           >
-            Save Sequence
+            Confirm Sequence
           </Button>
         </DialogFooter>
       </DialogContent>

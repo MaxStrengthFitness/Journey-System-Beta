@@ -302,9 +302,19 @@ export function TrainerControlHubView({
     }
   };
 
-  const visibleTrainers = isAdmin 
-    ? trainers 
-    : trainers.filter(t => t.id === authTrainer?.id);
+  const visibleTrainers = (() => {
+    if (!isAdmin) {
+      return trainers.filter(t => t.id === authTrainer?.id);
+    }
+    if (activeStudioId) {
+      return trainers.filter(t => 
+        t.primaryHomeStudioId === activeStudioId ||
+        (t.accessibleStudioIds || []).includes(activeStudioId) ||
+        (t.activeGuestStudioIds || []).includes(activeStudioId)
+      );
+    }
+    return trainers;
+  })();
 
   const filteredTrainers = visibleTrainers.filter(t => 
     t.fullName.toLowerCase().includes(trainerSearchQuery.toLowerCase())
@@ -743,7 +753,7 @@ export function TrainerControlHubView({
                 className={cn(
                   "flex items-center gap-3 px-4 py-4 rounded-2xl transition-all border text-left font-bold uppercase text-[11px] tracking-widest",
                   activeTab === tab.id 
-                    ? "bg-cta/10 border-cta text-brand shadow-sm"
+                    ? "bg-cta/10 border-cta text-slate-900 dark:text-white shadow-sm"
                     : "bg-background border-border text-muted-foreground hover:bg-card hover:text-foreground"
                 )}
               >

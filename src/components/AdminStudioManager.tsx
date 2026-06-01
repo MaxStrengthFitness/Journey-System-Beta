@@ -107,18 +107,26 @@ export function AdminStudioManager({
     if (
       isAdmin ||
       authTrainer.role === "Admin" ||
-      authTrainer.role === "FranchiseOwner" ||
+      authTrainer.role === "Founder" ||
       authTrainer.role === "Overseer"
     ) {
       return allStudios;
     }
-    // Filter to studios where the authTrainer is the designated owner or listed in ownedStudioIds
+    // Filter to studios where the authTrainer is the designated owner, listed in ownedStudioIds, or owns the network
+    const ownedNetworkStudioIds = new Set<string>();
+    networks.forEach(n => {
+      if ((n.ownerIds || []).includes(authTrainer.id!) || n.ownerId === authTrainer.id) {
+        (n.studioIds || []).forEach(id => ownedNetworkStudioIds.add(id));
+      }
+    });
+
     return allStudios.filter(
       (s) =>
         s.ownerId === authTrainer.id ||
-        authTrainer.ownedStudioIds?.includes(s.id!),
+        authTrainer.ownedStudioIds?.includes(s.id!) ||
+        (s.id && ownedNetworkStudioIds.has(s.id))
     );
-  }, [allStudios, authTrainer, isAdmin]);
+  }, [allStudios, networks, authTrainer, isAdmin]);
 
   // Selected entities helper
   const selectedStudio = allStudios.find((s) => s.id === selectedStudioId);

@@ -139,6 +139,10 @@ export function WorkoutChartGrid({
         // Only fetch logs for these specific sessions to save reads and memory
         if (finalSessions.length > 0 && !preloadedLogs) {
           const sessionIds = finalSessions.map(s => s.id!).filter(Boolean);
+          if (sessionIds.length === 0) {
+            setExerciseLogs([]);
+            return;
+          }
           
           // Split into chunks if exceeds 10 due to Firestore 'in' limit
           const chunks = [];

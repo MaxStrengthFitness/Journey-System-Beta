@@ -33,15 +33,12 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
   const [newIcalUrl, setNewIcalUrl] = useState('');
   const [isUpdatingIcal, setIsUpdatingIcal] = useState(false);
 
-  // An admin or franchiser can see staff across their locations
-  const ownedStudios = studios.filter(s =>
-    isAdmin || s.ownerId === authTrainer.id
-  );
-  const ownedStudioIds = ownedStudios.map(s => s.id);
+  const ownedStudioIds = studios.map(s => s.id);
 
-  const visibleTrainers = isAdmin ? trainers : trainers.filter(t => 
+  const visibleTrainers = trainers.filter(t => 
     (t.primaryHomeStudioId && ownedStudioIds.includes(t.primaryHomeStudioId)) ||
-    (t.accessibleStudioIds?.some(id => ownedStudioIds.includes(id)))
+    (t.accessibleStudioIds?.some(id => ownedStudioIds.includes(id))) ||
+    (t.activeGuestStudioIds?.some(id => ownedStudioIds.includes(id)))
   );
 
   const filteredTrainers = visibleTrainers.filter(t => 

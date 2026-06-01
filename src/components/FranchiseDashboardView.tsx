@@ -35,13 +35,14 @@ export function FranchiseDashboardView({ authTrainer, allStudios, allTrainers, n
   
   const ownedStudios = isSuperAdmin && activeNetwork
     ? allStudios.filter(s => networkStudioIds.includes(s.id!))
-    : allStudios.filter(s => s.ownerId === authTrainer.id || networkStudioIds.includes(s.id!));
+    : allStudios.filter(s => s.ownerId === authTrainer.id || authTrainer.ownedStudioIds?.includes(s.id!) || networkStudioIds.includes(s.id!));
     
   const ownedStudioIds = ownedStudios.map(s => s.id!);
   
   const staff = allTrainers.filter(t => 
     (t.primaryHomeStudioId && ownedStudioIds.includes(t.primaryHomeStudioId)) ||
-    (t.accessibleStudioIds?.some(id => ownedStudioIds.includes(id)))
+    (t.accessibleStudioIds?.some(id => ownedStudioIds.includes(id))) ||
+    (t.activeGuestStudioIds?.some(id => ownedStudioIds.includes(id)))
   );
 
   const [announcements, setAnnouncements] = useState<HubAnnouncement[]>([]);
@@ -180,7 +181,7 @@ export function FranchiseDashboardView({ authTrainer, allStudios, allTrainers, n
                 ownedStudios.map(s => (
                   <div key={s.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
                     <span className="font-bold text-slate-900 dark:text-white uppercase tracking-tight">{s.name}</span>
-                    <Badge variant="outline">{staff.filter(t => t.primaryHomeStudioId === s.id).length} Transformers</Badge>
+                    <Badge variant="outline">{staff.filter(t => t.primaryHomeStudioId === s.id || t.accessibleStudioIds?.includes(s.id!) || t.activeGuestStudioIds?.includes(s.id!)).length} Transformers</Badge>
                   </div>
                 ))
               )}

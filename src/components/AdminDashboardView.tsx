@@ -97,7 +97,7 @@ export function AdminDashboardView({
             onClick={() => setActiveTab(tab.id as any)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
               activeTab === tab.id
-                ? "bg-white dark:bg-slate-800 text-brand shadow-sm"
+                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
                 : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
             }`}
           >

@@ -118,7 +118,7 @@ export function ClientHistoryCalendar({
 
   // Fetch logs for selected session
   useEffect(() => {
-    if (!selectedSession || !user) {
+    if (!selectedSession || !selectedSession.id || !user) {
       setSelectedSessionLogs([]);
       setEditedLogs({});
       setIsEditMode(false);

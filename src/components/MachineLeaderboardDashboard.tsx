@@ -187,7 +187,7 @@ export function MachineLeaderboardDashboard({
         const rankings: LeaderboardRank[] = [];
         
         // Fetch missing clients if necessary, since prop clients only has today's schedule
-        const bestClientIds = Object.keys(bestPerformances);
+        const bestClientIds = Object.keys(bestPerformances).filter(Boolean);
         const resolvedClients = new Map<string, any>();
         
         // Preload any available from props

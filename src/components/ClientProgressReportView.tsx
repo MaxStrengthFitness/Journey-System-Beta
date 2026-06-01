@@ -2138,7 +2138,7 @@ export function ClientProgressReportView({
                               "py-3 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all text-center border-2",
                               report.roadmap?.refinementFocusArea === p
                                 ? "bg-blue-600 border-blue-600 text-white"
-                                : "bg-slate-50 border-slate-100 text-slate-400 hover:border-blue-200",
+                                : "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-blue-200 dark:hover:border-blue-500/50",
                             )}
                           >
                             {p}
