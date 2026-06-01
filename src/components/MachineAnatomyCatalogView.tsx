@@ -1,11 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronRight, ChevronDown, Layers, MapPin, Activity, BookOpen, Wrench, ShieldAlert, Wand2, Loader2, ShieldCheck, Target, UserCog, Settings2, Users } from 'lucide-react';
+import { Layers, MapPin, Activity, Wrench, ShieldAlert, Target, UserCog, Settings2, Users } from 'lucide-react';
 import { Machine } from '../types';
 import {
   MACHINE_ANATOMY,
   MOVEMENT_PATTERN_ORDER,
   ANATOMICAL_REGION_ORDER,
-  AnatomyView,
   MachineAnatomyMap,
 } from '../data/machine-anatomy-map';
 import Body, { ExtendedBodyPart, Slug } from '../../react-muscle-highlighter-main';
@@ -13,14 +12,12 @@ import { machineMuscleMap } from '../data/machineMuscleMap';
 import { MACHINE_DATABASE } from '../data/machine-database';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 type GroupingMode = 'movement' | 'region';
-type Tab = 'anatomy' | 'profile';
 
 interface MachineAnatomyCatalogViewProps {
   machines: Machine[];
-  /** Called when the trainer taps "Setup Coach" / "View Machine Details" */
   onViewMachineDetails?: (machineId: string) => void;
 }
 
@@ -32,8 +29,6 @@ export function MachineAnatomyCatalogView({
   const [view, setView] = useState<'front' | 'back'>('front');
   const [gender, setGender] = useState<'male' | 'female'>('male');
   const [groupingMode, setGroupingMode] = useState<GroupingMode>('movement');
-  const [activeTab, setActiveTab] = useState<Tab>('anatomy');
-  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set());
   
   // Trainer Tips State
   const [trainerTips, setTrainerTips] = useState<string>('');
@@ -55,7 +50,7 @@ export function MachineAnatomyCatalogView({
     const fallbackId = selectedMachineId.replace(/^m-/, '').replace(/-/g, '_');
     if (MACHINE_DATABASE[fallbackId]) return MACHINE_DATABASE[fallbackId];
     
-    // Additional hardcoded fallbacks for mismatched keys
+    // Additional hardcoded fallbacks
     if (selectedMachineId === 'm-neck') return MACHINE_DATABASE['4_way_neck'];
     if (selectedMachineId === 'm-ext') return MACHINE_DATABASE['leg_extension'];
     if (selectedMachineId === 'm-hip-abd') return MACHINE_DATABASE['abduction'];
@@ -64,7 +59,6 @@ export function MachineAnatomyCatalogView({
     if (selectedMachineId === 'm-chest-fly') return MACHINE_DATABASE['chest_flye'];
     if (selectedMachineId === 'm-bicep') return MACHINE_DATABASE['biceps_curl'];
     
-    // If still not found, try ignoring case or finding closest string via name
     const m = machines.find((m) => m.id === selectedMachineId);
     if (m) {
       const match = Object.values(MACHINE_DATABASE).find(db => db.name.toLowerCase() === m.name.toLowerCase() || m.name.toLowerCase().includes(db.name.toLowerCase()));
@@ -93,16 +87,13 @@ export function MachineAnatomyCatalogView({
     const data: ExtendedBodyPart[] = [];
     if (!selectedMachineId) return data;
     
-    // Fallback logic for machines not mapped in machineMuscleMap:
     const mapping = machineMuscleMap[selectedMachineId];
     if (!mapping) return data;
 
-    // Primary muscles = CTA color
     mapping.primary.forEach(muscle => {
       data.push({ slug: muscle, color: '#FF6B00' });
     });
 
-    // Synergist muscles = Cyan color
     mapping.synergist.forEach(muscle => {
       data.push({ slug: muscle, color: '#00A3FF' });
     });
@@ -112,7 +103,6 @@ export function MachineAnatomyCatalogView({
 
   const handleMuscleClick = (part: ExtendedBodyPart) => {
     if (!part.slug) return;
-    // Find a machine that targets this muscle
     const targetMachineId = Object.keys(machineMuscleMap).find(id => 
       machineMuscleMap[id].primary.includes(part.slug as Slug) || 
       machineMuscleMap[id].synergist.includes(part.slug as Slug)
@@ -120,7 +110,6 @@ export function MachineAnatomyCatalogView({
     
     if (targetMachineId) {
       handleSelectMachine(targetMachineId);
-      setActiveTab('anatomy');
     }
   };
 
@@ -132,7 +121,6 @@ export function MachineAnatomyCatalogView({
     }
   };
 
-  /* ── Group machines based on the current grouping mode ───── */
   const groupedMachines = useMemo(() => {
     if (groupingMode === 'movement') {
       const buckets: Record<string, Machine[]> = {};
@@ -160,321 +148,415 @@ export function MachineAnatomyCatalogView({
     }
   }, [machines, groupingMode]);
 
-  return (
-    <div className="grid md:grid-cols-[288px_1fr] flex flex-col h-full min-h-0 bg-bg-dark text-ink-d1">
-      {/* ───── LEFT MENU ───── */}
-      <aside className="md:border-r md:border-div-d md:overflow-y-auto md:bg-surface-1 md:h-full
-                        border-b border-div-d max-h-[35vh] md:max-h-none overflow-y-auto bg-surface-1 flex flex-col">
-        {/* Grouping toggle (sticky) */}
-        <div className="sticky top-0 z-10 bg-surface-1 border-b border-div-d p-3">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setGroupingMode('movement')}
-              className={`flex-1 min-h-[44px] rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan flex items-center justify-center gap-1.5 ${
-                groupingMode === 'movement'
-                  ? 'bg-cyan text-bg-dark'
-                  : 'bg-surface-2 text-ink-d2 border border-div-d hover:bg-bg-dark-3 hover:text-white'
-              }`}
-              aria-pressed={groupingMode === 'movement'}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              Movement
-            </button>
-            <button
-              type="button"
-              onClick={() => setGroupingMode('region')}
-              className={`flex-1 min-h-[44px] rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan flex items-center justify-center gap-1.5 ${
-                groupingMode === 'region'
-                  ? 'bg-cyan text-bg-dark'
-                  : 'bg-surface-2 text-ink-d2 border border-div-d hover:bg-bg-dark-3 hover:text-white'
-              }`}
-              aria-pressed={groupingMode === 'region'}
-            >
-              <MapPin className="w-3.5 h-3.5" />
-              Target Area
-            </button>
-          </div>
+  const catalogContent = (
+    <>
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/5 to-transparent"></div>
+      
+      <div className="relative z-10 p-5 border-b border-white/10">
+        <h2 className="text-2xl font-black uppercase tracking-[0.2em] text-white mb-5">Database</h2>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setGroupingMode('movement')}
+            className={`flex-1 min-h-[44px] rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-1.5 ${
+              groupingMode === 'movement'
+                ? 'bg-cyan text-zinc-950 shadow-[0_0_15px_rgba(0,255,255,0.3)]'
+                : 'bg-black/40 text-muted-foreground border border-white/10 hover:bg-black/60 hover:text-white'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            Kinematics
+          </button>
+          <button
+            type="button"
+            onClick={() => setGroupingMode('region')}
+            className={`flex-1 min-h-[44px] rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-1.5 ${
+              groupingMode === 'region'
+                ? 'bg-cyan text-zinc-950 shadow-[0_0_15px_rgba(0,255,255,0.3)]'
+                : 'bg-black/40 text-muted-foreground border border-white/10 hover:bg-black/60 hover:text-white'
+            }`}
+          >
+            <MapPin className="w-4 h-4" />
+            Region
+          </button>
         </div>
+      </div>
 
-        {/* Group list */}
-        <div className="flex-1 py-2">
-          {groupedMachines.map((group) => {
-            return (
-              <div key={group.key} className="border-b border-div-d/40 last:border-b-0">
-                <div
-                  className="flex items-center justify-between w-full min-h-[44px] px-4 text-left text-[12px] font-bold uppercase tracking-widest text-ink-d2"
-                >
-                  <span>{group.label}</span>
-                  <span className="flex items-center gap-2 text-ink-d3 text-[11px] tabular-nums">
-                    {group.machines.length}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-1.5 px-3 pb-4">
-                  {group.machines.map((m) => {
-                    const isSelected = selectedMachineId === m.id;
-                    const map = m.id ? MACHINE_ANATOMY[m.id] : undefined;
-                    const movement = map?.movementPattern || '';
-                    
-                    let colorClass = 'bg-secondary';
-                    if (movement.includes('Push')) colorClass = 'bg-cta';
-                    else if (movement.includes('Pull')) colorClass = 'bg-cyan';
-                    else if (movement.includes('Quad')) colorClass = 'bg-green';
-                    else if (movement.includes('Posterior')) colorClass = 'bg-yellow';
-                    else if (movement.includes('Core')) colorClass = 'bg-amber';
-                    else if (movement.includes('Isolation')) colorClass = 'bg-brand';
-
-                    let shortBadge = 'Misc';
-                    if (movement.includes('Horizontal Push')) shortBadge = 'H. Push';
-                    else if (movement.includes('Vertical Push')) shortBadge = 'V. Push';
-                    else if (movement.includes('Horizontal Pull')) shortBadge = 'H. Pull';
-                    else if (movement.includes('Vertical Pull')) shortBadge = 'V. Pull';
-                    else if (movement.includes('Quad')) shortBadge = 'Quad';
-                    else if (movement.includes('Posterior')) shortBadge = 'Post. Chain';
-                    else if (movement.includes('Flexion')) shortBadge = 'Flexion';
-                    else if (movement.includes('Extension')) shortBadge = 'Extension';
-                    else if (movement.includes('Rotary')) shortBadge = 'Rotary';
-                    else if (movement.includes('Isolation')) shortBadge = 'Isolation';
-
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => m.id && handleSelectMachine(m.id)}
-                        className={`relative flex items-center justify-between w-full p-3 rounded-xl border transition-all text-left group overflow-hidden ${
-                          isSelected
-                            ? 'bg-surface-2 border-div-d shadow-md'
-                            : 'bg-surface-1 border-transparent hover:bg-surface-2 hover:border-div-d/50'
-                        }`}
-                        aria-pressed={isSelected}
-                      >
-                        {/* Color rail */}
-                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${colorClass}`} />
-                        
-                        <div className="flex flex-col pl-3">
-                          <span className={`text-[12px] font-bold tracking-widest truncate uppercase ${isSelected ? 'text-white' : 'text-ink-d1 group-hover:text-white'}`}>
-                            {m.name}
-                          </span>
-                        </div>
-
-                        {/* Badges container */}
-                        <div className="flex items-center">
-                          {isSelected ? (
-                            <Badge className="bg-cta text-bg-dark text-[9px] uppercase tracking-widest border-none px-1.5 py-0 font-bold rounded-sm h-5 flex items-center justify-center">
-                              Active
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-ink-d3 border-div-d text-[9px] uppercase tracking-widest px-1.5 py-0 h-5 flex items-center justify-center rounded-sm group-hover:text-ink-d1 group-hover:border-ink-d3 transition-colors bg-surface-1">
-                              {shortBadge}
-                            </Badge>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </aside>
-
-      {/* ───── STAGE & TABS ───── */}
-      <main className="grid grid-rows-[auto_1fr_auto] min-h-0 p-4 md:p-6 gap-4 relative">
-        {/* Tabs */}
-        {selectedMachine && (
-          <div className="flex gap-2 w-full max-w-[400px] mx-auto border border-div-d rounded-2xl p-1 bg-surface-1">
-            <button
-              onClick={() => setActiveTab('anatomy')}
-              className={`flex-1 min-h-[36px] rounded-xl text-[12px] font-bold uppercase tracking-widest transition-all ${
-                activeTab === 'anatomy' ? 'bg-bg-dark text-white shadow-md' : 'text-ink-d3 hover:text-ink-d1'
-              }`}
-            >
-              Anatomy
-            </button>
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`flex-1 min-h-[36px] rounded-xl text-[12px] font-bold uppercase tracking-widest transition-all ${
-                activeTab === 'profile' ? 'bg-bg-dark text-white shadow-md' : 'text-ink-d3 hover:text-ink-d1'
-              }`}
-            >
-              Profile
-            </button>
-          </div>
-        )}
-
-        {/* Anatomy Tab */}
-        {(!selectedMachine || activeTab === 'anatomy') && (
-          <>
-            <div className="min-h-0 flex flex-col items-center justify-center bg-surface-1 rounded-2xl border border-div-d relative overflow-hidden group mt-2 py-4">
-              {/* View options toggle */}
-              <div className="absolute top-4 right-4 z-10 flex gap-2">
-                <div className="flex bg-bg-dark-3 rounded-lg p-1 border border-div-d">
-                  <button 
-                    onClick={() => setView('front')}
-                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${view === 'front' ? 'bg-cyan text-bg-dark shadow-sm' : 'text-ink-d3 hover:text-white'}`}
-                  >
-                    Front
-                  </button>
-                  <button 
-                    onClick={() => setView('back')}
-                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${view === 'back' ? 'bg-cyan text-bg-dark shadow-sm' : 'text-ink-d3 hover:text-white'}`}
-                  >
-                    Back
-                  </button>
-                </div>
-                <div className="flex bg-bg-dark-3 rounded-lg p-1 border border-div-d">
-                  <button 
-                    onClick={() => setGender('male')}
-                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${gender === 'male' ? 'bg-cyan text-bg-dark shadow-sm' : 'text-ink-d3 hover:text-white'}`}
-                  >
-                    Male
-                  </button>
-                  <button 
-                    onClick={() => setGender('female')}
-                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${gender === 'female' ? 'bg-cyan text-bg-dark shadow-sm' : 'text-ink-d3 hover:text-white'}`}
-                  >
-                    Female
-                  </button>
-                </div>
-              </div>
-
-              <div className="relative w-full max-w-[280px] flex justify-center py-4">
-                <Body 
-                  data={highlightData} 
-                  side={view} 
-                  gender={gender} 
-                  scale={1.2} 
-                  onBodyPartPress={handleMuscleClick}
-                />
+      <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar p-3 space-y-5 lg:pb-[120px]">
+        {groupedMachines.map((group) => (
+          <div key={group.key} className="space-y-1">
+            <div className="flex items-center justify-between px-2 py-1 text-left text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+              <span>{group.label}</span>
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-black/40 text-muted-foreground text-[10px]">
+                {group.machines.length}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1.5 px-1 pb-2">
+              {group.machines.map((m) => {
+                const isSelected = selectedMachineId === m.id;
+                const map = m.id ? MACHINE_ANATOMY[m.id] : undefined;
+                const movement = map?.movementPattern || '';
                 
-                {/* Legend overlay */}
-                {selectedMachine && (
-                  <div className="absolute bottom-0 left-0 flex flex-col gap-2 p-3 bg-bg-dark/80 backdrop-blur-sm border border-div-d rounded-xl shadow-lg">
-                    <div className="flex items-center gap-2">
-                       <span className="w-2.5 h-2.5 rounded-sm bg-[#FF6B00]"></span>
-                       <span className="text-[9px] font-bold uppercase tracking-widest text-ink-d1">Primary</span>
+                let colorClass = 'bg-secondary';
+                if (movement.includes('Push')) colorClass = 'bg-orange-500';
+                else if (movement.includes('Pull')) colorClass = 'bg-cyan-500';
+                else if (movement.includes('Quad')) colorClass = 'bg-green-500';
+                else if (movement.includes('Posterior')) colorClass = 'bg-yellow-500';
+                else if (movement.includes('Core')) colorClass = 'bg-amber-500';
+                else if (movement.includes('Isolation')) colorClass = 'bg-violet-500';
+
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => m.id && handleSelectMachine(m.id)}
+                    className={`relative flex items-center justify-between p-3.5 rounded-2xl transition-all text-left group overflow-hidden ${
+                      isSelected
+                        ? 'bg-white/10 border border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md'
+                        : 'bg-black/20 border border-transparent hover:bg-black/40 hover:border-white/10'
+                    }`}
+                  >
+                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${colorClass}`} />
+                    <div className="flex flex-col pl-3 pr-2 overflow-hidden flex-1">
+                      <span className={`text-[12px] font-bold tracking-widest truncate uppercase ${isSelected ? 'text-white' : 'text-muted-foreground group-hover:text-white'}`}>
+                        {m.name}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                       <span className="w-2.5 h-2.5 rounded-sm bg-[#00A3FF]"></span>
-                       <span className="text-[9px] font-bold uppercase tracking-widest text-ink-d1">Synergist</span>
-                    </div>
-                  </div>
-                )}
+                    {isSelected && (
+                      <div className="w-2 h-2 rounded-full bg-cyan shadow-[0_0_8px_rgba(0,255,255,0.8)] shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+
+  return (
+    <div className="relative h-[calc(100vh-5rem)] bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950 overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row w-full no-scrollbar">
+      
+      {/* ───── MOBILE STICKY HEADER & CONTROLS ───── */}
+      <div className="lg:hidden sticky top-0 left-0 w-full z-50 flex items-start justify-center pt-4 pb-4 px-4 bg-gradient-to-b from-zinc-950 via-zinc-950/80 to-transparent pointer-events-none shrink-0">
+        <div className="absolute top-4 left-4 z-50 pointer-events-auto">
+          <Sheet>
+            <SheetTrigger className="bg-background/80 backdrop-blur-xl border border-white/10 hover:bg-white/10 text-white shadow-xl h-12 w-12 rounded-full flex items-center justify-center transition-all cursor-pointer">
+              <Layers className="w-5 h-5" />
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[320px] sm:w-[380px] p-0 bg-background/95 backdrop-blur-3xl border-r border-white/10 flex flex-col">
+               {catalogContent}
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        {/* Mobile View Controls */}
+        <div className="pointer-events-auto flex bg-background/80 backdrop-blur-xl rounded-2xl p-1.5 border border-white/10 shadow-2xl ml-16 max-w-sm overflow-x-auto no-scrollbar">
+          <button 
+            onClick={() => setView('front')}
+            className={`flex-1 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap ${view === 'front' ? 'bg-white text-zinc-950 shadow-lg' : 'text-muted-foreground hover:text-white hover:bg-white/10'}`}
+          >
+            Anterior
+          </button>
+          <button 
+            onClick={() => setView('back')}
+            className={`flex-1 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap ${view === 'back' ? 'bg-white text-zinc-950 shadow-lg' : 'text-muted-foreground hover:text-white hover:bg-white/10'}`}
+          >
+            Posterior
+          </button>
+          <div className="w-px bg-white/10 mx-1 my-2 shrink-0"></div>
+          <button 
+            onClick={() => setGender('male')}
+            className={`flex-1 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap ${gender === 'male' ? 'bg-white text-zinc-950 shadow-lg' : 'text-muted-foreground hover:text-white hover:bg-white/10'}`}
+          >
+            Type M
+          </button>
+          <button 
+            onClick={() => setGender('female')}
+            className={`flex-1 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap ${gender === 'female' ? 'bg-white text-zinc-950 shadow-lg' : 'text-muted-foreground hover:text-white hover:bg-white/10'}`}
+          >
+            Type F
+          </button>
+        </div>
+      </div>
+
+      {/* ───── MODEL LAYER ───── */}
+      <div className="relative flex-1 shrink-0 lg:absolute lg:inset-0 flex items-center justify-center z-0 pointer-events-auto min-h-[500px] lg:min-h-0">
+        <div className="relative w-full max-w-[600px] h-full flex justify-center p-4 lg:p-12 lg:mt-0">
+          <Body 
+            data={highlightData} 
+            side={view} 
+            gender={gender} 
+            scale={1.5} 
+            onBodyPartPress={handleMuscleClick}
+          />
+        </div>
+      </div>
+
+      {/* ───── GLASS OVERLAYS (Interaction Hack) ───── */}
+      <div className="absolute inset-0 z-10 pointer-events-none p-4 md:p-8 flex flex-col md:flex-row justify-between gap-4">
+        
+        {/* LEFT SIDEBAR (Catalog) Desktop */}
+        <aside className="pointer-events-auto w-[360px] bg-background/60 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl hidden lg:flex flex-col overflow-hidden max-h-full shrink-0 relative">
+          {catalogContent}
+        </aside>
+
+        {/* RIGHT SIDEBAR (Details HUD) Desktop */}
+        {selectedMachine && machineKnowledge ? (
+          <aside className="pointer-events-auto w-[440px] bg-background/60 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl hidden lg:flex flex-col overflow-hidden max-h-full shrink-0 relative animate-in fade-in slide-in-from-right-8 duration-300">
+            <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/5 to-transparent"></div>
+            
+            {/* Header Area */}
+            <div className="relative z-10 p-6 border-b border-white/10">
+              <div className="text-[11px] uppercase tracking-[0.2em] text-cyan font-bold mb-2">
+                {selectedMap?.movementPattern || 'Kinematic Info'}
               </div>
-              {!selectedMap && (
-                <div className="absolute inset-x-0 bottom-4 text-center pointer-events-none">
-                  <span className="text-[11px] uppercase tracking-widest text-ink-d3 font-bold group-hover:opacity-0 transition-opacity">
-                    Select a machine or tap a muscle to test targeting
-                  </span>
+              <h2 className="text-3xl font-black uppercase italic text-white tracking-tight leading-none mb-4">
+                {selectedMachine.name}
+              </h2>
+              <div className="text-[12px] text-muted-foreground leading-relaxed font-medium bg-black/40 p-4 rounded-2xl border border-white/5">
+                {selectedMap?.clinicalNote || 'Clinical details unavailable.'}
+              </div>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-black/40 p-3.5 rounded-2xl border border-white/5">
+                  <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-2">
+                    <Activity className="w-3 h-3 text-cyan" /> Class
+                  </div>
+                  <div className="text-[13px] text-white font-semibold">{machineKnowledge.kinematicClassification || 'N/A'}</div>
+                </div>
+                <div className="bg-black/40 p-3.5 rounded-2xl border border-white/5">
+                  <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-2">
+                    <Target className="w-3 h-3 text-orange-500" /> Posture
+                  </div>
+                  <div className="text-[13px] text-white font-semibold truncate" title={machineKnowledge.executionPosture}>{machineKnowledge.executionPosture || 'N/A'}</div>
+                </div>
+                <div className="bg-black/40 p-3.5 rounded-2xl border border-white/5">
+                  <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-2">
+                    <Settings2 className="w-3 h-3 text-green-500" /> Setup
+                  </div>
+                  <div className="text-[13px] text-white font-semibold">{machineKnowledge.setupGap || 'Standard Gap'}</div>
+                </div>
+                <div className="bg-black/40 p-3.5 rounded-2xl border border-white/5">
+                  <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-2">
+                    <Users className="w-3 h-3 text-violet-500" /> Handoff
+                  </div>
+                  <div className="text-[13px] text-white font-semibold">{machineKnowledge.requiresHandoff ? 'Required' : 'None'}</div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                 <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white flex items-center gap-3">
+                   <div className="h-px bg-white/20 flex-1"></div>
+                   Musculature
+                   <div className="h-px bg-white/20 flex-1"></div>
+                 </h3>
+                 <div className="flex flex-col gap-2.5">
+                   {machineKnowledge.targetMuscles && machineKnowledge.targetMuscles.map((tm, idx) => (
+                     <div key={'t'+idx} className="flex items-center gap-3 bg-black/20 p-2.5 rounded-xl border border-white/5">
+                       <div className="w-2.5 h-2.5 rounded-full bg-[#FF6B00] shadow-[0_0_8px_rgba(255,107,0,0.8)] shrink-0"></div>
+                       <div className="text-[13px] font-bold text-white leading-snug">{tm}</div>
+                       <div className="ml-auto text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Primary</div>
+                     </div>
+                   ))}
+                   {machineKnowledge.synergists && machineKnowledge.synergists.map((syn, idx) => (
+                     <div key={'s'+idx} className="flex items-center gap-3 bg-black/10 p-2.5 rounded-xl border border-white/5">
+                       <div className="w-2.5 h-2.5 rounded-full bg-[#00A3FF] shadow-[0_0_8px_rgba(0,163,255,0.6)] shrink-0"></div>
+                       <div className="text-[13px] text-muted-foreground leading-snug">{syn}</div>
+                       <div className="ml-auto text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest">Synergist</div>
+                     </div>
+                   ))}
+                 </div>
+              </div>
+
+              {machineKnowledge.clinicalWarnings && machineKnowledge.clinicalWarnings.length > 0 && (
+                <div className="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-5 backdrop-blur-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <ShieldAlert className="w-5 h-5 text-amber-500" />
+                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-amber-500">Clinical Warnings</h3>
+                  </div>
+                  <ul className="space-y-2">
+                    {machineKnowledge.clinicalWarnings.map((w, idx) => (
+                      <li key={idx} className="text-[13px] text-amber-200/90 leading-relaxed flex items-start gap-2.5">
+                         <span className="text-amber-500 shrink-0 mt-0.5">•</span>
+                         <span className="font-medium">{w}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
-            </div>
-          </>
-        )}
 
-        {/* Profile Tab */}
-        {selectedMachine && activeTab === 'profile' && (
-          <div className="min-h-0 overflow-y-auto w-full mx-auto space-y-6 pb-20 pr-2">
-            {!machineKnowledge ? (
-              <div className="flex flex-col items-center justify-center p-12 bg-surface-1 rounded-3xl border border-div-d text-ink-d3">
-                 <ShieldAlert className="w-8 h-8 mb-3 opacity-50" />
-                 <p className="text-sm font-bold uppercase tracking-widest">No detailed profile found</p>
-                 <p className="text-xs mt-1">This machine is missing clinical mapping in the database.</p>
+              <div className="space-y-5">
+                 <div>
+                   <h4 className="text-[11px] font-bold uppercase tracking-widest text-cyan mb-2.5 flex items-center gap-2">
+                     <Wrench className="w-4 h-4" /> Setup Notes
+                   </h4>
+                   <p className="text-[13px] text-white leading-relaxed font-semibold bg-black/40 p-4 rounded-xl border border-white/5">{machineKnowledge.setup}</p>
+                   {machineKnowledge.setupCues && machineKnowledge.setupCues.length > 0 && (
+                     <ul className="mt-3 space-y-2 pl-1">
+                       {machineKnowledge.setupCues.map((cue, idx) => (
+                         <li key={idx} className="text-[12px] text-muted-foreground flex items-start gap-2.5">
+                           <div className="w-1.5 h-1.5 rounded-full bg-cyan/50 shrink-0 mt-1.5"></div>
+                           <span className="font-medium">{cue}</span>
+                         </li>
+                       ))}
+                     </ul>
+                   )}
+                 </div>
+
+                 <div>
+                   <h4 className="text-[11px] font-bold uppercase tracking-widest text-green-500 mb-2.5 flex items-center gap-2">
+                     <Activity className="w-4 h-4" /> Execution
+                   </h4>
+                   <p className="text-[13px] text-white leading-relaxed font-semibold bg-black/40 p-4 rounded-xl border border-white/5">{machineKnowledge.execution}</p>
+                 </div>
               </div>
-            ) : (
-            <div className="grid lg:grid-cols-2 gap-6">
-              {/* Core Information Panel */}
-              <div className="bg-surface-1 border border-div-d rounded-3xl p-6 flex flex-col gap-6">
-                
-                {machineKnowledge.imageUrl && (
-                  <div className="w-full aspect-video rounded-xl bg-bg-dark-3 flex items-center justify-center overflow-hidden border border-div-d">
-                     <img src={machineKnowledge.imageUrl} alt={machineKnowledge.name} className="w-full h-full object-cover opacity-80 mix-blend-screen" />
-                  </div>
-                )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-ink-d3 flex items-center gap-1">
-                      <Activity className="w-3 h-3 text-cyan" /> Kinematic Class
+              {/* Trainer Tips */}
+              <div className="pt-4 border-t border-white/10 mt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <UserCog className="w-4 h-4 text-violet-400" />
+                  <h3 className="text-[11px] font-bold uppercase tracking-widest text-white">Studio Notes</h3>
+                </div>
+                <Textarea 
+                  placeholder="Record custom setup params or cues for this specific machine..."
+                  value={trainerTips}
+                  onChange={(e) => setTrainerTips(e.target.value)}
+                  className="min-h-[100px] bg-black/60 border border-white/10 focus-visible:ring-violet-500 text-white placeholder:text-muted-foreground/50 mb-3 resize-none text-[13px] rounded-xl p-4"
+                />
+                <Button 
+                  onClick={handleSaveTip}
+                  disabled={isSavingTip}
+                  className={`w-full font-black tracking-[0.2em] uppercase transition-all rounded-xl h-12 ${
+                    isSavingTip 
+                      ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                      : 'bg-violet-500/20 hover:bg-violet-500/40 text-violet-300 border border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.15)]'
+                  }`}
+                >
+                  {isSavingTip ? "Stored Successfully" : "Save Notes"}
+                </Button>
+              </div>
+
+            </div>
+          </aside>
+        ) : (
+          <aside className="pointer-events-auto w-[440px] hidden lg:flex items-center justify-center p-8 bg-transparent">
+             <div className="text-center space-y-4 p-8 bg-background/40 backdrop-blur-xl border border-white/5 rounded-3xl w-full">
+               <ShieldAlert className="w-10 h-10 text-muted-foreground mx-auto opacity-50" />
+               <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80">Awaiting Selection</p>
+               <p className="text-[11px] text-muted-foreground/60 font-medium tracking-wide">Target a kinematic entity to initialize profile data.</p>
+             </div>
+          </aside>
+        )}
+      </div>
+
+      {/* ───── MOBILE DETAILS OVERLAY (Tablet/Mobile) ───── */}
+      {selectedMachine && machineKnowledge && (
+        <div className="lg:hidden absolute bottom-24 left-4 right-4 z-40 pointer-events-none flex flex-col justify-end">
+           <div className="pointer-events-auto w-full bg-background/80 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-3xl flex flex-col overflow-hidden max-h-[50vh] animate-in fade-in slide-in-from-bottom-4">
+              <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/5 to-transparent"></div>
+              
+              {/* Header Area (Sticky) */}
+              <div className="relative z-10 p-5 border-b border-white/10 shrink-0 bg-background/40 backdrop-blur-md">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-cyan font-bold mb-1">
+                  {selectedMap?.movementPattern || 'Kinematic Info'}
+                </div>
+                <h2 className="text-xl font-black uppercase italic text-white tracking-tight leading-none mb-3">
+                  {selectedMachine.name}
+                </h2>
+                <div className="text-[11px] text-muted-foreground leading-relaxed font-medium bg-black/40 p-3 rounded-xl border border-white/5 line-clamp-2">
+                  {selectedMap?.clinicalNote || 'Clinical details unavailable.'}
+                </div>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="relative z-10 flex-1 overflow-y-auto no-scrollbar p-5 space-y-5">
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-black/40 p-3 rounded-xl border border-white/5">
+                    <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                      <Activity className="w-3 h-3 text-cyan" /> Class
                     </div>
-                    <div className="text-[13px] text-white font-medium">{machineKnowledge.kinematicClassification || 'N/A'}</div>
+                    <div className="text-[12px] text-white font-semibold">{machineKnowledge.kinematicClassification || 'N/A'}</div>
                   </div>
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-ink-d3 flex items-center gap-1">
-                      <Target className="w-3 h-3 text-cta" /> Posture
+                  <div className="bg-black/40 p-3 rounded-xl border border-white/5">
+                    <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                      <Target className="w-3 h-3 text-orange-500" /> Posture
                     </div>
-                    <div className="text-[13px] text-white font-medium truncate" title={machineKnowledge.executionPosture}>{machineKnowledge.executionPosture || 'N/A'}</div>
+                    <div className="text-[12px] text-white font-semibold truncate" title={machineKnowledge.executionPosture}>{machineKnowledge.executionPosture || 'N/A'}</div>
                   </div>
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-ink-d3 flex items-center gap-1">
-                      <Settings2 className="w-3 h-3 text-green" /> Setup Gap
+                  <div className="bg-black/40 p-3 rounded-xl border border-white/5">
+                    <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                      <Settings2 className="w-3 h-3 text-green-500" /> Setup
                     </div>
-                    <div className="text-[13px] text-white font-medium">{machineKnowledge.setupGap || 'Standard Gap'}</div>
+                    <div className="text-[12px] text-white font-semibold">{machineKnowledge.setupGap || 'Standard Gap'}</div>
                   </div>
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-ink-d3 flex items-center gap-1">
-                      <Users className="w-3 h-3 text-brand" /> Handoff
+                  <div className="bg-black/40 p-3 rounded-xl border border-white/5">
+                    <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                      <Users className="w-3 h-3 text-violet-500" /> Handoff
                     </div>
-                    <div className="text-[13px] text-white font-medium">{machineKnowledge.requiresHandoff ? 'Required' : 'None'}</div>
+                    <div className="text-[12px] text-white font-semibold">{machineKnowledge.requiresHandoff ? 'Required' : 'None'}</div>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                   <h3 className="text-sm font-bold uppercase tracking-widest text-white border-b border-div-d/40 pb-2">Target Musculature</h3>
+                   <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white flex items-center gap-3">
+                     <div className="h-px bg-white/20 flex-1"></div>
+                     Musculature
+                     <div className="h-px bg-white/20 flex-1"></div>
+                   </h3>
                    <div className="flex flex-col gap-2">
                      {machineKnowledge.targetMuscles && machineKnowledge.targetMuscles.map((tm, idx) => (
-                       <div key={'t'+idx} className="flex gap-2">
-                         <div className="w-1.5 rounded-full bg-cta shrink-0 mt-1.5 mb-1.5"></div>
-                         <div className="text-sm text-ink-d1 leading-snug">{tm}</div>
+                       <div key={'m_t'+idx} className="flex items-center gap-2.5 bg-black/20 p-2.5 rounded-xl border border-white/5">
+                         <div className="w-2 h-2 rounded-full bg-[#FF6B00] shadow-[0_0_8px_rgba(255,107,0,0.8)] shrink-0"></div>
+                         <div className="text-[12px] font-bold text-white leading-snug">{tm}</div>
+                         <div className="ml-auto text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Primary</div>
                        </div>
                      ))}
                      {machineKnowledge.synergists && machineKnowledge.synergists.map((syn, idx) => (
-                       <div key={'s'+idx} className="flex gap-2">
-                         <div className="w-1.5 rounded-full bg-cyan/50 shrink-0 mt-1.5 mb-1.5"></div>
-                         <div className="text-sm text-ink-d2 leading-snug">{syn}</div>
+                       <div key={'m_s'+idx} className="flex items-center gap-2.5 bg-black/10 p-2.5 rounded-xl border border-white/5">
+                         <div className="w-2 h-2 rounded-full bg-[#00A3FF] shadow-[0_0_8px_rgba(0,163,255,0.6)] shrink-0"></div>
+                         <div className="text-[12px] text-muted-foreground leading-snug">{syn}</div>
+                         <div className="ml-auto text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">Synergist</div>
                        </div>
                      ))}
-                     {(!machineKnowledge.targetMuscles?.length && !machineKnowledge.synergists?.length) && (
-                        <div className="text-sm text-ink-d3 italic">Musculature data not available</div>
-                     )}
                    </div>
                 </div>
-              </div>
 
-              {/* Specific Instructions Panel */}
-              <div className="flex flex-col gap-6">
-                
                 {machineKnowledge.clinicalWarnings && machineKnowledge.clinicalWarnings.length > 0 && (
-                  <div className="bg-amber/10 border border-amber/20 rounded-3xl p-6">
-                    <div className="flex items-center gap-2 mb-3">
-                      <ShieldAlert className="w-5 h-5 text-amber" />
-                      <h3 className="text-sm font-bold uppercase tracking-widest text-amber">Clinical Warnings</h3>
+                  <div className="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-4 backdrop-blur-sm">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <ShieldAlert className="w-4 h-4 text-amber-500" />
+                      <h3 className="text-[10px] font-bold uppercase tracking-widest text-amber-500">Clinical Warnings</h3>
                     </div>
-                    <ul className="space-y-2">
+                    <ul className="space-y-1.5">
                       {machineKnowledge.clinicalWarnings.map((w, idx) => (
-                        <li key={idx} className="text-sm text-amber/90 leading-relaxed flex items-start gap-2">
-                           <span className="text-amber shrink-0 mt-0.5">•</span>
-                           <span>{w}</span>
+                        <li key={idx} className="text-[12px] text-amber-200/90 leading-relaxed flex items-start gap-2.5">
+                           <span className="text-amber-500 shrink-0 mt-0.5">•</span>
+                           <span className="font-medium">{w}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
 
-                <div className="bg-surface-1 border border-div-d rounded-3xl p-6 space-y-5">
+                <div className="space-y-4">
                    <div>
-                     <h4 className="text-[11px] font-bold uppercase tracking-widest text-cyan pb-1 border-b border-div-d/40 mb-3 flex items-center gap-1">
+                     <h4 className="text-[10px] font-bold uppercase tracking-widest text-cyan mb-2 flex items-center gap-2">
                        <Wrench className="w-3.5 h-3.5" /> Setup Notes
                      </h4>
-                     <p className="text-sm text-ink-d1 leading-relaxed font-bold">{machineKnowledge.setup}</p>
-                     
+                     <p className="text-[12px] text-white leading-relaxed font-semibold bg-black/40 p-3.5 rounded-xl border border-white/5">{machineKnowledge.setup}</p>
                      {machineKnowledge.setupCues && machineKnowledge.setupCues.length > 0 && (
-                       <ul className="mt-3 space-y-2">
+                       <ul className="mt-2.5 space-y-1.5 pl-1">
                          {machineKnowledge.setupCues.map((cue, idx) => (
-                           <li key={idx} className="text-[13px] text-ink-d2 flex items-start gap-2">
-                             <div className="w-1 h-1 rounded-full bg-div-d shrink-0 mt-1.5"></div>
-                             <span>{cue}</span>
+                           <li key={idx} className="text-[11px] text-muted-foreground flex items-start gap-2.5">
+                             <div className="w-1.5 h-1.5 rounded-full bg-cyan/50 shrink-0 mt-1"></div>
+                             <span className="font-medium">{cue}</span>
                            </li>
                          ))}
                        </ul>
@@ -482,83 +564,73 @@ export function MachineAnatomyCatalogView({
                    </div>
 
                    <div>
-                     <h4 className="text-[11px] font-bold uppercase tracking-widest text-green pb-1 border-b border-div-d/40 mb-3 flex items-center gap-1">
-                       <Activity className="w-3.5 h-3.5" /> Execution Guide
+                     <h4 className="text-[10px] font-bold uppercase tracking-widest text-green-500 mb-2 flex items-center gap-2">
+                       <Activity className="w-3.5 h-3.5" /> Execution
                      </h4>
-                     <p className="text-sm text-ink-d1 leading-relaxed font-bold">{machineKnowledge.execution}</p>
-
-                     {machineKnowledge.executionCues && machineKnowledge.executionCues.length > 0 && (
-                       <ul className="mt-3 space-y-2">
-                         {machineKnowledge.executionCues.map((cue, idx) => (
-                           <li key={idx} className="text-[13px] text-ink-d2 flex items-start gap-2">
-                             <div className="w-1 h-1 rounded-full bg-div-d shrink-0 mt-1.5"></div>
-                             <span>{cue}</span>
-                           </li>
-                         ))}
-                       </ul>
-                     )}
+                     <p className="text-[12px] text-white leading-relaxed font-semibold bg-black/40 p-3.5 rounded-xl border border-white/5">{machineKnowledge.execution}</p>
                    </div>
                 </div>
 
-                {/* Trainer Tips Input */}
-                <div className="bg-surface-1 border border-div-d rounded-3xl p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <UserCog className="w-5 h-5 text-brand" />
-                      <h3 className="text-sm font-bold uppercase tracking-widest text-white">Studio Trainer Tips</h3>
-                    </div>
+                {/* Trainer Tips */}
+                <div className="pt-4 border-t border-white/10 mt-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <UserCog className="w-4 h-4 text-violet-400" />
+                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-white">Studio Notes</h3>
                   </div>
-                  <div>
-                    <Textarea 
-                      placeholder="Add specific cues or adjustments for this machine in your studio..."
-                      value={trainerTips}
-                      onChange={(e) => setTrainerTips(e.target.value)}
-                      className="min-h-[80px] bg-bg-dark-3 border border-div-d focus-visible:ring-brand text-white placeholder:text-ink-d3 mb-3 resize-none text-[13px]"
-                    />
-                    <Button 
-                      onClick={handleSaveTip}
-                      disabled={isSavingTip}
-                      className="w-full bg-brand/10 hover:bg-brand/20 text-brand border border-brand/20 font-bold tracking-widest uppercase transition-all"
-                    >
-                      {isSavingTip ? "Saved to Studio" : "Save Tip"}
-                    </Button>
-                  </div>
+                  <Textarea 
+                    placeholder="Record custom setup params or cues for this specific machine..."
+                    value={trainerTips}
+                    onChange={(e) => setTrainerTips(e.target.value)}
+                    className="min-h-[80px] bg-black/60 border border-white/10 focus-visible:ring-violet-500 text-white placeholder:text-muted-foreground/50 mb-3 resize-none text-[12px] rounded-xl p-3"
+                  />
+                  <Button 
+                    onClick={handleSaveTip}
+                    disabled={isSavingTip}
+                    className={`w-full font-black tracking-[0.2em] uppercase transition-all rounded-xl h-10 text-[10px] ${
+                      isSavingTip 
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                        : 'bg-violet-500/20 hover:bg-violet-500/40 text-violet-300 border border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.15)]'
+                    }`}
+                  >
+                    {isSavingTip ? "Stored Successfully" : "Save Notes"}
+                  </Button>
                 </div>
 
               </div>
-            </div>
-            )}
-          </div>
-        )}
-
-        {/* Details card / Actions */}
-        <div className="bg-surface-1 border border-div-d rounded-2xl p-4 flex items-center gap-4 min-h-[96px] mt-auto">
-          <div className="flex-1 min-w-0">
-            {selectedMachine && selectedMap ? (
-              <>
-                <div className="text-[11px] uppercase tracking-widest text-cta font-bold mb-1">
-                  {selectedMap.movementPattern}
-                </div>
-                <div className="text-[18px] font-bold uppercase italic text-white tracking-tight leading-none mb-2 truncate">
-                  {selectedMachine.name}
-                </div>
-                <div className="text-[11px] text-ink-d2 leading-snug">
-                  {selectedMap.clinicalNote}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-[11px] uppercase tracking-widest text-ink-d3 font-bold mb-1">
-                  Dynamic Anatomical Targeting
-                </div>
-                <div className="text-[14px] text-ink-d2 leading-snug">
-                  Tap a machine on the left to visualize its primary and synergist musculature.
-                </div>
-              </>
-            )}
-          </div>
+           </div>
         </div>
-      </main>
+      )}
+
+      {/* ───── DESKTOP BOTTOM CENTER CONTROLS ───── */}
+      <div className="hidden lg:flex absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto z-50 flex-col gap-3 items-center">
+        <div className="flex bg-background/80 backdrop-blur-xl rounded-2xl p-1.5 border border-white/10 shadow-2xl">
+          <button 
+            onClick={() => setView('front')}
+            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${view === 'front' ? 'bg-white text-zinc-950 shadow-lg' : 'text-muted-foreground hover:text-white hover:bg-white/10'}`}
+          >
+            Anterior
+          </button>
+          <button 
+            onClick={() => setView('back')}
+            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${view === 'back' ? 'bg-white text-zinc-950 shadow-lg' : 'text-muted-foreground hover:text-white hover:bg-white/10'}`}
+          >
+            Posterior
+          </button>
+          <div className="w-px bg-white/10 mx-2 my-2"></div>
+          <button 
+            onClick={() => setGender('male')}
+            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${gender === 'male' ? 'bg-white text-zinc-950 shadow-lg' : 'text-muted-foreground hover:text-white hover:bg-white/10'}`}
+          >
+            Type M
+          </button>
+          <button 
+            onClick={() => setGender('female')}
+            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${gender === 'female' ? 'bg-white text-zinc-950 shadow-lg' : 'text-muted-foreground hover:text-white hover:bg-white/10'}`}
+          >
+            Type F
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
