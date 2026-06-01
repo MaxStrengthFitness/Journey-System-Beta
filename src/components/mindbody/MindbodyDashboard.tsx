@@ -7,7 +7,7 @@ import CrossTrainApprovalCard from './CrossTrainApprovalCard';
 import CrossTrainAccessGate from './CrossTrainAccessGate';
 import { Button } from '@/components/ui/button';
 
-export function MindbodySandbox() {
+export function MindbodyDashboard() {
   const [role, setRole] = useState<'trainer' | 'leader'>('trainer');
   const [showGate, setShowGate] = useState(false);
   const [accessState, setAccessState] = useState<'locked' | 'granted' | 'requested'>('locked');
@@ -32,8 +32,8 @@ export function MindbodySandbox() {
     <div className="min-h-full w-full bg-slate-50 dark:bg-slate-950 p-6 flex flex-col gap-8">
       <div className="flex justify-between items-center bg-white p-4 rounded border dark:bg-slate-900 border-border">
         <div>
-          <h2 className="text-xl font-bold">Mindbody End-to-End Demo</h2>
-          <p className="text-sm text-muted-foreground">Toggle options to view different states of the integration components.</p>
+          <h2 className="text-xl font-bold">Mindbody End-to-End Integration</h2>
+          <p className="text-sm text-muted-foreground">Manage your studio operations seamlessly.</p>
         </div>
         <div className="flex gap-4">
           <Button variant={role === 'trainer' ? 'default' : 'outline'} onClick={() => setRole('trainer')}>
@@ -47,9 +47,9 @@ export function MindbodySandbox() {
 
       {accessState === 'locked' && (
         <div className="bg-white dark:bg-slate-900 p-4 rounded border border-border">
-          <h3 className="font-bold mb-4">Cross-Train Demo</h3>
+          <h3 className="font-bold mb-4">Cross-Train Operations</h3>
           <Button onClick={() => setShowGate(true)}>
-            Simulate Click on Foreign Client Appointment
+            Access Foreign Client Record
           </Button>
         </div>
       )}

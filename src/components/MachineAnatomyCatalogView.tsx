@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronRight, ChevronDown, Layers, MapPin, Activity, BookOpen, Wrench, ShieldAlert, Wand2, Loader2, ShieldCheck, Target, UserCog, Settings2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, Layers, MapPin, Activity, BookOpen, Wrench, ShieldAlert, Wand2, Loader2, ShieldCheck, Target, UserCog, Settings2, Users } from 'lucide-react';
 import { Machine } from '../types';
 import {
   MACHINE_ANATOMY,
@@ -8,9 +8,9 @@ import {
   AnatomyView,
   MachineAnatomyMap,
 } from '../data/machine-anatomy-map';
-import { AnatomyFigure } from './AnatomyFigure';
+import Body, { ExtendedBodyPart, Slug } from '../../react-muscle-highlighter-main';
+import { machineMuscleMap } from '../data/machineMuscleMap';
 import { MACHINE_DATABASE } from '../data/machine-database';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -29,17 +29,12 @@ export function MachineAnatomyCatalogView({
   onViewMachineDetails,
 }: MachineAnatomyCatalogViewProps) {
   const [selectedMachineId, setSelectedMachineId] = useState<string | null>(null);
-  const [view, setView] = useState<AnatomyView>('front');
+  const [view, setView] = useState<'front' | 'back'>('front');
+  const [gender, setGender] = useState<'male' | 'female'>('male');
   const [groupingMode, setGroupingMode] = useState<GroupingMode>('movement');
   const [activeTab, setActiveTab] = useState<Tab>('anatomy');
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set());
   
-  // Setup Wizard State
-  const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [wizardConstraints, setWizardConstraints] = useState<string>('');
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [generatedGuide, setGeneratedGuide] = useState<any>(null);
-
   // Trainer Tips State
   const [trainerTips, setTrainerTips] = useState<string>('');
   const [isSavingTip, setIsSavingTip] = useState(false);
@@ -52,9 +47,32 @@ export function MachineAnatomyCatalogView({
     ? machines.find((m) => m.id === selectedMachineId) ?? null
     : null;
     
-  const machineKnowledge = selectedMachineId 
-    ? MACHINE_DATABASE[selectedMachineId] ?? null 
-    : null;
+  const machineKnowledge = useMemo(() => {
+    if (!selectedMachineId) return null;
+    if (MACHINE_DATABASE[selectedMachineId]) return MACHINE_DATABASE[selectedMachineId];
+    
+    // Attempt fallback lookup by formatting the ID
+    const fallbackId = selectedMachineId.replace(/^m-/, '').replace(/-/g, '_');
+    if (MACHINE_DATABASE[fallbackId]) return MACHINE_DATABASE[fallbackId];
+    
+    // Additional hardcoded fallbacks for mismatched keys
+    if (selectedMachineId === 'm-neck') return MACHINE_DATABASE['4_way_neck'];
+    if (selectedMachineId === 'm-ext') return MACHINE_DATABASE['leg_extension'];
+    if (selectedMachineId === 'm-hip-abd') return MACHINE_DATABASE['abduction'];
+    if (selectedMachineId === 'm-hip-add') return MACHINE_DATABASE['adduction'];
+    if (selectedMachineId === 'm-tricep-ext') return MACHINE_DATABASE['triceps_extension'];
+    if (selectedMachineId === 'm-chest-fly') return MACHINE_DATABASE['chest_flye'];
+    if (selectedMachineId === 'm-bicep') return MACHINE_DATABASE['biceps_curl'];
+    
+    // If still not found, try ignoring case or finding closest string via name
+    const m = machines.find((m) => m.id === selectedMachineId);
+    if (m) {
+      const match = Object.values(MACHINE_DATABASE).find(db => db.name.toLowerCase() === m.name.toLowerCase() || m.name.toLowerCase().includes(db.name.toLowerCase()));
+      if (match) return match;
+    }
+    
+    return null;
+  }, [selectedMachineId, machines]);
 
   React.useEffect(() => {
     if (selectedMachineId) {
@@ -71,53 +89,47 @@ export function MachineAnatomyCatalogView({
     }
   };
 
+  const highlightData = useMemo(() => {
+    const data: ExtendedBodyPart[] = [];
+    if (!selectedMachineId) return data;
+    
+    // Fallback logic for machines not mapped in machineMuscleMap:
+    const mapping = machineMuscleMap[selectedMachineId];
+    if (!mapping) return data;
+
+    // Primary muscles = CTA color
+    mapping.primary.forEach(muscle => {
+      data.push({ slug: muscle, color: '#FF6B00' });
+    });
+
+    // Synergist muscles = Cyan color
+    mapping.synergist.forEach(muscle => {
+      data.push({ slug: muscle, color: '#00A3FF' });
+    });
+
+    return data;
+  }, [selectedMachineId]);
+
+  const handleMuscleClick = (part: ExtendedBodyPart) => {
+    if (!part.slug) return;
+    // Find a machine that targets this muscle
+    const targetMachineId = Object.keys(machineMuscleMap).find(id => 
+      machineMuscleMap[id].primary.includes(part.slug as Slug) || 
+      machineMuscleMap[id].synergist.includes(part.slug as Slug)
+    );
+    
+    if (targetMachineId) {
+      handleSelectMachine(targetMachineId);
+      setActiveTab('anatomy');
+    }
+  };
+
   const handleSelectMachine = (machineId: string) => {
     setSelectedMachineId(machineId);
     const map = MACHINE_ANATOMY[machineId];
-    if (map) setView(map.preferredView);
-  };
-
-  const handleGenerateGuide = async () => {
-    if (!selectedMachineId) return;
-    setIsGenerating(true);
-    setGeneratedGuide(null);
-    
-    // Mock AI generation delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setGeneratedGuide({
-      targetMuscles: ["Chest (Pectoralis Major)", "Triceps", "Anterior Deltoid"],
-      initialAdjustments: [
-        "Empty the weight stack to ensure zero active resistance during entry.",
-        "Set seat height to standard (setting 4 typically) as baseline.",
-        "Ensure back pad is at the standard 20-degree incline."
-      ],
-      entryAndSafety: [
-        "Assist client into the seat smoothly, guiding their elbows.",
-        "Check that head is neutral and not pushed forward.",
-        "Fasten seatbelt securely across the pelvis."
-      ],
-      alignmentAndPosture: [
-        "Chest up, sternum proud.",
-        "Check joint stacking: wrists neutral, elbows slightly flared."
-      ],
-      clientModifications: wizardConstraints 
-        ? "Applied constraint adjustment: Checked ROM and modified starting point to avoid pain points mentioned."
-        : "Standard MSF setup applies."
-    });
-    
-    setIsGenerating(false);
-  };
-
-
-
-  const toggleGroup = (groupKey: string) => {
-    setOpenGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(groupKey)) next.delete(groupKey);
-      else next.add(groupKey);
-      return next;
-    });
+    if (map && (map.preferredView === 'front' || map.preferredView === 'back')) {
+      setView(map.preferredView);
+    }
   };
 
   /* ── Group machines based on the current grouping mode ───── */
@@ -204,13 +216,13 @@ export function MachineAnatomyCatalogView({
                     const map = m.id ? MACHINE_ANATOMY[m.id] : undefined;
                     const movement = map?.movementPattern || '';
                     
-                    let colorClass = 'bg-slate-500';
-                    if (movement.includes('Push')) colorClass = 'bg-sky-500';
-                    else if (movement.includes('Pull')) colorClass = 'bg-indigo-500';
-                    else if (movement.includes('Quad')) colorClass = 'bg-emerald-500';
-                    else if (movement.includes('Posterior')) colorClass = 'bg-emerald-600';
-                    else if (movement.includes('Core')) colorClass = 'bg-orange-500';
-                    else if (movement.includes('Isolation')) colorClass = 'bg-amber-500';
+                    let colorClass = 'bg-secondary';
+                    if (movement.includes('Push')) colorClass = 'bg-cta';
+                    else if (movement.includes('Pull')) colorClass = 'bg-cyan';
+                    else if (movement.includes('Quad')) colorClass = 'bg-green';
+                    else if (movement.includes('Posterior')) colorClass = 'bg-yellow';
+                    else if (movement.includes('Core')) colorClass = 'bg-amber';
+                    else if (movement.includes('Isolation')) colorClass = 'bg-brand';
 
                     let shortBadge = 'Misc';
                     if (movement.includes('Horizontal Push')) shortBadge = 'H. Push';
@@ -294,41 +306,62 @@ export function MachineAnatomyCatalogView({
         {/* Anatomy Tab */}
         {(!selectedMachine || activeTab === 'anatomy') && (
           <>
-            {/* View toggle */}
-            <div className="flex gap-2 w-full">
-              {(['front', 'side', 'back'] as AnatomyView[]).map((v) => {
-                const isActive = view === v;
-                return (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setView(v)}
-                    className={`flex-1 min-h-[44px] rounded-xl text-[12px] font-bold uppercase tracking-widest transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan ${
-                      isActive
-                        ? 'bg-cyan text-bg-dark shadow-lg'
-                        : 'bg-surface-2 text-ink-d2 border border-div-d hover:bg-bg-dark-3 hover:text-white'
-                    }`}
-                    aria-pressed={isActive}
+            <div className="min-h-0 flex flex-col items-center justify-center bg-surface-1 rounded-2xl border border-div-d relative overflow-hidden group mt-2 py-4">
+              {/* View options toggle */}
+              <div className="absolute top-4 right-4 z-10 flex gap-2">
+                <div className="flex bg-bg-dark-3 rounded-lg p-1 border border-div-d">
+                  <button 
+                    onClick={() => setView('front')}
+                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${view === 'front' ? 'bg-cyan text-bg-dark shadow-sm' : 'text-ink-d3 hover:text-white'}`}
                   >
-                    {v}
+                    Front
                   </button>
-                );
-              })}
-            </div>
+                  <button 
+                    onClick={() => setView('back')}
+                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${view === 'back' ? 'bg-cyan text-bg-dark shadow-sm' : 'text-ink-d3 hover:text-white'}`}
+                  >
+                    Back
+                  </button>
+                </div>
+                <div className="flex bg-bg-dark-3 rounded-lg p-1 border border-div-d">
+                  <button 
+                    onClick={() => setGender('male')}
+                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${gender === 'male' ? 'bg-cyan text-bg-dark shadow-sm' : 'text-ink-d3 hover:text-white'}`}
+                  >
+                    Male
+                  </button>
+                  <button 
+                    onClick={() => setGender('female')}
+                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${gender === 'female' ? 'bg-cyan text-bg-dark shadow-sm' : 'text-ink-d3 hover:text-white'}`}
+                  >
+                    Female
+                  </button>
+                </div>
+              </div>
 
-            <div className="min-h-0 flex flex-col items-center justify-center bg-surface-1 rounded-2xl border border-div-d relative overflow-hidden group">
-              <AnatomyFigure
-                view={view}
-                primary={selectedMap?.primary ?? []}
-                secondary={selectedMap?.secondary ?? []}
-                onMuscleClick={(muscleId) => {
-                  const targetMachine = Object.values(MACHINE_ANATOMY).find(m => m.primary.includes(muscleId));
-                  if (targetMachine) {
-                    handleSelectMachine(targetMachine.machineId);
-                    setActiveTab('anatomy');
-                  }
-                }}
-              />
+              <div className="relative w-full max-w-[280px] flex justify-center py-4">
+                <Body 
+                  data={highlightData} 
+                  side={view} 
+                  gender={gender} 
+                  scale={1.2} 
+                  onBodyPartPress={handleMuscleClick}
+                />
+                
+                {/* Legend overlay */}
+                {selectedMachine && (
+                  <div className="absolute bottom-0 left-0 flex flex-col gap-2 p-3 bg-bg-dark/80 backdrop-blur-sm border border-div-d rounded-xl shadow-lg">
+                    <div className="flex items-center gap-2">
+                       <span className="w-2.5 h-2.5 rounded-sm bg-[#FF6B00]"></span>
+                       <span className="text-[9px] font-bold uppercase tracking-widest text-ink-d1">Primary</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                       <span className="w-2.5 h-2.5 rounded-sm bg-[#00A3FF]"></span>
+                       <span className="text-[9px] font-bold uppercase tracking-widest text-ink-d1">Synergist</span>
+                    </div>
+                  </div>
+                )}
+              </div>
               {!selectedMap && (
                 <div className="absolute inset-x-0 bottom-4 text-center pointer-events-none">
                   <span className="text-[11px] uppercase tracking-widest text-ink-d3 font-bold group-hover:opacity-0 transition-opacity">
@@ -341,84 +374,160 @@ export function MachineAnatomyCatalogView({
         )}
 
         {/* Profile Tab */}
-        {selectedMachine && activeTab === 'profile' && machineKnowledge && (
-          <div className="min-h-0 overflow-y-auto w-full max-w-2xl mx-auto space-y-6">
-            <div className="bg-surface-1 border border-div-d rounded-3xl p-6">
-              <div className="text-[11px] uppercase tracking-widest text-cyan font-bold mb-1">
-                {machineKnowledge.kinematicClassification}
+        {selectedMachine && activeTab === 'profile' && (
+          <div className="min-h-0 overflow-y-auto w-full mx-auto space-y-6 pb-20 pr-2">
+            {!machineKnowledge ? (
+              <div className="flex flex-col items-center justify-center p-12 bg-surface-1 rounded-3xl border border-div-d text-ink-d3">
+                 <ShieldAlert className="w-8 h-8 mb-3 opacity-50" />
+                 <p className="text-sm font-bold uppercase tracking-widest">No detailed profile found</p>
+                 <p className="text-xs mt-1">This machine is missing clinical mapping in the database.</p>
               </div>
-              <h2 className="text-2xl font-bold uppercase italic text-white tracking-tight mb-4">
-                {machineKnowledge.name}
-              </h2>
-              <div className="grid grid-cols-2 gap-4 border-t border-div-d/40 pt-4">
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-ink-d3 font-bold mb-1">Base Rx (Male)</div>
-                  <div className="text-white font-medium text-lg">{machineKnowledge.baseMale} lbs</div>
+            ) : (
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Core Information Panel */}
+              <div className="bg-surface-1 border border-div-d rounded-3xl p-6 flex flex-col gap-6">
+                
+                {machineKnowledge.imageUrl && (
+                  <div className="w-full aspect-video rounded-xl bg-bg-dark-3 flex items-center justify-center overflow-hidden border border-div-d">
+                     <img src={machineKnowledge.imageUrl} alt={machineKnowledge.name} className="w-full h-full object-cover opacity-80 mix-blend-screen" />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-ink-d3 flex items-center gap-1">
+                      <Activity className="w-3 h-3 text-cyan" /> Kinematic Class
+                    </div>
+                    <div className="text-[13px] text-white font-medium">{machineKnowledge.kinematicClassification || 'N/A'}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-ink-d3 flex items-center gap-1">
+                      <Target className="w-3 h-3 text-cta" /> Posture
+                    </div>
+                    <div className="text-[13px] text-white font-medium truncate" title={machineKnowledge.executionPosture}>{machineKnowledge.executionPosture || 'N/A'}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-ink-d3 flex items-center gap-1">
+                      <Settings2 className="w-3 h-3 text-green" /> Setup Gap
+                    </div>
+                    <div className="text-[13px] text-white font-medium">{machineKnowledge.setupGap || 'Standard Gap'}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-ink-d3 flex items-center gap-1">
+                      <Users className="w-3 h-3 text-brand" /> Handoff
+                    </div>
+                    <div className="text-[13px] text-white font-medium">{machineKnowledge.requiresHandoff ? 'Required' : 'None'}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-ink-d3 font-bold mb-1">Base Rx (Female)</div>
-                  <div className="text-white font-medium text-lg">{machineKnowledge.baseFemale} lbs</div>
+
+                <div className="space-y-3">
+                   <h3 className="text-sm font-bold uppercase tracking-widest text-white border-b border-div-d/40 pb-2">Target Musculature</h3>
+                   <div className="flex flex-col gap-2">
+                     {machineKnowledge.targetMuscles && machineKnowledge.targetMuscles.map((tm, idx) => (
+                       <div key={'t'+idx} className="flex gap-2">
+                         <div className="w-1.5 rounded-full bg-cta shrink-0 mt-1.5 mb-1.5"></div>
+                         <div className="text-sm text-ink-d1 leading-snug">{tm}</div>
+                       </div>
+                     ))}
+                     {machineKnowledge.synergists && machineKnowledge.synergists.map((syn, idx) => (
+                       <div key={'s'+idx} className="flex gap-2">
+                         <div className="w-1.5 rounded-full bg-cyan/50 shrink-0 mt-1.5 mb-1.5"></div>
+                         <div className="text-sm text-ink-d2 leading-snug">{syn}</div>
+                       </div>
+                     ))}
+                     {(!machineKnowledge.targetMuscles?.length && !machineKnowledge.synergists?.length) && (
+                        <div className="text-sm text-ink-d3 italic">Musculature data not available</div>
+                     )}
+                   </div>
                 </div>
-                <div className="col-span-2">
-                  <div className="text-[10px] uppercase tracking-widest text-ink-d3 font-bold mb-1">Execution Posture</div>
-                  <div className="text-white font-medium">{machineKnowledge.executionPosture}</div>
+              </div>
+
+              {/* Specific Instructions Panel */}
+              <div className="flex flex-col gap-6">
+                
+                {machineKnowledge.clinicalWarnings && machineKnowledge.clinicalWarnings.length > 0 && (
+                  <div className="bg-amber/10 border border-amber/20 rounded-3xl p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <ShieldAlert className="w-5 h-5 text-amber" />
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-amber">Clinical Warnings</h3>
+                    </div>
+                    <ul className="space-y-2">
+                      {machineKnowledge.clinicalWarnings.map((w, idx) => (
+                        <li key={idx} className="text-sm text-amber/90 leading-relaxed flex items-start gap-2">
+                           <span className="text-amber shrink-0 mt-0.5">•</span>
+                           <span>{w}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="bg-surface-1 border border-div-d rounded-3xl p-6 space-y-5">
+                   <div>
+                     <h4 className="text-[11px] font-bold uppercase tracking-widest text-cyan pb-1 border-b border-div-d/40 mb-3 flex items-center gap-1">
+                       <Wrench className="w-3.5 h-3.5" /> Setup Notes
+                     </h4>
+                     <p className="text-sm text-ink-d1 leading-relaxed font-bold">{machineKnowledge.setup}</p>
+                     
+                     {machineKnowledge.setupCues && machineKnowledge.setupCues.length > 0 && (
+                       <ul className="mt-3 space-y-2">
+                         {machineKnowledge.setupCues.map((cue, idx) => (
+                           <li key={idx} className="text-[13px] text-ink-d2 flex items-start gap-2">
+                             <div className="w-1 h-1 rounded-full bg-div-d shrink-0 mt-1.5"></div>
+                             <span>{cue}</span>
+                           </li>
+                         ))}
+                       </ul>
+                     )}
+                   </div>
+
+                   <div>
+                     <h4 className="text-[11px] font-bold uppercase tracking-widest text-green pb-1 border-b border-div-d/40 mb-3 flex items-center gap-1">
+                       <Activity className="w-3.5 h-3.5" /> Execution Guide
+                     </h4>
+                     <p className="text-sm text-ink-d1 leading-relaxed font-bold">{machineKnowledge.execution}</p>
+
+                     {machineKnowledge.executionCues && machineKnowledge.executionCues.length > 0 && (
+                       <ul className="mt-3 space-y-2">
+                         {machineKnowledge.executionCues.map((cue, idx) => (
+                           <li key={idx} className="text-[13px] text-ink-d2 flex items-start gap-2">
+                             <div className="w-1 h-1 rounded-full bg-div-d shrink-0 mt-1.5"></div>
+                             <span>{cue}</span>
+                           </li>
+                         ))}
+                       </ul>
+                     )}
+                   </div>
                 </div>
+
+                {/* Trainer Tips Input */}
+                <div className="bg-surface-1 border border-div-d rounded-3xl p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <UserCog className="w-5 h-5 text-brand" />
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-white">Studio Trainer Tips</h3>
+                    </div>
+                  </div>
+                  <div>
+                    <Textarea 
+                      placeholder="Add specific cues or adjustments for this machine in your studio..."
+                      value={trainerTips}
+                      onChange={(e) => setTrainerTips(e.target.value)}
+                      className="min-h-[80px] bg-bg-dark-3 border border-div-d focus-visible:ring-brand text-white placeholder:text-ink-d3 mb-3 resize-none text-[13px]"
+                    />
+                    <Button 
+                      onClick={handleSaveTip}
+                      disabled={isSavingTip}
+                      className="w-full bg-brand/10 hover:bg-brand/20 text-brand border border-brand/20 font-bold tracking-widest uppercase transition-all"
+                    >
+                      {isSavingTip ? "Saved to Studio" : "Save Tip"}
+                    </Button>
+                  </div>
+                </div>
+
               </div>
             </div>
-
-            <div className="bg-surface-1 border border-div-d rounded-3xl p-6 space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <BookOpen className="w-5 h-5 text-cta" />
-                <h3 className="text-sm font-bold uppercase tracking-widest text-white">Manual</h3>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-widest text-ink-d3 font-bold mb-1">Setup Protocol</div>
-                <p className="text-sm text-ink-d1 leading-relaxed">{machineKnowledge.setup}</p>
-              </div>
-              <div className="pt-2">
-                <div className="text-[10px] uppercase tracking-widest text-ink-d3 font-bold mb-1">Execution Protocol</div>
-                <p className="text-sm text-ink-d1 leading-relaxed">{machineKnowledge.execution}</p>
-              </div>
-            </div>
-
-            {machineKnowledge.clinicalWarnings && machineKnowledge.clinicalWarnings.length > 0 && (
-              <div className="bg-orange-500/10 border border-orange-500/20 rounded-3xl p-6">
-                <div className="flex items-center gap-2 mb-3">
-                  <ShieldAlert className="w-5 h-5 text-orange-500" />
-                  <h3 className="text-sm font-bold uppercase tracking-widest text-orange-500">Clinical Warnings</h3>
-                </div>
-                <ul className="space-y-2">
-                  {machineKnowledge.clinicalWarnings.map((warning, idx) => (
-                    <li key={idx} className="text-sm text-orange-500/90 leading-relaxed flex items-start gap-2">
-                       <span className="text-orange-500 shrink-0 mt-0.5">•</span>
-                       <span>{warning}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
             )}
-
-            <div className="bg-surface-1 border border-div-d rounded-3xl p-6 space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <UserCog className="w-5 h-5 text-cyan" />
-                <h3 className="text-sm font-bold uppercase tracking-widest text-white">Studio Trainer Tips</h3>
-              </div>
-              <div>
-                <Textarea 
-                  placeholder="Add specific tips, cues, or adjustments for this machine in your studio..."
-                  value={trainerTips}
-                  onChange={(e) => setTrainerTips(e.target.value)}
-                  className="min-h-[100px] bg-bg-dark-3 border border-div-d focus-visible:ring-cyan text-white placeholder:text-ink-d3 mb-3 resize-y"
-                />
-                <Button 
-                  onClick={handleSaveTip}
-                  disabled={isSavingTip}
-                  className="w-full bg-surface-2 hover:bg-surface-3 text-white border border-div-d font-bold tracking-widest uppercase transition-all"
-                >
-                  {isSavingTip ? "Saved!" : "Save Tips"}
-                </Button>
-              </div>
-            </div>
           </div>
         )}
 
@@ -448,99 +557,6 @@ export function MachineAnatomyCatalogView({
               </>
             )}
           </div>
-          {selectedMachine && (
-            <Dialog open={isWizardOpen} onOpenChange={setIsWizardOpen}>
-              <DialogTrigger
-                className="shrink-0 min-h-[48px] px-5 rounded-xl bg-cyan text-bg-dark text-[12px] font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan flex items-center gap-2"
-              >
-                <Wand2 className="w-4 h-4" />
-                AI Setup Wizard
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] bg-bg-dark text-white border border-div-d shadow-2xl rounded-3xl p-6">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2 text-xl font-bold uppercase tracking-widest text-cyan">
-                    <Wand2 className="w-5 h-5 text-cyan" />
-                    AI Setup Wizard
-                  </DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="bg-surface-1 border border-div-d rounded-xl p-4">
-                    <div className="text-[11px] uppercase tracking-widest text-ink-d3 font-bold mb-1">Targeting Machine</div>
-                    <div className="text-lg font-bold italic uppercase tracking-tight text-white">{selectedMachine.name}</div>
-                  </div>
-                  <div>
-                    <Textarea 
-                      placeholder="Client Constraints (e.g., knee pain, short arms)..."
-                      value={wizardConstraints}
-                      onChange={(e) => setWizardConstraints(e.target.value)}
-                      className="min-h-[100px] bg-surface-1 border border-div-d focus-visible:ring-cyan text-white placeholder:text-ink-d3"
-                    />
-                  </div>
-                  <Button 
-                    onClick={handleGenerateGuide}
-                    disabled={isGenerating}
-                    className="w-full bg-cyan hover:bg-cyan/90 text-bg-dark font-bold tracking-widest uppercase"
-                  >
-                    {isGenerating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</> : "Generate Custom Setup Guide"}
-                  </Button>
-
-                  {generatedGuide && (
-                    <div className="mt-4 p-4 bg-surface-1 border border-div-d rounded-xl max-h-[400px] overflow-y-auto space-y-4 custom-scrollbar">
-                      <div className="space-y-2">
-                         <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#38BDF8]">Target Muscles</h4>
-                         <div className="flex flex-wrap gap-2">
-                           {generatedGuide.targetMuscles.map((t: string) => (
-                              <Badge key={t} className="bg-bg-dark-3 text-white border border-div-d">{t}</Badge>
-                           ))}
-                         </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                         <h4 className="text-[11px] font-bold uppercase tracking-widest text-cta">Initial Adjustments</h4>
-                         <ul className="space-y-1">
-                           {generatedGuide.initialAdjustments.map((a: string, i: number) => (
-                              <li key={i} className="text-sm text-ink-d1 flex items-start gap-2">
-                               <Settings2 className="w-4 h-4 text-cta shrink-0 mt-0.5" /> <span>{a}</span>
-                             </li>
-                           ))}
-                         </ul>
-                      </div>
-
-                      <div className="space-y-2">
-                         <h4 className="text-[11px] font-bold uppercase tracking-widest text-emerald-400">Entry & Safety</h4>
-                         <ul className="space-y-1">
-                           {generatedGuide.entryAndSafety.map((a: string, i: number) => (
-                              <li key={i} className="text-sm text-ink-d1 flex items-start gap-2">
-                               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /> <span>{a}</span>
-                             </li>
-                           ))}
-                         </ul>
-                      </div>
-                      
-                      <div className="space-y-2">
-                         <h4 className="text-[11px] font-bold uppercase tracking-widest text-indigo-400">Alignment & Posture</h4>
-                         <ul className="space-y-1">
-                           {generatedGuide.alignmentAndPosture.map((a: string, i: number) => (
-                              <li key={i} className="text-sm text-ink-d1 flex items-start gap-2">
-                               <Target className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" /> <span>{a}</span>
-                             </li>
-                           ))}
-                         </ul>
-                      </div>
-
-                      <div className="space-y-2">
-                         <h4 className="text-[11px] font-bold uppercase tracking-widest text-amber-500">Client Modifications</h4>
-                         <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm text-amber-200 flex items-start gap-2">
-                            <UserCog className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                            <span>{generatedGuide.clientModifications}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </DialogContent>
-            </Dialog>
-          )}
         </div>
       </main>
     </div>

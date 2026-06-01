@@ -56,6 +56,7 @@ import {
   Building2,
   Gift,
   ShieldAlert,
+  CreditCard,
 } from "lucide-react";
 import axios from "axios";
 import { motion, AnimatePresence } from "motion/react";
@@ -501,7 +502,7 @@ type RoutineType = "A" | "B" | "Free";
 import { ActiveStudioProvider, useActiveStudio } from "./ActiveStudioContext";
 import { MindbodyHealthProvider } from "./contexts/MindbodyHealthContext";
 
-import { MindbodySandbox } from "./components/mindbody/MindbodySandbox";
+import { PurchaseView } from "./components/mindbody/PurchaseView";
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -1948,6 +1949,17 @@ function AppContent({
                 trainers={trainers}
                 isAdmin={isAdmin}
                 onRefresh={handleManualRefresh}
+                clients={clients}
+                sessions={sessions}
+                machines={machines}
+                newClientsCount={newClientsThisMonth.length}
+                onShowNewClients={() => setShowNewClientsDialog(true)}
+                onUpdateStudio={updateStudio}
+                onUpdateClient={updateClient}
+                onNavigateProfile={(clientId) => {
+                  setSelectedClientId(clientId);
+                  setCurrentView("profile");
+                }}
               />
             )}
             {currentView === "trainer-hub" && (
@@ -1975,33 +1987,7 @@ function AppContent({
                 studios={studios}
               />
             )}
-            {currentView === "dashboard" && (
-              <InsightsDashboardView
-                clients={clients}
-                trainers={trainers}
-                machines={machines}
-                sessions={sessions}
-                newClientsCount={newClientsThisMonth.length}
-                onShowNewClients={() => setShowNewClientsDialog(true)}
-                initialTab={dashboardInitialTab}
-              />
-            )}
-            {currentView === "retention" && (
-              <RetentionDashboardView
-                clients={clients}
-                sessions={sessions}
-                trainers={trainers}
-                studio={studios.find(s => s.id === authTrainer?.primaryHomeStudioId)}
-                authTrainer={authTrainer}
-                onClose={() => setCurrentView("dashboard")}
-                onUpdateStudio={updateStudio}
-                onUpdateClient={updateClient}
-                onNavigateProfile={(clientId) => {
-                  setSelectedClientId(clientId);
-                  setCurrentView("profile");
-                }}
-              />
-            )}
+
             {currentView === "calendar" && (
               <ErrorBoundary fallback={
                 <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
@@ -2026,6 +2012,9 @@ function AppContent({
                 />
               </ErrorBoundary>
             )}
+            {currentView === "purchases" && (
+              <PurchaseView />
+            )}
             {currentView === "chart-importer" && (
               <LegacyChartImporter
                 clients={clients}
@@ -2037,9 +2026,6 @@ function AppContent({
                   else setCurrentView("clients");
                 }}
               />
-            )}
-            {currentView === "mindbody-sandbox" && (
-              <MindbodySandbox />
             )}
           </AnimatePresence>
         </main>
@@ -2103,29 +2089,11 @@ function AppContent({
             label="Calendar"
           />
           <NavButton
-            active={currentView === "mindbody-sandbox"}
-            onClick={() => setCurrentView("mindbody-sandbox")}
-            icon={<Zap className="w-6 h-6" />}
-            label="MB Demo"
+            active={currentView === "purchases"}
+            onClick={() => setCurrentView("purchases")}
+            icon={<CreditCard className="w-6 h-6" />}
+            label="Purchases"
           />
-
-          {(checkIsAdmin(authTrainer, user?.email || undefined) ||
-            isOwner(authTrainer)) && (
-            <>
-              <NavButton
-                active={currentView === "dashboard"}
-                onClick={() => setCurrentView("dashboard")}
-                icon={<TrendingUp className="w-6 h-6" />}
-                label="Insights"
-              />
-              <NavButton
-                active={currentView === "retention"}
-                onClick={() => setCurrentView("retention")}
-                icon={<ShieldAlert className="w-6 h-6" />}
-                label="Retention"
-              />
-            </>
-          )}
         </nav>
       </div>
 
