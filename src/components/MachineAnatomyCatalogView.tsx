@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { Layers, MapPin, Activity, Wrench, ShieldAlert, Target, UserCog, Settings2, Users } from 'lucide-react';
 import { Machine } from '../types';
 import {
@@ -33,6 +33,64 @@ export function MachineAnatomyCatalogView({
   // Trainer Tips State
   const [trainerTips, setTrainerTips] = useState<string>('');
   const [isSavingTip, setIsSavingTip] = useState(false);
+
+  // Carousel Refs & Syncing
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const isProgrammaticScroll = useRef(false);
+  const scrollSpyTimeoutRef = useRef<NodeJS.Timeout>();
+  const programmaticScrollTimeoutRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    if (selectedMachineId && carouselRef.current && cardRefs.current[selectedMachineId]) {
+      const container = carouselRef.current;
+      const card = cardRefs.current[selectedMachineId];
+      
+      // We only want to scroll if the change didn't come from the scroll spy
+      if (card && isProgrammaticScroll.current) {        
+        // Use smooth scrolling to center the card
+        container.scrollTo({
+          left: card.offsetLeft - container.clientWidth / 2 + card.clientWidth / 2,
+          behavior: 'smooth'
+        });
+
+        if (programmaticScrollTimeoutRef.current) clearTimeout(programmaticScrollTimeoutRef.current);
+        programmaticScrollTimeoutRef.current = setTimeout(() => {
+          isProgrammaticScroll.current = false;
+        }, 600); // Slightly longer than smooth scroll duration
+      }
+    }
+  }, [selectedMachineId]);
+
+  const handleCarouselScroll = useCallback(() => {
+    if (isProgrammaticScroll.current || !carouselRef.current) return;
+
+    if (scrollSpyTimeoutRef.current) clearTimeout(scrollSpyTimeoutRef.current);
+
+    scrollSpyTimeoutRef.current = setTimeout(() => {
+      const container = carouselRef.current;
+      if (!container) return;
+      
+      const containerCenter = container.scrollLeft + container.clientWidth / 2;
+      let closestCardId: string | null = null;
+      let minDistance = Infinity;
+
+      Object.entries(cardRefs.current).forEach(([id, cardRaw]) => {
+        const card = cardRaw as HTMLButtonElement | null;
+        if (!card) return;
+        const cardCenter = card.offsetLeft + card.clientWidth / 2;
+        const distance = Math.abs(containerCenter - cardCenter);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestCardId = id;
+        }
+      });
+
+      if (closestCardId && closestCardId !== selectedMachineId) {
+        setSelectedMachineId(closestCardId);
+      }
+    }, 100);
+  }, [selectedMachineId]);
 
   const selectedMap: MachineAnatomyMap | null = selectedMachineId
     ? MACHINE_ANATOMY[selectedMachineId] ?? null
@@ -114,6 +172,10 @@ export function MachineAnatomyCatalogView({
   };
 
   const handleSelectMachine = (machineId: string) => {
+    isProgrammaticScroll.current = true;
+    if (scrollSpyTimeoutRef.current) clearTimeout(scrollSpyTimeoutRef.current);
+    if (programmaticScrollTimeoutRef.current) clearTimeout(programmaticScrollTimeoutRef.current);
+    
     setSelectedMachineId(machineId);
     const map = MACHINE_ANATOMY[machineId];
     if (map && (map.preferredView === 'front' || map.preferredView === 'back')) {
@@ -457,7 +519,11 @@ export function MachineAnatomyCatalogView({
 
       {/* ───── MOBILE MIDDLE BAND CAROUSEL (Lazy Susan) ───── */}
       <div className="lg:hidden relative w-full z-40 pointer-events-auto -mt-20 shrink-0">
-        <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 px-6 pb-6 no-scrollbar">
+        <div 
+          ref={carouselRef}
+          onScroll={handleCarouselScroll}
+          className="flex relative overflow-x-auto snap-x snap-mandatory gap-4 px-6 pb-6 no-scrollbar"
+        >
           {machines.map((m) => {
             const isSelected = selectedMachineId === m.id;
             const map = m.id ? MACHINE_ANATOMY[m.id] : undefined;
@@ -474,7 +540,14 @@ export function MachineAnatomyCatalogView({
             return (
               <button
                 key={m.id}
-                onClick={() => m.id && handleSelectMachine(m.id)}
+                ref={(el) => {
+                  if (m.id) {
+                    cardRefs.current[m.id] = el;
+                  }
+                }}
+                onClick={() => {
+                  if (m.id) handleSelectMachine(m.id);
+                }}
                 className={`relative shrink-0 snap-center min-w-[160px] p-4 rounded-2xl bg-background/60 backdrop-blur-xl border transition-all text-left flex flex-col justify-end overflow-hidden ${
                   isSelected 
                     ? 'border-[#FF6B00] shadow-[0_0_15px_rgba(255,107,0,0.3)]' 

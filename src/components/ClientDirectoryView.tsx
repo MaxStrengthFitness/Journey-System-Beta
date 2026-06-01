@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useActiveStudio } from '../ActiveStudioContext';
 import { Client, Trainer } from '../types';
+import SyncStatusBadge from './mindbody/SyncStatusBadge';
 
 interface Props {
   clients: Client[];
@@ -40,11 +41,11 @@ export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSessio
 
     // 2. Search filtering
     if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(c => 
-        (c.firstName && c.firstName.toLowerCase().includes(term)) ||
-        (c.lastName && c.lastName.toLowerCase().includes(term))
-      );
+      const terms = searchTerm.trim().toLowerCase().split(/\s+/);
+      filtered = filtered.filter(c => {
+        const full = `${c.firstName || ''} ${c.lastName || ''} ${c.mindbody_name || ''}`.toLowerCase();
+        return terms.every(term => full.includes(term));
+      });
     }
 
     // Sort by recent by default
@@ -69,6 +70,9 @@ export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSessio
         <h1 className="text-3xl font-black text-foreground uppercase tracking-tight flex items-center gap-3">
           <User2 className="w-8 h-8 text-primary" />
           Client Directory
+          <div className="ml-4 mb-1">
+            <SyncStatusBadge />
+          </div>
         </h1>
       </div>
 
