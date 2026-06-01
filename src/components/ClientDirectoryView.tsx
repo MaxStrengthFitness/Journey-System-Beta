@@ -1,127 +1,73 @@
-import React, { useState, useEffect } from 'react';
-import { Search, User2, PlayCircle, History, Loader2, MapPin, MoreVertical, Plus } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Search, User2, PlayCircle, Plus, MapPin, MoreVertical, Minus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useActiveStudio } from '../ActiveStudioContext';
-import { collection, getDocs, query, where, orderBy, limit, QueryConstraint, Query } from 'firebase/firestore';
-import { db } from '../firebase';
 import { Client, Trainer } from '../types';
 
 interface Props {
+  clients: Client[];
   onSelectClient: (clientId: string) => void;
   onStartOpenSession?: () => void;
   authTrainer?: Trainer | null;
+  onUpdateSessions?: (clientId: string, current: number, delta: number) => Promise<void>;
 }
 
-export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTrainer }: Props) {
+export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSession, authTrainer, onUpdateSessions }: Props) {
   const { availableStudios, activeStudioId } = useActiveStudio();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [isGlobalSearch, setIsGlobalSearch] = useState(false);
-  const [searchResults, setSearchResults] = useState<Client[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  useEffect(() => {
-    const fetchClients = async () => {
-      setIsLoading(true);
-      try {
-        let q: Query;
-        const clientsRef = collection(db, 'clients');
-        
-        // Allowed studios is defined as the home studio PLUS all accessible studios
-        const allowedStudioIds = [
-          authTrainer?.primaryHomeStudioId,
-          ...(authTrainer?.accessibleStudioIds || [])
-        ].filter(Boolean) as string[];
 
-        if (activeStudioId && !allowedStudioIds.includes(activeStudioId)) {
-          allowedStudioIds.push(activeStudioId);
-        }
+  const displayClients = useMemo(() => {
+    // 1. Studio filtering
+    const allowedStudioIds = [
+      authTrainer?.primaryHomeStudioId,
+      ...(authTrainer?.accessibleStudioIds || [])
+    ].filter(Boolean) as string[];
 
-        if (!searchQuery.trim()) {
-          // Empty search: 'Recently Profiled' lists
-          const queries: QueryConstraint[] = [];
-          
-          if (!isGlobalSearch && allowedStudioIds.length > 0) {
-            if (allowedStudioIds.length === 1) {
-              queries.push(where('homeStudioId', '==', allowedStudioIds[0]));
-            } else {
-              queries.push(where('homeStudioId', 'in', allowedStudioIds.slice(0, 10)));
-            }
-          }
-          
-          q = query(
-            clientsRef,
-            ...queries,
-            orderBy('createdAt', 'desc'),
-            limit(16)
-          );
-        } else {
-          // We have a search terms constraints.
-          // Prefix queries are index-safe, and we filter by Studio client-side to prevent Composite Index requirement crashes.
-          const term = searchQuery.toLowerCase();
-          const termCapitalized = term.charAt(0).toUpperCase() + term.slice(1);
-          
-          q = query(
-            clientsRef,
-            where('lastName', '>=', termCapitalized),
-            where('lastName', '<=', termCapitalized + '\uf8ff'),
-            limit(100)
-          );
-        }
+    if (activeStudioId && !allowedStudioIds.includes(activeStudioId)) {
+      allowedStudioIds.push(activeStudioId);
+    }
 
-        const snap = await getDocs(q);
-        let fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Client));
-        
-        // If results not found on lastName query, try firstName first
-        if (searchQuery.trim() && fetched.length === 0) {
-          const termCapitalized = searchQuery.trim().charAt(0).toUpperCase() + searchQuery.trim().slice(1);
-          const q2 = query(
-            clientsRef,
-            where('firstName', '>=', termCapitalized),
-            where('firstName', '<=', termCapitalized + '\uf8ff'),
-            limit(100)
-          );
-          const snap2 = await getDocs(q2);
-          fetched = snap2.docs.map(d => ({ id: d.id, ...d.data() } as Client));
-        }
+    let filtered = clients;
 
-        // Apply Cross-Studio or Home Studio Territory Filtering client-side if isGlobalSearch is turned off
-        if (searchQuery.trim() && !isGlobalSearch && allowedStudioIds.length > 0) {
-          fetched = fetched.filter(c => c.homeStudioId && allowedStudioIds.includes(c.homeStudioId));
-        }
+    // Apply Cross-Studio or Home Studio Territory Filtering if isGlobalSearch is turned off
+    if (!isGlobalSearch && allowedStudioIds.length > 0) {
+      filtered = filtered.filter(c => c.homeStudioId && allowedStudioIds.includes(c.homeStudioId));
+    }
 
-        setSearchResults(fetched);
-      } catch (error) {
-        console.error("Error fetching clients:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    const delayDebounceFn = setTimeout(() => {
-      fetchClients();
-    }, 300);
+    // 2. Search filtering
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(c => 
+        (c.firstName && c.firstName.toLowerCase().includes(term)) ||
+        (c.lastName && c.lastName.toLowerCase().includes(term))
+      );
+    }
 
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, isGlobalSearch, activeStudioId, authTrainer]);
-
-  const displayClients = searchResults;
+    // Sort by recent by default
+    return filtered.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+      const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+      return bTime - aTime;
+    });
+  }, [clients, searchTerm, isGlobalSearch, activeStudioId, authTrainer]);
 
   const renderTierBadge = (tier?: string) => {
-    if (!tier || tier === "None") return <span className="text-sm text-slate-500">None</span>;
-    if (tier.toLowerCase().includes('18')) return <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 uppercase tracking-widest text-[10px] font-bold px-2 py-0.5">Silver</Badge>;
-    if (tier.toLowerCase().includes('12')) return <Badge className="bg-[#F06C22]/10 text-[#d95d1a] dark:text-[#F06C22] border-[#F06C22]/20 uppercase tracking-widest text-[10px] font-bold px-2 py-0.5">Orange</Badge>;
-    if (tier.toLowerCase().includes('6')) return <Badge className="bg-[#115E8D]/10 text-[#115E8D] dark:text-[#38BDF8] border-[#115E8D]/20 dark:border-[#38BDF8]/20 uppercase tracking-widest text-[10px] font-bold px-2 py-0.5">Blue</Badge>;
-    return <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 uppercase tracking-widest text-[10px] font-bold px-2 py-0.5">{tier}</Badge>;
+    if (!tier || tier === "None") return <span className="text-sm text-muted-foreground">None</span>;
+    if (tier.toLowerCase().includes('18')) return <Badge className="bg-secondary text-secondary-foreground border-border uppercase tracking-wide text-xs font-semibold px-2.5 py-0.5">Silver</Badge>;
+    if (tier.toLowerCase().includes('12')) return <Badge className="bg-primary/10 text-primary border-primary/20 uppercase tracking-wide text-xs font-semibold px-2.5 py-0.5">Orange</Badge>;
+    if (tier.toLowerCase().includes('6')) return <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 uppercase tracking-wide text-xs font-semibold px-2.5 py-0.5">Blue</Badge>;
+    return <Badge className="bg-secondary text-secondary-foreground border-border uppercase tracking-wide text-[10px] font-bold px-2 py-0.5">{tier}</Badge>;
   };
 
   return (
-    <div className="h-full bg-slate-50 dark:bg-slate-950 p-6 lg:p-10 flex flex-col pt-12 transition-colors duration-200 overflow-hidden">
+    <div className="h-full bg-background p-6 lg:p-10 flex flex-col pt-12 transition-colors duration-200 overflow-hidden">
       <div className="max-w-7xl mx-auto w-full mb-6 shrink-0 flex items-center justify-between">
-        <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter flex items-center gap-3">
-          <User2 className="w-8 h-8 text-[#F06C22]" />
+        <h1 className="text-3xl font-black text-foreground uppercase tracking-tight flex items-center gap-3">
+          <User2 className="w-8 h-8 text-primary" />
           Client Directory
         </h1>
       </div>
@@ -130,13 +76,13 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
         <div className="flex flex-col sm:flex-row items-center gap-4">
           <div className="relative group flex-1">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-slate-400 dark:text-slate-500 group-focus-within:text-[#F06C22] transition-colors" />
+              <Search className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
             </div>
             <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search clients..."
-              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 h-12 pl-12 rounded-xl text-base font-medium focus-visible:ring-2 focus-visible:ring-[#F06C22]/20 focus-visible:border-[#F06C22] shadow-sm transition-all"
+              className="w-full bg-card border border-border text-card-foreground placeholder:text-muted-foreground h-12 pl-12 rounded-xl text-base font-medium focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary shadow-sm transition-all"
             />
           </div>
           
@@ -144,7 +90,7 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
             {onStartOpenSession && (
               <Button
                 onClick={onStartOpenSession}
-                className="bg-[#F06C22] hover:bg-[#d95d1a] text-white font-bold uppercase tracking-widest rounded-xl h-12 px-6 transition-all shadow-sm"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-widest rounded-xl h-12 px-6 transition-all shadow-sm"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Client
@@ -157,37 +103,32 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
           <div className="flex items-center gap-3 mt-4 px-2">
             <button
               onClick={() => setIsGlobalSearch(!isGlobalSearch)}
-              className={`w-10 h-5 rounded-full transition-colors relative ${isGlobalSearch ? 'bg-[#F06C22]' : 'bg-slate-300 dark:bg-slate-700'}`}
+              className={`w-10 h-5 rounded-full transition-colors relative ${isGlobalSearch ? 'bg-primary' : 'bg-muted border border-border'}`}
             >
-              <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-transform ${isGlobalSearch ? 'left-[22px]' : 'left-0.5'}`} />
+              <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-[2px] transition-transform ${isGlobalSearch ? 'left-[22px]' : 'left-[3px]'}`} />
             </button>
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">
+            <span className="text-xs font-bold text-muted-foreground tracking-widest uppercase">
               Search Entire Corporate Network
             </span>
           </div>
         )}
       </div>
 
-      <div className="max-w-7xl mx-auto w-full flex-1 overflow-y-auto custom-scrollbar pr-2 pb-24 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-48 text-center">
-            <Loader2 className="w-8 h-8 text-[#F06C22] animate-spin mb-3" />
-            <p className="text-slate-500 dark:text-slate-400 font-medium tracking-widest uppercase text-xs">Accessing registries...</p>
-          </div>
-        ) : displayClients.length > 0 ? (
+      <div className="max-w-7xl mx-auto w-full flex-1 overflow-y-auto custom-scrollbar pr-2 pb-24 bg-card rounded-2xl border border-border shadow-sm">
+        {displayClients.length > 0 ? (
           <div className="w-full overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/20">
-                  <th className="py-4 px-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Client</th>
-                  <th className="py-4 px-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Membership</th>
-                  <th className="py-4 px-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Sessions</th>
-                  <th className="py-4 px-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Last Session</th>
-                  <th className="py-4 px-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Next Session</th>
-                  <th className="py-4 px-6 text-right text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Actions</th>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="py-4 px-6 text-[10px] font-black text-muted-foreground uppercase tracking-widest whitespace-nowrap">Client</th>
+                  <th className="py-4 px-6 text-[10px] font-black text-muted-foreground uppercase tracking-widest whitespace-nowrap">Membership</th>
+                  <th className="py-4 px-6 text-[10px] font-black text-muted-foreground uppercase tracking-widest whitespace-nowrap">Sessions Remaining</th>
+                  <th className="py-4 px-6 text-[10px] font-black text-muted-foreground uppercase tracking-widest whitespace-nowrap">Last Session</th>
+                  <th className="py-4 px-6 text-[10px] font-black text-muted-foreground uppercase tracking-widest whitespace-nowrap">Next Session</th>
+                  <th className="py-4 px-6 text-right text-[10px] font-black text-muted-foreground uppercase tracking-widest whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              <tbody className="divide-y divide-border">
                 {displayClients.map((client) => {
                   const isCrossTrainer = activeStudioId && client.homeStudioId && client.homeStudioId !== activeStudioId;
                   const originalStudioName = availableStudios?.find(s => s.id === client.homeStudioId)?.name || 'HQ Network';
@@ -196,27 +137,27 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
                   return (
                     <tr 
                       key={client.id} 
-                      className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer"
+                      className="group hover:bg-muted/30 transition-colors cursor-pointer"
                       onClick={() => onSelectClient(client.id!)}
                     >
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-[#0A2E46] border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 shadow-sm dark:shadow-inner group-hover:border-[#F06C22] transition-colors">
-                            <span className="text-slate-900 dark:text-white font-black text-sm tracking-widest uppercase">
+                          <div className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center shrink-0 shadow-sm group-hover:border-primary transition-colors">
+                            <span className="text-foreground font-black text-sm tracking-widest uppercase">
                               {client.firstName?.[0]}{client.lastName?.[0]}
                             </span>
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#F06C22] transition-colors">
+                            <span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
                               {client.firstName} {client.lastName}
                             </span>
                             {isCrossTrainer ? (
-                              <span className="text-[10px] font-bold text-[#F06C22] uppercase tracking-widest flex items-center gap-1 mt-0.5">
+                              <span className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1 mt-0.5">
                                 <MapPin className="w-3 h-3" />
                                 Visiting: {originalStudioName}
                               </span>
                             ) : (
-                              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1 mt-0.5">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1 mt-0.5">
                                 <MapPin className="w-3 h-3" />
                                 {originalStudioName}
                               </span>
@@ -228,18 +169,40 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
                         {renderTierBadge(client.packageTier)}
                       </td>
                       <td className="py-4 px-6 align-middle">
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                          {client.sessionCount || 0}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-foreground">
+                            {client.remainingSessions ?? 0}
+                          </span>
+                          {onUpdateSessions && (
+                            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                onClick={() => onUpdateSessions(client.id!, client.remainingSessions ?? 0, -1)}
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                onClick={() => onUpdateSessions(client.id!, client.remainingSessions ?? 0, 1)}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="py-4 px-6 align-middle">
-                        <span className="text-sm text-slate-500 dark:text-slate-400">
+                        <span className="text-sm text-muted-foreground">
                           {(client as any).lastSessionDate || 'N/A'}
                         </span>
                       </td>
                       <td className="py-4 px-6 align-middle">
                         {nextSessionDate ? (
-                          <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">
+                          <span className="text-sm text-foreground font-medium">
                             {nextSessionDate}
                           </span>
                         ) : (
@@ -250,18 +213,18 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
                       </td>
                       <td className="py-4 px-6 align-middle text-right" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
-                          <DropdownMenuTrigger className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white transition-colors">
+                          <DropdownMenuTrigger className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
                             <MoreVertical className="h-4 w-4" />
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                          <DropdownMenuContent align="end" className="w-48 bg-card border-border">
                             {onStartOpenSession && (
-                              <DropdownMenuItem className="cursor-pointer font-medium text-slate-700 dark:text-slate-300 focus:bg-slate-100 dark:focus:bg-slate-800" onClick={() => onStartOpenSession()}>
-                                <PlayCircle className="w-4 h-4 mr-2 text-slate-400" />
+                              <DropdownMenuItem className="cursor-pointer font-medium text-foreground focus:bg-muted" onClick={() => onStartOpenSession()}>
+                                <PlayCircle className="w-4 h-4 mr-2 text-muted-foreground" />
                                 Start Session
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem className="cursor-pointer font-medium text-slate-700 dark:text-slate-300 focus:bg-slate-100 dark:focus:bg-slate-800" onClick={() => onSelectClient(client.id!)}>
-                              <User2 className="w-4 h-4 mr-2 text-slate-400" />
+                            <DropdownMenuItem className="cursor-pointer font-medium text-foreground focus:bg-muted" onClick={() => onSelectClient(client.id!)}>
+                              <User2 className="w-4 h-4 mr-2 text-muted-foreground" />
                               View Profile
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -275,8 +238,8 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-48 text-center">
-            <Search className="w-8 h-8 text-slate-300 dark:text-slate-700 mb-3" />
-            <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">No clients found matching your search.</p>
+            <Search className="w-8 h-8 text-muted-foreground mb-3 opacity-50" />
+            <p className="text-muted-foreground font-medium tracking-tight">No clients found matching your search.</p>
           </div>
         )}
       </div>

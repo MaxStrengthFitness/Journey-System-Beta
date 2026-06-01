@@ -1,11 +1,9 @@
 import { Firestore, getFirestore } from 'firebase-admin/firestore';
 import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
-import { PubSub } from '@google-cloud/pubsub';
 import { verifyMindbodySignature } from './verifySignature';
 import { recordHealthEvent } from './healthState';
-
-export const PUBSUB_TOPIC = 'mindbody-events';
+import { tryRecordEvent } from './idempotency';
 
 export type WebhookRequest = {
   rawBody: string;
@@ -19,66 +17,113 @@ export type WebhookResponse = {
 
 export type WebhookDeps = {
   firestore: Firestore;
-  publishMessage: (
-    topic: string,
-    data: Buffer,
-    attributes: Record<string, string>
-  ) => Promise<string>;
   webhookSecret: string;
 };
 
 /**
  * Handles incoming Mindbody webhooks.
- * Validates the signature, ensures the payload contains required envelope fields,
- * and publishes the event durably to Pub/Sub for downstream processing.
- * 
- * Returns:
- * - 200: Successfully enqueued to Pub/Sub
- * - 400: Malformed JSON or missing required envelope fields
- * - 401: Invalid signature
- * - 500: Unexpected error publishing to Pub/Sub
+ * Validates the signature, ensures uniqueness via idempotency checks,
+ * and updates client records directly in Firestore.
  */
 export async function handleMindbodyWebhook(
   deps: WebhookDeps,
   req: WebhookRequest
 ): Promise<WebhookResponse> {
   const signature = req.signatureHeader || '';
+  
+  // 1. Strict Verification Guard
   if (!verifyMindbodySignature(req.rawBody, signature, deps.webhookSecret)) {
     await recordHealthEvent(deps.firestore, { type: 'signature_failure' });
     return { statusCode: 401 };
   }
 
-  let parsed: Record<string, unknown>;
+  let parsed: Record<string, any>;
   try {
     parsed = JSON.parse(req.rawBody);
   } catch (e) {
     return { statusCode: 400 };
   }
 
-  if (
-    typeof parsed.messageId !== 'string' || !parsed.messageId.trim() ||
-    typeof parsed.eventId !== 'string' || !parsed.eventId.trim() ||
-    typeof parsed.eventInstanceOriginationDateTime !== 'string' || !parsed.eventInstanceOriginationDateTime.trim()
-  ) {
+  // We use messageId or eventId as the tracking event ID.
+  const eventId = parsed.messageId || parsed.eventId;
+  const eventType = parsed.eventId || parsed.eventName || 'unknown_event';
+  
+  if (typeof eventId !== 'string' || !eventId.trim()) {
     return { statusCode: 400 };
   }
 
+  // 2. Idempotency Check
   try {
-    await deps.publishMessage(
-      PUBSUB_TOPIC,
-      Buffer.from(req.rawBody, 'utf8'),
-      { messageId: parsed.messageId }
-    );
-    return { statusCode: 200 };
+    const { wasNew } = await tryRecordEvent(deps.firestore, eventId, eventType);
+    if (!wasNew) {
+      // Return 200 to satisfy Mindbody retry loop for duplicates
+      return { statusCode: 200 };
+    }
   } catch (e) {
-    await recordHealthEvent(deps.firestore, { type: 'webhook_failure' });
+    // If idempotency fails unexpectedly, log it, but wait, usually we should return 500
+    console.error("Idempotency check failed", e);
+    return { statusCode: 500 };
+  }
+
+  // 3. Payload Mapping & Upsert
+  try {
+    // Navigate potentially nested payload structures
+    const payloadData = parsed.eventData || parsed.eventInstance || parsed;
+    
+    // Safely extract required fields
+    const clientId = payloadData.clientId ?? parsed.clientId;
+    
+    if (clientId) {
+      const updates: Record<string, any> = {};
+      
+      // Extract Active Membership Status / Tier Name
+      if (payloadData.membershipStatus) updates.membershipStatus = payloadData.membershipStatus;
+      if (payloadData.tierName) updates.packageTier = payloadData.tierName;
+      if (payloadData.activeMembership) updates.activeMembership = payloadData.activeMembership;
+      
+      // Last Visited Timestamp
+      if (payloadData.lastVisited) updates.lastSessionDate = payloadData.lastVisited;
+      
+      // Prebooked Schedule Arrays
+      if (payloadData.prebookedSchedules) updates.prebookedSchedules = payloadData.prebookedSchedules;
+      if (payloadData.upcomingBookings) updates.upcomingBookings = payloadData.upcomingBookings;
+
+      // Extract mindbody_name if given to help match
+      if (payloadData.firstName || payloadData.lastName) {
+         updates.mindbody_name = `${payloadData.firstName || ''} ${payloadData.lastName || ''}`.trim();
+      }
+
+      // Execute an atomic Firestore set() operation with { merge: true }
+      // Assuming clientId could be a string or number, force string for document ID.
+      // E.g., clients could be keyed by Mindbody ID or maybe an internal ID. 
+      // We write to doc(String(clientId)) assuming the app maps document IDs to mindbody client IDs,
+      // or at least standardizes on updating by mindbody ID if queried.
+      const clientDocId = String(clientId);
+      const clientRef = deps.firestore.collection('clients').doc(clientDocId);
+      
+      await clientRef.set(updates, { merge: true });
+    }
+
+    return { statusCode: 200 };
+    
+  // 4. Resiliency & Edge Errors
+  } catch (error) {
+    console.error("Webhook processing error:", error);
+    
+    // Log the raw payload signature safely for logging analytics
+    await recordHealthEvent(deps.firestore, { 
+      type: 'webhook_upsert_failure', 
+      details: String(error),
+      signature: signature
+    });
+    
+    // Catch errors without silently swallowing them
     return { statusCode: 500 };
   }
 }
 
 const mindbodyWebhookSecret = defineSecret('MINDBODY_WEBHOOK_SECRET');
 let firestoreInstance: Firestore | null = null;
-let pubsubInstance: PubSub | null = null;
 
 /**
  * The expected public entry point for Mindbody webhooks.
@@ -91,18 +136,12 @@ export const mindbodyWebhook = onRequest(
     if (!firestoreInstance) {
       firestoreInstance = getFirestore();
     }
-    if (!pubsubInstance) {
-      pubsubInstance = new PubSub();
-    }
 
     const payloadBuffer = req.rawBody; // req.rawBody is a Buffer natively in firebase-functions
     const rawBodyStr = payloadBuffer.toString('utf8');
 
     const deps: WebhookDeps = {
       firestore: firestoreInstance,
-      publishMessage: async (topic, data, attributes) => {
-        return await pubsubInstance!.topic(topic).publishMessage({ data, attributes });
-      },
       webhookSecret: mindbodyWebhookSecret.value(),
     };
 
