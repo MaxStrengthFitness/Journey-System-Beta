@@ -1992,7 +1992,7 @@ export function ClientProfileView({
           where("clientId", "==", clientId),
           where("startTime", ">=", Timestamp.now()),
           orderBy("startTime", "asc"),
-          limit(2),
+          limit(50),
         );
         const snap = await getDocs(q);
         setScheduledSessions(
@@ -2302,137 +2302,173 @@ export function ClientProfileView({
         return null;
       })()}
 
-      {/* Session Status Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm px-4 sm:px-6 py-4 sm:py-5 mb-4 flex flex-wrap items-center justify-between gap-4 transition-colors duration-200">
-        <div className="flex items-start gap-3 sm:gap-4 z-10 min-w-0 flex-1">
-          <Button
-            onClick={() => {
-              setSelectedClientId(null);
-              setView("client-directory");
-            }}
-            variant="ghost"
-            size="icon"
-            className="shrink-0 text-slate-400 dark:text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 -ml-2 h-9 w-9 sm:h-11 sm:w-11 rounded-full mt-1"
-          >
-            <ChevronLeft className="w-5 h-5 sm:w-7 sm:h-7" />
-          </Button>
-          <div className="flex flex-col min-w-0 items-start mt-1">
-            <div className="flex items-center gap-2 sm:gap-3 mb-1 flex-wrap">
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight leading-none m-0 truncate text-slate-900 dark:text-white">
-                {client.firstName} {client.lastName}
-              </h2>
-              {(client.notes || (client.clinicalFlags && client.clinicalFlags.length > 0)) && (
-                <AlertTriangle className="w-5 h-5 text-red-500 animate-pulse shrink-0" />
-              )}
-              <div className="bg-slate-900 text-white dark:bg-slate-50 dark:text-slate-900 rounded-full px-3 py-0.5 font-mono text-xs sm:text-sm lg:text-base shadow-sm shrink-0">
-                {calculatedSessionCount} <span className="opacity-50 text-[10px] sm:text-xs">/ {calculatedSessionCount + (client.remainingSessions ?? 0)}</span>
-              </div>
-            </div>
+      {/* Redesigned Session Status Header */}
+      <div className="bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800/60 pb-6 mb-8 pt-2">
+        <div className="flex flex-col xl:flex-row xl:justify-between xl:items-start gap-6">
+          <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
+            <Button
+              onClick={() => {
+                setSelectedClientId(null);
+                setView("client-directory");
+              }}
+              variant="ghost"
+              size="icon"
+              className="shrink-0 text-slate-400 dark:text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full h-10 w-10 mt-1 sm:mt-1.5"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </Button>
             
-            <div className="flex items-center gap-3 sm:gap-4 text-slate-500 dark:text-slate-400 text-xs font-medium mt-2 flex-wrap">
-              {client.dateOfBirth && (
-                 <div className="flex items-center gap-1.5 whitespace-nowrap">
-                   <Cake className="w-3.5 h-3.5 text-slate-400" />
-                   Born: <span className="text-slate-700 dark:text-slate-300">{new Date(client.dateOfBirth + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                 </div>
-              )}
-              
-              <div className="flex items-center gap-1.5 whitespace-nowrap">
-                <UserCheck className="w-3.5 h-3.5 text-slate-400" />
-                Lead: <span className="text-slate-700 dark:text-slate-300">{(() => {
-                  const trainerCount: Record<string, number> = {};
-                  sessions.forEach(s => {
-                    if (s.trainerId) trainerCount[s.trainerId] = (trainerCount[s.trainerId] || 0) + 1;
-                    else if (s.trainerName) {
-                      const t = trainers.find(tr => tr.fullName === s.trainerName || tr.initials === s.trainerName);
-                      if (t && t.id) trainerCount[t.id] = (trainerCount[t.id] || 0) + 1;
-                    }
-                  });
-                  let topTrainerId = null;
-                  let maxCount = 0;
-                  for (const [id, count] of Object.entries(trainerCount)) {
-                    if (count > maxCount) { maxCount = count; topTrainerId = id; }
-                  }
-                  if (topTrainerId) {
-                    const t = trainers.find(tr => tr.id === topTrainerId);
-                    return t ? t.fullName : "N/A";
-                  }
-                  return "N/A";
-                })()}</span>
+            <div className="flex flex-col min-w-0 flex-1">
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-none text-slate-900 dark:text-white truncate">
+                  {client.firstName} {client.lastName}
+                </h1>
+                
+                {(client.notes || (client.clinicalFlags && client.clinicalFlags.length > 0)) && (
+                  <div className="bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/30 rounded px-2.5 py-1 flex items-center gap-1.5 animate-pulse shrink-0 mt-1 sm:mt-0">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Clinical Notes Active</span>
+                  </div>
+                )}
               </div>
-              
-              <div className="hidden sm:block w-px h-4 bg-slate-200 dark:bg-slate-700"></div>
- 
-              <div className="flex items-center gap-1.5 whitespace-nowrap">
-                <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
-                Joined: <span className="text-slate-700 dark:text-slate-300">{client.firstSessionDate ? new Date(client.firstSessionDate.toDate?.() || client.firstSessionDate).toLocaleDateString([], { month: 'short', year: 'numeric' }) : "--"}</span>
-              </div>
-              <div className="flex items-center gap-1.5 whitespace-nowrap">
-                <History className="w-3.5 h-3.5 text-slate-400" />
-                Last: <span className="text-slate-700 dark:text-slate-300">{sessions[0]?.date ? new Date(parseSessionDate(sessions[0].date)).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "--"}</span>
+
+              {/* Priority Information Row */}
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-4 mt-3 sm:mt-5">
+                {/* Top Trainer */}
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">Top Trainer</span>
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
+                    <UserCheck className="w-4 h-4 text-[#F06C22]" />
+                    {(() => {
+                      const trainerCount: Record<string, number> = {};
+                      sessions.forEach(s => {
+                        if (s.trainerId) trainerCount[s.trainerId] = (trainerCount[s.trainerId] || 0) + 1;
+                        else if (s.trainerName) {
+                          const t = trainers.find(tr => tr.fullName === s.trainerName || tr.initials === s.trainerName);
+                          if (t && t.id) trainerCount[t.id] = (trainerCount[t.id] || 0) + 1;
+                        }
+                      });
+                      let topTrainerId = null;
+                      let maxCount = 0;
+                      for (const [id, count] of Object.entries(trainerCount)) {
+                        if (count > maxCount) { maxCount = count; topTrainerId = id; }
+                      }
+                      if (topTrainerId) {
+                        const t = trainers.find(tr => tr.id === topTrainerId);
+                        return t ? t.fullName : "N/A";
+                      }
+                      return "N/A";
+                    })()}
+                  </div>
+                </div>
+
+                <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-800"></div>
+
+                {/* Last Session */}
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">Last Session</span>
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
+                    <History className="w-4 h-4 text-[#68717A]" />
+                    {sessions[0]?.date ? new Date(parseSessionDate(sessions[0].date)).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "N/A"}
+                  </div>
+                </div>
+
+                <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-800"></div>
+
+                {/* Next Session & Pre-booked */}
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">Next Session</span>
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
+                    <CalendarDays className="w-4 h-4 text-[#68717A]" />
+                    {scheduledSessions.length > 0 ? (
+                      <>
+                        <span>{new Date(scheduledSessions[0].date + 'T12:00:00Z').toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                        {scheduledSessions.length > 1 && (
+                          <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-[#68717A] dark:text-slate-300 px-1.5 py-0.5 rounded ml-1">
+                            +{scheduledSessions.length - 1} booked
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-[#68717A] font-medium italic">Not Scheduled</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-800"></div>
+
+                {/* Session Counter */}
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">Sessions Completed</span>
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100 leading-none mt-1">
+                    <span className="text-2xl font-black text-[#F06C22]">{calculatedSessionCount}</span>
+                    <span className="text-[#68717A] text-[11px] uppercase tracking-widest opacity-80 mt-1">/ {calculatedSessionCount + (client.remainingSessions ?? 0)} total</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
- 
-        <div className="flex flex-row items-center gap-2 sm:gap-3 z-20 shrink-0 ml-auto sm:ml-0 mt-1 sm:mt-0">
-          <Button
-            onClick={() => {
-              setInfoSheetTab("identity");
-              setIsInfoSheetOpen(true);
-            }}
-            variant="outline"
-            className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 h-9 sm:h-11 w-9 sm:w-11 p-0 flex items-center justify-center transition-colors shadow-sm"
-            title="Client Info"
-          >
-            <Contact className="w-4.5 sm:w-5 h-4.5 sm:h-5" />
-          </Button>
- 
-          {activeInProgressSession ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap bg-amber-500 hover:bg-amber-600 rounded-xl font-bold uppercase text-[10px] sm:text-xs tracking-widest h-9 sm:h-11 px-3 sm:px-5 shadow-sm border-none w-auto text-white transition-colors">
-                  <Clock className="w-4 h-4 mr-1.5 animate-pulse" />
-                  IN-PROGRESS ({activeInProgressSession.trainerInitials})
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[240px] rounded-2xl p-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                <div className="px-3 py-2 mb-2 border-b border-slate-200 dark:border-slate-800">
-                  <p className="text-[11px] font-medium uppercase text-amber-500 tracking-widest">Active Session Detected</p>
-                  <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200 mt-1">
-                    Started by {activeInProgressSession.trainerInitials} at {new Date(activeInProgressSession.startTime?.toMillis?.() || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                </div>
-                <DropdownMenuItem 
-                  onClick={() => {
-                    localStorage.setItem('max_strength_active_session_id', activeInProgressSession.id!);
-                    setView("workouts");
-                  }}
-                  className="rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/20 transition-colors cursor-pointer flex items-center gap-2 p-3 text-amber-700 dark:text-amber-500"
-                >
-                  <Play className="w-4 h-4" />
-                  <span className="font-bold uppercase text-xs">Take Over Session</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => setView("workouts")}
-                  className="rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-2 p-3 text-slate-700 dark:text-slate-300"
-                >
-                  <Maximize className="w-4 h-4" />
-                  <span className="font-bold uppercase text-xs">View Current Profile</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
+
+          <div className="flex items-center gap-3 shrink-0 self-start xl:pt-2 ml-14 xl:ml-0 mt-2 xl:mt-0">
             <Button
               onClick={() => {
-                localStorage.removeItem('max_strength_active_session_id');
-                setView("workouts");
+                setInfoSheetTab("identity");
+                setIsInfoSheetOpen(true);
               }}
-              disabled={isCheckingActiveSession}
-              className="bg-[#F06C22] hover:bg-[#F06C22]/90 rounded-xl font-bold uppercase text-[10px] sm:text-xs tracking-widest h-9 sm:h-11 px-3 sm:px-5 shadow-sm border-none w-auto text-white dark:text-white"
+              variant="outline"
+              className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 h-10 sm:h-12 px-4 shadow-sm transition-colors"
             >
-              <Play className="w-4 h-4 mr-1.5" />
-              {isCheckingActiveSession ? 'Checking...' : 'START SESSION'}
+              <Contact className="w-4 h-4 sm:mr-2" />
+              <span className="font-bold uppercase tracking-widest text-[10px] sm:text-xs hidden sm:inline">Profile Details</span>
             </Button>
-          )}
+
+            {activeInProgressSession ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap bg-amber-500 hover:bg-amber-600 rounded-xl font-bold uppercase text-[10px] sm:text-xs tracking-widest h-10 sm:h-12 px-4 sm:px-6 shadow-sm border-none w-auto text-white transition-colors">
+                  <Clock className="w-4 h-4 mr-1.5 animate-pulse" />
+                  IN-PROGRESS ({activeInProgressSession.trainerInitials})
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[240px] rounded-2xl p-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                  <div className="px-3 py-2 mb-2 border-b border-slate-200 dark:border-slate-800">
+                    <p className="text-[11px] font-medium uppercase text-amber-500 tracking-widest">Active Session Detected</p>
+                    <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200 mt-1">
+                      Started by {activeInProgressSession.trainerInitials} at {new Date(activeInProgressSession.startTime?.toMillis?.() || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      localStorage.setItem('max_strength_active_session_id', activeInProgressSession.id!);
+                      setView("workouts");
+                    }}
+                    className="rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/20 transition-colors cursor-pointer flex items-center gap-2 p-3 text-amber-700 dark:text-amber-500"
+                  >
+                    <Play className="w-4 h-4" />
+                    <span className="font-bold uppercase text-xs">Take Over Session</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setView("workouts")}
+                    className="rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-2 p-3 text-slate-700 dark:text-slate-300"
+                  >
+                    <Maximize className="w-4 h-4" />
+                    <span className="font-bold uppercase text-xs">View Current Profile</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                onClick={() => {
+                  localStorage.removeItem('max_strength_active_session_id');
+                  setView("workouts");
+                }}
+                disabled={isCheckingActiveSession}
+                className="bg-[#F06C22] hover:bg-[#F06C22]/90 rounded-xl font-bold uppercase text-[10px] sm:text-xs tracking-widest h-10 sm:h-12 px-4 sm:px-6 shadow-sm border-none w-auto text-white dark:text-white transition-transform active:scale-95"
+              >
+                <Play className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">{isCheckingActiveSession ? 'Checking...' : 'Start Session'}</span>
+                <span className="sm:hidden">{isCheckingActiveSession ? 'Checking...' : 'Start'}</span>
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

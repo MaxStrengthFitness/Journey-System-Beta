@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, User2, PlayCircle, History, Loader2, MapPin } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Search, User2, PlayCircle, History, Loader2, MapPin, MoreVertical, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useActiveStudio } from '../ActiveStudioContext';
 import { collection, getDocs, query, where, orderBy, limit, QueryConstraint, Query } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -110,43 +110,47 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
   const displayClients = searchResults;
 
   const renderTierBadge = (tier?: string) => {
-    if (!tier || tier === "None") return null;
-    if (tier.toLowerCase().includes('18')) return <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 uppercase tracking-widest text-[11px] md:text-[11px] font-black px-2 py-0.5">Silver</Badge>;
-    if (tier.toLowerCase().includes('12')) return <Badge className="bg-[#F06C22]/10 text-[#d95d1a] dark:text-[#F06C22] border-[#F06C22]/20 uppercase tracking-widest text-[11px] md:text-[11px] font-black px-2 py-0.5">Orange</Badge>;
-    if (tier.toLowerCase().includes('6')) return <Badge className="bg-[#115E8D]/10 text-[#115E8D] dark:text-[#38BDF8] border-[#115E8D]/20 dark:border-[#38BDF8]/20 uppercase tracking-widest text-[11px] md:text-[11px] font-black px-2 py-0.5">Blue</Badge>;
-    return <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 uppercase tracking-widest text-[11px] md:text-[11px] font-black px-2 py-0.5">{tier}</Badge>;
+    if (!tier || tier === "None") return <span className="text-sm text-slate-500">None</span>;
+    if (tier.toLowerCase().includes('18')) return <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 uppercase tracking-widest text-[10px] font-bold px-2 py-0.5">Silver</Badge>;
+    if (tier.toLowerCase().includes('12')) return <Badge className="bg-[#F06C22]/10 text-[#d95d1a] dark:text-[#F06C22] border-[#F06C22]/20 uppercase tracking-widest text-[10px] font-bold px-2 py-0.5">Orange</Badge>;
+    if (tier.toLowerCase().includes('6')) return <Badge className="bg-[#115E8D]/10 text-[#115E8D] dark:text-[#38BDF8] border-[#115E8D]/20 dark:border-[#38BDF8]/20 uppercase tracking-widest text-[10px] font-bold px-2 py-0.5">Blue</Badge>;
+    return <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 uppercase tracking-widest text-[10px] font-bold px-2 py-0.5">{tier}</Badge>;
   };
 
   return (
-    <div className="h-full bg-slate-50 dark:bg-slate-950 p-6 lg:p-10 flex flex-col pt-12 transition-colors duration-200">
-      {/* Search Bar Header */}
-      <div className="max-w-4xl mx-auto w-full mb-8 shrink-0">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter flex items-center gap-3">
-            <User2 className="w-8 h-8 text-[#F06C22]" />
-            Client Directory
-          </h1>
-          {onStartOpenSession && (
-            <Button
-              onClick={onStartOpenSession}
-              className="bg-transparent border-2 border-slate-300 dark:border-slate-700 hover:border-[#F06C22] dark:hover:border-[#F06C22] hover:bg-[#F06C22]/10 text-slate-900 dark:text-white font-black uppercase tracking-widest rounded-[20px] h-12 md:h-14 px-6 md:px-8 transition-all shadow-sm hover:shadow-[#F06C22]/20"
-            >
-              <PlayCircle className="w-5 h-5 mr-2 text-[#F06C22]" />
-              Start Open Session
-            </Button>
-          )}
-        </div>
-        
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-0 pl-6 md:pl-8 flex items-center pointer-events-none">
-            <Search className="h-6 w-6 md:h-8 md:w-8 text-slate-400 dark:text-slate-500 group-focus-within:text-[#F06C22] transition-colors" />
+    <div className="h-full bg-slate-50 dark:bg-slate-950 p-6 lg:p-10 flex flex-col pt-12 transition-colors duration-200 overflow-hidden">
+      <div className="max-w-7xl mx-auto w-full mb-6 shrink-0 flex items-center justify-between">
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter flex items-center gap-3">
+          <User2 className="w-8 h-8 text-[#F06C22]" />
+          Client Directory
+        </h1>
+      </div>
+
+      <div className="max-w-7xl mx-auto w-full mb-8 shrink-0">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="relative group flex-1">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-slate-400 dark:text-slate-500 group-focus-within:text-[#F06C22] transition-colors" />
+            </div>
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search clients..."
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 h-12 pl-12 rounded-xl text-base font-medium focus-visible:ring-2 focus-visible:ring-[#F06C22]/20 focus-visible:border-[#F06C22] shadow-sm transition-all"
+            />
           </div>
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search client roster..."
-            className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 h-20 md:h-24 pl-16 md:pl-24 rounded-[28px] md:rounded-[32px] text-xl md:text-3xl font-medium focus-visible:ring-4 focus-visible:ring-[#F06C22]/20 focus-visible:border-[#F06C22] shadow-sm hover:shadow-md dark:shadow-2xl transition-all tracking-tight"
-          />
+          
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {onStartOpenSession && (
+              <Button
+                onClick={onStartOpenSession}
+                className="bg-[#F06C22] hover:bg-[#d95d1a] text-white font-bold uppercase tracking-widest rounded-xl h-12 px-6 transition-all shadow-sm"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Client
+              </Button>
+            )}
+          </div>
         </div>
         
         {authTrainer?.primaryHomeStudioId && (
@@ -164,113 +168,114 @@ export function ClientDirectoryView({ onSelectClient, onStartOpenSession, authTr
         )}
       </div>
 
-      <div className="max-w-4xl mx-auto w-full flex-1 overflow-y-auto custom-scrollbar pr-2 pb-24">
-        {!searchQuery.trim() && (
-          <div className="mb-4">
-            <h2 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-              <History className="w-3.5 h-3.5" />
-              Recently Profiled
-            </h2>
-          </div>
-        )}
-
+      <div className="max-w-7xl mx-auto w-full flex-1 overflow-y-auto custom-scrollbar pr-2 pb-24 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-48 text-center bg-white dark:bg-slate-900/50 rounded-[32px] border border-dashed border-slate-300 dark:border-slate-800 shadow-sm">
+          <div className="flex flex-col items-center justify-center h-48 text-center">
             <Loader2 className="w-8 h-8 text-[#F06C22] animate-spin mb-3" />
             <p className="text-slate-500 dark:text-slate-400 font-medium tracking-widest uppercase text-xs">Accessing registries...</p>
           </div>
         ) : displayClients.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {displayClients.map(client => {
-              // Check if cross-trainer / visiting from another studio territory
-              const isCrossTrainer = activeStudioId && client.homeStudioId && client.homeStudioId !== activeStudioId;
-              const originalStudioName = availableStudios?.find(s => s.id === client.homeStudioId)?.name || 'HQ Network';
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/20">
+                  <th className="py-4 px-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Client</th>
+                  <th className="py-4 px-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Membership</th>
+                  <th className="py-4 px-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Sessions</th>
+                  <th className="py-4 px-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Last Session</th>
+                  <th className="py-4 px-6 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Next Session</th>
+                  <th className="py-4 px-6 text-right text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {displayClients.map((client) => {
+                  const isCrossTrainer = activeStudioId && client.homeStudioId && client.homeStudioId !== activeStudioId;
+                  const originalStudioName = availableStudios?.find(s => s.id === client.homeStudioId)?.name || 'HQ Network';
+                  const nextSessionDate = (client as any).nextSessionDate;
 
-              return (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  key={client.id}
-                  onClick={() => onSelectClient(client.id!)}
-                  className="bg-white dark:bg-slate-900 border-[1.5px] border-slate-200 dark:border-slate-800 rounded-[28px] md:rounded-[32px] p-6 cursor-pointer hover:border-[#F06C22]/50 dark:hover:border-[#F06C22]/50 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all group flex flex-col shadow-sm hover:shadow-md dark:shadow-none overflow-hidden relative min-h-[220px]"
-                >
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-700 to-transparent group-hover:via-[#F06C22] transition-colors" />
-                  
-                  {/* Client Info Section */}
-                  <div className="flex items-start justify-between mb-5">
-                    <div className="flex items-center gap-4 flex-1 min-w-0 pr-2">
-                      <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-slate-100 dark:bg-[#0A2E46] border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 shadow-sm dark:shadow-inner group-hover:border-[#F06C22] transition-colors">
-                        <span className="text-slate-900 dark:text-white font-black text-lg md:text-xl tracking-widest uppercase">
-                          {client.firstName?.[0]}{client.lastName?.[0]}
-                        </span>
-                      </div>
-                      <div className="flex flex-col min-w-0 font-sans">
-                        <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white truncate tracking-tight group-hover:text-[#F06C22] transition-colors leading-tight">
-                          {client.firstName} {client.lastName}
-                        </h3>
-                        <div className="flex flex-col gap-1 mt-1">
-                          {isCrossTrainer ? (
-                            <div className="mt-1">
-                              <Badge className="bg-[#F06C22]/15 hover:bg-[#F06C22]/20 text-[#F06C22] border border-[#F06C22]/25 uppercase tracking-widest text-[11px] font-black h-5 py-0 px-2 rounded-full">
-                                Visiting: {originalStudioName}
-                              </Badge>
-                            </div>
-                          ) : (
-                            <span className="text-[11px] md:text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-[#F06C22]" />
-                              {originalStudioName}
+                  return (
+                    <tr 
+                      key={client.id} 
+                      className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer"
+                      onClick={() => onSelectClient(client.id!)}
+                    >
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-[#0A2E46] border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 shadow-sm dark:shadow-inner group-hover:border-[#F06C22] transition-colors">
+                            <span className="text-slate-900 dark:text-white font-black text-sm tracking-widest uppercase">
+                              {client.firstName?.[0]}{client.lastName?.[0]}
                             </span>
-                          )}
-                          {client.globalNotes && (
-                            <div className="mt-0.5">
-                              <Badge variant="outline" className="border-amber-500/30 text-amber-600 dark:text-amber-500 uppercase tracking-widest text-[11px] font-black bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0">
-                                Notes
-                              </Badge>
-                            </div>
-                          )}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#F06C22] transition-colors">
+                              {client.firstName} {client.lastName}
+                            </span>
+                            {isCrossTrainer ? (
+                              <span className="text-[10px] font-bold text-[#F06C22] uppercase tracking-widest flex items-center gap-1 mt-0.5">
+                                <MapPin className="w-3 h-3" />
+                                Visiting: {originalStudioName}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1 mt-0.5">
+                                <MapPin className="w-3 h-3" />
+                                {originalStudioName}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                    
-                    {/* Membership Tier Badge */}
-                    <div className="shrink-0">
-                      {renderTierBadge(client.packageTier)}
-                    </div>
-                  </div>
-
-                  {/* Session Info Section */}
-                  <div className="mt-auto flex items-end justify-between border-t border-slate-100 dark:border-slate-800/80 pt-5">
-                    <div className="flex flex-col">
-                      <span className="text-base md:text-lg font-black text-slate-900 dark:text-white tracking-widest uppercase mb-1.5 opacity-80">
-                        Session {client.sessionCount || 0}
-                      </span>
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-[11px] md:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">
-                          Last: <span className="text-slate-700 dark:text-slate-300">{(client as any).lastSessionDate || 'N/A'}</span>
+                      </td>
+                      <td className="py-4 px-6 align-middle">
+                        {renderTierBadge(client.packageTier)}
+                      </td>
+                      <td className="py-4 px-6 align-middle">
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                          {client.sessionCount || 0}
                         </span>
-                        <span className="text-[11px] md:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">
-                          Next: <span className="text-slate-700 dark:text-slate-300">{(client as any).nextSessionDate || 'Unscheduled'}</span>
+                      </td>
+                      <td className="py-4 px-6 align-middle">
+                        <span className="text-sm text-slate-500 dark:text-slate-400">
+                          {(client as any).lastSessionDate || 'N/A'}
                         </span>
-                      </div>
-                    </div>
-                    
-                    {/* Play Action */}
-                    <div className="flex items-center gap-3">
-                      <span className="text-[11px] md:text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest group-hover:text-[#F06C22] transition-colors hidden sm:block">
-                        Profile
-                      </span>
-                      <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center group-hover:bg-[#F06C22] group-hover:border-[#F06C22] transition-all shadow-sm">
-                        <PlayCircle className="w-6 h-6 md:w-7 md:h-7 text-slate-400 dark:text-slate-400 group-hover:text-white transition-colors" />
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
+                      </td>
+                      <td className="py-4 px-6 align-middle">
+                        {nextSessionDate ? (
+                          <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">
+                            {nextSessionDate}
+                          </span>
+                        ) : (
+                          <Badge variant="outline" className="text-amber-600 dark:text-amber-500 border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5">
+                            Unscheduled
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="py-4 px-6 align-middle text-right" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white transition-colors">
+                            <MoreVertical className="h-4 w-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                            {onStartOpenSession && (
+                              <DropdownMenuItem className="cursor-pointer font-medium text-slate-700 dark:text-slate-300 focus:bg-slate-100 dark:focus:bg-slate-800" onClick={() => onStartOpenSession()}>
+                                <PlayCircle className="w-4 h-4 mr-2 text-slate-400" />
+                                Start Session
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem className="cursor-pointer font-medium text-slate-700 dark:text-slate-300 focus:bg-slate-100 dark:focus:bg-slate-800" onClick={() => onSelectClient(client.id!)}>
+                              <User2 className="w-4 h-4 mr-2 text-slate-400" />
+                              View Profile
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-48 text-center bg-white dark:bg-slate-900/50 rounded-[32px] border border-dashed border-slate-300 dark:border-slate-800 shadow-sm">
-            <Search className="w-8 h-8 text-slate-400 dark:text-slate-600 mb-3" />
+          <div className="flex flex-col items-center justify-center h-48 text-center">
+            <Search className="w-8 h-8 text-slate-300 dark:text-slate-700 mb-3" />
             <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">No clients found matching your search.</p>
           </div>
         )}
