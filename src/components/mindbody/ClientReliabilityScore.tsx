@@ -34,7 +34,7 @@ function getGradientClasses(score: number, total: number): string {
  */
 export default function ClientReliabilityScore({
   score,
-  counts,
+  counts = { completed: 0, reschedule: 0, earlyCancel: 0, lateCancel: 0, noShow: 0 },
   windowDays = 90,
   className,
 }: ClientReliabilityScoreProps): React.ReactElement {

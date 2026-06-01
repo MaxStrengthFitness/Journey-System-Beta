@@ -2,7 +2,6 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-// testing coderabbit integration
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { migrateClientMachineMetrics } from "./lib/migration-utils";
@@ -653,6 +652,17 @@ export default function App() {
   );
 }
 
+import { useTrainers } from "./hooks/useTrainers";
+import { useStudios } from "./hooks/useStudios";
+import { useNetworks } from "./hooks/useNetworks";
+import { useMachines } from "./hooks/useMachines";
+import { useSessions } from "./hooks/useSessions";
+import { useLiveSchedule } from "./hooks/useLiveSchedule";
+import { useHubAnnouncements } from "./hooks/useHubAnnouncements";
+import { StrongConfirmationModal } from "./components/StrongConfirmationModal";
+
+// ... skipping to AppContent
+
 function AppContent({
   user,
   authTrainer,
@@ -757,230 +767,18 @@ function AppContent({
   >(null);
   const [leaderboardReturnView, setLeaderboardReturnView] =
     useState<View>("trainer-hub");
-  const [machines, setMachines] = useState<Machine[]>(DEFAULT_MACHINES);
-  const [schedules, setSchedules] = useState<any[]>([]);
-  const [liveRosterClients, setLiveRosterClients] = useState<Client[]>([]);
-  const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+  
+  const isDataReady = !!authTrainer && !hasQuotaError;
+
+  useTrainers(isDataReady, setTrainers);
+  useStudios(isDataReady, setStudios);
+  useNetworks(isDataReady, setNetworks);
+  
+  const { machines } = useMachines(isDataReady, DEFAULT_MACHINES);
+  const { schedules, liveRosterClients } = useLiveSchedule(activeStudioId, isDataReady);
+  const { sessions } = useSessions(activeStudioId, isDataReady);
+  const { announcements } = useHubAnnouncements(authTrainer, activeStudioId);
   const [trainerFocuses, setTrainerFocuses] = useState<TrainerFocus[]>([]);
-  const [announcements, setAnnouncements] = useState<HubAnnouncement[]>([]);
-
-  // Studio-Aware Listeners
-  useEffect(() => {
-    if (!authTrainer || hasQuotaError) return;
-
-    const unsubscribeTrainers = onSnapshot(
-      query(collection(db, "trainers"), orderBy("order", "asc")),
-      (snap) => {
-        setTrainers(
-          snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Trainer),
-        );
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.GET, "trainers");
-      },
-    );
-
-    const unsubscribeMachines = onSnapshot(
-      query(collection(db, "machines"), orderBy("order", "asc")),
-      (snap) => {
-        const machinesData = snap.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() }) as Machine,
-        );
-        const mergedMachines = DEFAULT_MACHINES.map((dm) => {
-          const remote = machinesData.find((r) => r.id === dm.id);
-          return remote ? { ...dm, ...remote } : dm;
-        });
-        const customMachines = machinesData.filter(
-          (r) => !DEFAULT_MACHINES.find((dm) => dm.id === r.id),
-        );
-        setMachines(
-          [...mergedMachines, ...customMachines].sort(
-            (a, b) => a.order - b.order,
-          ),
-        );
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.GET, "machines");
-      },
-    );
-
-    const now = new Date();
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const thirtyDaysAhead = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-    const scheduleConstraints: QueryConstraint[] = [
-      where("startTime", ">=", Timestamp.fromDate(twentyFourHoursAgo)),
-      where("startTime", "<=", Timestamp.fromDate(thirtyDaysAhead)),
-      orderBy("startTime", "asc"),
-    ];
-
-    // STRICT FILTERING BY ACTIVE STUDIO
-    if (activeStudioId) {
-      scheduleConstraints.push(where("studioId", "==", activeStudioId));
-    }
-
-    const unsubscribeSchedules = onSnapshot(
-      query(collection(db, "schedules"), ...scheduleConstraints),
-      async (snap) => {
-        const schedulesData = snap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as any[];
-        setSchedules(schedulesData);
-
-        // Fetch client profile data ONLY for people on today's schedule to stay within read quotas
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
-        const endOfToday = new Date();
-        endOfToday.setHours(23, 59, 59, 999);
-
-        const todaySchedules = schedulesData.filter((s) => {
-          if (!s.startTime) return false;
-          // Handle both Firestore Timestamp and JS Date/ISO string
-          const d = s.startTime.toDate
-            ? s.startTime.toDate()
-            : new Date(s.startTime);
-          return d >= startOfToday && d <= endOfToday;
-        });
-
-        // Background auto-matching lookup check has been disabled to prevent quota/query leaks on schedule snapshots.
-        // (Used to iterate over unlinkedSchedules and query 'trainers'/'clients' redundantly)
-
-        // Fetch client data ONLY for today's schedule to stay within read quotas
-        const clientIds = Array.from(
-          new Set(todaySchedules.map((s) => s.clientId).filter(Boolean)),
-        ) as string[];
-        if (clientIds.length > 0) {
-          const chunks = [];
-          for (let i = 0; i < clientIds.length; i += 10)
-            chunks.push(clientIds.slice(i, i + 10));
-          const snapshots = await Promise.all(
-            chunks.map((chunk) =>
-              getDocs(
-                query(
-                  collection(db, "clients"),
-                  where("__name__", "in", chunk),
-                ),
-              ),
-            ),
-          );
-          const fetchedClients = snapshots.flatMap((snap) =>
-            snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Client),
-          );
-          setLiveRosterClients(fetchedClients);
-
-          // Self-heal: check if any of the loaded schedules reference a clientId that does not exist in the database,
-          // and reset it to null so the fuzzy auto-linker can resolve it to the correct profile.
-          const validClientIdsSet = new Set(fetchedClients.map((c) => c.id));
-          const invalidSchedules = todaySchedules.filter(
-            (s) => s.clientId && !validClientIdsSet.has(s.clientId),
-          );
-          if (invalidSchedules.length > 0) {
-            for (const s of invalidSchedules) {
-              console.log(
-                `Self-healing schedule ${s.id}: resetting invalid/deleted clientId "${s.clientId}" to null`,
-              );
-              try {
-                await updateDoc(doc(db, "schedules", s.id), {
-                  clientId: null,
-                });
-              } catch (err) {
-                console.error(`Failed to self-heal schedule ${s.id}:`, err);
-              }
-            }
-          }
-        } else {
-          setLiveRosterClients([]);
-        }
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.GET, "schedules");
-      },
-    );
-
-    const sessionConstraints: QueryConstraint[] = [
-      where("createdAt", ">=", Timestamp.fromDate(twentyFourHoursAgo)),
-      orderBy("createdAt", "desc"),
-    ];
-    if (activeStudioId) {
-      sessionConstraints.push(where("hostedAtStudioId", "==", activeStudioId));
-    }
-
-    const unsubscribeSessions = onSnapshot(
-      query(collection(db, "sessions"), ...sessionConstraints),
-      (snap) => {
-        setSessions(
-          snap.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as WorkoutSession,
-          ),
-        );
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.GET, "sessions");
-      },
-    );
-
-    const unsubscribeStudios = onSnapshot(
-      collection(db, "studios"),
-      (snap) => {
-        setStudios(
-          snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Studio),
-        );
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.GET, "studios");
-      },
-    );
-
-    const unsubscribeNetworks = onSnapshot(
-      collection(db, "networks"),
-      (snap) => {
-        setNetworks(
-          snap.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as FranchiseNetwork,
-          ),
-        );
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.GET, "networks");
-      },
-    );
-
-    return () => {
-      unsubscribeTrainers();
-      unsubscribeMachines();
-      unsubscribeSchedules();
-      unsubscribeSessions();
-      unsubscribeStudios();
-      unsubscribeNetworks();
-    };
-  }, [authTrainer, activeStudioId, hasQuotaError]);
-
-  // Announcements fetching
-  useEffect(() => {
-    if (!authTrainer) return;
-    const q = query(collection(db, "hub_announcements"));
-    return onSnapshot(
-      q,
-      (snap) => {
-        const data = snap.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() }) as HubAnnouncement,
-        );
-        const filtered = data
-          .filter((a) => a.isActive !== false)
-          .filter((a) => a.studioId === "all" || a.studioId === activeStudioId)
-          .sort(
-            (a, b) =>
-              (b.createdAt?.toMillis?.() || 0) -
-              (a.createdAt?.toMillis?.() || 0),
-          );
-        setAnnouncements(filtered);
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.GET, "hub_announcements");
-      },
-    );
-  }, [authTrainer, activeStudioId]);
 
   const clients = Array.from(
     new Map(
@@ -1392,11 +1190,14 @@ function AppContent({
     localStorage.removeItem("max_strength_trainer_id");
   };
 
-  const handleAppCleanse = async () => {
-    const confirmation = confirm(
-      "CRITICAL ACTION: This will delete ALL data (Clients, Trainers, Logs, Sessions, Routines) and re-initialize the 20 standard machines. This cannot be undone. Proceed?",
-    );
-    if (!confirmation) return;
+  const [isWipeModalOpen, setIsWipeModalOpen] = useState(false);
+
+  const handleAppCleanse = () => {
+    setIsWipeModalOpen(true);
+  };
+
+  const executeAppCleanse = async () => {
+    setIsWipeModalOpen(false);
 
     try {
       const collectionsToWipe = [
@@ -2202,17 +2003,28 @@ function AppContent({
               />
             )}
             {currentView === "calendar" && (
-              <CalendarView
-                schedules={schedules}
-                trainers={trainers}
-                authTrainer={authTrainer}
-                isAdmin={tokenRole === "Admin" || authTrainer?.role === "Admin" || tokenRole === "Founder" || authTrainer?.role === "Founder"}
-                activeStudioId={activeStudioId}
-                onSelectClient={setSelectedClientId}
-                onStartNewClientOnboarding={setNewClientOnboardingName}
-                setView={setView}
-                clients={clients}
-              />
+              <ErrorBoundary fallback={
+                <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
+                  <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
+                    <AlertTriangle className="w-8 h-8 text-red-500" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">Schedule Unavailable</h3>
+                  <p className="text-muted-foreground max-w-sm mb-6">The schedule grid encountered an error. You can still access client metrics and profiles.</p>
+                  <Button variant="outline" onClick={() => window.location.reload()}>Reload Dashboard</Button>
+                </div>
+              }>
+                <CalendarView
+                  schedules={schedules}
+                  trainers={trainers}
+                  authTrainer={authTrainer}
+                  isAdmin={tokenRole === "Admin" || authTrainer?.role === "Admin" || tokenRole === "Founder" || authTrainer?.role === "Founder"}
+                  activeStudioId={activeStudioId}
+                  onSelectClient={setSelectedClientId}
+                  onStartNewClientOnboarding={setNewClientOnboardingName}
+                  setView={setView}
+                  clients={clients}
+                />
+              </ErrorBoundary>
             )}
             {currentView === "chart-importer" && (
               <LegacyChartImporter
@@ -2920,6 +2732,16 @@ function AppContent({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <StrongConfirmationModal
+        isOpen={isWipeModalOpen}
+        title="Wipe Entire Database"
+        description="This critical action will permanently delete all Clients, Trainers, Sessions, Schedules, Notes, and Logs. It will then completely re-initialize the 20 standard machines to factory defaults. This cannot be undone."
+        confirmationPhrase="confirm wipe system"
+        onConfirm={executeAppCleanse}
+        onCancel={() => setIsWipeModalOpen(false)}
+        isDestructive={true}
+      />
     </ErrorBoundary>
   );
 }

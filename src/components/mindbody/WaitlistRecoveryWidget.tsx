@@ -148,14 +148,16 @@ export default function WaitlistRecoveryWidget({
 
                   if (entry.preferences) {
                     return (
-                      <TooltipProvider key={entry.clientId}>
-                        <Tooltip>
-                          <TooltipTrigger render={matchChip} />
-                          <TooltipContent side="top">
-                            {entry.clientName} — {entry.preferences}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <React.Fragment key={entry.clientId}>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger render={matchChip} />
+                            <TooltipContent side="top">
+                              {entry.clientName} — {entry.preferences}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </React.Fragment>
                     );
                   }
 

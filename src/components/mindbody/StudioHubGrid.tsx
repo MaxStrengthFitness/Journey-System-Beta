@@ -1,5 +1,8 @@
 import React, { useId } from 'react';
 import { cn } from '../../lib/utils';
+import { ErrorBoundary } from '../ErrorBoundary';
+
+import { AlertTriangle } from 'lucide-react';
 
 export type StudioHubRole = 'trainer' | 'leader';
 
@@ -135,7 +138,17 @@ export default function StudioHubGrid({
                 )}
               >
                 {tier.nodes.map((node, idx) => (
-                  <React.Fragment key={idx}>{node}</React.Fragment>
+                  <ErrorBoundary 
+                    key={idx}
+                    fallback={
+                      <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl h-full text-center">
+                        <AlertTriangle className="w-6 h-6 text-red-500 mb-2 opacity-50" />
+                        <p className="text-sm font-medium text-slate-500 max-w-[150px]">Widget unavailable</p>
+                      </div>
+                    }
+                  >
+                    {node}
+                  </ErrorBoundary>
                 ))}
               </div>
             </section>

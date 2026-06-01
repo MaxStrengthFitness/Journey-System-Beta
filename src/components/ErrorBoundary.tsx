@@ -4,6 +4,7 @@ import { AlertCircle, RefreshCcw, Home } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
+  fallback?: ReactNode;
 }
 
 interface State {
@@ -44,6 +45,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+      
       let errorDetails: any = null;
       try {
         if (this.state.error?.message) {

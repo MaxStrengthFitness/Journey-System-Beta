@@ -108,20 +108,21 @@ export default function ShiftRosterRow({
               )}
             >
               {colAppointments.map(apt => (
-                <AppointmentCard
-                  key={apt.id}
-                  appointmentId={apt.id}
-                  clientName={apt.clientName}
-                  time={apt.time}
-                  state={apt.state}
-                  syncState={apt.syncState}
-                  isNextUp={apt.isNextUp}
-                  isForeign={apt.isForeign}
-                  isLocked={apt.isLocked}
-                  rescheduledToTime={apt.rescheduledToTime}
-                  onClick={onAppointmentClick ? () => onAppointmentClick(apt) : undefined}
-                  className="w-full"
-                />
+                <React.Fragment key={apt.id}>
+                  <AppointmentCard
+                    appointmentId={apt.id}
+                    clientName={apt.clientName}
+                    time={apt.time}
+                    state={apt.state}
+                    syncState={apt.syncState}
+                    isNextUp={apt.isNextUp}
+                    isForeign={apt.isForeign}
+                    isLocked={apt.isLocked}
+                    rescheduledToTime={apt.rescheduledToTime}
+                    onClick={onAppointmentClick ? () => onAppointmentClick(apt) : undefined}
+                    className="w-full"
+                  />
+                </React.Fragment>
               ))}
             </div>
           );

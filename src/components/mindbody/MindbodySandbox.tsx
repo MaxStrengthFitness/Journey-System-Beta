@@ -58,13 +58,15 @@ export function MindbodySandbox() {
         <div className="bg-white dark:bg-slate-900 p-4 rounded border border-border max-w-sm">
           <h3 className="font-bold mb-4">Leader Inbox View</h3>
           <CrossTrainApprovalCard
-            requestId="req123"
-            clientName="Allison P."
-            homeStudioName="Uptown Studio"
-            requestingTrainerName="Marina"
-            requestingStudioName="Downtown Studio"
-            requestedAt={new Date()}
-            status="pending"
+            request={{
+              id: "req123",
+              requestingTrainerName: "Marina",
+              requestingTrainerInitials: "MR",
+              targetClientName: "Allison P.",
+              targetStudioName: "Uptown Studio",
+              reason: "Covering a shift",
+              createdAt: new Date(),
+            }}
             onApprove={handleApprove}
             onDeny={handleDeny}
           />
@@ -80,11 +82,13 @@ export function MindbodySandbox() {
       )}
 
       <CrossTrainAccessGate
-        isOpen={showGate}
+        open={showGate}
         onOpenChange={setShowGate}
         clientName="Allison P."
-        homeStudioName="Uptown Studio"
-        onRequestAccess={handleGateRequest}
+        clientHomeStudioName="Uptown Studio"
+        currentStudioName="Downtown Studio"
+        onRequest={() => handleGateRequest("Need to review notes.")}
+        onBack={() => setShowGate(false)}
       />
 
       <div className="border border-border/50 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 overflow-hidden">
@@ -132,14 +136,14 @@ export function MindbodySandbox() {
           retention={{
             reliabilityScore: (
               <ClientReliabilityScore
-                clientName="Marquita R."
                 score={82}
-                scoreTrend="up"
-                lifetimeClasses={145}
-                totalLateCancels={4}
-                totalNoShows={1}
-                daysSinceLastVisit={3}
-                sixMonthTrend={[75, 78, 70, 85, 80, 82]}
+                counts={{
+                  completed: 120,
+                  reschedule: 10,
+                  earlyCancel: 10,
+                  lateCancel: 4,
+                  noShow: 1
+                }}
               />
             )
           }}
