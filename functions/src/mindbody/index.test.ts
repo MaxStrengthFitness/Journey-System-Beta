@@ -1,11 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as crypto from 'node:crypto';
-import { handleMindbodyWebhook, WebhookRequest, WebhookDeps, PUBSUB_TOPIC } from './index';
+import { handleMindbodyWebhook, WebhookRequest, WebhookDeps } from './index';
 import { recordHealthEvent } from './healthState';
+import { tryRecordEvent } from './idempotency';
 import { Firestore } from 'firebase-admin/firestore';
 
 vi.mock('./healthState', () => ({
   recordHealthEvent: vi.fn(),
+}));
+
+vi.mock('./idempotency', () => ({
+  tryRecordEvent: vi.fn(),
 }));
 
 function signForTest(body: string, secret: string) {
@@ -17,29 +22,40 @@ const mockSecret = 'test_secret_123';
 function createValidEnvelope(overrides: Record<string, unknown> = {}) {
   return JSON.stringify({
     messageId: 'msg-f47ac10b-58cc-4372-a567-0e02b2c3d479',
-    eventId: 'evt-appointmentBooking-created',
+    eventId: 'evt-client-updated',
     eventSchemaVersion: 1,
     eventInstanceOriginationDateTime: '2024-01-01T12:00:00Z',
-    eventData: { siteId: 99999, appointmentId: 12345 },
+    eventData: {
+      siteId: 99999,
+      clientId: 12345,
+      membershipStatus: 'Active',
+      tierName: '12-Pack',
+      lastVisited: '2024-01-13T10:00:00Z',
+    },
     ...overrides,
   });
 }
 
-describe('handleMindbodyWebhook', () => {
+describe('handleMindbodyWebhook (Inline Upsert)', () => {
   let deps: WebhookDeps;
-  let publishSpy: ReturnType<typeof vi.fn>;
+  let mockSet: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    publishSpy = vi.fn().mockResolvedValue('pubsub-msg-1') as any;
+
+    mockSet = vi.fn().mockResolvedValue(undefined);
+    const mockDoc = vi.fn().mockReturnValue({ set: mockSet });
+    const mockCollection = vi.fn().mockReturnValue({ doc: mockDoc });
+
     deps = {
-      firestore: {} as Firestore,
-      publishMessage: publishSpy as any,
+      firestore: { collection: mockCollection } as unknown as Firestore,
       webhookSecret: mockSecret,
     };
+
+    vi.mocked(tryRecordEvent).mockResolvedValue({ wasNew: true });
   });
 
-  it('1. Valid signature + valid envelope -> publishes and returns 200', async () => {
+  it('1. Valid signature + new event + clientId in eventData -> returns 200, writes to Firestore', async () => {
     const rawBody = createValidEnvelope();
     const signatureHeader = signForTest(rawBody, mockSecret);
     const req: WebhookRequest = { rawBody, signatureHeader };
@@ -47,37 +63,57 @@ describe('handleMindbodyWebhook', () => {
     const response = await handleMindbodyWebhook(deps, req);
 
     expect(response.statusCode).toBe(200);
-    expect(publishSpy).toHaveBeenCalledTimes(1);
-    expect(publishSpy).toHaveBeenCalledWith(
-      PUBSUB_TOPIC,
-      Buffer.from(rawBody, 'utf8'),
-      { messageId: 'msg-f47ac10b-58cc-4372-a567-0e02b2c3d479' }
+    expect(tryRecordEvent).toHaveBeenCalledWith(
+      deps.firestore,
+      'msg-f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      'evt-client-updated'
+    );
+
+    expect(mockSet).toHaveBeenCalledTimes(1);
+    expect(mockSet).toHaveBeenCalledWith(
+      {
+        membershipStatus: 'Active',
+        packageTier: '12-Pack',
+        lastSessionDate: '2024-01-13T10:00:00Z'
+      },
+      { merge: true }
     );
   });
 
-  it('2. Invalid signature -> no publish, signature_failure health event, returns 401', async () => {
+  it('2. Valid signature + duplicate event (wasNew: false) -> returns 200, no write', async () => {
+    vi.mocked(tryRecordEvent).mockResolvedValue({ wasNew: false });
+    
+    const rawBody = createValidEnvelope();
+    const req: WebhookRequest = { rawBody, signatureHeader: signForTest(rawBody, mockSecret) };
+
+    const response = await handleMindbodyWebhook(deps, req);
+
+    expect(response.statusCode).toBe(200);
+    expect(mockSet).not.toHaveBeenCalled();
+  });
+
+  it('3. Invalid signature -> returns 401, records signature_failure', async () => {
     const rawBody = createValidEnvelope();
     const req: WebhookRequest = { rawBody, signatureHeader: 'bad_sig' };
 
     const response = await handleMindbodyWebhook(deps, req);
 
     expect(response.statusCode).toBe(401);
-    expect(publishSpy).not.toHaveBeenCalled();
     expect(recordHealthEvent).toHaveBeenCalledWith(deps.firestore, { type: 'signature_failure' });
+    expect(mockSet).not.toHaveBeenCalled();
   });
 
-  it('3. Missing signature header -> no publish, signature_failure health event, returns 401', async () => {
+  it('4. Missing signature header -> returns 401, records signature_failure', async () => {
     const rawBody = createValidEnvelope();
     const req: WebhookRequest = { rawBody, signatureHeader: undefined };
 
     const response = await handleMindbodyWebhook(deps, req);
 
     expect(response.statusCode).toBe(401);
-    expect(publishSpy).not.toHaveBeenCalled();
     expect(recordHealthEvent).toHaveBeenCalledWith(deps.firestore, { type: 'signature_failure' });
   });
 
-  it('4. Valid signature, malformed JSON -> no publish, NO health event, returns 400', async () => {
+  it('5. Malformed JSON body -> returns 400, no health event', async () => {
     const rawBody = '{ bad json';
     const signatureHeader = signForTest(rawBody, mockSecret);
     const req: WebhookRequest = { rawBody, signatureHeader };
@@ -85,12 +121,11 @@ describe('handleMindbodyWebhook', () => {
     const response = await handleMindbodyWebhook(deps, req);
 
     expect(response.statusCode).toBe(400);
-    expect(publishSpy).not.toHaveBeenCalled();
     expect(recordHealthEvent).not.toHaveBeenCalled();
   });
 
-  it('5. Valid signature, missing messageId -> returns 400', async () => {
-    const rawBody = createValidEnvelope({ messageId: undefined });
+  it('6. Valid signature but missing BOTH messageId and eventId -> returns 400', async () => {
+    const rawBody = createValidEnvelope({ messageId: undefined, eventId: undefined });
     const signatureHeader = signForTest(rawBody, mockSecret);
     const req: WebhookRequest = { rawBody, signatureHeader };
 
@@ -99,31 +134,21 @@ describe('handleMindbodyWebhook', () => {
     expect(response.statusCode).toBe(400);
   });
 
-  it('6. Valid signature, missing eventId -> returns 400', async () => {
-    const rawBody = createValidEnvelope({ eventId: undefined });
+  it('7. Valid signature + event without clientId anywhere -> returns 200, no write', async () => {
+    const rawBody = createValidEnvelope({ eventData: { siteId: 99999 } }); // No clientId
     const signatureHeader = signForTest(rawBody, mockSecret);
     const req: WebhookRequest = { rawBody, signatureHeader };
 
     const response = await handleMindbodyWebhook(deps, req);
 
-    expect(response.statusCode).toBe(400);
+    expect(response.statusCode).toBe(200);
+    expect(mockSet).not.toHaveBeenCalled();
   });
 
-  it('7. Valid signature, missing origination date -> returns 400', async () => {
-    const rawBody = createValidEnvelope({ eventInstanceOriginationDateTime: undefined });
-    const signatureHeader = signForTest(rawBody, mockSecret);
-    const req: WebhookRequest = { rawBody, signatureHeader };
-
-    const response = await handleMindbodyWebhook(deps, req);
-
-    expect(response.statusCode).toBe(400);
-  });
-
-  it('8. Valid signature, publish throws -> webhook_failure health event, returns 500', async () => {
-    publishSpy.mockRejectedValue(new Error('Pub/Sub unavailable'));
+  it('8. Valid signature + Firestore set throws -> returns 500, records webhook_failure', async () => {
+    mockSet.mockRejectedValue(new Error('Firestore error'));
     const rawBody = createValidEnvelope();
-    const signatureHeader = signForTest(rawBody, mockSecret);
-    const req: WebhookRequest = { rawBody, signatureHeader };
+    const req: WebhookRequest = { rawBody, signatureHeader: signForTest(rawBody, mockSecret) };
 
     const response = await handleMindbodyWebhook(deps, req);
 
@@ -131,28 +156,35 @@ describe('handleMindbodyWebhook', () => {
     expect(recordHealthEvent).toHaveBeenCalledWith(deps.firestore, { type: 'webhook_failure' });
   });
 
-  it('9. Two valid calls with the SAME messageId -> both publish (testing idempotency is offloaded)', async () => {
+  it('9. Valid signature + tryRecordEvent throws -> returns 500', async () => {
+    vi.mocked(tryRecordEvent).mockRejectedValue(new Error('Idempotency error'));
+    
     const rawBody = createValidEnvelope();
-    const signatureHeader = signForTest(rawBody, mockSecret);
-    const req: WebhookRequest = { rawBody, signatureHeader };
+    const req: WebhookRequest = { rawBody, signatureHeader: signForTest(rawBody, mockSecret) };
 
-    const response1 = await handleMindbodyWebhook(deps, req);
-    const response2 = await handleMindbodyWebhook(deps, req);
+    const response = await handleMindbodyWebhook(deps, req);
 
-    expect(response1.statusCode).toBe(200);
-    expect(response2.statusCode).toBe(200);
-    expect(publishSpy).toHaveBeenCalledTimes(2);
+    expect(response.statusCode).toBe(500);
   });
 
-  it('10. messageId attribute exactly matches body messageId', async () => {
-    const myMsgId = 'custom-msg-id-123';
-    const rawBody = createValidEnvelope({ messageId: myMsgId });
-    const signatureHeader = signForTest(rawBody, mockSecret);
-    const req: WebhookRequest = { rawBody, signatureHeader };
+  it('10. Extracts fields properly when placed at top level (partial payload)', async () => {
+    const rawBodyObj = {
+      messageId: 'msg-custom-001',
+      clientId: 999,
+      firstName: 'Alice',
+      upcomingBookings: ['booking-1']
+    };
+    const rawBody = JSON.stringify(rawBodyObj);
+    const req: WebhookRequest = { rawBody, signatureHeader: signForTest(rawBody, mockSecret) };
 
     await handleMindbodyWebhook(deps, req);
 
-    const callArgs = publishSpy.mock.calls[0];
-    expect(callArgs[2]).toEqual({ messageId: myMsgId });
+    expect(mockSet).toHaveBeenCalledWith(
+      {
+        mindbody_name: 'Alice',
+        upcomingBookings: ['booking-1']
+      },
+      { merge: true }
+    );
   });
 });

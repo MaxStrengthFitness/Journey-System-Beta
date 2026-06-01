@@ -37,7 +37,7 @@ export async function handleMindbodyWebhook(
     return { statusCode: 401 };
   }
 
-  let parsed: Record<string, any>;
+  let parsed: Record<string, unknown>;
   try {
     parsed = JSON.parse(req.rawBody);
   } catch (e) {
@@ -45,8 +45,8 @@ export async function handleMindbodyWebhook(
   }
 
   // We use messageId or eventId as the tracking event ID.
-  const eventId = parsed.messageId || parsed.eventId;
-  const eventType = parsed.eventId || parsed.eventName || 'unknown_event';
+  const eventId = typeof parsed.messageId === 'string' ? parsed.messageId : (typeof parsed.eventId === 'string' ? parsed.eventId : undefined);
+  const eventType = typeof parsed.eventId === 'string' ? parsed.eventId : (typeof parsed.eventName === 'string' ? parsed.eventName : 'unknown_event');
   
   if (typeof eventId !== 'string' || !eventId.trim()) {
     return { statusCode: 400 };
@@ -68,36 +68,38 @@ export async function handleMindbodyWebhook(
   // 3. Payload Mapping & Upsert
   try {
     // Navigate potentially nested payload structures
-    const payloadData = parsed.eventData || parsed.eventInstance || parsed;
+    const payloadData = (parsed.eventData as Record<string, unknown> | undefined)
+      || (parsed.eventInstance as Record<string, unknown> | undefined)
+      || parsed;
     
     // Safely extract required fields
-    const clientId = payloadData.clientId ?? parsed.clientId;
+    const clientId = typeof payloadData.clientId === 'string' || typeof payloadData.clientId === 'number'
+      ? payloadData.clientId
+      : (typeof parsed.clientId === 'string' || typeof parsed.clientId === 'number'
+          ? parsed.clientId
+          : undefined);
     
     if (clientId) {
-      const updates: Record<string, any> = {};
+      const updates: Record<string, unknown> = {};
       
       // Extract Active Membership Status / Tier Name
-      if (payloadData.membershipStatus) updates.membershipStatus = payloadData.membershipStatus;
-      if (payloadData.tierName) updates.packageTier = payloadData.tierName;
-      if (payloadData.activeMembership) updates.activeMembership = payloadData.activeMembership;
+      if (typeof payloadData.membershipStatus === 'string') updates.membershipStatus = payloadData.membershipStatus;
+      if (typeof payloadData.tierName === 'string') updates.packageTier = payloadData.tierName;
+      if (typeof payloadData.activeMembership === 'boolean' || typeof payloadData.activeMembership === 'string') updates.activeMembership = payloadData.activeMembership;
       
       // Last Visited Timestamp
-      if (payloadData.lastVisited) updates.lastSessionDate = payloadData.lastVisited;
+      if (typeof payloadData.lastVisited === 'string') updates.lastSessionDate = payloadData.lastVisited;
       
       // Prebooked Schedule Arrays
-      if (payloadData.prebookedSchedules) updates.prebookedSchedules = payloadData.prebookedSchedules;
-      if (payloadData.upcomingBookings) updates.upcomingBookings = payloadData.upcomingBookings;
+      if (Array.isArray(payloadData.prebookedSchedules)) updates.prebookedSchedules = payloadData.prebookedSchedules;
+      if (Array.isArray(payloadData.upcomingBookings)) updates.upcomingBookings = payloadData.upcomingBookings;
 
       // Extract mindbody_name if given to help match
-      if (payloadData.firstName || payloadData.lastName) {
-         updates.mindbody_name = `${payloadData.firstName || ''} ${payloadData.lastName || ''}`.trim();
+      if (typeof payloadData.firstName === 'string' || typeof payloadData.lastName === 'string') {
+         updates.mindbody_name = `${typeof payloadData.firstName === 'string' ? payloadData.firstName : ''} ${typeof payloadData.lastName === 'string' ? payloadData.lastName : ''}`.trim();
       }
 
       // Execute an atomic Firestore set() operation with { merge: true }
-      // Assuming clientId could be a string or number, force string for document ID.
-      // E.g., clients could be keyed by Mindbody ID or maybe an internal ID. 
-      // We write to doc(String(clientId)) assuming the app maps document IDs to mindbody client IDs,
-      // or at least standardizes on updating by mindbody ID if queried.
       const clientDocId = String(clientId);
       const clientRef = deps.firestore.collection('clients').doc(clientDocId);
       
@@ -108,14 +110,9 @@ export async function handleMindbodyWebhook(
     
   // 4. Resiliency & Edge Errors
   } catch (error) {
-    console.error("Webhook processing error:", error);
+    console.error("Webhook processing error:", { error: String(error) });
     
-    // Log the raw payload signature safely for logging analytics
-    await recordHealthEvent(deps.firestore, { 
-      type: 'webhook_upsert_failure', 
-      details: String(error),
-      signature: signature
-    });
+    await recordHealthEvent(deps.firestore, { type: 'webhook_failure' });
     
     // Catch errors without silently swallowing them
     return { statusCode: 500 };

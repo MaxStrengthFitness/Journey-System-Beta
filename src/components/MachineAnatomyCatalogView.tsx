@@ -116,6 +116,9 @@ export function MachineAnatomyCatalogView({
     if (selectedMachineId === 'm-tricep-ext') return MACHINE_DATABASE['triceps_extension'];
     if (selectedMachineId === 'm-chest-fly') return MACHINE_DATABASE['chest_flye'];
     if (selectedMachineId === 'm-bicep') return MACHINE_DATABASE['biceps_curl'];
+    if (selectedMachineId === 'm-dip') return MACHINE_DATABASE['seated_dip'];
+    if (selectedMachineId === 'm-abs') return MACHINE_DATABASE['abdominals'];
+    if (selectedMachineId === 'm-lumbar') return MACHINE_DATABASE['lumbar_extension'];
     
     const m = machines.find((m) => m.id === selectedMachineId);
     if (m) {

@@ -10,12 +10,12 @@ import { Button } from '@/components/ui/button';
 export function MindbodyDashboard() {
   const [role, setRole] = useState<'trainer' | 'leader'>('trainer');
   const [showGate, setShowGate] = useState(false);
-  const [accessState, setAccessState] = useState<'locked' | 'granted' | 'requested'>('locked');
+  const [accessState, setAccessState] = useState<'locked' | 'granted' | 'pending'>('locked');
 
   const handleGateRequest = (notes: string) => {
     console.log('Request submitted:', notes);
     setShowGate(false);
-    setAccessState('requested');
+    setAccessState('pending');
   };
 
   const handleApprove = () => {
@@ -29,8 +29,8 @@ export function MindbodyDashboard() {
   };
 
   return (
-    <div className="min-h-full w-full bg-slate-50 dark:bg-slate-950 p-6 flex flex-col gap-8">
-      <div className="flex justify-between items-center bg-white p-4 rounded border dark:bg-slate-900 border-border">
+    <div className="min-h-full w-full bg-background p-6 flex flex-col gap-8">
+      <div className="flex justify-between items-center bg-card p-4 rounded border border-border">
         <div>
           <h2 className="text-xl font-bold">Mindbody End-to-End Integration</h2>
           <p className="text-sm text-muted-foreground">Manage your studio operations seamlessly.</p>
@@ -46,7 +46,7 @@ export function MindbodyDashboard() {
       </div>
 
       {accessState === 'locked' && (
-        <div className="bg-white dark:bg-slate-900 p-4 rounded border border-border">
+        <div className="bg-card p-4 rounded border border-border">
           <h3 className="font-bold mb-4">Cross-Train Operations</h3>
           <Button onClick={() => setShowGate(true)}>
             Access Foreign Client Record
@@ -54,8 +54,8 @@ export function MindbodyDashboard() {
         </div>
       )}
 
-      {accessState === 'requested' && (
-        <div className="bg-white dark:bg-slate-900 p-4 rounded border border-border max-w-sm">
+      {accessState === 'pending' && (
+        <div className="bg-card p-4 rounded border border-border max-w-sm">
           <h3 className="font-bold mb-4">Leader Inbox View</h3>
           <CrossTrainApprovalCard
             request={{
@@ -74,24 +74,27 @@ export function MindbodyDashboard() {
       )}
 
       {accessState === 'granted' && (
-        <div className="bg-white dark:bg-slate-900 p-4 rounded border border-border">
-          <h3 className="font-bold mb-4 text-green-600">Access Granted</h3>
+        <div className="bg-card p-4 rounded border border-border">
+          <h3 className="font-bold mb-4 text-green">Access Granted</h3>
           <p>The foreign visitor banner would now display "access granted" globally for this trainer.</p>
           <Button variant="outline" className="mt-4" onClick={() => setAccessState('locked')}>Reset Workflow</Button>
         </div>
       )}
 
-      <CrossTrainAccessGate
-        open={showGate}
-        onOpenChange={setShowGate}
-        clientName="Allison P."
-        clientHomeStudioName="Uptown Studio"
-        currentStudioName="Downtown Studio"
-        onRequest={() => handleGateRequest("Need to review notes.")}
-        onBack={() => setShowGate(false)}
-      />
+      {accessState !== 'granted' && (
+        <CrossTrainAccessGate
+          open={showGate}
+          onOpenChange={setShowGate}
+          existingRequestStatus={accessState === 'pending' ? 'pending' : 'none'}
+          clientName="Allison P."
+          clientHomeStudioName="Uptown Studio"
+          currentStudioName="Downtown Studio"
+          onRequest={() => handleGateRequest("Need to review notes.")}
+          onBack={() => setShowGate(false)}
+        />
+      )}
 
-      <div className="border border-border/50 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 overflow-hidden">
+      <div className="border border-border/50 rounded-xl bg-muted/50 overflow-hidden">
         <StudioHubGrid
           role={role}
           studioName="Downtown Studio"

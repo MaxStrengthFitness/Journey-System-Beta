@@ -381,5 +381,55 @@ service cloud.firestore {
                     (resource.data.studioId != null && isStudioOwnerOrHeadTrainer(resource.data.studioId));
     }
 
+    // ===============================================================
+    // MINDBODY INTEGRATION
+    // ===============================================================
+
+    // Permanent cross-train access record (per Section 11.3, Decision #2)
+    // Path: clients/{clientId}/crossTrainAccess/{studioId}
+    match /clients/{clientId}/crossTrainAccess/{studioId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isSuperAdmin() || (
+        isStudioOwnerOrHeadTrainer(studioId) &&
+        request.resource.data.grantedBy == request.auth.uid &&
+        request.resource.data.keys().hasAll(['granted', 'grantedAt', 'grantedBy']) &&
+        request.resource.data.granted == true
+      );
+      allow delete: if isAdmin() || isFounder();
+    }
+
+    // Cross-train request submissions (per Section 4.4)
+    // Path: crossTrainRequests/{requestId}
+    match /crossTrainRequests/{requestId} {
+      allow create: if isAuthenticated() &&
+        request.resource.data.requestingTrainerId == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow read: if isAuthenticated();
+      allow update: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(resource.data.targetStudioId);
+      allow delete: if isSuperAdmin();
+    }
+
+    // Webhook idempotency log (server-only writes; admins can read)
+    // Path: mindbodyEventLog/{messageId}
+    match /mindbodyEventLog/{messageId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    // Dead letter queue (server writes; admins read and resolve)
+    // Path: mindbodyDLQ/{messageId}
+    match /mindbodyDLQ/{messageId} {
+      allow read: if isSuperAdmin();
+      allow update: if isSuperAdmin();
+      allow create, delete: if false;
+    }
+
+    // Global integration health (server writes; all authenticated users read for UI)
+    // Path: system/health
+    match /system/health {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
   }
 }
