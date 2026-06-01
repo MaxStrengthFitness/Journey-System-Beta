@@ -206,7 +206,7 @@ import {
 const DEFAULT_MACHINES: Machine[] = [
   {
     id: "m-neck",
-    anatomicalRegion: "Cervical Spine (Neck)",
+    anatomicalRegion: "Neck",
     name: "CX (4 WAY NECK)",
     targetMuscles: "Cervical Paraspinals, Suboccipitals",
     kinematicClassification: "Simple / Rotary",
@@ -217,7 +217,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-overhead-press",
-    anatomicalRegion: "Shoulder Girdle",
+    anatomicalRegion: "Shoulder",
     name: "OVERHEAD PRESS",
     targetMuscles: "Anterior/Medial Deltoids, Triceps",
     kinematicClassification: "Compound Push",
@@ -227,7 +227,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-lateral-raise",
-    anatomicalRegion: "Shoulder Girdle",
+    anatomicalRegion: "Shoulder",
     name: "LATERAL RAISE",
     targetMuscles: "Medial Deltoids",
     kinematicClassification: "Simple Push",
@@ -237,7 +237,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-pulldown",
-    anatomicalRegion: "Upper/Mid Dorsal",
+    anatomicalRegion: "Back",
     name: "PULLDOWN",
     targetMuscles: "Latissimus Dorsi, Trapezius, Biceps",
     kinematicClassification: "Compound Pull",
@@ -252,7 +252,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-pullover",
-    anatomicalRegion: "Upper/Mid Dorsal",
+    anatomicalRegion: "Back",
     name: "SEATED PULLOVER",
     targetMuscles: "Latissimus Dorsi",
     kinematicClassification: "Simple Pull",
@@ -266,7 +266,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-compound-row",
-    anatomicalRegion: "Upper/Mid Dorsal",
+    anatomicalRegion: "Back",
     name: "COMPOUND ROW",
     targetMuscles: "Latissimus Dorsi, Rhomboids, Trapezius",
     kinematicClassification: "Compound Pull",
@@ -280,7 +280,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-simple-row",
-    anatomicalRegion: "Upper/Mid Dorsal",
+    anatomicalRegion: "Back",
     name: "SIMPLE ROW",
     targetMuscles: "Posterior Deltoids, Rhomboids",
     kinematicClassification: "Simple Pull",
@@ -293,7 +293,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-chest-press",
-    anatomicalRegion: "Anterior Thoracic (Chest)",
+    anatomicalRegion: "Chest",
     name: "CHEST PRESS",
     targetMuscles: "Pectoralis Major, Anterior Deltoids",
     kinematicClassification: "Compound Push",
@@ -303,7 +303,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-chest-fly",
-    anatomicalRegion: "Anterior Thoracic (Chest)",
+    anatomicalRegion: "Chest",
     name: "CHEST/PEC FLY",
     targetMuscles: "Pectoralis Major",
     kinematicClassification: "Simple Push",
@@ -313,7 +313,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-bicep",
-    anatomicalRegion: "Brachial Extremities",
+    anatomicalRegion: "Arm / Upper Extremity",
     name: "BICEP",
     targetMuscles: "Biceps Brachii, Brachioradialis",
     kinematicClassification: "Simple Pull",
@@ -326,7 +326,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-tricep-ext",
-    anatomicalRegion: "Brachial Extremities",
+    anatomicalRegion: "Arm / Upper Extremity",
     name: "TRICEP EXTENSION",
     targetMuscles: "Triceps Brachii",
     kinematicClassification: "Simple Push",
@@ -336,7 +336,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-dip",
-    anatomicalRegion: "Brachial Extremities",
+    anatomicalRegion: "Arm / Upper Extremity",
     name: "SEATED DIP",
     targetMuscles: "Triceps Brachii, Lower Pectoralis",
     kinematicClassification: "Compound Push",
@@ -352,7 +352,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-abs",
-    anatomicalRegion: "Lumbo-Pelvic Core",
+    anatomicalRegion: "Core",
     name: "SEATED ABDOMINALS",
     targetMuscles: "Rectus Abdominis",
     kinematicClassification: "Simple Push",
@@ -363,7 +363,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-lumbar",
-    anatomicalRegion: "Lumbo-Pelvic Core",
+    anatomicalRegion: "Core",
     name: "LUMBAR",
     targetMuscles: "Lumbar Paraspinals",
     kinematicClassification: "Simple Pull",
@@ -388,7 +388,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-torso-rotation",
-    anatomicalRegion: "Lumbo-Pelvic Core",
+    anatomicalRegion: "Core",
     name: "TORSO ROTATION",
     targetMuscles: "Internal and External Obliques",
     kinematicClassification: "Simple Rotary",
@@ -398,7 +398,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-hip-abd",
-    anatomicalRegion: "Pelvic Girdle (Hips)",
+    anatomicalRegion: "Hip",
     name: "HIP ABDUCTION",
     targetMuscles: "Gluteus Medius, Gluteus Minimus",
     kinematicClassification: "Simple Push",
@@ -409,7 +409,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-hip-add",
-    anatomicalRegion: "Pelvic Girdle (Hips)",
+    anatomicalRegion: "Hip",
     name: "HIP ADDUCTION",
     targetMuscles: "Adductor Longus, Brevis, Magnus",
     kinematicClassification: "Simple Pull",
@@ -423,7 +423,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-leg-press",
-    anatomicalRegion: "Upper Crural (Thighs)",
+    anatomicalRegion: "Thigh / Quad",
     name: "LEG PRESS",
     targetMuscles: "Quadriceps, Gluteus Maximus, Hamstrings",
     kinematicClassification: "Compound Push",
@@ -443,7 +443,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-ext",
-    anatomicalRegion: "Upper Crural (Thighs)",
+    anatomicalRegion: "Thigh / Quad",
     name: "LEG EXTENSION",
     targetMuscles: "Quadriceps Femoris",
     kinematicClassification: "Simple Push",
@@ -454,7 +454,7 @@ const DEFAULT_MACHINES: Machine[] = [
   },
   {
     id: "m-leg-curl",
-    anatomicalRegion: "Upper Crural (Thighs)",
+    anatomicalRegion: "Hamstring / Glute",
     name: "LEG CURL",
     targetMuscles: "Hamstrings, Gastrocnemius",
     kinematicClassification: "Simple Pull",

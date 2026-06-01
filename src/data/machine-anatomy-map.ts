@@ -22,17 +22,16 @@ export type MuscleId =
   | 'neck';
 
 export type MovementPattern =
-  | 'Horizontal Push'
-  | 'Horizontal Pull'
-  | 'Vertical Push'
-  | 'Vertical Pull'
-  | 'Shoulder Isolation'
-  | 'Arm Isolation'
-  | 'Lower Body Push'
-  | 'Lower Body Pull'
-  | 'Hip Isolation'
-  | 'Core / Spine'
-  | 'Cervical';
+  | 'Upper Body: Horizontal Push'
+  | 'Upper Body: Horizontal Pull'
+  | 'Upper Body: Vertical Push'
+  | 'Upper Body: Vertical Pull'
+  | 'Upper Body: Isolation'
+  | 'Lower Body: Quad Dominant'
+  | 'Lower Body: Posterior Chain'
+  | 'Core: Spine Flexion'
+  | 'Core: Spine Extension'
+  | 'Core: Rotary';
 
 export interface MachineAnatomyMap {
   machineId: string;
@@ -46,190 +45,191 @@ export interface MachineAnatomyMap {
 
 export const MACHINE_ANATOMY: Record<string, MachineAnatomyMap> = {
   // ─── HORIZONTAL PUSH ──────────────────────────────
-  chest_press: {
-    machineId: 'chest_press',
+  'm-chest-press': {
+    machineId: 'm-chest-press',
     preferredView: 'front',
     primary: ['pecs'],
     secondary: ['delts-front', 'triceps'],
-    movementPattern: 'Horizontal Push',
+    movementPattern: 'Upper Body: Horizontal Push',
     clinicalNote: 'Horizontal push — pectoral inroad with anterior deltoid and triceps support.',
   },
-  chest_flye: {
-    machineId: 'chest_flye',
+  'm-chest-fly': {
+    machineId: 'm-chest-fly',
     preferredView: 'front',
     primary: ['pecs'],
     secondary: ['delts-front'],
-    movementPattern: 'Horizontal Push',
+    movementPattern: 'Upper Body: Horizontal Push',
     clinicalNote: 'Pectoral isolation through horizontal adduction — minimal triceps recruitment.',
   },
 
   // ─── HORIZONTAL PULL ──────────────────────────────
-  compound_row: {
-    machineId: 'compound_row',
+  'm-compound-row': {
+    machineId: 'm-compound-row',
     preferredView: 'back',
     primary: ['lats', 'rhomboids'],
     secondary: ['biceps', 'delts-rear', 'traps'],
-    movementPattern: 'Horizontal Pull',
+    movementPattern: 'Upper Body: Horizontal Pull',
     clinicalNote: 'Horizontal pull — lat and rhomboid inroad with biceps and rear-delt support.',
   },
-  simple_row: {
-    machineId: 'simple_row',
+  'm-simple-row': {
+    machineId: 'm-simple-row',
     preferredView: 'back',
     primary: ['rhomboids', 'traps'],
     secondary: ['lats', 'biceps'],
-    movementPattern: 'Horizontal Pull',
+    movementPattern: 'Upper Body: Horizontal Pull',
     clinicalNote: 'Mid-back isolation focused on scapular retraction.',
   },
 
   // ─── VERTICAL PUSH ────────────────────────────────
-  overhead_press: {
-    machineId: 'overhead_press',
+  'm-overhead-press': {
+    machineId: 'm-overhead-press',
     preferredView: 'front',
     primary: ['delts-front'],
     secondary: ['triceps', 'traps'],
-    movementPattern: 'Vertical Push',
+    movementPattern: 'Upper Body: Vertical Push',
     clinicalNote: 'Overhead push — anterior deltoid inroad with trap and tricep support.',
   },
-  seated_dip: {
-    machineId: 'seated_dip',
+  'm-dip': {
+    machineId: 'm-dip',
     preferredView: 'side',
     primary: ['triceps'],
     secondary: ['pecs', 'delts-front'],
-    movementPattern: 'Vertical Push',
+    movementPattern: 'Upper Body: Vertical Push',
     clinicalNote: 'Tricep-dominant push pattern with chest assistance.',
   },
 
   // ─── VERTICAL PULL ────────────────────────────────
-  pulldown: {
-    machineId: 'pulldown',
+  'm-pulldown': {
+    machineId: 'm-pulldown',
     preferredView: 'back',
     primary: ['lats'],
     secondary: ['biceps', 'rhomboids', 'delts-rear'],
-    movementPattern: 'Vertical Pull',
+    movementPattern: 'Upper Body: Vertical Pull',
     clinicalNote: 'Overhead pull — lat inroad with biceps and scapular support.',
   },
-  pullover: {
-    machineId: 'pullover',
+  'm-pullover': {
+    machineId: 'm-pullover',
     preferredView: 'side',
     primary: ['lats'],
     secondary: ['pecs', 'triceps'],
-    movementPattern: 'Vertical Pull',
+    movementPattern: 'Upper Body: Vertical Pull',
     clinicalNote: 'Sagittal-plane shoulder extension — direct lat work without arm fatigue.',
   },
 
   // ─── SHOULDER ISOLATION ───────────────────────────
-  lateral_raise: {
-    machineId: 'lateral_raise',
+  'm-lateral-raise': {
+    machineId: 'm-lateral-raise',
     preferredView: 'front',
     primary: ['delts-front'],
     secondary: ['traps'],
-    movementPattern: 'Shoulder Isolation',
+    movementPattern: 'Upper Body: Isolation',
     clinicalNote: 'Frontal-plane shoulder abduction — medial deltoid isolation.',
   },
 
   // ─── ARM ISOLATION ────────────────────────────────
-  biceps_curl: {
-    machineId: 'biceps_curl',
+  'm-bicep': {
+    machineId: 'm-bicep',
     preferredView: 'front',
     primary: ['biceps'],
     secondary: ['forearms'],
-    movementPattern: 'Arm Isolation',
+    movementPattern: 'Upper Body: Isolation',
     clinicalNote: 'Elbow flexion isolation — biceps inroad without back assistance.',
   },
-  triceps_extension: {
-    machineId: 'triceps_extension',
+  'm-tricep-ext': {
+    machineId: 'm-tricep-ext',
     preferredView: 'back',
     primary: ['triceps'],
     secondary: ['forearms'],
-    movementPattern: 'Arm Isolation',
+    movementPattern: 'Upper Body: Isolation',
     clinicalNote: 'Elbow extension isolation — direct tricep work.',
   },
 
   // ─── LOWER BODY PUSH ──────────────────────────────
-  leg_press: {
-    machineId: 'leg_press',
+  'm-leg-press': {
+    machineId: 'm-leg-press',
     preferredView: 'side',
     primary: ['quads', 'glutes'],
     secondary: ['hamstrings', 'calves', 'adductors'],
-    movementPattern: 'Lower Body Push',
+    movementPattern: 'Lower Body: Quad Dominant',
     clinicalNote: 'Multi-joint lower-body push — quad and glute inroad with hamstring assistance.',
   },
-  leg_extension: {
-    machineId: 'leg_extension',
+  'm-ext': {
+    machineId: 'm-ext',
     preferredView: 'front',
     primary: ['quads'],
-    movementPattern: 'Lower Body Push',
+    movementPattern: 'Lower Body: Quad Dominant',
     clinicalNote: 'Knee extension isolation — pure quadriceps work.',
   },
 
   // ─── LOWER BODY PULL ──────────────────────────────
-  leg_curl: {
-    machineId: 'leg_curl',
+  'm-leg-curl': {
+    machineId: 'm-leg-curl',
     preferredView: 'back',
     primary: ['hamstrings'],
     secondary: ['calves', 'glutes'],
-    movementPattern: 'Lower Body Pull',
+    movementPattern: 'Lower Body: Posterior Chain',
     clinicalNote: 'Knee flexion under controlled load — direct hamstring inroad in isolation.',
   },
 
   // ─── HIP ISOLATION ────────────────────────────────
-  abduction: {
-    machineId: 'abduction',
+  'm-hip-abd': {
+    machineId: 'm-hip-abd',
     preferredView: 'back',
     primary: ['abductors'],
     secondary: ['glutes'],
-    movementPattern: 'Hip Isolation',
+    movementPattern: 'Lower Body: Posterior Chain',
     clinicalNote: 'Hip abduction — gluteus medius and minimus isolation.',
   },
-  adduction: {
-    machineId: 'adduction',
+  'm-hip-add': {
+    machineId: 'm-hip-add',
     preferredView: 'front',
     primary: ['adductors'],
-    movementPattern: 'Hip Isolation',
+    movementPattern: 'Lower Body: Quad Dominant',
     clinicalNote: 'Hip adduction — inner-thigh adductor group isolation.',
   },
 
   // ─── CORE / SPINE ─────────────────────────────────
-  lumbar_extension: {
-    machineId: 'lumbar_extension',
+  'm-lumbar': {
+    machineId: 'm-lumbar',
     preferredView: 'back',
     primary: ['lower-back'],
     secondary: ['glutes'],
-    movementPattern: 'Core / Spine',
+    movementPattern: 'Core: Spine Extension',
     clinicalNote: 'Lumbar extension under controlled load — erector spinae inroad.',
   },
-  abdominals: {
-    machineId: 'abdominals',
+  'm-abs': {
+    machineId: 'm-abs',
     preferredView: 'front',
     primary: ['abs'],
     secondary: ['obliques'],
-    movementPattern: 'Core / Spine',
+    movementPattern: 'Core: Spine Flexion',
     clinicalNote: 'Trunk flexion — rectus abdominis isolation.',
   },
-  torso_rotation: {
-    machineId: 'torso_rotation',
+  'm-torso-rotation': {
+    machineId: 'm-torso-rotation',
     preferredView: 'front',
     primary: ['obliques'],
     secondary: ['abs'],
-    movementPattern: 'Core / Spine',
+    movementPattern: 'Core: Rotary',
     clinicalNote: 'Transverse-plane rotation — internal and external oblique work.',
   },
 
   // ─── CERVICAL ─────────────────────────────────────
-  '4_way_neck': {
-    machineId: '4_way_neck',
+  'm-neck': {
+    machineId: 'm-neck',
     preferredView: 'side',
     primary: ['neck'],
     secondary: ['traps'],
-    movementPattern: 'Cervical',
+    movementPattern: 'Core: Spine Extension',
     clinicalNote: 'Multi-directional cervical stimulation.',
   },
+  // We can keep cervical_extension just in case
   cervical_extension: {
     machineId: 'cervical_extension',
     preferredView: 'side',
     primary: ['neck'],
     secondary: ['traps'],
-    movementPattern: 'Cervical',
+    movementPattern: 'Core: Spine Extension',
     clinicalNote: 'Cervical extension — posterior neck musculature isolation.',
   },
 };
@@ -239,17 +239,16 @@ export const MACHINE_ANATOMY: Record<string, MachineAnatomyMap> = {
  * "Movement Pattern" grouping mode.
  */
 export const MOVEMENT_PATTERN_ORDER: MovementPattern[] = [
-  'Horizontal Push',
-  'Horizontal Pull',
-  'Vertical Push',
-  'Vertical Pull',
-  'Shoulder Isolation',
-  'Arm Isolation',
-  'Lower Body Push',
-  'Lower Body Pull',
-  'Hip Isolation',
-  'Core / Spine',
-  'Cervical',
+  'Upper Body: Horizontal Push',
+  'Upper Body: Horizontal Pull',
+  'Upper Body: Vertical Push',
+  'Upper Body: Vertical Pull',
+  'Upper Body: Isolation',
+  'Lower Body: Quad Dominant',
+  'Lower Body: Posterior Chain',
+  'Core: Spine Flexion',
+  'Core: Spine Extension',
+  'Core: Rotary',
 ];
 
 /**
@@ -259,9 +258,11 @@ export const MOVEMENT_PATTERN_ORDER: MovementPattern[] = [
 export const ANATOMICAL_REGION_ORDER = [
   'Chest',
   'Back',
-  'Shoulders',
-  'Arms',
-  'Lower Body',
+  'Shoulder',
+  'Arm / Upper Extremity',
+  'Thigh / Quad',
+  'Hamstring / Glute',
+  'Hip',
   'Core',
   'Neck',
 ] as const;

@@ -180,56 +180,87 @@ export function MachineAnatomyCatalogView({
               aria-pressed={groupingMode === 'region'}
             >
               <MapPin className="w-3.5 h-3.5" />
-              Region
+              Target Area
             </button>
           </div>
         </div>
 
-        {/* Group accordion */}
+        {/* Group list */}
         <div className="flex-1 py-2">
           {groupedMachines.map((group) => {
-            const isOpen = openGroups.has(group.key);
             return (
               <div key={group.key} className="border-b border-div-d/40 last:border-b-0">
-                <button
-                  type="button"
-                  onClick={() => toggleGroup(group.key)}
-                  className="flex items-center justify-between w-full min-h-[44px] px-4 text-left text-[12px] font-bold uppercase tracking-widest text-ink-d2 hover:bg-bg-dark-3 hover:text-white transition-colors focus-visible:outline-none focus-visible:bg-bg-dark-3"
-                  aria-expanded={isOpen}
+                <div
+                  className="flex items-center justify-between w-full min-h-[44px] px-4 text-left text-[12px] font-bold uppercase tracking-widest text-ink-d2"
                 >
                   <span>{group.label}</span>
                   <span className="flex items-center gap-2 text-ink-d3 text-[11px] tabular-nums">
                     {group.machines.length}
-                    {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                   </span>
-                </button>
-                {isOpen && (
-                  <div className="pb-2">
-                    {group.machines.map((m) => {
-                      const isSelected = selectedMachineId === m.id;
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => m.id && handleSelectMachine(m.id)}
-                          className={`flex items-center justify-between w-full min-h-[44px] pl-6 pr-4 text-left text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:bg-bg-dark-3 ${
-                            isSelected
-                              ? 'bg-bg-dark-3 text-white border-l-2 border-cta'
-                              : 'text-ink-d2 hover:bg-bg-dark-3 hover:text-white border-l-2 border-transparent'
-                          }`}
-                          aria-pressed={isSelected}
-                        >
-                          <span className="truncate">{m.name}</span>
-                          {isSelected && (
-                            <span className="text-[11px] uppercase tracking-widest text-cta font-bold">
+                </div>
+                <div className="flex flex-col gap-1.5 px-3 pb-4">
+                  {group.machines.map((m) => {
+                    const isSelected = selectedMachineId === m.id;
+                    const map = m.id ? MACHINE_ANATOMY[m.id] : undefined;
+                    const movement = map?.movementPattern || '';
+                    
+                    let colorClass = 'bg-slate-500';
+                    if (movement.includes('Push')) colorClass = 'bg-sky-500';
+                    else if (movement.includes('Pull')) colorClass = 'bg-indigo-500';
+                    else if (movement.includes('Quad')) colorClass = 'bg-emerald-500';
+                    else if (movement.includes('Posterior')) colorClass = 'bg-emerald-600';
+                    else if (movement.includes('Core')) colorClass = 'bg-orange-500';
+                    else if (movement.includes('Isolation')) colorClass = 'bg-amber-500';
+
+                    let shortBadge = 'Misc';
+                    if (movement.includes('Horizontal Push')) shortBadge = 'H. Push';
+                    else if (movement.includes('Vertical Push')) shortBadge = 'V. Push';
+                    else if (movement.includes('Horizontal Pull')) shortBadge = 'H. Pull';
+                    else if (movement.includes('Vertical Pull')) shortBadge = 'V. Pull';
+                    else if (movement.includes('Quad')) shortBadge = 'Quad';
+                    else if (movement.includes('Posterior')) shortBadge = 'Post. Chain';
+                    else if (movement.includes('Flexion')) shortBadge = 'Flexion';
+                    else if (movement.includes('Extension')) shortBadge = 'Extension';
+                    else if (movement.includes('Rotary')) shortBadge = 'Rotary';
+                    else if (movement.includes('Isolation')) shortBadge = 'Isolation';
+
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => m.id && handleSelectMachine(m.id)}
+                        className={`relative flex items-center justify-between w-full p-3 rounded-xl border transition-all text-left group overflow-hidden ${
+                          isSelected
+                            ? 'bg-surface-2 border-div-d shadow-md'
+                            : 'bg-surface-1 border-transparent hover:bg-surface-2 hover:border-div-d/50'
+                        }`}
+                        aria-pressed={isSelected}
+                      >
+                        {/* Color rail */}
+                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${colorClass}`} />
+                        
+                        <div className="flex flex-col pl-3">
+                          <span className={`text-[12px] font-bold tracking-widest truncate uppercase ${isSelected ? 'text-white' : 'text-ink-d1 group-hover:text-white'}`}>
+                            {m.name}
+                          </span>
+                        </div>
+
+                        {/* Badges container */}
+                        <div className="flex items-center">
+                          {isSelected ? (
+                            <Badge className="bg-cta text-bg-dark text-[9px] uppercase tracking-widest border-none px-1.5 py-0 font-bold rounded-sm h-5 flex items-center justify-center">
                               Active
-                            </span>
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-ink-d3 border-div-d text-[9px] uppercase tracking-widest px-1.5 py-0 h-5 flex items-center justify-center rounded-sm group-hover:text-ink-d1 group-hover:border-ink-d3 transition-colors bg-surface-1">
+                              {shortBadge}
+                            </Badge>
                           )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
