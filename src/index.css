@@ -41,6 +41,7 @@
     --color-action: var(--action);
     --color-popover-foreground: var(--popover-foreground);
     --color-popover: var(--popover);
+    --color-elevated: var(--elevated);
     --color-card-foreground: var(--card-foreground);
     --color-card: var(--card);
     --color-foreground: var(--foreground);
@@ -121,6 +122,7 @@
     --card: #FFFFFF;
     --card-foreground: #0F172A;
     --popover: #FFFFFF;
+    --elevated: #FFFFFF;
     --popover-foreground: #0F172A;
     --primary: #115E8D;
     --primary-foreground: #FFFFFF;
@@ -221,6 +223,7 @@
     --card: #0F172A;
     --card-foreground: #F8FAFC;
     --popover: #1E293B;
+    --elevated: #1E293B;
     --popover-foreground: #F8FAFC;
     --primary: #38BDF8;
     --primary-foreground: #0F172A;

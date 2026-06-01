@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { Search, User2, PlayCircle, Plus, MapPin, MoreVertical, Minus } from 'lucide-react';
+import { Search, User2, PlayCircle, Plus, MapPin, MoreVertical, Minus, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useActiveStudio } from '../ActiveStudioContext';
 import { Client, Trainer } from '../types';
+import { db } from '../firebase';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import SyncStatusBadge from './mindbody/SyncStatusBadge';
 
 interface Props {
@@ -20,6 +22,75 @@ export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSessio
   const { availableStudios, activeStudioId } = useActiveStudio();
   const [searchTerm, setSearchTerm] = useState('');
   const [isGlobalSearch, setIsGlobalSearch] = useState(false);
+  const [dbSearchResults, setDbSearchResults] = useState<Client[]>([]);
+  const [isSearchingDb, setIsSearchingDb] = useState(false);
+
+  React.useEffect(() => {
+    if (!searchTerm.trim()) {
+      setDbSearchResults([]);
+      return;
+    }
+    setIsSearchingDb(true);
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const term = searchTerm.trim().toLowerCase();
+        const alphaOnly = term.replace(/[^a-z]/g, "");
+        const prefixLen = alphaOnly.length > 3 ? 3 : alphaOnly.length;
+        const prefix = alphaOnly.slice(0, prefixLen);
+        const prefixCapitalized = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+
+        if (!prefixCapitalized) {
+          setDbSearchResults([]);
+          setIsSearchingDb(false);
+          return;
+        }
+
+        const clientsRef = collection(db, "clients");
+        const q1 = query(
+          clientsRef,
+          where("firstName", ">=", prefixCapitalized),
+          where("firstName", "<=", prefixCapitalized + "\uf8ff"),
+          limit(30)
+        );
+        const q2 = query(
+          clientsRef,
+          where("lastName", ">=", prefixCapitalized),
+          where("lastName", "<=", prefixCapitalized + "\uf8ff"),
+          limit(30)
+        );
+
+        const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+        const uniqueDocs = new Map<string, any>();
+        [...snap1.docs, ...snap2.docs].forEach((d) => {
+          uniqueDocs.set(d.id, { id: d.id, ...d.data() });
+        });
+
+        const candidates = Array.from(uniqueDocs.values());
+        const fetched = candidates.filter((c) => {
+          const first = (c.firstName || "").toLowerCase();
+          const last = (c.lastName || "").toLowerCase();
+          const full = `${first} ${last}`;
+          const mb = (c.mindbody_name || "").toLowerCase();
+
+          return (
+            first.includes(term) ||
+            last.includes(term) ||
+            full.includes(term) ||
+            mb.includes(term) ||
+            term.includes(first) ||
+            term.includes(last)
+          );
+        });
+
+        setDbSearchResults(fetched);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsSearchingDb(false);
+      }
+    }, 300);
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
 
   const displayClients = useMemo(() => {
     // 1. Studio filtering
@@ -32,7 +103,7 @@ export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSessio
       allowedStudioIds.push(activeStudioId);
     }
 
-    let filtered = clients;
+    let filtered = Array.from(new Map([...clients, ...dbSearchResults].map(c => [c.id, c])).values());
 
     // Apply Cross-Studio or Home Studio Territory Filtering if isGlobalSearch is turned off
     if (!isGlobalSearch && allowedStudioIds.length > 0) {
@@ -54,7 +125,7 @@ export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSessio
       const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
       return bTime - aTime;
     });
-  }, [clients, searchTerm, isGlobalSearch, activeStudioId, authTrainer]);
+  }, [clients, searchTerm, isGlobalSearch, activeStudioId, authTrainer, dbSearchResults]);
 
   const renderTierBadge = (tier?: string) => {
     if (!tier || tier === "None") return <span className="text-sm text-muted-foreground">None</span>;
@@ -80,7 +151,7 @@ export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSessio
         <div className="flex flex-col sm:flex-row items-center gap-4">
           <div className="relative group flex-1">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              {isSearchingDb ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <Search className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />}
             </div>
             <Input
               value={searchTerm}
