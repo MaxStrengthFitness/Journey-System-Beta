@@ -239,8 +239,8 @@ export function MachineAnatomyCatalogView({
     <div className="relative h-[calc(100vh-5rem)] bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950 overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row w-full no-scrollbar">
       
       {/* ───── MOBILE STICKY HEADER & CONTROLS ───── */}
-      <div className="lg:hidden sticky top-0 left-0 w-full z-50 flex items-start justify-center pt-4 pb-4 px-4 bg-gradient-to-b from-zinc-950 via-zinc-950/80 to-transparent pointer-events-none shrink-0">
-        <div className="absolute top-4 left-4 z-50 pointer-events-auto">
+      <div className="lg:hidden sticky top-0 left-0 w-full z-50 flex items-center justify-between pt-4 pb-4 px-4 bg-gradient-to-b from-zinc-950 via-zinc-950/80 to-transparent pointer-events-none shrink-0">
+        <div className="pointer-events-auto shrink-0 mr-4">
           <Sheet>
             <SheetTrigger className="bg-background/80 backdrop-blur-xl border border-white/10 hover:bg-white/10 text-white shadow-xl h-12 w-12 rounded-full flex items-center justify-center transition-all cursor-pointer">
               <Layers className="w-5 h-5" />
@@ -252,7 +252,7 @@ export function MachineAnatomyCatalogView({
         </div>
 
         {/* Mobile View Controls */}
-        <div className="pointer-events-auto flex bg-background/80 backdrop-blur-xl rounded-2xl p-1.5 border border-white/10 shadow-2xl ml-16 max-w-sm overflow-x-auto no-scrollbar">
+        <div className="pointer-events-auto flex flex-1 bg-background/80 backdrop-blur-xl rounded-2xl p-1.5 border border-white/10 shadow-2xl overflow-x-auto no-scrollbar justify-center">
           <button 
             onClick={() => setView('front')}
             className={`flex-1 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap ${view === 'front' ? 'bg-white text-zinc-950 shadow-lg' : 'text-muted-foreground hover:text-white hover:bg-white/10'}`}
@@ -282,7 +282,7 @@ export function MachineAnatomyCatalogView({
       </div>
 
       {/* ───── MODEL LAYER ───── */}
-      <div className="relative flex-1 shrink-0 lg:absolute lg:inset-0 flex items-center justify-center z-0 pointer-events-auto min-h-[500px] lg:min-h-0">
+      <div className="relative shrink-0 lg:absolute lg:inset-0 flex items-center justify-center z-0 pointer-events-auto min-h-[50vh] max-h-[60vh] lg:h-full lg:min-h-0 lg:max-h-none mb-4 lg:mb-0">
         <div className="relative w-full max-w-[600px] h-full flex justify-center p-4 lg:p-12 lg:mt-0">
           <Body 
             data={highlightData} 
@@ -455,14 +455,55 @@ export function MachineAnatomyCatalogView({
         )}
       </div>
 
+      {/* ───── MOBILE MIDDLE BAND CAROUSEL (Lazy Susan) ───── */}
+      <div className="lg:hidden relative w-full z-40 pointer-events-auto -mt-20 shrink-0">
+        <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 px-6 pb-6 no-scrollbar">
+          {machines.map((m) => {
+            const isSelected = selectedMachineId === m.id;
+            const map = m.id ? MACHINE_ANATOMY[m.id] : undefined;
+            const movement = map?.movementPattern || '';
+            
+            let colorClass = 'bg-secondary';
+            if (movement.includes('Push')) colorClass = 'bg-orange-500';
+            else if (movement.includes('Pull')) colorClass = 'bg-cyan-500';
+            else if (movement.includes('Quad')) colorClass = 'bg-green-500';
+            else if (movement.includes('Posterior')) colorClass = 'bg-yellow-500';
+            else if (movement.includes('Core')) colorClass = 'bg-amber-500';
+            else if (movement.includes('Isolation')) colorClass = 'bg-violet-500';
+
+            return (
+              <button
+                key={m.id}
+                onClick={() => m.id && handleSelectMachine(m.id)}
+                className={`relative shrink-0 snap-center min-w-[160px] p-4 rounded-2xl bg-background/60 backdrop-blur-xl border transition-all text-left flex flex-col justify-end overflow-hidden ${
+                  isSelected 
+                    ? 'border-[#FF6B00] shadow-[0_0_15px_rgba(255,107,0,0.3)]' 
+                    : 'border-white/10 hover:bg-background/80'
+                }`}
+              >
+                <div className={`absolute left-0 top-0 bottom-0 w-1 ${colorClass}`} />
+                <div className="pl-2 w-full">
+                  <span className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1 block truncate">
+                    {map?.movementPattern || 'Equipment'}
+                  </span>
+                  <span className={`text-[13px] font-black italic uppercase tracking-tight truncate block ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                    {m.name}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ───── MOBILE DETAILS OVERLAY (Tablet/Mobile) ───── */}
-      {selectedMachine && machineKnowledge && (
-        <div className="lg:hidden absolute bottom-24 left-4 right-4 z-40 pointer-events-none flex flex-col justify-end">
-           <div className="pointer-events-auto w-full bg-background/80 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-3xl flex flex-col overflow-hidden max-h-[50vh] animate-in fade-in slide-in-from-bottom-4">
+      <div className="lg:hidden relative w-full z-40 pointer-events-none flex flex-col justify-end px-4 pb-24 shrink-0">
+        {selectedMachine && machineKnowledge && (
+           <div className="pointer-events-auto w-full bg-black/80 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-3xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4">
               <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/5 to-transparent"></div>
               
               {/* Header Area (Sticky) */}
-              <div className="relative z-10 p-5 border-b border-white/10 shrink-0 bg-background/40 backdrop-blur-md">
+              <div className="relative z-10 p-5 border-b border-white/10 shrink-0 bg-background/80 backdrop-blur-md sticky top-0">
                 <div className="text-[10px] uppercase tracking-[0.2em] text-cyan font-bold mb-1">
                   {selectedMap?.movementPattern || 'Kinematic Info'}
                 </div>
@@ -475,7 +516,7 @@ export function MachineAnatomyCatalogView({
               </div>
 
               {/* Scrollable Content */}
-              <div className="relative z-10 flex-1 overflow-y-auto no-scrollbar p-5 space-y-5">
+              <div className="relative z-10 flex-1 p-5 space-y-5">
                 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-black/40 p-3 rounded-xl border border-white/5">
@@ -598,8 +639,8 @@ export function MachineAnatomyCatalogView({
 
               </div>
            </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ───── DESKTOP BOTTOM CENTER CONTROLS ───── */}
       <div className="hidden lg:flex absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto z-50 flex-col gap-3 items-center">
