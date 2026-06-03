@@ -29,19 +29,24 @@ export function useAuthInitialization() {
 
           // Fetch base data needed for provider
           const trainerRef = doc(db, "trainers", u.uid);
-          const trainerSnap = await getDoc(trainerRef);
+          let trainerSnap: any = null;
+          try {
+            trainerSnap = await getDoc(trainerRef);
+          } catch (e) {
+             console.warn("Could not fetch trainer profile, proceeding with claims check.", e);
+          }
 
           let trainerData: Trainer | null = null;
           const isSystemAdmin =
             claimsRole === "Admin" ||
             claimsRole === "Founder" ||
             claimsRole === "Overseer" ||
-            (trainerSnap.exists() &&
+            (trainerSnap?.exists() &&
               (trainerSnap.data().role === "Admin" ||
                 trainerSnap.data().role === "Founder")) ||
             u.email === "jurgensaj@gmail.com";
 
-          if (trainerSnap.exists()) {
+          if (trainerSnap?.exists()) {
             trainerData = {
               id: trainerSnap.id,
               ...trainerSnap.data(),
@@ -75,24 +80,36 @@ export function useAuthInitialization() {
             return;
           }
 
-          const studioSnap = await getDocs(collection(db, "studios"));
-          setStudios(
-            studioSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Studio)
-          );
+          try {
+            const studioSnap = await getDocs(collection(db, "studios"));
+            setStudios(
+              studioSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Studio)
+            );
+          } catch (e) {
+            console.warn("Could not fetch studios collection: ", e);
+          }
 
-          const trainersSnap = await getDocs(collection(db, "trainers"));
-          setTrainers(
-            trainersSnap.docs.map(
-              (d) => ({ id: d.id, ...d.data() }) as Trainer
-            )
-          );
+          try {
+            const trainersSnap = await getDocs(collection(db, "trainers"));
+            setTrainers(
+              trainersSnap.docs.map(
+                (d) => ({ id: d.id, ...d.data() }) as Trainer
+              )
+            );
+          } catch (e) {
+            console.warn("Could not fetch trainers collection: ", e);
+          }
 
-          const networksSnap = await getDocs(collection(db, "networks"));
-          setNetworks(
-            networksSnap.docs.map(
-              (d) => ({ id: d.id, ...d.data() }) as FranchiseNetwork
-            )
-          );
+          try {
+            const networksSnap = await getDocs(collection(db, "networks"));
+            setNetworks(
+              networksSnap.docs.map(
+                (d) => ({ id: d.id, ...d.data() }) as FranchiseNetwork
+              )
+            );
+          } catch (e) {
+            console.warn("Could not fetch networks collection: ", e);
+          }
         } catch (error) {
           console.error("Auth initialization failed", error);
         }

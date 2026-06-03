@@ -1,4 +1,4 @@
-import { Slug } from '../../react-muscle-highlighter-main';
+import { Slug } from 'react-body-highlighter';
 
 export interface MachineMuscleMapping {
   name: string;

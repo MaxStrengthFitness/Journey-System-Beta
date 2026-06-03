@@ -7,7 +7,7 @@ import {
   ANATOMICAL_REGION_ORDER,
   MachineAnatomyMap,
 } from '../data/machine-anatomy-map';
-import Body, { ExtendedBodyPart, Slug } from '../../react-muscle-highlighter-main';
+import Body, { ExtendedBodyPart, Slug } from 'react-body-highlighter';
 import { machineMuscleMap } from '../data/machineMuscleMap';
 import { MACHINE_DATABASE } from '../data/machine-database';
 import { Button } from '@/components/ui/button';

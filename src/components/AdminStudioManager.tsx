@@ -10,6 +10,7 @@ import {
   orderBy,
   arrayUnion,
   arrayRemove,
+  deleteField,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { Studio, Trainer, FranchiseNetwork } from "../types";
@@ -241,6 +242,10 @@ export function AdminStudioManager({
 
   // 3. LINK STUDIO TO NETWORK
   const handleLinkStudio = async (networkId: string, studioId: string) => {
+    if (!networkId || !studioId) {
+      alert("Invalid selection. Missing network or location ID.");
+      return;
+    }
     try {
       const net = networks.find((n) => n.id === networkId);
       if (!net) return;
@@ -248,7 +253,8 @@ export function AdminStudioManager({
       const alreadyLinked = net.studioIds?.includes(studioId);
       if (alreadyLinked) return;
 
-      const updatedStudioIds = [...(net.studioIds || []), studioId];
+      const currentIds = (net.studioIds || []).filter(Boolean);
+      const updatedStudioIds = [...currentIds, studioId];
       // Update Network doc
       await updateDoc(doc(db, "networks", networkId), {
         studioIds: updatedStudioIds,
@@ -266,12 +272,16 @@ export function AdminStudioManager({
 
   // 4. UNLINK STUDIO FROM NETWORK
   const handleUnlinkStudio = async (networkId: string, studioId: string) => {
+    if (!networkId || !studioId) {
+      alert("Invalid selection. Missing network or location ID.");
+      return;
+    }
     try {
       const net = networks.find((n) => n.id === networkId);
       if (!net) return;
 
       const updatedStudioIds = (net.studioIds || []).filter(
-        (id) => id !== studioId,
+        (id) => !!id && id !== studioId,
       );
       // Update Network doc
       await updateDoc(doc(db, "networks", networkId), {
@@ -279,7 +289,7 @@ export function AdminStudioManager({
       });
       // Update Studio doc
       await updateDoc(doc(db, "studios", studioId), {
-        networkId: null,
+        networkId: deleteField(),
       });
       await onRefresh?.("networks");
       await onRefresh?.("studios");
@@ -307,8 +317,8 @@ export function AdminStudioManager({
       address: formData.get("address") as string,
       timezone: formData.get("timezone") as string,
       mindbodySiteId: formData.get("mindbodySiteId") as string,
-      ownerId: ownerIdVal === "none" ? null : ownerIdVal,
-      headTrainerId: headTrainerIdVal === "none" ? null : headTrainerIdVal,
+      ownerId: ownerIdVal === "none" ? deleteField() : ownerIdVal,
+      headTrainerId: headTrainerIdVal === "none" ? deleteField() : headTrainerIdVal,
     };
 
     try {
