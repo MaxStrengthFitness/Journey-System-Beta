@@ -1205,12 +1205,15 @@ export default function AppContent({
         error.code === "auth/popup-closed-by-user" ||
         error.code === "auth/cancelled-popup-request"
       ) {
+        setLoginError("Login cancelled. Please try again.");
         return;
       }
       console.error("Login failed:", error);
       
       const errMsg = error.message || "";
-      if (errMsg.includes("AADSTS50194")) {
+      if (error.code === 'auth/account-exists-with-different-credential') {
+        setLoginError("An account already exists with the same email. Please sign in using Google.");
+      } else if (errMsg.includes("AADSTS50194")) {
         setLoginError("Login failed: Your Microsoft App Registration is configured as single-tenant. Please go to Azure Portal and configure application 'dd2ae28c-1a71-4de3-bc12-5b0683032526' to be multi-tenant ('Accounts in any organizational directory and personal Microsoft accounts'), or set VITE_MICROSOFT_TENANT_ID in your environment variables to your tenant ID.");
       } else {
         setLoginError(`Login failed: ${error.message}`);
@@ -1288,11 +1291,14 @@ export default function AppContent({
               </div>
             </motion.button>
             
-            <motion.div
+            <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
+              onClick={() => handleLogin('microsoft')}
+              disabled={isLoggingIn}
               className={cn(
-                "relative overflow-hidden group w-full max-w-[320px] rounded-[40px] p-[2px] shadow-[0_15px_30px_rgba(0,0,0,0.5)] transition-opacity opacity-50 cursor-not-allowed",
+                "relative overflow-hidden group w-full max-w-[320px] rounded-[40px] p-[2px] shadow-[0_15px_30px_rgba(0,0,0,0.5)] transition-opacity",
+                isLoggingIn ? "opacity-50 cursor-not-allowed" : "opacity-100",
               )}
             >
               {/* Outer Metallic Ring */}
@@ -1301,11 +1307,8 @@ export default function AppContent({
               <div className="absolute inset-[1px] bg-gradient-to-b from-white/30 to-transparent rounded-[39px]"></div>
 
               <div className="relative bg-[#1d2736]/90 px-8 py-4 rounded-[38px] flex flex-row items-center justify-center gap-4 w-full h-full shadow-[inset_0_2px_15px_rgba(0,0,0,0.8)] backdrop-blur-md">
-                <div className="absolute inset-0 bg-black/60 rounded-[38px] flex items-center justify-center z-10">
-                  <span className="text-white font-bold text-sm tracking-wider uppercase drop-shadow-md">Coming Soon</span>
-                </div>
                 <svg
-                  className="w-6 h-6 text-slate-900 dark:text-white/40"
+                  className="w-6 h-6 text-slate-900 dark:text-white/90"
                   viewBox="0 0 24 24"
                   fill="currentColor"
                 >
@@ -1315,7 +1318,7 @@ export default function AppContent({
                   Continue with Microsoft
                 </span>
               </div>
-            </motion.div>
+            </motion.button>
           </div>
         </motion.div>
 

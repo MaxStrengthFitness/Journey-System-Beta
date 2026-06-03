@@ -26,6 +26,9 @@ import {
   ArrowLeft,
   Plus,
   Trash2,
+  Pencil,
+  Check,
+  X,
   Star,
   UserCircle,
   BadgeInfo,
@@ -187,6 +190,26 @@ export function AdminStudioManager({
 
   // 2. CREATE STUDIO
   const [newStudioName, setNewStudioName] = useState("");
+  const [editingNetworkId, setEditingNetworkId] = useState<string | null>(null);
+  const [editingNetworkName, setEditingNetworkName] = useState("");
+
+  const handleUpdateNetworkName = async (networkId: string) => {
+    if (!editingNetworkName.trim()) {
+      alert("Please provide a valid network name.");
+      return;
+    }
+    
+    try {
+      await updateDoc(doc(db, "networks", networkId), {
+        name: editingNetworkName.trim()
+      });
+      setEditingNetworkId(null);
+      await onRefresh?.("networks");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `networks/${networkId}`);
+    }
+  };
+
   const handleCreateStudio = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStudioName.trim()) {
@@ -1016,24 +1039,69 @@ export function AdminStudioManager({
 
                             <div className="space-y-4">
                               <div className="flex items-center justify-between">
-                                <div>
-                                  <h4 className="text-xl font-extrabold uppercase italic tracking-tight text-white">
-                                    {network.name}
-                                  </h4>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">
-                                      REGIONAL FRANCHISE NETWORK
-                                    </p>
-                                    {network.state && (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-[11px] tracking-widest border-slate-700 text-zinc-400"
+                                {editingNetworkId === network.id ? (
+                                  <div className="flex-1 mr-4">
+                                    <div className="flex items-center gap-2">
+                                      <Input 
+                                        value={editingNetworkName}
+                                        onChange={(e) => setEditingNetworkName(e.target.value)}
+                                        className="bg-slate-950 border-slate-700 text-white font-extrabold italic uppercase tracking-tight h-10 w-full"
+                                        autoFocus
+                                      />
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleUpdateNetworkName(network.id)}
+                                        className="w-10 h-10 shrink-0 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10"
                                       >
-                                        {network.state}
-                                      </Badge>
-                                    )}
+                                        <Check className="w-5 h-5" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setEditingNetworkId(null)}
+                                        className="w-10 h-10 shrink-0 text-zinc-500 hover:text-zinc-400 hover:bg-slate-800"
+                                      >
+                                        <X className="w-5 h-5" />
+                                      </Button>
+                                    </div>
                                   </div>
-                                </div>
+                                ) : (
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <h4 className="text-xl font-extrabold uppercase italic tracking-tight text-white cursor-pointer hover:text-[#F06C22] transition-colors"
+                                          onClick={() => {
+                                            setEditingNetworkId(network.id);
+                                            setEditingNetworkName(network.name);
+                                          }}
+                                      >
+                                        {network.name}
+                                      </h4>
+                                      <button 
+                                        onClick={() => {
+                                            setEditingNetworkId(network.id);
+                                            setEditingNetworkName(network.name);
+                                        }}
+                                        className="text-zinc-600 hover:text-[#F06C22] transition-colors"
+                                      >
+                                        <Pencil className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">
+                                        REGIONAL FRANCHISE NETWORK
+                                      </p>
+                                      {network.state && (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[11px] tracking-widest border-slate-700 text-zinc-400"
+                                        >
+                                          {network.state}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="icon"
