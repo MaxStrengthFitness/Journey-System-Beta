@@ -220,7 +220,7 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
         isVisibleOnCalendar: approvingCalendarVisible,
         email: approvingRequest.email.trim().toLowerCase(),
         searchTokens,
-        systemStatus: "active",
+        systemStatus: "active" as "active" | "inactive",
         createdAt: new Date().toISOString(),
       };
 

@@ -114,7 +114,6 @@ import {
 } from "./types";
 import { OperationType, handleFirestoreError } from "./lib/firestore-errors";
 // Removing duplicate cn import
-import { hashPin } from "./lib/auth-utils";
 import {
   parseSessionDate,
   calculateExerciseVolume,
@@ -131,20 +130,18 @@ import {
 } from "./lib/sync-utils";
 import { getLatestTargetWeight } from "./lib/historical-utils";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import AccessRequestView from "./components/AccessRequestView";
 import { generateMockClientWithHistory } from "./lib/mockDataGenerator";
 import { TrainerControlHubView } from "./components/TrainerControlHubView";
 import { InsightsDashboardView } from "./components/InsightsDashboardView";
 import { ClientProfileView } from "./components/ClientProfileView";
 import { CalendarView } from "./components/CalendarView";
-import { PinLoginView } from "./components/PinLoginView";
 import { LegacyChartImporter } from "./components/LegacyChartImporter";
 import { RetentionDashboardView } from "./components/RetentionDashboardView";
 import { MachineLeaderboardDashboard } from "./components/MachineLeaderboardDashboard";
-import { ProfilesView } from "./components/ProfilesView";
 import { ClientDirectoryView } from "./components/ClientDirectoryView";
 import { TrainerProfileView } from "./components/TrainerProfileView";
 import { StudioSelectionView } from "./components/StudioSelectionView";
+import { PendingApprovalView } from "./components/PendingApprovalView";
 import { PostSessionBriefingView } from "./components/PostSessionBriefingView";
 import { BriefingScreen } from "./components/BriefingScreen";
 import { VictoryHUDScreen } from "./components/VictoryHUDScreen";
@@ -559,7 +556,24 @@ export default function AppContent({
     new Map(),
   );
   const [isSyncing, setIsSyncing] = useState(false);
-  const [currentView, setCurrentView] = useState<View>("clients");
+  const isSuperAdminView = tokenRole === "Admin" || tokenRole === "Founder" || tokenRole === "Overseer" || authTrainer?.role === "Admin" || authTrainer?.role === "Founder" || authTrainer?.role === "Overseer";
+  const isOwnerView = authTrainer?.role === "Owner";
+  const isStudioLeaderView = authTrainer?.role === "StudioLeader";
+
+  const getDefaultView = () => {
+    if (isSuperAdminView) {
+      return "admin-dashboard";
+    }
+    if (isOwnerView) {
+      return "franchise-dashboard";
+    }
+    if (isStudioLeaderView) {
+      return "trainer-hub";
+    }
+    return "calendar";
+  };
+  
+  const [currentView, setCurrentView] = useState<View>(getDefaultView());
   const [newClientOnboardingName, setNewClientOnboardingName] = useState<
     string | null
   >(null);
@@ -914,24 +928,6 @@ export default function AppContent({
       }
     }
   }, [trainers.length, authTrainer?.id, user?.email, tokenRole]);
-
-  const handleTrainerLogin = (trainer: Trainer) => {
-    // Admin Override: If logged in as claims admin, elevate profile role
-    const isClaimsAdmin = tokenRole === "Admin" || tokenRole === "Founder" || tokenRole === "Overseer";
-    if (
-      isClaimsAdmin &&
-      (trainer.role === "Trainer" || trainer.role === "LifeTransformer")
-    ) {
-      trainer.role = "Admin";
-    }
-    setAuthTrainer(trainer);
-    localStorage.setItem("max_strength_trainer_id", trainer.id!);
-  };
-
-  const handleTrainerLock = () => {
-    setAuthTrainer(null);
-    localStorage.removeItem("max_strength_trainer_id");
-  };
 
   const [isWipeModalOpen, setIsWipeModalOpen] = useState(false);
 
@@ -1335,12 +1331,11 @@ export default function AppContent({
   }
 
   // Intercept authenticated but unauthorized users
-  if (user && !authTrainer) {
+  const isSuperAdmin = tokenRole === "Admin" || tokenRole === "Founder" || tokenRole === "Overseer" || authTrainer?.role === "Admin" || authTrainer?.role === "Founder" || authTrainer?.role === "Overseer";
+  if (user && (!authTrainer || (authTrainer.systemStatus === "inactive") || (!authTrainer.systemStatus && !isSuperAdmin))) {
     return (
-      <AccessRequestView 
-        authenticatedUser={user} 
-        studios={studios}
-        onTrainerCreated={setAuthTrainer}
+      <PendingApprovalView 
+        user={user} 
         onLogout={handleLogout} 
       />
     );
@@ -1353,22 +1348,12 @@ export default function AppContent({
   if (!activeStudioId || isChangingStudio) {
     return (
       <StudioSelectionView
-        studios={studios}
+        studios={availableStudios}
         networks={networks}
-        trainers={trainers}
-        onSelectTrainer={(selectedTrainer, studioId) => {
+        onSelectStudio={(studioId) => {
           setActiveStudioId(studioId);
-          setAuthTrainer(selectedTrainer);
-          localStorage.setItem("max_strength_trainer_id", selectedTrainer.id!);
-          const hasPin = selectedTrainer.pin || selectedTrainer.pinHash;
-          if (!hasPin) {
-            localStorage.setItem("max_strength_authenticated", "true");
-            setIsAuthenticated(true);
-          } else {
-            localStorage.setItem("max_strength_authenticated", "false");
-            setIsAuthenticated(false);
-          }
           setIsChangingStudio(false);
+          setIsAuthenticated(true);
         }}
         onBack={() => {
           if (!activeStudioId) {
@@ -1376,22 +1361,6 @@ export default function AppContent({
           } else {
             setIsChangingStudio(false);
           }
-        }}
-      />
-    );
-  }
-
-  // Trainer PIN Access Screen (if a studio is chosen but trainer profile is not authenticated)
-  if (!authTrainer || !isAuthenticated) {
-    return (
-      <PinLoginView
-        trainers={trainers}
-        user={user}
-        authTrainer={authTrainer}
-        onLogin={handleTrainerLogin}
-        onBack={() => {
-          handleTrainerLock();
-          setActiveStudioId(null);
         }}
       />
     );
@@ -1430,15 +1399,17 @@ export default function AppContent({
               <>
                 <ThemeToggle />
                 <HubAnnouncementsWidget authTrainer={authTrainer} />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setCurrentView("trainer-hub")}
-                  className={`rounded-full transition-all hover:bg-transparent ${currentView === "trainer-hub" ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 active:text-orange-500"}`}
-                  title="Trainer Control Hub"
-                >
-                  <Settings className="w-6 h-6 md:w-7 md:h-7 transition-colors hover:stroke-orange-500" />
-                </Button>
+                {(isSuperAdminView || isOwnerView || isStudioLeaderView) && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setCurrentView("trainer-hub")}
+                    className={`rounded-full transition-all hover:bg-transparent ${currentView === "trainer-hub" ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 active:text-orange-500"}`}
+                    title="Trainer Control Hub"
+                  >
+                    <Settings className="w-6 h-6 md:w-7 md:h-7 transition-colors hover:stroke-orange-500" />
+                  </Button>
+                )}
               </>
             }
             trainerDropdown={
@@ -1464,13 +1435,15 @@ export default function AppContent({
                       <UserCircle className="w-4 h-4 text-sky-500" />
                       View Profile
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setCurrentView("trainer-hub")}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
-                    >
-                      <Settings className="w-4 h-4" />
-                      Settings
-                    </DropdownMenuItem>
+                    {(isSuperAdminView || isOwnerView || isStudioLeaderView) && (
+                      <DropdownMenuItem
+                        onClick={() => setCurrentView("trainer-hub")}
+                        className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
+                      >
+                        <Settings className="w-4 h-4" />
+                        Settings
+                      </DropdownMenuItem>
+                    )}
                     {(isOwner(authTrainer) ||
                       checkIsAdmin(authTrainer, user.email || undefined)) && (
                       <DropdownMenuItem
@@ -1498,14 +1471,6 @@ export default function AppContent({
                   <DropdownMenuSeparator className="my-2 bg-slate-700" />
 
                   <DropdownMenuGroup>
-                    <DropdownMenuItem
-                      onClick={handleTrainerLock}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-orange-500 hover:bg-orange-500/10 dark:bg-orange-600/10 focus:bg-orange-500/10 dark:bg-orange-600/10 focus:text-orange-500 cursor-pointer"
-                    >
-                      <Lock className="w-4 h-4" />
-                      Switch Trainer
-                    </DropdownMenuItem>
-
                     <DropdownMenuItem
                       onClick={() => setIsChangingStudio(true)}
                       className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
@@ -1546,22 +1511,6 @@ export default function AppContent({
                   setCurrentView("profile");
                 }}
                 onCancel={() => setCurrentView("profile")}
-              />
-            )}
-            {currentView === "trainers" && (
-              <ProfilesView
-                trainers={trainers}
-                clients={clients}
-                sessions={sessions}
-                schedules={schedules}
-                onSelectClient={(id) => {
-                  setSelectedClientId(id);
-                }}
-                setSelectedClientId={setSelectedClientId}
-                setView={setCurrentView}
-                authTrainer={authTrainer}
-                onTrainerLogin={handleTrainerLogin}
-                isAdmin={tokenRole === "Admin" || authTrainer?.role === "Admin" || tokenRole === "Founder" || authTrainer?.role === "Founder"}
               />
             )}
             {currentView === "client-directory" && (
@@ -1733,7 +1682,7 @@ export default function AppContent({
                   authTrainer={authTrainer}
                 />
               )}
-            {currentView === "franchise-dashboard" && authTrainer && (
+            {currentView === "franchise-dashboard" && authTrainer && (isSuperAdminView || isOwnerView) && (
               <FranchiseDashboardView
                 authTrainer={authTrainer}
                 allStudios={studios}
@@ -1741,7 +1690,7 @@ export default function AppContent({
                 networks={networks}
               />
             )}
-            {currentView === "admin-dashboard" && authTrainer && (
+            {currentView === "admin-dashboard" && authTrainer && isSuperAdminView && (
               <AdminDashboardView
                 authTrainer={authTrainer}
                 studios={studios}
@@ -1762,7 +1711,7 @@ export default function AppContent({
                 }}
               />
             )}
-            {currentView === "trainer-hub" && (
+            {currentView === "trainer-hub" && (isSuperAdminView || isOwnerView || isStudioLeaderView) && (
               <TrainerControlHubView
                 activeStudioId={activeStudioId}
                 trainers={trainers}
@@ -1788,7 +1737,7 @@ export default function AppContent({
               />
             )}
             
-            {currentView === "integrations" && (
+            {currentView === "integrations" && (isSuperAdminView || isOwnerView || isStudioLeaderView) && (
               <IntegrationsHubView
                 authTrainer={authTrainer}
                 activeStudioId={activeStudioId}
@@ -1841,12 +1790,19 @@ export default function AppContent({
 
         {/* Navigation Bar */}
         <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-6 h-20 flex items-center justify-around z-[100]">
-          <NavButton
-            active={currentView === "clients"}
-            onClick={() => setCurrentView("clients")}
-            icon={<Users className="w-6 h-6" />}
-            label="Hub"
-          />
+          {authTrainer?.role !== "LifeTransformer" && (
+            <NavButton
+              active={
+                currentView === "admin-dashboard" ||
+                currentView === "franchise-dashboard" ||
+                currentView === "trainer-hub" ||
+                currentView === "clients"
+              }
+              onClick={() => setCurrentView(getDefaultView())}
+              icon={<Users className="w-6 h-6" />}
+              label="Hub"
+            />
+          )}
           <NavButton
             active={[
               "profile",

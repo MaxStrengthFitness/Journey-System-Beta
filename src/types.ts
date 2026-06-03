@@ -154,6 +154,8 @@ export interface Trainer {
   accessibleStudioIds: string[];
   /** Temporary assignments to other studios outside their regular access */
   activeGuestStudioIds: string[];
+  /** System access status */
+  systemStatus?: "active" | "inactive";
   /** Public-facing bio for client profiles */
   bio?: string;
   email?: string;
