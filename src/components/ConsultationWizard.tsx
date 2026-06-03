@@ -11,6 +11,7 @@ import { doc, updateDoc, serverTimestamp, collection, addDoc } from 'firebase/fi
 import { db } from '../firebase';
 import { Client, Machine, Trainer } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { useActiveStudio } from '../ActiveStudioContext';
 
 interface ConsultationWizardProps {
   client: Client;
@@ -22,6 +23,7 @@ interface ConsultationWizardProps {
 }
 
 export function ConsultationWizard({ client, machines, authTrainer, trainers, onComplete, onCancel }: ConsultationWizardProps) {
+  const { activeStudioId } = useActiveStudio();
   // Step 1: Intake
   const [gender, setGender] = useState<Gender>(client.gender as Gender || 'Male');
   const [age, setAge] = useState<number>(40);
@@ -98,6 +100,9 @@ export function ConsultationWizard({ client, machines, authTrainer, trainers, on
       const sessionRef = await addDoc(collection(db, 'sessions'), {
         clientId: client.id,
         routineId: routineRef.id,
+        hostedAtStudioId: activeStudioId || client.homeStudioId,
+        clientHomeStudioId: client.homeStudioId,
+        isCrossTrain: activeStudioId !== client.homeStudioId,
         sessionType: 'Standard',
         sessionNumber: 1,
         date,

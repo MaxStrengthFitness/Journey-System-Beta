@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "../firebase";
 import { hashPin } from "../lib/auth-utils";
 import { generateSearchTokens } from "@/lib/utils";
 import { Trainer, Studio, UserRole } from "../types";
@@ -113,8 +115,6 @@ export function EditTrainerModal({ trainer, authTrainer, studios, isOpen, onOpen
         initials: initials.trim(),
         email: email.trim(),
         role,
-        pin: pinValue,
-        pinHash: pinHashValue,
         primaryHomeStudioId,
         accessibleStudioIds: finalAccessible,
         activeGuestStudioIds,
@@ -123,6 +123,13 @@ export function EditTrainerModal({ trainer, authTrainer, studios, isOpen, onOpen
       };
 
       await onSave(payload);
+      
+      if (trainer?.id) {
+        await setDoc(doc(db, 'trainers', trainer.id, 'secrets', 'account'), {
+          pinHash: pinHashValue
+        });
+      }
+
       onOpenChange(false);
     } catch (error) {
       console.error("Failed to update trainer profile", error);

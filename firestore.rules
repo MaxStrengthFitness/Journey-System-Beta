@@ -199,9 +199,19 @@ service cloud.firestore {
                       request.auth.uid == trainerId &&
                       resource.data.requiresPinReset == true &&
                       request.resource.data.requiresPinReset == false &&
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pin', 'pinHash', 'requiresPinReset', 'updatedAt'])
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['requiresPinReset', 'updatedAt'])
+                    ) ||
+                    ( // Ensure pin/pinHash updates fail unless they are empty (for backfill/migration compatibility)
+                      isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['pin', 'pinHash']) &&
+                      (!('pin' in request.resource.data) || request.resource.data.pin == '') &&
+                      (!('pinHash' in request.resource.data) || request.resource.data.pinHash == '')
                     );
       allow delete: if isSuperAdmin();
+
+      match /secrets/account {
+        allow read: if isSuperAdmin() || request.auth.uid == trainerId;
+        allow write: if isSuperAdmin() || request.auth.uid == trainerId;
+      }
 
       match /machineRoster/{machineId} {
         allow read: if isTrainerOfStudio(studioId);
@@ -261,20 +271,47 @@ service cloud.firestore {
 
     // TRAINING SESSIONS
     match /sessions/{sessionId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() || isFranchiseOwner() ||
+        (resource.data.get('hostedAtStudioId', null) != null && isTrainerOfStudio(resource.data.hostedAtStudioId))
+      );
+      allow create: if isAuthenticated() && 
+                    request.resource.data.get('hostedAtStudioId', null) != null && 
+                    isTrainerOfStudio(request.resource.data.hostedAtStudioId);
+      allow update: if isAuthenticated() && 
+                    request.resource.data.get('hostedAtStudioId', null) != null && 
+                    isTrainerOfStudio(request.resource.data.hostedAtStudioId) && 
+                    resource.data.get('hostedAtStudioId', null) == request.resource.data.get('hostedAtStudioId', null);
       allow delete: if isSuperAdmin() || isFranchiseOwner();
 
       match /logs/{logId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isAuthenticated() &&
+          sessionId != null && exists(/databases/$(database)/documents/sessions/$(sessionId)) &&
+          get(/databases/$(database)/documents/sessions/$(sessionId)).data.get('hostedAtStudioId', null) != null &&
+          isTrainerOfStudio(get(/databases/$(database)/documents/sessions/$(sessionId)).data.hostedAtStudioId);
       }
     }
 
     // EXERCISE LOGS
     match /exerciseLogs/{logId} {
-      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
-      allow create: if isAuthenticated() && isValidLog(request.resource.data) && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
-      allow update: if isAuthenticated() && isValidLog(request.resource.data) && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null)) && (resource == null || getStudioIdFromData(resource.data) == getStudioIdFromData(request.resource.data));
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() || isFranchiseOwner() ||
+        (resource.data.get('sessionId', null) != null && exists(/databases/$(database)/documents/sessions/$(resource.data.sessionId)) && get(/databases/$(database)/documents/sessions/$(resource.data.sessionId)).data.get('hostedAtStudioId', null) != null && isTrainerOfStudio(get(/databases/$(database)/documents/sessions/$(resource.data.sessionId)).data.hostedAtStudioId)) ||
+        (resource.data.get('clientId', null) != null && exists(/databases/$(database)/documents/clients/$(resource.data.clientId)) && getStudioIdFromData(get(/databases/$(database)/documents/clients/$(resource.data.clientId)).data) != null && isTrainerOfStudio(getStudioIdFromData(get(/databases/$(database)/documents/clients/$(resource.data.clientId)).data)))
+      );
+      allow create: if isAuthenticated() && isValidLog(request.resource.data) && (
+        isSuperAdmin() || isFranchiseOwner() ||
+        (request.resource.data.get('sessionId', null) != null && exists(/databases/$(database)/documents/sessions/$(request.resource.data.sessionId)) && get(/databases/$(database)/documents/sessions/$(request.resource.data.sessionId)).data.get('hostedAtStudioId', null) != null && isTrainerOfStudio(get(/databases/$(database)/documents/sessions/$(request.resource.data.sessionId)).data.hostedAtStudioId)) ||
+        (request.resource.data.get('clientId', null) != null && exists(/databases/$(database)/documents/clients/$(request.resource.data.clientId)) && getStudioIdFromData(get(/databases/$(database)/documents/clients/$(request.resource.data.clientId)).data) != null && isTrainerOfStudio(getStudioIdFromData(get(/databases/$(database)/documents/clients/$(request.resource.data.clientId)).data)))
+      );
+      allow update: if isAuthenticated() && isValidLog(request.resource.data) && (
+        isSuperAdmin() || isFranchiseOwner() ||
+        (request.resource.data.get('sessionId', null) != null && exists(/databases/$(database)/documents/sessions/$(request.resource.data.sessionId)) && get(/databases/$(database)/documents/sessions/$(request.resource.data.sessionId)).data.get('hostedAtStudioId', null) != null && isTrainerOfStudio(get(/databases/$(database)/documents/sessions/$(request.resource.data.sessionId)).data.hostedAtStudioId)) ||
+        (request.resource.data.get('clientId', null) != null && exists(/databases/$(database)/documents/clients/$(request.resource.data.clientId)) && getStudioIdFromData(get(/databases/$(database)/documents/clients/$(request.resource.data.clientId)).data) != null && isTrainerOfStudio(getStudioIdFromData(get(/databases/$(database)/documents/clients/$(request.resource.data.clientId)).data)))
+      ) && (
+        resource.data.get('sessionId', null) == request.resource.data.get('sessionId', null) &&
+        resource.data.get('clientId', null) == request.resource.data.get('clientId', null)
+      );
       allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
@@ -362,7 +399,12 @@ service cloud.firestore {
 
     // ACCESS REQUESTS
     match /access_requests/{requestId} {
-      allow create: if true;
+      allow create: if hasRequiredFields(['email', 'fullName']) &&
+                    request.resource.data.email is string && request.resource.data.email.size() < 100 &&
+                    request.resource.data.fullName is string && request.resource.data.fullName.size() < 100 &&
+                    (!('phone' in request.resource.data) || (request.resource.data.phone is string && request.resource.data.phone.size() < 50)) &&
+                    (!('reason' in request.resource.data) || (request.resource.data.reason is string && request.resource.data.reason.size() < 1000)) &&
+                    request.resource.data.status == 'Pending';
       allow read, update, delete: if isSuperAdmin();
     }
 

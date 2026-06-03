@@ -162,10 +162,14 @@ export function TrainerControlHubView({
 
   const handleCreateTrainer = async (data: CreateTrainerPayload) => {
     try {
-      await addDoc(collection(db, 'trainers'), {
-        ...data,
-        primaryHomeStudioId: data.primaryHomeStudioId || activeStudioId,
+      const { pinHash, pin, ...restData } = data;
+      const ref = await addDoc(collection(db, 'trainers'), {
+        ...restData,
+        primaryHomeStudioId: restData.primaryHomeStudioId || activeStudioId,
         createdAt: serverTimestamp()
+      });
+      await setDoc(doc(db, 'trainers', ref.id, 'secrets', 'account'), {
+        pinHash: pinHash || ""
       });
     } catch (e: any) {
       alert("Error creating trainer: " + e.message);

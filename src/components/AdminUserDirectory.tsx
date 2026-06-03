@@ -322,12 +322,18 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
   const handleCreateUser = async (trainerData: CreateTrainerPayload) => {
     try {
       const role: UserRole = trainerData.isOwner ? "Owner" : "LifeTransformer";
+      const { pinHash, pin, ...restData } = trainerData;
       const ref = await addDoc(collection(db, "trainers"), {
-        ...trainerData,
+        ...restData,
         role: role,
         systemStatus: "active",
         createdAt: new Date().toISOString(),
       });
+      
+      await setDoc(doc(db, "trainers", ref.id, "secrets", "account"), {
+        pinHash: pinHash || ""
+      });
+
       // Add the newly created user to the state
       const newUser: Trainer = {
         id: ref.id,

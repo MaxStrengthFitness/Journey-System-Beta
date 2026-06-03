@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { comparePin, hashPin } from '../lib/auth-utils';
 import { auth, googleProvider, signInWithPopup, db } from '../firebase';
 import { signOut } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { useActiveStudio } from '../ActiveStudioContext';
 import { MaxStrengthLogo } from './MaxStrengthLogo';
 
@@ -158,8 +158,17 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
   const handleVerifyPin = async () => {
     if (!selectedTrainer || lockoutTime) return;
     try {
-      const targetPin = selectedTrainer.pinHash || selectedTrainer.pin;
-      const isValid = await comparePin(pinInput, targetPin);
+      let targetPin = selectedTrainer.pinHash || selectedTrainer.pin;
+      
+      // Fallback/Override: if not on main doc, read from secrets subcollection
+      if (!targetPin) {
+        const secretDoc = await getDoc(doc(db, 'trainers', selectedTrainer.id, 'secrets', 'account'));
+        if (secretDoc.exists()) {
+          targetPin = secretDoc.data().pinHash || secretDoc.data().pin;
+        }
+      }
+
+      const isValid = await comparePin(pinInput, targetPin || "");
       
       if (isValid) {
         setFailedAttempts(0);
@@ -193,14 +202,20 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
      try {
         const hashed = await hashPin(newPin);
         
-        const ref = doc(db, 'trainers', selectedTrainer.id);
-        await updateDoc(ref, {
-          pin: '', // Clear plaintext PIN for security
-          pinHash: hashed,
-          requiresPinReset: false
+        // Write pin to the protected subcollection
+        await setDoc(doc(db, 'trainers', selectedTrainer.id, 'secrets', 'account'), {
+          pinHash: hashed
         });
+
+        // 1. Clear requires pin reset if it exists
+        // 2. We don't write pin/pinHash to main anymore!
+        if (selectedTrainer.requiresPinReset) {
+          await updateDoc(doc(db, 'trainers', selectedTrainer.id), {
+            requiresPinReset: false
+          });
+        }
         
-        // Optimistically update
+        // Optimistically update (the UI might still reference pinHash for legacy reasons just locally)
         const updatedTrainer = { ...selectedTrainer, pin: '', pinHash: hashed, requiresPinReset: false };
         localStorage.setItem('max_strength_authenticated', 'true');
         setIsAuthenticated(true);

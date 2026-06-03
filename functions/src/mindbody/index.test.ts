@@ -45,7 +45,16 @@ describe('handleMindbodyWebhook (Inline Upsert)', () => {
 
     mockSet = vi.fn().mockResolvedValue(undefined);
     const mockDoc = vi.fn().mockReturnValue({ set: mockSet });
-    const mockCollection = vi.fn().mockReturnValue({ doc: mockDoc });
+    const mockCollection = vi.fn((path: string) => {
+      if (path === 'studios') {
+        return {
+          get: vi.fn().mockResolvedValue({
+            forEach: vi.fn()
+          })
+        };
+      }
+      return { doc: mockDoc };
+    });
 
     deps = {
       firestore: { collection: mockCollection } as unknown as Firestore,

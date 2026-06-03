@@ -20,6 +20,25 @@ export type WebhookDeps = {
   webhookSecret: string;
 };
 
+let studiosCache: Record<string, string> | null = null;
+let lastCacheUpdate = 0;
+
+async function getStudioIdFromMindbodySite(firestore: Firestore, siteId: string | number): Promise<string | undefined> {
+  const now = Date.now();
+  if (!studiosCache || now - lastCacheUpdate > 60000) { // Cache for 1 minute
+    studiosCache = {};
+    const snap = await firestore.collection('studios').get();
+    snap.forEach(doc => {
+      const data = doc.data();
+      if (data.mindbodySiteId) {
+        studiosCache![String(data.mindbodySiteId)] = doc.id;
+      }
+    });
+    lastCacheUpdate = now;
+  }
+  return studiosCache[String(siteId)];
+}
+
 /**
  * Handles incoming Mindbody webhooks.
  * Validates the signature, ensures uniqueness via idempotency checks,
@@ -60,7 +79,6 @@ export async function handleMindbodyWebhook(
       return { statusCode: 200 };
     }
   } catch (e) {
-    // If idempotency fails unexpectedly, log it, but wait, usually we should return 500
     console.error("Idempotency check failed", e);
     return { statusCode: 500 };
   }
@@ -77,6 +95,12 @@ export async function handleMindbodyWebhook(
       ? payloadData.clientId
       : (typeof parsed.clientId === 'string' || typeof parsed.clientId === 'number'
           ? parsed.clientId
+          : undefined);
+          
+    const siteId = typeof payloadData.siteId === 'string' || typeof payloadData.siteId === 'number'
+      ? payloadData.siteId
+      : (typeof parsed.siteId === 'string' || typeof parsed.siteId === 'number'
+          ? parsed.siteId
           : undefined);
     
     if (clientId) {
@@ -97,6 +121,13 @@ export async function handleMindbodyWebhook(
       // Extract mindbody_name if given to help match
       if (typeof payloadData.firstName === 'string' || typeof payloadData.lastName === 'string') {
          updates.mindbody_name = `${typeof payloadData.firstName === 'string' ? payloadData.firstName : ''} ${typeof payloadData.lastName === 'string' ? payloadData.lastName : ''}`.trim();
+      }
+
+      if (siteId) {
+        const studioId = await getStudioIdFromMindbodySite(deps.firestore, siteId);
+        if (studioId) {
+          updates.homeStudioId = studioId;
+        }
       }
 
       // Execute an atomic Firestore set() operation with { merge: true }

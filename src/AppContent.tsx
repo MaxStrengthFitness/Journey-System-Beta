@@ -2566,11 +2566,14 @@ function TrainersView({
     e.preventDefault();
     try {
       const securePin = await hashPin(formData.pin);
-      await addDoc(collection(db, "trainers"), {
-        ...formData,
-        pin: securePin,
+      const { pin, ...dataWithoutPin } = formData;
+      const ref = await addDoc(collection(db, "trainers"), {
+        ...dataWithoutPin,
         availability: DEFAULT_AVAILABILITY,
         createdAt: serverTimestamp(),
+      });
+      await setDoc(doc(db, "trainers", ref.id, "secrets", "account"), {
+        pinHash: securePin
       });
       setFormData({
         fullName: "",

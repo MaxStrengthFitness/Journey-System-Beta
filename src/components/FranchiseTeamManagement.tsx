@@ -49,10 +49,14 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
 
   const handleCreateTrainer = async (data: CreateTrainerPayload) => {
     try {
-      await addDoc(collection(db, 'trainers'), {
-        ...data,
-        primaryHomeStudioId: data.primaryHomeStudioId || activeStudioId, // falls back nicely
+      const { pinHash, pin, ...restData } = data;
+      const ref = await addDoc(collection(db, 'trainers'), {
+        ...restData,
+        primaryHomeStudioId: restData.primaryHomeStudioId || activeStudioId, // falls back nicely
         createdAt: serverTimestamp()
+      });
+      await setDoc(doc(db, 'trainers', ref.id, 'secrets', 'account'), {
+        pinHash: pinHash || ""
       });
     } catch (e: any) {
       alert("Error creating trainer: " + e.message);
