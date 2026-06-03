@@ -1,7 +1,7 @@
 import { initializeTestEnvironment, RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { setDoc, getDoc, doc, collection, getDocs, addDoc } from 'firebase/firestore';
-import { describe, it, beforeAll, afterAll, beforeEach, afterEach, expect } from 'vitest';
+import { setDoc, getDoc, doc, collection, getDocs, addDoc, updateDoc } from 'firebase/firestore';
+import { describe, it, beforeAll, afterAll, beforeEach, expect } from 'vitest';
 import * as fs from 'fs';
 
 let testEnv: RulesTestEnvironment;
@@ -21,8 +21,6 @@ beforeEach(async () => {
   await testEnv.clearFirestore();
   
   // Setup standard base data
-  // Studio 1 (Studio A)
-  // Studio 2 (Studio B)
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
     await setDoc(doc(db, 'studios', 'studioA'), { name: 'Studio A' });
@@ -30,6 +28,8 @@ beforeEach(async () => {
     
     // Trainer A (Studio A)
     await setDoc(doc(db, 'trainers', 'trainerA'), {
+      fullName: 'Trainer A',
+      initials: 'TA',
       role: 'LifeTransformer',
       primaryHomeStudioId: 'studioA',
       accessibleStudioIds: ['studioA']
@@ -42,9 +42,20 @@ beforeEach(async () => {
     
     // Trainer B (Studio B)
     await setDoc(doc(db, 'trainers', 'trainerB'), {
+      fullName: 'Trainer B',
+      initials: 'TB',
       role: 'LifeTransformer',
       primaryHomeStudioId: 'studioB',
       accessibleStudioIds: ['studioB']
+    });
+
+    // StudioOwner A (Studio A)
+    await setDoc(doc(db, 'trainers', 'ownerA'), {
+      fullName: 'Owner A',
+      initials: 'OA',
+      role: 'StudioOwner',
+      primaryHomeStudioId: 'studioA',
+      accessibleStudioIds: ['studioA']
     });
     
     // Session in Studio A
@@ -134,4 +145,41 @@ describe('Firestore Security Rules', () => {
     });
     await assertFails(p);
   });
+
+  it('allows a StudioOwner of studioA to read trainers/trainerA/secrets/account', async () => {
+    const ownerContext = testEnv.authenticatedContext('ownerA', {
+      email: 'ownera@test.com'
+    });
+    const db = ownerContext.firestore();
+    const p = getDoc(doc(db, 'trainers', 'trainerA', 'secrets', 'account'));
+    await assertSucceeds(p);
+  });
+
+  it('denies trainerB from updating trainerA with privilege escalation', async () => {
+    const trainerContext = testEnv.authenticatedContext('trainerB', {
+      email: 'trainerb@test.com'
+    });
+    const db = trainerContext.firestore();
+    const p = updateDoc(doc(db, 'trainers', 'trainerA'), {
+      pinHash: '',
+      role: 'Founder'
+    });
+    await assertFails(p);
+  });
+
+  it('denies trainer creation with a non-empty pinHash on the main doc', async () => {
+    const ownerContext = testEnv.authenticatedContext('ownerA', {
+      email: 'ownera@test.com'
+    });
+    const db = ownerContext.firestore();
+    const p = setDoc(doc(db, 'trainers', 'trainerC'), {
+      fullName: 'Trainer C',
+      initials: 'TC',
+      primaryHomeStudioId: 'studioA',
+      role: 'Trainer',
+      pinHash: 'some-hash'
+    });
+    await assertFails(p);
+  });
 });
+

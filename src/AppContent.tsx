@@ -147,6 +147,7 @@ import { StudioSelectionView } from "./components/StudioSelectionView";
 import { PostSessionBriefingView } from "./components/PostSessionBriefingView";
 import { BriefingScreen } from "./components/BriefingScreen";
 import { VictoryHUDScreen } from "./components/VictoryHUDScreen";
+import { IntegrationsHubView } from "./components/IntegrationsHubView";
 import { AppHeader } from "./components/AppHeader";
 import { useTheme } from "./components/ThemeProvider";
 import { ConsultationSetupWizard } from "./components/ConsultationSetupWizard";
@@ -542,7 +543,6 @@ export default function AppContent({
   tokenRole: string | null;
 }) {
   const { theme } = useTheme();
-  const [showUnauthRequest, setShowUnauthRequest] = useState(false);
   const {
     activeStudioId,
     activeStudio,
@@ -1193,14 +1193,6 @@ export default function AppContent({
     }
   };
 
-  if (showUnauthRequest) {
-    return (
-      <AccessRequestView 
-        onClose={() => setShowUnauthRequest(false)} 
-      />
-    );
-  }
-
   if (!user) {
     return (
       <div className="min-h-screen bg-[#1c1d1f] flex flex-col items-center justify-center p-6 focus:outline-none relative overflow-hidden">
@@ -1268,12 +1260,9 @@ export default function AppContent({
           <p className="text-slate-900 dark:text-white/30 text-[10px] sm:text-xs tracking-wider uppercase font-medium">
             Master/Admin Credentials Required for Administrative Portal Access
           </p>
-          <button
-            onClick={() => setShowUnauthRequest(true)}
-            className="text-[#ff9800] hover:text-[#ffa726] font-black text-xs uppercase tracking-widest cursor-pointer transition-colors hover:underline active:scale-95"
-          >
-            No Account? Request Access Directly
-          </button>
+          <div className="text-[#ff9800] font-black text-xs uppercase tracking-widest transition-colors">
+            No Account? Sign in with Google to Request Access.
+          </div>
         </div>
       </div>
     );
@@ -1727,6 +1716,15 @@ export default function AppContent({
                     setLeaderboardReturnView("trainer-hub");
                   setCurrentView(view as any);
                 }}
+                studios={studios}
+              />
+            )}
+            
+            {currentView === "integrations" && (
+              <IntegrationsHubView
+                authTrainer={authTrainer}
+                activeStudioId={activeStudioId}
+                onBack={() => setCurrentView("trainer-hub")}
                 studios={studios}
               />
             )}

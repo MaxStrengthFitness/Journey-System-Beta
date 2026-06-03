@@ -14,6 +14,7 @@ export interface StatTileProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'hero' | 'default' | 'elevated';
   meta?: string;
   progress?: { current: number; target: number };
+  broadBreakdown?: any[];
 }
 
 export function BentoStatTile({
@@ -24,12 +25,13 @@ export function BentoStatTile({
   variant = 'default',
   meta,
   progress,
+  broadBreakdown,
   ...props
 }: StatTileProps) {
   const isZeroError = value === 0 || value === "0" || value === "0:00";
 
   if (variant === 'hero') {
-    const breakdown = (props as any).broadBreakdown || [];
+    const breakdown = broadBreakdown || [];
     return (
       <div {...props} className={cn(
         "col-span-4 row-span-2 rounded-2xl bg-gradient-to-br from-cta to-cta-strong shadow-[0_12px_32px_var(--color-cta)] relative overflow-hidden p-4 sm:p-5 flex flex-col justify-between",

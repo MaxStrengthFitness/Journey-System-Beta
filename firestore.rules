@@ -29,15 +29,14 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && (
-        request.auth.token.role == 'Admin' ||
+        ('role' in request.auth.token && request.auth.token.role == 'Admin') ||
         getRole() == 'Admin'
       );
     }
 
     function isFounder() {
       return isAuthenticated() && (
-        request.auth.token.role == 'Founder' ||
-        request.auth.token.role == 'Overseer' ||
+        ('role' in request.auth.token && (request.auth.token.role == 'Founder' || request.auth.token.role == 'Overseer')) ||
         getRole() == 'Founder' || 
         getRole() == 'Overseer'
       );
@@ -47,50 +46,57 @@ service cloud.firestore {
     function isSuperAdmin() {
       return isAdmin() || isFounder() || (
         isAuthenticated() &&
-        (request.auth.token.email == 'jurgensaj@gmail.com' || request.auth.uid == 'k585kU0uOGWnoVVJjdRUBWgEiph2')
+        (('email' in request.auth.token && request.auth.token.email == 'jurgensaj@gmail.com') || request.auth.uid == 'k585kU0uOGWnoVVJjdRUBWgEiph2')
       );
     }
 
     // 2. FRANCHISE OWNER: Management authority of regional studio systems
-    function isFranchiseOwner() {
-      return isSuperAdmin() || (
-        isAuthenticated() && (
-          getRole() == 'FranchiseOwner' || 
-          getRole() == 'Owner'
-        )
+    function isFranchiseOwnerOnly() {
+      return isAuthenticated() && (
+        getRole() == 'FranchiseOwner' || 
+        getRole() == 'Owner'
       );
     }
 
     // 3. STUDIO OWNER & HEAD TRAINER: Read/write strictly bounded by location parameter
-    function isStudioOwnerOrHeadTrainer(studioId) {
-      return isFranchiseOwner() || (
-        isAuthenticated() && (
-          // Secure Custom Token Claim check
-          (request.auth.token.studioId != null && request.auth.token.studioId == studioId) ||
-          // Database Backed verification fallback
+    function isStudioOwnerOrHeadTrainerOnly(studioId) {
+      return isAuthenticated() && (
+        // Secure Custom Token Claim check
+        ('studioId' in request.auth.token && request.auth.token.studioId != null && request.auth.token.studioId == studioId) ||
+        // Database Backed verification fallback
+        (
+          exists(/databases/$(database)/documents/trainers/$(request.auth.uid)) &&
+          (getRole() == 'StudioOwner' || getRole() == 'HeadTrainer' || getRole() == 'StudioLeader') &&
           (
-            (getRole() == 'StudioOwner' || getRole() == 'HeadTrainer') &&
-            (
-              getTrainerData().primaryHomeStudioId == studioId || 
-              ('ownedStudioIds' in getTrainerData() && getTrainerData().ownedStudioIds != null && getTrainerData().ownedStudioIds.hasAny([studioId]))
-            )
+            getTrainerData().primaryHomeStudioId == studioId || 
+            ('ownedStudioIds' in getTrainerData() && getTrainerData().ownedStudioIds != null && getTrainerData().ownedStudioIds.hasAny([studioId]))
           )
         )
       );
     }
 
+    function isStudioOwnerOrHeadTrainer(studioId) {
+      return isStudioOwnerOrHeadTrainerOnly(studioId);
+    }
+
+    function isFranchiseOwner() {
+      return isFranchiseOwnerOnly();
+    }
+
     // 4. TRAINER: Limited strictly to designated home or accessible guest studios
-    function isTrainerOfStudio(studioId) {
-      return isStudioOwnerOrHeadTrainer(studioId) || (
-        isAuthenticated() && (
-          (getRole() == 'Trainer' || getRole() == 'LifeTransformer' || getRole() == 'StudioLeader') &&
-          (
-            getTrainerData().primaryHomeStudioId == studioId ||
-            ('accessibleStudioIds' in getTrainerData() && getTrainerData().accessibleStudioIds != null && getTrainerData().accessibleStudioIds.hasAny([studioId])) ||
-            ('activeGuestStudioIds' in getTrainerData() && getTrainerData().activeGuestStudioIds != null && getTrainerData().activeGuestStudioIds.hasAny([studioId]))
-          )
+    function isTrainerOfStudioOnly(studioId) {
+      return isAuthenticated() && exists(/databases/$(database)/documents/trainers/$(request.auth.uid)) && (
+        (getRole() == 'Trainer' || getRole() == 'LifeTransformer' || getRole() == 'StudioLeader') &&
+        (
+          getTrainerData().primaryHomeStudioId == studioId ||
+          ('accessibleStudioIds' in getTrainerData() && getTrainerData().accessibleStudioIds != null && getTrainerData().accessibleStudioIds.hasAny([studioId])) ||
+          ('activeGuestStudioIds' in getTrainerData() && getTrainerData().activeGuestStudioIds != null && getTrainerData().activeGuestStudioIds.hasAny([studioId]))
         )
       );
+    }
+
+    function isTrainerOfStudio(studioId) {
+      return isStudioOwnerOrHeadTrainerOnly(studioId) || isTrainerOfStudioOnly(studioId);
     }
 
     // 5. HELPER: Resolve studio or homeStudioId field safely from a data map
@@ -99,12 +105,12 @@ service cloud.firestore {
     }
 
     function isTrainerOfStudioOrClient(studioId, clientId) {
-      return isSuperAdmin() || isFranchiseOwner() || (
+      return isSuperAdmin() || isFranchiseOwnerOnly() || (
         isAuthenticated() && (
-          (studioId != null && isTrainerOfStudio(studioId)) ||
+          (studioId != null && (isStudioOwnerOrHeadTrainerOnly(studioId) || isTrainerOfStudioOnly(studioId))) ||
           (clientId != null && exists(/databases/$(database)/documents/clients/$(clientId)) && (
             getStudioIdFromData(get(/databases/$(database)/documents/clients/$(clientId)).data) != null &&
-            isTrainerOfStudio(getStudioIdFromData(get(/databases/$(database)/documents/clients/$(clientId)).data))
+            (isStudioOwnerOrHeadTrainerOnly(getStudioIdFromData(get(/databases/$(database)/documents/clients/$(clientId)).data)) || isTrainerOfStudioOnly(getStudioIdFromData(get(/databases/$(database)/documents/clients/$(clientId)).data)))
           ))
         )
       );
@@ -122,7 +128,7 @@ service cloud.firestore {
       return hasRequiredFields(['fullName', 'initials', 'primaryHomeStudioId']) &&
              data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
              data.initials is string && data.initials.size() >= 2 && data.initials.size() <= 4 &&
-             (!('pin' in data) || data.pin == null || (data.pin is string && (data.pin == '' || data.pin.matches('^[0-9a-fA-F]{4,64}$')))) &&
+             (!('pin' in data) || data.pin == '') && (!('pinHash' in data) || data.pinHash == '') &&
              data.primaryHomeStudioId is string && data.primaryHomeStudioId.size() > 0 && data.primaryHomeStudioId.size() < 100 &&
              (!('mindbody_ical_url' in data) || data.mindbody_ical_url == null || (data.mindbody_ical_url is string && data.mindbody_ical_url.size() < 500)) &&
              (!('role' in data) || data.role == null || data.role is string) &&
@@ -200,11 +206,6 @@ service cloud.firestore {
                       resource.data.requiresPinReset == true &&
                       request.resource.data.requiresPinReset == false &&
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['requiresPinReset', 'updatedAt'])
-                    ) ||
-                    ( // Ensure pin/pinHash updates fail unless they are empty (for backfill/migration compatibility)
-                      isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['pin', 'pinHash']) &&
-                      (!('pin' in request.resource.data) || request.resource.data.pin == '') &&
-                      (!('pinHash' in request.resource.data) || request.resource.data.pinHash == '')
                     );
       allow delete: if isSuperAdmin();
 
@@ -218,8 +219,8 @@ service cloud.firestore {
       }
 
       match /machineRoster/{machineId} {
-        allow read: if isTrainerOfStudio(studioId);
-        allow write: if isStudioOwnerOrHeadTrainer(studioId);
+        allow read: if isAuthenticated() && (isSuperAdmin() || isTrainerOfStudio(get(/databases/$(database)/documents/trainers/$(trainerId)).data.primaryHomeStudioId));
+        allow write: if isAuthenticated() && (isSuperAdmin() || isStudioOwnerOrHeadTrainer(get(/databases/$(database)/documents/trainers/$(trainerId)).data.primaryHomeStudioId));
       }
   
     }

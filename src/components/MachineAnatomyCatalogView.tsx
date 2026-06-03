@@ -7,7 +7,7 @@ import {
   ANATOMICAL_REGION_ORDER,
   MachineAnatomyMap,
 } from '../data/machine-anatomy-map';
-import Body, { ExtendedBodyPart, Slug } from 'react-body-highlighter';
+import Body from 'react-body-highlighter';
 import { machineMuscleMap } from '../data/machineMuscleMap';
 import { MACHINE_DATABASE } from '../data/machine-database';
 import { Button } from '@/components/ui/button';
@@ -176,28 +176,28 @@ export function MachineAnatomyCatalogView({
   };
 
   const highlightData = useMemo(() => {
-    const data: ExtendedBodyPart[] = [];
+    const data: any[] = [];
     if (!selectedMachineId) return data;
     
     const mapping = machineMuscleMap[selectedMachineId];
     if (!mapping) return data;
 
     mapping.primary.forEach(muscle => {
-      data.push({ slug: muscle, color: 'var(--cta)' });
+      data.push({ name: muscle, muscles: [muscle] });
     });
 
     mapping.synergist.forEach(muscle => {
-      data.push({ slug: muscle, color: 'var(--cyan)' });
+      data.push({ name: `syn-${muscle}`, muscles: [muscle] });
     });
 
     return data;
   }, [selectedMachineId]);
 
-  const handleMuscleClick = (part: ExtendedBodyPart) => {
-    if (!part.slug) return;
+  const handleMuscleClick = (part: any) => {
+    if (!part.muscle) return;
     const targetMachineId = Object.keys(machineMuscleMap).find(id => 
-      machineMuscleMap[id].primary.includes(part.slug as Slug) || 
-      machineMuscleMap[id].synergist.includes(part.slug as Slug)
+      machineMuscleMap[id].primary.includes(part.muscle as any) || 
+      machineMuscleMap[id].synergist.includes(part.muscle as any)
     );
     
     if (targetMachineId) {
@@ -387,10 +387,8 @@ export function MachineAnatomyCatalogView({
         <div className="relative w-full max-w-[600px] h-full flex justify-center p-4 lg:p-12 lg:mt-0">
           <Body 
             data={highlightData} 
-            side={view} 
-            gender={gender} 
-            scale={1.5} 
-            onBodyPartPress={handleMuscleClick}
+            type={view === 'front' ? 'anterior' : 'posterior'} 
+            onClick={handleMuscleClick}
           />
         </div>
       </div>

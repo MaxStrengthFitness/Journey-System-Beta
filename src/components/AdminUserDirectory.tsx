@@ -4,6 +4,7 @@ import {
   query,
   getDocs,
   doc,
+  setDoc,
   updateDoc,
   deleteDoc,
   limit,
@@ -199,6 +200,10 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
       alert("Initials must be at least 2 characters.");
       return;
     }
+    if (!approvingRequest.userId) {
+      alert("No signed-in account attached — have them sign in with Google first, then re-approve.");
+      return;
+    }
 
     try {
       const searchTokens = generateSearchTokens(approvingRequest.fullName);
@@ -220,18 +225,19 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
       };
 
       // 1. Write Trainer to firestore
-      const trainerRef = await addDoc(collection(db, "trainers"), trainerData);
+      const newTrainerId = approvingRequest.userId;
+      await setDoc(doc(db, "trainers", newTrainerId), trainerData);
 
       // 2. Mark access request as Approved
       await updateDoc(doc(db, "access_requests", approvingRequest.id), {
         status: "Approved",
-        approvedTrainerId: trainerRef.id,
+        approvedTrainerId: newTrainerId,
         updatedAt: new Date().toISOString(),
       });
 
       // 3. Update local directory state
       const newTrainer: Trainer = {
-        id: trainerRef.id,
+        id: newTrainerId,
         ...trainerData,
       };
       

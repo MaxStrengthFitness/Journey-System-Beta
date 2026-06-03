@@ -80,8 +80,6 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
 
     setFullName("");
     setInitials("");
-    setPin("");
-    setEnablePin(false);
     setIsOwner(false);
     setPrimaryHomeStudioId(activeStudioId || "");
     onOpenChange(false);
@@ -171,7 +169,7 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
         <DialogFooter>
           <Button
             onClick={handleSubmit}
-            disabled={!fullName || !initials || !primaryHomeStudioId || (enablePin && pin.length !== 4)}
+            disabled={!fullName || !initials || !primaryHomeStudioId}
             className="w-full bg-[#F06C22] hover:bg-[#d95b16] text-white font-black uppercase text-xs h-12 rounded-xl transition-all shadow-[0_0_20px_rgba(240,108,34,0.3)]"
           >
             Create Trainer Profile

@@ -22,7 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, CheckCircle2, AlertCircle, Loader2, Database, Link, RefreshCcw, ShieldCheck, LogOut, Plus, Trash2, Shield, Settings2, Building2, HardDrive, Lock, ShieldAlert, MonitorPlay, Trash, UserCog, TrendingUp, Trophy, Sparkles, Megaphone, Gift, ChevronDown, ChevronUp, Users, Clock, User, Settings } from 'lucide-react';
+import { Upload, CheckCircle2, AlertCircle, Loader2, Database, Link, RefreshCcw, ShieldCheck, LogOut, Plus, Trash2, Shield, Settings2, Building2, HardDrive, Lock, ShieldAlert, MonitorPlay, Trash, UserCog, TrendingUp, Trophy, Sparkles, Megaphone, Gift, ChevronDown, ChevronUp, Users, Clock, User, Settings, Webhook, Download, Bell, FileSpreadsheet, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -90,7 +90,7 @@ export function TrainerControlHubView({
   });
 
   // Layout State
-  const [activeTab, setActiveTab] = useState<'equipment_settings' | 'app_settings'>('equipment_settings');
+  const [activeTab, setActiveTab] = useState<'equipment_settings' | 'app_settings' | 'data_exports' | 'notifications'>('equipment_settings');
 
   // iCal Edit State
   const [editingIcalId, setEditingIcalId] = useState<string | null>(null);
@@ -712,13 +712,13 @@ export function TrainerControlHubView({
         </div>
         
         <div className="flex gap-2 ml-auto">
-          {setView && authTrainer && checkIsStudioLeader(authTrainer) && (
+          {setView && (isAdmin || checkIsStudioLeader(authTrainer)) && (
             <Button 
-              onClick={() => setView('owner-dashboard')}
-              className="rounded-2xl bg-brand/10 border border-brand/30 text-brand hover:bg-brand/20 dark:hover:text-white h-12 px-6 font-black uppercase text-[11px] tracking-widest shadow-sm dark:shadow-none transition-colors"
+              onClick={() => setView('integrations')}
+              className="rounded-2xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-500 hover:text-indigo-400 hover:bg-indigo-500/20 h-12 px-6 font-black uppercase text-[11px] tracking-widest shadow-sm transition-colors"
             >
-              <Building2 className="w-4 h-4 mr-2" />
-              Owner Portal
+              <Webhook className="w-4 h-4 mr-2" />
+              Integrations
             </Button>
           )}
           {onLogout && (
@@ -740,9 +740,11 @@ export function TrainerControlHubView({
           {[
             { id: 'equipment_settings', label: 'Hardware Settings', icon: MonitorPlay },
             { id: 'app_settings', label: 'App Settings', icon: Settings },
+            { id: 'data_exports', label: 'Data & Reports', icon: Download },
+            { id: 'notifications', label: 'Alerts & Comms', icon: Bell },
           ].filter(tab => {
-            if (tab.id === 'app_settings') {
-              return isAdmin || checkIsOwner(authTrainer);
+            if (tab.id === 'app_settings' || tab.id === 'data_exports' || tab.id === 'notifications') {
+              return isAdmin || checkIsOwner(authTrainer) || checkIsStudioLeader(authTrainer);
             }
             return true;
           }).map(tab => {
@@ -1623,6 +1625,118 @@ export function TrainerControlHubView({
                         </div>
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
+
+          {activeTab === 'data_exports' && (() => {
+            return (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">
+                <Card className="border border-border bg-card shadow-2xl dark:shadow-none rounded-[32px] overflow-hidden">
+                  <CardHeader className="bg-background pb-8 border-b border-border">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center border border-border shadow-inner">
+                          <Download className="w-6 h-6 text-cta" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-2xl font-black text-foreground italic tracking-tight">Data Exports & Reporting</CardTitle>
+                          <CardDescription className="text-muted-foreground font-medium uppercase text-[11px] tracking-widest">Generate CSV reports for performance, payroll, and logs.</CardDescription>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-8 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Card className="bg-card border-border shadow-sm">
+                        <CardHeader className="pb-3 border-b border-border">
+                          <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground flex items-center">
+                            <FileSpreadsheet className="w-4 h-4 mr-2" />
+                            Trainer & Payroll Summary
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 flex flex-col gap-4">
+                          <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
+                            Generate a trailing 7/30-day view of payroll summary session counts and trainer performance metrics.
+                          </p>
+                          <Button className="w-full text-xs font-bold uppercase bg-cta text-white hover:bg-cta-strong rounded-xl">
+                            Download CSV
+                          </Button>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-card border-border shadow-sm">
+                        <CardHeader className="pb-3 border-b border-border">
+                          <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground flex items-center">
+                            <Users className="w-4 h-4 mr-2" />
+                            Client Attendance Logs
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 flex flex-col gap-4">
+                          <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
+                            Instantly export historical records of client check-ins, session completions, and no-shows data.
+                          </p>
+                          <Button className="w-full text-xs font-bold uppercase bg-cta text-white hover:bg-cta-strong rounded-xl">
+                            Download CSV
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
+
+          {activeTab === 'notifications' && (() => {
+            return (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">
+                <Card className="border border-border bg-card shadow-2xl dark:shadow-none rounded-[32px] overflow-hidden">
+                  <CardHeader className="bg-background pb-8 border-b border-border">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center border border-border shadow-inner">
+                          <Bell className="w-6 h-6 text-cta" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-2xl font-black text-foreground italic tracking-tight">Notifications & Alerts</CardTitle>
+                          <CardDescription className="text-muted-foreground font-medium uppercase text-[11px] tracking-widest">Configure automated SMS/email reminders and daily digests.</CardDescription>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="p-6 sm:p-8 flex items-start sm:items-center justify-between gap-4 hover:bg-muted/50 transition-colors border-b border-border">
+                      <div className="flex items-center gap-4 text-left group">
+                        <div className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center shrink-0 shadow-sm">
+                          <Mail className="w-5 h-5 text-cta" />
+                        </div>
+                        <div>
+                          <h4 className="font-black text-foreground uppercase tracking-wider text-sm">Client Booking Reminders</h4>
+                          <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
+                            Automatically send automated SMS/Email reminders to clients 24 hours before their session.
+                          </p>
+                        </div>
+                      </div>
+                      <Switch defaultChecked={true} />
+                    </div>
+
+                    <div className="p-6 sm:p-8 flex items-start sm:items-center justify-between gap-4 hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-4 text-left group">
+                        <div className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center shrink-0 shadow-sm">
+                          <Settings className="w-5 h-5 text-cta" />
+                        </div>
+                        <div>
+                          <h4 className="font-black text-foreground uppercase tracking-wider text-sm">Owner Daily Action Summary</h4>
+                          <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
+                            Configure daily summary reports of completed sessions to be sent directly to the studio owner's email.
+                          </p>
+                        </div>
+                      </div>
+                      <Switch defaultChecked={false} />
+                    </div>
                   </CardContent>
                 </Card>
               </div>

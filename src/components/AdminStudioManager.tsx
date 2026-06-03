@@ -319,7 +319,7 @@ export function AdminStudioManager({
       mindbodySiteId: formData.get("mindbodySiteId") as string,
       ownerId: ownerIdVal === "none" ? deleteField() : ownerIdVal,
       headTrainerId: headTrainerIdVal === "none" ? deleteField() : headTrainerIdVal,
-    };
+    } as any;
 
     try {
       await updateDoc(doc(db, "studios", selectedStudio.id), updates);

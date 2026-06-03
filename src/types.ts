@@ -141,7 +141,7 @@ export interface Trainer {
   fullName: string;
   initials: string;
   brandColor?: string;
-  pin: string;
+  pin?: string;
   pinHash?: string;
   requiresPinReset?: boolean;
   /** Role determining UI permissions and logic overrides */

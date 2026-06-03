@@ -1,9 +1,7 @@
-import { Slug } from 'react-body-highlighter';
-
 export interface MachineMuscleMapping {
   name: string;
-  primary: Slug[];
-  synergist: Slug[];
+  primary: any[];
+  synergist: any[];
 }
 
 export const machineMuscleMap: Record<string, MachineMuscleMapping> = {
@@ -11,19 +9,19 @@ export const machineMuscleMap: Record<string, MachineMuscleMapping> = {
   'm-chest-press': {
     name: 'Chest Press',
     primary: ['chest'],
-    synergist: ['deltoids', 'triceps'],
+    synergist: ['front-deltoids', 'back-deltoids', 'triceps'],
   },
   'm-chest-fly': {
     name: 'Chest Fly',
     primary: ['chest'],
-    synergist: ['deltoids'],
+    synergist: ['front-deltoids', 'back-deltoids'],
   },
 
   // HORIZONTAL PULL
   'm-compound-row': {
     name: 'Compound Row',
     primary: ['upper-back'], // lats & rhomboids
-    synergist: ['biceps', 'deltoids', 'trapezius'],
+    synergist: ['biceps', 'front-deltoids', 'back-deltoids', 'trapezius'],
   },
   'm-simple-row': {
     name: 'Simple Row',
@@ -34,20 +32,20 @@ export const machineMuscleMap: Record<string, MachineMuscleMapping> = {
   // VERTICAL PUSH
   'm-overhead-press': {
     name: 'Overhead Press',
-    primary: ['deltoids'],
+    primary: ['front-deltoids', 'back-deltoids'],
     synergist: ['triceps', 'trapezius'],
   },
   'm-dip': {
     name: 'Dip',
     primary: ['triceps'],
-    synergist: ['chest', 'deltoids'],
+    synergist: ['chest', 'front-deltoids', 'back-deltoids'],
   },
 
   // VERTICAL PULL
   'm-pulldown': {
     name: 'Pulldown',
     primary: ['upper-back'], // lats
-    synergist: ['biceps', 'deltoids'],
+    synergist: ['biceps', 'front-deltoids', 'back-deltoids'],
   },
   'm-pullover': {
     name: 'Pullover',
@@ -58,7 +56,7 @@ export const machineMuscleMap: Record<string, MachineMuscleMapping> = {
   // SHOULDER ISOLATION
   'm-lateral-raise': {
     name: 'Lateral Raise',
-    primary: ['deltoids'],
+    primary: ['front-deltoids', 'back-deltoids'],
     synergist: ['trapezius'],
   },
 
@@ -78,7 +76,7 @@ export const machineMuscleMap: Record<string, MachineMuscleMapping> = {
   'm-leg-press': {
     name: 'Leg Press',
     primary: ['quadriceps', 'gluteal'],
-    synergist: ['hamstring', 'calves', 'adductors'],
+    synergist: ['hamstring', 'calves', 'adductor'],
   },
   'm-ext': {
     name: 'Leg Extension',
@@ -101,7 +99,7 @@ export const machineMuscleMap: Record<string, MachineMuscleMapping> = {
   },
   'm-hip-add': {
     name: 'Hip Adduction',
-    primary: ['adductors'],
+    primary: ['adductor'],
     synergist: [],
   },
 
