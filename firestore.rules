@@ -190,7 +190,8 @@ service cloud.firestore {
                     request.resource.data.primaryHomeStudioId != null &&
                     isValidTrainer(request.resource.data) &&
                     (isSuperAdmin() || isFranchiseOwner() || 
-                     isStudioOwnerOrHeadTrainer(request.resource.data.primaryHomeStudioId));
+                     isStudioOwnerOrHeadTrainer(request.resource.data.primaryHomeStudioId) ||
+                     (request.auth.token.email != null && request.auth.token.email.matches('.*@maxstrengthfitness\\.com')));
       allow update: if isSuperAdmin() || 
                     ( (isFranchiseOwner() || 
                       (resource.data.primaryHomeStudioId != null && isStudioOwnerOrHeadTrainer(resource.data.primaryHomeStudioId)) || 
@@ -290,10 +291,12 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || isFranchiseOwner();
 
       match /logs/{logId} {
-        allow read, write: if isAuthenticated() &&
-          sessionId != null && exists(/databases/$(database)/documents/sessions/$(sessionId)) &&
-          get(/databases/$(database)/documents/sessions/$(sessionId)).data.get('hostedAtStudioId', null) != null &&
-          isTrainerOfStudio(get(/databases/$(database)/documents/sessions/$(sessionId)).data.hostedAtStudioId);
+        allow read, write: if isAuthenticated() && (
+          isSuperAdmin() || isFranchiseOwner() ||
+          (sessionId != null && exists(/databases/$(database)/documents/sessions/$(sessionId)) &&
+           get(/databases/$(database)/documents/sessions/$(sessionId)).data.get('hostedAtStudioId', null) != null &&
+           isTrainerOfStudio(get(/databases/$(database)/documents/sessions/$(sessionId)).data.hostedAtStudioId))
+        );
       }
     }
 

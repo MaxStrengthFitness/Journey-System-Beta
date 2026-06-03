@@ -2198,22 +2198,16 @@ export function ClientProfileView({
               animate={{ opacity: 1, height: "auto" }}
               className="mb-2"
             >
-              <div className="bg-[#F06C22]/10 border-2 border-[#F06C22]/20 rounded-3xl p-4 flex items-center gap-4 text-[#F06C22]">
+              <div className="bg-[#5BC0BE]/10 border-2 border-[#5BC0BE]/20 rounded-3xl p-4 flex items-center gap-4 text-[#5BC0BE]">
                 <AlertCircle className="w-6 h-6 flex-shrink-0" />
                 <div className="flex-1">
                   <p className="text-xs font-bold uppercase tracking-tight">
-                    Discovery Consultation Pending (Stage 2)
+                    Profile Setup Needed
                   </p>
-                  <p className="text-[11px] font-bold opacity-80 uppercase tracking-widest">
-                    Complete clinical baseline and occupational matrix in the 'Details' tab.
+                  <p className="text-[11px] font-bold opacity-80 uppercase tracking-widest mt-0.5">
+                    Set up their routine in the 'Equipment' tab or head to profile details to build their profile.
                   </p>
                 </div>
-                <Button
-                  className="bg-[#F06C22] hover:bg-[#F06C22]/90 text-[11px] font-medium uppercase rounded-full h-9 px-4 shadow-lg shadow-[#F06C22]/20"
-                  onClick={() => setActiveTab("details")}
-                >
-                  Start Stage 2
-                </Button>
               </div>
             </motion.div>
           );

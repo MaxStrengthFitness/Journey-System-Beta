@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { ThemeProvider } from './components/ThemeProvider.tsx';
+import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 
 // Suppress benign ResizeObserver errors
 const suppressResizeObserverError = () => {
@@ -82,8 +83,10 @@ window.addEventListener('unhandledrejection', (e) => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider defaultTheme="dark" storageKey="journey-system-theme">
-      <App />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider defaultTheme="dark" storageKey="journey-system-theme">
+        <App />
+      </ThemeProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );

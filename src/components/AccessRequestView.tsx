@@ -11,21 +11,27 @@ import {
   Mail, 
   Phone, 
   MessageSquare, 
-  Users 
+  Users,
+  MapPin
 } from "lucide-react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Studio, Trainer } from "../types";
 
 interface AccessRequestViewProps {
   authenticatedUser?: any; // Google User if logged in
+  studios?: Studio[];
+  onTrainerCreated?: (t: Trainer) => void;
   onClose?: () => void;    // For unauthenticated guests returning to login
   onLogout?: () => void;   // Allow logged-in but unauthorized users to sign out
 }
 
 export default function AccessRequestView({
   authenticatedUser,
+  studios = [],
+  onTrainerCreated,
   onClose,
   onLogout,
 }: AccessRequestViewProps) {
@@ -34,10 +40,13 @@ export default function AccessRequestView({
   const [phone, setPhone] = useState("");
   const [roleRequested, setRoleRequested] = useState("Trainer");
   const [reason, setReason] = useState("");
+  const [selectedStudioId, setSelectedStudioId] = useState("");
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  const isAutoAssigned = authenticatedUser?.email?.endsWith("@maxstrengthfitness.com");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,22 +54,53 @@ export default function AccessRequestView({
       setSubmitError("Please fill out your name and email address.");
       return;
     }
+    if (isAutoAssigned && !selectedStudioId) {
+      setSubmitError("Please select your Home Studio to continue.");
+      return;
+    }
 
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      await addDoc(collection(db, "access_requests"), {
-        fullName: fullName.trim(),
-        email: email.trim().toLowerCase(),
-        phone: phone.trim(),
-        roleRequested,
-        reason: reason.trim(),
-        status: "Pending",
-        userId: authenticatedUser?.uid || null,
-        createdAt: serverTimestamp(),
-      });
-      setSubmitSuccess(true);
+      if (isAutoAssigned) {
+        // Auto-create trainer document
+        const newTrainer: Trainer = {
+          id: authenticatedUser.uid,
+          fullName: fullName.trim(),
+          initials: fullName
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .substring(0, 2)
+            .toUpperCase(),
+          role: "Trainer",
+          pin: "",
+          primaryHomeStudioId: selectedStudioId,
+          accessibleStudioIds: [selectedStudioId],
+          activeGuestStudioIds: [],
+        };
+        
+        const trainerRef = doc(db, "trainers", authenticatedUser.uid);
+        await setDoc(trainerRef, newTrainer);
+        
+        if (onTrainerCreated) {
+          onTrainerCreated(newTrainer);
+        }
+        return; // Complete
+      } else {
+        await addDoc(collection(db, "access_requests"), {
+          fullName: fullName.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone.trim(),
+          roleRequested,
+          reason: reason.trim(),
+          status: "Pending",
+          userId: authenticatedUser?.uid || null,
+          createdAt: serverTimestamp(),
+        });
+        setSubmitSuccess(true);
+      }
     } catch (err: any) {
       console.error("Error submitting access request:", err);
       setSubmitError(err.message || "Something went wrong while submitting your request.");
@@ -115,7 +155,7 @@ export default function AccessRequestView({
             {submitSuccess
               ? "Your request has been filed successfully. Administrator review is required to authenticate your account."
               : authenticatedUser
-              ? `Your Google account (${authenticatedUser.email}) is authenticated, but is not registered as an authorized trainer inside the Max Strength Journey System.`
+              ? `Your account (${authenticatedUser.email}) is authenticated, but is not registered as an authorized trainer inside the Max Strength Journey System.`
               : "Welcome to the Journey System. If you are a team member and do not have account credentials, you may request system access directly below."}
           </p>
         </div>
@@ -143,10 +183,10 @@ export default function AccessRequestView({
                   />
                   <div>
                     <span className="text-xs uppercase tracking-wider text-[#ff9800] font-black block">
-                      Google Signed In
+                      Account Signed In
                     </span>
                     <span className="text-sm font-bold text-slate-200 block truncate">
-                      {authenticatedUser.displayName || "Unknown User"}
+                      {authenticatedUser.displayName || authenticatedUser.email || "Unknown User"}
                     </span>
                   </div>
                 </div>
@@ -206,42 +246,70 @@ export default function AccessRequestView({
                 </div>
               </div>
 
-              {/* Role */}
-              <div className="space-y-1.5">
-                <label className="text-slate-400 text-[11px] font-bold uppercase tracking-wider block">
-                  Requested Role
-                </label>
-                <div className="relative">
-                  <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <select
-                    value={roleRequested}
-                    onChange={(e) => setRoleRequested(e.target.value)}
-                    className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-[#ff9800] transition-colors text-sm appearance-none cursor-pointer"
-                  >
-                    <option value="Trainer">Performance Trainer / LifeTransformer</option>
-                    <option value="StudioOwner">Studio Owner / Franchise Member</option>
-                    <option value="Administrative">Administrative Office Staff</option>
-                    <option value="Client">Active Training Client</option>
-                  </select>
+              {/* Role or Studio Selection */}
+              {isAutoAssigned ? (
+                <div className="space-y-1.5">
+                  <label className="text-slate-400 text-[11px] font-bold uppercase tracking-wider block">
+                    Select Your Home Studio
+                  </label>
+                  <div className="relative">
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400" />
+                    <select
+                      value={selectedStudioId}
+                      onChange={(e) => setSelectedStudioId(e.target.value)}
+                      required
+                      className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-emerald-500/50 focus:outline-none focus:border-emerald-500 transition-colors text-sm appearance-none cursor-pointer"
+                    >
+                      <option value="" disabled>Select your primary location...</option>
+                      {studios.map(studio => (
+                        <option key={studio.id} value={studio.id}>{studio.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <p className="text-emerald-400/80 text-[10px] mt-1 italic">
+                    Your maxstrengthfitness.com email is recognized. Link your studio to enter immediately.
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <>
+                  {/* Role */}
+                  <div className="space-y-1.5">
+                    <label className="text-slate-400 text-[11px] font-bold uppercase tracking-wider block">
+                      Requested Role
+                    </label>
+                    <div className="relative">
+                      <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                      <select
+                        value={roleRequested}
+                        onChange={(e) => setRoleRequested(e.target.value)}
+                        className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-[#ff9800] transition-colors text-sm appearance-none cursor-pointer"
+                      >
+                        <option value="Trainer">Performance Trainer / LifeTransformer</option>
+                        <option value="StudioOwner">Studio Owner / Franchise Member</option>
+                        <option value="Administrative">Administrative Office Staff</option>
+                        <option value="Client">Active Training Client</option>
+                      </select>
+                    </div>
+                  </div>
 
-              {/* Reason */}
-              <div className="space-y-1.5">
-                <label className="text-slate-400 text-[11px] font-bold uppercase tracking-wider block">
-                  Message / Details (Optional)
-                </label>
-                <div className="relative">
-                  <MessageSquare className="absolute left-4 top-4 w-4 h-4 text-slate-500" />
-                  <textarea
-                    rows={3}
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    placeholder="Provide details about your studio association or request."
-                    className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-[#ff9800] transition-colors text-sm resize-none"
-                  />
-                </div>
-              </div>
+                  {/* Reason */}
+                  <div className="space-y-1.5">
+                    <label className="text-slate-400 text-[11px] font-bold uppercase tracking-wider block">
+                      Message / Details (Optional)
+                    </label>
+                    <div className="relative">
+                      <MessageSquare className="absolute left-4 top-4 w-4 h-4 text-slate-500" />
+                      <textarea
+                        rows={3}
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder="Provide details about your studio association or request."
+                        className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-[#ff9800] transition-colors text-sm resize-none"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               {submitError && (
                 <motion.div
@@ -285,7 +353,7 @@ export default function AccessRequestView({
                 ) : (
                   <span className="flex items-center justify-center gap-2">
                     <Send className="w-4 h-4" />
-                    Submit Request
+                    {isAutoAssigned ? "Complete Account Setup" : "Submit Request"}
                   </span>
                 )}
               </Button>

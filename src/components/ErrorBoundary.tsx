@@ -67,9 +67,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
               </div>
 
               <div className="space-y-2">
-                <h2 className="text-2xl font-black italic uppercase tracking-tight">System Interruption</h2>
+                <h2 className="text-2xl font-black italic uppercase tracking-tight">Something went wrong</h2>
                 <p className="text-slate-400 text-sm font-medium">
-                  The application encountered an unexpected error. This has been logged for the developers.
+                  We encountered an unexpected error. Please reload the application to continue.
                 </p>
               </div>
 
@@ -96,7 +96,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
                   className="w-full h-14 bg-[#F06C22] hover:bg-[#d05b1c] text-white rounded-2xl font-black italic uppercase tracking-[0.1em] flex items-center justify-center gap-3 shadow-lg shadow-orange-500/20 transition-all active:scale-95"
                 >
                   <RefreshCcw className="w-5 h-5" />
-                  Restart System
+                  Reload
                 </button>
                 <button
                   onClick={this.handleGoHome}

@@ -73,13 +73,6 @@ export function useAuthInitialization() {
 
           setAuthTrainer(trainerData);
 
-          if (!trainerData) {
-            // Logged-in user is not a registered trainer or super admin!
-            // End authentication cycle and do NOT make calls to secure databases to prevent permission-denied crashes.
-            setIsAuthReady(true);
-            return;
-          }
-
           try {
             const studioSnap = await getDocs(collection(db, "studios"));
             setStudios(
@@ -87,6 +80,13 @@ export function useAuthInitialization() {
             );
           } catch (e) {
             console.warn("Could not fetch studios collection: ", e);
+          }
+
+          if (!trainerData) {
+            // Logged-in user is not a registered trainer or super admin!
+            // End authentication cycle and do NOT make calls to secure databases to prevent permission-denied crashes.
+            setIsAuthReady(true);
+            return;
           }
 
           try {

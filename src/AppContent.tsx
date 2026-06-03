@@ -84,6 +84,7 @@ import {
 } from "firebase/firestore";
 import {
   GoogleAuthProvider,
+  OAuthProvider,
   onAuthStateChanged,
   signOut,
   User as FirebaseUser,
@@ -1174,11 +1175,30 @@ export default function AppContent({
   };
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const handleLogin = async () => {
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  const handleLogin = async (providerName: 'google' | 'microsoft') => {
     if (isLoggingIn) return;
     setIsLoggingIn(true);
+    setLoginError(null);
     try {
-      const provider = new GoogleAuthProvider();
+      let provider;
+      if (providerName === 'google') {
+        provider = new GoogleAuthProvider();
+      } else {
+        provider = new OAuthProvider('microsoft.com');
+        const tenantId = (import.meta as any).env.VITE_MICROSOFT_TENANT_ID || "bbd57ae5-2a1c-4a5c-88df-faef01b58d91";
+        if (tenantId) {
+          provider.setCustomParameters({
+            prompt: 'select_account',
+            tenant: tenantId
+          });
+        } else {
+          provider.setCustomParameters({
+            prompt: 'select_account'
+          });
+        }
+      }
       await signInWithPopup(auth, provider);
     } catch (error: any) {
       if (
@@ -1188,6 +1208,13 @@ export default function AppContent({
         return;
       }
       console.error("Login failed:", error);
+      
+      const errMsg = error.message || "";
+      if (errMsg.includes("AADSTS50194")) {
+        setLoginError("Login failed: Your Microsoft App Registration is configured as single-tenant. Please go to Azure Portal and configure application 'dd2ae28c-1a71-4de3-bc12-5b0683032526' to be multi-tenant ('Accounts in any organizational directory and personal Microsoft accounts'), or set VITE_MICROSOFT_TENANT_ID in your environment variables to your tenant ID.");
+      } else {
+        setLoginError(`Login failed: ${error.message}`);
+      }
     } finally {
       setIsLoggingIn(false);
     }
@@ -1197,7 +1224,7 @@ export default function AppContent({
     return (
       <div className="min-h-screen bg-[#1c1d1f] flex flex-col items-center justify-center p-6 focus:outline-none relative overflow-hidden">
         {/* Background Radial Glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#40382d] via-[#1c1d1f] to-[#121212] opacity-80"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#005187]/20 via-[#1c1d1f] to-[#121212] opacity-80"></div>
         {/* Pattern Overlay */}
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/hexellence.png')] opacity-10 mix-blend-overlay"></div>
         {/* Edge Shadow */}
@@ -1207,25 +1234,32 @@ export default function AppContent({
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="w-full max-w-lg z-10 flex flex-col items-center justify-center min-h-[60vh]"
+          className="w-full max-w-lg z-10 flex flex-col items-center justify-center min-h-[60vh] mt-[-5vh]"
         >
           <div className="flex flex-col items-center text-center">
             <MaxStrengthLogo
-              size="xl"
+              size="2xl"
               theme="dark"
-              className="drop-shadow-2xl"
+              showSlogan={true}
+              className="drop-shadow-[0_15px_35px_rgba(0,0,0,0.6)]"
             />
 
-            <h1 className="text-transparent bg-clip-text bg-gradient-to-r from-slate-200 via-white to-slate-400 font-extrabold tracking-[0.3em] text-4xl mt-12 uppercase drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+            <h1 className="text-transparent bg-clip-text bg-gradient-to-r from-slate-200 via-white to-slate-400 font-extrabold tracking-[0.3em] text-2xl md:text-3xl mt-16 uppercase drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
               Journey System
             </h1>
           </div>
 
-          <div className="mt-24 w-full flex justify-center">
+          {loginError && (
+            <div className="mt-8 bg-red-500/10 border border-red-500/50 p-4 rounded-xl text-red-100 text-sm max-w-sm text-center font-medium shadow-[0_0_15px_rgba(220,38,38,0.3)] w-full">
+              {loginError}
+            </div>
+          )}
+
+          <div className="mt-8 w-full flex flex-col items-center justify-center gap-4">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={handleLogin}
+              onClick={() => handleLogin('google')}
               disabled={isLoggingIn}
               className={cn(
                 "relative overflow-hidden group w-full max-w-[320px] rounded-[40px] p-[2px] shadow-[0_15px_30px_rgba(0,0,0,0.5)] transition-opacity",
@@ -1237,12 +1271,9 @@ export default function AppContent({
               {/* Inner highlight */}
               <div className="absolute inset-[1px] bg-gradient-to-b from-white/30 to-transparent rounded-[39px]"></div>
 
-              <div className="relative bg-[#1d2736]/90 px-8 py-5 rounded-[38px] flex flex-col items-center justify-center gap-2 w-full h-full shadow-[inset_0_2px_15px_rgba(0,0,0,0.8)] backdrop-blur-md">
-                <span className="font-bold text-slate-900 dark:text-white/90 text-sm tracking-widest uppercase">
-                  Sign in with Google
-                </span>
+              <div className="relative bg-[#1d2736]/90 px-8 py-4 rounded-[38px] flex flex-row items-center justify-center gap-4 w-full h-full shadow-[inset_0_2px_15px_rgba(0,0,0,0.8)] backdrop-blur-md">
                 <svg
-                  className="w-7 h-7 text-slate-900 dark:text-white/90"
+                  className="w-6 h-6 text-slate-900 dark:text-white/90"
                   viewBox="0 0 24 24"
                   fill="currentColor"
                 >
@@ -1251,8 +1282,40 @@ export default function AppContent({
                   <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                   <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                 </svg>
+                <span className="font-bold text-slate-900 dark:text-white/90 text-sm tracking-wide">
+                  Continue with Google
+                </span>
               </div>
             </motion.button>
+            
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className={cn(
+                "relative overflow-hidden group w-full max-w-[320px] rounded-[40px] p-[2px] shadow-[0_15px_30px_rgba(0,0,0,0.5)] transition-opacity opacity-50 cursor-not-allowed",
+              )}
+            >
+              {/* Outer Metallic Ring */}
+              <div className="absolute inset-0 bg-gradient-to-b from-[#8b9bb4] via-[#33465e] to-[#1a2b41] rounded-[40px]"></div>
+              {/* Inner highlight */}
+              <div className="absolute inset-[1px] bg-gradient-to-b from-white/30 to-transparent rounded-[39px]"></div>
+
+              <div className="relative bg-[#1d2736]/90 px-8 py-4 rounded-[38px] flex flex-row items-center justify-center gap-4 w-full h-full shadow-[inset_0_2px_15px_rgba(0,0,0,0.8)] backdrop-blur-md">
+                <div className="absolute inset-0 bg-black/60 rounded-[38px] flex items-center justify-center z-10">
+                  <span className="text-white font-bold text-sm tracking-wider uppercase drop-shadow-md">Coming Soon</span>
+                </div>
+                <svg
+                  className="w-6 h-6 text-slate-900 dark:text-white/40"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" />
+                </svg>
+                <span className="font-bold text-slate-900 dark:text-white/90 text-sm tracking-wide">
+                  Continue with Microsoft
+                </span>
+              </div>
+            </motion.div>
           </div>
         </motion.div>
 
@@ -1260,8 +1323,8 @@ export default function AppContent({
           <p className="text-slate-900 dark:text-white/30 text-[10px] sm:text-xs tracking-wider uppercase font-medium">
             Master/Admin Credentials Required for Administrative Portal Access
           </p>
-          <div className="text-[#ff9800] font-black text-xs uppercase tracking-widest transition-colors">
-            No Account? Sign in with Google to Request Access.
+          <div className="text-[#ff9800] font-black text-xs uppercase tracking-widest transition-colors mb-4 md:mb-0">
+            No Account? Sign in to Request Access.
           </div>
         </div>
       </div>
@@ -1273,6 +1336,8 @@ export default function AppContent({
     return (
       <AccessRequestView 
         authenticatedUser={user} 
+        studios={studios}
+        onTrainerCreated={setAuthTrainer}
         onLogout={handleLogout} 
       />
     );
