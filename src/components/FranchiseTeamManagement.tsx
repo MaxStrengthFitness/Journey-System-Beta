@@ -55,9 +55,6 @@ export function FranchiseTeamManagement({ trainers, studios, authTrainer, isAdmi
         primaryHomeStudioId: restData.primaryHomeStudioId || activeStudioId, // falls back nicely
         createdAt: serverTimestamp()
       });
-      await setDoc(doc(db, 'trainers', ref.id, 'secrets', 'account'), {
-        pinHash: pinHash || ""
-      });
     } catch (e: any) {
       alert("Error creating trainer: " + e.message);
     }

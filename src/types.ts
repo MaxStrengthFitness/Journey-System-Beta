@@ -179,8 +179,9 @@ export type NewTrainerPayload = CreateTrainerPayload;
 export interface CreateTrainerPayload {
   fullName: string;
   initials: string;
-  pin: string;
+  pin?: string;
   pinHash?: string;
+  requiresPinReset?: boolean;
   role?: UserRole;
   email?: string;
   primaryHomeStudioId: string;

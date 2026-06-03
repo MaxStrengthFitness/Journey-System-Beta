@@ -40,8 +40,7 @@ export function EditTrainerModal({ trainer, authTrainer, studios, isOpen, onOpen
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<UserRole>("LifeTransformer");
   
-  const [pin, setPin] = useState("");
-  const [enablePin, setEnablePin] = useState(false);
+  const [requiresPinReset, setRequiresPinReset] = useState(false);
   
   const [primaryHomeStudioId, setPrimaryHomeStudioId] = useState("");
   const [accessibleStudioIds, setAccessibleStudioIds] = useState<string[]>([]);
@@ -58,9 +57,7 @@ export function EditTrainerModal({ trainer, authTrainer, studios, isOpen, onOpen
       setEmail(trainer.email || "");
       setRole(trainer.role || "LifeTransformer");
       
-      const hasPin = !!(trainer.pin || trainer.pinHash);
-      setEnablePin(hasPin);
-      setPin(trainer.pin || "");
+      setRequiresPinReset(trainer.requiresPinReset || false);
       
       setPrimaryHomeStudioId(trainer.primaryHomeStudioId || "");
       setAccessibleStudioIds(trainer.accessibleStudioIds || []);
@@ -87,24 +84,8 @@ export function EditTrainerModal({ trainer, authTrainer, studios, isOpen, onOpen
       return;
     }
 
-    if (enablePin && pin.length > 0 && pin.length !== 4) {
-      alert("Validation Error: PIN must be exactly 4 digits long.");
-      return;
-    }
-
     setSaving(true);
     try {
-      let pinHashValue = trainer?.pinHash || "";
-      let pinValue = pin;
-
-      if (!enablePin) {
-        pinValue = "";
-        pinHashValue = "";
-      } else if (pin && pin !== trainer?.pin) {
-        // PIN changed, let's rehash
-        pinHashValue = await hashPin(pin);
-      }
-
       const searchTokens = generateSearchTokens(fullName);
 
       // Force primaryHomeStudioId to be in accessibleStudioIds
@@ -115,6 +96,7 @@ export function EditTrainerModal({ trainer, authTrainer, studios, isOpen, onOpen
         initials: initials.trim(),
         email: email.trim(),
         role,
+        requiresPinReset,
         primaryHomeStudioId,
         accessibleStudioIds: finalAccessible,
         activeGuestStudioIds,
@@ -123,12 +105,6 @@ export function EditTrainerModal({ trainer, authTrainer, studios, isOpen, onOpen
       };
 
       await onSave(payload);
-      
-      if (trainer?.id) {
-        await setDoc(doc(db, 'trainers', trainer.id, 'secrets', 'account'), {
-          pinHash: pinHashValue
-        });
-      }
 
       onOpenChange(false);
     } catch (error) {
@@ -265,39 +241,14 @@ export function EditTrainerModal({ trainer, authTrainer, studios, isOpen, onOpen
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <Key className="w-4 h-4 text-[#F06C22]" /> Pin Lock Code
+                  <Key className="w-4 h-4 text-[#F06C22]" /> Force PIN Reset
                 </span>
                 <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">
-                  Enforces PIN challenge at workout or hub login
+                  Trainer will be prompted to choose a new PIN code on next login
                 </p>
               </div>
-              <Switch checked={enablePin} onCheckedChange={(checked) => {
-                setEnablePin(checked);
-                if (!checked) setPin("");
-              }} />
+              <Switch checked={requiresPinReset} onCheckedChange={setRequiresPinReset} />
             </div>
-
-            {enablePin && (
-              <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-700">
-                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
-                  4-Digit Numeric PIN
-                </Label>
-                <Input
-                  type="password"
-                  value={pin}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, "");
-                    if (val.length <= 4) setPin(val);
-                  }}
-                  className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-10 font-bold tracking-widest text-center text-lg"
-                  placeholder="••••"
-                  maxLength={4}
-                />
-                <p className="text-[10px] text-yellow-600 dark:text-yellow-400/80 font-bold uppercase mt-1">
-                  Leave unchanged unless updating the PIN code.
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Complex Studio Involvements */}

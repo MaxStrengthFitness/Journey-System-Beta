@@ -32,8 +32,6 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
   const { availableStudios, activeStudioId } = useActiveStudio();
   const [fullName, setFullName] = useState("");
   const [initials, setInitials] = useState("");
-  const [pin, setPin] = useState("");
-  const [enablePin, setEnablePin] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [primaryHomeStudioId, setPrimaryHomeStudioId] = useState("");
 
@@ -45,21 +43,13 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
 
   const handleSubmit = async () => {
     if (!fullName || !initials || !primaryHomeStudioId) return;
-    if (enablePin && pin.length !== 4) return;
-
-    let finalPin = "";
-    let finalPinHash = "";
-    if (enablePin && pin) {
-      finalPinHash = await hashPin(pin);
-    }
 
     const searchTokens = generateSearchTokens(fullName);
 
     const payload: CreateTrainerPayload = {
       fullName: fullName.trim(),
       initials: initials.trim(),
-      pin: finalPin,
-      pinHash: finalPinHash,
+      requiresPinReset: true,
       isOwner,
       isVisibleOnCalendar: true,
       searchTokens,
@@ -164,43 +154,6 @@ export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-4 border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50 dark:bg-slate-800/50">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
-                  PIN Lock Security
-                </Label>
-                <p className="text-[11px] text-slate-500 font-bold uppercase">
-                  Require a 4-digit PIN for access
-                </p>
-              </div>
-              <Switch
-                checked={enablePin}
-                onCheckedChange={(checked) => {
-                  setEnablePin(checked);
-                  if (!checked) setPin("");
-                }}
-              />
-            </div>
-            {enablePin && (
-              <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
-                  4-Digit PIN Code
-                </Label>
-                <Input
-                  value={pin}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, "");
-                    if (val.length <= 4) setPin(val);
-                  }}
-                  className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-10 font-mono"
-                  placeholder="Enter 4 digits"
-                  maxLength={4}
-                  type="password"
-                />
-              </div>
-            )}
           </div>
 
           <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">

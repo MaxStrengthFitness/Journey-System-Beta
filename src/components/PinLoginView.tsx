@@ -101,7 +101,7 @@ export function PinLoginView({ trainers, user, onLogin, isLoading: initialLoadin
 
   const handleTrainerSelect = (t: Trainer) => {
     const hasPin = t.pin || t.pinHash;
-    if (!hasPin) {
+    if (!hasPin && !t.requiresPinReset) {
       setPinInput('');
       localStorage.setItem('max_strength_authenticated', 'true');
       setIsAuthenticated(true);

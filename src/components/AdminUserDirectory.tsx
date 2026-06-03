@@ -329,18 +329,13 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
         systemStatus: "active",
         createdAt: new Date().toISOString(),
       });
-      
-      await setDoc(doc(db, "trainers", ref.id, "secrets", "account"), {
-        pinHash: pinHash || ""
-      });
 
       // Add the newly created user to the state
       const newUser: Trainer = {
         id: ref.id,
         fullName: trainerData.fullName,
         initials: trainerData.initials,
-        pin: trainerData.pin,
-        pinHash: trainerData.pinHash,
+        requiresPinReset: trainerData.requiresPinReset,
         primaryHomeStudioId: trainerData.primaryHomeStudioId,
         accessibleStudioIds: trainerData.accessibleStudioIds,
         activeGuestStudioIds: trainerData.activeGuestStudioIds || [],

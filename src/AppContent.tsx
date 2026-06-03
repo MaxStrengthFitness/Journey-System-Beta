@@ -2565,15 +2565,12 @@ function TrainersView({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const securePin = await hashPin(formData.pin);
       const { pin, ...dataWithoutPin } = formData;
       const ref = await addDoc(collection(db, "trainers"), {
         ...dataWithoutPin,
+        requiresPinReset: true,
         availability: DEFAULT_AVAILABILITY,
         createdAt: serverTimestamp(),
-      });
-      await setDoc(doc(db, "trainers", ref.id, "secrets", "account"), {
-        pinHash: securePin
       });
       setFormData({
         fullName: "",
@@ -2717,27 +2714,6 @@ function TrainersView({
                         className="h-14 text-lg uppercase"
                       />
                     </div>
-                  </div>
-                  <div className="space-y-3">
-                    <Label htmlFor="pin" className="text-base font-bold">
-                      Security PIN (4-6 digits)
-                    </Label>
-                    <Input
-                      id="pin"
-                      type="password"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      placeholder="••••"
-                      value={formData.pin}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          pin: e.target.value.replace(/\D/g, ""),
-                        })
-                      }
-                      required
-                      className="h-14 text-2xl tracking-[1em] text-center"
-                    />
                   </div>
 
                   <div className="grid gap-6 sm:grid-cols-2">

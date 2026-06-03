@@ -168,9 +168,6 @@ export function TrainerControlHubView({
         primaryHomeStudioId: restData.primaryHomeStudioId || activeStudioId,
         createdAt: serverTimestamp()
       });
-      await setDoc(doc(db, 'trainers', ref.id, 'secrets', 'account'), {
-        pinHash: pinHash || ""
-      });
     } catch (e: any) {
       alert("Error creating trainer: " + e.message);
     }

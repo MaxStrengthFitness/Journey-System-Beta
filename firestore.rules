@@ -119,10 +119,10 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidTrainer(data) {
-      return hasRequiredFields(['fullName', 'initials', 'pin', 'primaryHomeStudioId']) &&
+      return hasRequiredFields(['fullName', 'initials', 'primaryHomeStudioId']) &&
              data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
              data.initials is string && data.initials.size() >= 2 && data.initials.size() <= 4 &&
-             data.pin is string && (data.pin == '' || data.pin.matches('^[0-9a-fA-F]{4,64}$')) &&
+             (!('pin' in data) || data.pin == null || (data.pin is string && (data.pin == '' || data.pin.matches('^[0-9a-fA-F]{4,64}$')))) &&
              data.primaryHomeStudioId is string && data.primaryHomeStudioId.size() > 0 && data.primaryHomeStudioId.size() < 100 &&
              (!('mindbody_ical_url' in data) || data.mindbody_ical_url == null || (data.mindbody_ical_url is string && data.mindbody_ical_url.size() < 500)) &&
              (!('role' in data) || data.role == null || data.role is string) &&
@@ -209,8 +209,12 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
 
       match /secrets/account {
-        allow read: if isSuperAdmin() || request.auth.uid == trainerId;
-        allow write: if isSuperAdmin() || request.auth.uid == trainerId;
+        allow read: if isSuperAdmin() || request.auth.uid == trainerId || 
+            (exists(/databases/$(database)/documents/trainers/$(trainerId)) && 
+             isStudioOwnerOrHeadTrainer(get(/databases/$(database)/documents/trainers/$(trainerId)).data.primaryHomeStudioId));
+        allow write: if isSuperAdmin() || request.auth.uid == trainerId || 
+            (exists(/databases/$(database)/documents/trainers/$(trainerId)) && 
+             isStudioOwnerOrHeadTrainer(get(/databases/$(database)/documents/trainers/$(trainerId)).data.primaryHomeStudioId));
       }
 
       match /machineRoster/{machineId} {
