@@ -27,6 +27,9 @@ import {
   History,
   Layout,
   Search,
+  LayoutDashboard,
+  Trophy,
+  Activity,
   Play,
   Star,
   Clock,
@@ -114,6 +117,7 @@ import {
 } from "./types";
 import { OperationType, handleFirestoreError } from "./lib/firestore-errors";
 // Removing duplicate cn import
+import { hashPin } from "./lib/auth-utils";
 import {
   parseSessionDate,
   calculateExerciseVolume,
@@ -130,6 +134,7 @@ import {
 } from "./lib/sync-utils";
 import { getLatestTargetWeight } from "./lib/historical-utils";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import AccessRequestView from "./components/AccessRequestView";
 import { generateMockClientWithHistory } from "./lib/mockDataGenerator";
 import { TrainerControlHubView } from "./components/TrainerControlHubView";
 import { InsightsDashboardView } from "./components/InsightsDashboardView";
@@ -138,10 +143,10 @@ import { CalendarView } from "./components/CalendarView";
 import { LegacyChartImporter } from "./components/LegacyChartImporter";
 import { RetentionDashboardView } from "./components/RetentionDashboardView";
 import { MachineLeaderboardDashboard } from "./components/MachineLeaderboardDashboard";
+import { ProfilesView } from "./components/ProfilesView";
 import { ClientDirectoryView } from "./components/ClientDirectoryView";
 import { TrainerProfileView } from "./components/TrainerProfileView";
 import { StudioSelectionView } from "./components/StudioSelectionView";
-import { PendingApprovalView } from "./components/PendingApprovalView";
 import { PostSessionBriefingView } from "./components/PostSessionBriefingView";
 import { BriefingScreen } from "./components/BriefingScreen";
 import { VictoryHUDScreen } from "./components/VictoryHUDScreen";
@@ -556,24 +561,8 @@ export default function AppContent({
     new Map(),
   );
   const [isSyncing, setIsSyncing] = useState(false);
-  const isSuperAdminView = tokenRole === "Admin" || tokenRole === "Founder" || tokenRole === "Overseer" || authTrainer?.role === "Admin" || authTrainer?.role === "Founder" || authTrainer?.role === "Overseer";
-  const isOwnerView = authTrainer?.role === "Owner";
-  const isStudioLeaderView = authTrainer?.role === "StudioLeader";
-
-  const getDefaultView = () => {
-    if (isSuperAdminView) {
-      return "admin-dashboard";
-    }
-    if (isOwnerView) {
-      return "franchise-dashboard";
-    }
-    if (isStudioLeaderView) {
-      return "trainer-hub";
-    }
-    return "calendar";
-  };
-  
-  const [currentView, setCurrentView] = useState<View>(getDefaultView());
+  const [appMode, setAppMode] = useState<"trainer" | "admin">("trainer");
+  const [currentView, setCurrentView] = useState<View>("clients");
   const [newClientOnboardingName, setNewClientOnboardingName] = useState<
     string | null
   >(null);
@@ -929,6 +918,24 @@ export default function AppContent({
     }
   }, [trainers.length, authTrainer?.id, user?.email, tokenRole]);
 
+  const handleTrainerLogin = (trainer: Trainer) => {
+    // Admin Override: If logged in as claims admin, elevate profile role
+    const isClaimsAdmin = tokenRole === "Admin" || tokenRole === "Founder" || tokenRole === "Overseer";
+    if (
+      isClaimsAdmin &&
+      (trainer.role === "Trainer" || trainer.role === "LifeTransformer")
+    ) {
+      trainer.role = "Admin";
+    }
+    setAuthTrainer(trainer);
+    localStorage.setItem("max_strength_trainer_id", trainer.id!);
+  };
+
+  const handleTrainerLock = () => {
+    setAuthTrainer(null);
+    localStorage.removeItem("max_strength_trainer_id");
+  };
+
   const [isWipeModalOpen, setIsWipeModalOpen] = useState(false);
 
   const handleAppCleanse = () => {
@@ -940,7 +947,7 @@ export default function AppContent({
 
     try {
       const collectionsToWipe = [
-        "machines",
+        "studios",
         "clients",
         "trainers",
         "sessions",
@@ -954,7 +961,7 @@ export default function AppContent({
         "machineSettingChanges",
       ];
 
-      console.log("Starting full app cleanse...");
+      console.log("Starting cleanse...");
       for (const colName of collectionsToWipe) {
         const snap = await getDocs(collection(db, colName));
         console.log(`Clearing ${colName} (${snap.size} docs)...`);
@@ -962,18 +969,7 @@ export default function AppContent({
         await Promise.all(deletePromises);
       }
 
-      console.log("Wipe complete. Re-initializing machines...");
-      const machinePromises = DEFAULT_MACHINES.map((machine) =>
-        setDoc(
-          doc(db, "machines", machine.id!),
-          {
-            ...machine,
-          },
-          { merge: true },
-        ),
-      );
-
-      await Promise.all(machinePromises);
+      console.log("Wipe complete. Machines were preserved.");
 
       // Clear local state
       setAuthTrainer(null);
@@ -982,7 +978,7 @@ export default function AppContent({
       setCurrentView("clients");
 
       alert(
-        "Application cleansed and reset to 20 machines. The app will now reload.",
+        "Application cleansed (studios, clients, users removed). Machines preserved. The app will now reload.",
       );
       window.location.href = window.location.origin + window.location.pathname;
     } catch (error: any) {
@@ -1201,15 +1197,12 @@ export default function AppContent({
         error.code === "auth/popup-closed-by-user" ||
         error.code === "auth/cancelled-popup-request"
       ) {
-        setLoginError("Login cancelled. Please try again.");
         return;
       }
       console.error("Login failed:", error);
       
       const errMsg = error.message || "";
-      if (error.code === 'auth/account-exists-with-different-credential') {
-        setLoginError("An account already exists with the same email. Please sign in using Google.");
-      } else if (errMsg.includes("AADSTS50194")) {
+      if (errMsg.includes("AADSTS50194")) {
         setLoginError("Login failed: Your Microsoft App Registration is configured as single-tenant. Please go to Azure Portal and configure application 'dd2ae28c-1a71-4de3-bc12-5b0683032526' to be multi-tenant ('Accounts in any organizational directory and personal Microsoft accounts'), or set VITE_MICROSOFT_TENANT_ID in your environment variables to your tenant ID.");
       } else {
         setLoginError(`Login failed: ${error.message}`);
@@ -1236,16 +1229,27 @@ export default function AppContent({
           className="w-full max-w-lg z-10 flex flex-col items-center justify-center min-h-[60vh] mt-[-5vh]"
         >
           <div className="flex flex-col items-center text-center">
-            <MaxStrengthLogo
-              size="2xl"
-              theme="dark"
-              showSlogan={true}
-              className="drop-shadow-[0_15px_35px_rgba(0,0,0,0.6)]"
-            />
+            <motion.div
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              <MaxStrengthLogo
+                size="2xl"
+                theme="dark"
+                showSlogan={true}
+                className="drop-shadow-[0_15px_35px_rgba(0,0,0,0.6)] mb-8"
+              />
+            </motion.div>
 
-            <h1 className="text-transparent bg-clip-text bg-gradient-to-r from-slate-200 via-white to-slate-400 font-extrabold tracking-[0.3em] text-2xl md:text-3xl mt-16 uppercase drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+            <motion.h1
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="text-transparent bg-clip-text bg-gradient-to-r from-slate-200 via-white to-slate-400 font-extrabold tracking-[0.3em] text-2xl md:text-3xl uppercase drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+            >
               Journey System
-            </h1>
+            </motion.h1>
           </div>
 
           {loginError && (
@@ -1287,14 +1291,11 @@ export default function AppContent({
               </div>
             </motion.button>
             
-            <motion.button
+            <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => handleLogin('microsoft')}
-              disabled={isLoggingIn}
               className={cn(
-                "relative overflow-hidden group w-full max-w-[320px] rounded-[40px] p-[2px] shadow-[0_15px_30px_rgba(0,0,0,0.5)] transition-opacity",
-                isLoggingIn ? "opacity-50 cursor-not-allowed" : "opacity-100",
+                "relative overflow-hidden group w-full max-w-[320px] rounded-[40px] p-[2px] shadow-[0_15px_30px_rgba(0,0,0,0.5)] transition-opacity opacity-50 cursor-not-allowed",
               )}
             >
               {/* Outer Metallic Ring */}
@@ -1303,8 +1304,11 @@ export default function AppContent({
               <div className="absolute inset-[1px] bg-gradient-to-b from-white/30 to-transparent rounded-[39px]"></div>
 
               <div className="relative bg-[#1d2736]/90 px-8 py-4 rounded-[38px] flex flex-row items-center justify-center gap-4 w-full h-full shadow-[inset_0_2px_15px_rgba(0,0,0,0.8)] backdrop-blur-md">
+                <div className="absolute inset-0 bg-black/60 rounded-[38px] flex items-center justify-center z-10">
+                  <span className="text-white font-bold text-sm tracking-wider uppercase drop-shadow-md">Coming Soon</span>
+                </div>
                 <svg
-                  className="w-6 h-6 text-slate-900 dark:text-white/90"
+                  className="w-6 h-6 text-slate-900 dark:text-white/40"
                   viewBox="0 0 24 24"
                   fill="currentColor"
                 >
@@ -1314,7 +1318,7 @@ export default function AppContent({
                   Continue with Microsoft
                 </span>
               </div>
-            </motion.button>
+            </motion.div>
           </div>
         </motion.div>
 
@@ -1331,11 +1335,12 @@ export default function AppContent({
   }
 
   // Intercept authenticated but unauthorized users
-  const isSuperAdmin = tokenRole === "Admin" || tokenRole === "Founder" || tokenRole === "Overseer" || authTrainer?.role === "Admin" || authTrainer?.role === "Founder" || authTrainer?.role === "Overseer";
-  if (user && (!authTrainer || (authTrainer.systemStatus === "inactive") || (!authTrainer.systemStatus && !isSuperAdmin))) {
+  if (user && !authTrainer) {
     return (
-      <PendingApprovalView 
-        user={user} 
+      <AccessRequestView 
+        authenticatedUser={user} 
+        studios={studios}
+        onTrainerCreated={setAuthTrainer}
         onLogout={handleLogout} 
       />
     );
@@ -1348,12 +1353,23 @@ export default function AppContent({
   if (!activeStudioId || isChangingStudio) {
     return (
       <StudioSelectionView
-        studios={availableStudios}
+        studios={studios}
         networks={networks}
-        onSelectStudio={(studioId) => {
+        trainers={trainers}
+        authTrainer={authTrainer}
+        onSelectTrainer={(selectedTrainer, studioId) => {
           setActiveStudioId(studioId);
+          setAuthTrainer(selectedTrainer);
+          localStorage.setItem("max_strength_trainer_id", selectedTrainer.id!);
+          const hasPin = selectedTrainer.pin || selectedTrainer.pinHash;
+          if (!hasPin) {
+            localStorage.setItem("max_strength_authenticated", "true");
+            setIsAuthenticated(true);
+          } else {
+            localStorage.setItem("max_strength_authenticated", "false");
+            setIsAuthenticated(false);
+          }
           setIsChangingStudio(false);
-          setIsAuthenticated(true);
         }}
         onBack={() => {
           if (!activeStudioId) {
@@ -1362,6 +1378,20 @@ export default function AppContent({
             setIsChangingStudio(false);
           }
         }}
+      />
+    );
+  }
+
+  // Access Request Screen (if authenticated via Google but no matching profile exists)
+  if (!authTrainer) {
+    return (
+      <AccessRequestView
+        authenticatedUser={user}
+        studios={studios}
+        onTrainerCreated={(t) => {
+          setAuthTrainer(t);
+        }}
+        onLogout={handleLogout}
       />
     );
   }
@@ -1399,17 +1429,15 @@ export default function AppContent({
               <>
                 <ThemeToggle />
                 <HubAnnouncementsWidget authTrainer={authTrainer} />
-                {(isSuperAdminView || isOwnerView || isStudioLeaderView) && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setCurrentView("trainer-hub")}
-                    className={`rounded-full transition-all hover:bg-transparent ${currentView === "trainer-hub" ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 active:text-orange-500"}`}
-                    title="Trainer Control Hub"
-                  >
-                    <Settings className="w-6 h-6 md:w-7 md:h-7 transition-colors hover:stroke-orange-500" />
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setCurrentView("trainer-hub")}
+                  className={`rounded-full transition-all hover:bg-transparent ${currentView === "trainer-hub" ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 active:text-orange-500"}`}
+                  title="Trainer Control Hub"
+                >
+                  <Settings className="w-6 h-6 md:w-7 md:h-7 transition-colors hover:stroke-orange-500" />
+                </Button>
               </>
             }
             trainerDropdown={
@@ -1422,6 +1450,25 @@ export default function AppContent({
                   className="w-56 rounded-[24px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark p-2 shadow-2xl dark:shadow-none text-slate-700 dark:text-slate-300"
                 >
                   <DropdownMenuGroup>
+                    {isStudioLeader(authTrainer) && (
+                      <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-2">
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 block mb-3">App Mode</Label>
+                        <div className="flex bg-slate-100 dark:bg-bg-dark-3 p-1 rounded-xl">
+                          <button
+                            onClick={() => { setAppMode("trainer"); setCurrentView("clients"); }}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "trainer" ? "bg-white dark:bg-bg-dark shadow-sm text-sky-600 dark:text-sky-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                          >
+                            Trainer
+                          </button>
+                          <button
+                            onClick={() => { setAppMode("admin"); setCurrentView("admin-dashboard" as any); }}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" ? "bg-white dark:bg-bg-dark shadow-sm text-orange-600 dark:text-orange-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                          >
+                            Admin
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <DropdownMenuLabel className="font-black uppercase text-[11px] tracking-widest px-3 py-2 text-slate-500 dark:text-slate-400">
                       Active Profile
                     </DropdownMenuLabel>
@@ -1435,42 +1482,19 @@ export default function AppContent({
                       <UserCircle className="w-4 h-4 text-sky-500" />
                       View Profile
                     </DropdownMenuItem>
-                    {(isSuperAdminView || isOwnerView || isStudioLeaderView) && (
-                      <DropdownMenuItem
-                        onClick={() => setCurrentView("trainer-hub")}
-                        className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
-                      >
-                        <Settings className="w-4 h-4" />
-                        Settings
-                      </DropdownMenuItem>
-                    )}
-                    {(isOwner(authTrainer) ||
-                      checkIsAdmin(authTrainer, user.email || undefined)) && (
-                      <DropdownMenuItem
-                        onClick={() =>
-                          setCurrentView("franchise-dashboard" as any)
-                        }
-                        className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white text-indigo-400"
-                      >
-                        <Network className="w-4 h-4" />
-                        Franchise Dashboard
-                      </DropdownMenuItem>
-                    )}
-                    {(isFounder(authTrainer) ||
-                      checkIsAdmin(authTrainer, user.email || undefined)) && (
-                      <DropdownMenuItem
-                        onClick={() => setCurrentView("admin-dashboard" as any)}
-                        className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white text-orange-500"
-                      >
-                        <Network className="w-4 h-4" />
-                        Admin Dashboard
-                      </DropdownMenuItem>
-                    )}
                   </DropdownMenuGroup>
 
                   <DropdownMenuSeparator className="my-2 bg-slate-700" />
 
                   <DropdownMenuGroup>
+                    <DropdownMenuItem
+                      onClick={handleTrainerLock}
+                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-orange-500 hover:bg-orange-500/10 dark:bg-orange-600/10 focus:bg-orange-500/10 dark:bg-orange-600/10 focus:text-orange-500 cursor-pointer"
+                    >
+                      <Lock className="w-4 h-4" />
+                      Switch Trainer
+                    </DropdownMenuItem>
+
                     <DropdownMenuItem
                       onClick={() => setIsChangingStudio(true)}
                       className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900 dark:text-white"
@@ -1511,6 +1535,22 @@ export default function AppContent({
                   setCurrentView("profile");
                 }}
                 onCancel={() => setCurrentView("profile")}
+              />
+            )}
+            {currentView === "trainers" && (
+              <ProfilesView
+                trainers={trainers}
+                clients={clients}
+                sessions={sessions}
+                schedules={schedules}
+                onSelectClient={(id) => {
+                  setSelectedClientId(id);
+                }}
+                setSelectedClientId={setSelectedClientId}
+                setView={setCurrentView}
+                authTrainer={authTrainer}
+                onTrainerLogin={handleTrainerLogin}
+                isAdmin={tokenRole === "Admin" || authTrainer?.role === "Admin" || tokenRole === "Founder" || authTrainer?.role === "Founder"}
               />
             )}
             {currentView === "client-directory" && (
@@ -1682,7 +1722,7 @@ export default function AppContent({
                   authTrainer={authTrainer}
                 />
               )}
-            {currentView === "franchise-dashboard" && authTrainer && (isSuperAdminView || isOwnerView) && (
+            {currentView === "franchise-dashboard" && authTrainer && (
               <FranchiseDashboardView
                 authTrainer={authTrainer}
                 allStudios={studios}
@@ -1690,7 +1730,7 @@ export default function AppContent({
                 networks={networks}
               />
             )}
-            {currentView === "admin-dashboard" && authTrainer && isSuperAdminView && (
+            {currentView === "admin-dashboard" && authTrainer && (
               <AdminDashboardView
                 authTrainer={authTrainer}
                 studios={studios}
@@ -1711,7 +1751,7 @@ export default function AppContent({
                 }}
               />
             )}
-            {currentView === "trainer-hub" && (isSuperAdminView || isOwnerView || isStudioLeaderView) && (
+            {currentView === "trainer-hub" && (
               <TrainerControlHubView
                 activeStudioId={activeStudioId}
                 trainers={trainers}
@@ -1737,7 +1777,7 @@ export default function AppContent({
               />
             )}
             
-            {currentView === "integrations" && (isSuperAdminView || isOwnerView || isStudioLeaderView) && (
+            {currentView === "integrations" && (
               <IntegrationsHubView
                 authTrainer={authTrainer}
                 activeStudioId={activeStudioId}
@@ -1789,77 +1829,104 @@ export default function AppContent({
         </main>
 
         {/* Navigation Bar */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-6 h-20 flex items-center justify-around z-[100]">
-          {authTrainer?.role !== "LifeTransformer" && (
+        {appMode === "trainer" ? (
+          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-6 h-20 flex items-center justify-around z-[100]">
             <NavButton
-              active={
-                currentView === "admin-dashboard" ||
-                currentView === "franchise-dashboard" ||
-                currentView === "trainer-hub" ||
-                currentView === "clients"
-              }
-              onClick={() => setCurrentView(getDefaultView())}
+              active={currentView === "clients"}
+              onClick={() => setCurrentView("clients")}
               icon={<Users className="w-6 h-6" />}
               label="Hub"
             />
-          )}
-          <NavButton
-            active={[
-              "profile",
-              "history",
-              "progress-report",
-              "client-directory",
-            ].includes(currentView)}
-            onClick={() => {
-              if (selectedClientId) {
-                setCurrentView("profile");
-              } else {
-                setCurrentView("client-directory");
+            <NavButton
+              active={[
+                "profile",
+                "history",
+                "progress-report",
+                "client-directory",
+              ].includes(currentView)}
+              onClick={() => {
+                if (selectedClientId) {
+                  setCurrentView("profile");
+                } else {
+                  setCurrentView("client-directory");
+                }
+              }}
+              icon={<ClipboardList className="w-6 h-6" />}
+              label="Client"
+            />
+            <NavButton
+              active={currentView === "workouts"}
+              onClick={() => {
+                if (currentSession || selectedClientId) {
+                  setCurrentView("workouts");
+                } else {
+                  setCurrentView("client-directory");
+                }
+              }}
+              icon={<PlayCircle className="w-6 h-6" />}
+              label={currentSession ? "Active Session" : "Start Session"}
+              activeColor={currentSession ? "text-orange-500" : undefined}
+              activeBg={
+                currentSession
+                  ? "bg-orange-500/10 dark:bg-orange-600/10"
+                  : undefined
               }
-            }}
-            icon={<ClipboardList className="w-6 h-6" />}
-            label="Client"
-          />
-          <NavButton
-            active={currentView === "workouts"}
-            onClick={() => {
-              if (currentSession || selectedClientId) {
-                setCurrentView("workouts");
-              } else {
-                setCurrentView("client-directory");
+              activeIndicator={
+                currentSession ? "bg-orange-500 dark:bg-orange-600" : undefined
               }
-            }}
-            icon={<PlayCircle className="w-6 h-6" />}
-            label={currentSession ? "Active Session" : "Start Session"}
-            activeColor={currentSession ? "text-orange-500" : undefined}
-            activeBg={
-              currentSession
-                ? "bg-orange-500/10 dark:bg-orange-600/10"
-                : undefined
-            }
-            activeIndicator={
-              currentSession ? "bg-orange-500 dark:bg-orange-600" : undefined
-            }
-          />
-          <NavButton
-            active={currentView === "machine-anatomy"}
-            onClick={() => setCurrentView("machine-anatomy")}
-            icon={<Dumbbell className="w-6 h-6" />}
-            label="Catalog"
-          />
-          <NavButton
-            active={currentView === "calendar"}
-            onClick={() => setCurrentView("calendar")}
-            icon={<Calendar className="w-6 h-6" />}
-            label="Calendar"
-          />
-          <NavButton
-            active={currentView === "purchases"}
-            onClick={() => setCurrentView("purchases")}
-            icon={<CreditCard className="w-6 h-6" />}
-            label="Purchases"
-          />
-        </nav>
+            />
+            <NavButton
+              active={currentView === "machine-anatomy"}
+              onClick={() => setCurrentView("machine-anatomy")}
+              icon={<Dumbbell className="w-6 h-6" />}
+              label="Catalog"
+            />
+            <NavButton
+              active={currentView === "calendar"}
+              onClick={() => setCurrentView("calendar")}
+              icon={<Calendar className="w-6 h-6" />}
+              label="Calendar"
+            />
+            <NavButton
+              active={currentView === "purchases"}
+              onClick={() => setCurrentView("purchases")}
+              icon={<CreditCard className="w-6 h-6" />}
+              label="Purchases"
+            />
+          </nav>
+        ) : (
+          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-bg-dark border-t border-orange-500/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-6 h-20 flex items-center justify-around z-[100]">
+            <NavButton
+              active={currentView === "admin-dashboard"}
+              onClick={() => setCurrentView("admin-dashboard" as any)}
+              icon={<LayoutDashboard className="w-6 h-6" />}
+              label="Admin"
+              activeColor="text-orange-500"
+              activeBg="bg-orange-500/10 dark:bg-orange-600/10"
+              activeIndicator="bg-orange-500 dark:bg-orange-600"
+            />
+            {(isOwner(authTrainer) || checkIsAdmin(authTrainer, user.email || undefined)) && (
+              <NavButton
+                active={currentView === "franchise-dashboard"}
+                onClick={() => setCurrentView("franchise-dashboard" as any)}
+                icon={<Network className="w-6 h-6" />}
+                label="Franchise"
+                activeColor="text-indigo-500"
+                activeBg="bg-indigo-500/10 dark:bg-indigo-600/10"
+                activeIndicator="bg-indigo-500 dark:bg-indigo-600"
+              />
+            )}
+            <NavButton
+              active={currentView === "trainer-hub"}
+              onClick={() => setCurrentView("trainer-hub")}
+              icon={<Settings className="w-6 h-6" />}
+              label="Customize Studio"
+              activeColor="text-emerald-500"
+              activeBg="bg-emerald-500/10 dark:bg-emerald-600/10"
+              activeIndicator="bg-emerald-500 dark:bg-emerald-600"
+            />
+          </nav>
+        )}
       </div>
 
       {/* Machine Information Deep Dive Dialog */}
@@ -3927,17 +3994,6 @@ function ClientsView({
         isSessionValid(s),
     ); // check for active unassigned sessions
 
-  // Recent clients (edited or created)
-  const recentClients = [...clients]
-    .sort((a, b) => {
-      const timeA =
-        getMillis((a as any).updatedAt) || getMillis(a.createdAt) || 0;
-      const timeB =
-        getMillis((b as any).updatedAt) || getMillis(b.createdAt) || 0;
-      return timeB - timeA;
-    })
-    .slice(0, 5);
-
   const getClientSessions = (client: Client) => {
     const clientName = `${client.firstName} ${client.lastName}`;
     const next = schedules
@@ -4520,7 +4576,10 @@ function ClientsView({
                   <table className="w-full border-collapse table-fixed h-full bg-white dark:bg-slate-950">
                     <thead className="relative z-30">
                       <tr className="bg-slate-50 dark:bg-bg-dark border-b-2 border-slate-300 dark:border-slate-700 h-[84px] sm:h-[100px]">
-                        <th className="p-1 sm:p-2 border-r-2 border-slate-300 dark:border-slate-700 w-12 sm:w-16 sticky left-0 bg-slate-50 dark:bg-bg-dark z-40"></th>
+                        <th className="p-1 sm:p-2 border-r-2 border-slate-300 dark:border-slate-700 w-16 min-w-[4rem] max-w-[4rem] sticky left-0 bg-slate-50 dark:bg-bg-dark z-40"></th>
+                        {visibleTrainersList.length === 0 && (
+                          <th className="w-full bg-slate-50 dark:bg-bg-dark"></th>
+                        )}
                         {visibleTrainersList.map((trainer) => {
                           const sessionCount = todaysSchedules.filter(
                             (s) =>
@@ -4563,7 +4622,7 @@ function ClientsView({
                               key={slot}
                               className="border-b-2 border-slate-300 dark:border-slate-700 last:border-0 hover:bg-slate-50 dark:hover:bg-surface-1/[0.05] transition-colors group relative h-[72px]"
                             >
-                              <td className="p-1 sm:p-2 text-center border-r-2 border-slate-300 dark:border-slate-700 sticky left-0 bg-slate-100 dark:bg-surface-1 z-10 relative box-border shadow-[2px_0_10px_rgba(0,0,0,0.05)]">
+                              <td className="p-1 sm:p-2 w-16 min-w-[4rem] max-w-[4rem] text-center border-r-2 border-slate-300 dark:border-slate-700 sticky left-0 bg-slate-100 dark:bg-surface-1 z-10 relative box-border shadow-[2px_0_10px_rgba(0,0,0,0.05)]">
                                 <div className="flex flex-col items-center justify-center">
                                   <span className="text-[12px] sm:text-[14px] font-black tracking-widest text-[#0A2E46] dark:text-white uppercase leading-none">
                                     {slot
@@ -4577,6 +4636,11 @@ function ClientsView({
                                   </span>
                                 </div>
                               </td>
+                              {visibleTrainersList.length === 0 && (
+                                <td className="w-full bg-slate-50 dark:bg-bg-dark border-r-2 border-slate-300 dark:border-slate-700 p-2 text-center text-slate-400 font-bold tracking-widest uppercase text-xs">
+                                  No Trainers Displayed
+                                </td>
+                              )}
                               {visibleTrainersList.map((trainer, tIdx) => {
                                 const cellId = `${trainer.id}-${slot}`;
                                 if (skippedGridCells.has(cellId)) return null;
@@ -4781,76 +4845,55 @@ function ClientsView({
               </div>
             </section>
 
-            {/* Recently Profiled (Compact Grid) */}
-            <section className="space-y-6 pt-10 border-t border-slate-200 dark:border-slate-800/50 dark:border-slate-800/50">
+            {/* Quick Stats Trackers */}
+            <section className="space-y-6 pt-10 border-t border-slate-200 dark:border-slate-800/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-sky-500/10 flex items-center justify-center border border-sky-500/20">
-                    <Users className="w-5 h-5 text-sky-500" />
+                  <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
+                    <Activity className="w-5 h-5 text-orange-500" />
                   </div>
                   <h3 className="text-[17px] font-black uppercase tracking-[0.1em] text-slate-900 dark:text-white">
-                    Recently Active Profiles
+                    Studio Overview
                   </h3>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                {recentClients.map((client) => {
-                  const getTierInfo = (c: Client) => {
-                    const tier = c.packageTier;
-                    if (tier === "18-Month")
-                      return {
-                        name: "18-Month VIP",
-                        css: "bg-slate-400/10 text-slate-600 border-slate-400/50 shadow-[0_0_15px_rgba(148,163,184,0.1)]",
-                      };
-                    if (tier === "12-Month")
-                      return {
-                        name: "12-Month Tier",
-                        css: "bg-orange-500/10 dark:bg-orange-600/10 text-orange-500 border-orange-500/50 shadow-[0_0_15px_rgba(240,108,34,0.15)]",
-                      };
-                    if (tier === "6-Month")
-                      return {
-                        name: "6-Month Tier",
-                        css: "bg-sky-500/10 text-sky-500 border-sky-500/50 shadow-[0_0_15px_rgba(56,189,248,0.15)]",
-                      };
-                    return {
-                      name: "Prospect",
-                      css: "border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 bg-white/20",
-                    };
-                  };
-                  const tierInfo = getTierInfo(client);
-
-                  return (
-                    <div
-                      key={client.id}
-                      className="group relative flex flex-col bg-slate-50 dark:bg-slate-950 rounded-[2rem] border border-slate-200 dark:border-slate-800/80 p-5 hover:border-sky-500/40 hover:bg-white dark:hover:bg-surface-1/40 cursor-pointer transition-all shadow-xl"
-                      onClick={() => {
-                        onSelectClient(client.id!);
-                        setView("profile");
-                      }}
-                    >
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-950 flex items-center justify-center font-black text-sm text-sky-500 border border-[#114B72] group-hover:scale-105 transition-transform">
-                          {client.firstName[0]}
-                          {client.lastName[0]}
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-bold text-slate-900 dark:text-slate-100 text-[15px] truncate leading-tight">
-                            {client.firstName} {client.lastName}
-                          </span>
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate flex items-center gap-1.5">
-                            <RefreshCcw className="w-2.5 h-2.5" /> Active
-                          </span>
-                        </div>
-                      </div>
-                      <div
-                        className={`mt-auto w-fit text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border ${tierInfo.css}`}
-                      >
-                        {tierInfo.name}
-                      </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white dark:bg-slate-950 rounded-[2rem] border border-slate-200 dark:border-slate-800/80 p-6 flex flex-col justify-between shadow-xl">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 rounded-2xl bg-sky-500/10 flex items-center justify-center border border-sky-500/20 text-sky-500">
+                      <Calendar className="w-5 h-5" />
                     </div>
-                  );
-                })}
+                    <span className="text-[13px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 leading-tight">Pre-Booked<br/>Sessions</span>
+                  </div>
+                  <div className="text-4xl font-black text-slate-900 dark:text-white tracking-widest">
+                    --
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-950 rounded-[2rem] border border-slate-200 dark:border-slate-800/80 p-6 flex flex-col justify-between shadow-xl">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-500">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <span className="text-[13px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 leading-tight">Active<br/>Clients</span>
+                  </div>
+                  <div className="text-4xl font-black text-slate-900 dark:text-white tracking-widest">
+                    --
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-950 rounded-[2rem] border border-slate-200 dark:border-slate-800/80 p-6 flex flex-col justify-between shadow-xl">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 text-indigo-500">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                    <span className="text-[13px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 leading-tight">Sessions Completed<br/>This Week</span>
+                  </div>
+                  <div className="text-4xl font-black text-slate-900 dark:text-white tracking-widest">
+                    --
+                  </div>
+                </div>
               </div>
             </section>
           </div>

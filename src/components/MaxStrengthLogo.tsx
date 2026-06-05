@@ -53,8 +53,8 @@ export const MaxStrengthLogo: React.FC<MaxStrengthLogoProps> = ({
       <div className={`flex ${spacing}`}>
         <div className={`${boxSize} bg-[#005187] flex items-center justify-center font-medium text-white rounded-[2px]`}>M</div>
         <div className={`${boxSize} bg-[#eb6e21] flex items-center justify-center text-white rounded-[2px]`}>
-          <svg width="0.65em" height="0.65em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square" strokeLinejoin="miter">
-            <polyline points="4 21 12 4 20 21" />
+          <svg width="0.75em" height="0.75em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="transform translate-y-[1px]">
+            <path d="M4 16l8-8 8 8"/>
           </svg>
         </div>
         <div className={`${boxSize} bg-[#667279] flex items-center justify-center font-medium text-white rounded-[2px]`}>X</div>

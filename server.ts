@@ -216,6 +216,47 @@ async function startServer() {
     }
   });
 
+  // Mindbody Sandbox Testing Endpoint
+  app.post('/api/mindbody/issueUserToken', async (req, res) => {
+    try {
+      const mindbodyApiKey = process.env.MINDBODY_API_KEY;
+      if (!mindbodyApiKey) {
+        return res.status(500).json({ error: "MINDBODY_API_KEY environment variable is not set. Please add it to the Secrets in Settings." });
+      }
+
+      const siteId = -99;
+      const username = "mindbodysandboxsite@gmail.com";
+      const password = "Apitest1234";
+
+      const requestBody = {
+        Username: username,
+        Password: password
+      };
+
+      const response = await fetch("https://api.mindbodyonline.com/public/v6/usertoken/issue", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Api-Key": mindbodyApiKey,
+          "SiteId": String(siteId)
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("Mindbody API Error:", response.status, errorData);
+        return res.status(response.status).json({ error: `Mindbody API Error: ${errorData}` });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (e: any) {
+      console.error(e);
+      res.status(500).json({ error: e.message || 'An unexpected error occurred' });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

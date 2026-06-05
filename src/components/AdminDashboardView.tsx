@@ -10,6 +10,8 @@ import { RetentionDashboardView } from "./RetentionDashboardView";
 import { MindbodyDashboard } from "./mindbody/MindbodyDashboard";
 import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, ShieldAlert, Zap, CreditCard } from "lucide-react";
 
+import { AdminSystemClients } from "./AdminSystemClients";
+
 interface Props {
   authTrainer: Trainer;
   studios: Studio[];
@@ -46,10 +48,12 @@ export function AdminDashboardView({
   onNavigateProfile,
 }: Props) {
   const [activeTab, setActiveTab] = useState<
-    "metrics" | "users" | "studios" | "announcements" | "bugs" | "insights" | "retention" | "mindbody"
+    "metrics" | "users" | "studios" | "clients" | "announcements" | "bugs" | "insights" | "retention" | "mindbody"
   >("metrics");
 
-  const tabs = [
+  const isFranchiseOwnerOrAdmin = isAdmin || authTrainer?.role === "FranchiseOwner" || authTrainer?.role === "Owner";
+
+  const allTabs = [
     {
       id: "metrics",
       label: "Overview",
@@ -61,8 +65,13 @@ export function AdminDashboardView({
       icon: <Users className="w-4 h-4" />,
     },
     {
+      id: "clients",
+      label: "System Clients",
+      icon: <Users className="w-4 h-4" />,
+    },
+    {
       id: "studios",
-      label: "Franchises",
+      label: "Studios",
       icon: <Building2 className="w-4 h-4" />,
     },
     {
@@ -88,6 +97,14 @@ export function AdminDashboardView({
     { id: "bugs", label: "Bug Reports", icon: <Bug className="w-4 h-4" /> },
   ];
 
+  const tabs = allTabs.filter(tab => {
+    if (tab.id === "users") return isFranchiseOwnerOrAdmin;
+    if (tab.id === "mindbody") return isAdmin;
+    if (tab.id === "bugs") return isAdmin;
+    if (tab.id === "announcements") return isFranchiseOwnerOrAdmin;
+    return true;
+  });
+
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6 animate-fade-in text-slate-900 dark:text-slate-100">
       <div className="flex flex-wrap bg-slate-100 dark:bg-slate-900 rounded-2xl p-1 mb-8 w-fit gap-1 shadow-sm">
@@ -111,10 +128,15 @@ export function AdminDashboardView({
         {activeTab === "metrics" && (
           <AdminMetricsDashboard
             onManageStudios={() => setActiveTab("studios")}
+            clients={clients}
+            networks={networks}
           />
         )}
         {activeTab === "users" && (
           <AdminUserDirectory studios={studios} onRefresh={onRefresh} />
+        )}
+        {activeTab === "clients" && (
+          <AdminSystemClients clients={clients} studios={studios} />
         )}
         {activeTab === "studios" && (
           <AdminStudioManager

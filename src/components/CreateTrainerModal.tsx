@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { hashPin } from "../lib/auth-utils";
 import { generateSearchTokens } from "@/lib/utils";
 import { CreateTrainerPayload } from "../types";
 import {

@@ -26,9 +26,6 @@ import {
   ArrowLeft,
   Plus,
   Trash2,
-  Pencil,
-  Check,
-  X,
   Star,
   UserCircle,
   BadgeInfo,
@@ -190,26 +187,6 @@ export function AdminStudioManager({
 
   // 2. CREATE STUDIO
   const [newStudioName, setNewStudioName] = useState("");
-  const [editingNetworkId, setEditingNetworkId] = useState<string | null>(null);
-  const [editingNetworkName, setEditingNetworkName] = useState("");
-
-  const handleUpdateNetworkName = async (networkId: string) => {
-    if (!editingNetworkName.trim()) {
-      alert("Please provide a valid network name.");
-      return;
-    }
-    
-    try {
-      await updateDoc(doc(db, "networks", networkId), {
-        name: editingNetworkName.trim()
-      });
-      setEditingNetworkId(null);
-      await onRefresh?.("networks");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, `networks/${networkId}`);
-    }
-  };
-
   const handleCreateStudio = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStudioName.trim()) {
@@ -234,30 +211,58 @@ export function AdminStudioManager({
     }
   };
 
-  // 3. DELETE FRANCHISE NETWORK
+  // 3. DELETE STUDIO
+  const handleDeleteStudio = async (sId: string) => {
+    const studio = allStudios.find(s => s.id === sId);
+    if (!studio) return;
+    if (!confirm(`Are you absolutely sure you want to delete the studio "${studio.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, "studios", sId));
+      if (selectedStudioId === sId) {
+        setSelectedStudioId(null);
+      }
+      await onRefresh?.("studios");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `studios/${sId}`);
+    }
+  };
+
+  // 4. DELETE FRANCHISE NETWORK
   const handleDeleteNetwork = async (networkId: string) => {
     const net = networks.find((n) => n.id === networkId);
     if (!net) return;
-    if (net.studioIds && net.studioIds.length > 0) {
-      alert(
-        "Please unlink all associated studios from this regional network before removing it.",
-      );
-      return;
-    }
+    
     if (
       !confirm(
-        `Are you absolutely sure you want to disband the regional command for "${net.name}"?`,
+        `Are you absolutely sure you want to disband the regional command for "${net.name}"? This will unlink ${net.studioIds?.length || 0} associated studios.`,
       )
     ) {
       return;
     }
 
     try {
+      // Unlink studios first if any exist
+      if (net.studioIds && net.studioIds.length > 0) {
+        for (const sId of net.studioIds) {
+          try {
+            const sRef = doc(db, "studios", sId);
+            await updateDoc(sRef, { networkId: deleteField() });
+          } catch (e) {
+             console.warn(`Could not unlink studio ${sId}`, e);
+          }
+        }
+      }
+
       await deleteDoc(doc(db, "networks", networkId));
       if (selectedNetworkId === networkId) {
         setSelectedNetworkId(null);
       }
+      // Force refresh on both to clear states
       await onRefresh?.("networks");
+      await onRefresh?.("studios");
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, `networks/${networkId}`);
     }
@@ -340,6 +345,7 @@ export function AdminStudioManager({
       address: formData.get("address") as string,
       timezone: formData.get("timezone") as string,
       mindbodySiteId: formData.get("mindbodySiteId") as string,
+      locationType: formData.get("locationType") as any,
       ownerId: ownerIdVal === "none" ? deleteField() : ownerIdVal,
       headTrainerId: headTrainerIdVal === "none" ? deleteField() : headTrainerIdVal,
     } as any;
@@ -426,7 +432,7 @@ export function AdminStudioManager({
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-3xl md:text-4xl font-black uppercase italic tracking-tighter text-white">
-                  Franchise Command
+                  Studio Command
                 </h1>
                 <Badge className="bg-[#F06C22]/15 text-[#F06C22] border border-[#F06C22]/20 text-[11px] font-black uppercase tracking-widest px-2 py-0.5">
                   Enterprise
@@ -571,68 +577,30 @@ export function AdminStudioManager({
                           className="bg-slate-950 border-slate-800 text-zinc-300 rounded-2xl h-12 font-bold focus:border-[#F06C22]"
                         />
                       </div>
-
-                      {/* Explicit Role Mapping directly from HQ Command Center */}
-                      <div className="md:col-span-2 pt-6 border-t border-slate-800/60 mt-4 space-y-6">
-                        <h3 className="text-xs font-black uppercase tracking-widest text-white flex items-center gap-2">
-                          <Crown className="w-4 h-4 text-[#F06C22]" />
-                          Role & Permission Mapping
-                        </h3>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <Label className="text-[11px] font-black uppercase tracking-widest text-zinc-500 ml-1">
-                              Assigned Business Owner
-                            </Label>
-                            <Select
-                              name="ownerId"
-                              defaultValue={selectedStudio.ownerId || "none"}
-                            >
-                              <SelectTrigger className="bg-slate-950 border-slate-800 text-white h-12 rounded-2xl font-bold">
-                                <SelectValue placeholder="No Owner Assigned" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                                <SelectItem value="none">
-                                  No Owner Assigned
-                                </SelectItem>
-                                {trainers.map((t) => (
-                                  <SelectItem key={t.id} value={t.id!}>
-                                    {t.fullName} ({t.role})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label className="text-[11px] font-black uppercase tracking-widest text-zinc-500 ml-1">
-                              Designated Head Trainer
-                            </Label>
-                            <Select
-                              name="headTrainerId"
-                              defaultValue={
-                                selectedStudio.headTrainerId || "none"
-                              }
-                            >
-                              <SelectTrigger className="bg-slate-950 border-slate-800 text-white h-12 rounded-2xl font-bold">
-                                <SelectValue placeholder="No Head Trainer Assigned" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                                <SelectItem value="none">
-                                  No Head Trainer Assigned
-                                </SelectItem>
-                                {trainers.map((t) => (
-                                  <SelectItem key={t.id} value={t.id!}>
-                                    {t.fullName}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
+                      <div className="space-y-2">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-zinc-500 ml-1">
+                          Location Type
+                        </Label>
+                        <Select name="locationType" defaultValue={selectedStudio.locationType || "franchise"}>
+                          <SelectTrigger className="bg-slate-950 border-slate-800 text-zinc-300 rounded-2xl h-12 font-bold focus:border-[#F06C22]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                            <SelectItem value="corporate" className="font-bold">Corporate Owned</SelectItem>
+                            <SelectItem value="franchise" className="font-bold">Franchised</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
 
-                      <div className="md:col-span-2 pt-6 border-t border-slate-800/60 flex justify-end">
+                      <div className="md:col-span-2 pt-6 border-t border-slate-800/60 flex justify-between items-center">
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          onClick={() => selectedStudio.id && handleDeleteStudio(selectedStudio.id)}
+                          className="font-black uppercase tracking-widest text-[11px] h-12 px-6 rounded-2xl"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" /> Delete Studio
+                        </Button>
                         <Button
                           type="submit"
                           disabled={isSaving}
@@ -651,141 +619,6 @@ export function AdminStudioManager({
                     </form>
                   </CardContent>
                 </Card>
-
-                {/* Staff Roster Management */}
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-black uppercase tracking-wider flex items-center gap-3 text-white">
-                      <span className="w-10 h-10 bg-[#F06C22]/15 border border-[#F06C22]/20 rounded-xl flex items-center justify-center text-[#F06C22]">
-                        <Users className="w-5 h-5" />
-                      </span>
-                      Linked Professional Staff
-                    </h3>
-                    <Button
-                      onClick={() => setIsAddingStaff(true)}
-                      className="bg-slate-900 hover:bg-slate-850 hover:text-white border border-slate-800 hover:border-[#F06C22]/30 text-[#F06C22] font-black uppercase tracking-widest text-[11px] h-10 px-4 rounded-xl shadow-xl transition-all"
-                    >
-                      <Plus className="w-4 h-4 mr-1.5" />
-                      Authorize Trainer
-                    </Button>
-                  </div>
-
-                  <AnimatePresence>
-                    {isAddingStaff && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -15 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -15 }}
-                        className="p-6 bg-slate-900/40 border border-dashed border-slate-800 rounded-[28px]"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-xs font-black uppercase tracking-widest text-[#F06C22]">
-                            Search Organization for Trainer
-                          </h4>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setIsAddingStaff(false)}
-                            className="text-[11px] font-black text-zinc-550 uppercase"
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="md:col-span-2">
-                            <Select onValueChange={handleAddTrainerToStudio}>
-                              <SelectTrigger className="bg-slate-950 border-slate-800 text-white h-12 rounded-xl font-bold">
-                                <SelectValue placeholder="Select trainer profile to link..." />
-                              </SelectTrigger>
-                              <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                                {trainers
-                                  .filter(
-                                    (t) =>
-                                      !getStaffForStudio(
-                                        selectedStudio.id!,
-                                      ).some((current) => current.id === t.id),
-                                  )
-                                  .map((t) => (
-                                    <SelectItem key={t.id} value={t.id!}>
-                                      {t.fullName} ({t.initials})
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {getStaffForStudio(selectedStudio.id!).map((trainer) => {
-                      const isOwner = trainer.id === selectedStudio.ownerId;
-                      const isHead =
-                        trainer.id === selectedStudio.headTrainerId;
-
-                      return (
-                        <Card
-                          key={trainer.id}
-                          className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex items-stretch group hover:border-[#F06C22]/30 transition-colors"
-                        >
-                          <div
-                            className={cn(
-                              "w-1.5 transition-all",
-                              isOwner
-                                ? "bg-amber-500"
-                                : isHead
-                                  ? "bg-indigo-500"
-                                  : "bg-[#F06C22] group-hover:w-3",
-                            )}
-                          />
-                          <CardContent className="p-4 flex items-center gap-4 w-full">
-                            <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center font-black text-white shadow-inner">
-                              {trainer.initials}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-extrabold text-sm uppercase tracking-wider text-white truncate">
-                                {trainer.fullName}
-                              </p>
-                              <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                                <Badge
-                                  className={cn(
-                                    "border text-[11px] font-black uppercase tracking-widest px-1.5 h-4",
-                                    getRoleColor(trainer.role),
-                                  )}
-                                >
-                                  {getRoleDisplayName(trainer.role)}
-                                </Badge>
-                                {isOwner && (
-                                  <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[11px] font-black uppercase px-1.5 h-4">
-                                    Franchise Principal
-                                  </Badge>
-                                )}
-                                {isHead && (
-                                  <Badge className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[11px] font-black uppercase px-1.5 h-4">
-                                    Studio Leader
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                            <div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() =>
-                                  handleRemoveTrainerFromStudio(trainer.id!)
-                                }
-                                className="w-8 h-8 rounded-lg text-zinc-600 hover:text-rose-500 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
 
               {/* Sidebar Stats and Control Metrics */}
@@ -794,7 +627,7 @@ export function AdminStudioManager({
                   <div className="flex items-center gap-2 text-[#F06C22] border-b border-slate-850 pb-4">
                     <ShieldCheck className="w-5 h-5" />
                     <span className="text-xs font-black uppercase tracking-widest">
-                      Studio Permissions Check
+                      Studio Quick Stats
                     </span>
                   </div>
 
@@ -1039,69 +872,24 @@ export function AdminStudioManager({
 
                             <div className="space-y-4">
                               <div className="flex items-center justify-between">
-                                {editingNetworkId === network.id ? (
-                                  <div className="flex-1 mr-4">
-                                    <div className="flex items-center gap-2">
-                                      <Input 
-                                        value={editingNetworkName}
-                                        onChange={(e) => setEditingNetworkName(e.target.value)}
-                                        className="bg-slate-950 border-slate-700 text-white font-extrabold italic uppercase tracking-tight h-10 w-full"
-                                        autoFocus
-                                      />
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleUpdateNetworkName(network.id)}
-                                        className="w-10 h-10 shrink-0 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10"
+                                <div>
+                                  <h4 className="text-xl font-extrabold uppercase italic tracking-tight text-white">
+                                    {network.name}
+                                  </h4>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">
+                                      REGIONAL FRANCHISE NETWORK
+                                    </p>
+                                    {network.state && (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[11px] tracking-widest border-slate-700 text-zinc-400"
                                       >
-                                        <Check className="w-5 h-5" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setEditingNetworkId(null)}
-                                        className="w-10 h-10 shrink-0 text-zinc-500 hover:text-zinc-400 hover:bg-slate-800"
-                                      >
-                                        <X className="w-5 h-5" />
-                                      </Button>
-                                    </div>
+                                        {network.state}
+                                      </Badge>
+                                    )}
                                   </div>
-                                ) : (
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <h4 className="text-xl font-extrabold uppercase italic tracking-tight text-white cursor-pointer hover:text-[#F06C22] transition-colors"
-                                          onClick={() => {
-                                            setEditingNetworkId(network.id);
-                                            setEditingNetworkName(network.name);
-                                          }}
-                                      >
-                                        {network.name}
-                                      </h4>
-                                      <button 
-                                        onClick={() => {
-                                            setEditingNetworkId(network.id);
-                                            setEditingNetworkName(network.name);
-                                        }}
-                                        className="text-zinc-600 hover:text-[#F06C22] transition-colors"
-                                      >
-                                        <Pencil className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-0.5">
-                                      <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">
-                                        REGIONAL FRANCHISE NETWORK
-                                      </p>
-                                      {network.state && (
-                                        <Badge
-                                          variant="outline"
-                                          className="text-[11px] tracking-widest border-slate-700 text-zinc-400"
-                                        >
-                                          {network.state}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
+                                </div>
                                 <Button
                                   variant="ghost"
                                   size="icon"

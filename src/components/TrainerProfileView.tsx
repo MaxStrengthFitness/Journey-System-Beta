@@ -95,16 +95,37 @@ export function TrainerProfileView({
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-700/50 pb-6 relative z-10">
         <div className="flex items-center gap-6">
-          <div className="w-20 h-20 rounded-[32px] bg-slate-800 flex items-center justify-center text-[#38BDF8] border-2 border-slate-700 shadow-xl shadow-black/20">
+          <div 
+            className="w-20 h-20 rounded-[32px] bg-slate-800 flex items-center justify-center text-[#38BDF8] border-2 shadow-xl shadow-black/20"
+            style={{ 
+              color: trainer.brandColor || "#38BDF8", 
+              borderColor: trainer.brandColor ? `${trainer.brandColor}50` : "#334155" 
+            }}
+          >
             <UserCircle className="w-12 h-12" />
           </div>
           <div className="flex flex-col gap-1">
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#38BDF8] italic leading-none">Tactical Command Center</p>
-            <h2 className="text-4xl font-black tracking-tighter uppercase italic text-white">{trainer.fullName}</h2>
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] italic leading-none" style={{ color: trainer.brandColor || "#38BDF8" }}>
+              Tactical Command Center
+            </p>
+            <h2 className="text-4xl font-black tracking-tighter uppercase italic text-white">
+              {trainer.fullName} {trainer.nickname && <span className="text-slate-400 text-2xl">"{trainer.nickname}"</span>}
+            </h2>
             <div className="flex items-center gap-3 mt-1">
-              <Badge variant="outline" className="rounded-md border-slate-700 text-slate-300 bg-slate-800 font-black uppercase text-[11px] h-5">
+              <Badge 
+                variant="outline" 
+                className="rounded-md border-slate-700 bg-slate-800 font-black uppercase text-[11px] h-5"
+                style={{
+                  color: trainer.brandColor || "#cbd5e1"
+                }}
+              >
                 {trainer.initials}
               </Badge>
+              {trainer.mindbodyLinked && (
+                 <Badge className="rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-black uppercase text-[10px] tracking-widest h-5">
+                  Mindbody Synced
+                </Badge>
+              )}
               {(trainer.role === 'StudioOwner' || trainer.role === 'Admin' || trainer.role === 'Overseer') && (
                  <Badge className="rounded-md bg-amber-500 hover:bg-amber-600 text-white font-black uppercase text-[11px] h-5 shadow-[0_0_10px_rgba(245,158,11,0.5)] border-none">
                   Owner

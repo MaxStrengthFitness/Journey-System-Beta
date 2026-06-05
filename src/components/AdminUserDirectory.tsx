@@ -3,6 +3,7 @@ import {
   collection,
   query,
   getDocs,
+  getDoc,
   doc,
   setDoc,
   updateDoc,
@@ -148,6 +149,35 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
     }
   };
 
+  const handleApproveStudioAccess = async (req: any) => {
+    try {
+      if (!req.trainerId || !req.studioId) throw new Error("Missing trainer or studio ID in request");
+      
+      const trainerRef = doc(db, "trainers", req.trainerId);
+      const trainerSnap = await getDoc(trainerRef);
+      if (!trainerSnap.exists()) throw new Error("Trainer does not exist");
+      
+      const trainerData = trainerSnap.data();
+      const currentGuestStudios = trainerData.activeGuestStudioIds || [];
+      
+      if (!currentGuestStudios.includes(req.studioId)) {
+        await updateDoc(trainerRef, {
+          activeGuestStudioIds: [...currentGuestStudios, req.studioId]
+        });
+      }
+      
+      await updateDoc(doc(db, "access_requests", req.id), {
+        status: "Approved",
+        updatedAt: new Date().toISOString()
+      });
+      
+      setRequests((prev) => prev.filter((r) => r.id !== req.id));
+      await onRefresh?.("trainers");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, "access_requests/trainer");
+    }
+  };
+
   const confirmDeleteRequest = async () => {
     if (!deletingRequest) return;
     try {
@@ -161,6 +191,11 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
   };
 
   const handleOpenApproval = (req: any) => {
+    if (req.type === "studio_access") {
+      handleApproveStudioAccess(req);
+      return;
+    }
+    
     setApprovingRequest(req);
     // Default to first studio
     setApprovingHomeStudioId(studios[0]?.id || "");
@@ -220,7 +255,7 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
         isVisibleOnCalendar: approvingCalendarVisible,
         email: approvingRequest.email.trim().toLowerCase(),
         searchTokens,
-        systemStatus: "active" as "active" | "inactive",
+        systemStatus: "active",
         createdAt: new Date().toISOString(),
       };
 
@@ -415,32 +450,49 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <h3 className="font-extrabold text-slate-900 dark:text-white text-base leading-tight truncate">
-                        {req.fullName}
+                        {req.type === "studio_access" ? req.trainerName : req.fullName}
                       </h3>
-                      <span className="text-[10px] text-slate-500 font-semibold block truncate mt-0.5">
-                        {req.email || "No Email Provided"}
-                      </span>
+                      {req.email && (
+                        <span className="text-[10px] text-slate-500 font-semibold block truncate mt-0.5">
+                          {req.email}
+                        </span>
+                      )}
                     </div>
-                    <Badge className="bg-amber-500/10 hover:bg-amber-500/15 text-amber-600 dark:text-[#ff9800] border border-amber-500/20 self-start px-2 py-0.5 text-[9px] uppercase font-black tracking-widest rounded-md shrink-0">
-                      {req.roleRequested || "Trainer"}
-                    </Badge>
+                    {req.type === "studio_access" ? (
+                      <Badge className="bg-indigo-500/10 hover:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 self-start px-2 py-0.5 text-[9px] uppercase font-black tracking-widest rounded-md shrink-0">
+                        Add Studio
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-amber-500/10 hover:bg-amber-500/15 text-amber-600 dark:text-[#ff9800] border border-amber-500/20 self-start px-2 py-0.5 text-[9px] uppercase font-black tracking-widest rounded-md shrink-0">
+                        {req.roleRequested || "Trainer"}
+                      </Badge>
+                    )}
                   </div>
 
                   {/* Body fields */}
                   <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300 font-medium">
-                    {req.phone && (
+                    {req.type === "studio_access" ? (
                       <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                        <Phone className="w-3.5 h-3.5" />
-                        <span>{req.phone}</span>
+                        <Building2 className="w-3.5 h-3.5" />
+                        <span>Requested Studio: {req.studioName}</span>
                       </div>
-                    )}
-                    {req.reason && (
-                      <div className="flex items-start gap-2 bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/50 mt-1 italic">
-                        <MessageSquare className="w-3.5 h-3.5 mt-0.5 text-slate-400 shrink-0" />
-                        <p className="flex-1 text-[11px] leading-relaxed break-words">
-                          "{req.reason}"
-                        </p>
-                      </div>
+                    ) : (
+                      <>
+                        {req.phone && (
+                          <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                            <Phone className="w-3.5 h-3.5" />
+                            <span>{req.phone}</span>
+                          </div>
+                        )}
+                        {req.reason && (
+                          <div className="flex items-start gap-2 bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/50 mt-1 italic">
+                            <MessageSquare className="w-3.5 h-3.5 mt-0.5 text-slate-400 shrink-0" />
+                            <p className="flex-1 text-[11px] leading-relaxed break-words">
+                              "{req.reason}"
+                            </p>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -641,12 +693,13 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
                       </div>
 
                       {/* Details row */}
-                      <div className="flex flex-wrap items-center gap-y-1.5 gap-x-4 text-xs font-bold text-slate-500 dark:text-slate-400">
+                      <div className="flex flex-wrap items-center gap-y-1.5 gap-x-4 text-xs font-bold text-slate-500 dark:text-slate-400 mt-2">
                         {user.email && (
-                          <span className="flex items-center gap-1">
-                            <Mail className="w-3.5 h-3.5 text-slate-400" />
-                            {user.email}
-                          </span>
+                          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800/80">
+                            <Mail className="w-3.5 h-3.5 text-indigo-500" />
+                            <span className="text-[9px] uppercase tracking-widest text-slate-400 font-black">Journey System Email:</span>
+                            <span className="text-slate-700 dark:text-slate-300 font-bold">{user.email}</span>
+                          </div>
                         )}
                         <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
                           Initials: {user.initials}
@@ -739,6 +792,7 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
         isOpen={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
         onSave={handleUpdateTrainerFields}
+        isAdminMode={true}
       />
 
       {/* Access Request Approval Modal */}

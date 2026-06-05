@@ -1,0 +1,14 @@
+src/components/AccessRequestView.tsx:58:      setSubmitError("Please select your Home Studio to continue.");
+src/components/AccessRequestView.tsx:253:                    Select Your Home Studio
+src/components/AdminUserDirectory.tsx:768:              {/* Home Studio */}
+src/components/ClientDirectoryView.tsx:108:    // Apply Cross-Studio or Home Studio Territory Filtering if isGlobalSearch is turned off
+src/components/ClientInfoSheet.tsx:450:                    <FormLabel>Home Studio</FormLabel>
+src/components/CreateClientModal.tsx:242:                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">Home Studio (Optional)</Label>
+src/components/CreateTrainerModal.tsx:71:      alert("Validation Error: Primary Home Studio ID is required.");
+src/components/CreateTrainerModal.tsx:134:              Primary Home Studio <span className="text-rose-500">*</span>
+src/components/EditTrainerModal.tsx:83:      alert("Validation Error: Full Name, Initials, and Primary Home Studio are required.");
+src/components/FranchiseTeamManagement.tsx:238:              {/* Home Studio Assignment */}
+src/components/FranchiseTeamManagement.tsx:240:                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">Primary Home Studio</Label>
+src/components/TrainerControlHubView.tsx:917:                            {/* Home Studio Assignment */}
+src/components/TrainerControlHubView.tsx:919:                              <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest leading-none">Primary Home Studio</Label>
+src/components/TrainerProfileView.tsx:217:              {/* Home Studio */}

@@ -11,6 +11,29 @@ export function MindbodyDashboard() {
   const [role, setRole] = useState<'trainer' | 'leader'>('trainer');
   const [showGate, setShowGate] = useState(false);
   const [accessState, setAccessState] = useState<'locked' | 'granted' | 'pending'>('locked');
+  const [tokenStatus, setTokenStatus] = useState<string>('Not linked');
+  const [isLoadingToken, setIsLoadingToken] = useState(false);
+
+  const testGetUserToken = async () => {
+    setIsLoadingToken(true);
+    setTokenStatus('Requesting...');
+    try {
+      const response = await fetch('/api/mindbody/issueUserToken', {
+        method: 'POST',
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch token');
+      }
+      console.log('Token response:', data);
+      setTokenStatus(`Success! Linked. AccessToken: ${data.AccessToken?.substring(0, 15)}...`);
+    } catch (error: any) {
+      console.error('Error fetching token:', error);
+      setTokenStatus(`Error: ${error.message || 'Check console'}`);
+    } finally {
+      setIsLoadingToken(false);
+    }
+  };
 
   const handleGateRequest = (notes: string) => {
     console.log('Request submitted:', notes);
@@ -53,6 +76,16 @@ export function MindbodyDashboard() {
           </Button>
         </div>
       )}
+
+      <div className="bg-card p-4 rounded border border-border">
+        <h3 className="font-bold mb-4">Mindbody API Connection</h3>
+        <p className="text-sm text-slate-500 mb-4 dark:text-slate-400">
+          Status: {tokenStatus}
+        </p>
+        <Button onClick={testGetUserToken} disabled={isLoadingToken}>
+          {isLoadingToken ? 'Requesting...' : 'Test Mindbody API Sandbox Connection'}
+        </Button>
+      </div>
 
       {accessState === 'pending' && (
         <div className="bg-card p-4 rounded border border-border max-w-sm">

@@ -1,6 +1,8 @@
 import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 
+export { issueMindbodyUserToken } from "./mindbody/issueUserToken";
+
 admin.initializeApp();
 const db = admin.firestore();
 

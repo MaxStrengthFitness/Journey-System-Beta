@@ -139,8 +139,10 @@ export interface TrainerAvailability {
 export interface Trainer {
   id: string;
   fullName: string;
+  nickname?: string;
   initials: string;
   brandColor?: string;
+  mindbodyLinked?: boolean;
   pin?: string;
   pinHash?: string;
   requiresPinReset?: boolean;
@@ -154,8 +156,6 @@ export interface Trainer {
   accessibleStudioIds: string[];
   /** Temporary assignments to other studios outside their regular access */
   activeGuestStudioIds: string[];
-  /** System access status */
-  systemStatus?: "active" | "inactive";
   /** Public-facing bio for client profiles */
   bio?: string;
   email?: string;
@@ -200,9 +200,12 @@ export interface CreateTrainerPayload {
  */
 export interface UpdateTrainerPayload {
   fullName?: string;
+  nickname?: string;
   email?: string;
   role?: UserRole;
   initials?: string;
+  brandColor?: string;
+  mindbodyLinked?: boolean;
   pin?: string;
   pinHash?: string;
   primaryHomeStudioId?: string;
@@ -736,6 +739,7 @@ export interface Studio {
   timezone: string;
   /** MindBody Site ID for external API synchronization */
   mindbodySiteId?: string;
+  locationType?: "corporate" | "franchise";
   createdAt?: any;
   networkId?: string; // Newly added to associate with a FranchiseNetwork
   machineSettings?: Record<string, Record<string, string>>; // studioStandardSettings per machine

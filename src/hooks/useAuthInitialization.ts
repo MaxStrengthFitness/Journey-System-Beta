@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { doc, getDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, where, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { Trainer, Studio, FranchiseNetwork } from "../types";
 
@@ -24,92 +24,77 @@ export function useAuthInitialization() {
             claimsRole = (idTokenResult.claims.role as string) || null;
             setTokenRole(claimsRole);
           } catch (err) {
-            console.error("Failed to fetch custom user claims: ", err);
-          }
-
-          // Fetch base data needed for provider
-          const trainerRef = doc(db, "trainers", u.uid);
-          let trainerSnap: any = null;
-          try {
-            trainerSnap = await getDoc(trainerRef);
-          } catch (e) {
-             console.warn("Could not fetch trainer profile, proceeding with claims check.", e);
+             // Ignoring token claims error
           }
 
           let trainerData: Trainer | null = null;
-          const isSystemAdmin =
-            claimsRole === "Admin" ||
-            claimsRole === "Founder" ||
-            claimsRole === "Overseer" ||
-            (trainerSnap?.exists() &&
-              (trainerSnap.data().role === "Admin" ||
-                trainerSnap.data().role === "Founder")) ||
-            u.email === "jurgensaj@gmail.com";
-
-          if (trainerSnap?.exists()) {
-            trainerData = {
-              id: trainerSnap.id,
-              ...trainerSnap.data(),
-            } as Trainer;
-          } else if (isSystemAdmin) {
-            // Create a dynamic profile for the system admin without hardcoded names
-            const name = u.displayName || "System Administrator";
-            trainerData = {
-              id: u.uid,
-              fullName: name,
-              initials: name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .substring(0, 2)
-                .toUpperCase(),
-              role: (claimsRole as any) || "Admin",
-              pin: "",
-              primaryHomeStudioId: "",
-              accessibleStudioIds: [],
-              activeGuestStudioIds: [],
-            } as Trainer;
+          
+          if (u.email) {
+            try {
+              // Primary method: Lookup by email
+              const trainersRef = collection(db, "trainers");
+              const q = query(trainersRef, where("email", "==", u.email.toLowerCase()));
+              const querySnapshot = await getDocs(q);
+              
+              if (!querySnapshot.empty) {
+                const docSnap = querySnapshot.docs[0];
+                trainerData = { id: docSnap.id, ...docSnap.data() } as Trainer;
+              } else if (u.uid) {
+                // Secondary fallback: Lookup by UID (just in case they used an auto-assigned flow previously)
+                const uidDoc = await getDoc(doc(db, "trainers", u.uid));
+                if (uidDoc.exists()) {
+                   trainerData = { id: uidDoc.id, ...uidDoc.data() } as Trainer;
+                }
+              }
+              
+              // Bootstrap the owner if they have no profile at all
+              if (!trainerData && u.email.toLowerCase() === "jurgensaj@gmail.com") {
+                const newTrainer: Trainer = {
+                  id: u.uid,
+                  fullName: "System Admin",
+                  initials: "SA",
+                  role: "Admin",
+                  email: u.email.toLowerCase(),
+                  primaryHomeStudioId: "system",
+                  accessibleStudioIds: ["system"],
+                  activeGuestStudioIds: [],
+                };
+                try {
+                  await setDoc(doc(db, "trainers", u.uid), newTrainer);
+                  trainerData = newTrainer;
+                } catch (err) {
+                  // Fallback dynamic profile if writes fail
+                  trainerData = newTrainer;
+                }
+              }
+            } catch (e) {
+               console.warn("Could not fetch trainer profile.", e);
+            }
           }
 
           setAuthTrainer(trainerData);
 
           try {
             const studioSnap = await getDocs(collection(db, "studios"));
-            setStudios(
-              studioSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Studio)
-            );
+            setStudios(studioSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Studio));
           } catch (e) {
-            console.warn("Could not fetch studios collection: ", e);
+            console.warn("Could not fetch studios collection", e);
           }
 
           if (!trainerData) {
-            // Logged-in user is not a registered trainer or super admin!
-            // End authentication cycle and do NOT make calls to secure databases to prevent permission-denied crashes.
             setIsAuthReady(true);
             return;
           }
 
           try {
             const trainersSnap = await getDocs(collection(db, "trainers"));
-            setTrainers(
-              trainersSnap.docs.map(
-                (d) => ({ id: d.id, ...d.data() }) as Trainer
-              )
-            );
-          } catch (e) {
-            console.warn("Could not fetch trainers collection: ", e);
-          }
+            setTrainers(trainersSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Trainer));
+          } catch (e) {}
 
           try {
             const networksSnap = await getDocs(collection(db, "networks"));
-            setNetworks(
-              networksSnap.docs.map(
-                (d) => ({ id: d.id, ...d.data() }) as FranchiseNetwork
-              )
-            );
-          } catch (e) {
-            console.warn("Could not fetch networks collection: ", e);
-          }
+            setNetworks(networksSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as FranchiseNetwork));
+          } catch (e) {}
         } catch (error) {
           console.error("Auth initialization failed", error);
         }

@@ -407,13 +407,27 @@ service cloud.firestore {
 
     // ACCESS REQUESTS
     match /access_requests/{requestId} {
-      allow create: if hasRequiredFields(['email', 'fullName']) &&
-                    request.resource.data.email is string && request.resource.data.email.size() < 100 &&
-                    request.resource.data.fullName is string && request.resource.data.fullName.size() < 100 &&
-                    (!('phone' in request.resource.data) || (request.resource.data.phone is string && request.resource.data.phone.size() < 50)) &&
-                    (!('reason' in request.resource.data) || (request.resource.data.reason is string && request.resource.data.reason.size() < 1000)) &&
-                    request.resource.data.status == 'Pending';
-      allow read, update, delete: if isSuperAdmin();
+      allow read: if isAuthenticated();
+      allow create: if (
+                      // Type 1: Initial System Access
+                      (
+                        hasRequiredFields(['email', 'fullName']) &&
+                        request.resource.data.email is string && request.resource.data.email.size() < 100 &&
+                        request.resource.data.fullName is string && request.resource.data.fullName.size() < 100 &&
+                        (!('phone' in request.resource.data) || (request.resource.data.phone is string && request.resource.data.phone.size() < 50)) &&
+                        (!('reason' in request.resource.data) || (request.resource.data.reason is string && request.resource.data.reason.size() < 1000)) &&
+                        request.resource.data.status == 'Pending'
+                      ) ||
+                      // Type 2: Studio Access
+                      (
+                        isAuthenticated() &&
+                        request.resource.data.type == 'studio_access' &&
+                        request.resource.data.trainerId == request.auth.uid &&
+                        request.resource.data.status == 'Pending'
+                      )
+                    );
+      allow update, delete: if isSuperAdmin() || isFranchiseOwner() || 
+                            (isAuthenticated() && request.resource.data.type == 'studio_access' && request.resource.data.trainerId == request.auth.uid);
     }
 
     // BUG REPORTS

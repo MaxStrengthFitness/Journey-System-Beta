@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, setLogLevel } from 'firebase/firestore';
-import { getFunctions } from 'firebase/functions';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Silence Firestore internal warnings and idle stream disconnections
@@ -16,8 +15,10 @@ export const db = initializeFirestore(app, {
   }),
 }, firebaseConfig.firestoreDatabaseId);
 
+import { getFunctions } from 'firebase/functions';
+export const functions = getFunctions(app, 'us-central1');
+
 export const auth = getAuth(app);
-export const functions = getFunctions(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export { signInWithPopup };
