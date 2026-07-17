@@ -1089,25 +1089,25 @@ export function TrainerControlHubView({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-6xl mx-auto w-full overflow-x-hidden px-4 sm:px-8 py-8"
+      className="max-w-6xl mx-auto w-full overflow-x-hidden px-2.5 sm:px-8 py-4 sm:py-8"
     >
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-3xl font-black tracking-tight uppercase italic text-foreground">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+        <div className="flex flex-col gap-1 w-full sm:w-auto">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight uppercase italic text-foreground">
             Hub Settings
           </h2>
-          <p className="text-muted-foreground uppercase text-[11px] font-black tracking-widest leading-relaxed">
+          <p className="text-muted-foreground uppercase text-[9px] sm:text-[11px] font-black tracking-widest leading-relaxed">
             Manage your schedule sync and standard studio settings.
           </p>
         </div>
 
-        <div className="flex gap-2 ml-auto">
+        <div className="flex gap-1.5 w-full sm:w-auto sm:ml-auto">
           {setView && (isAdmin || checkIsStudioLeader(authTrainer)) && (
             <Button
               onClick={() => setView("integrations")}
-              className="rounded-2xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-500 hover:text-indigo-400 hover:bg-indigo-500/20 h-12 px-6 font-black uppercase text-[11px] tracking-widest shadow-sm transition-colors"
+              className="rounded-xl sm:rounded-2xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-500 hover:text-indigo-400 hover:bg-indigo-500/20 h-8 sm:h-12 px-2.5 sm:px-6 font-black uppercase text-[8px] sm:text-[11px] tracking-widest shadow-sm transition-colors flex-1 sm:flex-initial justify-center"
             >
-              <Webhook className="w-4 h-4 mr-2" />
+              <Webhook className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               Integrations
             </Button>
           )}
@@ -1115,16 +1115,16 @@ export function TrainerControlHubView({
             <Button
               variant="outline"
               onClick={onLogout}
-              className="rounded-2xl border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted h-12 px-6 font-black uppercase text-[11px] tracking-widest"
+              className="rounded-xl sm:rounded-2xl border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted h-8 sm:h-12 px-2.5 sm:px-6 font-black uppercase text-[8px] sm:text-[11px] tracking-widest flex-1 sm:flex-initial justify-center"
             >
-              <LogOut className="w-4 h-4 mr-2" />
+              <LogOut className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               Switch Trainer
             </Button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col lg:flex-row gap-6 sm:gap-8">
         <div className="w-full lg:w-64 shrink-0 flex flex-col gap-2">
           {[
             {
@@ -1159,7 +1159,7 @@ export function TrainerControlHubView({
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-4 rounded-2xl transition-all border text-left font-bold uppercase text-[11px] tracking-widest",
+                    "flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl transition-all border text-left font-bold uppercase text-[10px] sm:text-[11px] tracking-widest",
                     activeTab === tab.id
                       ? "bg-cta/10 border-cta text-slate-900 dark:text-white shadow-sm"
                       : "bg-background border-border text-muted-foreground hover:bg-card hover:text-foreground",
@@ -1167,7 +1167,7 @@ export function TrainerControlHubView({
                 >
                   <Icon
                     className={cn(
-                      "w-5 h-5",
+                      "w-4 h-4 sm:w-5 sm:h-5",
                       activeTab === tab.id ? "text-cta" : "opacity-50",
                     )}
                   />

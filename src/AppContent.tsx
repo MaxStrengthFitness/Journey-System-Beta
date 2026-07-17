@@ -1345,23 +1345,23 @@ export default function AppContent({
             studioName={activeStudioName || undefined}
             onStudioClick={() => setIsChangingStudio(true)}
             rightControls={
-              <>
+              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                 <ThemeToggle />
                 <HubAnnouncementsWidget authTrainer={authTrainer} />
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setCurrentView("trainer-hub")}
-                  className={`rounded-full transition-all hover:bg-transparent ${currentView === "trainer-hub" ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-50 active:text-orange-500"}`}
+                  className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full transition-all hover:bg-transparent shrink-0 ${currentView === "trainer-hub" ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-50 active:text-orange-500"}`}
                   title="Trainer Control Hub"
                 >
-                  <Settings className="w-6 h-6 md:w-7 md:h-7 transition-colors hover:stroke-orange-500" />
+                  <Settings className="w-4 h-4 sm:w-6 sm:h-6 md:w-7 md:h-7 transition-colors hover:stroke-orange-500" />
                 </Button>
-              </>
+              </div>
             }
             trainerDropdown={
               <DropdownMenu>
-                <DropdownMenuTrigger className="w-11 h-11 rounded-full font-display italic text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-bg-dark text-white dark:border dark:border-div-d dark:bg-bg-dark-3">
+                <DropdownMenuTrigger className="w-8 h-8 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-bg-dark text-white dark:border dark:border-div-d dark:bg-bg-dark-3 shrink-0">
                   {authTrainer.initials}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -1788,11 +1788,11 @@ export default function AppContent({
 
         {/* Navigation Bar */}
         {appMode === "trainer" ? (
-          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-6 h-20 flex items-center justify-around z-100">
+          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 h-14 sm:h-20 flex items-center justify-around z-100">
             <NavButton
               active={currentView === "clients"}
               onClick={() => setCurrentView("clients")}
-              icon={<Users className="w-6 h-6" />}
+              icon={<Users className="w-5 h-5 sm:w-6 sm:h-6" />}
               label="Hub"
             />
             <NavButton
@@ -1809,7 +1809,7 @@ export default function AppContent({
                   setCurrentView("client-directory");
                 }
               }}
-              icon={<ClipboardList className="w-6 h-6" />}
+              icon={<ClipboardList className="w-5 h-5 sm:w-6 sm:h-6" />}
               label="Client"
             />
             <NavButton
@@ -1821,7 +1821,7 @@ export default function AppContent({
                   setCurrentView("client-directory");
                 }
               }}
-              icon={<PlayCircle className="w-6 h-6" />}
+              icon={<PlayCircle className="w-5 h-5 sm:w-6 sm:h-6" />}
               label={currentSession ? "Active Session" : "Start Session"}
               activeColor={currentSession ? "text-orange-500" : undefined}
               activeBg={
@@ -1836,28 +1836,28 @@ export default function AppContent({
             <NavButton
               active={currentView === "machine-anatomy"}
               onClick={() => setCurrentView("machine-anatomy")}
-              icon={<Dumbbell className="w-6 h-6" />}
+              icon={<Dumbbell className="w-5 h-5 sm:w-6 sm:h-6" />}
               label="Catalog"
             />
             <NavButton
               active={currentView === "calendar"}
               onClick={() => setCurrentView("calendar")}
-              icon={<Calendar className="w-6 h-6" />}
+              icon={<Calendar className="w-5 h-5 sm:w-6 sm:h-6" />}
               label="Calendar"
             />
             <NavButton
               active={currentView === "purchases"}
               onClick={() => setCurrentView("purchases")}
-              icon={<CreditCard className="w-6 h-6" />}
+              icon={<CreditCard className="w-5 h-5 sm:w-6 sm:h-6" />}
               label="Purchases"
             />
           </nav>
         ) : (
-          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-bg-dark border-t border-orange-500/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-6 h-20 flex items-center justify-around z-100">
+          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-bg-dark border-t border-orange-500/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 h-14 sm:h-20 flex items-center justify-around z-100">
             <NavButton
               active={currentView === "admin-dashboard"}
               onClick={() => setCurrentView("admin-dashboard" as any)}
-              icon={<LayoutDashboard className="w-6 h-6" />}
+              icon={<LayoutDashboard className="w-5 h-5 sm:w-6 sm:h-6" />}
               label="Admin"
               activeColor="text-orange-500"
               activeBg="bg-orange-500/10 dark:bg-orange-600/10"
@@ -1868,7 +1868,7 @@ export default function AppContent({
               <NavButton
                 active={currentView === "franchise-dashboard"}
                 onClick={() => setCurrentView("franchise-dashboard" as any)}
-                icon={<Network className="w-6 h-6" />}
+                icon={<Network className="w-5 h-5 sm:w-6 sm:h-6" />}
                 label="Franchise"
                 activeColor="text-indigo-500"
                 activeBg="bg-indigo-500/10 dark:bg-indigo-600/10"
@@ -1878,14 +1878,14 @@ export default function AppContent({
             <NavButton
               active={currentView === "trainer-hub"}
               onClick={() => setCurrentView("trainer-hub")}
-              icon={<Settings className="w-6 h-6" />}
+              icon={<Settings className="w-5 h-5 sm:w-6 sm:h-6" />}
               label="Customize Studio"
               activeColor="text-emerald-500"
               activeBg="bg-emerald-500/10 dark:bg-emerald-600/10"
               activeIndicator="bg-emerald-500 dark:bg-emerald-600"
             />
           </nav>
-        )}
+        ) }
       </div>
 
       {/* Machine Information Deep Dive Dialog */}
@@ -2528,11 +2528,11 @@ function NavButton({
       className={`flex flex-col items-center gap-0.5 transition-all duration-300 relative ${active ? `${activeColor} scale-105` : "text-[#68717A] hover:text-[#115E8D]"}`}
     >
       <div
-        className={`p-1.5 rounded-lg transition-colors ${active ? activeBg : "bg-transparent"}`}
+        className={`p-1 sm:p-1.5 rounded-lg transition-colors ${active ? activeBg : "bg-transparent"}`}
       >
         {icon}
       </div>
-      <span className="text-[11px] font-black uppercase tracking-tighter">
+      <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-tighter">
         {label}
       </span>
       {active && (

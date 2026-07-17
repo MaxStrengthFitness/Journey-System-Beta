@@ -547,8 +547,9 @@ export function CalendarView({
     }
 
     return (
-      <div className="grid grid-cols-[40px_repeat(7,1fr)] gap-px bg-slate-700 border border-slate-700 rounded-3xl overflow-hidden shadow-2xl">
-        <div className="bg-slate-900 border-r border-b border-slate-700" />
+      <div className="overflow-x-auto no-scrollbar rounded-3xl border border-slate-700 shadow-2xl">
+        <div className="grid grid-cols-[30px_repeat(7,1fr)] sm:grid-cols-[40px_repeat(7,1fr)] gap-px bg-slate-700 min-w-175 sm:min-w-0">
+          <div className="bg-slate-900 border-r border-b border-slate-700" />
         {dayNames.map((d) => (
           <div
             key={d}
@@ -716,6 +717,7 @@ export function CalendarView({
             </React.Fragment>
           );
         })}
+        </div>
       </div>
     );
   };
@@ -794,8 +796,8 @@ export function CalendarView({
           </div>
         )}
 
-        <div className="bg-[#0A2E46] border border-slate-700 rounded-[32px] overflow-hidden shadow-2xl">
-          <table className="w-full border-collapse table-fixed">
+        <div className="bg-[#0A2E46] border border-slate-700 rounded-[32px] overflow-x-auto no-scrollbar shadow-2xl">
+          <table className="w-full border-collapse table-fixed min-w-200 sm:min-w-0">
             <thead>
               <tr className="border-b border-slate-700">
                 <th className="p-3 text-[11px] font-black uppercase tracking-widest text-slate-500 border-r border-slate-700 w-14 bg-slate-900/50 text-center">
@@ -1149,12 +1151,12 @@ export function CalendarView({
       <div className="flex flex-col h-[80vh]">
         {/* Schedule Grid */}
         <div className="grow flex flex-col bg-[#0A2E46] border border-slate-700 rounded-[32px] overflow-hidden shadow-2xl relative">
-          <div className="flex items-center justify-center p-4 border-b border-slate-700 bg-slate-900/50">
-            <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700 shadow-sm">
+          <div className="flex items-center justify-center p-3 sm:p-4 border-b border-slate-700 bg-slate-900/50">
+            <div className="flex bg-slate-800 p-0.5 sm:p-1 rounded-xl border border-slate-700 shadow-sm">
               <button
                 onClick={() => setShiftMode("AM")}
                 className={cn(
-                  "px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
+                  "px-3 sm:px-6 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all",
                   shiftMode === "AM"
                     ? "bg-white text-[#0A2E46] shadow-sm"
                     : "text-slate-400 hover:text-white",
@@ -1165,7 +1167,7 @@ export function CalendarView({
               <button
                 onClick={() => setShiftMode("PM")}
                 className={cn(
-                  "px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
+                  "px-3 sm:px-6 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all",
                   shiftMode === "PM"
                     ? "bg-white text-[#0A2E46] shadow-sm"
                     : "text-slate-400 hover:text-white",
@@ -1185,28 +1187,28 @@ export function CalendarView({
                     top: `calc(80px + (100% - 80px) * ${currentTimePos} / 100)`,
                   }}
                 >
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 bg-[#F06C22] text-white text-[11px] font-black uppercase px-2 py-1 rounded-r-md tracking-widest flex items-center shadow-[0_0_10px_#F06C22]">
-                    <span className="w-2 h-2 rounded-full bg-white mr-1 animate-pulse"></span>
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 bg-[#F06C22] text-white text-[9px] sm:text-[11px] font-black uppercase px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-r-md tracking-widest flex items-center shadow-[0_0_10px_#F06C22]">
+                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white mr-1 animate-pulse"></span>
                     Current Time
                   </div>
                 </div>
               )}
               <table className="w-full border-collapse table-fixed h-full">
                 <thead>
-                  <tr className="bg-slate-900 border-b border-slate-700 h-20">
-                    <th className="p-4 text-[11px] font-black uppercase tracking-widest text-slate-400 border-r border-slate-700 w-14 sticky left-0 bg-slate-900 z-30">
+                  <tr className="bg-slate-900 border-b border-slate-700 h-16 sm:h-20">
+                    <th className="p-3 sm:p-4 text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-400 border-r border-slate-700 w-12 sm:w-14 sticky left-0 bg-slate-900 z-30">
                       Time
                     </th>
                     {filteredTrainers.map((trainer) => (
                       <th
                         key={trainer.id}
-                        className="p-4 border-r border-slate-700 last:border-r-0 text-center z-20 sticky top-0 bg-slate-900"
+                        className="p-3 sm:p-4 border-r border-slate-700 last:border-r-0 text-center z-20 sticky top-0 bg-slate-900"
                       >
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center text-slate-300 font-black text-sm">
+                        <div className="flex flex-col items-center gap-0.5 sm:gap-1">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center text-slate-300 font-black text-xs sm:text-sm">
                             {trainer.initials}
                           </div>
-                          <span className="text-[11px] font-black uppercase tracking-wider text-white mt-1">
+                          <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-white mt-0.5 sm:mt-1">
                             {trainer.fullName}
                           </span>
                         </div>
@@ -1217,13 +1219,13 @@ export function CalendarView({
                 <tbody className="relative">
                   {/* Events Row */}
                   <tr className="border-b-2 border-slate-700 bg-slate-900/40">
-                    <td className="p-3 text-center border-r border-slate-700 sticky left-0 bg-[#0A2E46] z-10 text-slate-500">
-                      <span className="text-[11px] font-black uppercase tracking-widest">
+                    <td className="p-2 sm:p-3 text-center border-r border-slate-700 sticky left-0 bg-[#0A2E46] z-10 text-slate-500">
+                      <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest">
                         Events
                       </span>
                     </td>
                     <td colSpan={filteredTrainers.length} className="p-1">
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-1 sm:gap-2">
                         {(() => {
                           const dayEvents = filteredItems.filter((i) => {
                             if (!i.isClientEvent || i.isUnavailabilityEvent)
@@ -1250,7 +1252,7 @@ export function CalendarView({
                             <div
                               key={`devt-${eIdx}`}
                               className={cn(
-                                "px-3 py-1.5 rounded-lg border shadow-sm flex items-center gap-2 cursor-pointer transition-all hover:scale-105",
+                                "px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border shadow-sm flex items-center gap-1.5 sm:gap-2 cursor-pointer transition-all hover:scale-105",
                                 evt.priority === "High"
                                   ? "border-[#F06C22] bg-[#F06C22]/10 text-red-100"
                                   : evt.priority === "Medium"
@@ -1267,7 +1269,7 @@ export function CalendarView({
                             >
                               <span
                                 className={cn(
-                                  "text-[11px] font-black uppercase tracking-widest",
+                                  "text-[9px] sm:text-[11px] font-black uppercase tracking-widest",
                                   evt.priority === "High"
                                     ? "text-[#F06C22]"
                                     : evt.priority === "Medium"
@@ -1280,7 +1282,7 @@ export function CalendarView({
                                   ? "Alert"
                                   : evt.type}
                               </span>
-                              <span className="text-sm font-black text-white">
+                              <span className="text-xs sm:text-sm font-black text-white">
                                 {evt.clientName}
                               </span>
                             </div>
@@ -1443,16 +1445,16 @@ export function CalendarView({
   };
 
   return (
-    <div className="space-y-8 pb-12 w-full overflow-x-hidden p-6 sm:p-8 bg-slate-900 min-h-screen rounded-[40px] border border-slate-800/50 shadow-2xl relative">
-      <div className="absolute inset-x-0 top-0 h-40 bg-linear-to-b from-slate-800/40 to-transparent pointer-events-none rounded-t-[40px]" />
+    <div className="space-y-4 sm:space-y-8 pb-12 w-full overflow-x-hidden p-3 sm:p-8 bg-slate-900 min-h-screen rounded-[24px] sm:rounded-[40px] border border-slate-800/50 shadow-2xl relative">
+      <div className="absolute inset-x-0 top-0 h-40 bg-linear-to-b from-slate-800/40 to-transparent pointer-events-none rounded-t-[24px] sm:rounded-t-[40px]" />
 
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
-        <div className="flex items-center gap-6">
-          <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center shadow-inner border border-slate-700">
-            <CalendarIcon className="w-7 h-7 text-[#38BDF8]" />
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 relative z-10">
+        <div className="flex items-center gap-3 sm:gap-6">
+          <div className="w-10 h-10 sm:w-14 sm:h-14 bg-slate-800 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-inner border border-slate-700 shrink-0">
+            <CalendarIcon className="w-5 h-5 sm:w-7 sm:h-7 text-[#38BDF8]" />
           </div>
           <div>
-            <h2 className="text-3xl font-black tracking-tight uppercase italic text-white flex items-center gap-3">
+            <h2 className="text-xl sm:text-3xl font-black tracking-tight uppercase italic text-white flex items-center gap-2 sm:gap-3">
               {viewMode === "month"
                 ? "Month View"
                 : viewMode === "week"
@@ -1460,12 +1462,12 @@ export function CalendarView({
                   : "Day View"}
               <Badge
                 variant="outline"
-                className="text-[11px] font-black h-5 px-2 tracking-widest border-slate-700 text-slate-400 bg-slate-800/50 uppercase not-italic"
+                className="text-[9px] sm:text-[11px] font-black h-4 sm:h-5 px-1.5 sm:px-2 tracking-widest border-slate-700 text-slate-400 bg-slate-800/50 uppercase not-italic"
               >
                 Read Only
               </Badge>
             </h2>
-            <p className="text-slate-400 font-black uppercase text-[11px] tracking-[0.2em] mt-1 border-l-2 border-[#38BDF8] pl-2">
+            <p className="text-slate-400 font-black uppercase text-[9px] sm:text-[11px] tracking-[0.15em] sm:tracking-[0.2em] mt-0.5 sm:mt-1 border-l-2 border-[#38BDF8] pl-1.5 sm:pl-2">
               {viewMode === "month"
                 ? selectedDate.toLocaleDateString(undefined, {
                     month: "long",
@@ -1483,12 +1485,12 @@ export function CalendarView({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex bg-slate-800 p-1 rounded-full border border-slate-700 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+          <div className="flex bg-slate-800 p-0.5 sm:p-1 rounded-full border border-slate-700 shadow-sm">
             <button
               onClick={() => setFilterMode("all")}
               className={cn(
-                "px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all",
+                "px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-[9px] sm:text-[11px] font-black uppercase tracking-widest transition-all",
                 filterMode === "all"
                   ? "bg-[#38BDF8] text-white shadow-sm"
                   : "text-slate-400 hover:text-white",
@@ -1499,7 +1501,7 @@ export function CalendarView({
             <button
               onClick={() => setFilterMode("sessions")}
               className={cn(
-                "px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all",
+                "px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-[9px] sm:text-[11px] font-black uppercase tracking-widest transition-all",
                 filterMode === "sessions"
                   ? "bg-[#38BDF8] text-white shadow-sm"
                   : "text-slate-400 hover:text-white",
@@ -1510,7 +1512,7 @@ export function CalendarView({
             <button
               onClick={() => setFilterMode("events")}
               className={cn(
-                "px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all",
+                "px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-[9px] sm:text-[11px] font-black uppercase tracking-widest transition-all",
                 filterMode === "events"
                   ? "bg-[#38BDF8] text-white shadow-sm"
                   : "text-slate-400 hover:text-white",
@@ -1520,12 +1522,12 @@ export function CalendarView({
             </button>
           </div>
 
-          <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700 shadow-sm">
+          <div className="flex bg-slate-800 p-0.5 sm:p-1 rounded-xl border border-slate-700 shadow-sm">
             <Button
               size="sm"
               onClick={() => setViewMode("month")}
               className={cn(
-                "rounded-lg font-black uppercase text-[11px] tracking-widest px-4 h-8 transition-all duration-200",
+                "rounded-lg font-black uppercase text-[9px] sm:text-[11px] tracking-widest px-2.5 sm:px-4 h-7 sm:h-8 transition-all duration-200",
                 viewMode === "month"
                   ? "bg-slate-600 text-white shadow-sm"
                   : "bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-700/50",
@@ -1537,7 +1539,7 @@ export function CalendarView({
               size="sm"
               onClick={() => setViewMode("week")}
               className={cn(
-                "rounded-lg font-black uppercase text-[11px] tracking-widest px-4 h-8 transition-all duration-200",
+                "rounded-lg font-black uppercase text-[9px] sm:text-[11px] tracking-widest px-2.5 sm:px-4 h-7 sm:h-8 transition-all duration-200",
                 viewMode === "week"
                   ? "bg-slate-600 text-white shadow-sm"
                   : "bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-700/50",
@@ -1549,7 +1551,7 @@ export function CalendarView({
               size="sm"
               onClick={() => setViewMode("day")}
               className={cn(
-                "rounded-lg font-black uppercase text-[11px] tracking-widest px-4 h-8 transition-all duration-200",
+                "rounded-lg font-black uppercase text-[9px] sm:text-[11px] tracking-widest px-2.5 sm:px-4 h-7 sm:h-8 transition-all duration-200",
                 viewMode === "day"
                   ? "bg-slate-600 text-white shadow-sm"
                   : "bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-700/50",
@@ -1559,20 +1561,20 @@ export function CalendarView({
             </Button>
           </div>
 
-          <div className="flex items-center bg-slate-800 px-3 py-1 rounded-xl border border-slate-700 gap-2 shadow-sm">
-            <Users className="w-3.5 h-3.5 text-[#38BDF8]" />
+          <div className="flex items-center bg-slate-800 px-2 sm:px-3 py-1 rounded-xl border border-slate-700 gap-1.5 sm:gap-2 shadow-sm">
+            <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#38BDF8] shrink-0" />
             <Select
               value={selectedTrainerId}
               onValueChange={setSelectedTrainerId}
             >
-              <SelectTrigger className="h-6 border-none bg-transparent focus:ring-0 text-[11px] font-black uppercase tracking-widest min-w-30 p-0 shadow-none text-white hover:text-[#38BDF8] transition-colors">
+              <SelectTrigger className="h-5 sm:h-6 border-none bg-transparent focus:ring-0 text-[9px] sm:text-[11px] font-black uppercase tracking-widest min-w-20 sm:min-w-30 p-0 shadow-none text-white hover:text-[#38BDF8] transition-colors">
                 <SelectValue placeholder="Team Filter" />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-slate-700 bg-slate-800 text-white">
                 {isAdmin && (
                   <SelectItem
                     value="all"
-                    className="font-bold focus:bg-slate-700 focus:text-white"
+                    className="font-bold focus:bg-slate-700 focus:text-white text-xs"
                   >
                     Entire Team
                   </SelectItem>
@@ -1583,7 +1585,7 @@ export function CalendarView({
                     <SelectItem
                       key={t.id}
                       value={t.id!}
-                      className="font-bold hover:bg-slate-700 focus:bg-slate-700 focus:text-white"
+                      className="font-bold hover:bg-slate-700 focus:bg-slate-700 focus:text-white text-xs"
                     >
                       {t.fullName}
                     </SelectItem>
@@ -1592,19 +1594,19 @@ export function CalendarView({
             </Select>
           </div>
 
-          <div className="flex gap-1.5 bg-slate-800 p-1 rounded-xl border border-slate-700 shadow-sm">
+          <div className="flex gap-1 bg-slate-800 p-0.5 sm:p-1 rounded-xl border border-slate-700 shadow-sm">
             <Button
               variant="ghost"
               size="icon"
               onClick={handlePrev}
-              className="rounded-lg h-8 w-8 text-slate-300 hover:text-white hover:bg-slate-700"
+              className="rounded-lg h-7 w-7 sm:h-8 sm:w-8 text-slate-300 hover:text-white hover:bg-slate-700 shrink-0"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </Button>
             <Button
               variant="ghost"
               onClick={() => setSelectedDate(new Date())}
-              className="rounded-lg font-black uppercase text-[11px] tracking-widest px-4 h-8 text-slate-300 hover:text-white hover:bg-slate-700"
+              className="rounded-lg font-black uppercase text-[9px] sm:text-[11px] tracking-widest px-2.5 sm:px-4 h-7 sm:h-8 text-slate-300 hover:text-white hover:bg-slate-700"
             >
               Today
             </Button>
@@ -1612,9 +1614,9 @@ export function CalendarView({
               variant="ghost"
               size="icon"
               onClick={handleNext}
-              className="rounded-lg h-8 w-8 text-slate-300 hover:text-white hover:bg-slate-700"
+              className="rounded-lg h-7 w-7 sm:h-8 sm:w-8 text-slate-300 hover:text-white hover:bg-slate-700 shrink-0"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </Button>
           </div>
         </div>

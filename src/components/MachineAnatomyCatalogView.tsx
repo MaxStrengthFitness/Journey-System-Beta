@@ -313,10 +313,10 @@ export function MachineAnatomyCatalogView({
 
   const catalogContent = (
     <>
-      <div className="absolute inset-0 pointer-events-none bg-linear-to-b from-white/5 to-transparent"></div>
+      <div className="absolute inset-0 pointer-events-none bg-linear-to-b from-black/5 dark:from-white/5 to-transparent"></div>
 
-      <div className="relative z-10 p-5 border-b border-white/10">
-        <h2 className="text-2xl font-black uppercase tracking-[0.2em] text-white mb-5">
+      <div className="relative z-10 p-5 border-b border-slate-200 dark:border-white/10">
+        <h2 className="text-2xl font-black uppercase tracking-[0.2em] text-foreground dark:text-white mb-5">
           Database
         </h2>
         <div className="flex gap-2">
@@ -325,8 +325,8 @@ export function MachineAnatomyCatalogView({
             onClick={() => setGroupingMode("movement")}
             className={`flex-1 min-h-11 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-1.5 ${
               groupingMode === "movement"
-                ? "bg-cyan text-foreground shadow-[0_0_15px_rgba(0,255,255,0.3)]"
-                : "bg-black/40 text-muted-foreground border border-white/10 hover:bg-black/60 hover:text-white"
+                ? "bg-cyan text-[#0A2E46] shadow-[0_0_15px_rgba(0,255,255,0.3)] font-black"
+                : "bg-slate-100 dark:bg-black/40 text-muted-foreground border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-black/60 hover:text-foreground dark:hover:text-white"
             }`}
           >
             <Layers className="w-4 h-4" />
@@ -337,8 +337,8 @@ export function MachineAnatomyCatalogView({
             onClick={() => setGroupingMode("region")}
             className={`flex-1 min-h-11 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-1.5 ${
               groupingMode === "region"
-                ? "bg-cyan text-foreground shadow-[0_0_15px_rgba(0,255,255,0.3)]"
-                : "bg-black/40 text-muted-foreground border border-white/10 hover:bg-black/60 hover:text-white"
+                ? "bg-cyan text-[#0A2E46] shadow-[0_0_15px_rgba(0,255,255,0.3)] font-black"
+                : "bg-slate-100 dark:bg-black/40 text-muted-foreground border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-black/60 hover:text-foreground dark:hover:text-white"
             }`}
           >
             <MapPin className="w-4 h-4" />
@@ -352,7 +352,7 @@ export function MachineAnatomyCatalogView({
           <div key={group.key} className="space-y-1">
             <div className="flex items-center justify-between px-2 py-1 text-left text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
               <span>{group.label}</span>
-              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-black/40 text-muted-foreground text-[10px]">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 dark:bg-black/40 text-muted-foreground text-[10px]">
                 {group.machines.length}
               </span>
             </div>
@@ -379,8 +379,8 @@ export function MachineAnatomyCatalogView({
                     onClick={() => m.id && handleSelectMachine(m.id)}
                     className={`relative flex items-center justify-between p-3.5 rounded-2xl transition-all text-left group overflow-hidden ${
                       isSelected
-                        ? "bg-white/10 border border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md"
-                        : "bg-black/20 border border-transparent hover:bg-black/40 hover:border-white/10"
+                        ? "bg-slate-200/50 dark:bg-white/10 border border-slate-300 dark:border-white/20 shadow-md dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md"
+                        : "bg-slate-100/30 dark:bg-black/20 border border-transparent hover:bg-slate-100 dark:hover:bg-black/40 hover:border-slate-200 dark:hover:border-white/10"
                     }`}
                   >
                     <div
@@ -388,7 +388,7 @@ export function MachineAnatomyCatalogView({
                     />
                     <div className="flex flex-col pl-3 pr-2 overflow-hidden flex-1">
                       <span
-                        className={`text-[12px] font-bold tracking-widest truncate uppercase ${isSelected ? "text-white" : "text-muted-foreground group-hover:text-white"}`}
+                        className={`text-[12px] font-bold tracking-widest truncate uppercase ${isSelected ? "text-foreground dark:text-white" : "text-muted-foreground group-hover:text-foreground dark:group-hover:text-white"}`}
                       >
                         {m.name}
                       </span>
@@ -412,12 +412,12 @@ export function MachineAnatomyCatalogView({
       <div className="lg:hidden sticky top-0 left-0 w-full z-50 flex items-center justify-between pt-4 pb-4 px-4 bg-linear-to-b from-background via-background/80 to-transparent pointer-events-none shrink-0">
         <div className="pointer-events-auto shrink-0 mr-4">
           <Sheet>
-            <SheetTrigger className="bg-background/80 backdrop-blur-xl border border-white/10 hover:bg-white/10 text-white shadow-xl h-12 w-12 rounded-full flex items-center justify-center transition-all cursor-pointer">
+            <SheetTrigger className="bg-background/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-foreground dark:text-white shadow-xl h-12 w-12 rounded-full flex items-center justify-center transition-all cursor-pointer">
               <Layers className="w-5 h-5" />
             </SheetTrigger>
             <SheetContent
               side="left"
-              className="w-[320px] sm:w-95 p-0 bg-background/95 backdrop-blur-3xl border-r border-white/10 flex flex-col"
+              className="w-[320px] sm:w-95 p-0 bg-background/95 backdrop-blur-3xl border-r border-slate-200 dark:border-white/10 flex flex-col"
             >
               {catalogContent}
             </SheetContent>
@@ -425,29 +425,29 @@ export function MachineAnatomyCatalogView({
         </div>
 
         {/* Mobile View Controls */}
-        <div className="pointer-events-auto flex flex-1 bg-background/80 backdrop-blur-xl rounded-2xl p-1.5 border border-white/10 shadow-2xl overflow-x-auto no-scrollbar justify-center">
+        <div className="pointer-events-auto flex flex-1 bg-background/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl p-1 sm:p-1.5 md:p-2 border border-slate-200 dark:border-white/10 shadow-2xl overflow-x-auto no-scrollbar justify-center">
           <button
             onClick={() => setView("front")}
-            className={`flex-1 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap ${view === "front" ? "bg-white text-foreground shadow-lg" : "text-muted-foreground hover:text-white hover:bg-white/10"}`}
+            className={`flex-1 px-1.5 sm:px-4 md:px-6 py-1.5 sm:py-2.5 md:py-3 rounded-xl text-[8px] sm:text-xs md:text-sm font-black uppercase tracking-wider sm:tracking-[0.12em] md:tracking-[0.15em] transition-all whitespace-nowrap ${view === "front" ? "bg-white dark:bg-slate-800 text-slate-950 dark:text-white shadow-lg border border-slate-200 dark:border-slate-700" : "text-muted-foreground hover:text-foreground dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10"}`}
           >
             Anterior
           </button>
           <button
             onClick={() => setView("back")}
-            className={`flex-1 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap ${view === "back" ? "bg-white text-foreground shadow-lg" : "text-muted-foreground hover:text-white hover:bg-white/10"}`}
+            className={`flex-1 px-1.5 sm:px-4 md:px-6 py-1.5 sm:py-2.5 md:py-3 rounded-xl text-[8px] sm:text-xs md:text-sm font-black uppercase tracking-wider sm:tracking-[0.12em] md:tracking-[0.15em] transition-all whitespace-nowrap ${view === "back" ? "bg-white dark:bg-slate-800 text-slate-950 dark:text-white shadow-lg border border-slate-200 dark:border-slate-700" : "text-muted-foreground hover:text-foreground dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10"}`}
           >
             Posterior
           </button>
-          <div className="w-px bg-white/10 mx-1 my-2 shrink-0"></div>
+          <div className="w-px bg-slate-200 dark:bg-white/10 mx-1 sm:mx-2 md:mx-3 my-1.5 shrink-0"></div>
           <button
             onClick={() => setGender("male")}
-            className={`flex-1 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap ${gender === "male" ? "bg-white text-foreground shadow-lg" : "text-muted-foreground hover:text-white hover:bg-white/10"}`}
+            className={`flex-1 px-1.5 sm:px-4 md:px-6 py-1.5 sm:py-2.5 md:py-3 rounded-xl text-[8px] sm:text-xs md:text-sm font-black uppercase tracking-wider sm:tracking-[0.12em] md:tracking-[0.15em] transition-all whitespace-nowrap ${gender === "male" ? "bg-white dark:bg-slate-800 text-slate-950 dark:text-white shadow-lg border border-slate-200 dark:border-slate-700" : "text-muted-foreground hover:text-foreground dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10"}`}
           >
             Type M
           </button>
           <button
             onClick={() => setGender("female")}
-            className={`flex-1 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap ${gender === "female" ? "bg-white text-foreground shadow-lg" : "text-muted-foreground hover:text-white hover:bg-white/10"}`}
+            className={`flex-1 px-1.5 sm:px-4 md:px-6 py-1.5 sm:py-2.5 md:py-3 rounded-xl text-[8px] sm:text-xs md:text-sm font-black uppercase tracking-wider sm:tracking-[0.12em] md:tracking-[0.15em] transition-all whitespace-nowrap ${gender === "female" ? "bg-white dark:bg-slate-800 text-slate-950 dark:text-white shadow-lg border border-slate-200 dark:border-slate-700" : "text-muted-foreground hover:text-foreground dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10"}`}
           >
             Type F
           </button>
@@ -468,24 +468,24 @@ export function MachineAnatomyCatalogView({
       {/* ───── GLASS OVERLAYS (Interaction Hack) ───── */}
       <div className="absolute inset-0 z-10 pointer-events-none p-4 md:p-8 flex flex-col md:flex-row justify-between gap-4">
         {/* LEFT SIDEBAR (Catalog) Desktop */}
-        <aside className="pointer-events-auto w-90 bg-background/60 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl hidden lg:flex flex-col overflow-hidden max-h-full shrink-0 relative">
+        <aside className="pointer-events-auto w-90 bg-card/70 dark:bg-background/60 backdrop-blur-xl border border-slate-200 dark:border-white/10 shadow-2xl rounded-3xl hidden lg:flex flex-col overflow-hidden max-h-full shrink-0 relative">
           {catalogContent}
         </aside>
 
         {/* RIGHT SIDEBAR (Details HUD) Desktop */}
         {selectedMachine && machineKnowledge ? (
-          <aside className="pointer-events-auto w-110 bg-background/60 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl hidden lg:flex flex-col overflow-hidden max-h-full shrink-0 relative animate-in fade-in slide-in-from-right-8 duration-300">
-            <div className="absolute inset-0 pointer-events-none bg-linear-to-b from-white/5 to-transparent"></div>
+          <aside className="pointer-events-auto w-110 bg-card/70 dark:bg-background/60 backdrop-blur-xl border border-slate-200 dark:border-white/10 shadow-2xl rounded-3xl hidden lg:flex flex-col overflow-hidden max-h-full shrink-0 relative animate-in fade-in slide-in-from-right-8 duration-300">
+            <div className="absolute inset-0 pointer-events-none bg-linear-to-b from-black/5 dark:from-white/5 to-transparent"></div>
 
             {/* Header Area */}
-            <div className="relative z-10 p-6 border-b border-white/10">
-              <div className="text-[11px] uppercase tracking-[0.2em] text-cyan font-bold mb-2">
+            <div className="relative z-10 p-6 border-b border-slate-200 dark:border-white/10">
+              <div className="text-[11px] uppercase tracking-[0.2em] text-[#0ea5e9] dark:text-cyan font-bold mb-2">
                 {selectedMap?.movementPattern || "Kinematic Info"}
               </div>
-              <h2 className="text-3xl font-black uppercase italic text-white tracking-tight leading-none mb-4">
+              <h2 className="text-3xl font-black uppercase italic text-foreground dark:text-white tracking-tight leading-none mb-4">
                 {selectedMachine.name}
               </h2>
-              <div className="text-[12px] text-muted-foreground leading-relaxed font-medium bg-black/40 p-4 rounded-2xl border border-white/5">
+              <div className="text-[12px] text-muted-foreground leading-relaxed font-medium bg-slate-100 dark:bg-black/40 p-4 rounded-2xl border border-slate-200 dark:border-white/5">
                 {selectedMap?.clinicalNote || "Clinical details unavailable."}
               </div>
             </div>
@@ -493,58 +493,59 @@ export function MachineAnatomyCatalogView({
             {/* Scrollable Content */}
             <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-black/40 p-3.5 rounded-2xl border border-white/5">
+                <div className="bg-slate-100/70 dark:bg-black/40 p-3.5 rounded-2xl border border-slate-200 dark:border-white/5">
                   <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-2">
-                    <Activity className="w-3 h-3 text-cyan" /> Class
+                    <Activity className="w-3 h-3 text-[#0ea5e9] dark:text-cyan" />{" "}
+                    Class
                   </div>
-                  <div className="text-[13px] text-white font-semibold">
+                  <div className="text-[13px] text-foreground dark:text-white font-semibold">
                     {machineKnowledge.kinematicClassification || "N/A"}
                   </div>
                 </div>
-                <div className="bg-black/40 p-3.5 rounded-2xl border border-white/5">
+                <div className="bg-slate-100/70 dark:bg-black/40 p-3.5 rounded-2xl border border-slate-200 dark:border-white/5">
                   <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-2">
                     <Target className="w-3 h-3 text-cta" /> Posture
                   </div>
                   <div
-                    className="text-[13px] text-white font-semibold truncate"
+                    className="text-[13px] text-foreground dark:text-white font-semibold truncate"
                     title={machineKnowledge.executionPosture}
                   >
                     {machineKnowledge.executionPosture || "N/A"}
                   </div>
                 </div>
-                <div className="bg-black/40 p-3.5 rounded-2xl border border-white/5">
+                <div className="bg-slate-100/70 dark:bg-black/40 p-3.5 rounded-2xl border border-slate-200 dark:border-white/5">
                   <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-2">
                     <Settings2 className="w-3 h-3 text-green" /> Setup
                   </div>
-                  <div className="text-[13px] text-white font-semibold">
+                  <div className="text-[13px] text-foreground dark:text-white font-semibold">
                     {machineKnowledge.setupGap || "Standard Gap"}
                   </div>
                 </div>
-                <div className="bg-black/40 p-3.5 rounded-2xl border border-white/5">
+                <div className="bg-slate-100/70 dark:bg-black/40 p-3.5 rounded-2xl border border-slate-200 dark:border-white/5">
                   <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-2">
                     <Users className="w-3 h-3 text-brand" /> Handoff
                   </div>
-                  <div className="text-[13px] text-white font-semibold">
+                  <div className="text-[13px] text-foreground dark:text-white font-semibold">
                     {machineKnowledge.requiresHandoff ? "Required" : "None"}
                   </div>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white flex items-center gap-3">
-                  <div className="h-px bg-white/20 flex-1"></div>
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-foreground dark:text-white flex items-center gap-3">
+                  <div className="h-px bg-slate-200 dark:bg-white/20 flex-1"></div>
                   Musculature
-                  <div className="h-px bg-white/20 flex-1"></div>
+                  <div className="h-px bg-slate-200 dark:bg-white/20 flex-1"></div>
                 </h3>
                 <div className="flex flex-col gap-2.5">
                   {machineKnowledge.targetMuscles &&
                     machineKnowledge.targetMuscles.map((tm, idx) => (
                       <div
                         key={"t" + idx}
-                        className="flex items-center gap-3 bg-black/20 p-2.5 rounded-xl border border-white/5"
+                        className="flex items-center gap-3 bg-slate-100/50 dark:bg-black/20 p-2.5 rounded-xl border border-slate-200 dark:border-white/5"
                       >
                         <div className="w-2.5 h-2.5 rounded-full bg-cta shadow-[0_0_8px_var(--color-cta)]/80 shrink-0"></div>
-                        <div className="text-[13px] font-bold text-white leading-snug">
+                        <div className="text-[13px] font-bold text-foreground dark:text-white leading-snug">
                           {tm}
                         </div>
                         <div className="ml-auto text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
@@ -556,7 +557,7 @@ export function MachineAnatomyCatalogView({
                     machineKnowledge.synergists.map((syn, idx) => (
                       <div
                         key={"s" + idx}
-                        className="flex items-center gap-3 bg-black/10 p-2.5 rounded-xl border border-white/5"
+                        className="flex items-center gap-3 bg-slate-50/50 dark:bg-black/10 p-2.5 rounded-xl border border-slate-200/60 dark:border-white/5"
                       >
                         <div className="w-2.5 h-2.5 rounded-full bg-cyan shadow-[0_0_8px_var(--color-cyan)]/60 shrink-0"></div>
                         <div className="text-[13px] text-muted-foreground leading-snug">
@@ -595,10 +596,10 @@ export function MachineAnatomyCatalogView({
 
               <div className="space-y-5">
                 <div>
-                  <h4 className="text-[11px] font-bold uppercase tracking-widest text-cyan mb-2.5 flex items-center gap-2">
+                  <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#0ea5e9] dark:text-cyan mb-2.5 flex items-center gap-2">
                     <Wrench className="w-4 h-4" /> Setup Notes
                   </h4>
-                  <p className="text-[13px] text-white leading-relaxed font-semibold bg-black/40 p-4 rounded-xl border border-white/5">
+                  <p className="text-[13px] text-foreground dark:text-white leading-relaxed font-semibold bg-slate-100/70 dark:bg-black/40 p-4 rounded-xl border border-slate-200 dark:border-white/5">
                     {machineKnowledge.setup}
                   </p>
                   {machineKnowledge.setupCues &&
@@ -621,17 +622,17 @@ export function MachineAnatomyCatalogView({
                   <h4 className="text-[11px] font-bold uppercase tracking-widest text-green mb-2.5 flex items-center gap-2">
                     <Activity className="w-4 h-4" /> Execution
                   </h4>
-                  <p className="text-[13px] text-white leading-relaxed font-semibold bg-black/40 p-4 rounded-xl border border-white/5">
+                  <p className="text-[13px] text-foreground dark:text-white leading-relaxed font-semibold bg-slate-100/70 dark:bg-black/40 p-4 rounded-xl border border-slate-200 dark:border-white/5">
                     {machineKnowledge.execution}
                   </p>
                 </div>
               </div>
 
               {/* Trainer Tips */}
-              <div className="pt-4 border-t border-white/10 mt-6">
+              <div className="pt-4 border-t border-slate-200 dark:border-white/10 mt-6">
                 <div className="flex items-center gap-2 mb-4">
                   <UserCog className="w-4 h-4 text-brand" />
-                  <h3 className="text-[11px] font-bold uppercase tracking-widest text-white">
+                  <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground dark:text-white">
                     Studio Notes
                   </h3>
                 </div>
@@ -639,7 +640,7 @@ export function MachineAnatomyCatalogView({
                   placeholder="Record custom setup params or cues for this specific machine..."
                   value={trainerTips}
                   onChange={(e) => setTrainerTips(e.target.value)}
-                  className="min-h-25 bg-black/60 border border-white/10 focus-visible:ring-brand text-white placeholder:text-muted-foreground/50 mb-3 resize-none text-[13px] rounded-xl p-4"
+                  className="min-h-25 bg-slate-50 dark:bg-black/60 border border-slate-200 dark:border-white/10 focus-visible:ring-brand text-foreground dark:text-white placeholder:text-muted-foreground/50 mb-3 resize-none text-[13px] rounded-xl p-4"
                 />
                 <Button
                   onClick={handleSaveTip}
@@ -647,7 +648,7 @@ export function MachineAnatomyCatalogView({
                   className={`w-full font-black tracking-[0.2em] uppercase transition-all rounded-xl h-12 ${
                     isSavingTip
                       ? "bg-green/20 text-green border border-green/30"
-                      : "bg-brand/20 hover:bg-brand/40 text-brand border border-brand/30 shadow-[0_0_15px_var(--color-brand)]/15"
+                      : "bg-brand/20 hover:bg-brand/40 text-brand border border-brand/30 shadow-[0_0_15px_rgba(var(--color-brand),0.15)]"
                   }`}
                 >
                   {isSavingTip ? "Stored Successfully" : "Save Notes"}
@@ -657,7 +658,7 @@ export function MachineAnatomyCatalogView({
           </aside>
         ) : (
           <aside className="pointer-events-auto w-110 hidden lg:flex items-center justify-center p-8 bg-transparent">
-            <div className="text-center space-y-4 p-8 bg-background/40 backdrop-blur-xl border border-white/5 rounded-3xl w-full">
+            <div className="text-center space-y-4 p-8 bg-card/40 dark:bg-background/40 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-3xl w-full shadow-sm">
               <ShieldAlert className="w-10 h-10 text-muted-foreground mx-auto opacity-50" />
               <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80">
                 Awaiting Selection
@@ -923,26 +924,26 @@ export function MachineAnatomyCatalogView({
         <div className="flex bg-background/80 backdrop-blur-xl rounded-2xl p-1.5 border border-white/10 shadow-2xl">
           <button
             onClick={() => setView("front")}
-            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${view === "front" ? "bg-white text-foreground shadow-lg" : "text-muted-foreground hover:text-white hover:bg-white/10"}`}
+            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${view === "front" ? "bg-white text-slate-950 shadow-lg" : "text-muted-foreground hover:text-white hover:bg-white/10"}`}
           >
             Anterior
           </button>
           <button
             onClick={() => setView("back")}
-            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${view === "back" ? "bg-white text-foreground shadow-lg" : "text-muted-foreground hover:text-white hover:bg-white/10"}`}
+            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${view === "back" ? "bg-white text-slate-950 shadow-lg" : "text-muted-foreground hover:text-white hover:bg-white/10"}`}
           >
             Posterior
           </button>
           <div className="w-px bg-white/10 mx-2 my-2"></div>
           <button
             onClick={() => setGender("male")}
-            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${gender === "male" ? "bg-white text-foreground shadow-lg" : "text-muted-foreground hover:text-white hover:bg-white/10"}`}
+            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${gender === "male" ? "bg-white text-slate-950 shadow-lg" : "text-muted-foreground hover:text-white hover:bg-white/10"}`}
           >
             Type M
           </button>
           <button
             onClick={() => setGender("female")}
-            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${gender === "female" ? "bg-white text-foreground shadow-lg" : "text-muted-foreground hover:text-white hover:bg-white/10"}`}
+            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${gender === "female" ? "bg-white text-slate-950 shadow-lg" : "text-muted-foreground hover:text-white hover:bg-white/10"}`}
           >
             Type F
           </button>
