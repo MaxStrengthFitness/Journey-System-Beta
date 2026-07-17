@@ -1,0 +1,186 @@
+import React, { useState } from "react";
+import { hashPin } from "../lib/auth-utils";
+import { generateSearchTokens } from "@/lib/utils";
+import { CreateTrainerPayload } from "../types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useActiveStudio } from "../ActiveStudioContext";
+import { useToast } from "../contexts/ToastContext";
+
+interface Props {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (trainerData: CreateTrainerPayload) => void | Promise<void>;
+}
+
+export function CreateTrainerModal({ isOpen, onOpenChange, onSubmit }: Props) {
+  const { error: toastError } = useToast();
+  const { availableStudios, activeStudioId } = useActiveStudio();
+  const [fullName, setFullName] = useState("");
+  const [initials, setInitials] = useState("");
+  const [isOwner, setIsOwner] = useState(false);
+  const [primaryHomeStudioId, setPrimaryHomeStudioId] = useState("");
+
+  React.useEffect(() => {
+    if (isOpen && activeStudioId) {
+      setPrimaryHomeStudioId(activeStudioId);
+    }
+  }, [isOpen, activeStudioId]);
+
+  const handleSubmit = async () => {
+    if (!fullName || !initials || !primaryHomeStudioId) return;
+
+    const searchTokens = generateSearchTokens(fullName);
+
+    const payload: CreateTrainerPayload = {
+      fullName: fullName.trim(),
+      initials: initials.trim(),
+      requiresPinReset: true,
+      isOwner,
+      isVisibleOnCalendar: true,
+      searchTokens,
+      primaryHomeStudioId,
+      accessibleStudioIds: [primaryHomeStudioId],
+      systemStatus: "active",
+    };
+
+    // Strict validation
+    if (!payload.fullName) {
+      toastError("Validation Error: Full Name is required.");
+      return;
+    }
+    if (!payload.initials || payload.initials.length < 2) {
+      toastError("Validation Error: Initials must be at least 2 characters.");
+      return;
+    }
+    if (!payload.primaryHomeStudioId) {
+      toastError("Validation Error: Primary Home Studio ID is required.");
+      return;
+    }
+    if (
+      !payload.accessibleStudioIds ||
+      payload.accessibleStudioIds.length === 0
+    ) {
+      toastError("Validation Error: Accessible Studio ID details must be set.");
+      return;
+    }
+
+    await onSubmit(payload);
+
+    setFullName("");
+    setInitials("");
+    setIsOwner(false);
+    setPrimaryHomeStudioId(activeStudioId || "");
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-106.25 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-black italic uppercase text-slate-900 dark:text-white tracking-widest">
+            Add New Trainer
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-6 py-4">
+          <div className="space-y-2">
+            <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+              Full Name
+            </Label>
+            <Input
+              value={fullName}
+              onChange={(e) => {
+                setFullName(e.target.value);
+                const parts = e.target.value.split(" ");
+                if (parts.length > 1) {
+                  setInitials(
+                    (parts[0][0] + parts[parts.length - 1][0]).toUpperCase(),
+                  );
+                } else if (parts[0]) {
+                  setInitials(parts[0].substring(0, 2).toUpperCase());
+                } else {
+                  setInitials("");
+                }
+              }}
+              className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-12"
+              placeholder="e.g. John Doe"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+              Initials
+            </Label>
+            <Input
+              value={initials}
+              onChange={(e) => setInitials(e.target.value.toUpperCase())}
+              className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-12 uppercase"
+              placeholder="JD"
+              maxLength={3}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">
+              Primary Home Studio <span className="text-rose-500">*</span>
+            </Label>
+            <Select
+              value={primaryHomeStudioId}
+              onValueChange={setPrimaryHomeStudioId}
+            >
+              <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-12 text-sm font-bold focus:ring-[#38BDF8]">
+                <SelectValue placeholder="Select primary home studio..." />
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white max-h-75">
+                {availableStudios.map((studio) => (
+                  <SelectItem
+                    key={studio.id}
+                    value={studio.id || ""}
+                    className="focus:bg-[#38BDF8] focus:text-slate-950 cursor-pointer"
+                  >
+                    {studio.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-bold text-slate-900 dark:text-white">
+                System Admin
+              </Label>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase">
+                Grant full hub access
+              </p>
+            </div>
+            <Switch checked={isOwner} onCheckedChange={setIsOwner} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={handleSubmit}
+            disabled={!fullName || !initials || !primaryHomeStudioId}
+            className="w-full bg-[#F06C22] hover:bg-[#d95b16] text-white font-black uppercase text-xs h-12 rounded-xl transition-all shadow-[0_0_20px_rgba(240,108,34,0.3)]"
+          >
+            Create Trainer Profile
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

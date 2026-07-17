@@ -1,0 +1,523 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // GLOBAL SAFETY NET
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // RBAC & MULTI-TENANCY HELPERS
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getTrainerData() {
+      return get(/databases/$(database)/documents/trainers/$(request.auth.uid)).data;
+    }
+
+    function getRole() {
+      return request.auth != null && exists(/databases/$(database)/documents/trainers/$(request.auth.uid))
+        ? ('role' in getTrainerData() && getTrainerData().role != null ? getTrainerData().role : 'none')
+        : 'none';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        ('role' in request.auth.token && request.auth.token.role == 'Admin') ||
+        getRole() == 'Admin'
+      );
+    }
+
+    function isFounder() {
+      return isAuthenticated() && (
+        ('role' in request.auth.token && (request.auth.token.role == 'Founder' || request.auth.token.role == 'Overseer')) ||
+        getRole() == 'Founder' || 
+        getRole() == 'Overseer'
+      );
+    }
+
+    // 1. SUPER ADMIN: Absolute master access to everything
+    function isSuperAdmin() {
+      return isAdmin() || isFounder() || (
+        isAuthenticated() &&
+        (('email' in request.auth.token && request.auth.token.email == 'admin@example.com') || request.auth.uid == 'YOUR_ADMIN_UID')
+      );
+    }
+
+    // 2. FRANCHISE OWNER: Management authority of regional studio systems
+    function isFranchiseOwnerOnly() {
+      return isAuthenticated() && (
+        getRole() == 'FranchiseOwner' || 
+        getRole() == 'Owner'
+      );
+    }
+
+    // 3. STUDIO OWNER & HEAD TRAINER: Read/write strictly bounded by location parameter
+    function isStudioOwnerOrHeadTrainerOnly(studioId) {
+      return isAuthenticated() && (
+        // Secure Custom Token Claim check
+        ('studioId' in request.auth.token && request.auth.token.studioId != null && request.auth.token.studioId == studioId) ||
+        // Database Backed verification fallback
+        (
+          exists(/databases/$(database)/documents/trainers/$(request.auth.uid)) &&
+          (getRole() == 'StudioOwner' || getRole() == 'HeadTrainer' || getRole() == 'StudioLeader') &&
+          (
+            getTrainerData().primaryHomeStudioId == studioId || 
+            ('ownedStudioIds' in getTrainerData() && getTrainerData().ownedStudioIds != null && getTrainerData().ownedStudioIds.hasAny([studioId]))
+          )
+        )
+      );
+    }
+
+    function isStudioOwnerOrHeadTrainer(studioId) {
+      return isStudioOwnerOrHeadTrainerOnly(studioId);
+    }
+
+    function isFranchiseOwner() {
+      return isFranchiseOwnerOnly();
+    }
+
+    // 4. TRAINER: Limited strictly to designated home or accessible guest studios
+    function isTrainerOfStudioOnly(studioId) {
+      return isAuthenticated() && exists(/databases/$(database)/documents/trainers/$(request.auth.uid)) && (
+        (getRole() == 'Trainer' || getRole() == 'LifeTransformer' || getRole() == 'StudioLeader') &&
+        (
+          getTrainerData().primaryHomeStudioId == studioId ||
+          ('accessibleStudioIds' in getTrainerData() && getTrainerData().accessibleStudioIds != null && getTrainerData().accessibleStudioIds.hasAny([studioId])) ||
+          ('activeGuestStudioIds' in getTrainerData() && getTrainerData().activeGuestStudioIds != null && getTrainerData().activeGuestStudioIds.hasAny([studioId]))
+        )
+      );
+    }
+
+    function isTrainerOfStudio(studioId) {
+      return isStudioOwnerOrHeadTrainerOnly(studioId) || isTrainerOfStudioOnly(studioId);
+    }
+
+    // 5. HELPER: Resolve studio or homeStudioId field safely from a data map
+    function getStudioIdFromData(data) {
+      return data.get('homeStudioId', data.get('studioId', null));
+    }
+
+    function isTrainerOfClientData(clientId, clientData, trainerPrimary, trainerAccessible, trainerGuest) {
+      return (getStudioIdFromData(clientData) != null && isTrainerOfStudio(getStudioIdFromData(clientData))) ||
+             (clientData.get('approvedCrossTrainStudioIds', []).hasAny([trainerPrimary])) ||
+             (clientData.get('approvedCrossTrainStudioIds', []).hasAny(trainerAccessible)) ||
+             (clientData.get('approvedCrossTrainStudioIds', []).hasAny(trainerGuest));
+    }
+
+    function isTrainerOfClient(clientId) {
+      return exists(/databases/$(database)/documents/clients/$(clientId)) && 
+             isTrainerOfClientData(
+               clientId,
+               get(/databases/$(database)/documents/clients/$(clientId)).data,
+               getTrainerData().primaryHomeStudioId,
+               getTrainerData().get('accessibleStudioIds', []),
+               getTrainerData().get('activeGuestStudioIds', [])
+             );
+    }
+
+    function isTrainerOfStudioOrClient(studioId, clientId) {
+      return isSuperAdmin() || isFranchiseOwnerOnly() || (
+        isAuthenticated() && (
+          (studioId != null && isTrainerOfStudio(studioId)) ||
+          (clientId != null && isTrainerOfClient(clientId))
+        )
+      );
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // ===============================================================
+    // VALIDATORS & PROPERTY MATCHERS
+    // ===============================================================
+
+    function isValidTrainer(data) {
+      return hasRequiredFields(['fullName', 'initials', 'primaryHomeStudioId']) &&
+             data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
+             data.initials is string && data.initials.size() >= 2 && data.initials.size() <= 4 &&
+             (!('pin' in data) || data.pin == '') && (!('pinHash' in data) || data.pinHash == '') &&
+             data.primaryHomeStudioId is string && data.primaryHomeStudioId.size() > 0 && data.primaryHomeStudioId.size() < 100 &&
+             (!('mindbody_ical_url' in data) || data.mindbody_ical_url == null || (data.mindbody_ical_url is string && data.mindbody_ical_url.size() < 500)) &&
+             (!('role' in data) || data.role == null || data.role is string) &&
+             (!('accessibleStudioIds' in data) || data.accessibleStudioIds == null || data.accessibleStudioIds is list) &&
+             (!('activeGuestStudioIds' in data) || data.activeGuestStudioIds == null || data.activeGuestStudioIds is list) &&
+             (!('createdAt' in data) || data.createdAt == null || data.createdAt is timestamp || data.createdAt is string);
+    }
+
+    function isValidClient(data) {
+      return hasRequiredFields(['firstName', 'lastName', 'isActive', 'remainingSessions']) &&
+             data.firstName is string && data.firstName.size() > 0 && data.firstName.size() < 50 &&
+             data.lastName is string && data.lastName.size() > 0 && data.lastName.size() < 50 &&
+             data.isActive is bool &&
+             data.remainingSessions is number && data.remainingSessions >= 0;
+    }
+
+    function isValidMachine(data) {
+      return hasRequiredFields(['name', 'order']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.order is number;
+    }
+
+    function isValidSession(data) {
+      return (!data.keys().hasAll(['sessionNumber']) || data.sessionNumber is number) &&
+             (!data.keys().hasAll(['date']) || data.date is string) &&
+             (!data.keys().hasAll(['trainerInitials']) || data.trainerInitials is string);
+    }
+
+    // Since updates can be partial list updates, we enforce type-safety for incoming fields
+    function isValidLog(data) {
+      return hasRequiredFields(['sessionId', 'machineId']) &&
+             data.sessionId is string &&
+             data.machineId is string;
+    }
+
+    function isValidSchedule(data) {
+      return hasRequiredFields(['clientName', 'trainerName', 'startTime', 'endTime', 'status', 'serviceName', 'source']);
+    }
+
+    function isValidNetwork(data) {
+      return hasRequiredFields(['name', 'ownerId', 'studioIds']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.ownerId is string &&
+             data.studioIds is list;
+    }
+
+    function isValidHubAnnouncement(data) {
+      return hasRequiredFields(['title', 'shortContent', 'longContent', 'authorId', 'authorName', 'studioId', 'isActive', 'priority']);
+    }
+
+    // ===============================================================
+    // COLLECTION ENDPOINTS SECURITY PATHS
+    // ===============================================================
+
+    // TRAINERS: Directory search, auth checks, and creation permissions
+    match /trainers/{trainerId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+                    request.resource.data.primaryHomeStudioId != null &&
+                    isValidTrainer(request.resource.data) &&
+                    (isSuperAdmin() || isFranchiseOwner() || 
+                     isStudioOwnerOrHeadTrainer(request.resource.data.primaryHomeStudioId) ||
+                     (request.auth.token.email != null && request.auth.token.email.matches('.*@example\\.com')));
+      allow update: if isSuperAdmin() || 
+                    ( (isFranchiseOwner() || 
+                      (resource.data.primaryHomeStudioId != null && isStudioOwnerOrHeadTrainer(resource.data.primaryHomeStudioId)) || 
+                      (isAuthenticated() && request.auth.uid == trainerId))
+                      && 
+                      (!('role' in request.resource.data) || 
+                       request.resource.data.role == resource.data.role || 
+                       (request.resource.data.role != 'Founder' && request.resource.data.role != 'Admin' && request.resource.data.role != 'Overseer'))
+                    ) ||
+                    (
+                      isAuthenticated() &&
+                      request.auth.uid == trainerId &&
+                      resource.data.requiresPinReset == true &&
+                      request.resource.data.requiresPinReset == false &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['requiresPinReset', 'updatedAt'])
+                    );
+      allow delete: if isSuperAdmin();
+
+      match /secrets/account {
+        allow read: if isSuperAdmin() || request.auth.uid == trainerId || 
+            (exists(/databases/$(database)/documents/trainers/$(trainerId)) && 
+             isStudioOwnerOrHeadTrainer(get(/databases/$(database)/documents/trainers/$(trainerId)).data.primaryHomeStudioId));
+        allow write: if isSuperAdmin() || request.auth.uid == trainerId || 
+            (exists(/databases/$(database)/documents/trainers/$(trainerId)) && 
+             isStudioOwnerOrHeadTrainer(get(/databases/$(database)/documents/trainers/$(trainerId)).data.primaryHomeStudioId));
+      }
+
+      match /machineRoster/{machineId} {
+        allow read: if isAuthenticated() && (isSuperAdmin() || isTrainerOfStudio(get(/databases/$(database)/documents/trainers/$(trainerId)).data.primaryHomeStudioId));
+        allow write: if isAuthenticated() && (isSuperAdmin() || isStudioOwnerOrHeadTrainer(get(/databases/$(database)/documents/trainers/$(trainerId)).data.primaryHomeStudioId));
+      }
+  
+    }
+
+    // CLIENTS: Securely allows general directory access to authenticated systems / staff
+    match /clients/{clientId} {
+      allow read: if isAuthenticated() && (isSuperAdmin() || isFranchiseOwner() || isTrainerOfClientData(
+                    clientId,
+                    resource.data,
+                    getTrainerData().primaryHomeStudioId,
+                    getTrainerData().get('accessibleStudioIds', []),
+                    getTrainerData().get('activeGuestStudioIds', [])
+                  ));
+      allow create: if isAuthenticated() && 
+                    isValidClient(request.resource.data) && 
+                    (isSuperAdmin() || (request.resource.data.homeStudioId != null && isTrainerOfStudio(request.resource.data.homeStudioId)));
+      allow update: if isAuthenticated() && 
+                    isValidClient(request.resource.data) && 
+                    (isSuperAdmin() || (resource.data.homeStudioId != null && isTrainerOfStudio(resource.data.homeStudioId)));
+      allow delete: if isSuperAdmin();
+    }
+
+    // DISK SETTINGS: Machine settings assigned to specific athletes
+    match /clientMachineSettings/{settingId} {
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
+      allow update: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null)) && (resource == null || getStudioIdFromData(resource.data) == getStudioIdFromData(request.resource.data));
+      allow delete: if isSuperAdmin() || isFranchiseOwner() || isAuthenticated();
+    }
+
+    // PHYSICAL MACHINES
+    match /machines/{machineId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isSuperAdmin() || isFranchiseOwner();
+      allow delete: if isSuperAdmin();
+
+      match /settingHistory/{historyId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    match /machineSettingChanges/{changeId} {
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
+    }
+
+    // ROUTINES & ADJUSTMENTS
+    match /routines/{routineId} {
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
+      allow update: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null)) && (resource == null || getStudioIdFromData(resource.data) == getStudioIdFromData(request.resource.data));
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
+    }
+
+    match /routineAdjustments/{adjustmentId} {
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
+    }
+
+    // TRAINING SESSIONS
+    match /sessions/{sessionId} {
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() || isFranchiseOwner() ||
+        (resource.data.get('hostedAtStudioId', null) != null && isTrainerOfStudio(resource.data.hostedAtStudioId))
+      );
+      allow create: if isAuthenticated() && 
+                    request.resource.data.get('hostedAtStudioId', null) != null && 
+                    isTrainerOfStudio(request.resource.data.hostedAtStudioId);
+      allow update: if isAuthenticated() && 
+                    request.resource.data.get('hostedAtStudioId', null) != null && 
+                    isTrainerOfStudio(request.resource.data.hostedAtStudioId) && 
+                    resource.data.get('hostedAtStudioId', null) == request.resource.data.get('hostedAtStudioId', null);
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
+
+      match /logs/{logId} {
+        allow read, write: if isAuthenticated() && (
+          isSuperAdmin() || isFranchiseOwner() ||
+          (sessionId != null && exists(/databases/$(database)/documents/sessions/$(sessionId)) &&
+           get(/databases/$(database)/documents/sessions/$(sessionId)).data.get('hostedAtStudioId', null) != null &&
+           isTrainerOfStudio(get(/databases/$(database)/documents/sessions/$(sessionId)).data.hostedAtStudioId))
+        );
+      }
+    }
+
+    // EXERCISE LOGS
+    match /exerciseLogs/{logId} {
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() || isFranchiseOwner() ||
+        (resource.data.get('sessionId', null) != null && exists(/databases/$(database)/documents/sessions/$(resource.data.sessionId)) && get(/databases/$(database)/documents/sessions/$(resource.data.sessionId)).data.get('hostedAtStudioId', null) != null && isTrainerOfStudio(get(/databases/$(database)/documents/sessions/$(resource.data.sessionId)).data.hostedAtStudioId)) ||
+        (resource.data.get('clientId', null) != null && isTrainerOfClient(resource.data.clientId))
+      );
+      allow create: if isAuthenticated() && isValidLog(request.resource.data) && (
+        isSuperAdmin() || isFranchiseOwner() ||
+        (request.resource.data.get('sessionId', null) != null && exists(/databases/$(database)/documents/sessions/$(request.resource.data.sessionId)) && get(/databases/$(database)/documents/sessions/$(request.resource.data.sessionId)).data.get('hostedAtStudioId', null) != null && isTrainerOfStudio(get(/databases/$(database)/documents/sessions/$(request.resource.data.sessionId)).data.hostedAtStudioId)) ||
+        (request.resource.data.get('clientId', null) != null && isTrainerOfClient(request.resource.data.clientId))
+      );
+      allow update: if isAuthenticated() && isValidLog(request.resource.data) && (
+        isSuperAdmin() || isFranchiseOwner() ||
+        (request.resource.data.get('sessionId', null) != null && exists(/databases/$(database)/documents/sessions/$(request.resource.data.sessionId)) && get(/databases/$(database)/documents/sessions/$(request.resource.data.sessionId)).data.get('hostedAtStudioId', null) != null && isTrainerOfStudio(get(/databases/$(database)/documents/sessions/$(request.resource.data.sessionId)).data.hostedAtStudioId)) ||
+        (request.resource.data.get('clientId', null) != null && isTrainerOfClient(request.resource.data.clientId))
+      ) && (
+        resource.data.get('sessionId', null) == request.resource.data.get('sessionId', null) &&
+        resource.data.get('clientId', null) == request.resource.data.get('clientId', null)
+      );
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
+    }
+
+    // CALENDAR SCHEDULES
+    match /schedules/{scheduleId} {
+      allow read: if isAuthenticated() && (isSuperAdmin() || isFranchiseOwner() || (resource.data.studioId != null && isTrainerOfStudio(resource.data.studioId)));
+      allow create, update: if (
+        isFranchiseOwner() || 
+        isSuperAdmin() ||
+        (getStudioIdFromData(request.resource.data) != null && isTrainerOfStudio(getStudioIdFromData(request.resource.data)))
+      ) && isValidSchedule(request.resource.data);
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
+    }
+    
+    // CLINICAL NOTES
+    match /sessionNotes/{noteId} {
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
+      allow update: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null)) && (resource == null || getStudioIdFromData(resource.data) == getStudioIdFromData(request.resource.data));
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
+    }
+
+    match /users/{userId} {
+      allow read, write: if isSuperAdmin() || request.auth.uid == userId;
+    }
+
+    
+    // AUDIT LOGS
+    match /auditLogs/{logId} {
+      allow read: if isSuperAdmin() || isFranchiseOwner();
+      allow create: if isAuthenticated();
+      allow update, delete: if isSuperAdmin();
+    }
+  
+    match /leaderboards/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // SPECIAL ATHLETE FOCUS PATTERNS
+    match /trainerFocuses/{focusId} {
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
+      allow update: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null)) && (resource == null || getStudioIdFromData(resource.data) == getStudioIdFromData(request.resource.data));
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
+    }
+
+    match /progressReports/{reportId} {
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
+      allow update: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null)) && (resource == null || getStudioIdFromData(resource.data) == getStudioIdFromData(request.resource.data));
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
+    }
+
+    match /focusRecords/{focusId} {
+      allow read: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(resource.data), resource.data.get('clientId', null));
+      allow create: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null));
+      allow update: if isAuthenticated() && isTrainerOfStudioOrClient(getStudioIdFromData(request.resource.data), request.resource.data.get('clientId', null)) && (resource == null || getStudioIdFromData(resource.data) == getStudioIdFromData(request.resource.data));
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
+    }
+
+    // STUDIOS: Territory configurations
+    match /studios/{studioId} {
+      allow read: if isAuthenticated();
+      allow create, update: if (isSuperAdmin() || isFranchiseOwner() || isStudioOwnerOrHeadTrainer(studioId)) &&
+                            request.resource.data.keys().hasAll(['mindbodySiteId']) &&
+                            request.resource.data.mindbodySiteId is string &&
+                            request.resource.data.mindbodySiteId.size() > 0;
+      allow delete: if isSuperAdmin();
+    }
+
+    // NETWORKS: Regional Franchise Groupings
+    match /networks/{networkId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isSuperAdmin() || isFranchiseOwner();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /aggregations/{aggId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    match /clinicalIncidents/{incidentId} {
+      allow read: if isSuperAdmin() || (resource.data.studioId != null && isTrainerOfStudio(resource.data.studioId));
+      allow write: if isSuperAdmin() || (request.resource.data.studioId != null && isTrainerOfStudio(request.resource.data.studioId));
+    }
+
+    // ACCESS REQUESTS
+    match /access_requests/{requestId} {
+      allow read: if isAuthenticated();
+      allow create: if (
+                      // Type 1: Initial System Access
+                      (
+                        hasRequiredFields(['email', 'fullName']) &&
+                        request.resource.data.email is string && request.resource.data.email.size() < 100 &&
+                        request.resource.data.fullName is string && request.resource.data.fullName.size() < 100 &&
+                        (!('phone' in request.resource.data) || (request.resource.data.phone is string && request.resource.data.phone.size() < 50)) &&
+                        (!('reason' in request.resource.data) || (request.resource.data.reason is string && request.resource.data.reason.size() < 1000)) &&
+                        request.resource.data.status == 'Pending'
+                      ) ||
+                      // Type 2: Studio Access
+                      (
+                        isAuthenticated() &&
+                        request.resource.data.type == 'studio_access' &&
+                        request.resource.data.trainerId == request.auth.uid &&
+                        request.resource.data.status == 'Pending'
+                      )
+                    );
+      allow update, delete: if isSuperAdmin() || isFranchiseOwner() || 
+                            (isAuthenticated() && request.resource.data.type == 'studio_access' && request.resource.data.trainerId == request.auth.uid);
+    }
+
+    // BUG REPORTS
+    match /bug_reports/{reportId} {
+      allow read: if isSuperAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // ANNOUNCEMENTS
+    match /hub_announcements/{announcementId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && isValidHubAnnouncement(request.resource.data);
+      allow delete: if isSuperAdmin() || isFranchiseOwner() || 
+                    (resource.data.studioId != null && isStudioOwnerOrHeadTrainer(resource.data.studioId));
+    }
+
+    // ===============================================================
+    // MINDBODY INTEGRATION
+    // ===============================================================
+
+    // Permanent cross-train access record (per Section 11.3, Decision #2)
+    // Path: clients/{clientId}/crossTrainAccess/{studioId}
+    match /clients/{clientId}/crossTrainAccess/{studioId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isSuperAdmin() || (
+        isStudioOwnerOrHeadTrainer(studioId) &&
+        request.resource.data.grantedBy == request.auth.uid &&
+        request.resource.data.keys().hasAll(['granted', 'grantedAt', 'grantedBy']) &&
+        request.resource.data.granted == true
+      );
+      allow delete: if isAdmin() || isFounder();
+    }
+
+    // Cross-train request submissions (per Section 4.4)
+    // Path: crossTrainRequests/{requestId}
+    match /crossTrainRequests/{requestId} {
+      allow create: if isAuthenticated() &&
+        request.resource.data.requestingTrainerId == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow read: if isAuthenticated();
+      allow update: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(resource.data.targetStudioId);
+      allow delete: if isSuperAdmin();
+    }
+
+    // Webhook idempotency log (server-only writes; admins can read)
+    // Path: mindbodyEventLog/{messageId}
+    match /mindbodyEventLog/{messageId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    // Dead letter queue (server writes; admins read and resolve)
+    // Path: mindbodyDLQ/{messageId}
+    match /mindbodyDLQ/{messageId} {
+      allow read: if isSuperAdmin();
+      allow update: if isSuperAdmin();
+      allow create, delete: if false;
+    }
+
+    // Global integration health (server writes; all authenticated users read for UI)
+    // Path: system/health
+    match /system/health {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+  }
+}

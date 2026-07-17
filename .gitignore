@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+functions/node_modules/
+
+# Build output
+dist/
+functions/lib/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+functions/.secret.local
+firebase-applet-config.json
+
+# Logs
+*.log
+firebase-debug.log
+functions/firebase-debug.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Coverage & testing
+coverage/
+
+# Backups & data dumps (large files)
+backup.zip
+firestore_backup.json
+*.zip
+
+# Firebase emulator data
+.firebase/
+
+# Package manager debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+.gcloudignore
