@@ -1503,6 +1503,7 @@ export default function AppContent({
                 onStartOpenSession={startUnassignedSession}
                 authTrainer={authTrainer}
                 onUpdateSessions={updateClientSessions}
+                onStartNewClientOnboarding={setNewClientOnboardingName}
               />
             )}
             {currentView === "clients" && (
@@ -1788,7 +1789,7 @@ export default function AppContent({
 
         {/* Navigation Bar */}
         {appMode === "trainer" ? (
-          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 h-14 sm:h-20 flex items-center justify-around z-100">
+          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 h-14 sm:h-20 flex items-center justify-around z-30">
             <NavButton
               active={currentView === "clients"}
               onClick={() => setCurrentView("clients")}
@@ -1853,7 +1854,7 @@ export default function AppContent({
             />
           </nav>
         ) : (
-          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-bg-dark border-t border-orange-500/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 h-14 sm:h-20 flex items-center justify-around z-100">
+          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-bg-dark border-t border-orange-500/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 h-14 sm:h-20 flex items-center justify-around z-30">
             <NavButton
               active={currentView === "admin-dashboard"}
               onClick={() => setCurrentView("admin-dashboard" as any)}
@@ -1885,7 +1886,7 @@ export default function AppContent({
               activeIndicator="bg-emerald-500 dark:bg-emerald-600"
             />
           </nav>
-        ) }
+        )}
       </div>
 
       {/* Machine Information Deep Dive Dialog */}

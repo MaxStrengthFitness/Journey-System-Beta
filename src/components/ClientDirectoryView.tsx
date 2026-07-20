@@ -16,18 +16,69 @@ interface Props {
   onStartOpenSession?: () => void;
   authTrainer?: Trainer | null;
   onUpdateSessions?: (clientId: string, current: number, delta: number) => Promise<void>;
+  onStartNewClientOnboarding?: (name: string) => void;
 }
 
-export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSession, authTrainer, onUpdateSessions }: Props) {
+export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSession, authTrainer, onUpdateSessions, onStartNewClientOnboarding }: Props) {
   const { availableStudios, activeStudioId } = useActiveStudio();
   const [searchTerm, setSearchTerm] = useState('');
   const [isGlobalSearch, setIsGlobalSearch] = useState(false);
   const [dbSearchResults, setDbSearchResults] = useState<Client[]>([]);
   const [isSearchingDb, setIsSearchingDb] = useState(false);
 
+  const handleUpdateSessions = async (clientId: string, current: number, delta: number) => {
+    if (onUpdateSessions) {
+      setDbSearchResults(prev =>
+        prev.map(c =>
+          c.id === clientId
+            ? { ...c, remainingSessions: Math.max(0, current + delta) }
+            : c
+        )
+      );
+      try {
+        await onUpdateSessions(clientId, current, delta);
+      } catch (err) {
+        console.error("Failed to update sessions:", err);
+        setDbSearchResults(prev =>
+          prev.map(c =>
+            c.id === clientId
+              ? { ...c, remainingSessions: current }
+              : c
+          )
+        );
+      }
+    }
+  };
+
   React.useEffect(() => {
     if (!searchTerm.trim()) {
-      setDbSearchResults([]);
+      setIsSearchingDb(true);
+      const fetchRecentClients = async () => {
+        try {
+          const clientsRef = collection(db, "clients");
+          let q;
+          if (!isGlobalSearch && activeStudioId) {
+            q = query(
+              clientsRef,
+              where("homeStudioId", "==", activeStudioId),
+              limit(30)
+            );
+          } else {
+            q = query(
+              clientsRef,
+              limit(30)
+            );
+          }
+          const snap = await getDocs(q);
+          const fetched = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as Client));
+          setDbSearchResults(fetched);
+        } catch (err) {
+          console.error("Error fetching recent clients:", err);
+        } finally {
+          setIsSearchingDb(false);
+        }
+      };
+      fetchRecentClients();
       return;
     }
     setIsSearchingDb(true);
@@ -90,7 +141,7 @@ export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSessio
       }
     }, 300);
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
+  }, [searchTerm, isGlobalSearch, activeStudioId]);
 
   const displayClients = useMemo(() => {
     // 1. Studio filtering
@@ -105,9 +156,12 @@ export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSessio
 
     let filtered = Array.from(new Map([...clients, ...dbSearchResults].map(c => [c.id, c])).values());
 
+    // Filter out dummy/mock clients that do not have a valid first or last name (like test-client-999)
+    filtered = filtered.filter(c => c.firstName || c.lastName);
+
     // Apply Cross-Studio or Home Studio Territory Filtering if isGlobalSearch is turned off
     if (!isGlobalSearch && allowedStudioIds.length > 0) {
-      filtered = filtered.filter(c => c.homeStudioId && allowedStudioIds.includes(c.homeStudioId));
+      filtered = filtered.filter(c => !c.homeStudioId || allowedStudioIds.includes(c.homeStudioId));
     }
 
     // 2. Search filtering
@@ -162,10 +216,10 @@ export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSessio
           </div>
           
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            {onStartOpenSession && (
+            {onStartNewClientOnboarding && (
               <Button
-                onClick={onStartOpenSession}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-widest rounded-xl h-12 px-6 transition-all shadow-sm"
+                onClick={() => onStartNewClientOnboarding("")}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-widest rounded-xl h-12 px-6 transition-all shadow-sm cursor-pointer"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Client
@@ -174,7 +228,7 @@ export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSessio
           </div>
         </div>
         
-        {authTrainer?.primaryHomeStudioId && (
+        {activeStudioId && (
           <div className="flex items-center gap-3 mt-4 px-2">
             <button
               onClick={() => setIsGlobalSearch(!isGlobalSearch)}
@@ -253,16 +307,16 @@ export function ClientDirectoryView({ clients, onSelectClient, onStartOpenSessio
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                onClick={() => onUpdateSessions(client.id!, client.remainingSessions ?? 0, -1)}
+                                className="h-6 w-6 text-muted-foreground hover:text-foreground cursor-pointer"
+                                onClick={() => handleUpdateSessions(client.id!, client.remainingSessions ?? 0, -1)}
                               >
                                 <Minus className="h-3 w-3" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                onClick={() => onUpdateSessions(client.id!, client.remainingSessions ?? 0, 1)}
+                                className="h-6 w-6 text-muted-foreground hover:text-foreground cursor-pointer"
+                                onClick={() => handleUpdateSessions(client.id!, client.remainingSessions ?? 0, 1)}
                               >
                                 <Plus className="h-3 w-3" />
                               </Button>

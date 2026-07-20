@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   collection,
   onSnapshot,
@@ -1715,7 +1716,7 @@ export function ClientProfileView({
       <Card
         key={routineName}
         className={cn(
-          "bg-bg-l-card border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-all overflow-hidden flex flex-col relative",
+          "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-all overflow-hidden flex flex-col relative",
           isTodaySelected &&
             "ring-2 ring-cyan shadow-[0_0_20px_rgba(6,182,212,0.3)] border-cyan/40",
           !isBActive && "opacity-60 grayscale-15",
@@ -1875,7 +1876,7 @@ export function ClientProfileView({
     const changesThisMonth = calculateChangesThisMonth(routineAdjustments);
 
     return (
-      <Card className="col-span-full bg-slate-50/10 dark:bg-bg-l-card border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm mt-4 p-5 lg:p-6">
+      <Card className="col-span-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm mt-4 p-5 lg:p-6">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <History className="w-5 h-5 text-slate-500" />
@@ -1890,7 +1891,7 @@ export function ClientProfileView({
             className="rounded-xl font-bold uppercase text-[11px] tracking-wider border-slate-200 dark:border-slate-800"
           >
             {isJournalExpanded ? "Collapse Journal" : "Open Journal"}
-            <span className="ml-2 bg-slate-100 dark:bg-slate-850 text-slate-600 dark:text-slate-350 px-2 py-0.5 rounded-full text-[10px]">
+            <span className="ml-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full text-[10px]">
               {changesThisMonth} {changesThisMonth === 1 ? "change" : "changes"}{" "}
               this month
             </span>
@@ -1937,11 +1938,11 @@ export function ClientProfileView({
                 return (
                   <div
                     key={adj.id}
-                    className="p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/30 space-y-2 text-xs"
+                    className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-2 text-xs"
                   >
                     <div className="flex items-center justify-between gap-2 border-b border-slate-200/40 dark:border-slate-800/40 pb-2">
                       <div className="flex items-center gap-2">
-                        <div className="flex items-center justify-center w-7 h-7 bg-slate-200 dark:bg-slate-850 text-[11px] font-bold font-mono text-slate-700 dark:text-neutral-300 rounded-[#10px]">
+                        <div className="flex items-center justify-center w-7 h-7 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold font-mono text-slate-700 dark:text-slate-300 rounded-[#10px]">
                           {initials}
                         </div>
                         <div>
@@ -1999,7 +2000,7 @@ export function ClientProfileView({
                     )}
 
                     {adj.notes && (
-                      <p className="italic text-slate-600 dark:text-neutral-300 bg-white/40 dark:bg-slate-900/40 p-2.5 rounded-lg border border-slate-200/20">
+                      <p className="italic text-slate-600 dark:text-neutral-305 bg-white/40 dark:bg-slate-900/40 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
                         "{adj.notes}"
                       </p>
                     )}
@@ -2726,12 +2727,28 @@ export function ClientProfileView({
                     {scheduledSessions.length > 0 ? (
                       <>
                         <span>
-                          {new Date(
-                            scheduledSessions[0].date + "T12:00:00Z",
-                          ).toLocaleDateString([], {
-                            month: "short",
-                            day: "numeric",
-                          })}
+                          {(() => {
+                            const dateVal = scheduledSessions[0].date;
+                            if (!dateVal) return "N/A";
+                            let d: Date;
+                            if (typeof (dateVal as any).toDate === "function") {
+                              d = (dateVal as any).toDate();
+                            } else if (typeof dateVal === "string") {
+                              d = new Date(
+                                dateVal.includes("T")
+                                  ? dateVal
+                                  : dateVal + "T12:00:00",
+                              );
+                            } else {
+                              d = new Date(dateVal);
+                            }
+                            return isNaN(d.getTime())
+                              ? "N/A"
+                              : d.toLocaleDateString([], {
+                                  month: "short",
+                                  day: "numeric",
+                                });
+                          })()}
                         </span>
                         {scheduledSessions.length > 1 && (
                           <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-[#68717A] dark:text-slate-300 px-1.5 py-0.5 rounded ml-1">
@@ -2861,9 +2878,9 @@ export function ClientProfileView({
         className="w-full flex-1 flex flex-col min-h-0"
         onValueChange={setActiveTab}
       >
-        <div className="mb-6 w-full border-b border-div-l">
-          <div className="overflow-x-auto pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar">
-            <TabsList className="bg-transparent p-0 flex flex-nowrap md:grid md:grid-cols-6 w-max md:w-full h-11 border-none gap-0">
+        <div className="mb-6 w-full">
+          <div className="overflow-x-auto md:overflow-x-visible pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar scroll-smooth">
+            <TabsList className="bg-transparent p-0 flex flex-nowrap md:grid md:grid-cols-6 w-max md:w-full !h-11 border-b border-slate-200 dark:border-slate-800 gap-0">
               {[
                 { val: "journey", label: "Journey" },
                 { val: "routines", label: "Routines" },
@@ -2875,7 +2892,7 @@ export function ClientProfileView({
                 <TabsTrigger
                   key={tab.val}
                   value={tab.val}
-                  className="relative flex-none md:flex-1 h-11 px-6 font-display italic text-[13px] font-bold uppercase tracking-widest text-ink-l3 hover:text-ink-l1 data-[state=active]:bg-bg-dark data-[state=active]:text-white transition-all snap-center text-center cursor-pointer select-none rounded-none border-b-2 border-transparent data-[state=active]:border-cta"
+                  className="relative flex-none md:flex-1 !h-11 px-6 font-display italic text-[13px] font-bold uppercase tracking-widest text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-slate-800/60 data-[state=active]:text-[#F06C22] dark:data-[state=active]:text-white transition-all snap-center text-center cursor-pointer select-none rounded-none border-b-2 border-transparent data-[state=active]:border-[#F06C22]"
                 >
                   {tab.label}
                 </TabsTrigger>
@@ -2952,8 +2969,8 @@ export function ClientProfileView({
           <div className="w-full flex-1 overflow-x-auto overflow-y-auto bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 rounded-xl relative">
             <table className="w-full text-left border-collapse table-fixed select-none min-w-175">
               <thead>
-                <tr className="bg-bg-dark text-ink-d1 uppercase text-[11px] font-bold tracking-widest leading-none h-10 border-b border-div-d">
-                  <th className="p-2 pl-4 w-[25%] border-r border-div-d truncate">
+                <tr className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 uppercase text-[11px] font-bold tracking-widest leading-none h-10 border-b border-slate-200 dark:border-slate-700">
+                  <th className="p-2 pl-4 w-[25%] border-r border-slate-200 dark:border-slate-700 truncate">
                     Equipment & Settings
                   </th>
                   {sessions
@@ -2974,15 +2991,15 @@ export function ClientProfileView({
                       return (
                         <th
                           key={s.id}
-                          className="p-1 px-2 text-center border-r border-div-d truncate w-[10%] opacity-90"
+                          className="p-1 px-2 text-center border-r border-slate-200 dark:border-slate-700 truncate w-[10%] opacity-90"
                         >
                           <div className="flex flex-col items-center justify-center space-y-1 py-1">
-                            <div className="bg-white/10 rounded-md px-1.5 min-w-5 py-0.5 shadow-sm inline-flex items-center justify-center mb-1">
-                              <span className="font-bold tabular-nums text-[11px] leading-none text-white">
+                            <div className="bg-slate-200 dark:bg-white/10 rounded-md px-1.5 min-w-5 py-0.5 shadow-sm inline-flex items-center justify-center mb-1">
+                              <span className="font-bold tabular-nums text-[11px] leading-none text-slate-800 dark:text-white">
                                 {sNum.toString().padStart(2, "0")}
                               </span>
                             </div>
-                            <span className="text-[11px] text-ink-d2 font-bold uppercase tracking-tight">
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tight">
                               {s.date
                                 ? new Date(
                                     parseSessionDate(s.date),
@@ -3021,7 +3038,7 @@ export function ClientProfileView({
                         </th>
                       );
                     })}
-                  <th className="p-2 text-center bg-bg-dark truncate w-[5%] border-l border-div-d text-ink-d1">
+                  <th className="p-2 text-center bg-slate-100 dark:bg-slate-800 truncate w-[5%] border-l border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
                     <Target className="w-5 h-5 mx-auto" />
                   </th>
                 </tr>
@@ -3549,11 +3566,11 @@ export function ClientProfileView({
           value="journal"
           className="mt-0 flex-1 min-h-0 focus-visible:outline-none"
         >
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-6">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-6">
             {/* Header Content & Trigger */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
               <div>
-                <h2 className="text-xl font-black tracking-tight text-slate-100 dark:text-slate-900 font-display italic uppercase">
+                <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100 font-display italic uppercase">
                   Coaching Journal
                 </h2>
                 <p className="text-xs text-slate-500 mt-1">
@@ -3587,7 +3604,7 @@ export function ClientProfileView({
             </div>
 
             {/* Filter Bar */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 py-5 border-b border-slate-200/60 items-start">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 py-5 border-b border-slate-200 dark:border-slate-800 items-start">
               {/* Type Filter */}
               <div className="space-y-1.5">
                 <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono">
@@ -3602,8 +3619,8 @@ export function ClientProfileView({
                         className={cn(
                           "h-11 px-4 text-xs font-semibold uppercase tracking-wider rounded-xl border transition-all cursor-pointer",
                           activeTypeFilter === t
-                            ? "bg-slate-950 text-white border-transparent"
-                            : "bg-slate-50 border-slate-200/60 hover:bg-slate-100 text-slate-600",
+                            ? "bg-[#F06C22] text-white border-transparent shadow-sm shadow-[#F06C22]/20"
+                            : "bg-slate-100 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300",
                         )}
                       >
                         {t}
@@ -3624,8 +3641,8 @@ export function ClientProfileView({
                     className={cn(
                       "h-11 px-4 text-xs font-semibold uppercase tracking-wider rounded-xl border transition-all cursor-pointer",
                       activeTrainerFilter === "All"
-                        ? "bg-slate-950 text-white border-transparent"
-                        : "bg-slate-50 border-slate-200/60 hover:bg-slate-100 text-slate-600",
+                        ? "bg-[#F06C22] text-white border-transparent shadow-sm shadow-[#F06C22]/20"
+                        : "bg-slate-100 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300",
                     )}
                   >
                     All
@@ -3637,11 +3654,11 @@ export function ClientProfileView({
                       className={cn(
                         "h-11 px-4 text-xs font-semibold uppercase tracking-wider rounded-xl border transition-all flex items-center gap-2 cursor-pointer",
                         activeTrainerFilter === summary.trainerId
-                          ? "bg-primary text-white border-transparent"
-                          : "bg-slate-50 border-slate-200/60 hover:bg-slate-100 text-slate-600",
+                          ? "bg-[#F06C22] text-white border-transparent shadow-sm shadow-[#F06C22]/20"
+                          : "bg-slate-100 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300",
                       )}
                     >
-                      <span className="w-5 h-5 rounded-md bg-slate-200/50 flex items-center justify-center font-mono font-bold text-[10px] text-slate-700 shrink-0">
+                      <span className="w-5 h-5 rounded-md bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-mono font-bold text-[10px] text-slate-700 dark:text-slate-300 shrink-0">
                         {summary.trainerInitials}
                       </span>
                       <span>{summary.trainerInitials}</span>
@@ -3663,8 +3680,8 @@ export function ClientProfileView({
                       className={cn(
                         "h-11 px-4 text-xs font-semibold uppercase tracking-wider rounded-xl border transition-all cursor-pointer",
                         activeWindowFilter === w
-                          ? "bg-slate-950 text-white border-transparent"
-                          : "bg-slate-50 border-slate-200/60 hover:bg-slate-100 text-slate-600",
+                          ? "bg-[#F06C22] text-white border-transparent shadow-sm shadow-[#F06C22]/20"
+                          : "bg-slate-100 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300",
                       )}
                     >
                       {w}
@@ -3691,9 +3708,9 @@ export function ClientProfileView({
                       )
                     }
                     className={cn(
-                      "p-4 rounded-xl border text-left transition-all bg-slate-50/55 hover:bg-slate-50 border-slate-200/70 hover:border-slate-300 relative group flex gap-3.5 cursor-pointer",
+                      "p-4 rounded-xl border text-left transition-all bg-slate-50/55 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-900 border-slate-200/70 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 relative group flex gap-3.5 cursor-pointer",
                       activeTrainerFilter === summary.trainerId &&
-                        "ring-2 ring-cyan border-transparent shadow bg-white",
+                        "ring-2 ring-cyan border-transparent shadow bg-white dark:bg-slate-900",
                     )}
                   >
                     <div
@@ -3705,7 +3722,7 @@ export function ClientProfileView({
                       {summary.trainerInitials}
                     </div>
                     <div className="min-w-0 flex-1 space-y-1">
-                      <p className="text-xs font-bold uppercase tracking-tight text-slate-800 truncate">
+                      <p className="text-xs font-bold uppercase tracking-tight text-slate-800 dark:text-slate-100 truncate">
                         {summary.trainerName}
                       </p>
                       <p className="text-[10px] text-slate-400 font-medium">
@@ -3713,10 +3730,10 @@ export function ClientProfileView({
                         {summary.entryCount === 1 ? "entry" : "entries"} ·{" "}
                         {getDaysAgo(summary.lastEntryDate)}
                       </p>
-                      <div className="mt-2 border-t border-slate-200/40 pt-2 text-[11px] leading-snug">
+                      <div className="mt-2 border-t border-slate-200/40 dark:border-slate-850/40 pt-2 text-[11px] leading-snug">
                         {summary.currentFocus ? (
-                          <div className="text-slate-600">
-                            <span className="font-bold text-slate-700 uppercase tracking-wide">
+                          <div className="text-slate-650 dark:text-slate-300">
+                            <span className="font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide">
                               Focus:
                             </span>{" "}
                             {summary.currentFocus}
@@ -3734,13 +3751,13 @@ export function ClientProfileView({
             </div>
 
             {/* Timeline Area */}
-            <div className="space-y-4 pt-4 border-t border-slate-100">
+            <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
               <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase font-mono mb-2">
                 Chronological Timeline Ledger
               </h3>
 
               {filteredJournalEntries.length === 0 ? (
-                <div className="py-16 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/30 flex flex-col items-center justify-center">
+                <div className="py-16 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/10 dark:bg-slate-950/10 flex flex-col items-center justify-center">
                   <Clock className="w-11 h-11 text-slate-400 opacity-40 mb-3" />
                   <p className="text-xs font-bold tracking-wider text-slate-400 uppercase">
                     No Timeline Entries Found
@@ -3753,7 +3770,7 @@ export function ClientProfileView({
                 <div className="space-y-3.5">
                   {filteredJournalEntries.map((entry) => {
                     // Borders based on entry types
-                    let borderClass = "border-l-div-l";
+                    let borderClass = "border-l-slate-300 dark:border-l-slate-700";
                     if (entry.type === "focus") {
                       borderClass = "border-l-[5px] border-l-cyan";
                     } else if (entry.type === "session_note") {
@@ -3768,14 +3785,14 @@ export function ClientProfileView({
                       <div
                         key={entry.id}
                         className={cn(
-                          "flex flex-col sm:flex-row sm:items-start gap-4 p-4 rounded-xl border bg-slate-50 border-slate-200 pl-5 transition-colors relative overflow-hidden",
+                          "flex flex-col sm:flex-row sm:items-start gap-4 p-4 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 pl-5 transition-colors relative overflow-hidden",
                           borderClass,
                         )}
                       >
                         <div className="flex-1 space-y-3">
                           {/* Heading row */}
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-[11px] font-mono text-slate-500 font-semibold">
+                            <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 font-semibold">
                               {entry.date.toLocaleDateString([], {
                                 month: "short",
                                 day: "numeric",
@@ -3803,7 +3820,7 @@ export function ClientProfileView({
                                 entry.type === "focus" &&
                                   "bg-cyan/10 text-cyan border-none",
                                 entry.type === "note" &&
-                                  "bg-slate-200 text-slate-700 border-none",
+                                  "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-none",
                                 entry.type === "session_note" &&
                                   "bg-cta/10 text-cta border-none",
                                 entry.type === "incident" &&
@@ -3820,7 +3837,7 @@ export function ClientProfileView({
                             </Badge>
 
                             {entry.type === "focus" && (
-                              <Badge className="text-[9px] uppercase tracking-widest bg-slate-100 text-slate-800 font-extrabold border-none">
+                              <Badge className="text-[9px] uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold border-none">
                                 {entry.category}
                               </Badge>
                             )}
@@ -3845,7 +3862,7 @@ export function ClientProfileView({
                           {/* Content paragraph */}
                           <div>
                             {entry.type === "focus" && (
-                              <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider font-bold text-slate-400 font-mono mb-1">
+                              <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 font-mono mb-1">
                                 <span>Coaching Focus: Actionable Cue</span>
                                 {entry.targetMachineId && (
                                   <span className="text-cyan font-semibold">
@@ -3858,16 +3875,16 @@ export function ClientProfileView({
                               </div>
                             )}
 
-                            <p className="text-xs text-slate-800 leading-relaxed font-medium whitespace-pre-line">
+                            <p className="text-xs text-slate-850 dark:text-slate-200 leading-relaxed font-medium whitespace-pre-line">
                               {entry.content}
                             </p>
                           </div>
 
                           {/* Interactive statuses */}
                           {entry.type === "focus" && (
-                            <div className="pt-2 border-t border-slate-200/40 flex items-center justify-between">
+                            <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-slate-400 font-semibold">
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
                                   Category definition:{" "}
                                   {
                                     JOURNAL_CATEGORY_DEFINITIONS[entry.category]
@@ -3897,7 +3914,7 @@ export function ClientProfileView({
                           )}
 
                           {entry.type === "incident" && (
-                            <div className="pt-2 border-t border-slate-200/40 flex items-center gap-2 text-xs">
+                            <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 text-xs">
                               {entry.resolvedAt ? (
                                 <span className="text-green font-bold uppercase tracking-wider flex items-center gap-1">
                                   <CheckCircle2 className="w-3.5 h-3.5" />{" "}
@@ -6312,8 +6329,9 @@ export function ClientProfileView({
         />
       )}
 
-      <AnimatePresence>
-        {showFullChart && clientId && (
+      {showFullChart &&
+        clientId &&
+        createPortal(
           <WorkoutChartGrid
             clientId={clientId}
             clients={clients}
@@ -6326,9 +6344,9 @@ export function ClientProfileView({
             onLoadMoreHistory={handleLoadMoreHistory}
             studios={studios}
             activeStudioId={activeStudioId}
-          />
+          />,
+          document.body,
         )}
-      </AnimatePresence>
 
       <Dialog open={isDeleting} onOpenChange={setIsDeleting}>
         <DialogContent className="rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-2xl p-0 overflow-hidden max-w-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white">

@@ -254,21 +254,21 @@ export function WorkoutChartGrid({
     });
 
   return (
-    <div className="fixed inset-0 bg-[#0A2E46] z-[100] flex flex-col overflow-hidden font-sans">
+    <div className="fixed inset-0 bg-slate-50 dark:bg-[#0A2E46] z-[100] flex flex-col overflow-hidden font-sans text-slate-900 dark:text-white">
       {/* High-Impact Header - Optimized for iPad Contrast */}
-      <header className="h-20 bg-[#0e171e] px-6 sm:px-8 flex items-center justify-between shrink-0 border-b-4 border-[#F06C22]">
+      <header className="h-20 bg-white dark:bg-[#0e171e] px-6 sm:px-8 flex items-center justify-between shrink-0 border-b-4 border-[#F06C22]">
         <div className="flex items-center gap-6">
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={onBack}
-            className="rounded-xl h-10 w-10 sm:h-12 sm:w-12 bg-slate-800 border-2 border-slate-700 text-white hover:bg-slate-700 transition-all active:scale-95"
+            className="rounded-xl h-10 w-10 sm:h-12 sm:w-12 bg-slate-100 dark:bg-slate-800 border-2 border-slate-250 dark:border-slate-700 text-slate-700 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 cursor-pointer"
           >
             <ChevronLeft className="w-6 h-6 sm:w-8 sm:h-8" />
           </Button>
           
           <div className="space-y-0.5">
-            <h1 className="text-2xl sm:text-3xl font-bold italic tracking-tighter uppercase text-white leading-none">
+            <h1 className="text-2xl sm:text-3xl font-bold italic tracking-tighter uppercase text-slate-900 dark:text-white leading-none">
               {client.firstName} {client.lastName}
             </h1>
             <div className="flex items-center gap-3">
@@ -280,10 +280,10 @@ export function WorkoutChartGrid({
                   size="sm"
                   onClick={() => setActiveFilter('ALL')}
                   className={cn(
-                    "h-6 px-3 rounded-md text-[11px] font-black uppercase tracking-widest border-none transition-all",
+                    "h-6 px-3 rounded-md text-[11px] font-black uppercase tracking-widest border-none transition-all cursor-pointer",
                     activeFilter === 'ALL' 
                       ? "bg-[#F06C22] text-white shadow-[0_0_10px_rgba(240,108,34,0.4)]" 
-                      : "bg-slate-800 text-slate-500 hover:text-slate-300 hover:bg-slate-700"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                   )}
                 >
                   All Machines
@@ -292,10 +292,10 @@ export function WorkoutChartGrid({
                   size="sm"
                   onClick={() => setActiveFilter('A')}
                   className={cn(
-                    "h-6 px-3 rounded-md text-[11px] font-black uppercase tracking-widest border-none transition-all",
+                    "h-6 px-3 rounded-md text-[11px] font-black uppercase tracking-widest border-none transition-all cursor-pointer",
                     activeFilter === 'A' 
                       ? "bg-[#F06C22] text-white shadow-[0_0_10px_rgba(240,108,34,0.4)]" 
-                      : "bg-slate-800 text-slate-500 hover:text-slate-300 hover:bg-slate-700"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                   )}
                 >
                   Routine A
@@ -305,21 +305,21 @@ export function WorkoutChartGrid({
                     size="sm"
                     onClick={() => setActiveFilter('B')}
                     className={cn(
-                      "h-6 px-3 rounded-md text-[11px] font-black uppercase tracking-widest border-none transition-all",
+                      "h-6 px-3 rounded-md text-[11px] font-black uppercase tracking-widest border-none transition-all cursor-pointer",
                       activeFilter === 'B' 
                         ? "bg-[#F06C22] text-white shadow-[0_0_10px_rgba(240,108,34,0.4)]" 
-                        : "bg-slate-800 text-slate-500 hover:text-slate-300 hover:bg-slate-700"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                     )}
                   >
                     Routine B
                   </Button>
                 )}
                 
-                <div className="h-6 w-[1px] bg-slate-700/50 mx-2 self-center hidden sm:block" />
+                <div className="h-6 w-[1px] bg-slate-200 dark:bg-slate-700/50 mx-2 self-center hidden sm:block" />
                 <Button
                   size="sm"
                   onClick={() => onLoadMoreHistory ? onLoadMoreHistory() : setSessionLimit(prev => prev + 20)}
-                  className="h-6 px-3 rounded-md text-[11px] font-bold uppercase tracking-widest bg-[#38BDF8]/10 text-[#38BDF8] border border-[#38BDF8]/20 hover:bg-[#38BDF8]/20 transition-all font-mono"
+                  className="h-6 px-3 rounded-md text-[11px] font-bold uppercase tracking-widest bg-[#38BDF8]/10 text-[#38BDF8] border border-[#38BDF8]/20 hover:bg-[#38BDF8]/20 transition-all font-mono cursor-pointer"
                 >
                   More History (+20)
                 </Button>
@@ -336,22 +336,22 @@ export function WorkoutChartGrid({
                  placeholder="SEARCH MACHINES..." 
                  value={machineSearchQuery}
                  onChange={(e) => setMachineSearchQuery(e.target.value)}
-                 className="h-10 bg-slate-800 border-2 border-slate-700 rounded-xl px-4 pl-10 text-[11px] font-bold uppercase tracking-widest text-white placeholder:text-slate-400 focus:outline-none focus:border-[#F06C22] w-[200px]"
+                 className="h-10 bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl px-4 pl-10 text-[11px] font-bold uppercase tracking-widest text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#F06C22] w-[200px]"
                />
-               <Dumbbell className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+               <Dumbbell className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
              </div>
            </div>
            
            <div className="text-right">
-              <p className="text-[11px] font-bold uppercase text-slate-700 dark:text-slate-300 tracking-widest leading-none mb-1">Historical Span</p>
-              <p className="text-lg sm:text-2xl font-bold italic text-white tracking-tighter leading-none">{sessions.length} Sessions</p>
+              <p className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none mb-1">Historical Span</p>
+              <p className="text-lg sm:text-2xl font-bold italic text-slate-900 dark:text-white tracking-tighter leading-none">{sessions.length} Sessions</p>
            </div>
            <Activity className="w-8 h-8 text-[#F06C22] opacity-50 hidden sm:block" />
         </div>
       </header>
 
       {/* Sparkline Trend (Volume) */}
-      <div className="h-16 sm:h-24 bg-[#0e171e] shrink-0 border-b border-slate-800 relative z-40">
+      <div className="h-16 sm:h-24 bg-white dark:bg-[#0e171e] shrink-0 border-b border-slate-200 dark:border-slate-800 relative z-40">
          <ResponsiveContainer width="100%" height="100%">
            <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 220, bottom: 0 }}>
              <defs>
@@ -375,14 +375,14 @@ export function WorkoutChartGrid({
       </div>
 
       {/* Grid Container with Sticky logic */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-auto relative bg-[#0e171e] custom-scrollbar scroll-smooth">
+      <div ref={scrollContainerRef} className="flex-1 overflow-auto relative bg-white dark:bg-[#0e171e] custom-scrollbar scroll-smooth">
         <table className="border-collapse table-fixed min-w-max w-full">
           <thead>
             <tr className="sticky top-0 z-50">
               {/* Sticky Corner Corner */}
-              <th className="sticky left-0 z-50 w-[180px] sm:w-[200px] h-[50px] bg-[#0e171e] border-r border-b border-[#F06C22]/20 px-3 sm:px-4 text-left shadow-md">
+              <th className="sticky left-0 z-50 w-[180px] sm:w-[200px] h-[50px] bg-slate-100 dark:bg-[#0e171e] border-r border-b border-slate-200 dark:border-[#F06C22]/20 px-3 sm:px-4 text-left shadow-md">
                  <div className="flex flex-col">
-                    <h3 className="text-[12px] sm:text-[14px] font-bold italic uppercase tracking-tighter text-white leading-none">Machine & Setup</h3>
+                    <h3 className="text-[12px] sm:text-[14px] font-bold italic uppercase tracking-tighter text-slate-900 dark:text-white leading-none">Machine & Setup</h3>
                  </div>
               </th>
 
@@ -391,27 +391,19 @@ export function WorkoutChartGrid({
                 const clientObj = clients.find(c => c.id === clientId);
                 const totalRecords = Math.max(clientObj?.sessionCount || 0, sessions.length);
                 const globalIndexIdx = sessions.findIndex(sess => sess.id === session.id);
-                // sessions are rendered left-to-right from oldest to newest (of the visible batch).
-                // Example: total 40, showing 30. The newest session is at idx=29.
-                // However, since it is rendered reverse, wait: WorkoutChartGrid reverses sessions.
-                // "grid view: left -> right: oldest -> newest"
-                // Newest is at index 29 (rightmost).
-                // Its original index in the decreasingly sorted array would be 0!
-                // Let's just use: (totalRecords - sessions.length) + idx + 1
-                // For showing 30, idx 29 -> 40 - 30 + 29 + 1 = 40.
                 const sessionNum = (totalRecords - sessions.length) + idx + 1;
                 return (
                   <th 
                     key={session.id || idx} 
-                    className="w-[84px] h-[50px] bg-slate-800 border-r border-b border-slate-700 px-1 text-center group transition-colors hover:bg-slate-700 relative"
+                    className="w-[84px] h-[50px] bg-slate-100 dark:bg-slate-800 border-r border-b border-slate-200 dark:border-slate-700 px-1 text-center group transition-colors hover:bg-slate-200 dark:hover:bg-slate-700 relative"
                   >
                     <div className="flex flex-col items-center justify-center space-y-1">
-                      <div className="bg-slate-900 border border-slate-700 rounded-md px-2 py-0.5 shadow-sm group-hover:border-[#F06C22]/50 transition-colors">
+                      <div className="bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-700 rounded-md px-2 py-0.5 shadow-sm group-hover:border-[#F06C22]/50 transition-colors">
                         <span className="text-[#F06C22] font-bold tabular-nums text-[11px] leading-none">
                           {sessionNum.toString().padStart(2, '0')}
                         </span>
                       </div>
-                      <p className="text-[11px] font-bold tracking-tighter text-slate-400 tabular-nums leading-none uppercase">
+                      <p className="text-[11px] font-bold tracking-tighter text-slate-500 dark:text-slate-400 tabular-nums leading-none uppercase">
                         {new Date(parseSessionDate(session.date)).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}
                       </p>
                     </div>
@@ -420,28 +412,28 @@ export function WorkoutChartGrid({
               })}
               {/* Fillers to ensure columns span screen if few sessions exist */}
               {Array.from({ length: Math.max(0, 11 - sessions.length) }).map((_, i) => (
-                <th key={`empty-h-${i}`} className="w-[84px] h-[50px] bg-[#0e171e]/50 border-r border-b border-slate-700 opacity-20" />
+                <th key={`empty-h-${i}`} className="w-[84px] h-[50px] bg-slate-50 dark:bg-[#0e171e]/50 border-r border-b border-slate-200 dark:border-slate-700 opacity-20" />
               ))}
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-800/50">
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-800/50">
             {filteredSortedMachines.map((machine) => {
               const currentSettings = getSetting(machine.id!);
               
               return (
-                <tr key={machine.id} className="group hover:bg-slate-800/50 transition-colors h-[48px]">
+                <tr key={machine.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors h-[48px]">
                   {/* Sticky Machine Name & Settings (The Master Reference) */}
                   <th 
                     onClick={() => setEditingSettings({ machineId: machine.id!, settings: { ...currentSettings } })}
-                    className="sticky left-0 z-30 w-[180px] sm:w-[200px] bg-[#0A2E46] border-r border-slate-800 px-2.5 py-1 text-left group-hover:bg-slate-800/80 transition-colors shadow-[2px_0_10px_rgba(0,0,0,0.02)] cursor-pointer hover:border-r-[#F06C22]"
+                    className="sticky left-0 z-30 w-[180px] sm:w-[200px] bg-slate-50 dark:bg-[#0A2E46] border-r border-slate-200 dark:border-slate-800 px-2.5 py-1 text-left group-hover:bg-slate-100 dark:group-hover:bg-slate-800/80 transition-colors shadow-[2px_0_10px_rgba(0,0,0,0.02)] cursor-pointer hover:border-r-[#F06C22] text-slate-800 dark:text-slate-200"
                   >
                     <div className="flex flex-col h-full justify-center space-y-0.5">
                       <div className="flex items-center gap-1.5 overflow-hidden">
                          <span className={cn(
                             "text-[11px] font-black uppercase tracking-tighter leading-none truncate px-1.5 py-0.5 rounded-[4px] border shrink-0 inline-block max-w-[150px] flex items-center justify-between",
                             getMuscleGroupColor(machine.name)
-                         )}>
+                          )}>
                             <span>{machine.name}</span>
                             {isBig5Machine(machine.name) && (
                               <Star className="w-2.5 h-2.5 ml-1 fill-amber-400 text-amber-500 inline shrink-0" />
@@ -453,7 +445,7 @@ export function WorkoutChartGrid({
                       </div>
 
                       {/* Settings Component */}
-                      <div className="flex flex-wrap gap-x-2 gap-y-0 bg-slate-900/50 px-1 py-0.5 rounded-md border border-slate-700 transition-all group/settings mt-0.5">
+                      <div className="flex flex-wrap gap-x-2 gap-y-0 bg-slate-100 dark:bg-slate-900/50 px-1 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 transition-all group/settings mt-0.5">
                         {(() => {
                           const studioObj = studios?.find(s => s.id === activeStudioId);
                           const stdSettings = studioObj?.machineSettings?.[machine.id!] || machine.standardSettings || {};
@@ -462,10 +454,10 @@ export function WorkoutChartGrid({
                           
                           return sortedEntries.map(([opt, val], idx) => (
                             <div key={idx} className="flex items-baseline gap-0.5">
-                              <span className="text-[7px] font-bold uppercase tracking-tighter text-slate-400 group-hover/settings:text-[#F06C22] transition-colors line-clamp-1 truncate max-w-[40px]">
+                              <span className="text-[7px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-400 group-hover/settings:text-[#F06C22] transition-colors line-clamp-1 truncate max-w-[40px]">
                                 {opt}:
                               </span>
-                              <span className="text-[11px] font-bold text-slate-200 tabular-nums leading-none">
+                              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 tabular-nums leading-none">
                                 {val}
                               </span>
                             </div>
@@ -479,20 +471,20 @@ export function WorkoutChartGrid({
                   {sessions.map((session) => {
                     const log = getLog(machine.id!, session.id!);
                     return (
-                      <td key={session.id} className="w-[84px] px-1 border-r border-slate-700 text-center align-middle hover:bg-slate-700/50">
+                      <td key={session.id} className="w-[84px] px-1 border-r border-slate-200 dark:border-slate-700 text-center align-middle hover:bg-slate-100 dark:hover:bg-slate-700/50">
                          {log ? (
                            (log.reps === '0' && log.seconds === '0') ? (
                              <div className="flex items-center justify-center opacity-40 grayscale">
-                               <span className="text-[11px] font-bold pointer-events-none text-slate-700 dark:text-slate-300 tracking-tighter">[SKIPPED]</span>
+                               <span className="text-[11px] font-bold pointer-events-none text-slate-400 dark:text-slate-600 tracking-tighter">[SKIPPED]</span>
                              </div>
                            ) : (
                              <div className="flex flex-col items-center justify-center">
                               <div className="flex items-baseline gap-0.5">
-                                 <span className="text-[14px] font-bold tracking-tighter text-white tabular-nums leading-none">
+                                 <span className="text-[14px] font-bold tracking-tighter text-slate-900 dark:text-white tabular-nums leading-none">
                                    {log.weight}
                                  </span>
                               </div>
-                              <div className="inline-flex items-center gap-0.5 mt-0.5 px-1 py-0.5 bg-slate-800 rounded-[4px]">
+                              <div className="inline-flex items-center gap-0.5 mt-0.5 px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-[4px]">
                                  <span className={`text-[11px] font-bold tabular-nums leading-none ${ log.repQuality === 3 ? 'text-emerald-600' : log.repQuality === 2 ? 'text-amber-600' : log.repQuality === 1 ? 'text-[#F06C22]' : 'text-slate-300' }`}>
                                    {log.repsLeft !== undefined && log.repsRight !== undefined ? (
                                       `${log.repsLeft}L|${log.repsRight}R`
@@ -513,7 +505,7 @@ export function WorkoutChartGrid({
                            )
                          ) : (
                            <div className="flex items-center justify-center opacity-10">
-                              <div className="w-1 h-1 rounded-full bg-slate-600" />
+                              <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
                            </div>
                          )}
                       </td>
@@ -521,7 +513,7 @@ export function WorkoutChartGrid({
                   })}
                   {/* Fillers for empty sessions */}
                   {Array.from({ length: Math.max(0, 11 - sessions.length) }).map((_, i) => (
-                    <td key={`empty-c-${i}`} className="w-[84px] bg-[#0e171e]/[0.02]" />
+                    <td key={`empty-c-${i}`} className="w-[84px] bg-slate-50 dark:bg-[#0e171e]/[0.02] border-r border-slate-200 dark:border-slate-700" />
                   ))}
                 </tr>
               );
@@ -531,13 +523,13 @@ export function WorkoutChartGrid({
       </div>
 
       {/* FOOTER / STATUS BAR */}
-      <footer className="h-16 bg-[#0A2E46] border-t-2 border-slate-700 px-8 flex items-center justify-between text-slate-400 text-[11px] font-bold uppercase tracking-widest shrink-0">
+      <footer className="h-16 bg-white dark:bg-[#0A2E46] border-t border-slate-200 dark:border-slate-700 px-8 flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest shrink-0">
          <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
                <div className="w-2 h-2 rounded-full bg-[#F06C22]" />
                <span>Live Studio Sync Active</span>
             </div>
-            <div className="w-px h-6 bg-slate-800" />
+            <div className="w-px h-6 bg-slate-200 dark:bg-slate-800" />
             <span>iPad Native Layout Optimized</span>
          </div>
          <p>© 2026 Imagine Strength Analytics</p>

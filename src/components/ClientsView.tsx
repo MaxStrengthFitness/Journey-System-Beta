@@ -351,12 +351,40 @@ export function ClientsView({
   }).length;
 
   const pmSessionsCount = todaysSchedules.filter((s) => {
-    if (s.clientName?.toLowerCase().includes("unavailab")) return false;
     const sDate = safeToDate(s.startTime);
     if (!sDate) return false;
     const tStr = get12HourStr(sDate);
     return PM_SLOTS.includes(tStr);
   }).length;
+
+  const preBookedCount = amSessionsCount + pmSessionsCount;
+
+  const activeClientsCount = React.useMemo(() => {
+    return clients.filter(
+      (c) =>
+        (!activeStudioId || c.homeStudioId === activeStudioId) &&
+        c.isActive !== false,
+    ).length;
+  }, [clients, activeStudioId]);
+
+  const sessionsCompletedThisWeek = React.useMemo(() => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    monday.setHours(0, 0, 0, 0);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+
+    return (sessions || []).filter((s) => {
+      if (s.status !== "Completed") return false;
+      if (activeStudioId && s.hostedAtStudioId !== activeStudioId) return false;
+      const sDate = parseSessionDate(s.date);
+      return sDate >= monday.getTime() && sDate <= sunday.getTime();
+    }).length;
+  }, [sessions, activeStudioId]);
 
   // Generate 6 days starting from today or Monday (skipping Sundays)
   const getUpcomingDays = () => {
@@ -984,11 +1012,11 @@ export function ClientsView({
         {!searchTerm ? (
           <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 p-6 space-y-10">
             {/* Header / Week Selector / Shift Toggle */}
-            <section className="bg-bg-dark rounded-[24px] md:rounded-[32px] p-4 md:p-6 shadow-[0_4px_30px_rgba(0,0,0,0.1)] border border-slate-700/50 space-y-6 shrink-0 relative overflow-hidden">
-              <div className="absolute inset-0 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 opacity-80 pointer-events-none"></div>
+            <section className="bg-white dark:bg-bg-dark rounded-[24px] md:rounded-[32px] p-4 md:p-6 shadow-[0_4px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_30px_rgba(0,0,0,0.2)] border border-slate-200 dark:border-slate-700/50 space-y-6 shrink-0 relative overflow-hidden">
+              <div className="absolute inset-0 bg-linear-to-br from-slate-50 via-slate-100/50 to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 opacity-80 pointer-events-none"></div>
               <div className="relative flex flex-col xl:flex-row xl:items-center justify-between gap-6 z-10">
                 {/* Week Selector */}
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 w-full xl:w-auto flex-1">
                   {weekDays.map((date) => {
                     const isSelected =
                       date.toDateString() === selectedDate.toDateString();
@@ -998,17 +1026,17 @@ export function ClientsView({
                       <button
                         key={date.toISOString()}
                         onClick={() => setSelectedDate(date)}
-                        className={`min-w-21.25 px-4 py-3 xl:py-4 rounded-xl flex flex-col items-center gap-1.5 transition-all border ${
+                        className={`w-full px-4 py-3 sm:py-4 rounded-xl flex flex-col items-center gap-1.5 transition-all border cursor-pointer ${
                           isSelected
                             ? "bg-cyan border-cyan text-slate-900 shadow-[0_0_20px_rgba(56,189,248,0.3)] scale-105 z-10"
-                            : "bg-surface-2 border-slate-700 text-slate-400 hover:border-cyan/50 hover:bg-surface-1 hover:text-white"
+                            : "bg-slate-100 dark:bg-surface-2 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-cyan/50 hover:bg-slate-200 dark:hover:bg-surface-1 hover:text-slate-900 dark:hover:text-white"
                         }`}
                       >
-                        <span className="text-[11px] font-black uppercase tracking-widest leading-none opacity-80">
+                        <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest leading-none opacity-80">
                           {date.toLocaleDateString([], { weekday: "short" })}
                         </span>
                         <span
-                          className={`text-[17px] font-black leading-none ${isSelected ? "text-slate-900" : "text-slate-100"}`}
+                          className={`text-[16px] sm:text-[18px] font-black leading-none ${isSelected ? "text-slate-900" : "text-slate-800 dark:text-slate-100"}`}
                         >
                           {isToday
                             ? "Today"
@@ -1020,12 +1048,12 @@ export function ClientsView({
                 </div>
 
                 {/* Right Actions: Shift Selector & Refresh Button */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 self-start xl:self-center w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 self-start xl:self-center w-full xl:w-auto">
                   {/* Shift Selector */}
-                  <div className="relative flex p-1.5 bg-surface-2 rounded-2xl border border-slate-700 shadow-inner w-[320px] h-16 xl:h-20 shrink-0">
+                  <div className="relative flex p-1.5 bg-slate-100 dark:bg-surface-2 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-inner w-full sm:w-[320px] h-16 xl:h-20 shrink-0">
                     <div
                       className={cn(
-                        "absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white rounded-[14px] shadow-sm transition-transform duration-300 ease-out z-0",
+                        "absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white dark:bg-slate-800 rounded-[14px] shadow-sm transition-transform duration-300 ease-out z-0",
                         activeTab === "morning"
                           ? "translate-x-0"
                           : "translate-x-full",
@@ -1034,20 +1062,20 @@ export function ClientsView({
                     <button
                       onClick={() => setActiveTab("morning")}
                       className={cn(
-                        "relative flex-1 rounded-[14px] transition-colors z-10 flex flex-col items-center justify-center gap-1",
+                        "relative flex-1 rounded-[14px] transition-colors z-10 flex flex-col items-center justify-center gap-1 cursor-pointer",
                         activeTab === "morning"
-                          ? "text-slate-900"
-                          : "text-slate-400 hover:text-slate-300",
+                          ? "text-slate-900 dark:text-white"
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300",
                       )}
                     >
-                      <span className="text-[13px] xl:text-[14px] font-black uppercase tracking-widest leading-none mt-0.5 xl:mt-1">
+                      <span className="text-xs sm:text-sm font-black uppercase tracking-widest leading-none mt-0.5 xl:mt-1">
                         AM Shift
                       </span>
                       <span
                         className={cn(
-                          "text-[11px] xl:text-[11px] font-bold uppercase tracking-widest leading-none",
+                          "text-[10px] sm:text-xs font-bold uppercase tracking-widest leading-none",
                           activeTab === "morning"
-                            ? "text-[#0A2E46]"
+                            ? "text-[#0A2E46] dark:text-cyan-400"
                             : "opacity-60",
                         )}
                       >
@@ -1057,20 +1085,20 @@ export function ClientsView({
                     <button
                       onClick={() => setActiveTab("afternoon")}
                       className={cn(
-                        "relative flex-1 rounded-[14px] transition-colors z-10 flex flex-col items-center justify-center gap-1",
+                        "relative flex-1 rounded-[14px] transition-colors z-10 flex flex-col items-center justify-center gap-1 cursor-pointer",
                         activeTab === "afternoon"
-                          ? "text-slate-900"
-                          : "text-slate-400 hover:text-slate-300",
+                          ? "text-slate-900 dark:text-white"
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300",
                       )}
                     >
-                      <span className="text-[13px] xl:text-[14px] font-black uppercase tracking-widest leading-none mt-0.5 xl:mt-1">
+                      <span className="text-xs sm:text-sm font-black uppercase tracking-widest leading-none mt-0.5 xl:mt-1">
                         PM Shift
                       </span>
                       <span
                         className={cn(
-                          "text-[11px] xl:text-[11px] font-bold uppercase tracking-widest leading-none",
+                          "text-[10px] sm:text-xs font-bold uppercase tracking-widest leading-none",
                           activeTab === "afternoon"
-                            ? "text-orange-600"
+                            ? "text-orange-600 dark:text-orange-400"
                             : "opacity-60",
                         )}
                       >
@@ -1083,7 +1111,7 @@ export function ClientsView({
                   <button
                     onClick={handleRefreshSchedule}
                     disabled={isRefreshingSchedule}
-                    className="relative px-6 rounded-2xl bg-[#F06C22] border-2 border-[#F06C22] hover:bg-[#F06C22]/90 hover:border-[#F06C22] text-white disabled:opacity-55 transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(240,108,34,0.35)] font-black uppercase tracking-widest text-[11px] sm:text-[12px] h-16 xl:h-20 w-fit cursor-pointer select-none"
+                    className="relative px-6 rounded-2xl bg-[#F06C22] border-2 border-[#F06C22] hover:bg-[#F06C22]/90 hover:border-[#F06C22] text-white disabled:opacity-55 transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(240,108,34,0.35)] font-black uppercase tracking-widest text-xs sm:text-sm h-16 xl:h-20 w-full sm:w-auto cursor-pointer select-none"
                   >
                     <RefreshCw
                       className={cn(
@@ -1412,7 +1440,7 @@ export function ClientsView({
                     </span>
                   </div>
                   <div className="text-4xl font-black text-slate-900 dark:text-white tracking-widest">
-                    --
+                    {preBookedCount}
                   </div>
                 </div>
 
@@ -1428,7 +1456,7 @@ export function ClientsView({
                     </span>
                   </div>
                   <div className="text-4xl font-black text-slate-900 dark:text-white tracking-widest">
-                    --
+                    {activeClientsCount}
                   </div>
                 </div>
 
@@ -1444,7 +1472,7 @@ export function ClientsView({
                     </span>
                   </div>
                   <div className="text-4xl font-black text-slate-900 dark:text-white tracking-widest">
-                    --
+                    {sessionsCompletedThisWeek}
                   </div>
                 </div>
               </div>
@@ -1621,9 +1649,8 @@ export function ClientsView({
         )}
       </div>
 
-      {/* Link Client Dialog */}
       <Dialog open={isLinking} onOpenChange={setIsLinking}>
-        <DialogContent className="rounded-[32px] border-2 max-w-md bg-background shadow-2xl dark:shadow-none">
+        <DialogContent className="rounded-[32px] border-2 w-[calc(100%-2rem)] sm:max-w-md bg-background shadow-2xl dark:shadow-none">
           <DialogHeader>
             <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-4">
               <Users className="w-6 h-6 text-amber-500" />
