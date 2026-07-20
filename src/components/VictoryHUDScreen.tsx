@@ -122,12 +122,12 @@ export function VictoryHUDScreen({
           <div className="font-display italic text-cyan text-[11px] uppercase tracking-[0.16em] mb-1">
             🏆 VICTORY HUD
           </div>
-          <h1 className="font-display italic text-white text-[38px] uppercase tracking-[-0.01em] leading-none mb-2 mt-2">
+          <h1 className="font-display italic text-ink-d1 text-[38px] uppercase tracking-[-0.01em] leading-none mb-2 mt-2">
             SESSION COMPLETE
           </h1>
           <div className="flex items-center gap-2 text-ink-d2 text-[13px]">
             <span>Great work · {client.firstName}'s numbers for today.</span>
-            <div className="font-mono text-[11px] bg-white/10 px-2 py-[3px] rounded-[10px] tracking-[0.04em] uppercase text-white ml-2">
+            <div className="font-mono text-[11px] bg-white/10 px-2 py-[3px] rounded-[10px] tracking-[0.04em] uppercase text-ink-d1 ml-2">
               SESSION · {session.id.substring(0, 8)}…
             </div>
           </div>
@@ -148,7 +148,7 @@ export function VictoryHUDScreen({
             RECOVERY + CLINICAL LOG
           </div>
           
-          <div className="font-display italic text-white text-[17px] uppercase mt-[-4px]">
+          <div className="font-display italic text-ink-d1 text-[17px] uppercase mt-[-4px]">
             How does {client.firstName} feel?
           </div>
           
@@ -158,7 +158,7 @@ export function VictoryHUDScreen({
           />
           
           <textarea 
-            className="w-full bg-black/25 border border-white/10 rounded-[10px] p-[10px] px-3 min-h-[60px] text-[13px] text-white placeholder:text-ink-d3 placeholder:italic placeholder:font-sans resize-none outline-none focus:border-cyan transition-colors mt-1"
+            className="w-full bg-black/25 border border-white/10 rounded-[10px] p-[10px] px-3 min-h-[60px] text-[13px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic placeholder:font-sans resize-none outline-none focus:border-cyan transition-colors mt-1"
             placeholder="Post-session notes — any closing observations? These feed into next briefing."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}

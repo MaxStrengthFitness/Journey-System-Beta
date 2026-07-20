@@ -116,9 +116,9 @@ export function SessionRoutineManagerModal({ isOpen, onOpenChange, currentMachin
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[34rem] sm:max-w-[34rem] w-full bg-bg-dark border border-div-d text-white p-0 overflow-hidden shadow-2xl rounded-3xl flex flex-col h-[80vh] md:h-[70vh]">
+      <DialogContent className="max-w-[34rem] sm:max-w-[34rem] w-full bg-bg-dark border border-div-d text-ink-d1 p-0 overflow-hidden shadow-2xl rounded-3xl flex flex-col h-[80vh] md:h-[70vh]">
         <DialogHeader className="p-4 md:p-6 bg-bg-dark border-b border-div-d shrink-0 relative z-20">
-          <DialogTitle className="text-xl md:text-2xl font-display italic font-black uppercase tracking-widest text-white">Edit Routine Sequence</DialogTitle>
+          <DialogTitle className="text-xl md:text-2xl font-display italic font-black uppercase tracking-widest text-ink-d1">Edit Routine Sequence</DialogTitle>
           <DialogDescription className="text-ink-d3 font-bold uppercase tracking-widest text-[11px] md:text-xs mt-1 md:mt-2">
             Drag to reorder. Tap X to remove.
           </DialogDescription>
@@ -180,7 +180,7 @@ export function SessionRoutineManagerModal({ isOpen, onOpenChange, currentMachin
                       <button 
                         key={m.id}
                         onClick={() => addMachine(m.id!)}
-                        className="text-[12px] font-medium text-white bg-surface-2 hover:bg-surface-1 border border-div-d px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
+                        className="text-[12px] font-medium text-ink-d1 bg-surface-2 hover:bg-surface-1 border border-div-d px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
                       >
                          <Plus className="w-3.5 h-3.5 text-cyan" /> {m.name}
                       </button>
@@ -195,13 +195,13 @@ export function SessionRoutineManagerModal({ isOpen, onOpenChange, currentMachin
           <Button 
             variant="ghost" 
             onClick={() => onOpenChange(false)}
-            className="text-ink hover:text-white uppercase font-bold tracking-widest text-[11px]"
+            className="text-ink hover:text-ink-d1 uppercase font-bold tracking-widest text-[11px]"
           >
             Cancel
           </Button>
           <Button 
             onClick={() => { onSave(localIds); onOpenChange(false); }}
-            className="bg-cta hover:bg-cta-strong text-white font-system font-bold uppercase tracking-widest shadow-md text-[11px]"
+            className="bg-cta hover:bg-cta-strong text-ink-d1 font-system font-bold uppercase tracking-widest shadow-md text-[11px]"
           >
             Confirm Sequence
           </Button>

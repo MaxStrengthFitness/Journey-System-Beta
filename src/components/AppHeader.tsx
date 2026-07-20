@@ -95,8 +95,8 @@ export function AppHeader({
             className={cn(
               "w-8 h-8 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto shrink-0",
               isLight
-                ? "bg-bg-dark text-white"
-                : "bg-bg-dark-3 text-white border border-div-d",
+                ? "bg-primary text-primary-foreground"
+                : "bg-primary text-primary-foreground border border-div-d",
             )}
           >
             {trainerInitials}

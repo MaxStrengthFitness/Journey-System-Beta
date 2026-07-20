@@ -195,41 +195,41 @@ export function ClientClinicalReviewView({
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-bg-dark flex flex-col font-sans overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-slate-50 dark:bg-bg-dark text-slate-900 dark:text-white flex flex-col font-sans overflow-hidden">
       <AppHeader
         variant="dark"
         rightControls={
           <button
             onClick={onClose}
-            className="w-10 h-10 flex flex-col items-center justify-center border border-div-d rounded-xl hover:bg-surface-2 transition-colors"
+            className="w-10 h-10 flex flex-col items-center justify-center border border-slate-200 dark:border-div-d rounded-xl hover:bg-slate-200 dark:hover:bg-surface-2 transition-colors"
           >
-            <X className="w-5 h-5 text-white" />
+            <X className="w-5 h-5 text-slate-700 dark:text-white" />
           </button>
         }
       />
 
-      <div className="flex-1 w-full max-w-205 mx-auto pt-20 md:pt-5 px-6 pb-32 overflow-y-auto no-scrollbar scroll-smooth">
+      <div className="flex-1 w-full max-w-205 mx-auto pt-20 md:pt-5 px-4 sm:px-6 pb-32 overflow-y-auto no-scrollbar scroll-smooth">
         <div className="mb-6">
-          <h1 className="text-3xl font-display italic font-bold tracking-tighter text-white">
+          <h1 className="text-2xl sm:text-3xl font-display italic font-bold tracking-tighter text-slate-900 dark:text-white">
             Clinical Review
           </h1>
-          <p className="text-[13px] font-bold uppercase tracking-widest text-cyan mt-1">
+          <p className="text-[13px] font-bold uppercase tracking-widest text-[#38BDF8] mt-1">
             {clientName}
           </p>
         </div>
 
         {/* Top Controls */}
         <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center bg-surface-1 p-1 rounded-full border border-div-d">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
             {[7, 30, 90].map((days) => (
               <button
                 key={days}
                 onClick={() => setWindowDays(days)}
                 className={cn(
-                  "px-4 min-h-11 rounded-full text-[13px] font-bold uppercase tracking-wide transition-all",
+                  "px-4 min-h-11 rounded-full text-[13px] font-bold uppercase tracking-wide transition-all cursor-pointer",
                   windowDays === days
-                    ? "bg-surface-2 text-white shadow-sm ring-1 ring-white/10"
-                    : "text-ink-d2 hover:text-white",
+                    ? "bg-[#38BDF8] text-slate-950 font-extrabold shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
                 )}
               >
                 {days}d
@@ -238,10 +238,10 @@ export function ClientClinicalReviewView({
             <button
               onClick={() => setWindowDays(9999)}
               className={cn(
-                "px-4 min-h-11 rounded-full text-[13px] font-bold uppercase tracking-wide transition-all",
+                "px-4 min-h-11 rounded-full text-[13px] font-bold uppercase tracking-wide transition-all cursor-pointer",
                 windowDays === 9999
-                  ? "bg-surface-2 text-white shadow-sm ring-1 ring-white/10"
-                  : "text-ink-d2 hover:text-white",
+                  ? "bg-[#38BDF8] text-slate-950 font-extrabold shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
               )}
             >
               All
@@ -251,7 +251,7 @@ export function ClientClinicalReviewView({
 
         <div className="space-y-6">
           {/* Dashboard Header grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <BentoStatTile
               id="age"
               label="Age"

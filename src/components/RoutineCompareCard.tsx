@@ -30,7 +30,7 @@ export function RoutineCompareCard({ variant, label, title, meta }: RoutineCompa
         >
           {label}
         </span>
-        <span className="text-[16px] text-white uppercase font-black tracking-wide leading-none mb-1">
+        <span className="text-[16px] text-ink-d1 uppercase font-black tracking-wide leading-none mb-1">
           {title}
         </span>
         <span className={cn("text-[11px] font-medium font-sans opacity-80", isScheduled ? "text-cyan/80" : "text-ink-d3")}>
@@ -43,7 +43,7 @@ export function RoutineCompareCard({ variant, label, title, meta }: RoutineCompa
         {isScheduled ? (
           <Target className="w-16 h-16 text-cyan" strokeWidth={1} />
         ) : (
-          <List className="w-16 h-16 text-white" strokeWidth={1} />
+          <List className="w-16 h-16 text-ink-d1" strokeWidth={1} />
         )}
       </div>
     </div>

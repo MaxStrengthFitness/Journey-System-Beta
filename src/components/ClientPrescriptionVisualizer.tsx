@@ -20,13 +20,13 @@ export function ClientPrescriptionVisualizer({ client, template, machineIds, onB
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] text-slate-900 overflow-hidden print:bg-white print:p-0">
-      <div className="flex items-center justify-between p-4 bg-white border-b border-slate-200 shrink-0 print:hidden shadow-sm z-10">
-        <Button variant="ghost" onClick={onBack} className="text-slate-600 hover:text-slate-900">
+    <div className="flex flex-col h-full bg-background text-card-foreground overflow-hidden print:bg-card print:p-0">
+      <div className="flex items-center justify-between p-4 bg-card border-b border-border shrink-0 print:hidden shadow-sm z-10">
+        <Button variant="ghost" onClick={onBack} className="text-muted-foreground hover:text-card-foreground">
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Builder
         </Button>
         <div className="flex space-x-2">
-          <Button variant="outline" className="text-slate-600 border-slate-300" onClick={handlePrint}>
+          <Button variant="outline" className="text-muted-foreground border-slate-300" onClick={handlePrint}>
             <Printer className="w-4 h-4 mr-2" /> Print PDF
           </Button>
           <Button className="bg-[#115E8D] hover:bg-[#0f537c] text-white">
@@ -36,7 +36,7 @@ export function ClientPrescriptionVisualizer({ client, template, machineIds, onB
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 md:p-8">
-        <div className="max-w-4xl mx-auto bg-white border border-slate-200 p-8 shadow-2xl print:border-none print:shadow-none print:p-0">
+        <div className="max-w-4xl mx-auto bg-card border border-border p-8 shadow-2xl print:border-none print:shadow-none print:p-0">
           
           {/* Header */}
           <div className="border-b-2 border-[#115E8D] pb-6 mb-8 flex items-end justify-between">
@@ -46,7 +46,7 @@ export function ClientPrescriptionVisualizer({ client, template, machineIds, onB
             </div>
             <div className="text-right">
               <div className="text-4xl font-black italic text-[#F06C22] leading-none mb-1">MSF</div>
-              <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">Personalized Prescription</p>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-bold">Personalized Prescription</p>
             </div>
           </div>
 
@@ -84,21 +84,21 @@ export function ClientPrescriptionVisualizer({ client, template, machineIds, onB
                     {index < machineIds.length - 1 && <div className="w-0.5 h-full bg-slate-200 my-2 group-last:hidden" />}
                   </div>
                   <div className="flex-1 pb-6 group-last:pb-0">
-                    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                    <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="text-xl font-black text-[#0A2E46] uppercase tracking-wide">{machine.name}</h4>
-                        <span className="text-[11px] font-bold uppercase tracking-widest bg-slate-100 text-slate-500 px-3 py-1 rounded-full">
+                        <span className="text-[11px] font-bold uppercase tracking-widest bg-muted text-muted-foreground px-3 py-1 rounded-full">
                           {friendlyType}
                         </span>
                       </div>
-                      <p className="text-slate-600 mb-3 text-sm font-medium">
+                      <p className="text-muted-foreground mb-3 text-sm font-medium">
                         Targeting: <span className="font-bold text-slate-800">{machine.targetMuscles}</span>
                       </p>
                       
-                      <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 text-sm text-slate-600 leading-relaxed">
+                      <div className="bg-muted p-4 rounded-lg border border-border text-sm text-muted-foreground leading-relaxed">
                         {template.sequence.find(s => s.machineId === id)?.setupOverrides || machine.biomechanicalNotes || machine.setup}
                         {template.sequence.find(s => s.machineId === id)?.executionOverrides && (
-                           <span className="block mt-2 pt-2 border-t border-slate-200">
+                           <span className="block mt-2 pt-2 border-t border-border">
                              {template.sequence.find(s => s.machineId === id)?.executionOverrides}
                            </span>
                         )}
@@ -110,8 +110,8 @@ export function ClientPrescriptionVisualizer({ client, template, machineIds, onB
             })}
           </div>
 
-          <div className="mt-12 pt-8 border-t border-slate-200 text-center">
-            <p className="text-sm font-medium text-slate-600 max-w-2xl mx-auto italic leading-relaxed">
+          <div className="mt-12 pt-8 border-t border-border text-center">
+            <p className="text-sm font-medium text-muted-foreground max-w-2xl mx-auto italic leading-relaxed">
               "Your routine consists of exactly {machineIds.length} exercises performed in a strict 30-minute window. We sequence pushing and pulling movements specifically to protect your joints and maximize the hypertrophic stimulus across your entire body without overlapping fatigue."
             </p>
             <div className="mt-8 text-[11px] uppercase font-bold tracking-widest text-slate-400">

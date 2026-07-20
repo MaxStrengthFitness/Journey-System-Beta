@@ -31,7 +31,7 @@ export function OccupationSelect({ value, onChange, disabled }: OccupationSelect
 
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger className="h-12 bg-white border border-slate-200 text-slate-900 focus:ring-[#F06C22] rounded-xl font-bold disabled:opacity-50 hover:bg-slate-50 transition-colors w-full shadow-sm">
+      <SelectTrigger className="h-12 bg-background border border-border text-foreground focus:ring-[#F06C22] rounded-xl font-bold disabled:opacity-50 hover:bg-slate-50 transition-colors w-full shadow-sm">
         <SelectValue placeholder={disabled ? "N/A" : "Select Client Occupation..."} />
       </SelectTrigger>
       <SelectContent className="bg-slate-900 border-slate-700 rounded-xl max-h-[300px] shadow-2xl">

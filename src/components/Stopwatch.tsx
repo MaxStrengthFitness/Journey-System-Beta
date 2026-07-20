@@ -52,7 +52,7 @@ export const Stopwatch = memo(function Stopwatch({
         <div className="flex items-center gap-3">
           <div className="flex flex-col items-start">
             <span className="text-[11px] font-black uppercase text-[#115E8D] tracking-[0.2em] leading-none mb-0.5">Timer</span>
-            <span className="text-xl font-black italic tracking-tighter text-white font-mono tabular-nums leading-none min-w-[60px]">
+            <span className="text-xl font-black italic tracking-tighter text-ink-d1 font-mono tabular-nums leading-none min-w-[60px]">
               {formatTime(time)}
             </span>
           </div>
@@ -76,7 +76,7 @@ export const Stopwatch = memo(function Stopwatch({
             <Button 
               size="icon" 
               variant="ghost" 
-              className="h-9 w-9 rounded-full text-slate-400 hover:text-white hover:bg-white/5"
+              className="h-9 w-9 rounded-full text-slate-400 hover:text-ink-d1 hover:bg-white/5"
               onClick={reset}
             >
               <RotateCcw className="w-4 h-4" />
@@ -92,7 +92,7 @@ export const Stopwatch = memo(function Stopwatch({
                 onLogTSC(time);
                 setIsActive(false);
               }}
-              className="bg-[#F06C22] hover:bg-[#F06C22]/90 text-white font-black uppercase italic tracking-wider text-[11px] px-4 h-9 rounded-full shadow-[0_0_15px_rgba(240,108,34,0.4)] transition-all active:scale-95"
+              className="bg-[#F06C22] hover:bg-[#F06C22]/90 text-ink-d1 font-black uppercase italic tracking-wider text-[11px] px-4 h-9 rounded-full shadow-[0_0_15px_rgba(240,108,34,0.4)] transition-all active:scale-95"
             >
               <Timer className="w-3.5 h-3.5 mr-1.5" />
               Log as TSC

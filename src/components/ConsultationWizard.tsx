@@ -367,7 +367,7 @@ export function ConsultationWizard({
           <div className="space-y-4 flex flex-col gap-2">
             {/* Checkbox 1 */}
             <div
-              className={`border-2 rounded-2xl p-6 flex items-start gap-6 cursor-pointer transition-colors ${cbGum ? "bg-[#115E8D]/20 border-[#38BDF8]" : "bg-black/20 border-white/10 hover:bg-white/5"}`}
+              className={`border-2 rounded-2xl p-6 flex items-start gap-6 cursor-pointer transition-colors ${cbGum ? "bg-[#115E8D]/20 border-[#38BDF8]" : "bg-ink-d1/5 border-div-d hover:bg-ink-d1/10"}`}
               onClick={() => setCbGum(!cbGum)}
             >
               <div className="mt-1 shrink-0">
@@ -389,7 +389,7 @@ export function ConsultationWizard({
 
             {/* Checkbox 2 */}
             <div
-              className={`border-2 rounded-2xl p-6 flex items-start gap-6 cursor-pointer transition-colors ${cbBreathing ? "bg-[#115E8D]/20 border-[#38BDF8]" : "bg-black/20 border-white/10 hover:bg-white/5"}`}
+              className={`border-2 rounded-2xl p-6 flex items-start gap-6 cursor-pointer transition-colors ${cbBreathing ? "bg-[#115E8D]/20 border-[#38BDF8]" : "bg-ink-d1/5 border-div-d hover:bg-ink-d1/10"}`}
               onClick={() => setCbBreathing(!cbBreathing)}
             >
               <div className="mt-1 shrink-0">

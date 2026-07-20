@@ -161,7 +161,7 @@ export function CreateClientModal({
                     Cancel & View Existing
                   </Button>
                   <Button
-                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black uppercase tracking-wider"
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-foreground font-black uppercase tracking-wider"
                     onClick={() => executeSave(true)}
                   >
                     Force Create
@@ -353,7 +353,7 @@ export function CreateClientModal({
                   )}
                 >
                   {routeToImporter && (
-                    <CheckCircle2 className="w-4 h-4 text-slate-900" />
+                    <CheckCircle2 className="w-4 h-4 text-foreground" />
                   )}
                 </div>
                 <div className="flex flex-col">

@@ -107,121 +107,167 @@ export function AdminMetricsDashboard({
   })).concat(studioStats.some(s => !s.networkId) ? [{ id: 'unassigned', name: 'Independent Studios', studios: studioStats.filter(s => !s.networkId) }] : []);
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6 animate-fade-in text-slate-900 dark:text-slate-100">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div className="max-w-6xl mx-auto p-3 sm:p-6 space-y-6 animate-fade-in text-slate-900 dark:text-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500 flex items-center justify-center text-white shadow-lg">
-            <Network className="w-6 h-6" />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-[#F06C22] flex items-center justify-center text-white shadow-md shrink-0">
+            <Network className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-black uppercase text-slate-900 dark:text-white tracking-tight italic">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black uppercase text-slate-900 dark:text-white tracking-tight italic">
               Admin Dashboard
             </h1>
-            <p className="text-xs font-bold uppercase tracking-widest text-[#F06C22]">
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-[#F06C22]">
               Corporate Command Center & Demographic Intelligence
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 self-start md:self-center">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {onManageStudios && (
-            <Button 
+            <Button
               onClick={onManageStudios}
-              className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-950/50 font-bold uppercase tracking-widest text-[11px] h-10 px-4 shadow-sm"
+              className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold uppercase tracking-widest text-[10px] sm:text-[11px] h-9 sm:h-10 px-3 sm:px-4 shadow-sm cursor-pointer"
             >
-              <Settings className="w-4 h-4 mr-2" />
+              <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 text-[#F06C22]" />
               Manage Studios
             </Button>
           )}
-          
-          <div className="flex items-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-1">
-            <button onClick={handlePrevMonth} className="p-2 hover:bg-slate-50 dark:hover:bg-slate-855 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors rounded-xl outline-none">
-              <ChevronLeft className="w-5 h-5" />
+
+          <div className="flex items-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-0.5 sm:p-1">
+            <button
+              onClick={handlePrevMonth}
+              className="p-1.5 sm:p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-xl outline-none cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
-            <div className="px-3 py-1 flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-slate-400" />
-              <span className="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 w-[110px] text-center">
-                {currentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+            <div className="px-2 sm:px-3 py-1 flex items-center gap-1.5 sm:gap-2">
+              <CalendarDays className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#F06C22]" />
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-200 min-w-22 text-center">
+                {currentDate.toLocaleDateString("en-US", {
+                  month: "short",
+                  year: "numeric",
+                })}
               </span>
             </div>
-            <button onClick={handleNextMonth} className="p-2 hover:bg-slate-50 dark:hover:bg-slate-855 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors rounded-xl outline-none">
-              <ChevronRight className="w-5 h-5" />
+            <button
+              onClick={handleNextMonth}
+              className="p-1.5 sm:p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-xl outline-none cursor-pointer"
+            >
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card className="bg-slate-900 dark:bg-slate-950 text-white rounded-[32px] border border-slate-800 shadow-sm p-6 overflow-hidden relative">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <Card className="bg-slate-900 dark:bg-slate-950 text-white rounded-2xl sm:rounded-[32px] border border-slate-800 shadow-md p-5 sm:p-6 overflow-hidden relative">
           <CardHeader className="p-0 pb-2">
-            <CardTitle className="text-[11px] font-bold tracking-widest text-slate-400 uppercase leading-none">Total Network Sessions</CardTitle>
+            <CardTitle className="text-[10px] sm:text-[11px] font-bold tracking-widest text-slate-400 uppercase leading-none">
+              Total Network Sessions
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-0 pt-2 flex items-baseline">
-            <div className="text-5xl font-black tracking-tighter italic">{loading ? '-' : totalNetworkSessions}</div>
+            <div className="text-4xl sm:text-5xl font-black tracking-tighter italic text-white">
+              {loading ? "-" : totalNetworkSessions}
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-indigo-650 dark:bg-indigo-950 text-white rounded-[32px] border border-indigo-500/20 shadow-sm p-6 overflow-hidden relative">
+        <Card className="bg-indigo-950 dark:bg-indigo-950/90 text-white rounded-2xl sm:rounded-[32px] border border-indigo-500/30 shadow-md p-5 sm:p-6 overflow-hidden relative">
           <CardHeader className="p-0 pb-2">
-            <CardTitle className="text-[11px] font-bold tracking-widest text-indigo-200 uppercase flex items-center gap-2 leading-none">
-              <Activity className="w-4 h-4 text-indigo-300" /> 
+            <CardTitle className="text-[10px] sm:text-[11px] font-bold tracking-widest text-indigo-300 uppercase flex items-center gap-2 leading-none">
+              <Activity className="w-4 h-4 text-indigo-400" />
               Total Cross-Trains
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 pt-2">
-            <div className="text-5xl font-black tracking-tighter italic">{loading ? '-' : crossTrainSessions}</div>
-            <p className="text-indigo-200 dark:text-indigo-400 text-[11px] mt-2 font-semibold uppercase tracking-wider">Sessions completed outside client home studio</p>
+            <div className="text-4xl sm:text-5xl font-black tracking-tighter italic text-indigo-100">
+              {loading ? "-" : crossTrainSessions}
+            </div>
+            <p className="text-indigo-300 dark:text-indigo-400 text-[10px] sm:text-[11px] mt-2 font-semibold uppercase tracking-wider">
+              Sessions completed outside client home studio
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="mt-12 space-y-12">
-        {networksWithStudios.filter(nw => nw.studios && nw.studios.length > 0).map((network) => (
-          <div key={network.id}>
-            <h2 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-6 flex items-center gap-2 italic">
-              <Network className="w-5 h-5 text-[#F06C22]" /> 
-              {network.name} Network
-            </h2>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {network.studios.map((stat: any, i: number) => (
-                <Card key={i} className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden p-6 pt-8">
-                  <div className="h-1.5 w-full bg-[#F06C22] absolute top-0 left-0" />
-                  <CardHeader className="p-0 pb-4">
-                    <CardTitle className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white italic">
-                      {stat.name}
-                    </CardTitle>
-                    <CardDescription className="text-[11px] font-bold uppercase tracking-widest text-emerald-500 leading-none mt-1">
-                      Strict Demographic Adherence
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0 space-y-4">
-                    <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-4 flex justify-between items-center border border-slate-100 dark:border-slate-850">
-                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider leading-relaxed">Active Clients<br/>(Enrolled System)</span>
-                      <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 italic">{loading ? '-' : stat.activeClientCount}</span>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-4 flex justify-between items-center border border-slate-100 dark:border-slate-850">
-                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider leading-relaxed">Credited Sessions<br/>(Home base)</span>
-                      <span className="text-2xl font-black text-slate-900 dark:text-white italic">{loading ? '-' : stat.creditedCount}</span>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-4 flex justify-between items-center border border-slate-100 dark:border-slate-850">
-                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider leading-relaxed">Total Foot Traffic<br/>(Physical Hosted)</span>
-                      <span className="text-xl font-black text-slate-700 dark:text-slate-300 italic">{loading ? '-' : stat.hostedCount}</span>
-                    </div>
-                    {stat.hostedCrossTrains > 0 && (
-                      <div className="flex justify-between items-center px-1 pt-1">
-                        <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Included Cross-Trains</span>
-                        <span className="text-xs font-black text-indigo-500 dark:text-indigo-400 font-mono">+{stat.hostedCrossTrains}</span>
+      <div className="mt-8 sm:mt-12 space-y-8 sm:space-y-12">
+        {networksWithStudios
+          .filter((nw) => nw.studios && nw.studios.length > 0)
+          .map((network) => (
+            <div key={network.id}>
+              <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-4 sm:mb-6 flex items-center gap-2 italic">
+                <Network className="w-5 h-5 text-[#F06C22]" />
+                {network.name} Network
+              </h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                {network.studios.map((stat: any, i: number) => (
+                  <Card
+                    key={i}
+                    className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-md relative overflow-hidden p-5 sm:p-6 pt-7 sm:pt-8"
+                  >
+                    <div className="h-1.5 w-full bg-[#F06C22] absolute top-0 left-0" />
+                    <CardHeader className="p-0 pb-4">
+                      <CardTitle className="text-base sm:text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white italic">
+                        {stat.name}
+                      </CardTitle>
+                      <CardDescription className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-emerald-500 leading-none mt-1">
+                        Strict Demographic Adherence
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0 space-y-3 sm:space-y-4">
+                      <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-3.5 sm:p-4 flex justify-between items-center border border-slate-100 dark:border-slate-800">
+                        <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider leading-relaxed">
+                          Active Clients
+                          <br />
+                          (Enrolled System)
+                        </span>
+                        <span className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 italic">
+                          {loading ? "-" : stat.activeClientCount}
+                        </span>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                      <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-3.5 sm:p-4 flex justify-between items-center border border-slate-100 dark:border-slate-800">
+                        <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider leading-relaxed">
+                          Credited Sessions
+                          <br />
+                          (Home base)
+                        </span>
+                        <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white italic">
+                          {loading ? "-" : stat.creditedCount}
+                        </span>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-3.5 sm:p-4 flex justify-between items-center border border-slate-100 dark:border-slate-800">
+                        <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider leading-relaxed">
+                          Total Foot Traffic
+                          <br />
+                          (Physical Hosted)
+                        </span>
+                        <span className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-200 italic">
+                          {loading ? "-" : stat.hostedCount}
+                        </span>
+                      </div>
+                      {stat.hostedCrossTrains > 0 && (
+                        <div className="flex justify-between items-center px-1 pt-1">
+                          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                            Included Cross-Trains
+                          </span>
+                          <span className="text-xs font-black text-indigo-500 dark:text-indigo-400 font-mono">
+                            +{stat.hostedCrossTrains}
+                          </span>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
         {networksWithStudios.length === 0 && !loading && (
-          <div className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 p-8 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl text-center col-span-3">No physical studios configured.</div>
+          <div className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 p-8 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl text-center col-span-3">
+            No physical studios configured.
+          </div>
         )}
       </div>
     </div>

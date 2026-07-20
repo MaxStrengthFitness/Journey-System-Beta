@@ -875,7 +875,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                       </div>
                       
                       {extractedSettings.length > 0 ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                           {extractedSettings.map((s, idx) => (
                             <div key={idx} className="bg-slate-800/50 border border-slate-700 rounded-lg p-2 flex flex-col gap-1">
                               <p className="text-[11px] font-black text-[#F06C22] truncate uppercase">{s.machineId.replace(/_/g, ' ')}</p>

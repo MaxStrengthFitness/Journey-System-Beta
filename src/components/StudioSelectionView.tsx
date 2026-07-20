@@ -143,7 +143,7 @@ export function StudioSelectionView({
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-start p-6 md:p-12 text-white">
+    <div className="min-h-screen bg-bg-dark-2 flex flex-col items-center justify-start p-6 md:p-12 text-ink-d1">
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -151,7 +151,7 @@ export function StudioSelectionView({
       >
         <div className="text-center mb-10 flex flex-col items-center">
           <MaxStrengthLogo size="xl" className="mb-6" />
-          <h2 className="text-3xl font-black uppercase italic tracking-tight text-white mb-2 leading-none">
+          <h2 className="text-3xl font-black uppercase italic tracking-tight text-ink-d1 mb-2 leading-none">
             Enterprise Station Entry
           </h2>
           <p className="text-zinc-500 font-bold uppercase tracking-widest text-[11px] max-w-md mt-1">
@@ -188,12 +188,12 @@ export function StudioSelectionView({
                     return (
                       <div
                         key={studio.id}
-                        className="bg-slate-900 border border-slate-800/80 rounded-[28px] p-6 shadow-xl flex flex-col justify-between min-h-55 relative overflow-hidden"
+                        className="bg-bg-dark-2 border border-slate-800/80 rounded-[28px] p-6 shadow-xl flex flex-col justify-between min-h-55 relative overflow-hidden"
                       >
                         <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-[#F06C22]/40 to-transparent" />
                         <div>
                           <div className="flex items-center justify-between mb-4">
-                            <span className="w-8 h-8 rounded-lg bg-slate-950 flex items-center justify-center border border-slate-800 text-zinc-400">
+                            <span className="w-8 h-8 rounded-lg bg-bg-dark-2 flex items-center justify-center border border-slate-800 text-zinc-400">
                               <Building2 className="w-4 h-4" />
                             </span>
                             <span className="text-[11px] font-black uppercase bg-[#F06C22]/10 text-[#F06C22] px-2 py-0.5 rounded-full border border-[#F06C22]/15">
@@ -201,7 +201,7 @@ export function StudioSelectionView({
                             </span>
                           </div>
 
-                          <h4 className="font-extrabold uppercase italic tracking-tight text-lg text-white mb-1 leading-none">
+                          <h4 className="font-extrabold uppercase italic tracking-tight text-lg text-ink-d1 mb-1 leading-none">
                             {studio.name}
                           </h4>
                           <div className="flex items-center gap-1 text-zinc-500 mb-6">
@@ -219,14 +219,14 @@ export function StudioSelectionView({
                                 if (authTrainer && studio.id)
                                   onSelectTrainer(authTrainer, studio.id);
                               }}
-                              className="w-full bg-[#F06C22] hover:bg-[#F06C22]/90 text-white font-black uppercase tracking-widest text-xs h-10 rounded-xl flex items-center justify-center gap-2"
+                              className="w-full bg-[#F06C22] hover:bg-[#F06C22]/90 text-ink-d1 font-black uppercase tracking-widest text-xs h-10 rounded-xl flex items-center justify-center gap-2"
                             >
                               Enter Studio <ArrowRight className="w-4 h-4" />
                             </Button>
                           ) : isRequested ? (
                             <Button
                               disabled
-                              className="w-full bg-slate-800 text-slate-400 font-black uppercase tracking-widest text-xs h-10 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
+                              className="w-full bg-bg-dark-3 text-ink-d3 font-black uppercase tracking-widest text-xs h-10 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
                             >
                               <CheckCircle2 className="w-4 h-4" /> Access
                               Requested
@@ -235,7 +235,7 @@ export function StudioSelectionView({
                             <Button
                               onClick={() => handleRequestAccess(studio)}
                               disabled={isRequesting}
-                              className="w-full bg-slate-800/50 hover:bg-slate-800 text-slate-300 font-bold uppercase tracking-widest text-[11px] h-10 rounded-xl flex items-center justify-center gap-2 border border-slate-700/50"
+                              className="w-full bg-bg-dark-3/50 hover:bg-bg-dark-3 text-slate-300 font-bold uppercase tracking-widest text-[11px] h-10 rounded-xl flex items-center justify-center gap-2 border border-div-d/50"
                             >
                               {isRequesting ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -278,12 +278,12 @@ export function StudioSelectionView({
                   return (
                     <div
                       key={studio.id}
-                      className="bg-slate-900 border border-slate-800/80 rounded-[28px] p-6 shadow-xl flex flex-col justify-between min-h-55 relative overflow-hidden"
+                      className="bg-bg-dark-2 border border-slate-800/80 rounded-[28px] p-6 shadow-xl flex flex-col justify-between min-h-55 relative overflow-hidden"
                     >
                       <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-zinc-750/40 to-transparent" />
                       <div>
                         <div className="flex items-center justify-between mb-4">
-                          <span className="w-8 h-8 rounded-lg bg-slate-950 flex items-center justify-center border border-slate-800 text-zinc-400">
+                          <span className="w-8 h-8 rounded-lg bg-bg-dark-2 flex items-center justify-center border border-slate-800 text-zinc-400">
                             <Building2 className="w-4 h-4" />
                           </span>
                           <span className="text-[11px] font-black uppercase bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full border border-zinc-700/30">
@@ -291,7 +291,7 @@ export function StudioSelectionView({
                           </span>
                         </div>
 
-                        <h4 className="font-extrabold uppercase italic tracking-tight text-lg text-white mb-1 leading-none">
+                        <h4 className="font-extrabold uppercase italic tracking-tight text-lg text-ink-d1 mb-1 leading-none">
                           {studio.name}
                         </h4>
                         <div className="flex items-center gap-1 text-zinc-500 mb-6">
@@ -309,14 +309,14 @@ export function StudioSelectionView({
                               if (authTrainer && studio.id)
                                 onSelectTrainer(authTrainer, studio.id);
                             }}
-                            className="w-full bg-[#F06C22] hover:bg-[#F06C22]/90 text-white font-black uppercase tracking-widest text-xs h-10 rounded-xl flex items-center justify-center gap-2"
+                            className="w-full bg-[#F06C22] hover:bg-[#F06C22]/90 text-ink-d1 font-black uppercase tracking-widest text-xs h-10 rounded-xl flex items-center justify-center gap-2"
                           >
                             Enter Studio <ArrowRight className="w-4 h-4" />
                           </Button>
                         ) : isRequested ? (
                           <Button
                             disabled
-                            className="w-full bg-slate-800 text-slate-400 font-black uppercase tracking-widest text-xs h-10 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
+                            className="w-full bg-bg-dark-3 text-ink-d3 font-black uppercase tracking-widest text-xs h-10 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
                           >
                             <CheckCircle2 className="w-4 h-4" /> Access
                             Requested
@@ -325,7 +325,7 @@ export function StudioSelectionView({
                           <Button
                             onClick={() => handleRequestAccess(studio)}
                             disabled={isRequesting}
-                            className="w-full bg-slate-800/50 hover:bg-slate-800 text-slate-300 font-bold uppercase tracking-widest text-[11px] h-10 rounded-xl flex items-center justify-center gap-2 border border-slate-700/50"
+                            className="w-full bg-bg-dark-3/50 hover:bg-bg-dark-3 text-slate-300 font-bold uppercase tracking-widest text-[11px] h-10 rounded-xl flex items-center justify-center gap-2 border border-div-d/50"
                           >
                             {isRequesting ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
@@ -344,7 +344,7 @@ export function StudioSelectionView({
           )}
 
           {studios.length === 0 && (
-            <div className="py-20 text-center bg-slate-900/60 rounded-[40px] border border-dashed border-slate-800">
+            <div className="py-20 text-center bg-bg-dark-2/60 rounded-[40px] border border-dashed border-slate-800">
               <Building2 className="w-12 h-12 text-slate-700 mx-auto mb-4" />
               <p className="text-sm font-black uppercase tracking-widest text-zinc-450">
                 No Authorized Studios Configuration Found
@@ -360,7 +360,7 @@ export function StudioSelectionView({
           <Button
             variant="ghost"
             onClick={onBack}
-            className="text-zinc-500 hover:text-white font-black uppercase text-[11px] tracking-widest gap-2 bg-transparent"
+            className="text-zinc-500 hover:text-ink-d1 font-black uppercase text-[11px] tracking-widest gap-2 bg-transparent"
           >
             <ChevronLeft className="w-4 h-4" />
             Clear active session

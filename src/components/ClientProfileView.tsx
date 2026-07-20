@@ -2879,8 +2879,8 @@ export function ClientProfileView({
         onValueChange={setActiveTab}
       >
         <div className="mb-6 w-full">
-          <div className="overflow-x-auto md:overflow-x-visible pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar scroll-smooth">
-            <TabsList className="bg-transparent p-0 flex flex-nowrap md:grid md:grid-cols-6 w-max md:w-full !h-11 border-b border-slate-200 dark:border-slate-800 gap-0">
+          <div className="w-full pb-1">
+            <TabsList className="bg-transparent p-0 grid grid-cols-6 w-full h-11! border-b border-slate-200 dark:border-slate-800 gap-0">
               {[
                 { val: "journey", label: "Journey" },
                 { val: "routines", label: "Routines" },
@@ -2892,7 +2892,7 @@ export function ClientProfileView({
                 <TabsTrigger
                   key={tab.val}
                   value={tab.val}
-                  className="relative flex-none md:flex-1 !h-11 px-6 font-display italic text-[13px] font-bold uppercase tracking-widest text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-slate-800/60 data-[state=active]:text-[#F06C22] dark:data-[state=active]:text-white transition-all snap-center text-center cursor-pointer select-none rounded-none border-b-2 border-transparent data-[state=active]:border-[#F06C22]"
+                  className="relative w-full h-11! px-1 sm:px-3 font-display italic text-[10px] sm:text-[13px] font-bold uppercase tracking-wider sm:tracking-widest text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-slate-800/80 data-[state=active]:text-[#F06C22] dark:data-[state=active]:text-[#F06C22] transition-all text-center cursor-pointer select-none rounded-none border-b-2 border-transparent data-[state=active]:border-[#F06C22] truncate flex items-center justify-center"
                 >
                   {tab.label}
                 </TabsTrigger>
@@ -2916,18 +2916,18 @@ export function ClientProfileView({
           value="journey"
           className="mt-0 flex-1 overflow-hidden min-h-0 flex flex-col rounded-xl relative"
         >
-          <div className="flex items-center justify-between mb-3 px-2 flex-none">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 px-2 flex-none gap-3">
             <h3 className="text-[13px] font-bold uppercase text-slate-800 dark:text-slate-200 tracking-widest pl-1 border-l-4 border-[#F06C22]">
               Recent Journey
             </h3>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <div className="flex p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
                 <button
                   onClick={() => setJourneyDensity("Compact")}
                   className={cn(
-                    "px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors",
+                    "px-2.5 sm:px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors",
                     journeyDensity === "Compact"
-                      ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                      ? "bg-white dark:bg-slate-700 text-foreground dark:text-white shadow-sm"
                       : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
                   )}
                 >
@@ -2936,9 +2936,9 @@ export function ClientProfileView({
                 <button
                   onClick={() => setJourneyDensity("Comfortable")}
                   className={cn(
-                    "px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors",
+                    "px-2.5 sm:px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors",
                     journeyDensity === "Comfortable"
-                      ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                      ? "bg-white dark:bg-slate-700 text-foreground dark:text-white shadow-sm"
                       : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
                   )}
                 >
@@ -2947,9 +2947,9 @@ export function ClientProfileView({
                 <button
                   onClick={() => setJourneyDensity("Full")}
                   className={cn(
-                    "px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors",
+                    "px-2.5 sm:px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors",
                     journeyDensity === "Full"
-                      ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                      ? "bg-white dark:bg-slate-700 text-foreground dark:text-white shadow-sm"
                       : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
                   )}
                 >
@@ -2960,7 +2960,7 @@ export function ClientProfileView({
                 onClick={() => setShowFullChart(true)}
                 size="sm"
                 variant="outline"
-                className="h-10 px-5 text-[11px] uppercase font-bold tracking-widest text-slate-700 dark:text-slate-300 hover:text-[#115E8D] border-slate-300 shadow-sm transition-all hover:bg-slate-50 rounded-full"
+                className="h-9 sm:h-10 px-3.5 sm:px-5 text-[10px] sm:text-[11px] uppercase font-bold tracking-widest text-slate-700 dark:text-slate-300 hover:text-[#115E8D] border-slate-300 shadow-sm transition-all hover:bg-slate-50 rounded-full"
               >
                 <Maximize2 className="w-3.5 h-3.5 mr-1.5" /> Expanded Journey
               </Button>
@@ -3043,7 +3043,7 @@ export function ClientProfileView({
                   </th>
                 </tr>
               </thead>
-              <tbody className="text-slate-900 dark:text-slate-100 border-t border-slate-200 dark:border-slate-800">
+              <tbody className="text-foreground dark:text-slate-100 border-t border-slate-200 dark:border-slate-800">
                 {machines
                   .filter((machine) => {
                     if (journeyDensity !== "Compact") return true;
@@ -3171,7 +3171,7 @@ export function ClientProfileView({
 
                           if (log) {
                             labelColor = isLast
-                              ? "text-slate-900 dark:text-white"
+                              ? "text-foreground dark:text-white"
                               : "text-slate-700 dark:text-slate-300";
                             repsColor = isLast
                               ? "text-slate-600 dark:text-slate-400"
@@ -3317,7 +3317,7 @@ export function ClientProfileView({
           value="routines"
           className="mt-0 flex-1 min-h-0 focus-visible:outline-none"
         >
-          <div className="grid gap-6 lg:grid-cols-2 items-start">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
             {/* Render Routine A Card */}
             {renderRoutineCard("Routine A")}
 
@@ -3345,7 +3345,10 @@ export function ClientProfileView({
             open={isToggleReasonDialogOpen}
             onOpenChange={setIsToggleReasonDialogOpen}
           >
-            <DialogContent className="rounded-2xl max-w-md p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <DialogContent
+              showCloseButton={false}
+              className="rounded-2xl max-w-md p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+            >
               <DialogHeader>
                 <DialogTitle className="text-lg font-bold uppercase tracking-tight text-slate-950 dark:text-white font-display italic">
                   Reason Required for Protocol B Change
@@ -3401,7 +3404,10 @@ export function ClientProfileView({
 
           {/* RoutineEditDrawer Bottom Sheet Slide-Up Dialog */}
           <Dialog open={isEditDrawerOpen} onOpenChange={setIsEditDrawerOpen}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-6 bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl border border-div-l">
+            <DialogContent
+              showCloseButton={false}
+              className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-6 bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl border border-div-l"
+            >
               <DialogHeader className="pb-4 border-b border-div-l shrink-0">
                 <div className="flex items-center justify-between">
                   <DialogTitle className="text-xl font-bold uppercase tracking-tight text-slate-900 dark:text-neutral-100 italic font-display">
@@ -3487,7 +3493,7 @@ export function ClientProfileView({
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-900/30 rounded-xl border border-div-l/30">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-900/30 rounded-xl border border-div-l/30">
                     {availableMachines.length === 0 ? (
                       <p className="col-span-full text-xs text-slate-400 text-center py-4">
                         No matching machines
@@ -3568,7 +3574,7 @@ export function ClientProfileView({
         >
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-6">
             {/* Header Content & Trigger */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
               <div>
                 <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100 font-display italic uppercase">
                   Coaching Journal
@@ -3581,21 +3587,21 @@ export function ClientProfileView({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-3 self-start md:self-auto">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 self-start md:self-auto">
                 <Button
                   onClick={() => {
                     setInfoSheetTab("events");
                     setIsInfoSheetOpen(true);
                   }}
                   variant="outline"
-                  className="h-11 px-5 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-black uppercase text-xs tracking-wider cursor-pointer shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800"
+                  className="h-10 sm:h-11 px-3 sm:px-5 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-black uppercase text-[10px] sm:text-xs tracking-wider cursor-pointer shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
-                  <Calendar className="w-4 h-4 mr-2" />
+                  <Calendar className="w-4 h-4 mr-1.5" />
                   <span>Events & Alerts</span>
                 </Button>
                 <Button
                   onClick={() => setIsAddJournalOpen(true)}
-                  className="h-11 px-5 rounded-xl bg-cta text-white hover:bg-cta-strong font-black uppercase text-xs tracking-wider shadow-md shadow-cta/15 flex items-center gap-2 cursor-pointer"
+                  className="h-10 sm:h-11 px-3.5 sm:px-5 rounded-xl bg-cta text-white hover:bg-cta-strong font-black uppercase text-[10px] sm:text-xs tracking-wider shadow-md shadow-cta/15 flex items-center gap-1.5 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add Journal Entry</span>
@@ -3696,7 +3702,7 @@ export function ClientProfileView({
               <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase font-mono mb-4">
                 Active Coach Directives
               </h3>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {perTrainerSummary.map((summary) => (
                   <button
                     key={summary.trainerId}
@@ -3770,7 +3776,8 @@ export function ClientProfileView({
                 <div className="space-y-3.5">
                   {filteredJournalEntries.map((entry) => {
                     // Borders based on entry types
-                    let borderClass = "border-l-slate-300 dark:border-l-slate-700";
+                    let borderClass =
+                      "border-l-slate-300 dark:border-l-slate-700";
                     if (entry.type === "focus") {
                       borderClass = "border-l-[5px] border-l-cyan";
                     } else if (entry.type === "session_note") {
@@ -3937,13 +3944,13 @@ export function ClientProfileView({
             </div>
 
             <Card className="rounded-[40px] border-2 shadow-xl overflow-hidden min-h-75">
-              <CardHeader className="p-8 border-b">
-                <div className="flex justify-between items-center">
+              <CardHeader className="p-6 sm:p-8 border-b">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
+                    <CardTitle className="text-lg sm:text-xl font-bold uppercase italic tracking-tighter">
                       Progress Report Archive
                     </CardTitle>
-                    <CardDescription className="text-[11px] font-medium uppercase tracking-wide opacity-70 mt-1">
+                    <CardDescription className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wide opacity-70 mt-0.5 sm:mt-1">
                       Evaluations, Goals & Outcomes
                     </CardDescription>
                   </div>
@@ -3951,9 +3958,9 @@ export function ClientProfileView({
                     onClick={() => setView("progress-report")}
                     variant="default"
                     size="sm"
-                    className="rounded-xl font-medium uppercase text-[11px] tracking-wide opacity-70 h-11 bg-primary"
+                    className="rounded-xl font-bold uppercase text-[10px] sm:text-[11px] tracking-wide h-10 sm:h-11 px-3.5 sm:px-4 bg-primary shrink-0 self-start sm:self-auto"
                   >
-                    <Plus className="w-4 h-4 mr-2" /> New Evaluation
+                    <Plus className="w-4 h-4 mr-1.5" /> New Evaluation
                   </Button>
                 </div>
               </CardHeader>
@@ -4059,12 +4066,12 @@ export function ClientProfileView({
         </TabsContent>
         {/* Add Entry sheet/dialog */}
         <Dialog open={isAddJournalOpen} onOpenChange={setIsAddJournalOpen}>
-          <DialogContent className="max-w-xl w-full bg-white rounded-3xl p-6 border border-slate-100 shadow-2xl">
-            <DialogHeader className="border-b border-slate-100 pb-4">
-              <DialogTitle className="text-lg font-black uppercase italic tracking-tight text-slate-900 font-display">
+          <DialogContent className="max-w-xl w-full bg-card rounded-3xl p-6 border border-border shadow-2xl">
+            <DialogHeader className="border-b border-border pb-4">
+              <DialogTitle className="text-lg font-black uppercase italic tracking-tight text-card-foreground font-display">
                 New clinical/coaching entry
               </DialogTitle>
-              <DialogDescription className="text-xs text-slate-500 font-medium">
+              <DialogDescription className="text-xs text-muted-foreground font-medium">
                 Add an actionable coaching focus directive or a detailed
                 progress session note for {client?.firstName}.
               </DialogDescription>
@@ -4073,10 +4080,10 @@ export function ClientProfileView({
             <div className="space-y-5 py-4">
               {/* Type Switcher */}
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono">
+                <Label className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
                   Entry Ledger Category
                 </Label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setNewType("Focus")}
@@ -4084,7 +4091,7 @@ export function ClientProfileView({
                       "h-11 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all cursor-pointer",
                       newJournalType === "Focus"
                         ? "bg-cyan/10 border-cyan text-cyan"
-                        : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-600",
+                        : "bg-muted border-border hover:bg-accent text-muted-foreground",
                     )}
                   >
                     Clinical Focus Directive
@@ -4096,7 +4103,7 @@ export function ClientProfileView({
                       "h-11 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all cursor-pointer",
                       newJournalType === "Note"
                         ? "bg-cta/15 border-cta text-cta"
-                        : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-600",
+                        : "bg-muted border-border hover:bg-accent text-muted-foreground",
                     )}
                   >
                     Session / Clinical Note
@@ -4109,10 +4116,10 @@ export function ClientProfileView({
                 <>
                   {/* Category Pill Picker */}
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono">
+                    <Label className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
                       The 4 P's Category Definition
                     </Label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {(
                         [
                           "Posture",
@@ -4132,8 +4139,8 @@ export function ClientProfileView({
                             className={cn(
                               "p-3 rounded-xl border text-left transition-all flex items-start gap-2.5 cursor-pointer",
                               isSelected
-                                ? "bg-white border-2 border-cyan ring-1 ring-cyan"
-                                : "bg-slate-50 border-slate-200 hover:bg-slate-100",
+                                ? "bg-card border-2 border-cyan ring-1 ring-cyan"
+                                : "bg-muted border-border hover:bg-accent",
                             )}
                           >
                             <div
@@ -4147,10 +4154,10 @@ export function ClientProfileView({
                               />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-bold uppercase text-slate-800 tracking-tight leading-none mb-1">
+                              <p className="text-xs font-bold uppercase text-card-foreground tracking-tight leading-none mb-1">
                                 {cat}
                               </p>
-                              <p className="text-[9px] text-slate-400 leading-tight font-medium line-clamp-2">
+                              <p className="text-[9px] text-muted-foreground leading-tight font-medium line-clamp-2">
                                 {def.helper}
                               </p>
                             </div>
@@ -4164,7 +4171,7 @@ export function ClientProfileView({
                   <div className="space-y-1.5">
                     <Label
                       htmlFor="target-machine"
-                      className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono"
+                      className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono"
                     >
                       Target Equipment Unit (Optional)
                     </Label>
@@ -4174,11 +4181,11 @@ export function ClientProfileView({
                     >
                       <SelectTrigger
                         id="target-machine"
-                        className="h-11 rounded-xl bg-slate-50 border-slate-200 text-slate-900 border font-medium"
+                        className="h-11 rounded-xl bg-muted border-border text-card-foreground border font-medium"
                       >
                         <SelectValue placeholder="Global / Client Profile" />
                       </SelectTrigger>
-                      <SelectContent className="bg-white border border-slate-200 rounded-xl text-slate-900 font-medium">
+                      <SelectContent className="bg-card border border-border rounded-xl text-card-foreground font-medium">
                         <SelectItem value="none">
                           Global / Client Profile Level
                         </SelectItem>
@@ -4195,7 +4202,7 @@ export function ClientProfileView({
                   <div className="space-y-1.5">
                     <Label
                       htmlFor="clinical-notes"
-                      className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono"
+                      className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono"
                     >
                       Clinical focus cue instructions
                     </Label>
@@ -4204,7 +4211,7 @@ export function ClientProfileView({
                       value={newFocusNotes}
                       onChange={(e) => setNewFocusNotes(e.target.value)}
                       placeholder="e.g., Maintain 8s rhythm. Emphasize scapular retraction at extreme range. Avoid shoulder rolling."
-                      className="min-h-25 text-xs p-3 rounded-xl bg-slate-50 border-slate-200 text-slate-900 focus-visible:ring-cyan text-medium leading-relaxed"
+                      className="min-h-25 text-xs p-3 rounded-xl bg-muted border-border text-card-foreground focus-visible:ring-cyan text-medium leading-relaxed"
                     />
                   </div>
                 </>
@@ -4212,10 +4219,10 @@ export function ClientProfileView({
                 <>
                   {/* Priority selector */}
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono">
+                    <Label className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
                       Log Priority Level
                     </Label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {(["High", "Medium", "Low"] as const).map((prio) => (
                         <button
                           key={prio}
@@ -4229,7 +4236,7 @@ export function ClientProfileView({
                                 : prio === "Medium"
                                   ? "bg-yellow/15 border-yellow text-yellow-800"
                                   : "bg-green/10 border-green text-green-700"
-                              : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-600",
+                              : "bg-muted border-border hover:bg-accent text-muted-foreground",
                           )}
                         >
                           {prio} Priority
@@ -4242,7 +4249,7 @@ export function ClientProfileView({
                   <div className="space-y-1.5">
                     <Label
                       htmlFor="note-content"
-                      className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono"
+                      className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono"
                     >
                       Progress entry content
                     </Label>
@@ -4251,7 +4258,7 @@ export function ClientProfileView({
                       value={newNoteContent}
                       onChange={(e) => setNewNoteContent(e.target.value)}
                       placeholder="Enter detailed clinical session documentation, progress updates, trainer observations..."
-                      className="min-h-35 text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus-visible:ring-cta text-medium leading-relaxed"
+                      className="min-h-35 text-xs p-3 rounded-xl bg-muted border border-border text-card-foreground focus-visible:ring-cta text-medium leading-relaxed"
                     />
                   </div>
                 </>
@@ -4259,11 +4266,11 @@ export function ClientProfileView({
             </div>
 
             {/* Footer triggers */}
-            <div className="border-t border-slate-100 pt-4 flex items-center justify-end gap-2 shrink-0">
+            <div className="border-t border-border pt-4 flex items-center justify-end gap-2 shrink-0">
               <Button
                 variant="outline"
                 onClick={() => setIsAddJournalOpen(false)}
-                className="h-11 px-5 rounded-xl border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-xs"
+                className="h-11 px-5 rounded-xl border-border text-card-foreground font-bold uppercase tracking-wider text-xs"
               >
                 Cancel
               </Button>
@@ -4284,7 +4291,7 @@ export function ClientProfileView({
         </Dialog>
         <TabsContent
           value="history"
-          className="h-187.5 relative pb-20 overflow-y-auto custom-scrollbar"
+          className="flex-1 min-h-100 relative pb-20 overflow-y-auto custom-scrollbar"
         >
           <div className="space-y-6">
             {clientId && (
@@ -4320,6 +4327,8 @@ export function ClientProfileView({
             <ClientClinicalReviewPreloader
               client={client}
               machines={machines}
+              initialLogs={allLogs}
+              initialSessions={sessions}
               onOpenBriefing={() => setView("workouts")}
               onClose={() => setActiveTab("journey")}
             />
@@ -4399,7 +4408,7 @@ export function ClientProfileView({
             ).toFixed(1);
 
             return (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <Card className="rounded-3xl overflow-hidden border-2 shadow-sm bg-linear-to-br from-card to-card hover:border-primary/30 transition-all group">
                   <CardContent className="p-6">
                     <div className="flex items-center gap-3 mb-2">
@@ -4611,14 +4620,14 @@ export function ClientProfileView({
                                 <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-[#68717A] mt-1">
                                   <span>
                                     Start:{" "}
-                                    <span className="text-white font-bold">
+                                    <span className="text-ink-d1 font-bold">
                                       {baselineWeight} lbs
                                     </span>
                                   </span>
                                   <span>→</span>
                                   <span>
                                     Current:{" "}
-                                    <span className="text-white font-bold">
+                                    <span className="text-ink-d1 font-bold">
                                       {weight} lbs
                                     </span>
                                   </span>
@@ -5440,7 +5449,7 @@ export function ClientProfileView({
           </Card>
         </TabsContent>{" "}
         <TabsContent value="details_disabled" className="hidden">
-          <div className="grid gap-6 lg:grid-cols-2 mb-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
             {/* 1. The "Why" (Goals & Motivation) */}
             <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
               <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-700">
@@ -5520,7 +5529,7 @@ export function ClientProfileView({
                         }
                         className="data-[state=checked]:bg-[#38BDF8]"
                       />
-                      <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-300">
+                      <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-700 dark:text-slate-300">
                         Retired
                       </Label>
                     </div>
@@ -5663,7 +5672,7 @@ export function ClientProfileView({
                           </div>
                         )}
 
-                      <div className="grid lg:grid-cols-2 gap-8">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div className="space-y-4">
                           <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-400 ml-1">
                             Select Pertinent Health Flags
@@ -5942,7 +5951,7 @@ export function ClientProfileView({
             </Card>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div className="lg:col-span-1 space-y-6">
               <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 overflow-hidden">
                 <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-700 flex flex-row items-center justify-between">
@@ -6349,7 +6358,10 @@ export function ClientProfileView({
         )}
 
       <Dialog open={isDeleting} onOpenChange={setIsDeleting}>
-        <DialogContent className="rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-2xl p-0 overflow-hidden max-w-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+        <DialogContent
+          showCloseButton={false}
+          className="rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-2xl p-0 overflow-hidden max-w-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+        >
           <div className="bg-red-600 p-8 flex flex-col items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center animate-pulse">
               <AlertCircle className="w-8 h-8" />
@@ -6412,7 +6424,10 @@ export function ClientProfileView({
         open={isEditingSessionCount}
         onOpenChange={setIsEditingSessionCount}
       >
-        <DialogContent className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 sm:max-w-xs text-slate-900 dark:text-white">
+        <DialogContent
+          showCloseButton={false}
+          className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 sm:max-w-xs text-slate-900 dark:text-white"
+        >
           <DialogHeader>
             <DialogTitle className="text-xl font-bold uppercase italic tracking-tighter">
               Edit Session Count
@@ -6438,7 +6453,7 @@ export function ClientProfileView({
               <Button
                 variant="outline"
                 onClick={() => setIsEditingSessionCount(false)}
-                className="flex-1 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl font-bold uppercase tracking-widest text-[11px]"
+                className="flex-1 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-bold uppercase tracking-widest text-[11px]"
               >
                 Cancel
               </Button>

@@ -492,7 +492,7 @@ export function MachineAnatomyCatalogView({
 
             {/* Scrollable Content */}
             <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="bg-slate-100/70 dark:bg-black/40 p-3.5 rounded-2xl border border-slate-200 dark:border-white/5">
                   <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-2">
                     <Activity className="w-3 h-3 text-[#0ea5e9] dark:text-cyan" />{" "}
@@ -673,9 +673,6 @@ export function MachineAnatomyCatalogView({
 
       {/* ───── MOBILE MIDDLE BAND CAROUSEL (Lazy Susan) ───── */}
       <div className="lg:hidden relative w-full z-40 pointer-events-auto -mt-20 shrink-0">
-        {/* Center selection indicator — stationary above the scroll row */}
-        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-40 pointer-events-none z-10 border-l-2 border-r-2 border-cta/40 bg-cta/5 rounded-2xl" />
-
         <div
           ref={carouselRef}
           onScroll={handleCarouselScroll}
@@ -687,12 +684,12 @@ export function MachineAnatomyCatalogView({
             const distance = Math.abs(centerIndex - idx);
 
             let colorClass = "bg-secondary";
-            if (movement.includes("Push")) colorClass = "bg-cta";
-            else if (movement.includes("Pull")) colorClass = "bg-cyan";
-            else if (movement.includes("Quad")) colorClass = "bg-green";
-            else if (movement.includes("Posterior")) colorClass = "bg-yellow";
-            else if (movement.includes("Core")) colorClass = "bg-amber";
-            else if (movement.includes("Isolation")) colorClass = "bg-brand";
+            if (movement.includes("Push")) colorClass = "bg-[#F06C22]";
+            else if (movement.includes("Pull")) colorClass = "bg-[#38BDF8]";
+            else if (movement.includes("Quad")) colorClass = "bg-emerald-500";
+            else if (movement.includes("Posterior")) colorClass = "bg-amber-500";
+            else if (movement.includes("Core")) colorClass = "bg-amber-600";
+            else if (movement.includes("Isolation")) colorClass = "bg-purple-500";
 
             return (
               <button
@@ -705,23 +702,27 @@ export function MachineAnatomyCatalogView({
                 onClick={() => {
                   if (m.id) handleSelectMachine(m.id);
                 }}
-                className={`relative shrink-0 snap-center min-w-40 p-4 rounded-2xl bg-background/60 backdrop-blur-xl border transition-all duration-200 text-left flex flex-col justify-end overflow-hidden ${
+                className={`relative shrink-0 snap-center min-w-40 p-4 rounded-2xl bg-white dark:bg-slate-900 border transition-all duration-200 text-left flex flex-col justify-end overflow-hidden ${
                   distance === 0
-                    ? "scale-100 opacity-100 border-cta shadow-[0_0_20px_var(--color-cta)]/30"
+                    ? "scale-100 opacity-100 border-[#F06C22] shadow-[0_0_20px_rgba(240,108,34,0.3)]"
                     : distance <= 1
-                      ? "scale-95 opacity-80 border-transparent hover:bg-background/80"
-                      : "scale-90 opacity-60 border-transparent hover:bg-background/80"
+                      ? "scale-95 opacity-80 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      : "scale-90 opacity-60 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
               >
                 <div
-                  className={`absolute left-0 top-0 bottom-0 w-1 ${colorClass}`}
+                  className={`absolute left-0 top-0 bottom-0 w-1.5 ${colorClass}`}
                 />
                 <div className="pl-2 w-full">
-                  <span className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1 block truncate">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1 block truncate">
                     {map?.movementPattern || "Equipment"}
                   </span>
                   <span
-                    className={`text-[13px] font-black italic uppercase tracking-tight truncate block ${distance === 0 ? "text-white" : "text-muted-foreground"}`}
+                    className={`text-[13px] font-black italic uppercase tracking-tight truncate block ${
+                      distance === 0
+                        ? "text-slate-900 dark:text-white"
+                        : "text-slate-700 dark:text-slate-300"
+                    }`}
                   >
                     {m.name}
                   </span>
@@ -733,82 +734,82 @@ export function MachineAnatomyCatalogView({
       </div>
 
       {/* ───── MOBILE DETAILS OVERLAY (Tablet/Mobile) ───── */}
-      <div className="lg:hidden relative w-full z-40 pointer-events-none flex flex-col justify-end px-4 pb-24 shrink-0">
+      <div className="lg:hidden relative w-full z-40 pointer-events-none flex flex-col justify-end px-4 pb-28 sm:pb-32 shrink-0">
         {selectedMachine && machineKnowledge && (
-          <div className="pointer-events-auto w-full bg-black/80 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-3xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-            <div className="absolute inset-0 pointer-events-none bg-linear-to-b from-white/5 to-transparent"></div>
+          <div className="pointer-events-auto w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white shadow-2xl rounded-3xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4">
+            <div className="absolute inset-0 pointer-events-none bg-linear-to-b from-slate-100/50 dark:from-white/5 to-transparent"></div>
 
             {/* Header Area (Sticky) */}
-            <div className="z-10 p-5 border-b border-white/10 shrink-0 bg-background/80 backdrop-blur-md sticky top-0">
-              <div className="text-[10px] uppercase tracking-[0.2em] text-cyan font-bold mb-1">
+            <div className="z-10 p-5 border-b border-slate-200 dark:border-slate-800 shrink-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md sticky top-0">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#0284c7] dark:text-[#38BDF8] font-bold mb-1">
                 {selectedMap?.movementPattern || "Kinematic Info"}
               </div>
-              <h2 className="text-xl font-black uppercase italic text-white tracking-tight leading-none mb-3">
+              <h2 className="text-xl font-black uppercase italic text-slate-900 dark:text-white tracking-tight leading-none mb-3">
                 {selectedMachine.name}
               </h2>
-              <div className="text-[11px] text-muted-foreground leading-relaxed font-medium bg-black/40 p-3 rounded-xl border border-white/5 line-clamp-2">
+              <div className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed font-medium bg-slate-100 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700 line-clamp-2">
                 {selectedMap?.clinicalNote || "Clinical details unavailable."}
               </div>
             </div>
 
             {/* Scrollable Content */}
-            <div className="relative z-10 flex-1 p-5 space-y-5">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-black/40 p-3 rounded-xl border border-white/5">
-                  <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-1.5">
-                    <Activity className="w-3 h-3 text-cyan" /> Class
+            <div className="relative z-10 flex-1 p-5 space-y-5 max-h-[50vh] overflow-y-auto custom-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="bg-slate-100/80 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
+                  <div className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-1.5">
+                    <Activity className="w-3 h-3 text-[#38BDF8]" /> Class
                   </div>
-                  <div className="text-[12px] text-white font-semibold">
+                  <div className="text-[12px] text-slate-900 dark:text-white font-semibold">
                     {machineKnowledge.kinematicClassification || "N/A"}
                   </div>
                 </div>
-                <div className="bg-black/40 p-3 rounded-xl border border-white/5">
-                  <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-1.5">
-                    <Target className="w-3 h-3 text-cta" /> Posture
+                <div className="bg-slate-100/80 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
+                  <div className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-1.5">
+                    <Target className="w-3 h-3 text-[#F06C22]" /> Posture
                   </div>
                   <div
-                    className="text-[12px] text-white font-semibold truncate"
+                    className="text-[12px] text-slate-900 dark:text-white font-semibold truncate"
                     title={machineKnowledge.executionPosture}
                   >
                     {machineKnowledge.executionPosture || "N/A"}
                   </div>
                 </div>
-                <div className="bg-black/40 p-3 rounded-xl border border-white/5">
-                  <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-1.5">
-                    <Settings2 className="w-3 h-3 text-green" /> Setup
+                <div className="bg-slate-100/80 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
+                  <div className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-1.5">
+                    <Settings2 className="w-3 h-3 text-emerald-500" /> Setup
                   </div>
-                  <div className="text-[12px] text-white font-semibold">
+                  <div className="text-[12px] text-slate-900 dark:text-white font-semibold">
                     {machineKnowledge.setupGap || "Standard Gap"}
                   </div>
                 </div>
-                <div className="bg-black/40 p-3 rounded-xl border border-white/5">
-                  <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-1.5">
-                    <Users className="w-3 h-3 text-brand" /> Handoff
+                <div className="bg-slate-100/80 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
+                  <div className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-1.5">
+                    <Users className="w-3 h-3 text-purple-500" /> Handoff
                   </div>
-                  <div className="text-[12px] text-white font-semibold">
+                  <div className="text-[12px] text-slate-900 dark:text-white font-semibold">
                     {machineKnowledge.requiresHandoff ? "Required" : "None"}
                   </div>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white flex items-center gap-3">
-                  <div className="h-px bg-white/20 flex-1"></div>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-900 dark:text-white flex items-center gap-3">
+                  <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
                   Musculature
-                  <div className="h-px bg-white/20 flex-1"></div>
+                  <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
                 </h3>
                 <div className="flex flex-col gap-2">
                   {machineKnowledge.targetMuscles &&
                     machineKnowledge.targetMuscles.map((tm, idx) => (
                       <div
                         key={"m_t" + idx}
-                        className="flex items-center gap-2.5 bg-black/20 p-2.5 rounded-xl border border-white/5"
+                        className="flex items-center gap-2.5 bg-slate-100/80 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60"
                       >
-                        <div className="w-2 h-2 rounded-full bg-cta shadow-[0_0_8px_var(--color-cta)]/80 shrink-0"></div>
-                        <div className="text-[12px] font-bold text-white leading-snug">
+                        <div className="w-2 h-2 rounded-full bg-[#F06C22] shadow-[0_0_8px_rgba(240,108,34,0.8)] shrink-0"></div>
+                        <div className="text-[12px] font-bold text-slate-900 dark:text-white leading-snug">
                           {tm}
                         </div>
-                        <div className="ml-auto text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                        <div className="ml-auto text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                           Primary
                         </div>
                       </div>
@@ -817,13 +818,13 @@ export function MachineAnatomyCatalogView({
                     machineKnowledge.synergists.map((syn, idx) => (
                       <div
                         key={"m_s" + idx}
-                        className="flex items-center gap-2.5 bg-black/10 p-2.5 rounded-xl border border-white/5"
+                        className="flex items-center gap-2.5 bg-slate-100/50 dark:bg-slate-800/30 p-2.5 rounded-xl border border-slate-200/50 dark:border-slate-700/40"
                       >
-                        <div className="w-2 h-2 rounded-full bg-cyan shadow-[0_0_8px_var(--color-cyan)]/60 shrink-0"></div>
-                        <div className="text-[12px] text-muted-foreground leading-snug">
+                        <div className="w-2 h-2 rounded-full bg-[#38BDF8] shadow-[0_0_8px_rgba(56,189,248,0.6)] shrink-0"></div>
+                        <div className="text-[12px] text-slate-600 dark:text-slate-400 leading-snug">
                           {syn}
                         </div>
-                        <div className="ml-auto text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">
+                        <div className="ml-auto text-[9px] font-bold text-slate-400 uppercase tracking-widest">
                           Synergist
                         </div>
                       </div>
@@ -833,10 +834,10 @@ export function MachineAnatomyCatalogView({
 
               {machineKnowledge.clinicalWarnings &&
                 machineKnowledge.clinicalWarnings.length > 0 && (
-                  <div className="bg-amber/10 border border-amber/30 rounded-2xl p-4 backdrop-blur-sm">
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 backdrop-blur-sm">
                     <div className="flex items-center gap-2 mb-2.5">
-                      <ShieldAlert className="w-4 h-4 text-amber" />
-                      <h3 className="text-[10px] font-bold uppercase tracking-widest text-amber">
+                      <ShieldAlert className="w-4 h-4 text-amber-500" />
+                      <h3 className="text-[10px] font-bold uppercase tracking-widest text-amber-500">
                         Clinical Warnings
                       </h3>
                     </div>
@@ -844,9 +845,9 @@ export function MachineAnatomyCatalogView({
                       {machineKnowledge.clinicalWarnings.map((w, idx) => (
                         <li
                           key={idx}
-                          className="text-[12px] text-amber/90 leading-relaxed flex items-start gap-2.5"
+                          className="text-[12px] text-amber-600 dark:text-amber-400 leading-relaxed flex items-start gap-2.5"
                         >
-                          <span className="text-amber shrink-0 mt-0.5">•</span>
+                          <span className="text-amber-500 shrink-0 mt-0.5">•</span>
                           <span className="font-medium">{w}</span>
                         </li>
                       ))}
@@ -856,10 +857,10 @@ export function MachineAnatomyCatalogView({
 
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-cyan mb-2 flex items-center gap-2">
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#0284c7] dark:text-[#38BDF8] mb-2 flex items-center gap-2">
                     <Wrench className="w-3.5 h-3.5" /> Setup Notes
                   </h4>
-                  <p className="text-[12px] text-white leading-relaxed font-semibold bg-black/40 p-3.5 rounded-xl border border-white/5">
+                  <p className="text-[12px] text-slate-800 dark:text-slate-200 leading-relaxed font-semibold bg-slate-100/80 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
                     {machineKnowledge.setup}
                   </p>
                   {machineKnowledge.setupCues &&
@@ -868,9 +869,9 @@ export function MachineAnatomyCatalogView({
                         {machineKnowledge.setupCues.map((cue, idx) => (
                           <li
                             key={idx}
-                            className="text-[11px] text-muted-foreground flex items-start gap-2.5"
+                            className="text-[11px] text-slate-600 dark:text-slate-400 flex items-start gap-2.5"
                           >
-                            <div className="w-1.5 h-1.5 rounded-full bg-cyan/50 shrink-0 mt-1"></div>
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#38BDF8]/60 shrink-0 mt-1"></div>
                             <span className="font-medium">{cue}</span>
                           </li>
                         ))}
@@ -879,20 +880,20 @@ export function MachineAnatomyCatalogView({
                 </div>
 
                 <div>
-                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-green mb-2 flex items-center gap-2">
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 mb-2 flex items-center gap-2">
                     <Activity className="w-3.5 h-3.5" /> Execution
                   </h4>
-                  <p className="text-[12px] text-white leading-relaxed font-semibold bg-black/40 p-3.5 rounded-xl border border-white/5">
+                  <p className="text-[12px] text-slate-800 dark:text-slate-200 leading-relaxed font-semibold bg-slate-100/80 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
                     {machineKnowledge.execution}
                   </p>
                 </div>
               </div>
 
               {/* Trainer Tips */}
-              <div className="pt-4 border-t border-white/10 mt-5">
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 mt-5">
                 <div className="flex items-center gap-2 mb-3">
-                  <UserCog className="w-4 h-4 text-brand" />
-                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-white">
+                  <UserCog className="w-4 h-4 text-[#F06C22]" />
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white">
                     Studio Notes
                   </h3>
                 </div>
@@ -900,7 +901,7 @@ export function MachineAnatomyCatalogView({
                   placeholder="Record custom setup params or cues for this specific machine..."
                   value={trainerTips}
                   onChange={(e) => setTrainerTips(e.target.value)}
-                  className="min-h-20 bg-black/60 border border-white/10 focus-visible:ring-brand text-white placeholder:text-muted-foreground/50 mb-3 resize-none text-[12px] rounded-xl p-3"
+                  className="min-h-20 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus-visible:ring-[#F06C22] text-slate-900 dark:text-white placeholder:text-slate-400 mb-3 resize-none text-[12px] rounded-xl p-3"
                 />
                 <Button
                   onClick={handleSaveTip}

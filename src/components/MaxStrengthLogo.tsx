@@ -51,13 +51,13 @@ export const MaxStrengthLogo: React.FC<MaxStrengthLogoProps> = ({
     <div className={`flex flex-col items-center justify-center ${className}`}>
       {/* Three Squares */}
       <div className={`flex ${spacing}`}>
-        <div className={`${boxSize} bg-[#005187] flex items-center justify-center font-medium text-white rounded-[2px]`}>M</div>
-        <div className={`${boxSize} bg-[#eb6e21] flex items-center justify-center text-white rounded-[2px]`}>
+        <div className={`${boxSize} bg-[#005187] flex items-center justify-center font-medium text-ink-d1 rounded-[2px]`}>M</div>
+        <div className={`${boxSize} bg-[#eb6e21] flex items-center justify-center text-ink-d1 rounded-[2px]`}>
           <svg width="0.75em" height="0.75em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="transform translate-y-[1px]">
             <path d="M4 16l8-8 8 8"/>
           </svg>
         </div>
-        <div className={`${boxSize} bg-[#667279] flex items-center justify-center font-medium text-white rounded-[2px]`}>X</div>
+        <div className={`${boxSize} bg-[#667279] flex items-center justify-center font-medium text-ink-d1 rounded-[2px]`}>X</div>
       </div>
       
       {showText && (

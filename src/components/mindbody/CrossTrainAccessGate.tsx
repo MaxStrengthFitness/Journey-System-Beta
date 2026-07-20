@@ -54,17 +54,17 @@ export default function CrossTrainAccessGate({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         aria-labelledby={headlineId}
-        className="max-w-2xl w-[92vw] min-h-[420px] flex flex-col items-center justify-center text-center gap-6 p-8 sm:p-12 border-0 shadow-2xl"
+        className="max-w-lg w-[92vw] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-center text-center gap-4 sm:gap-5 shadow-2xl overflow-hidden"
       >
         <div 
-          className="h-16 w-16 flex rounded-full items-center justify-center bg-amber dark:bg-yellow shrink-0"
+          className="h-14 w-14 sm:h-16 sm:w-16 flex rounded-2xl items-center justify-center bg-amber-500/10 border border-amber-500/30 text-[#F06C22] shrink-0"
         >
-          <Lock className="size-8 text-ink-l1" aria-hidden="true" />
+          <Lock className="w-7 h-7 text-[#F06C22]" aria-hidden="true" />
         </div>
 
         <h2 
           id={headlineId} 
-          className="font-display italic uppercase text-3xl sm:text-4xl tracking-tight text-foreground"
+          className="font-display italic uppercase font-extrabold text-2xl sm:text-3xl tracking-tight text-slate-900 dark:text-white"
         >
           FOREIGN PROFILE
         </h2>
@@ -73,29 +73,29 @@ export default function CrossTrainAccessGate({
           Access denied. {clientName} belongs to {clientHomeStudioName}. Request access or return to roster.
         </p>
 
-        <p className="text-base text-muted-foreground max-w-md leading-relaxed">
-          {clientName}'s home studio is {clientHomeStudioName}. Cross-train data access is required to view their clinical history.
+        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-md leading-relaxed font-medium">
+          {clientName}'s home studio is <span className="font-bold text-slate-900 dark:text-white">{clientHomeStudioName}</span>. Cross-train data access is required to view their clinical history.
         </p>
 
         {existingRequestStatus === 'pending' && (
-          <div className="inline-flex items-center gap-2 bg-cyan/10 border border-cyan/40 text-ink-l1 dark:text-ink-d1 px-3 py-1.5 rounded-full text-sm font-medium">
-            <Hourglass className="size-4 text-ink-l1 dark:text-cyan" aria-hidden="true" />
+          <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
+            <Hourglass className="w-4 h-4 text-amber-500" aria-hidden="true" />
             <span>Awaiting {clientHomeStudioName} leadership review.</span>
           </div>
         )}
 
         {existingRequestStatus === 'denied' && (
-          <div className="inline-flex items-center gap-2 bg-red/10 border border-red/40 text-ink-l1 dark:text-ink-d1 px-3 py-1.5 rounded-full text-sm font-medium">
-            <XCircle className="size-4 text-red" aria-hidden="true" />
+          <div className="inline-flex items-center gap-2 bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
+            <XCircle className="w-4 h-4 text-rose-500" aria-hidden="true" />
             <span>Previous request denied. You may submit a new one.</span>
           </div>
         )}
 
-        <div className="w-full max-w-md flex flex-col sm:flex-row-reverse gap-3 mt-2">
+        <div className="w-full max-w-sm flex flex-col gap-2.5 mt-2">
           <Button 
             onClick={primaryAction} 
             disabled={primaryDisabled}
-            className="w-full"
+            className="w-full bg-[#F06C22] hover:bg-[#F06C22]/90 text-white font-black uppercase text-xs tracking-wider h-11 rounded-xl cursor-pointer whitespace-normal py-2.5"
           >
             {primaryLabel}
           </Button>
@@ -103,13 +103,13 @@ export default function CrossTrainAccessGate({
             variant="outline" 
             onClick={handleBack} 
             autoFocus
-            className="w-full"
+            className="w-full border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold uppercase text-xs tracking-wider h-11 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
           >
             Back to Roster
           </Button>
         </div>
 
-        <p className="text-xs text-muted-foreground mt-2">
+        <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
           Requests are reviewed by the {clientHomeStudioName} Studio Leader.
         </p>
       </DialogContent>

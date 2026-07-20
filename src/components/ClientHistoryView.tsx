@@ -308,7 +308,7 @@ export function ClientHistoryView({
               Client Vitals
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-4 pb-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+          <CardContent className="px-4 pb-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
             <div className="space-y-0.5">
               <p className="text-[11px] font-bold text-muted-foreground uppercase">
                 Height/Weight

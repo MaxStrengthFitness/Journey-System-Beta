@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { collection, query, where, orderBy, onSnapshot, getDocs, Timestamp, QueryConstraint, doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
-import { Client } from "../types";
+import { Client, ScheduleEntry } from "../types";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 
 export function useLiveSchedule(activeStudioId: string | null, isReady: boolean) {
-  const [schedules, setSchedules] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<ScheduleEntry[]>([]);
   const [liveRosterClients, setLiveRosterClients] = useState<Client[]>([]);
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
         const schedulesData = snap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        })) as any[];
+        }        )) as ScheduleEntry[];
         setSchedules(schedulesData);
 
         // Fetch client profile data ONLY for people on today's schedule to stay within read quotas

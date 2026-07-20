@@ -416,14 +416,14 @@ export function ClientHistoryCalendar({
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900 overflow-hidden rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-2xl p-2 sm:p-6 text-slate-800 dark:text-slate-200">
-      <div className="flex items-center justify-between mb-8 shrink-0">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6 shrink-0">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-cta/10 rounded-2xl flex items-center justify-center border border-cta/20 shadow-sm shrink-0">
-            <CalendarIcon className="w-7 h-7 text-cta" />
+          <div className="w-12 h-12 sm:w-14 sm:h-14 bg-cta/10 rounded-2xl flex items-center justify-center border border-cta/20 shadow-sm shrink-0">
+            <CalendarIcon className="w-6 h-6 sm:w-7 sm:h-7 text-cta" />
           </div>
           <div>
-            <div className="flex items-center gap-4">
-              <h2 className="text-3xl font-black italic uppercase tracking-tighter leading-none shrink-0 font-display">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <h2 className="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter leading-none shrink-0 font-display">
                 {viewType === "calendar"
                   ? viewDate instanceof Date && !isNaN(viewDate.getTime())
                     ? viewDate.toLocaleString("default", { month: "long" })
@@ -459,15 +459,15 @@ export function ClientHistoryCalendar({
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
             <button
               onClick={() => setViewType("calendar")}
               className={cn(
-                "px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all",
+                "px-3 sm:px-5 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider whitespace-nowrap transition-all",
                 viewType === "calendar"
-                  ? "bg-cyan text-white shadow-sm"
-                  : "text-slate-500 dark:text-slate-450 hover:text-slate-800 dark:hover:text-slate-200",
+                  ? "bg-[#38BDF8] text-slate-950 font-bold shadow-sm"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200",
               )}
             >
               Calendar View
@@ -475,10 +475,10 @@ export function ClientHistoryCalendar({
             <button
               onClick={() => setViewType("list")}
               className={cn(
-                "px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all",
+                "px-3 sm:px-5 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider whitespace-nowrap transition-all",
                 viewType === "list"
-                  ? "bg-cyan text-white shadow-sm"
-                  : "text-slate-500 dark:text-slate-450 hover:text-slate-800 dark:hover:text-slate-200",
+                  ? "bg-[#38BDF8] text-slate-950 font-bold shadow-sm"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200",
               )}
             >
               List View
@@ -487,26 +487,26 @@ export function ClientHistoryCalendar({
           <Button
             onClick={() => setShowManualLog(true)}
             variant="outline"
-            className="border-cta/50 text-cta hover:bg-cta/10 font-black tracking-widest uppercase text-[11px] h-12 rounded-2xl px-6 bg-white dark:bg-slate-900"
+            className="border-[#F06C22]/50 text-[#F06C22] hover:bg-[#F06C22]/10 font-black tracking-wider uppercase text-[10px] sm:text-[11px] h-10 sm:h-11 rounded-2xl px-3 sm:px-5 bg-white dark:bg-slate-900 whitespace-nowrap"
           >
-            <PlusCircle className="w-4 h-4 mr-2" /> Log Past Session
+            <PlusCircle className="w-4 h-4 mr-1.5" /> Log Past Session
           </Button>
         </div>
       </div>
 
       {viewType === "calendar" ? (
         <>
-          <div className="grid grid-cols-7 gap-2 mb-2 shrink-0">
+          <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2 shrink-0">
             {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((d) => (
-              <div key={d} className="text-center pb-2">
-                <span className="text-xs font-black uppercase tracking-widest text-ink-l3">
+              <div key={d} className="text-center pb-1 sm:pb-2">
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest text-slate-500 dark:text-slate-400">
                   {d}
                 </span>
               </div>
             ))}
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar pb-6 flex flex-col gap-2">
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 sm:pr-2 custom-scrollbar pb-6 flex flex-col gap-1 sm:gap-2">
             {(() => {
               const year = viewDate.getFullYear();
               const month = viewDate.getMonth();
@@ -542,7 +542,7 @@ export function ClientHistoryCalendar({
                   <div
                     key={`week-${wIdx}`}
                     className={cn(
-                      "grid grid-cols-7 gap-2 p-1 rounded-3xl transition-all duration-200",
+                      "grid grid-cols-7 gap-1 sm:gap-2 p-1 rounded-2xl sm:rounded-3xl transition-all duration-200",
                       isWeekActive
                         ? "bg-slate-50/50 dark:bg-slate-800/30 border border-slate-200/60 dark:border-slate-800/60 shadow-sm"
                         : "",
@@ -553,7 +553,7 @@ export function ClientHistoryCalendar({
                         return (
                           <div
                             key={`empty-${wIdx}-${idx}`}
-                            className="min-h-[100px]"
+                            className="min-h-12.5 sm:min-h-21.25"
                           />
                         );
 
@@ -578,27 +578,27 @@ export function ClientHistoryCalendar({
                             }
                           }}
                           className={cn(
-                            "min-h-[100px] p-4 rounded-2xl border transition-all relative group flex flex-col justify-between selection-none",
+                            "min-h-12.5 sm:min-h-21.25 p-2 sm:p-3.5 rounded-xl sm:rounded-2xl border transition-all relative group flex flex-col justify-between select-none",
                             daySessions.length > 0
                               ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50"
                               : "cursor-default",
                             isSelected
                               ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 shadow-md"
                               : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700",
-                            today ? "ring-2 ring-green" : "",
+                            today ? "ring-2 ring-emerald-500" : "",
                             dayEvents.some(
                               (e) =>
                                 e.type === "Vacation" ||
                                 e.type === "Medical" ||
                                 e.type === "Snowbird",
                             )
-                              ? "bg-red-50/50 border-red-100"
+                              ? "bg-red-50/50 border-red-100 dark:bg-red-950/20 dark:border-red-900/30"
                               : "",
                           )}
                         >
                           <span
                             className={cn(
-                              "text-[18px] font-black leading-none font-sans absolute top-3 left-3 z-10",
+                              "text-xs sm:text-base font-black leading-none font-sans absolute top-2 left-2 sm:top-3 sm:left-3 z-10",
                               isSelected
                                 ? "text-slate-900 dark:text-slate-100"
                                 : "text-slate-800 dark:text-slate-200",
@@ -749,105 +749,114 @@ export function ClientHistoryCalendar({
                   setSelectedDaySessions([session]);
                   setActiveSessionIndex(0);
                 }}
-                className="flex items-center gap-3 sm:gap-6 p-4 sm:p-6 rounded-[32px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-cta/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm text-slate-800 dark:text-slate-200 relative overflow-hidden flex-wrap sm:flex-nowrap"
+                className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-[#38BDF8]/40 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/60 shadow-sm text-slate-800 dark:text-slate-200 relative overflow-hidden"
               >
                 {session.isCrossTrain && (
-                  <div className="absolute top-0 left-0 bg-cyan text-white text-[11px] sm:text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-br-xl shadow-sm z-10 flex items-center gap-1">
+                  <div className="absolute top-0 left-0 bg-[#38BDF8] text-slate-950 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-br-lg shadow-sm z-10 flex items-center gap-1">
                     <Network className="w-3 h-3" />
                     Cross-Train
                   </div>
                 )}
                 {isLegacy && (
-                  <div className="absolute top-0 right-0 bg-cta text-white text-[11px] sm:text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl shadow-sm z-10">
+                  <div className="absolute top-0 right-0 bg-[#F06C22] text-white text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-bl-lg shadow-sm z-10">
                     Imported
                   </div>
                 )}
-                <div className="flex flex-col items-center justify-center min-w-[80px]">
-                  <span className="text-3xl font-black text-slate-855 dark:text-slate-100 font-display">
-                    {sDate ? sDate.getDate() : "--"}
-                  </span>
-                  <span className="text-[11px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">
-                    {sDate
-                      ? sDate.toLocaleDateString("default", {
-                          month: "short",
-                        }) +
-                        " '" +
-                        sDate.getFullYear().toString().substring(2)
-                      : "Invalid"}
-                  </span>
-                </div>
 
-                <div
-                  className={cn(
-                    "w-12 h-12 shrink-0 rounded-full flex items-center justify-center border border-slate-200 dark:border-slate-800 z-10 font-black",
-                    getTrainerChipStyles(session.trainerInitials),
-                  )}
-                >
-                  <span className="text-sm font-black">
-                    {session.trainerInitials || "TR"}
-                  </span>
-                </div>
+                <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                  {/* Date Badge */}
+                  <div className="flex flex-col items-center justify-center min-w-13.75 sm:min-w-16.25 px-2 py-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shrink-0">
+                    <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 font-display leading-tight">
+                      {sDate ? sDate.getDate() : "--"}
+                    </span>
+                    <span className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
+                      {sDate
+                        ? sDate.toLocaleDateString("default", {
+                            month: "short",
+                          }) +
+                          " '" +
+                          sDate.getFullYear().toString().substring(2)
+                        : "Invalid"}
+                    </span>
+                  </div>
 
-                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                  <div className="flex items-center gap-3 mb-1 flex-wrap">
-                    <span className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter shrink-0 flex items-center gap-2">
+                  {/* Trainer Avatar */}
+                  <div
+                    className={cn(
+                      "w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-full flex items-center justify-center border border-slate-200 dark:border-slate-800 font-black shadow-sm",
+                      getTrainerChipStyles(session.trainerInitials),
+                    )}
+                  >
+                    <span className="text-xs sm:text-sm font-black">
+                      {session.trainerInitials || "TR"}
+                    </span>
+                  </div>
+
+                  {/* Session Info Details */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Badge
                         variant="outline"
-                        className="text-[11px] font-black text-cyan uppercase tracking-widest border-cyan/30 bg-cyan/10 py-0 leading-tight h-5"
+                        className="text-[10px] sm:text-[11px] font-black text-[#0284c7] dark:text-[#38BDF8] uppercase tracking-wider border-[#38BDF8]/30 bg-[#38BDF8]/10 px-2 py-0.5 rounded-lg h-auto! shrink-0"
                       >
                         S{calculatedSessionNumber}
                       </Badge>
-                      {isLegacy
-                        ? "Import Session"
-                        : session.startTime && timestamp > 0
-                          ? new Date(
-                              session.startTime?.toMillis?.() ||
-                                session.startTime,
-                            ).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : sDate
-                            ? "12:00 PM"
-                            : "--:--"}
-                    </span>
-                    {daysSincePrev !== null && (
-                      <Badge
-                        variant="outline"
-                        className="text-[11px] font-black text-cyan uppercase tracking-widest border-cyan/30 bg-cyan/10"
-                      >
-                        {daysSincePrev === 1
-                          ? "1 Day Since Last"
-                          : `${daysSincePrev} Days Since Last`}
-                      </Badge>
-                    )}
-                  </div>
 
-                  <p className="text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest mt-1 truncate">
-                    {session.routineName
-                      ? `Routine ${session.routineName}`
-                      : isLegacy
-                        ? "Imported Session"
+                      <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 font-mono shrink-0">
+                        {isLegacy
+                          ? "Import Session"
+                          : session.startTime && timestamp > 0
+                            ? new Date(
+                                session.startTime?.toMillis?.() ||
+                                  session.startTime,
+                              ).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : sDate
+                              ? "12:00 PM"
+                              : "--:--"}
+                      </span>
+
+                      {daysSincePrev !== null && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] sm:text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg h-auto! shrink-0"
+                        >
+                          {daysSincePrev === 1
+                            ? "1 Day Since"
+                            : `${daysSincePrev} Days Since`}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <p className="text-[11px] sm:text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider truncate">
+                      {session.routineName
+                        ? `Routine ${session.routineName}`
+                        : isLegacy
+                          ? "Imported Session"
+                          : ""}
+                      {(session.routineName || isLegacy) && shorthandMachines
+                        ? " • "
                         : ""}
-                    {(session.routineName || isLegacy) && shorthandMachines
-                      ? " • "
-                      : ""}
-                    {shorthandMachines ||
-                      (!session.routineName && !isLegacy
-                        ? "No Machines Logged"
-                        : "")}
-                  </p>
+                      {shorthandMachines ||
+                        (!session.routineName && !isLegacy
+                          ? "No Machines Logged"
+                          : "")}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="flex flex-col items-end justify-center shrink-0 ml-2 sm:ml-4">
-                  <span className="text-[11px] sm:text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest mb-1 text-right font-sans">
+                {/* Total Volume */}
+                <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100 dark:border-slate-800">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-sans">
                     Total Volume
                   </span>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-xl sm:text-2xl font-black text-slate-855 dark:text-slate-100 font-display">
+                    <span className="text-lg sm:text-2xl font-black text-slate-900 dark:text-slate-100 font-display">
                       {totalVolume.toLocaleString()}
                     </span>
-                    <span className="text-[11px] sm:text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase">
                       lbs
                     </span>
                   </div>
@@ -1270,7 +1279,7 @@ export function ClientHistoryCalendar({
                                           ).toString(),
                                         )
                                       }
-                                      className="w-16 min-w-[4rem] bg-transparent text-center text-xl font-black text-slate-900 dark:text-white focus:outline-none p-0"
+                                      className="w-16 min-w-16 bg-transparent text-center text-xl font-black text-slate-900 dark:text-white focus:outline-none p-0"
                                     />
                                     <span className="text-[11px] uppercase tracking-widest text-slate-500 dark:text-slate-400 font-bold leading-none mt-0.5 font-sans">
                                       Lbs
@@ -1325,7 +1334,7 @@ export function ClientHistoryCalendar({
                                           ).toString(),
                                         )
                                       }
-                                      className="w-16 min-w-[4rem] bg-transparent text-center text-xl font-black text-slate-900 dark:text-white focus:outline-none p-0"
+                                      className="w-16 min-w-16 bg-transparent text-center text-xl font-black text-slate-900 dark:text-white focus:outline-none p-0"
                                       disabled={isCardio && false}
                                     />
                                     <span className="text-[11px] uppercase tracking-widest text-slate-500 dark:text-slate-400 font-bold leading-none mt-0.5 font-sans">
@@ -1436,10 +1445,10 @@ export function ClientHistoryCalendar({
                                 setEditedSessionNotes(e.target.value)
                               }
                               placeholder="Add or update session notes & briefings here..."
-                              className="min-h-[140px] bg-slate-900 border-slate-700 border text-white placeholder:text-slate-600 resize-none focus-visible:ring-1 focus-visible:ring-[#F06C22] font-medium text-sm leading-relaxed p-4 rounded-xl shadow-inner"
+                              className="min-h-35 bg-slate-900 border-slate-700 border text-white placeholder:text-slate-600 resize-none focus-visible:ring-1 focus-visible:ring-[#F06C22] font-medium text-sm leading-relaxed p-4 rounded-xl shadow-inner"
                             />
                           ) : (
-                            <div className="min-h-[140px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+                            <div className="min-h-35 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
                               <p className="whitespace-pre-wrap text-slate-800 dark:text-slate-200 font-medium text-sm leading-relaxed font-sans">
                                 {selectedSession.notes || (
                                   <span className="text-slate-400 italic font-sans text-xs">
@@ -1460,7 +1469,7 @@ export function ClientHistoryCalendar({
                             </h4>
                             {isEditMode && (
                               <Select defaultValue="Medium">
-                                <SelectTrigger className="w-[100px] h-6 bg-slate-900 border-slate-700 text-[11px] uppercase font-black tracking-widest px-2 py-0 text-slate-400">
+                                <SelectTrigger className="w-25 h-6 bg-slate-900 border-slate-700 text-[11px] uppercase font-black tracking-widest px-2 py-0 text-slate-400">
                                   <SelectValue placeholder="Priority" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-800 border-slate-700">
@@ -1489,10 +1498,10 @@ export function ClientHistoryCalendar({
                           {isEditMode ? (
                             <Textarea
                               placeholder="Add client feel, post-session debrief..."
-                              className="min-h-[140px] bg-slate-900 border-slate-700 border text-white placeholder:text-slate-600 resize-none focus-visible:ring-1 focus-visible:ring-[#F06C22] font-medium text-sm leading-relaxed p-4 rounded-xl shadow-inner"
+                              className="min-h-35 bg-slate-900 border-slate-700 border text-white placeholder:text-slate-600 resize-none focus-visible:ring-1 focus-visible:ring-[#F06C22] font-medium text-sm leading-relaxed p-4 rounded-xl shadow-inner"
                             />
                           ) : (
-                            <div className="min-h-[140px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex items-center justify-center font-sans">
+                            <div className="min-h-35 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex items-center justify-center font-sans">
                               <span className="text-slate-400 dark:text-slate-500 italic text-sm font-medium font-sans">
                                 Context stored in historical notes.
                               </span>

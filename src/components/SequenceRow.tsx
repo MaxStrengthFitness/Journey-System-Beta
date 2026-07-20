@@ -22,7 +22,7 @@ export function SequenceRow({ machine, ...props }: SequenceRowProps) {
         {machine.idx}
       </div>
 
-      <div className="flex-1 flex gap-2 items-center text-white font-display italic text-[14px] uppercase tracking-[0.02em] truncate">
+      <div className="flex-1 flex gap-2 items-center text-ink-d1 font-display italic text-[14px] uppercase tracking-[0.02em] truncate">
         <span>{machine.name}</span>
         {machine.isTSC && (
            <span className="flex items-center gap-1 bg-cyan/10 text-cyan rounded-full px-1.5 py-0.5 text-[11px]">
@@ -35,7 +35,7 @@ export function SequenceRow({ machine, ...props }: SequenceRowProps) {
       <div className="flex items-center gap-4 mr-3">
         <div className="flex flex-col items-end justify-center">
           <span className="text-[11px] text-ink-d3 font-medium tracking-wide opacity-60 uppercase mb-0.5">LAST LB</span>
-          <span className="text-[15px] text-white font-black italic tabular-nums leading-none">
+          <span className="text-[15px] text-ink-d1 font-black italic tabular-nums leading-none">
             {machine.lastLb !== null ? machine.lastLb : <span className="text-ink-d3">—</span>}
           </span>
         </div>
@@ -43,7 +43,7 @@ export function SequenceRow({ machine, ...props }: SequenceRowProps) {
           <span className="text-[11px] text-ink-d3 font-medium tracking-wide opacity-60 uppercase mb-0.5">
             LAST {machine.lastUnit === 'sec' ? 'SEC' : 'REPS'}
           </span>
-          <span className="text-[15px] text-white font-black italic tabular-nums leading-none">
+          <span className="text-[15px] text-ink-d1 font-black italic tabular-nums leading-none">
             {machine.lastReps !== null ? machine.lastReps : <span className="text-ink-d3">—</span>}
           </span>
         </div>

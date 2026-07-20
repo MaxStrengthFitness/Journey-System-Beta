@@ -329,7 +329,7 @@ export function ProfilesView({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 text-center">
                       <p className="text-[11px] font-black uppercase text-muted-foreground mb-1">
                         Sessions
@@ -591,7 +591,7 @@ export function ProfilesView({
                   </Button>
                 )}
               </div>
-              <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
                 {filteredTrainers.map((trainerItem) => {
                   const upcCount = schedules.filter(
                     (s) =>
@@ -750,8 +750,8 @@ export function ProfilesView({
                       <CardContent className="p-0 flex flex-col sm:flex-row items-center">
                         <div className="p-4 sm:p-6 flex items-center gap-4 sm:gap-5 grow w-full sm:w-auto">
                           <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-muted group-hover:bg-primary transition-colors flex items-center justify-center font-black text-lg sm:text-xl group-hover:text-white shrink-0">
-                            {client.firstName[0]}
-                            {client.lastName[0]}
+                            {(client.firstName || '?')[0] || '?'}
+                            {(client.lastName || '')[0] || ''}
                           </div>
                           <div>
                             <h4 className="text-xl sm:text-2xl font-black uppercase italic tracking-tighter leading-none group-hover:text-primary transition-colors">
@@ -771,7 +771,7 @@ export function ProfilesView({
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 grow-2 w-full sm:w-auto p-4 sm:p-0">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 grow-2 w-full sm:w-auto p-4 sm:p-0">
                           <div className="flex flex-col justify-center px-4 sm:px-6 border-l py-2 sm:py-4 min-w-30 sm:min-w-35">
                             <p className="text-[11px] sm:text-[11px] font-black uppercase text-muted-foreground tracking-widest mb-1 leading-none">
                               Last Log

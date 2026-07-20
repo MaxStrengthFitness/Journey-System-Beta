@@ -101,18 +101,18 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0A2E46] p-4 lg:p-8 text-white overflow-hidden">
+    <div className="flex flex-col h-full bg-bg-dark p-4 lg:p-8 text-ink-d1 overflow-hidden">
       <div className="flex items-center justify-between mb-6 shrink-0">
         <div>
-          <h1 className="text-3xl font-black uppercase tracking-tighter text-white">Routine Engineer</h1>
-          <p className="text-slate-400 text-sm font-medium">Deterministic protocol prescription for {client.firstName} {client.lastName}</p>
+          <h1 className="text-3xl font-black uppercase tracking-tighter text-ink-d1">Routine Engineer</h1>
+          <p className="text-ink-d3 text-sm font-medium">Deterministic protocol prescription for {client.firstName} {client.lastName}</p>
         </div>
         <div className="flex space-x-3">
-          <Button variant="outline" onClick={onBack} className="bg-transparent border-white/20 text-white hover:bg-white/10">Back to Profile</Button>
-          <Button onClick={() => setPreviewMode(true)} disabled={selectedSequence.length === 0} className="bg-sky-600 hover:bg-sky-500 text-white font-bold uppercase tracking-widest text-[11px]">
+          <Button variant="outline" onClick={onBack} className="bg-transparent border-white/20 text-ink-d1 hover:bg-white/10">Back to Profile</Button>
+          <Button onClick={() => setPreviewMode(true)} disabled={selectedSequence.length === 0} className="bg-sky-600 hover:bg-sky-500 text-ink-d1 font-bold uppercase tracking-widest text-[11px]">
              <Share className="w-4 h-4 mr-2" /> Share / Present
           </Button>
-          <Button onClick={() => onSaveRoutine(selectedSequence)} className="bg-[#F06C22] hover:bg-[#D95B1B] text-white font-bold uppercase tracking-widest text-[11px]">
+          <Button onClick={() => onSaveRoutine(selectedSequence)} className="bg-[#F06C22] hover:bg-[#D95B1B] text-ink-d1 font-bold uppercase tracking-widest text-[11px]">
             Save Routine
           </Button>
         </div>
@@ -121,7 +121,7 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full overflow-hidden">
         {/* Recommendation Panel */}
         <div className="lg:col-span-4 flex flex-col gap-4 h-full overflow-y-auto pr-2 pb-20">
-          <Card className="bg-slate-900 border-sky-500/30 shadow-[0_0_20px_rgba(14,165,233,0.15)] relative overflow-hidden shrink-0">
+          <Card className="bg-bg-dark-2 border-sky-500/30 shadow-[0_0_20px_rgba(14,165,233,0.15)] relative overflow-hidden shrink-0">
             <div className="absolute top-0 left-0 w-1 h-full bg-sky-500" />
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-black uppercase tracking-widest text-sky-400 flex items-center gap-2">
@@ -129,11 +129,11 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <h3 className="text-lg font-bold text-white mb-1">{recommendedTemplate.name}</h3>
-              <p className="text-xs text-slate-400 mb-3">{recommendedTemplate.objective}</p>
+              <h3 className="text-lg font-bold text-ink-d1 mb-1">{recommendedTemplate.name}</h3>
+              <p className="text-xs text-ink-d3 mb-3">{recommendedTemplate.objective}</p>
               
-              <div className="bg-slate-950 p-3 rounded-lg mb-4 text-xs font-mono text-slate-400 border border-slate-800">
-                <span className="text-white">Analysis:</span> Client ({client.occupation || 'No job listed'}, {client.medicalHistory || 'No history'}) matched with {recommendedTemplate.targetDemographic}
+              <div className="bg-slate-950 p-3 rounded-lg mb-4 text-xs font-mono text-ink-d3 border border-slate-800">
+                <span className="text-ink-d1">Analysis:</span> Client ({client.occupation || 'No job listed'}, {client.medicalHistory || 'No history'}) matched with {recommendedTemplate.targetDemographic}
               </div>
 
               <Button onClick={() => loadTemplate(recommendedTemplate.id)} className="w-full bg-sky-600 hover:bg-sky-500 font-bold uppercase tracking-widest text-[11px]">
@@ -142,13 +142,13 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-900 border-slate-700/50 shrink-0">
+          <Card className="bg-bg-dark-2 border-div-d/50 shrink-0">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-300">Other Templates</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {ROUTINE_TEMPLATES.map(t => t.id !== recommendedTemplate.id && (
-                <Button key={t.id} variant="outline" onClick={() => loadTemplate(t.id)} className="w-full justify-start h-auto py-3 bg-slate-800/50 border-slate-700 hover:bg-slate-700 text-left hover:text-white">
+                <Button key={t.id} variant="outline" onClick={() => loadTemplate(t.id)} className="w-full justify-start h-auto py-3 bg-slate-800/50 border-div-d hover:bg-slate-700 text-left hover:text-ink-d1">
                   <div>
                     <div className="font-bold text-xs uppercase tracking-wider text-slate-300">{t.name}</div>
                     <div className="text-[11px] text-slate-500 font-normal mt-0.5 line-clamp-1">{t.objective}</div>
@@ -171,13 +171,13 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
-                            className={`bg-slate-800 border ${snapshot.isDragging ? 'border-sky-500 shadow-xl' : 'border-slate-700'} p-3 rounded-lg flex items-center justify-between`}
+                            className={`bg-slate-800 border ${snapshot.isDragging ? 'border-sky-500 shadow-xl' : 'border-div-d'} p-3 rounded-lg flex items-center justify-between`}
                           >
                             <div>
-                               <div className="text-xs font-bold text-white uppercase tracking-wider">{machine.name}</div>
-                               <div className="text-[11px] text-slate-400 uppercase tracking-widest">{machine.kinematicClassification || 'N/A'}</div>
+                               <div className="text-xs font-bold text-ink-d1 uppercase tracking-wider">{machine.name}</div>
+                               <div className="text-[11px] text-ink-d3 uppercase tracking-widest">{machine.kinematicClassification || 'N/A'}</div>
                             </div>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-white hover:bg-slate-700" onClick={() => setSelectedSequence([...selectedSequence, machine.id])}>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-ink-d3 hover:text-ink-d1 hover:bg-slate-700" onClick={() => setSelectedSequence([...selectedSequence, machine.id])}>
                               <Plus className="w-4 h-4"/>
                             </Button>
                           </div>
@@ -193,10 +193,10 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
         </div>
 
         {/* Builder Panel */}
-        <div className="lg:col-span-8 flex flex-col h-full bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 overflow-hidden">
+        <div className="lg:col-span-8 flex flex-col h-full bg-bg-dark-2 border border-slate-800 rounded-2xl p-4 md:p-6 overflow-hidden">
           <div className="flex justify-between items-end mb-4 shrink-0">
             <h2 className="text-lg font-black uppercase tracking-widest text-[#F8F9FA]">Draft Protocol</h2>
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-800 px-3 py-1 rounded-full">
+            <div className="text-xs font-bold text-ink-d3 uppercase tracking-widest bg-slate-800 px-3 py-1 rounded-full">
               {selectedSequence.length} / 8 Exercises
             </div>
           </div>
@@ -245,23 +245,23 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
                               <div
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
-                                className={`rounded-xl overflow-hidden border ${snapshot.isDragging ? 'border-sky-500 shadow-xl z-50 relative' : isErrorTarget ? 'border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.2)]' : 'border-slate-700'}`}
+                                className={`rounded-xl overflow-hidden border ${snapshot.isDragging ? 'border-sky-500 shadow-xl z-50 relative' : isErrorTarget ? 'border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.2)]' : 'border-div-d'}`}
                               >
                                 <AccordionItem value={`acc-${machineId}-${index}`} className="border-b-0">
                                   <div className="flex items-center bg-slate-800 pl-2">
-                                     <div {...provided.dragHandleProps} className="p-2 cursor-grab text-slate-500 hover:text-white">
+                                     <div {...provided.dragHandleProps} className="p-2 cursor-grab text-slate-500 hover:text-ink-d1">
                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-grip-vertical w-4 h-4"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
                                      </div>
                                      <AccordionTrigger className="hover:no-underline py-3 px-2 flex-1 [&[data-state=open]>div>svg]:rotate-180">
                                         <div className="flex items-center gap-3 text-left">
-                                           <div className="w-6 h-6 rounded bg-slate-900 border border-slate-700 flex items-center justify-center text-[11px] font-black text-slate-400 shrink-0">
+                                           <div className="w-6 h-6 rounded bg-bg-dark-2 border border-div-d flex items-center justify-center text-[11px] font-black text-ink-d3 shrink-0">
                                               {index + 1}
                                            </div>
                                            <div>
-                                             <div className={`font-black uppercase tracking-wider text-sm ${isErrorTarget ? 'text-rose-400' : 'text-white'}`}>{machine.name}</div>
+                                             <div className={`font-black uppercase tracking-wider text-sm ${isErrorTarget ? 'text-rose-400' : 'text-ink-d1'}`}>{machine.name}</div>
                                              <div className="text-[11px] uppercase tracking-widest text-[#38BDF8] flex items-center gap-2 mt-0.5">
                                                {machine.kinematicClassification || 'N/A'}
-                                               {machine.setupGap && <span className="text-slate-400 border-l border-slate-600 pl-2">{machine.setupGap}</span>}
+                                               {machine.setupGap && <span className="text-ink-d3 border-l border-slate-600 pl-2">{machine.setupGap}</span>}
                                              </div>
                                            </div>
                                         </div>
@@ -273,7 +273,7 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
                                        </Button>
                                      </div>
                                   </div>
-                                  <AccordionContent className="bg-slate-900/50 p-4 border-t border-slate-700">
+                                  <AccordionContent className="bg-bg-dark-2/50 p-4 border-t border-div-d">
                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                        <div className="bg-slate-950 rounded-lg p-3 border border-slate-800">
                                           <h5 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">Setup Overrides</h5>

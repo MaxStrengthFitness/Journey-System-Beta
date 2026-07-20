@@ -686,7 +686,7 @@ export function ClientProgressReportView({
                     Performance <br />
                     <span className="text-[#F06C22]">Report Card</span>
                   </h1>
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 text-[11px] font-bold uppercase tracking-[0.25em] text-[#68717A]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-[11px] font-bold uppercase tracking-[0.25em] text-[#68717A]">
                     <div className="flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5 text-[#F06C22]" />
                       <span className="text-white print:text-[#0A2E46]">
@@ -789,7 +789,7 @@ export function ClientProgressReportView({
                 </div>
 
                 {/* Secondary Toggled Metrics */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
                   {report.attendance.toggles?.totalVolume !== false && (
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-center">
                       <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
@@ -948,7 +948,7 @@ export function ClientProgressReportView({
                 <div className="h-px bg-[#F06C22]/20 flex-1"></div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                 {(["posture", "pace", "path", "purpose"] as const).map((p) => {
                   const matrixItem = report.performanceMatrix?.[p];
                   const score = matrixItem?.score ?? 100;
@@ -1103,7 +1103,7 @@ export function ClientProgressReportView({
                         Performance
                       </div>
 
-                      <div className="grid md:grid-cols-2 gap-4 relative z-10">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
                         {report.roadmap.emotionalAnchor && (
                           <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
                             <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-1">
@@ -1127,7 +1127,7 @@ export function ClientProgressReportView({
                         )}
                       </div>
 
-                      <div className="mt-4 grid md:grid-cols-2 gap-4 relative z-10">
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
                         {report.roadmap.targetMachineId && (
                           <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border-l-4 border-[#F06C22]">
                             <p className="text-[11px] font-bold uppercase tracking-widest text-[#F06C22] mb-1 flex items-center gap-1">
@@ -1184,7 +1184,7 @@ export function ClientProgressReportView({
                         Form & Technique
                       </div>
 
-                      <div className="grid md:grid-cols-2 gap-4 relative z-10 mb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10 mb-4">
                         {report.roadmap.refinementFocusArea && (
                           <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl sm:border border-emerald-100 dark:border-emerald-800/50 shadow-sm flex items-center justify-between">
                             <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-800 dark:text-emerald-400">
@@ -1226,7 +1226,7 @@ export function ClientProgressReportView({
             </section>
 
             {/* 5. NOTES & FOOTER */}
-            <div className="grid grid-cols-3 gap-4 items-stretch break-inside-avoid">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch break-inside-avoid">
               <div className="col-span-2 bg-[#FAF9F6] p-3 rounded-[20px] border border-slate-100 dark:border-slate-800 relative">
                 <div className="flex items-center gap-2 mb-1">
                   <FileText className="w-3 h-3 text-[#F06C22]" />
@@ -2061,7 +2061,7 @@ export function ClientProgressReportView({
                     <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-1">
                       Clinical Prescription
                     </Label>
-                    <div className="grid md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-4">
                         <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
                           Target Machine Integration
@@ -2165,12 +2165,12 @@ export function ClientProgressReportView({
                     Refinement Track: Form & Technique
                   </h3>
 
-                  <div className="grid md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-1">
                         Performance Matrix Focus (The 4 Ps)
                       </Label>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {["Posture", "Pace", "Path", "Purpose"].map((p) => (
                           <button
                             key={p}

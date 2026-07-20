@@ -557,7 +557,7 @@ function MachineCard({
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDeleteNote(note.id)}
-                          className="absolute right-1 top-1 h-6 w-6 text-slate-300 hover:text-rose-500 hover:bg-white dark:hover:bg-slate-900 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute right-1 top-1 h-6 w-6 text-slate-400 dark:text-slate-500 hover:text-rose-500 hover:bg-white dark:hover:bg-slate-900 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <Trash2 className="w-3 h-3" />
                         </Button>
@@ -612,7 +612,7 @@ function MachineCard({
       >
         {!hasData ? (
           <div className="flex-1 flex flex-col items-center justify-center py-5 text-center px-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900/50">
-            <CircleDashed className="w-6 h-6 text-slate-300 dark:text-slate-700 mb-2" />
+            <CircleDashed className="w-6 h-6 text-slate-400 dark:text-slate-600 mb-2" />
             <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
               Not Performed
             </p>
@@ -685,7 +685,7 @@ function MachineCard({
 
         <div className="mt-auto">
           {hasData ? (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Dialog
                 open={weightDialogOpen}
                 onOpenChange={(open) => {
@@ -713,7 +713,7 @@ function MachineCard({
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
                           Starting (LBS)
@@ -854,7 +854,7 @@ function MachineCard({
                   </DialogHeader>
                   <div className="space-y-6">
                     {options.length > 0 && (
-                      <div className="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
                         {options.map((opt: string) => {
                           const isStandard =
                             draftSettings[opt] === standardSettings[opt];
@@ -959,7 +959,7 @@ function MachineCard({
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
                           Starting (LBS)
@@ -1006,7 +1006,7 @@ function MachineCard({
                         </p>
                       )}
                     {options.length > 0 && (
-                      <div className="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
                         {options.map((opt: string) => {
                           const isStandard =
                             draftSettings[opt] === standardSettings[opt];
@@ -1218,39 +1218,39 @@ export function ClientEquipmentPrescriptions({
   return (
     <div className="pb-20">
       {/* 3-tile KPI strip & Controls */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-        <div className="grid grid-cols-3 gap-3 flex-1 min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 min-w-0">
           {/* Tile 1: % config */}
-          <div className="h-20 bg-bg-l-card dark:bg-slate-900 border border-div-l dark:border-slate-800 rounded-2xl px-4 flex flex-col justify-center shadow-sm">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 leading-none mb-1">
+          <div className="h-20 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 flex flex-col justify-center shadow-sm">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 leading-none mb-1">
               Configured
             </span>
-            <span className="text-xl font-black text-slate-900 dark:text-white leading-none">
+            <span className="text-xl font-black text-slate-900 dark:text-slate-100 leading-none">
               {pctSettings}%
             </span>
           </div>
 
           {/* Tile 2: % starting logged */}
-          <div className="h-20 bg-bg-l-card dark:bg-slate-900 border border-div-l dark:border-slate-800 rounded-2xl px-4 flex flex-col justify-center shadow-sm">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 leading-none mb-1">
+          <div className="h-20 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 flex flex-col justify-center shadow-sm">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 leading-none mb-1">
               Starting Logged
             </span>
-            <span className="text-xl font-black text-slate-900 dark:text-white leading-none">
+            <span className="text-xl font-black text-slate-900 dark:text-slate-100 leading-none">
               {pctStarting}%
             </span>
           </div>
 
           {/* Tile 3: clinical warnings */}
-          <div className="h-20 bg-bg-l-card dark:bg-slate-900 border border-div-l dark:border-slate-800 rounded-2xl px-4 flex flex-col justify-center shadow-sm">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 leading-none mb-1">
+          <div className="h-20 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 flex flex-col justify-center shadow-sm">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 leading-none mb-1">
               Warning Alerts
             </span>
             <span
               className={cn(
                 "text-xl font-black leading-none",
                 machinesWithWarningsCount > 0
-                  ? "text-red"
-                  : "text-slate-900 dark:text-white",
+                  ? "text-red-500 font-bold"
+                  : "text-slate-900 dark:text-slate-100",
               )}
             >
               {machinesWithWarningsCount}
@@ -1258,7 +1258,7 @@ export function ClientEquipmentPrescriptions({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Compact / Full View Switcher */}
           <div className="flex bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl p-0.5 h-11 items-center relative gap-0.5">
             <button
@@ -1266,9 +1266,9 @@ export function ClientEquipmentPrescriptions({
               type="button"
               onClick={() => setViewMode("compact")}
               className={cn(
-                "h-9 px-4 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all",
+                "h-9 px-3.5 sm:px-4 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all",
                 viewMode === "compact"
-                  ? "bg-black text-white dark:bg-white dark:text-black shadow-sm"
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-800 dark:hover:text-white",
               )}
             >
@@ -1279,9 +1279,9 @@ export function ClientEquipmentPrescriptions({
               type="button"
               onClick={() => setViewMode("full")}
               className={cn(
-                "h-9 px-4 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all",
+                "h-9 px-3.5 sm:px-4 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all",
                 viewMode === "full"
-                  ? "bg-black text-white dark:bg-white dark:text-black shadow-sm"
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-800 dark:hover:text-white",
               )}
             >
@@ -1296,7 +1296,7 @@ export function ClientEquipmentPrescriptions({
                 <Button
                   id="mass-apply-trigger"
                   type="button"
-                  className="h-11 rounded-xl bg-black dark:bg-white text-white dark:text-black hover:opacity-90 font-black uppercase tracking-widest text-[11px] px-5 shadow-sm border border-div-l"
+                  className="h-11 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 font-black uppercase tracking-widest text-[10px] sm:text-[11px] px-3.5 sm:px-5 shadow-sm border border-slate-200 dark:border-slate-800"
                 >
                   Mass-apply standard settings
                 </Button>
@@ -1427,14 +1427,14 @@ export function ClientEquipmentPrescriptions({
                 <div className="flex items-start justify-between gap-2 min-w-0">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 mb-1">
-                      <h4 className="font-display italic text-[16px] font-black uppercase text-slate-900 dark:text-white leading-tight truncate">
+                      <h4 className="font-display italic text-[16px] font-black uppercase text-white dark:text-slate-900 leading-tight truncate">
                         {machine.name}
                       </h4>
                       {isBig5Machine(machine.id) && (
                         <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400 shrink-0" />
                       )}
                     </div>
-                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest truncate">
+                    <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">
                       {machine.muscleGroup || machine.category}
                     </p>
                   </div>
@@ -1460,22 +1460,22 @@ export function ClientEquipmentPrescriptions({
                 </div>
 
                 <div className="flex items-baseline justify-between mt-auto">
-                  <div className="font-mono tabular-nums text-xs text-slate-900 dark:text-slate-100 font-bold flex items-baseline gap-1">
-                    <span className="text-lg font-black text-slate-900 dark:text-white">
+                  <div className="font-mono tabular-nums text-xs text-white dark:text-slate-900 font-bold flex items-baseline gap-1">
+                    <span className="text-lg font-black text-white dark:text-slate-900">
                       {currentWeightDisplay || startingWeightDisplay || "--"}
                     </span>
-                    <span className="text-[11px] font-bold text-slate-400">
+                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
                       LBS
                     </span>
                     {repsVal !== "--" && (
                       <>
-                        <span className="text-slate-300 dark:text-slate-700 mx-1">
+                        <span className="text-slate-600 dark:text-slate-700 mx-1">
                           •
                         </span>
-                        <span className="text-sm font-black text-slate-900 dark:text-white">
+                        <span className="text-sm font-black text-white dark:text-slate-900">
                           {repsVal}
                         </span>
-                        <span className="text-[11px] font-bold text-slate-400">
+                        <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
                           REPS
                         </span>
                       </>

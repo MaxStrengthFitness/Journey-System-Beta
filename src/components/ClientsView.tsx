@@ -600,7 +600,7 @@ export function ClientsView({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white w-full overflow-hidden"
+      className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 text-foreground dark:text-white w-full overflow-hidden"
     >
       <div className="flex flex-col gap-3 shrink-0 p-4 pb-0 bg-slate-50 dark:bg-slate-950 z-30">
         <div className="flex items-center gap-3 w-full">
@@ -608,7 +608,7 @@ export function ClientsView({
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-400" />
             <Input
               placeholder="Search clients..."
-              className="pl-12 h-12 rounded-2xl bg-white dark:bg-bg-dark border-none font-bold text-base text-slate-900 dark:text-white focus-visible:ring-sky-500"
+              className="pl-12 h-12 rounded-2xl bg-white dark:bg-bg-dark border-none font-bold text-base text-foreground dark:text-white focus-visible:ring-sky-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -620,7 +620,7 @@ export function ClientsView({
               }
             }}
             size="lg"
-            className="rounded-xl h-12 px-8 shadow-[0_0_20px_rgba(56,189,248,0.2)] bg-sky-500 hover:bg-[#0284C7] text-slate-900 font-black uppercase tracking-widest text-sm hidden sm:flex items-center shrink-0"
+            className="rounded-xl h-12 px-8 shadow-[0_0_20px_rgba(56,189,248,0.2)] bg-sky-500 hover:bg-[#0284C7] text-foreground font-black uppercase tracking-widest text-sm hidden sm:flex items-center shrink-0"
           >
             <Plus className="w-5 h-5 mr-2" />
             Add New Client
@@ -634,7 +634,7 @@ export function ClientsView({
               }
             }}
             size="lg"
-            className="rounded-xl h-12 px-8 shadow-[0_0_20px_rgba(56,189,248,0.2)] bg-sky-500 hover:bg-[#0284C7] text-slate-900 font-black w-full uppercase tracking-widest text-sm flex items-center justify-center"
+            className="rounded-xl h-12 px-8 shadow-[0_0_20px_rgba(56,189,248,0.2)] bg-sky-500 hover:bg-[#0284C7] text-foreground font-black w-full uppercase tracking-widest text-sm flex items-center justify-center"
           >
             <Plus className="w-5 h-5 mr-2" />
             Add New Client
@@ -660,7 +660,7 @@ export function ClientsView({
               </CardHeader>
               <form onSubmit={onSubmit}>
                 <CardContent className="space-y-6">
-                  <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     <div className="space-y-3">
                       <Label
                         htmlFor="firstName"
@@ -699,7 +699,7 @@ export function ClientsView({
                     </div>
                   </div>
 
-                  <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     <div className="space-y-3">
                       <Label htmlFor="gender" className="text-base font-bold">
                         Gender
@@ -817,7 +817,7 @@ export function ClientsView({
                     </div>
                   </div>
 
-                  <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     <div className="space-y-3">
                       <Label htmlFor="phone" className="text-base font-bold">
                         Phone Number
@@ -864,7 +864,7 @@ export function ClientsView({
                     />
                   </div>
 
-                  <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     <div className="space-y-3">
                       <Label
                         htmlFor="emergencyName"
@@ -1016,7 +1016,7 @@ export function ClientsView({
               <div className="absolute inset-0 bg-linear-to-br from-slate-50 via-slate-100/50 to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 opacity-80 pointer-events-none"></div>
               <div className="relative flex flex-col xl:flex-row xl:items-center justify-between gap-6 z-10">
                 {/* Week Selector */}
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 w-full xl:w-auto flex-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-2 w-full xl:w-auto flex-1">
                   {weekDays.map((date) => {
                     const isSelected =
                       date.toDateString() === selectedDate.toDateString();
@@ -1064,7 +1064,7 @@ export function ClientsView({
                       className={cn(
                         "relative flex-1 rounded-[14px] transition-colors z-10 flex flex-col items-center justify-center gap-1 cursor-pointer",
                         activeTab === "morning"
-                          ? "text-slate-900 dark:text-white"
+                          ? "text-foreground dark:text-white"
                           : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300",
                       )}
                     >
@@ -1087,7 +1087,7 @@ export function ClientsView({
                       className={cn(
                         "relative flex-1 rounded-[14px] transition-colors z-10 flex flex-col items-center justify-center gap-1 cursor-pointer",
                         activeTab === "afternoon"
-                          ? "text-slate-900 dark:text-white"
+                          ? "text-foreground dark:text-white"
                           : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300",
                       )}
                     >
@@ -1163,12 +1163,12 @@ export function ClientsView({
                               className="p-2 sm:p-3 border-r-2 border-slate-300 dark:border-slate-700 last:border-r-0 text-center sticky top-0 bg-slate-50 dark:bg-bg-dark shadow-sm min-w-17.5"
                             >
                               <div className="flex flex-col items-center justify-center gap-1 sm:gap-2 pt-1">
-                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-bg-dark dark:bg-cyan border-2 border-white dark:border-slate-800 shadow-lg flex items-center justify-center">
-                                  <span className="text-[12px] sm:text-[14px] font-black text-white dark:text-slate-900 uppercase tracking-widest">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary border-2 border-white dark:border-slate-800 shadow-lg flex items-center justify-center">
+                                  <span className="text-[12px] sm:text-[14px] font-black text-primary-foreground uppercase tracking-widest">
                                     {trainer.fullName.substring(0, 2)}
                                   </span>
                                 </div>
-                                <span className="text-[11px] sm:text-[13px] font-black uppercase tracking-widest text-slate-900 dark:text-white leading-none whitespace-nowrap overflow-hidden text-ellipsis w-11/12">
+                                <span className="text-[11px] sm:text-[13px] font-black uppercase tracking-widest text-foreground dark:text-white leading-none whitespace-nowrap overflow-hidden text-ellipsis w-11/12">
                                   {trainer.fullName.split(" ")[0]}
                                 </span>
                                 <div className="bg-slate-200/50 dark:bg-surface-1 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded flex items-center gap-1 leading-none mt-0.5">
@@ -1396,7 +1396,7 @@ export function ClientsView({
                                       </div>
                                     ) : (
                                       <div className="h-full w-full opacity-0 hover:opacity-[0.03] transition-opacity flex items-center justify-center p-2 bg-bg-dark rounded-lg pointer-events-none">
-                                        <span className="text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                                        <span className="text-[11px] font-black uppercase tracking-widest text-foreground dark:text-white">
                                           Open
                                         </span>
                                       </div>
@@ -1421,7 +1421,7 @@ export function ClientsView({
                   <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
                     <Activity className="w-5 h-5 text-orange-500" />
                   </div>
-                  <h3 className="text-[17px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                  <h3 className="text-[17px] font-black uppercase tracking-widest text-foreground dark:text-white">
                     Studio Overview
                   </h3>
                 </div>
@@ -1439,7 +1439,7 @@ export function ClientsView({
                       Sessions
                     </span>
                   </div>
-                  <div className="text-4xl font-black text-slate-900 dark:text-white tracking-widest">
+                  <div className="text-4xl font-black text-foreground dark:text-white tracking-widest">
                     {preBookedCount}
                   </div>
                 </div>
@@ -1455,7 +1455,7 @@ export function ClientsView({
                       Clients
                     </span>
                   </div>
-                  <div className="text-4xl font-black text-slate-900 dark:text-white tracking-widest">
+                  <div className="text-4xl font-black text-foreground dark:text-white tracking-widest">
                     {activeClientsCount}
                   </div>
                 </div>
@@ -1471,7 +1471,7 @@ export function ClientsView({
                       This Week
                     </span>
                   </div>
-                  <div className="text-4xl font-black text-slate-900 dark:text-white tracking-widest">
+                  <div className="text-4xl font-black text-foreground dark:text-white tracking-widest">
                     {sessionsCompletedThisWeek}
                   </div>
                 </div>
@@ -1486,7 +1486,7 @@ export function ClientsView({
               ) : (
                 <Search className="w-6 h-6 text-sky-500" />
               )}
-              <h3 className="text-xl font-black uppercase tracking-widest text-slate-900 dark:text-white">
+              <h3 className="text-xl font-black uppercase tracking-widest text-foreground dark:text-white">
                 Client Directory{" "}
                 <span className="text-slate-500 dark:text-slate-400 ml-2">
                   ({mergedSearchClients.length})
@@ -1670,7 +1670,7 @@ export function ClientsView({
                 <p className="text-[11px] font-bold text-muted-foreground uppercase">
                   Time Slot
                 </p>
-                <p className="text-base font-black text-slate-900 dark:text-white">
+                <p className="text-base font-black text-foreground dark:text-white">
                   {linkingSession
                     ? safeToDate(linkingSession.startTime)?.toLocaleTimeString(
                         [],

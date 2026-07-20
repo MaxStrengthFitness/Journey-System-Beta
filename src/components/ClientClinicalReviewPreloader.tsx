@@ -16,6 +16,8 @@ import { Loader2 } from "lucide-react";
 export interface ClientClinicalReviewPreloaderProps {
   client: Client;
   machines: Machine[];
+  initialLogs?: ExerciseLog[];
+  initialSessions?: WorkoutSession[];
   onOpenBriefing: () => void;
   onClose: () => void;
 }
@@ -23,12 +25,14 @@ export interface ClientClinicalReviewPreloaderProps {
 export function ClientClinicalReviewPreloader({
   client,
   machines,
+  initialLogs = [],
+  initialSessions = [],
   onOpenBriefing,
   onClose
 }: ClientClinicalReviewPreloaderProps) {
   const [loading, setLoading] = useState(true);
-  const [logs, setLogs] = useState<ExerciseLog[]>([]);
-  const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+  const [logs, setLogs] = useState<ExerciseLog[]>(initialLogs);
+  const [sessions, setSessions] = useState<WorkoutSession[]>(initialSessions);
   const [focusRecords, setFocusRecords] = useState<FocusRecord[]>([]);
   const [incidents, setIncidents] = useState<ClinicalIncident[]>([]);
 
@@ -50,8 +54,21 @@ export function ClientClinicalReviewPreloader({
         ]);
 
         if (isMounted) {
-          setSessions(sessionsSnap.docs.map(d => ({ id: d.id, ...d.data() } as WorkoutSession)));
-          setLogs(logsSnap.docs.map(d => ({ id: d.id, ...d.data() } as ExerciseLog)));
+          const fetchedSessions = sessionsSnap.docs.map(d => ({ id: d.id, ...d.data() } as WorkoutSession));
+          const fetchedLogs = logsSnap.docs.map(d => ({ id: d.id, ...d.data() } as ExerciseLog));
+
+          // Deduplicate and merge initial + fetched sessions
+          const sessionMap = new Map<string, WorkoutSession>();
+          (initialSessions || []).forEach(s => sessionMap.set(s.id, s));
+          fetchedSessions.forEach(s => sessionMap.set(s.id, s));
+
+          // Deduplicate and merge initial + fetched logs
+          const logMap = new Map<string, ExerciseLog>();
+          (initialLogs || []).forEach(l => logMap.set(l.id, l));
+          fetchedLogs.forEach(l => logMap.set(l.id, l));
+
+          setSessions(Array.from(sessionMap.values()));
+          setLogs(Array.from(logMap.values()));
           setFocusRecords(focusSnap.docs.map(d => ({ id: d.id, ...d.data() } as FocusRecord)));
           setIncidents(incidentsSnap.docs.map(d => ({ id: d.id, ...d.data() } as ClinicalIncident)));
           setLoading(false);
@@ -73,9 +90,9 @@ export function ClientClinicalReviewPreloader({
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 bg-bg-dark flex flex-col items-center justify-center font-sans">
-         <Loader2 className="w-12 h-12 text-cyan animate-spin mb-4" />
-         <p className="text-white text-sm uppercase tracking-widest font-bold">Loading Clinical Data...</p>
+      <div className="fixed inset-0 z-50 bg-slate-50 dark:bg-bg-dark flex flex-col items-center justify-center font-sans">
+         <Loader2 className="w-12 h-12 text-[#38BDF8] animate-spin mb-4" />
+         <p className="text-slate-900 dark:text-white text-sm uppercase tracking-widest font-bold">Loading Clinical Data...</p>
       </div>
     );
   }

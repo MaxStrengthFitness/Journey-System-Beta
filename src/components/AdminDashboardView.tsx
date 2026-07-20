@@ -106,22 +106,27 @@ export function AdminDashboardView({
   });
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6 animate-fade-in text-slate-900 dark:text-slate-100">
-      <div className="flex flex-wrap bg-slate-100 dark:bg-slate-900 rounded-2xl p-1 mb-8 w-fit gap-1 shadow-sm">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
-              activeTab === tab.id
-                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
+    <div className="max-w-7xl mx-auto p-3 sm:p-6 space-y-6 animate-fade-in text-slate-900 dark:text-slate-100">
+      <div className="flex overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible bg-slate-100 dark:bg-slate-900 rounded-2xl p-1.5 mb-6 gap-1 shadow-sm border border-slate-200/60 dark:border-slate-800">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap shrink-0 md:shrink cursor-pointer select-none ${
+                isActive
+                  ? "bg-white dark:bg-slate-800 text-[#F06C22] dark:text-[#F06C22] shadow-sm border border-slate-200/80 dark:border-slate-700 font-black"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 font-bold"
+              }`}
+            >
+              <span className={isActive ? "text-[#F06C22]" : "text-slate-400 dark:text-slate-500"}>
+                {tab.icon}
+              </span>
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="mt-6">

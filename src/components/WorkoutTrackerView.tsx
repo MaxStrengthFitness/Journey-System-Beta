@@ -682,7 +682,7 @@ function PerformanceEntryDialog({
         </div>
 
         {/* Fixed Footer */}
-        <div className="p-4 bg-white dark:bg-bg-dark border-t border-slate-200 dark:border-slate-800 shrink-0 grid grid-cols-2 gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.2)]">
+        <div className="p-4 bg-white dark:bg-bg-dark border-t border-slate-200 dark:border-slate-800 shrink-0 grid grid-cols-1 sm:grid-cols-2 gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.2)]">
           <Button
             variant="outline"
             className="h-12 rounded-xl font-black uppercase text-[11px] tracking-widest border border-slate-300 dark:border-slate-700 bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 transition-all shadow-md"
@@ -812,7 +812,7 @@ function ExerciseHistoryDialog({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-0.5">
                         <p className="text-[11px] font-black text-muted-foreground uppercase">
                           Weight
@@ -2719,7 +2719,7 @@ export function WorkoutTrackerView({
                     className="min-h-[100px] border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-500 dark:text-slate-400 focus-visible:ring-orange-500 focus-visible:border-orange-500"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Button
                     variant="outline"
                     className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 dark:border-slate-800 dark:hover:bg-surface-1"
@@ -2780,7 +2780,7 @@ export function WorkoutTrackerView({
             </p>
           </div>
 
-          <div className="p-6 grid grid-cols-2 gap-3 bg-white dark:bg-bg-dark">
+          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-bg-dark">
             <Button
               variant="outline"
               className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2"

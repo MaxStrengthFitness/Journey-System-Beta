@@ -1775,7 +1775,7 @@ export function TrainerControlHubView({
                                           )}
                                         >
                                           {client
-                                            ? `${client.firstName[0]}${client.lastName[0]}`
+                                            ? `${(client.firstName || '?')[0] || '?'}${(client.lastName || '')[0] || ''}`
                                             : "UN"}
                                         </div>
                                         <div className="min-w-0 flex-1">
@@ -2428,7 +2428,7 @@ export function TrainerControlHubView({
                             <p className="font-black text-green uppercase italic tracking-wider text-sm">
                               Import Success
                             </p>
-                            <div className="text-muted-foreground font-bold uppercase tracking-widest grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-2 mt-3 text-[11px]">
+                            <div className="text-muted-foreground font-bold uppercase tracking-widest grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-2 mt-3 text-[11px]">
                               <p>
                                 Clients:{" "}
                                 <span className="font-mono text-xs text-foreground font-black">

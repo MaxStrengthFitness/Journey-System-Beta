@@ -1361,7 +1361,7 @@ export default function AppContent({
             }
             trainerDropdown={
               <DropdownMenu>
-                <DropdownMenuTrigger className="w-8 h-8 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-bg-dark text-white dark:border dark:border-div-d dark:bg-bg-dark-3 shrink-0">
+                <DropdownMenuTrigger className="w-8 h-8 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-primary text-primary-foreground shrink-0">
                   {authTrainer.initials}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -1452,7 +1452,7 @@ export default function AppContent({
             currentView === "client-directory" ||
             currentView === "dashboard" ||
             currentView === "machine-anatomy"
-              ? { height: "calc(100vh - 136px)" }
+              ? { height: "calc(100dvh - 136px)" }
               : undefined
           }
         >
@@ -1460,7 +1460,7 @@ export default function AppContent({
             {currentView === "consultation-wizard" && selectedClientId && (
               <ConsultationWizard
                 client={
-                  clients.find((c) => c.id === selectedClientId) as Client
+                  clients.find((c) => c.id === selectedClientId) || ({} as Client)
                 }
                 machines={machines}
                 authTrainer={authTrainer}
@@ -1623,7 +1623,7 @@ export default function AppContent({
               selectedClientId &&
               authTrainer && (
                 <ClientClinicalReviewPreloader
-                  client={clients.find((c) => c.id === selectedClientId)!}
+                  client={clients.find((c) => c.id === selectedClientId) || ({} as Client)}
                   machines={machines}
                   onOpenBriefing={() => {
                     setCurrentView("workouts");
@@ -1637,7 +1637,7 @@ export default function AppContent({
               selectedClientId &&
               authTrainer && (
                 <ClientProgressReportView
-                  client={clients.find((c) => c.id === selectedClientId)!}
+                  client={clients.find((c) => c.id === selectedClientId) || ({} as Client)}
                   trainer={authTrainer}
                   machines={machines}
                   existingReportId={selectedReportId || undefined}
@@ -2357,8 +2357,8 @@ export default function AppContent({
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center font-black text-primary border shadow-sm dark:shadow-none group-hover:scale-110 transition-transform">
-                        {client.firstName[0]}
-                        {client.lastName[0]}
+                        {(client.firstName || '?')[0] || '?'}
+                        {(client.lastName || '')[0] || ''}
                       </div>
                       <div>
                         <p className="font-black uppercase tracking-tight text-sm">

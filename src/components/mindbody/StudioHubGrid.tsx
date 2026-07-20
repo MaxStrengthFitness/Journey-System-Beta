@@ -1,10 +1,10 @@
-import React, { useId } from 'react';
-import { cn } from '../../lib/utils';
-import { ErrorBoundary } from '../ErrorBoundary';
+import React, { useId } from "react";
+import { cn } from "../../lib/utils";
+import { ErrorBoundary } from "../ErrorBoundary";
 
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from "lucide-react";
 
-export type StudioHubRole = 'trainer' | 'leader';
+export type StudioHubRole = "trainer" | "leader";
 
 export type StudioHubGridProps = {
   role: StudioHubRole;
@@ -46,11 +46,19 @@ export default function StudioHubGrid({
 
   // Extract valid slot nodes per tier
   const dailyNodes = dailyPulse
-    ? [dailyPulse.shiftRoster, dailyPulse.waitlistRecovery, dailyPulse.foreignVisitorSummary].filter(Boolean)
+    ? [
+        dailyPulse.shiftRoster,
+        dailyPulse.waitlistRecovery,
+        dailyPulse.foreignVisitorSummary,
+      ].filter(Boolean)
     : [];
 
   const lifecycleNodes = lifecycle
-    ? [lifecycle.newLeads, lifecycle.crucialFirst10, lifecycle.milestones].filter(Boolean)
+    ? [
+        lifecycle.newLeads,
+        lifecycle.crucialFirst10,
+        lifecycle.milestones,
+      ].filter(Boolean)
     : [];
 
   const retentionNodes = retention
@@ -63,25 +71,35 @@ export default function StudioHubGrid({
     : [];
 
   // Determine rendering order based on role
-  const tiers: { name: 'daily' | 'lifecycle' | 'retention'; nodes: React.ReactNode[] }[] = [];
+  const tiers: {
+    name: "daily" | "lifecycle" | "retention";
+    nodes: React.ReactNode[];
+  }[] = [];
 
-  if (role === 'trainer') {
-    if (dailyNodes.length > 0) tiers.push({ name: 'daily', nodes: dailyNodes });
-    if (lifecycleNodes.length > 0) tiers.push({ name: 'lifecycle', nodes: lifecycleNodes });
-    if (retentionNodes.length > 0) tiers.push({ name: 'retention', nodes: retentionNodes });
+  if (role === "trainer") {
+    if (dailyNodes.length > 0) tiers.push({ name: "daily", nodes: dailyNodes });
+    if (lifecycleNodes.length > 0)
+      tiers.push({ name: "lifecycle", nodes: lifecycleNodes });
+    if (retentionNodes.length > 0)
+      tiers.push({ name: "retention", nodes: retentionNodes });
   } else {
-    if (retentionNodes.length > 0) tiers.push({ name: 'retention', nodes: retentionNodes });
-    if (dailyNodes.length > 0) tiers.push({ name: 'daily', nodes: dailyNodes });
-    if (lifecycleNodes.length > 0) tiers.push({ name: 'lifecycle', nodes: lifecycleNodes });
+    if (retentionNodes.length > 0)
+      tiers.push({ name: "retention", nodes: retentionNodes });
+    if (dailyNodes.length > 0) tiers.push({ name: "daily", nodes: dailyNodes });
+    if (lifecycleNodes.length > 0)
+      tiers.push({ name: "lifecycle", nodes: lifecycleNodes });
   }
 
-  const headingText = studioName ? `${studioName} · Hub` : 'Studio Hub';
+  const headingText = studioName ? `${studioName} · Hub` : "Studio Hub";
 
   return (
     <main
       role="main"
       aria-label="Studio hub dashboard"
-      className={cn("flex flex-col gap-6 p-4 sm:p-6 max-w-7xl mx-auto w-full", className)}
+      className={cn(
+        "flex flex-col gap-6 p-4 sm:p-6 max-w-7xl mx-auto w-full",
+        className,
+      )}
     >
       <h1 className="font-display italic uppercase text-2xl tracking-tight text-foreground mb-2">
         {headingText}
@@ -94,15 +112,15 @@ export default function StudioHubGrid({
       ) : (
         tiers.map((tier) => {
           const isHero =
-            (tier.name === 'daily' && role === 'trainer') ||
-            (tier.name === 'retention' && role === 'leader');
+            (tier.name === "daily" && role === "trainer") ||
+            (tier.name === "retention" && role === "leader");
 
           const label =
-            tier.name === 'daily'
-              ? 'DAILY PULSE'
-              : tier.name === 'lifecycle'
-              ? 'LIFECYCLE'
-              : 'RETENTION';
+            tier.name === "daily"
+              ? "DAILY PULSE"
+              : tier.name === "lifecycle"
+                ? "LIFECYCLE"
+                : "RETENTION";
 
           const headingId = `${baseId}-${tier.name}`;
 
@@ -110,44 +128,52 @@ export default function StudioHubGrid({
             <section
               key={tier.name}
               aria-labelledby={headingId}
-              className={
+              className={cn(
+                "rounded-3xl border p-4 sm:p-5 transition-all overflow-hidden min-w-0",
                 isHero
-                  ? "relative rounded-3xl border-2 border-cta/40 bg-card/40 p-4 sm:p-5 shadow-[0_8px_32px_rgba(243,116,39,0.12)]"
-                  : undefined
-              }
+                  ? "border-amber-500/40 bg-white dark:bg-slate-900 shadow-sm relative"
+                  : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm",
+              )}
             >
               {isHero && (
                 <span
                   role="status"
-                  className="absolute top-2 right-3 text-[10px] font-display italic uppercase tracking-widest bg-cta text-white px-2 py-0.5 rounded-full"
+                  className="absolute top-3 right-4 text-[10px] font-display italic font-bold uppercase tracking-widest bg-[#F06C22] text-white px-2.5 py-0.5 rounded-full shadow-sm"
                 >
                   HERO
                 </span>
               )}
               <h2
                 id={headingId}
-                className="font-display italic uppercase text-sm tracking-widest text-muted-foreground mb-3 flex items-center gap-2"
+                className="font-display italic uppercase text-xs sm:text-sm font-bold tracking-widest text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2"
               >
-                <span className="size-1.5 rounded-full bg-cta" aria-hidden="true" />
+                <span
+                  className="h-2 w-2 rounded-full bg-[#F06C22]"
+                  aria-hidden="true"
+                />
                 {label}
               </h2>
               <div
                 className={cn(
-                  "grid grid-cols-1 lg:grid-cols-3 gap-4",
-                  isHero ? "min-h-[480px]" : "min-h-[220px]"
+                  "grid grid-cols-1 lg:grid-cols-3 gap-4 w-full min-w-0 overflow-x-auto no-scrollbar",
+                  isHero ? "min-h-90" : "min-h-50",
                 )}
               >
                 {tier.nodes.map((node, idx) => (
-                  <ErrorBoundary 
+                  <ErrorBoundary
                     key={idx}
                     fallback={
                       <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl h-full text-center">
-                        <AlertTriangle className="w-6 h-6 text-red-500 mb-2 opacity-50" />
-                        <p className="text-sm font-medium text-slate-500 max-w-[150px]">Widget unavailable</p>
+                        <AlertTriangle className="w-6 h-6 text-rose-500 mb-2 opacity-50" />
+                        <p className="text-sm font-bold text-slate-500 max-w-37.5">
+                          Widget unavailable
+                        </p>
                       </div>
                     }
                   >
-                    {node}
+                    <div className="w-full min-w-0 overflow-x-auto no-scrollbar">
+                      {node}
+                    </div>
                   </ErrorBoundary>
                 ))}
               </div>

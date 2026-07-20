@@ -300,7 +300,7 @@ export function ClientFocusDashboard({ client, trainer, machines }: ClientFocusD
 
                   <div className="space-y-6">
                     {/* Category Selection */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {(Object.keys(CATEGORY_DEFINITIONS) as FocusCategory[]).map((cat) => {
                         const def = CATEGORY_DEFINITIONS[cat];
                         const isActive = newFocus.category === cat;

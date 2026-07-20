@@ -72,17 +72,17 @@ export function TrainerMachineEditor({ machines }: { machines: Machine[] }) {
   };
 
   return (
-    <Card className="border border-slate-200 bg-white shadow-2xl rounded-[32px] overflow-hidden w-full">
-      <CardHeader className="bg-slate-50 pb-8 border-b border-slate-200">
+    <Card className="border border-border bg-card shadow-2xl rounded-[32px] overflow-hidden w-full">
+      <CardHeader className="bg-muted pb-8 border-b border-border">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 shadow-inner">
             <Server className="w-6 h-6 text-indigo-400" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-black text-slate-900 italic tracking-tight">
+            <CardTitle className="text-2xl font-black text-card-foreground italic tracking-tight">
               Equipment Settings Setup
             </CardTitle>
-            <CardDescription className="text-slate-500 font-medium uppercase text-[11px] tracking-widest">
+            <CardDescription className="text-muted-foreground font-medium uppercase text-[11px] tracking-widest">
               Customize the standard adjustable settings recorded per machine.
             </CardDescription>
           </div>
@@ -93,9 +93,9 @@ export function TrainerMachineEditor({ machines }: { machines: Machine[] }) {
           {sortedMachines.map((m, idx) => (
             <div
               key={m.id || idx}
-              className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3"
+              className="p-4 bg-muted border border-border rounded-xl space-y-3"
             >
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+              <h3 className="text-sm font-black text-card-foreground uppercase tracking-wider">
                 {m.name}
               </h3>
               {editingId === m.id ? (
@@ -104,9 +104,9 @@ export function TrainerMachineEditor({ machines }: { machines: Machine[] }) {
                     {tempOptions.map((opt, idx2) => (
                       <div
                         key={idx2}
-                        className="flex items-center gap-2 bg-white p-2 rounded border border-slate-300"
+                        className="flex items-center gap-2 bg-card p-2 rounded border border-border"
                       >
-                        <span className="flex-1 text-xs font-bold text-slate-600 py-1">
+                        <span className="flex-1 text-xs font-bold text-muted-foreground py-1">
                           {opt}
                         </span>
                         <Input
@@ -115,7 +115,7 @@ export function TrainerMachineEditor({ machines }: { machines: Machine[] }) {
                           onChange={(e) =>
                             handleUpdateStandardSetting(opt, e.target.value)
                           }
-                          className="w-28 bg-white border-slate-300 text-xs h-7 text-slate-900 text-center"
+                          className="w-28 bg-card border-border text-xs h-7 text-card-foreground text-center"
                         />
                         <button
                           onClick={() => handleRemoveOption(opt, idx2)}
@@ -129,14 +129,14 @@ export function TrainerMachineEditor({ machines }: { machines: Machine[] }) {
                   <Input
                     placeholder="Type new setting option & press Enter..."
                     onKeyDown={handleAddOption}
-                    className="bg-white border-slate-300 text-xs h-9 focus:border-[#F06C22] text-slate-900"
+                    className="bg-card border-border text-xs h-9 focus:border-[#F06C22] text-card-foreground"
                   />
                   <div className="flex gap-2 justify-end mt-2">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setEditingId(null)}
-                      className="h-8 text-xs text-slate-500 hover:text-slate-900"
+                      className="h-8 text-xs text-muted-foreground hover:text-card-foreground"
                     >
                       Cancel
                     </Button>
@@ -156,20 +156,20 @@ export function TrainerMachineEditor({ machines }: { machines: Machine[] }) {
                     {m.settingOptions?.map((opt, idx2) => (
                       <div
                         key={idx2}
-                        className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded"
+                        className="inline-flex items-center gap-1.5 bg-muted border border-border px-2 py-0.5 rounded"
                       >
                         <span className="text-[11px] font-bold text-[#F06C22] uppercase tracking-wider">
                           {opt}
                         </span>
                         {m.standardSettings?.[opt] && (
-                          <span className="text-[11px] font-semibold text-slate-600 bg-white px-1.5 rounded-sm">
+                          <span className="text-[11px] font-semibold text-muted-foreground bg-card px-1.5 rounded-sm">
                             {m.standardSettings[opt]}
                           </span>
                         )}
                       </div>
                     ))}
                     {(!m.settingOptions || m.settingOptions.length === 0) && (
-                      <span className="text-[11px] text-slate-500 italic uppercase font-medium tracking-widest mt-1">
+                      <span className="text-[11px] text-muted-foreground italic uppercase font-medium tracking-widest mt-1">
                         No settings configured.
                       </span>
                     )}
@@ -178,7 +178,7 @@ export function TrainerMachineEditor({ machines }: { machines: Machine[] }) {
                     variant="outline"
                     size="sm"
                     onClick={() => startEditing(m)}
-                    className="w-full h-8 text-[11px] uppercase font-bold tracking-widest border-slate-300 text-slate-600 hover:bg-white hover:text-slate-900"
+                    className="w-full h-8 text-[11px] uppercase font-bold tracking-widest border-border text-muted-foreground hover:bg-card hover:text-card-foreground"
                   >
                     Edit Setting Options
                   </Button>

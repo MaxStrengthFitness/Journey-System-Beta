@@ -571,36 +571,36 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
         </Card>
       )}
 
-      <Card className="rounded-[32px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-6 overflow-visible">
+      <Card className="rounded-2xl sm:rounded-[32px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-4 sm:p-6 overflow-visible">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 rounded-xl flex flex-col items-center justify-center">
-              <UserCog className="w-5 h-5 animate-pulse" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 rounded-xl flex flex-col items-center justify-center shrink-0">
+              <UserCog className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
             </div>
             <div>
-              <h2 className="text-xl font-black uppercase italic tracking-tight text-slate-900 dark:text-white leading-none">
+              <h2 className="text-lg sm:text-xl font-black uppercase italic tracking-tight text-slate-900 dark:text-white leading-none">
                 Staff & User Directory
               </h2>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+              <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1">
                 Manage Roles, Studio Involvements & Credentials
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full md:w-auto">
             <Button
               onClick={() => setIsCreateModalOpen(true)}
-              className="text-[11px] font-black uppercase tracking-widest h-10 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm"
+              className="flex-1 sm:flex-initial text-[10px] sm:text-[11px] font-black uppercase tracking-widest h-9 sm:h-10 px-3 sm:px-4 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm shrink-0 cursor-pointer"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
               New User
             </Button>
             <Button
               onClick={() => fetchUsers(true)}
               variant="outline"
-              className="text-[11px] font-black uppercase tracking-widest h-10 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
+              className="flex-1 sm:flex-initial text-[10px] sm:text-[11px] font-black uppercase tracking-widest h-9 sm:h-10 px-3 sm:px-4 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0 cursor-pointer"
             >
-              Force Directory Refresh
+              Force Refresh
             </Button>
           </div>
         </div>
@@ -776,19 +776,19 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
                       </div>
 
                       {/* Details row */}
-                      <div className="flex flex-wrap items-center gap-y-1.5 gap-x-4 text-xs font-bold text-slate-500 dark:text-slate-400 mt-2">
+                      <div className="flex flex-wrap items-center gap-y-1.5 gap-x-4 text-xs font-bold text-slate-500 dark:text-slate-400 mt-2 min-w-0 max-w-full">
                         {user.email && (
-                          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800/80">
-                            <Mail className="w-3.5 h-3.5 text-indigo-500" />
-                            <span className="text-[9px] uppercase tracking-widest text-slate-400 font-black">
-                              Journey System Email:
+                          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800/80 min-w-0 max-w-full overflow-hidden">
+                            <Mail className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                            <span className="text-[9px] uppercase tracking-widest text-slate-400 font-black shrink-0">
+                              Email:
                             </span>
-                            <span className="text-slate-700 dark:text-slate-300 font-bold">
+                            <span className="text-slate-700 dark:text-slate-300 font-bold truncate min-w-0 max-w-64 sm:max-w-xs">
                               {user.email}
                             </span>
                           </div>
                         )}
-                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold shrink-0">
                           Initials: {user.initials}
                         </span>
                       </div>

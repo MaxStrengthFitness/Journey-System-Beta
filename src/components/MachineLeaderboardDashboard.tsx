@@ -281,9 +281,9 @@ export function MachineLeaderboardDashboard({
 
 
   return (
-    <div className="flex flex-col bg-[#0A2E46] min-h-full w-full text-white overflow-hidden pb-20">
+    <div className="flex flex-col bg-bg-dark min-h-full w-full text-ink-d1 overflow-hidden pb-20">
       
-      <div className="p-6 bg-slate-900 border-b border-white/10 z-20 shrink-0 shadow-xl">
+      <div className="p-6 bg-bg-dark-2 border-b border-white/10 z-20 shrink-0 shadow-xl">
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -291,7 +291,7 @@ export function MachineLeaderboardDashboard({
                 <Button 
                   variant="ghost" 
                   onClick={onBack}
-                  className="w-10 h-10 rounded-full text-slate-400 hover:text-white hover:bg-white/10"
+                  className="w-10 h-10 rounded-full text-ink-d3 hover:text-ink-d1 hover:bg-white/10"
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </Button>
@@ -301,7 +301,7 @@ export function MachineLeaderboardDashboard({
               </div>
               <div>
                 <h1 className="text-2xl font-black uppercase tracking-tighter italic">Machine Performance</h1>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                <p className="text-[11px] font-bold text-ink-d3 uppercase tracking-widest flex items-center gap-2">
                   <BarChart3 className="w-3 h-3" />
                   Real-Time Rank Intelligence
                 </p>
@@ -309,12 +309,12 @@ export function MachineLeaderboardDashboard({
             </div>
 
             <div className="flex gap-2 w-full md:w-auto">
-               <div className="flex bg-slate-800 rounded-xl p-1 border border-slate-700">
+               <div className="flex bg-bg-dark-3 rounded-xl p-1 border border-div-d">
                   <button 
                     onClick={() => setViewScope('studio')}
                     className={cn(
                       "px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-                      viewScope === 'studio' ? "bg-[#38BDF8] text-[#0A2E46]" : "text-slate-400 hover:text-white"
+                      viewScope === 'studio' ? "bg-[#38BDF8] text-[#0A2E46]" : "text-ink-d3 hover:text-ink-d1"
                     )}
                   >
                     <Building2 className="w-3 h-3" /> My Studio
@@ -323,27 +323,27 @@ export function MachineLeaderboardDashboard({
                     onClick={() => setViewScope('global')}
                     className={cn(
                       "px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-                      viewScope === 'global' ? "bg-[#F06C22] text-white" : "text-slate-400 hover:text-white"
+                      viewScope === 'global' ? "bg-[#F06C22] text-ink-d1" : "text-ink-d3 hover:text-ink-d1"
                     )}
                   >
                     <Globe className="w-3 h-3" /> Entire Network
                   </button>
                </div>
                <div className="relative flex-1 md:w-64">
-                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-d3" />
                  <input 
                    type="text"
                    placeholder="Search Client..."
                    value={searchQuery}
                    onChange={e => setSearchQuery(e.target.value)}
-                   className="w-full h-11 pl-10 pr-4 bg-slate-800 border-slate-700 rounded-xl text-xs font-bold transition-all outline-none"
+                   className="w-full h-11 pl-10 pr-4 bg-bg-dark-3 border-div-d rounded-xl text-xs font-bold transition-all outline-none"
                  />
                </div>
                <Select value={selectedMachine} onValueChange={setSelectedMachine}>
-                <SelectTrigger className="w-full md:w-64 h-11 bg-slate-800 border-slate-700 rounded-xl font-bold text-xs">
+                <SelectTrigger className="w-full md:w-64 h-11 bg-bg-dark-3 border-div-d rounded-xl font-bold text-xs">
                   <SelectValue placeholder="Select Machine" />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700 text-white max-h-[300px]">
+                <SelectContent className="bg-bg-dark-3 border-div-d text-ink-d1 max-h-[300px]">
                   {Object.values(MACHINE_DATABASE).map(m => (
                     <SelectItem key={m.id} value={m.id} className="cursor-pointer py-2.5">
                       {m.name}
@@ -361,7 +361,7 @@ export function MachineLeaderboardDashboard({
           {isLoading ? (
             <div className="py-20 text-center">
               <Loader2 className="w-10 h-10 text-[#F06C22] mx-auto mb-4 animate-spin opacity-50" />
-              <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">
+              <p className="text-sm font-bold text-ink-d3 uppercase tracking-widest">
                 Aggregating Live Leaderboard Data...
               </p>
             </div>
@@ -373,7 +373,7 @@ export function MachineLeaderboardDashboard({
                     <Sparkles className="w-4 h-4 fill-[#38BDF8]/20" />
                     {viewScope === 'global' ? 'Global Network Elite' : 'Studio Performance Hub'}
                   </h2>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Live Aggregation</p>
+                  <p className="text-[11px] font-bold text-ink-d3 uppercase tracking-widest">Live Aggregation</p>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -390,25 +390,25 @@ export function MachineLeaderboardDashboard({
                         "bg-gradient-to-br from-amber-600 via-amber-800 to-amber-950 shadow-lg shadow-amber-900/10"
                       )}
                     >
-                      <div className="bg-slate-900 rounded-[30px] p-6 h-full flex flex-col items-center text-center relative">
+                      <div className="bg-bg-dark-2 rounded-[30px] p-6 h-full flex flex-col items-center text-center relative">
                         <div className="absolute top-4 right-6 text-4xl font-black italic opacity-10">{idx + 1}</div>
-                        <div className="w-20 h-20 rounded-full bg-slate-800 border-4 border-slate-700 flex items-center justify-center mb-4 overflow-hidden">
-                           <span className="text-2xl font-black text-white italic">{entry.clientName[0]}</span>
+                        <div className="w-20 h-20 rounded-full bg-bg-dark-3 border-4 border-div-d flex items-center justify-center mb-4 overflow-hidden">
+                           <span className="text-2xl font-black text-ink-d1 italic">{(entry.clientName || '?')[0] || '?'}</span>
                         </div>
-                        <h3 className="text-xl font-black uppercase italic text-white tracking-tight mb-1">{entry.clientName}</h3>
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">SYNCED RANKING</p>
-                          <div className="text-4xl font-black text-white italic tracking-tighter leading-none">
-                            {entry.weight} <span className="text-[12px] font-bold uppercase text-slate-500 not-italic tracking-widest">LBS</span>
+                        <h3 className="text-xl font-black uppercase italic text-ink-d1 tracking-tight mb-1">{entry.clientName}</h3>
+                        <p className="text-[11px] font-bold text-ink-d3 uppercase tracking-widest mb-4">SYNCED RANKING</p>
+                          <div className="text-4xl font-black text-ink-d1 italic tracking-tighter leading-none">
+                            {entry.weight} <span className="text-[12px] font-bold uppercase text-ink-d3 not-italic tracking-widest">LBS</span>
                           </div>
-                          <div className="py-2 px-4 bg-[#0A2E46] border border-[#38BDF8]/20 rounded-xl inline-flex items-center gap-3">
+                          <div className="py-2 px-4 bg-bg-dark border border-[#38BDF8]/20 rounded-xl inline-flex items-center gap-3">
                              <span className="text-[11px] font-black uppercase text-[#38BDF8] tracking-widest">G:{entry.gap || 0} • {entry.reps || 0} REPS</span>
                           </div>
                         </div>
                     </motion.div>
                   )) : (
-                    <div className="col-span-3 py-20 text-center bg-slate-800/20 shadow-inner rounded-[32px]">
+                    <div className="col-span-3 py-20 text-center bg-bg-dark-3/20 shadow-inner rounded-[32px]">
                        <Info className="w-10 h-10 text-slate-600 mx-auto mb-4" />
-                       <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">No rankings found yet.</p>
+                       <p className="text-sm font-bold text-ink-d3 uppercase tracking-widest">No rankings found yet.</p>
                     </div>
                   )}
                 </div>
@@ -417,25 +417,25 @@ export function MachineLeaderboardDashboard({
               <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
                    <div className="flex items-center justify-between">
-                     <h2 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-3">
+                     <h2 className="text-[11px] font-black uppercase tracking-[0.25em] text-ink-d3 flex items-center gap-3">
                        <BarChart3 className="w-4 h-4 text-[#F06C22]" />
                        Real-Time Distribution
                      </h2>
                    </div>
-                   <div className="bg-slate-900/50 border border-white/5 rounded-[32px] p-6 shadow-xl">
+                   <div className="bg-bg-dark-2/50 border border-white/5 rounded-[32px] p-6 shadow-xl">
                      <LeaderboardChart data={machineRankings} sortBy={sortBy} />
                    </div>
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                      {others.map((entry, idx) => (
-                       <div key={entry.clientId} className="bg-slate-800/40 border border-white/5 p-5 rounded-2xl flex items-center justify-between">
+                       <div key={entry.clientId} className="bg-bg-dark-3/40 border border-white/5 p-5 rounded-2xl flex items-center justify-between">
                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-xs font-black text-slate-500 border border-slate-700">
+                            <div className="w-10 h-10 rounded-xl bg-bg-dark-2 flex items-center justify-center text-xs font-black text-ink-d3 border border-div-d">
                               {idx + 4}
                             </div>
-                            <p className="text-sm font-black text-white italic uppercase">{entry.clientName}</p>
+                            <p className="text-sm font-black text-ink-d1 italic uppercase">{entry.clientName}</p>
                          </div>
                          <div className="text-right">
-                           <p className="text-lg font-black text-white leading-none">
+                           <p className="text-lg font-black text-ink-d1 leading-none">
                              {sortBy === 'gain' ? `+${entry.strengthGainPercent || 0}%` : `${entry.maxWeight} LBS`}
                            </p>
                          </div>
@@ -445,32 +445,32 @@ export function MachineLeaderboardDashboard({
                 </div>
 
                 <div className="space-y-6">
-                   <Card className="bg-[#0A2E46] border-[#38BDF8]/20 shadow-2xl rounded-[32px]">
+                   <Card className="bg-bg-dark border-[#38BDF8]/20 shadow-2xl rounded-[32px]">
                      <CardHeader>
-                       <CardTitle className="text-lg font-black uppercase italic text-white flex items-center gap-2">
+                       <CardTitle className="text-lg font-black uppercase italic text-ink-d1 flex items-center gap-2">
                          <Target className="w-5 h-5 text-[#F06C22]" />
                          Percentile Thresholds
                        </CardTitle>
-                       <CardDescription className="text-slate-400">Static benchmarks for {machineDetails?.name}</CardDescription>
+                       <CardDescription className="text-ink-d3">Static benchmarks for {machineDetails?.name}</CardDescription>
                      </CardHeader>
                      <CardContent className="space-y-6">
                         {percentiles ? (
                           <div className="space-y-4">
                             {Object.entries({ p99: percentiles.p99, p90: percentiles.p90, p75: percentiles.p75, p50: percentiles.p50 })
                               .map(([key, val]) => (
-                                <div key={key} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-xl border border-white/5">
-                                  <span className="text-[11px] font-black uppercase text-slate-500">{key.toUpperCase()} Rank</span>
+                                <div key={key} className="flex items-center justify-between p-3 bg-bg-dark-2/50 rounded-xl border border-white/5">
+                                  <span className="text-[11px] font-black uppercase text-ink-d3">{key.toUpperCase()} Rank</span>
                                   <span className="text-sm font-black text-[#38BDF8] italic">{val} LBS</span>
                                 </div>
                               ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-slate-500 italic text-center py-4">No data to compute thresholds.</p>
+                          <p className="text-xs text-ink-d3 italic text-center py-4">No data to compute thresholds.</p>
                         )}
                      </CardContent>
                    </Card>
                    <div className="bg-gradient-to-br from-[#115E8D] to-[#0A2E46] p-8 rounded-[32px] border border-[#38BDF8]/30 shadow-xl overflow-hidden group">
-                     <h3 className="text-lg font-black uppercase italic text-white mb-2 relative z-10">Cross-Network Data</h3>
+                     <h3 className="text-lg font-black uppercase italic text-ink-d1 mb-2 relative z-10">Cross-Network Data</h3>
                      <p className="text-xs text-[#38BDF8] font-bold leading-relaxed relative z-10">
                         Dynamically computing real-time distributions across the network.
                      </p>
