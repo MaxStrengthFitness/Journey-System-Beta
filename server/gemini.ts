@@ -621,7 +621,7 @@ ${JSON.stringify(machineDictionary, null, 2)}
   }));
 
   const response = await withRetry("extractMachineSettingsFromImage", () => ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-2.0-flash",
     contents: [
       {
         parts: [
@@ -695,7 +695,7 @@ Return ONLY valid JSON matching the requested schema.`;
   }));
 
   const response = await withRetry("processLegacyChart", () => ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-2.0-flash",
     contents: [
       {
         parts: [

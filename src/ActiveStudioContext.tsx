@@ -1,6 +1,16 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Studio, Trainer, FranchiseNetwork } from './types';
-import { hasPermission as hasPermissionHelper, PermissionAction, PermissionContext } from './lib/permissions';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import { Studio, Trainer, FranchiseNetwork } from "./types";
+import {
+  hasPermission as hasPermissionHelper,
+  PermissionAction,
+  PermissionContext,
+} from "./lib/permissions";
 
 interface ActiveStudioContextType {
   activeStudioId: string | null;
@@ -11,7 +21,10 @@ interface ActiveStudioContextType {
   setIsChangingStudio: (val: boolean) => void;
   isAdmin: boolean;
   logout: () => Promise<void>;
-  hasPermission: (action: PermissionAction, context?: PermissionContext) => boolean;
+  hasPermission: (
+    action: PermissionAction,
+    context?: PermissionContext,
+  ) => boolean;
 
   // NEW Phase 2 states
   isAuthenticated: boolean;
@@ -20,7 +33,9 @@ interface ActiveStudioContextType {
   accessibleStudioIds: string[];
 }
 
-const ActiveStudioContext = createContext<ActiveStudioContextType | undefined>(undefined);
+const ActiveStudioContext = createContext<ActiveStudioContextType | undefined>(
+  undefined,
+);
 
 export function ActiveStudioProvider({
   children,
@@ -30,7 +45,7 @@ export function ActiveStudioProvider({
   isAdmin = false,
   userEmail,
   tokenRole,
-  onLogout
+  onLogout,
 }: {
   children: ReactNode;
   studios: Studio[];
@@ -41,29 +56,36 @@ export function ActiveStudioProvider({
   tokenRole?: string;
   onLogout: () => Promise<void>;
 }) {
-  const [activeStudioId, setActiveStudioIdState] = useState<string | null>(() => {
-    return localStorage.getItem('max_strength_active_studio_id');
-  });
+  const [activeStudioId, setActiveStudioIdState] = useState<string | null>(
+    () => {
+      return localStorage.getItem("max_strength_active_studio_id");
+    },
+  );
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('max_strength_authenticated') === 'true';
+    return localStorage.getItem("max_strength_authenticated") === "true";
   });
   const [isChangingStudio, setIsChangingStudio] = useState(false);
 
   // Expose centralized permission checker using the active trainer, studio, and loaded networks
-  const hasPermission = React.useCallback((action: PermissionAction, context: PermissionContext = {}) => {
-    const mergedContext = {
-      networks,
-      studios,
-      studioId: activeStudioId || undefined,
-      ...context
-    };
-    return hasPermissionHelper(authTrainer, action, mergedContext, tokenRole);
-  }, [authTrainer, activeStudioId, networks, studios, tokenRole]);
+  const hasPermission = React.useCallback(
+    (action: PermissionAction, context: PermissionContext = {}) => {
+      const mergedContext = {
+        networks,
+        studios,
+        studioId: activeStudioId || undefined,
+        ...context,
+      };
+      return hasPermissionHelper(authTrainer, action, mergedContext, tokenRole);
+    },
+    [authTrainer, activeStudioId, networks, studios, tokenRole],
+  );
 
   // Derived Active Network
   const network = React.useMemo(() => {
     if (!activeStudioId || !networks.length) return null;
-    return networks.find(net => net.studioIds.includes(activeStudioId)) || null;
+    return (
+      networks.find((net) => net.studioIds.includes(activeStudioId)) || null
+    );
   }, [activeStudioId, networks]);
 
   // Derived Accessible Studio IDs for Cross-Training
@@ -78,10 +100,11 @@ export function ActiveStudioProvider({
     if (!authTrainer) return studios;
 
     // Super Admin or Founder/Overseer see all studios
-    const isGlobalUser = isAdmin ||
-      authTrainer.role === 'Admin' ||
-      authTrainer.role === 'Founder' ||
-      authTrainer.role === 'Overseer';
+    const isGlobalUser =
+      isAdmin ||
+      authTrainer.role === "Admin" ||
+      authTrainer.role === "Founder" ||
+      authTrainer.role === "Overseer";
 
     if (isGlobalUser) return studios;
 
@@ -90,33 +113,35 @@ export function ActiveStudioProvider({
       authTrainer.primaryHomeStudioId,
       ...(authTrainer.accessibleStudioIds || []),
       ...(authTrainer.activeGuestStudioIds || []),
-      ...(authTrainer.ownedStudioIds || [])
+      ...(authTrainer.ownedStudioIds || []),
     ]);
 
     // Also include studios from any networks this trainer owns
-    networks.forEach(n => {
-      if ((n.ownerIds || []).includes(authTrainer.id!) || n.ownerId === authTrainer.id) {
-        (n.studioIds || []).forEach(id => allowedIds.add(id));
+    networks.forEach((n) => {
+      if (
+        (n.ownerIds || []).includes(authTrainer.id!) ||
+        n.ownerId === authTrainer.id
+      ) {
+        (n.studioIds || []).forEach((id) => allowedIds.add(id));
       }
     });
 
     // For FranchiseOwner (Owner role) or others, only show their allowed studios plus any where they are listed as ownerId
-    return studios.filter(s =>
-      (s.id && allowedIds.has(s.id)) ||
-      s.ownerId === authTrainer.id
+    return studios.filter(
+      (s) => (s.id && allowedIds.has(s.id)) || s.ownerId === authTrainer.id,
     );
   }, [authTrainer, studios, isAdmin]);
 
   const activeStudio = React.useMemo(() => {
-    return studios.find(s => s.id === activeStudioId) || null;
+    return studios.find((s) => s.id === activeStudioId) || null;
   }, [activeStudioId, studios]);
 
   const setActiveStudioId = (id: string | null) => {
     setActiveStudioIdState(id);
     if (id) {
-      localStorage.setItem('max_strength_active_studio_id', id);
+      localStorage.setItem("max_strength_active_studio_id", id);
     } else {
-      localStorage.removeItem('max_strength_active_studio_id');
+      localStorage.removeItem("max_strength_active_studio_id");
     }
   };
 
@@ -127,40 +152,73 @@ export function ActiveStudioProvider({
     await onLogout();
   };
 
+  useEffect(() => {
+    if (activeStudio && activeStudio.brandColor) {
+      document.documentElement.style.setProperty(
+        "--cta",
+        activeStudio.brandColor,
+      );
+      document.documentElement.style.setProperty(
+        "--color-cta",
+        activeStudio.brandColor,
+      );
+      document.documentElement.style.setProperty(
+        "--color-cta-strong",
+        activeStudio.brandColor,
+      );
+    } else {
+      document.documentElement.style.setProperty("--cta", "#F37427");
+      document.documentElement.style.setProperty("--color-cta", "#F37427");
+      document.documentElement.style.setProperty(
+        "--color-cta-strong",
+        "#E45F0F",
+      );
+    }
+  }, [activeStudio]);
+
   // If the active studio is no longer in the available list, clear it
   useEffect(() => {
-    if (activeStudioId && studios.length > 0 && availableStudios.length > 0 && authTrainer) {
-      const existsInSystem = studios.some(s => s.id === activeStudioId);
-      const isAllowed = availableStudios.some(s => s.id === activeStudioId);
+    if (
+      activeStudioId &&
+      studios.length > 0 &&
+      availableStudios.length > 0 &&
+      authTrainer
+    ) {
+      const existsInSystem = studios.some((s) => s.id === activeStudioId);
+      const isAllowed = availableStudios.some((s) => s.id === activeStudioId);
 
       if (!existsInSystem) {
-        console.warn('Active studio no longer exists in system. Clearing.');
+        console.warn("Active studio no longer exists in system. Clearing.");
         setActiveStudioId(null);
         return;
       }
 
-      if (!isAllowed && authTrainer.id !== 'owner-temp') {
-        console.log('Active studio not in available list. Potential permission change.');
+      if (!isAllowed && authTrainer.id !== "owner-temp") {
+        console.log(
+          "Active studio not in available list. Potential permission change.",
+        );
       }
     }
   }, [availableStudios, activeStudioId, authTrainer, studios]);
 
   return (
-    <ActiveStudioContext.Provider value={{
-      activeStudioId,
-      activeStudio,
-      setActiveStudioId,
-      availableStudios,
-      isChangingStudio,
-      setIsChangingStudio,
-      isAdmin,
-      logout,
-      hasPermission,
-      isAuthenticated,
-      setIsAuthenticated,
-      network,
-      accessibleStudioIds
-    }}>
+    <ActiveStudioContext.Provider
+      value={{
+        activeStudioId,
+        activeStudio,
+        setActiveStudioId,
+        availableStudios,
+        isChangingStudio,
+        setIsChangingStudio,
+        isAdmin,
+        logout,
+        hasPermission,
+        isAuthenticated,
+        setIsAuthenticated,
+        network,
+        accessibleStudioIds,
+      }}
+    >
       {children}
     </ActiveStudioContext.Provider>
   );
@@ -169,7 +227,9 @@ export function ActiveStudioProvider({
 export function useActiveStudio() {
   const context = useContext(ActiveStudioContext);
   if (context === undefined) {
-    throw new Error('useActiveStudio must be used within an ActiveStudioProvider');
+    throw new Error(
+      "useActiveStudio must be used within an ActiveStudioProvider",
+    );
   }
   return context;
 }

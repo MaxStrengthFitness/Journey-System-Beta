@@ -133,7 +133,8 @@ export async function completeWorkoutSession(
     trainerInitials: authTrainer?.initials || '',
     clientId: selectedClient?.id || '',
     homeStudioId: homeStudioId,
-    clientHomeStudioId: homeStudioId
+    clientHomeStudioId: homeStudioId,
+    hostedAtStudioId: currentSession.hostedAtStudioId || homeStudioId
   };
 
   // Data Stamping for Analytics
@@ -246,6 +247,7 @@ export async function completeWorkoutSession(
     const clientUpdates: any = {
       completedSessions: increment(1),
       sessionCount: currentSession.sessionNumber || increment(1),
+      lastSessionDate: new Date().toISOString().split('T')[0],
       updatedAt: serverTimestamp()
     };
 

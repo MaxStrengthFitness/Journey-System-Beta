@@ -146,24 +146,18 @@ export interface Trainer {
   pin?: string;
   pinHash?: string;
   requiresPinReset?: boolean;
-  /** Role determining UI permissions and logic overrides */
   role: UserRole;
-  /** IDs of studios owned by this entity (if role is Owner) */
   ownedStudioIds?: string[];
-  /** The primary physical location where this trainer is based */
   primaryHomeStudioId: string;
-  /** List of studio IDs where the trainer has permanent staff access */
   accessibleStudioIds: string[];
-  /** Temporary assignments to other studios outside their regular access */
   activeGuestStudioIds: string[];
-  /** Public-facing bio for client profiles */
   bio?: string;
   email?: string;
   thirdPartyCalendarUrl?: string;
   certifications?: string[];
-  /** When the staff member joined the team */
   employmentStartDate?: any;
   availability?: TrainerAvailability;
+  mindbodyStaffId?: string;
   mindbody_ical_url?: string;
   legacy_filemaker_id?: string;
   createdAt?: any;
@@ -218,6 +212,7 @@ export interface UpdateTrainerPayload {
   bio?: string;
   thirdPartyCalendarUrl?: string;
   certifications?: string[];
+  mindbodyStaffId?: string;
   mindbody_ical_url?: string;
   order?: number;
 }
@@ -773,6 +768,7 @@ export interface Studio {
   };
   autoSyncEnabled?: boolean;
   syncIntervalMinutes?: number;
+  brandColor?: string;
 }
 
 export interface HubAnnouncement {

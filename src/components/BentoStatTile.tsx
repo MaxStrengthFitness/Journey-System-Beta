@@ -36,7 +36,7 @@ export function BentoStatTile({
       <div
         {...props}
         className={cn(
-          "col-span-4 row-span-2 rounded-2xl bg-linear-to-br from-cta to-cta-strong shadow-[0_12px_32px_var(--color-cta)] relative overflow-hidden p-4 sm:p-5 flex flex-col justify-between",
+          "w-full h-full rounded-2xl bg-linear-to-br from-cta to-cta-strong shadow-[0_8px_24px_rgba(240,108,34,0.15)] relative overflow-hidden p-4 sm:p-5 flex flex-col justify-between",
           isZeroError && "opacity-50 grayscale",
         )}
       >
@@ -121,7 +121,7 @@ export function BentoStatTile({
     <div
       {...props}
       className={cn(
-        "col-span-2 row-span-1 rounded-xl p-3 flex flex-col justify-between border",
+        "w-full h-full rounded-xl p-3 flex flex-col justify-between border",
         variant === "elevated"
           ? "bg-linear-to-br from-bg-dark-3 to-bg-dark-2 border-transparent shadow-sm"
           : "bg-bg-dark-2 border-div-d",

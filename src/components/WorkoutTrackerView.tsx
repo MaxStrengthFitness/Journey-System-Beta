@@ -108,7 +108,7 @@ function ClientSelectionDialog({
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="sm:max-w-[450px] rounded-3xl p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-112.5 rounded-3xl p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle className="text-2xl font-black uppercase italic tracking-tight">
             {title}
@@ -182,7 +182,7 @@ function MachineSettingsDialog({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[400px] rounded-3xl">
+      <DialogContent className="sm:max-w-100 rounded-3xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-black">
             Machine Settings
@@ -232,18 +232,18 @@ function MachineSettingsDialog({
             ))}
             {(!machine.settingOptions ||
               machine.settingOptions.length === 0) && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-bold">General Setting</Label>
-                  <Input
-                    placeholder="Enter setting"
-                    value={settings["General"] || ""}
-                    onChange={(e) =>
-                      setSettings({ ...settings, ["General"]: e.target.value })
-                    }
-                    className="h-12 rounded-xl font-bold"
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label className="text-sm font-bold">General Setting</Label>
+                <Input
+                  placeholder="Enter setting"
+                  value={settings["General"] || ""}
+                  onChange={(e) =>
+                    setSettings({ ...settings, ["General"]: e.target.value })
+                  }
+                  className="h-12 rounded-xl font-bold"
+                />
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -254,7 +254,7 @@ function MachineSettingsDialog({
               placeholder="e.g. Better alignment, client discomfort..."
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="rounded-xl min-h-[80px]"
+              className="rounded-xl min-h-20"
             />
           </div>
 
@@ -363,7 +363,7 @@ function PerformanceEntryDialog({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[400px] rounded-[32px] p-0 overflow-hidden border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark shadow-2xl dark:shadow-none flex flex-col h-full max-h-[85vh] sm:max-h-[600px]">
+      <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark shadow-2xl dark:shadow-none flex flex-col h-full max-h-[85vh] sm:max-h-150">
         {/* Header */}
         <div className="bg-white dark:bg-bg-dark p-4 text-slate-900 dark:text-white relative overflow-hidden border-b border-slate-200 dark:border-slate-800 shrink-0">
           <div className="absolute top-0 right-0 p-8 opacity-5 rotate-12">
@@ -397,11 +397,21 @@ function PerformanceEntryDialog({
           {/* Settings Shorthand Bar */}
           <div className="bg-slate-50/40 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 flex items-center justify-center gap-x-5 gap-y-1.5 flex-wrap">
             {(() => {
-              const stdSettings = activeStudio?.machineSettings?.[machine.id!] || machine.standardSettings || {};
+              const stdSettings =
+                activeStudio?.machineSettings?.[machine.id!] ||
+                machine.standardSettings ||
+                {};
               const options = machine.settingOptions || [];
-              const sorted = orderMachineSettings(settings, stdSettings, options);
+              const sorted = orderMachineSettings(
+                settings,
+                stdSettings,
+                options,
+              );
               return sorted.map(([key, value, originalKey], i) => (
-                <div key={originalKey || i} className="flex items-center gap-1.5">
+                <div
+                  key={originalKey || i}
+                  className="flex items-center gap-1.5"
+                >
                   <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">
                     {key}:
                   </span>
@@ -457,7 +467,7 @@ function PerformanceEntryDialog({
           <div className="grid grid-cols-1 gap-4">
             {/* Smart Stepper: Reps / Seconds */}
             <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 flex flex-col items-center relative">
-              <div className="flex items-center justify-center gap-1.5 bg-white dark:bg-bg-dark border border-slate-200 dark:border-slate-800 rounded-xl p-1 mb-2.5 w-full max-w-[180px]">
+              <div className="flex items-center justify-center gap-1.5 bg-white dark:bg-bg-dark border border-slate-200 dark:border-slate-800 rounded-xl p-1 mb-2.5 w-full max-w-45">
                 <button
                   onClick={() => setIsHold(false)}
                   className={`flex-1 h-6 rounded-lg font-black uppercase text-[11px] tracking-widest transition-all ${!isHold ? "bg-sky-500 text-slate-900 dark:text-white" : "text-slate-600 hover:text-slate-500 dark:text-slate-400"}`}
@@ -607,7 +617,7 @@ function PerformanceEntryDialog({
 
           {/* Trend History */}
           {pastMachineLogs.length > 0 && (
-            <div className="bg-slate-50/30 border border-slate-200 dark:border-slate-800/50 dark:border-slate-800/50 rounded-xl p-2.5 flex flex-col gap-1.5">
+            <div className="bg-slate-50/30 border border-slate-200 dark:border-slate-800/50 rounded-xl p-2.5 flex flex-col gap-1.5">
               <div className="flex justify-between items-center px-1">
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                   Trend History
@@ -685,7 +695,7 @@ function PerformanceEntryDialog({
         <div className="p-4 bg-white dark:bg-bg-dark border-t border-slate-200 dark:border-slate-800 shrink-0 grid grid-cols-1 sm:grid-cols-2 gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.2)]">
           <Button
             variant="outline"
-            className="h-12 rounded-xl font-black uppercase text-[11px] tracking-widest border border-slate-300 dark:border-slate-700 bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 transition-all shadow-md"
+            className="h-12 rounded-xl font-black uppercase text-[11px] tracking-widest border border-slate-300 dark:border-slate-700 bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-50 transition-all shadow-md"
             onClick={onClose}
           >
             Cancel
@@ -753,7 +763,7 @@ function ExerciseHistoryDialog({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] h-[80vh] flex flex-col rounded-3xl p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-125 h-[80vh] flex flex-col rounded-3xl p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle className="text-2xl font-black uppercase italic tracking-tight flex items-center gap-2">
             <History className="w-6 h-6 text-primary" />
@@ -829,14 +839,15 @@ function ExerciseHistoryDialog({
                           {log.isStaticHold ? "Seconds" : "Reps"}
                         </p>
                         <p
-                          className={`text-xl font-black ${log.repQuality === 3
-                            ? "text-emerald-500"
-                            : log.repQuality === 2
-                              ? "text-amber-500"
-                              : log.repQuality === 1
-                                ? "text-red-500"
-                                : ""
-                            }`}
+                          className={`text-xl font-black ${
+                            log.repQuality === 3
+                              ? "text-emerald-500"
+                              : log.repQuality === 2
+                                ? "text-amber-500"
+                                : log.repQuality === 1
+                                  ? "text-red-500"
+                                  : ""
+                          }`}
                         >
                           {log.isStaticHold
                             ? log.seconds || "0"
@@ -848,14 +859,15 @@ function ExerciseHistoryDialog({
                           Quality
                         </p>
                         <div
-                          className={`w-fit px-2 py-0.5 rounded-full text-[11px] font-black text-slate-900 dark:text-white ${log.repQuality === 3
-                            ? "bg-emerald-500"
-                            : log.repQuality === 2
-                              ? "bg-amber-500"
-                              : log.repQuality === 1
-                                ? "bg-red-500"
-                                : "bg-muted text-muted-foreground"
-                            }`}
+                          className={`w-fit px-2 py-0.5 rounded-full text-[11px] font-black text-slate-900 dark:text-white ${
+                            log.repQuality === 3
+                              ? "bg-emerald-500"
+                              : log.repQuality === 2
+                                ? "bg-amber-500"
+                                : log.repQuality === 1
+                                  ? "bg-red-500"
+                                  : "bg-muted text-muted-foreground"
+                          }`}
                         >
                           {log.repQuality === 3
                             ? "MAX STRENGTH"
@@ -903,6 +915,9 @@ export function WorkoutTrackerView({
   setIsSyncing,
   schedules,
   isIntroSession,
+  rightControls,
+  trainerDropdown,
+  onStudioClick,
 }: {
   clientId: string | null;
   clients: Client[];
@@ -922,8 +937,12 @@ export function WorkoutTrackerView({
   isSyncing: boolean;
   setIsSyncing: (v: boolean) => void;
   isIntroSession?: boolean;
+  rightControls?: React.ReactNode;
+  trainerDropdown?: React.ReactNode;
+  onStudioClick?: () => void;
 }) {
-  const { activeStudioId: contextActiveStudioId, activeStudio } = useActiveStudio();
+  const { activeStudioId: contextActiveStudioId, activeStudio } =
+    useActiveStudio();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [logs, setLogs] = useState<Record<string, ExerciseLog>>({});
   const [routines, setRoutines] = useState<Routine[]>([]);
@@ -1024,7 +1043,7 @@ export function WorkoutTrackerView({
               (Date.now() -
                 lastMachineLoggedAt.current -
                 currentSegmentPauseDuration.current) /
-              1000,
+                1000,
             ),
           );
           const isStatic =
@@ -1066,7 +1085,7 @@ export function WorkoutTrackerView({
               (Date.now() -
                 lastMachineLoggedAt.current -
                 currentSegmentPauseDuration.current) /
-              1000,
+                1000,
             ),
           );
           const isStatic =
@@ -1110,7 +1129,7 @@ export function WorkoutTrackerView({
               (Date.now() -
                 lastMachineLoggedAt.current -
                 currentSegmentPauseDuration.current) /
-              1000,
+                1000,
             ),
           );
           const isStatic =
@@ -1184,7 +1203,7 @@ export function WorkoutTrackerView({
               lastMachineLoggedAt.current -
               currentSegmentPauseDuration.current -
               extraPause) /
-            1000,
+              1000,
           ),
         ),
       );
@@ -1554,7 +1573,7 @@ export function WorkoutTrackerView({
     customMachines?: string[],
     adjustmentNote?: string,
     permanentSave?: boolean,
-    preSessionCheckIn?: PreSessionCheckIn
+    preSessionCheckIn?: PreSessionCheckIn,
   ) => {
     if (!clientId) return;
     const nextNum = (selectedClient?.sessionCount || 0) + 1;
@@ -1580,7 +1599,7 @@ export function WorkoutTrackerView({
             name: routineName,
             machineIds: customMachines || [],
             createdAt: serverTimestamp(),
-            studioId: selectedClient?.homeStudioId || ''
+            studioId: selectedClient?.homeStudioId || "",
           });
           routineId = newRoutineRef.id;
 
@@ -1667,7 +1686,7 @@ export function WorkoutTrackerView({
           date: new Date().toLocaleDateString(),
           content: `[Protocol Adjustment]: ${adjustmentNote}`,
           createdAt: serverTimestamp(),
-          studioId: selectedClient?.homeStudioId || ''
+          studioId: selectedClient?.homeStudioId || "",
         });
       }
 
@@ -1967,15 +1986,15 @@ export function WorkoutTrackerView({
       const updatedLog: ExerciseLog = existing
         ? { ...existing, ...updates, machineSettings: currentSettings }
         : ({
-          id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`, // Temporary ID for local state
-          sessionId,
-          clientId,
-          machineId,
-          ...(side ? { side } : {}),
-          ...updates,
-          machineSettings: currentSettings,
-          createdAt: Timestamp.now(),
-        } as any);
+            id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`, // Temporary ID for local state
+            sessionId,
+            clientId,
+            machineId,
+            ...(side ? { side } : {}),
+            ...updates,
+            machineSettings: currentSettings,
+            createdAt: Timestamp.now(),
+          } as any);
 
       return { ...prev, [key]: updatedLog };
     });
@@ -2016,7 +2035,7 @@ export function WorkoutTrackerView({
         newSettings,
         reason,
         createdAt: serverTimestamp(),
-        studioId: selectedClient?.homeStudioId || ''
+        studioId: selectedClient?.homeStudioId || "",
       });
 
       // Save historic record in sidecar subcollection to keep documents optimized
@@ -2154,7 +2173,14 @@ export function WorkoutTrackerView({
           sessions.filter((s) => s.status === "Completed")[0] || null
         }
         onStart={(routineType, customMachines, note, checkIn) =>
-          startNewSession(routineType, undefined, customMachines, note, false, checkIn)
+          startNewSession(
+            routineType,
+            undefined,
+            customMachines,
+            note,
+            false,
+            checkIn,
+          )
         }
         onClose={() => {
           setIsPreSessionMode(false);
@@ -2169,6 +2195,9 @@ export function WorkoutTrackerView({
           Object.values(logs).filter((l: any) => l.clientId === clientId) as any
         }
         isIntroSession={isIntroSession}
+        rightControls={rightControls}
+        trainerDropdown={trainerDropdown}
+        onStudioClick={onStudioClick}
       />
     );
   }
@@ -2193,6 +2222,9 @@ export function WorkoutTrackerView({
         onFinalize={finalizeEndSession}
         isSyncing={isSyncing}
         machines={machines}
+        rightControls={rightControls}
+        trainerDropdown={trainerDropdown}
+        onStudioClick={onStudioClick}
       />
     );
   }
@@ -2229,9 +2261,9 @@ export function WorkoutTrackerView({
   // Check for rest days (3 days recommended)
   const daysSinceLastSession = lastSession?.date
     ? Math.floor(
-      (new Date().getTime() - parseSessionDate(lastSession.date)) /
-      (1000 * 60 * 60 * 24),
-    )
+        (new Date().getTime() - parseSessionDate(lastSession.date)) /
+          (1000 * 60 * 60 * 24),
+      )
     : null;
   const needsRest = daysSinceLastSession !== null && daysSinceLastSession < 3;
 
@@ -2243,7 +2275,7 @@ export function WorkoutTrackerView({
       animate={{ opacity: 1 }}
       className={cn(
         "h-[calc(100vh-80px)] flex flex-col gap-1 overflow-hidden relative",
-        hasActiveHeader ? "pt-[112px]" : "",
+        hasActiveHeader ? "pt-40 md:pt-28" : "",
       )}
     >
       {isIntroSession && (
@@ -2257,30 +2289,58 @@ export function WorkoutTrackerView({
       )}
       {/* Persistent Active Header - Refactored as Sticky Fixed */}
       {(selectedClient || currentSession) && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between h-[100px] shadow-md transition-all">
-          {/* Left: Client & Trainer Identity */}
-          <div className="flex flex-col min-w-0 max-w-[200px] sm:max-w-xs">
-            <h3 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
-              {selectedClient
-                ? `${selectedClient.firstName} ${selectedClient.lastName}`
-                : currentSession?.isUnassigned
-                  ? "Unassigned Tracking"
-                  : "Initializing..."}
-            </h3>
-            <div className="flex items-center gap-2 mt-0.5 text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
-              <div className="w-5 h-5 rounded-full bg-white dark:bg-bg-dark flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
-                <span className="text-[11px] font-bold">
-                  {authTrainer?.initials ||
-                    currentSession?.trainerInitials ||
-                    "??"}
-                </span>
+        <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-bg-dark/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3 md:py-4 flex flex-col md:flex-row md:items-center justify-between h-37 md:h-25 shadow-md transition-all gap-3 md:gap-0">
+          {/* Row 1 on mobile, left block on desktop */}
+          <div className="flex items-center justify-between w-full md:w-auto gap-3">
+            <div className="flex items-center gap-3">
+              {/* Left: Client & Trainer Identity */}
+              <div className="flex flex-col min-w-0 max-w-37.5 sm:max-w-xs">
+                <h3 className="text-base sm:text-lg md:text-xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
+                  {selectedClient
+                    ? `${selectedClient.firstName} ${selectedClient.lastName}`
+                    : currentSession?.isUnassigned
+                      ? "Unassigned Tracking"
+                      : "Initializing..."}
+                </h3>
+                <div className="flex items-center gap-1.5 mt-0.5 text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
+                  <div className="w-5 h-5 rounded-full bg-white dark:bg-bg-dark flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
+                    <span className="text-[11px] font-bold">
+                      {authTrainer?.initials ||
+                        currentSession?.trainerInitials ||
+                        "??"}
+                    </span>
+                  </div>
+                  Trainer
+                </div>
               </div>
-              Trainer
+
+              {/* Notes Action Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsShowingSessionNotes(true)}
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-8.5 px-3 rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ml-1.5 md:ml-3"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-cta shrink-0 fill-current" />
+                Notes
+              </Button>
+            </div>
+
+            {/* Mobile Timer: display timer next to client name on mobile */}
+            <div className="flex md:hidden items-center shrink-0">
+              {currentSession && currentSession.startTime && (
+                <ActiveSessionTimer
+                  startTime={currentSession.startTime}
+                  paused={isPaused}
+                  onTogglePause={() => setIsPaused(!isPaused)}
+                  isMobile
+                />
+              )}
             </div>
           </div>
 
-          {/* Center: Focal Clock with Play/Pause button inside */}
-          <div className="flex flex-col items-center absolute left-1/2 -translate-x-1/2 z-50">
+          {/* Desktop Center: Focal Clock with Play/Pause button inside */}
+          <div className="hidden md:flex flex-col items-center absolute left-1/2 -translate-x-1/2 z-50">
             {currentSession && currentSession.startTime && (
               <ActiveSessionTimer
                 startTime={currentSession.startTime}
@@ -2290,33 +2350,33 @@ export function WorkoutTrackerView({
             )}
           </div>
 
-          {/* Right: Tactical Controls & Hard Stop */}
-          <div className="flex items-center gap-2 shrink-0 z-50">
+          {/* Row 2 on mobile, right block on desktop */}
+          <div className="flex items-center justify-between md:justify-end gap-2 w-full md:w-auto shrink-0 z-50">
             <Button
               variant="outline"
               className={cn(
-                "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-10 px-3 transition-colors",
+                "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-9 md:h-10 px-3 text-xs md:text-sm transition-colors flex-1 md:flex-initial",
                 !showAllMachines
-                  ? "bg-orange-500 text-white hover:bg-orange-600 dark:text-white border-transparent hover:text-white"
+                  ? "bg-cta text-white hover:opacity-90 dark:text-white border-transparent"
                   : "",
               )}
               onClick={() => setShowAllMachines(!showAllMachines)}
             >
-              <LayoutList className="w-4 h-4 mr-2" />
+              <LayoutList className="w-4 h-4 mr-1.5" />
               Focus
             </Button>
 
             <Button
               variant="outline"
-              className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-10 px-3 hidden lg:flex transition-colors"
+              className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-9 md:h-10 px-3 text-xs md:text-sm transition-colors flex-1 md:flex-initial"
               onClick={() => setIsSessionRoutineManagerOpen(true)}
             >
-              <Settings2 className="w-4 h-4 mr-2" />
+              <Settings2 className="w-4 h-4 mr-1.5" />
               Routine
             </Button>
 
             <Button
-              className="bg-orange-500 hover:bg-orange-600 text-white font-semibold shadow-sm transition-all h-10 px-6 rounded-lg ml-2"
+              className="bg-cta hover:opacity-90 text-white font-semibold shadow-sm transition-all h-9 md:h-10 px-4 md:px-6 rounded-lg text-xs md:text-sm flex-1 md:flex-initial cursor-pointer"
               onClick={handleEndSessionPress}
             >
               Finish Session
@@ -2386,7 +2446,7 @@ export function WorkoutTrackerView({
                 .map((s) => {
                   const log =
                     logs[
-                    `${s.id}_${editingWeightMachineId}${isTorso ? "_Left" : sideToUse ? "_" + sideToUse : ""}`
+                      `${s.id}_${editingWeightMachineId}${isTorso ? "_Left" : sideToUse ? "_" + sideToUse : ""}`
                     ] || logs[`${s.id}_${editingWeightMachineId}`];
                   return log && log.weight ? { log, session: s } : null;
                 })
@@ -2648,7 +2708,7 @@ export function WorkoutTrackerView({
 
       {/* End Session Confirmation Dialog */}
       <Dialog open={showEndConfirmation} onOpenChange={setShowEndConfirmation}>
-        <DialogContent className="sm:max-w-[400px] rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
+        <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
           <div className="bg-primary p-8 text-slate-900 dark:text-white space-y-3">
             <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-2">
               <AlertCircle className="w-6 h-6 text-slate-900 dark:text-white" />
@@ -2716,7 +2776,7 @@ export function WorkoutTrackerView({
                     value={currentSessionNotes}
                     onChange={(e) => setCurrentSessionNotes(e.target.value)}
                     placeholder="Log general observations here..."
-                    className="min-h-[100px] border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-500 dark:text-slate-400 focus-visible:ring-orange-500 focus-visible:border-orange-500"
+                    className="min-h-25 border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus-visible:ring-orange-500 focus-visible:border-orange-500"
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2766,7 +2826,7 @@ export function WorkoutTrackerView({
         open={showCancelConfirmation}
         onOpenChange={setShowCancelConfirmation}
       >
-        <DialogContent className="sm:max-w-[400px] rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
+        <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
           <div className="bg-white dark:bg-bg-dark p-8 text-slate-900 dark:text-white space-y-3">
             <div className="w-12 h-12 bg-red-500 rounded-2xl flex items-center justify-center mb-2 shadow-[0_0_20px_rgba(239,68,68,0.4)]">
               <Trash2 className="w-6 h-6 text-slate-900 dark:text-white" />
@@ -2800,10 +2860,10 @@ export function WorkoutTrackerView({
       {/* Workout Table Scroll Area */}
       <div className="flex-1 overflow-hidden border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-bg-dark shadow-sm flex flex-col">
         <div className="w-full h-full overflow-x-auto custom-scrollbar bg-slate-50 dark:bg-slate-950">
-          <table className="w-full text-left border-collapse table-fixed select-none min-w-[600px] h-full flex flex-col bg-white dark:bg-bg-dark border border-slate-200 dark:border-slate-800 shadow-sm">
+          <table className="w-full text-left border-collapse table-fixed select-none min-w-150 h-full flex flex-col bg-white dark:bg-bg-dark border border-slate-200 dark:border-slate-800 shadow-sm">
             <thead className="flex w-full shrink-0">
-              <tr className="bg-slate-50 dark:bg-surface-1 border-b border-slate-200 dark:border-slate-700 uppercase text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 leading-none h-[36px] w-full flex items-center">
-                <th className="p-0 flex items-center justify-center w-[40px] shrink-0 border-r border-slate-200 dark:border-slate-700 h-full">
+              <tr className="bg-slate-50 dark:bg-surface-1 border-b border-slate-200 dark:border-slate-700 uppercase text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 leading-none h-9 w-full flex items-center">
+                <th className="p-0 flex items-center justify-center w-10 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full">
                   {currentSession ? (
                     <button
                       onClick={() => setIsSessionRoutineManagerOpen(true)}
@@ -2819,16 +2879,16 @@ export function WorkoutTrackerView({
                 <th className="p-1.5 pl-3 flex-1 border-r border-slate-200 dark:border-slate-700 h-full flex items-center truncate">
                   Exercise & Settings
                 </th>
-                <th className="p-1.5 text-center w-[50px] shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center">
+                <th className="p-1.5 text-center w-12.5 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center">
                   Prev
                 </th>
-                <th className="p-1.5 text-center w-[60px] shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center">
+                <th className="p-1.5 text-center w-15 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center">
                   Weight
                 </th>
-                <th className="p-1.5 text-center w-[60px] shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center">
+                <th className="p-1.5 text-center w-15 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center">
                   Reps
                 </th>
-                <th className="p-1.5 text-center w-[60px] shrink-0 h-full flex items-center justify-center">
+                <th className="p-1.5 text-center w-15 shrink-0 h-full flex items-center justify-center">
                   Quality
                 </th>
               </tr>
@@ -2912,11 +2972,11 @@ export function WorkoutTrackerView({
 
                         const logL = currentSession
                           ? logs[`${currentSession.id}_${machine.id}_Left`] ||
-                          {}
+                            {}
                           : {};
                         const logR = currentSession
                           ? logs[`${currentSession.id}_${machine.id}_Right`] ||
-                          {}
+                            {}
                           : {};
                         const logStd = currentSession
                           ? logs[`${currentSession.id}_${machine.id}`] || {}
@@ -2932,14 +2992,14 @@ export function WorkoutTrackerView({
                         const isActive = activeMachineIds.includes(machine.id!);
                         const isCompleted = isTorso
                           ? logL.weight &&
-                          (logL.reps || logL.seconds) &&
-                          logL.repQuality &&
-                          logR.weight &&
-                          (logR.reps || logR.seconds) &&
-                          logR.repQuality
+                            (logL.reps || logL.seconds) &&
+                            logL.repQuality &&
+                            logR.weight &&
+                            (logR.reps || logR.seconds) &&
+                            logR.repQuality
                           : currentLog?.weight &&
-                          (currentLog?.reps || currentLog?.seconds) &&
-                          currentLog?.repQuality;
+                            (currentLog?.reps || currentLog?.seconds) &&
+                            currentLog?.repQuality;
 
                         const seqPosition = isActive
                           ? activeMachineIds.indexOf(machine.id!) + 1
@@ -2952,8 +3012,8 @@ export function WorkoutTrackerView({
                             // For historical check, favor specific side if we are in side-mode, else look for any
                             const log = isTorso
                               ? logs[`${s.id}_${machine.id}_Left`] ||
-                              logs[`${s.id}_${machine.id}_Right`] ||
-                              logs[`${s.id}_${machine.id}`]
+                                logs[`${s.id}_${machine.id}_Right`] ||
+                                logs[`${s.id}_${machine.id}`]
                               : logs[`${s.id}_${machine.id}`];
                             return log && log.weight
                               ? { log, session: s }
@@ -3012,11 +3072,11 @@ export function WorkoutTrackerView({
                         return (
                           <tr
                             key={machine.id}
-                            className={`flex w-full group transition-colors h-[34px] sm:h-[36px] items-center border-b border-slate-100 dark:border-slate-800/50 last:border-b-0 border-l-[4px] bg-white dark:bg-bg-dark hover:bg-slate-50 dark:hover:bg-surface-2
+                            className={`flex w-full group transition-colors h-8.5 sm:h-9 items-center border-b border-slate-100 dark:border-slate-800/50 last:border-b-0 border-l-4 bg-white dark:bg-bg-dark hover:bg-slate-50 dark:hover:bg-surface-2
                               ${!isActive && !showAllMachines ? "opacity-30 grayscale hover:grayscale-0" : ""}
                               ${isFocusMachine ? "border-l-blue-500" : isCompleted && isActive ? "border-l-emerald-500" : "border-l-transparent"}`}
                           >
-                            <td className="w-[40px] shrink-0 flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
+                            <td className="w-10 shrink-0 flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
                               {isActive ? (
                                 <div
                                   className={`flex items-center justify-center rounded-md px-1.5 h-5 shadow-sm ${isFocusMachine ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold" : isCompleted ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" : "bg-slate-100 dark:bg-surface-1 text-slate-500 font-medium"}`}
@@ -3053,7 +3113,7 @@ export function WorkoutTrackerView({
                                 onClick={() =>
                                   setEditingSettingsMachineId(machine.id!)
                                 }
-                                className="leading-none mt-[4px] cursor-pointer hover:opacity-80 pb-1"
+                                className="leading-none mt-1 cursor-pointer hover:opacity-80 pb-1"
                               >
                                 {isTorso ? (
                                   settingsDisplay
@@ -3061,7 +3121,7 @@ export function WorkoutTrackerView({
                                   <span className="font-medium text-[11px] text-slate-500 dark:text-slate-400">
                                     {currentLog.weight} lbs |{" "}
                                     {currentLog.repsLeft !== undefined &&
-                                      currentLog.repsRight !== undefined ? (
+                                    currentLog.repsRight !== undefined ? (
                                       `${currentLog.repsLeft}L | ${currentLog.repsRight}R`
                                     ) : currentLog.isStaticHold ? (
                                       <>{currentLog.seconds}s</>
@@ -3076,15 +3136,15 @@ export function WorkoutTrackerView({
                               </div>
                             </td>
 
-                            <td className="w-[50px] shrink-0 flex flex-col items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
+                            <td className="w-12.5 shrink-0 flex flex-col items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
                               {prevLog && prevLog.weight ? (
                                 <div className="flex flex-col items-center leading-none">
                                   <span className="font-medium text-xs text-slate-500 dark:text-slate-400">
                                     {prevLog.weight}
                                   </span>
-                                  <span className="font-medium text-[11px] text-slate-400 dark:text-slate-500 mt-[1px]">
+                                  <span className="font-medium text-[11px] text-slate-400 dark:text-slate-500 mt-px">
                                     {prevLog.repsLeft !== undefined &&
-                                      prevLog.repsRight !== undefined ? (
+                                    prevLog.repsRight !== undefined ? (
                                       `${prevLog.repsLeft}L|${prevLog.repsRight}R`
                                     ) : prevLog.isStaticHold ? (
                                       <>
@@ -3101,7 +3161,7 @@ export function WorkoutTrackerView({
                                     prevLog.repQuality !== null && (
                                       <span
                                         className={
-                                          `font-black text-[7px] mt-[2px] px-1 rounded-sm ` +
+                                          `font-black text-[7px] mt-0.5 px-1 rounded-sm ` +
                                           (prevLog.repQuality === 1
                                             ? "bg-red-500/10 text-red-600"
                                             : prevLog.repQuality === 2
@@ -3121,7 +3181,7 @@ export function WorkoutTrackerView({
                             </td>
 
                             <td
-                              className={`w-[60px] shrink-0 cursor-pointer group/weight p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50" : "bg-slate-50/50 dark:bg-surface-2 hover:bg-slate-100 dark:hover:bg-surface-1"}`}
+                              className={`w-15 shrink-0 cursor-pointer group/weight p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50" : "bg-slate-50/50 dark:bg-surface-2 hover:bg-slate-100 dark:hover:bg-surface-1"}`}
                             >
                               {isTorso ? (
                                 <div className="flex flex-col items-center justify-center gap-0.5 w-full h-full">
@@ -3139,7 +3199,7 @@ export function WorkoutTrackerView({
                                       {logL.weight || "--"}
                                     </span>
                                   </div>
-                                  <div className="w-4 h-[1px] bg-slate-200 dark:bg-slate-700" />
+                                  <div className="w-4 h-px bg-slate-200 dark:bg-slate-700" />
                                   <div
                                     className="flex-1 w-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                     onClick={(e) => {
@@ -3178,7 +3238,7 @@ export function WorkoutTrackerView({
                             </td>
 
                             <td
-                              className={`w-[60px] shrink-0 cursor-pointer group/reps p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors relative ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50" : "bg-slate-50/50 dark:bg-surface-2 hover:bg-slate-100 dark:hover:bg-surface-1"}`}
+                              className={`w-15 shrink-0 cursor-pointer group/reps p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors relative ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50" : "bg-slate-50/50 dark:bg-surface-2 hover:bg-slate-100 dark:hover:bg-surface-1"}`}
                             >
                               {isTorso ? (
                                 <div className="flex flex-col items-center justify-center gap-0.5 w-full h-full">
@@ -3205,7 +3265,7 @@ export function WorkoutTrackerView({
                                       )}
                                     </span>
                                   </div>
-                                  <div className="w-4 h-[1px] bg-slate-200 dark:bg-slate-700" />
+                                  <div className="w-4 h-px bg-slate-200 dark:bg-slate-700" />
                                   <div
                                     className="flex-1 w-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                     onClick={(e) => {
@@ -3238,10 +3298,10 @@ export function WorkoutTrackerView({
                                   }
                                 >
                                   {currentLog.isStaticHold ||
-                                    currentLog.reps ? (
+                                  currentLog.reps ? (
                                     <span className="font-bold text-[13px] text-slate-900 dark:text-slate-50">
                                       {currentLog.repsLeft !== undefined &&
-                                        currentLog.repsRight !== undefined ? (
+                                      currentLog.repsRight !== undefined ? (
                                         `${currentLog.repsLeft}L | ${currentLog.repsRight}R`
                                       ) : currentLog.isStaticHold ? (
                                         <>
@@ -3266,12 +3326,12 @@ export function WorkoutTrackerView({
                             </td>
 
                             <td
-                              className={`w-[60px] shrink-0 px-1 border-r border-slate-200 dark:border-slate-800/60 flex items-center justify-center h-full transition-colors ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" : "group-hover:bg-slate-50 dark:group-hover:bg-surface-1"}`}
+                              className={`w-15 shrink-0 px-1 border-r border-slate-200 dark:border-slate-800/60 flex items-center justify-center h-full transition-colors ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" : "group-hover:bg-slate-50 dark:group-hover:bg-surface-1"}`}
                             >
                               {isTorso ? (
                                 <div className="flex flex-col gap-1 items-center">
                                   <div
-                                    className={`flex rounded-full p-[1px] gap-[1px] ${isFocusMachine ? "bg-slate-100/80 border border-slate-200 dark:border-slate-700" : "bg-slate-100 dark:bg-surface-1"}`}
+                                    className={`flex rounded-full p-px gap-px ${isFocusMachine ? "bg-slate-100/80 border border-slate-200 dark:border-slate-700" : "bg-slate-100 dark:bg-surface-1"}`}
                                   >
                                     {[1, 2, 3].map((v) => {
                                       const isSelected = logL.repQuality === v;
@@ -3299,13 +3359,13 @@ export function WorkoutTrackerView({
                                               "Left",
                                             )
                                           }
-                                          className={`w-[10px] h-[10px] rounded-full transition-all ${bgClass}`}
+                                          className={`w-2.5 h-2.5 rounded-full transition-all ${bgClass}`}
                                         />
                                       );
                                     })}
                                   </div>
                                   <div
-                                    className={`flex rounded-full p-[1px] gap-[1px] ${isFocusMachine ? "bg-slate-100/80 border border-slate-200 dark:border-slate-700" : "bg-slate-100 dark:bg-surface-1"}`}
+                                    className={`flex rounded-full p-px gap-px ${isFocusMachine ? "bg-slate-100/80 border border-slate-200 dark:border-slate-700" : "bg-slate-100 dark:bg-surface-1"}`}
                                   >
                                     {[1, 2, 3].map((v) => {
                                       const isSelected = logR.repQuality === v;
@@ -3333,7 +3393,7 @@ export function WorkoutTrackerView({
                                               "Right",
                                             )
                                           }
-                                          className={`w-[10px] h-[10px] rounded-full transition-all ${bgClass}`}
+                                          className={`w-2.5 h-2.5 rounded-full transition-all ${bgClass}`}
                                         />
                                       );
                                     })}
@@ -3341,7 +3401,7 @@ export function WorkoutTrackerView({
                                 </div>
                               ) : (
                                 <div
-                                  className={`flex rounded-full p-[2px] gap-[2px] ${isFocusMachine ? "bg-slate-100/80 border border-slate-200 dark:border-slate-700" : "bg-slate-100 dark:bg-surface-1"}`}
+                                  className={`flex rounded-full p-0.5 gap-0.5 ${isFocusMachine ? "bg-slate-100/80 border border-slate-200 dark:border-slate-700" : "bg-slate-100 dark:bg-surface-1"}`}
                                 >
                                   {[1, 2, 3].map((v) => {
                                     const isSelected =
@@ -3370,7 +3430,7 @@ export function WorkoutTrackerView({
                                             );
                                           }
                                         }}
-                                        className={`w-[14px] h-[14px] rounded-full transition-all ${bgClass}`}
+                                        className={`w-3.5 h-3.5 rounded-full transition-all ${bgClass}`}
                                       />
                                     );
                                   })}
@@ -3380,6 +3440,10 @@ export function WorkoutTrackerView({
                           </tr>
                         );
                       })}
+                    {/* Spacer row to allow scrolling past the floating Stopwatch */}
+                    {currentSession && (
+                      <tr className="h-20 w-full shrink-0 flex items-center bg-transparent pointer-events-none" />
+                    )}
                   </>
                 );
               })()}
@@ -3409,30 +3473,22 @@ export function WorkoutTrackerView({
         />
       )}
 
-      {currentSession && (
-        <div className="fixed bottom-20 left-0 right-0 z-[110]">
-          <Stopwatch onLogTSC={handleLogTSC} />
-        </div>
-      )}
+      {currentSession &&
+        !isSessionRoutineManagerOpen &&
+        !editingWeightMachineId &&
+        !editingSettingsMachineId &&
+        !isShowingSessionNotes && (
+          <div className="fixed bottom-20 left-0 right-0 z-110">
+            <Stopwatch onLogTSC={handleLogTSC} />
+          </div>
+        )}
 
       {currentSession && activeMachineIds.length > 0 && (
-        <div className="fixed bottom-0 left-2 p-1 pointer-events-none opacity-20 z-[110]">
+        <div className="fixed bottom-0 left-2 p-1 pointer-events-none opacity-20 z-110">
           <span className="text-[11px] text-slate-800 dark:text-slate-200 font-mono tracking-widest">
             {machineTimeElapsed}s
           </span>
         </div>
-      )}
-
-      {/* Floating Action Button (FAB) for session notes */}
-      {currentSession && (
-        <button
-          type="button"
-          onClick={() => setIsShowingSessionNotes(true)}
-          className="fixed bottom-24 right-6 z-[110] w-16 h-16 rounded-full bg-[#F06C22] hover:bg-[#F06C22]/90 flex items-center justify-center text-white shadow-[0_4px_24px_rgba(240,108,34,0.45)] hover:shadow-[0_6px_28px_rgba(240,108,34,0.6)] cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 active:bg-[#d65b1d] select-none"
-          title="Session Notes"
-        >
-          <MessageSquare className="w-7 h-7 fill-current" />
-        </button>
       )}
     </motion.div>
   );

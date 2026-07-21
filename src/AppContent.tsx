@@ -1335,6 +1335,105 @@ export default function AppContent({
     );
   }
 
+  const headerRightControls = (
+    <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+      <ThemeToggle />
+      <HubAnnouncementsWidget authTrainer={authTrainer} />
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setCurrentView("trainer-hub")}
+        className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full transition-all hover:bg-transparent shrink-0 ${currentView === "trainer-hub" ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-50 active:text-orange-500"}`}
+        title="Trainer Control Hub"
+      >
+        <Settings className="w-4 h-4 sm:w-6 sm:h-6 md:w-7 md:h-7 transition-colors hover:stroke-orange-500" />
+      </Button>
+    </div>
+  );
+
+  const headerTrainerDropdown = authTrainer ? (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="w-8 h-8 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-primary text-primary-foreground shrink-0">
+        {authTrainer.initials}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="w-56 rounded-[24px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark p-2 shadow-2xl dark:shadow-none text-slate-700 dark:text-slate-300"
+      >
+        <DropdownMenuGroup>
+          {isStudioLeader(authTrainer) && (
+            <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-2">
+              <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 block mb-3">
+                App Mode
+              </Label>
+              <div className="flex bg-slate-100 dark:bg-bg-dark-3 p-1 rounded-xl">
+                <button
+                  onClick={() => {
+                    setAppMode("trainer");
+                    setCurrentView("clients");
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "trainer" ? "bg-white dark:bg-bg-dark shadow-sm text-sky-600 dark:text-sky-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                >
+                  Trainer
+                </button>
+                <button
+                  onClick={() => {
+                    setAppMode("admin");
+                    setCurrentView("admin-dashboard" as any);
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" ? "bg-white dark:bg-bg-dark shadow-sm text-orange-600 dark:text-orange-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                >
+                  Admin
+                </button>
+              </div>
+            </div>
+          )}
+          <DropdownMenuLabel className="font-black uppercase text-[11px] tracking-widest px-3 py-2 text-slate-500 dark:text-slate-400">
+            Active Profile
+          </DropdownMenuLabel>
+          <DropdownMenuItem
+            onClick={() => {
+              setSelectedProfileTrainerId(null);
+              setCurrentView("trainer-profile");
+            }}
+            className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900"
+          >
+            <UserCircle className="w-4 h-4 text-sky-500" />
+            View Profile
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator className="my-2 bg-slate-700" />
+
+        <DropdownMenuGroup>
+          <DropdownMenuItem
+            onClick={handleTrainerLock}
+            className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-orange-500 hover:bg-orange-500/10 dark:bg-orange-600/10 focus:bg-orange-500/10 focus:text-orange-500 cursor-pointer"
+          >
+            <Lock className="w-4 h-4" />
+            Switch Trainer
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onClick={() => setIsChangingStudio(true)}
+            className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900"
+          >
+            <Building2 className="w-4 h-4 text-amber-500" />
+            Switch Studio
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onClick={handleLogout}
+            className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10 focus:text-rose-500 cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+            Log Out Facility
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ) : undefined;
+
   return (
     <ErrorBoundary>
       <div className="flex flex-col min-h-screen bg-background text-foreground font-sans overflow-x-hidden w-full max-w-full">
@@ -1344,103 +1443,8 @@ export default function AppContent({
             variant={theme === "light" ? "light" : "dark"}
             studioName={activeStudioName || undefined}
             onStudioClick={() => setIsChangingStudio(true)}
-            rightControls={
-              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                <ThemeToggle />
-                <HubAnnouncementsWidget authTrainer={authTrainer} />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setCurrentView("trainer-hub")}
-                  className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full transition-all hover:bg-transparent shrink-0 ${currentView === "trainer-hub" ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-50 active:text-orange-500"}`}
-                  title="Trainer Control Hub"
-                >
-                  <Settings className="w-4 h-4 sm:w-6 sm:h-6 md:w-7 md:h-7 transition-colors hover:stroke-orange-500" />
-                </Button>
-              </div>
-            }
-            trainerDropdown={
-              <DropdownMenu>
-                <DropdownMenuTrigger className="w-8 h-8 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-primary text-primary-foreground shrink-0">
-                  {authTrainer.initials}
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="w-56 rounded-[24px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark p-2 shadow-2xl dark:shadow-none text-slate-700 dark:text-slate-300"
-                >
-                  <DropdownMenuGroup>
-                    {isStudioLeader(authTrainer) && (
-                      <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-2">
-                        <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 block mb-3">
-                          App Mode
-                        </Label>
-                        <div className="flex bg-slate-100 dark:bg-bg-dark-3 p-1 rounded-xl">
-                          <button
-                            onClick={() => {
-                              setAppMode("trainer");
-                              setCurrentView("clients");
-                            }}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "trainer" ? "bg-white dark:bg-bg-dark shadow-sm text-sky-600 dark:text-sky-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-                          >
-                            Trainer
-                          </button>
-                          <button
-                            onClick={() => {
-                              setAppMode("admin");
-                              setCurrentView("admin-dashboard" as any);
-                            }}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" ? "bg-white dark:bg-bg-dark shadow-sm text-orange-600 dark:text-orange-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-                          >
-                            Admin
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    <DropdownMenuLabel className="font-black uppercase text-[11px] tracking-widest px-3 py-2 text-slate-500 dark:text-slate-400">
-                      Active Profile
-                    </DropdownMenuLabel>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setSelectedProfileTrainerId(null);
-                        setCurrentView("trainer-profile");
-                      }}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900"
-                    >
-                      <UserCircle className="w-4 h-4 text-sky-500" />
-                      View Profile
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
-
-                  <DropdownMenuSeparator className="my-2 bg-slate-700" />
-
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem
-                      onClick={handleTrainerLock}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-orange-500 hover:bg-orange-500/10 dark:bg-orange-600/10 focus:bg-orange-500/10 focus:text-orange-500 cursor-pointer"
-                    >
-                      <Lock className="w-4 h-4" />
-                      Switch Trainer
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onClick={() => setIsChangingStudio(true)}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900"
-                    >
-                      <Building2 className="w-4 h-4 text-amber-500" />
-                      Switch Studio
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onClick={handleLogout}
-                      className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10 focus:text-rose-500 cursor-pointer"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Log Out Facility
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            }
+            rightControls={headerRightControls}
+            trainerDropdown={headerTrainerDropdown}
           />
         )}
 
@@ -1586,6 +1590,9 @@ export default function AppContent({
                 isSyncing={isSyncing}
                 setIsSyncing={setIsSyncing}
                 isIntroSession={isIntroSession}
+                rightControls={headerRightControls}
+                trainerDropdown={headerTrainerDropdown}
+                onStudioClick={() => setIsChangingStudio(true)}
               />
             )}
             {currentView === "history" && (
@@ -1727,6 +1734,8 @@ export default function AppContent({
                 activeStudioId={activeStudioId}
                 onBack={() => setCurrentView("trainer-hub")}
                 studios={studios}
+                trainers={trainers}
+                clients={clients}
               />
             )}
 

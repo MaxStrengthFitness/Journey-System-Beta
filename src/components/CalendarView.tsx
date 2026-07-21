@@ -4,9 +4,6 @@ import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
-  Clock,
-  CheckCircle2,
-  CalendarDays,
   Users,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -109,24 +106,32 @@ export function CalendarView({
   // Robust trainer lookup function by ID, exact name, or fuzzy match
   const getTrainerIdForSession = React.useCallback(
     (s: any) => {
-      if (s.trainerId) {
-        const found = trainers.find((t) => t.id === s.trainerId);
+      if (!s) return null;
+      const sId = s.trainerId || s.staffId || s.StaffId;
+      if (sId) {
+        const found = trainers.find(
+          (t) => t.id === sId || String(t.id) === String(sId),
+        );
         if (found) return found.id;
       }
-      if (s.trainerName) {
-        const sName = s.trainerName.trim().toLowerCase();
+      const sName = (s.trainerName || s.staffName || s.StaffFirstName || "")
+        .trim()
+        .toLowerCase();
+      if (sName) {
         const found = trainers.find((t) => {
           if (!t.fullName) return false;
-          const tName = t.fullName.trim().toLowerCase();
-          if (sName === tName) return true;
-          const parts = t.fullName.trim().split(" ");
-          if (parts.length >= 2) {
-            return isFuzzyNameMatch(
-              s.trainerName,
-              parts[0],
-              parts.slice(1).join(" "),
-            );
-          }
+          const tFull = t.fullName.trim().toLowerCase();
+          const tFirst = ((t as any).firstName || t.fullName)
+            .split(" ")[0]
+            .trim()
+            .toLowerCase();
+          if (
+            sName === tFull ||
+            sName === tFirst ||
+            sName.startsWith(tFirst) ||
+            tFirst.startsWith(sName)
+          )
+            return true;
           return false;
         });
         if (found) return found.id;
@@ -163,7 +168,7 @@ export function CalendarView({
           ...s,
           isClientEvent: true,
           isUnavailabilityEvent: true,
-          date: s.startTime,
+          date: getScheduleDate(s),
           title: "Unavailability",
           type: "Other",
           priority: "Low",
@@ -201,6 +206,54 @@ export function CalendarView({
       return isNaN(d.getTime()) ? null : d;
     }
     return null;
+  };
+
+  const getScheduleDate = (s: any): Date | null => {
+    if (!s) return null;
+    return safeToDate(s.startTime || s.StartDateTime || s.date || s.start);
+  };
+
+  const getScheduleEndDate = (s: any): Date | null => {
+    if (!s) return null;
+    return safeToDate(
+      s.endTime ||
+        s.EndDateTime ||
+        s.endDate ||
+        s.startTime ||
+        s.StartDateTime ||
+        s.date,
+    );
+  };
+
+  const isTrainerMatch = (s: any, trainer: Trainer): boolean => {
+    if (!s || !trainer) return false;
+    const sId = s.trainerId || s.staffId || s.StaffId;
+    if (sId && trainer.id && String(sId) === String(trainer.id)) return true;
+
+    const sName = (s.trainerName || s.staffName || s.StaffFirstName || "")
+      .trim()
+      .toLowerCase();
+    const tFull = (trainer.fullName || "").trim().toLowerCase();
+    const tFirst = ((trainer as any).firstName || trainer.fullName || "")
+      .split(" ")[0]
+      .trim()
+      .toLowerCase();
+
+    if (
+      sName &&
+      tFirst &&
+      (sName === tFirst || sName.startsWith(tFirst) || tFirst.startsWith(sName))
+    ) {
+      return true;
+    }
+    if (
+      sName &&
+      tFull &&
+      (sName === tFull || sName.includes(tFull) || tFull.includes(sName))
+    ) {
+      return true;
+    }
+    return false;
   };
 
   const getSlotHeader = (date: Date) => {
@@ -246,40 +299,69 @@ export function CalendarView({
     );
   };
 
-  const AM_SLOTS = [
-    "6:00 AM",
-    "6:30 AM",
-    "7:00 AM",
-    "7:30 AM",
-    "8:00 AM",
-    "8:30 AM",
-    "9:00 AM",
-    "9:30 AM",
-    "10:00 AM",
-    "10:30 AM",
-    "11:00 AM",
-    "11:30 AM",
-    "12:00 PM",
-    "12:30 PM",
-    "1:00 PM",
-    "1:30 PM",
-  ];
-  const PM_SLOTS = [
-    "2:00 PM",
-    "2:30 PM",
-    "3:00 PM",
-    "3:30 PM",
-    "4:00 PM",
-    "4:30 PM",
-    "5:00 PM",
-    "5:30 PM",
-    "6:00 PM",
-    "6:30 PM",
-    "7:00 PM",
-    "7:30 PM",
-    "8:00 PM",
-    "8:30 PM",
-  ];
+  const amSlots = React.useMemo(() => {
+    let minH = 6;
+    let maxH = 13;
+
+    (schedules || []).forEach((s) => {
+      const d = safeToDate(
+        s.startTime ||
+          (s as any).StartDateTime ||
+          (s as any).date ||
+          (s as any).start,
+      );
+      if (d) {
+        const h = d.getHours();
+        if (h < 14) {
+          if (h < minH) minH = h;
+          if (h > maxH) maxH = h;
+        }
+      }
+    });
+
+    const slots: string[] = [];
+    for (let h = minH; h <= maxH; h++) {
+      const displayHour = h % 12 === 0 ? 12 : h % 12;
+      const ampm = h >= 12 ? "PM" : "AM";
+      slots.push(`${displayHour}:00 ${ampm}`);
+      slots.push(`${displayHour}:30 ${ampm}`);
+    }
+    return slots;
+  }, [schedules]);
+
+  const pmSlots = React.useMemo(() => {
+    let minH = 14;
+    let maxH = 20;
+
+    (schedules || []).forEach((s) => {
+      const d = safeToDate(
+        s.startTime ||
+          (s as any).StartDateTime ||
+          (s as any).date ||
+          (s as any).start,
+      );
+      if (d) {
+        const h = d.getHours();
+        if (h >= 14) {
+          if (h < minH) minH = h;
+          if (h > maxH) maxH = h;
+        }
+      }
+    });
+
+    const slots: string[] = [];
+    for (let h = minH; h <= maxH; h++) {
+      const displayHour = h % 12 === 0 ? 12 : h % 12;
+      const ampm = h >= 12 ? "PM" : "AM";
+      slots.push(`${displayHour}:00 ${ampm}`);
+      slots.push(`${displayHour}:30 ${ampm}`);
+    }
+    return slots;
+  }, [schedules]);
+
+  const dynamicSlots = React.useMemo(() => {
+    return Array.from(new Set([...amSlots, ...pmSlots]));
+  }, [amSlots, pmSlots]);
 
   const TRAINER_COLORS = [
     {
@@ -612,7 +694,7 @@ export function CalendarView({
             const today = isToday(day.date);
             const daySessions = filteredItems.filter((item) => {
               if (item.isClientEvent) return false;
-              const d = safeToDate(item.startTime || item.date || item.start);
+              const d = getScheduleDate(item);
               return isSameDay(d, day.date);
             });
             const dayEvents = filteredItems.filter((item) => {
@@ -727,52 +809,95 @@ export function CalendarView({
                         </div>
                       </div>
                     ))}
-                    {/* Render Sessions Heatmap Dots */}
+                    {/* Render Sessions Trainer Badges */}
                     {daySessions.length > 0 && (
-                      <>
+                      <div className="flex flex-col gap-1 mt-1.5 w-full">
                         <span
                           className={cn(
-                            "text-[10px] sm:text-xs font-extrabold mt-0.5 truncate block",
+                            "text-[10px] sm:text-xs font-black uppercase tracking-wider truncate block opacity-90",
                             heatmapTextClass,
                           )}
                         >
                           {daySessions.length}{" "}
                           {daySessions.length === 1 ? "Session" : "Sessions"}
                         </span>
-                        <div className="flex flex-wrap gap-1.5 items-center mt-1 min-h-3.5">
-                          {Array.from(
-                            new Set(
-                              daySessions
-                                .map((s) => getTrainerIdForSession(s))
-                                .filter((id): id is string => Boolean(id)),
-                            ),
-                          ).map((tId) => {
-                            const trainer = visibleCalendarTrainers.find(
-                              (t) => t.id === tId,
+                        <div className="flex flex-wrap gap-1 items-center mt-0.5">
+                          {(() => {
+                            const trainerGroupMap = new Map<
+                              string,
+                              {
+                                trainerName: string;
+                                count: number;
+                                trainerObj?: Trainer;
+                              }
+                            >();
+
+                            daySessions.forEach((s) => {
+                              const matchedTrainer =
+                                visibleCalendarTrainers.find((t) =>
+                                  isTrainerMatch(s, t),
+                                );
+                              const key = matchedTrainer
+                                ? matchedTrainer.id!
+                                : (
+                                    s.trainerName ||
+                                    s.staffName ||
+                                    s.StaffFirstName ||
+                                    "Unassigned"
+                                  ).trim();
+                              const name = matchedTrainer
+                                ? matchedTrainer.fullName
+                                : s.trainerName ||
+                                  s.staffName ||
+                                  s.StaffFirstName ||
+                                  "Staff";
+
+                              if (!trainerGroupMap.has(key)) {
+                                trainerGroupMap.set(key, {
+                                  trainerName: name,
+                                  count: 0,
+                                  trainerObj: matchedTrainer,
+                                });
+                              }
+                              trainerGroupMap.get(key)!.count += 1;
+                            });
+
+                            return Array.from(trainerGroupMap.entries()).map(
+                              ([key, group]) => {
+                                const initials = group.trainerName
+                                  .substring(0, 2)
+                                  .toUpperCase();
+                                const first = group.trainerName.split(" ")[0];
+
+                                return (
+                                  <div
+                                    key={key}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (group.trainerObj)
+                                        setSelectedTrainerId(
+                                          group.trainerObj.id!,
+                                        );
+                                    }}
+                                    className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-tight transition-all shadow-md cursor-pointer hover:scale-105 bg-slate-900 text-white dark:bg-white dark:text-slate-950 border-slate-700 dark:border-slate-300"
+                                    title={`${group.trainerName} (${group.count} session${group.count > 1 ? "s" : ""})`}
+                                  >
+                                    <span className="w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-black flex items-center justify-center shrink-0 shadow-xs">
+                                      {initials}
+                                    </span>
+                                    <span className="truncate max-w-16 font-extrabold text-white dark:text-slate-950">
+                                      {first}
+                                    </span>
+                                    <span className="font-mono text-[10px] font-black text-amber-400 dark:text-orange-600">
+                                      ({group.count})
+                                    </span>
+                                  </div>
+                                );
+                              },
                             );
-                            if (!trainer) return null;
-                            const color =
-                              TRAINER_COLORS[
-                                visibleCalendarTrainers.indexOf(trainer) %
-                                  TRAINER_COLORS.length
-                              ];
-                            const trainerSessionCount = daySessions.filter(
-                              (s) => getTrainerIdForSession(s) === tId,
-                            ).length;
-                            return (
-                              <div
-                                key={tId}
-                                className={cn(
-                                  "w-2.5 h-2.5 rounded-full transition-all duration-200 cursor-pointer shadow-sm border border-white/60 dark:border-slate-900/60 hover:scale-150 hover:ring-2 hover:ring-white dark:hover:ring-slate-900 hover:z-30",
-                                  color.solidBg ||
-                                    color.border.replace("border-", "bg-"),
-                                )}
-                                title={`${trainer.fullName} (${trainerSessionCount} session${trainerSessionCount > 1 ? "s" : ""})`}
-                              />
-                            );
-                          })}
+                          })()}
                         </div>
-                      </>
+                      </div>
                     )}
                   </div>
                 )}
@@ -786,7 +911,7 @@ export function CalendarView({
 
   const renderWeek = () => {
     const weekDays = getWeekDays(selectedDate);
-    const allSlots = Array.from(new Set([...AM_SLOTS, ...PM_SLOTS]));
+    const allSlots = dynamicSlots;
 
     const weekStart = new Date(weekDays[0]);
     weekStart.setHours(0, 0, 0, 0);
@@ -796,7 +921,7 @@ export function CalendarView({
     const activeSessions = filteredItems
       .filter((s) => !s.isClientEvent || s.isUnavailabilityEvent)
       .filter((s) => {
-        const d = safeToDate(s.startTime || s.date || s.start);
+        const d = getScheduleDate(s);
         return d && d >= weekStart && d <= weekEnd;
       });
 
@@ -997,7 +1122,7 @@ export function CalendarView({
                           if (skippedWeekCells.has(cellId)) return null;
 
                           const daySessions = activeSessions.filter((s) => {
-                            const d = safeToDate(s.startTime || s.date || s.start);
+                            const d = getScheduleDate(s);
                             if (!d) return false;
                             const tStr = getSlotHeader(d);
                             return isSameDay(d, date) && tStr === slot;
@@ -1007,20 +1132,44 @@ export function CalendarView({
 
                           let maxRowSpan = 1;
                           if (daySessions.length > 0) {
-                            daySessions.forEach((s) => {
-                              const start = safeToDate(s.startTime || s.date || s.start);
-                              const end = safeToDate(
-                                s.endTime || s.endDate || s.startTime || s.date,
-                              );
+                            const calculatedSpans = daySessions.map((s) => {
+                              const start = getScheduleDate(s);
+                              const end = getScheduleEndDate(s);
                               if (start && end) {
                                 const duration =
-                                  (end.getTime() - start.getTime()) / (1000 * 60);
-                                const rs = Math.max(1, Math.round(duration / 30));
-                                if (rs > maxRowSpan) maxRowSpan = rs;
+                                  (end.getTime() - start.getTime()) /
+                                  (1000 * 60);
+                                return Math.max(1, Math.round(duration / 30));
                               }
+                              return 1;
                             });
+                            const maxSpan = Math.max(...calculatedSpans);
 
-                            if (maxRowSpan > 1) {
+                            let canExpand = maxSpan > 1;
+                            for (let i = 1; i < maxSpan; i++) {
+                              const nextSlot = allSlots[sIdx + i];
+                              if (!nextSlot) {
+                                canExpand = false;
+                                break;
+                              }
+                              const hasSessionInNextSlot = activeSessions.some(
+                                (s) => {
+                                  const d = getScheduleDate(s);
+                                  if (!d) return false;
+                                  const tStr = getSlotHeader(d);
+                                  return (
+                                    isSameDay(d, date) && tStr === nextSlot
+                                  );
+                                },
+                              );
+                              if (hasSessionInNextSlot) {
+                                canExpand = false;
+                                break;
+                              }
+                            }
+
+                            if (canExpand) {
+                              maxRowSpan = maxSpan;
                               for (let i = 1; i < maxRowSpan; i++) {
                                 if (allSlots[sIdx + i]) {
                                   skippedWeekCells.add(
@@ -1156,10 +1305,10 @@ export function CalendarView({
   const renderDay = () => {
     const slots =
       shiftMode === "AM"
-        ? AM_SLOTS
+        ? amSlots
         : shiftMode === "PM"
-          ? PM_SLOTS
-          : Array.from(new Set([...AM_SLOTS, ...PM_SLOTS]));
+          ? pmSlots
+          : dynamicSlots;
     const filteredTrainers =
       selectedTrainerId === "all"
         ? visibleCalendarTrainers
@@ -1251,21 +1400,39 @@ export function CalendarView({
                     <th className="p-3 sm:p-4 text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800 w-14 sm:w-16 sticky left-0 bg-slate-100 dark:bg-slate-900 z-30">
                       Time
                     </th>
-                    {filteredTrainers.map((trainer) => (
-                      <th
-                        key={trainer.id}
-                        className="p-3 sm:p-4 border-r border-slate-200 dark:border-slate-800 last:border-r-0 text-center z-20 sticky top-0 bg-slate-100/90 dark:bg-slate-900/90 backdrop-blur-md"
-                      >
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-sky-500/10 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center text-[#0284c7] dark:text-[#38BDF8] font-black text-xs sm:text-sm shadow-xs">
-                            {trainer.initials}
+                    {filteredTrainers.map((trainer) => {
+                      const trainerSessionCount = normalSchedules.filter(
+                        (s) => {
+                          const d = getScheduleDate(s);
+                          if (!d) return false;
+                          return (
+                            isSameDay(d, selectedDate) &&
+                            isTrainerMatch(s, trainer)
+                          );
+                        },
+                      ).length;
+
+                      return (
+                        <th
+                          key={trainer.id}
+                          className="p-3 sm:p-4 border-r border-slate-200 dark:border-slate-800 last:border-r-0 text-center z-20 sticky top-0 bg-slate-100/90 dark:bg-slate-900/90 backdrop-blur-md"
+                        >
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-sky-500/10 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center text-[#0284c7] dark:text-[#38BDF8] font-black text-xs sm:text-sm shadow-xs">
+                              {trainer.initials}
+                            </div>
+                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mt-1">
+                              {trainer.fullName}
+                            </span>
+                            <div className="bg-sky-500/10 text-[#0284c7] dark:text-[#38BDF8] px-2 py-0.5 rounded-full flex items-center gap-1 leading-none mt-0.5 border border-sky-500/20">
+                              <span className="text-[10px] font-extrabold tracking-widest whitespace-nowrap uppercase">
+                                {trainerSessionCount} Sess.
+                              </span>
+                            </div>
                           </div>
-                          <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mt-1">
-                            {trainer.fullName}
-                          </span>
-                        </div>
-                      </th>
-                    ))}
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody className="relative">
@@ -1361,17 +1528,16 @@ export function CalendarView({
                             const cellId = `${trainer.id}-${slot}`;
                             if (skippedCells.has(cellId)) return null;
 
-                            const session = filteredItems.find((s) => {
+                            const cellSessions = filteredItems.filter((s) => {
                               if (s.isClientEvent && !s.isUnavailabilityEvent)
                                 return false;
-                              const d = safeToDate(s.startTime || s.date || s.start);
+                              const d = getScheduleDate(s);
                               if (!d) return false;
                               const tStr = getSlotHeader(d);
-                              const tId = getTrainerIdForSession(s);
                               return (
                                 isSameDay(d, selectedDate) &&
                                 tStr === slot &&
-                                tId === trainer.id
+                                isTrainerMatch(s, trainer)
                               );
                             });
 
@@ -1383,27 +1549,56 @@ export function CalendarView({
                               ];
 
                             let rowSpan = 1;
-                            if (session) {
-                              const start = safeToDate(
-                                session.startTime || session.date || session.start,
-                              );
-                              const end = safeToDate(
-                                session.endTime ||
-                                  session.endDate ||
-                                  session.startTime ||
-                                  session.date,
-                              );
+                            if (cellSessions.length === 1) {
+                              const session = cellSessions[0];
+                              const start = getScheduleDate(session);
+                              const end = getScheduleEndDate(session);
                               if (start && end) {
                                 const duration =
-                                  (end.getTime() - start.getTime()) / (1000 * 60);
-                                rowSpan = Math.max(1, Math.round(duration / 30));
-                              }
-                              if (rowSpan > 1) {
-                                for (let i = 1; i < rowSpan; i++) {
-                                  if (slots[sIdx + i]) {
-                                    skippedCells.add(
-                                      `${trainer.id}-${slots[sIdx + i]}`,
-                                    );
+                                  (end.getTime() - start.getTime()) /
+                                  (1000 * 60);
+                                const calculatedSpan = Math.max(
+                                  1,
+                                  Math.round(duration / 30),
+                                );
+
+                                let canExpand = calculatedSpan > 1;
+                                for (let i = 1; i < calculatedSpan; i++) {
+                                  const nextSlot = slots[sIdx + i];
+                                  if (!nextSlot) {
+                                    canExpand = false;
+                                    break;
+                                  }
+                                  const hasOtherSessionStarting =
+                                    filteredItems.some((s) => {
+                                      if (
+                                        s.isClientEvent &&
+                                        !s.isUnavailabilityEvent
+                                      )
+                                        return false;
+                                      const d = getScheduleDate(s);
+                                      if (!d) return false;
+                                      const tStr = getSlotHeader(d);
+                                      return (
+                                        isSameDay(d, selectedDate) &&
+                                        tStr === nextSlot &&
+                                        isTrainerMatch(s, trainer)
+                                      );
+                                    });
+                                  if (hasOtherSessionStarting) {
+                                    canExpand = false;
+                                    break;
+                                  }
+                                }
+
+                                if (canExpand) {
+                                  rowSpan = calculatedSpan;
+                                  for (let i = 1; i < rowSpan; i++) {
+                                    if (slots[sIdx + i]) {
+                                      skippedCells.add(
+                                        `${trainer.id}-${slots[sIdx + i]}`,
+                                      );
+                                    }
                                   }
                                 }
                               }
@@ -1418,69 +1613,78 @@ export function CalendarView({
                                   rowSpan > 1 ? "" : "h-15",
                                 )}
                               >
-                                {session ? (
-                                  (() => {
-                                    const isUnavail =
-                                      session.isUnavailabilityEvent ||
-                                      session.clientName
-                                        ?.toLowerCase()
-                                        .includes("unavailab");
-                                    return (
-                                      <div
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          if (!isUnavail)
-                                            handleClientClick(session);
-                                        }}
-                                        className={cn(
-                                          "p-3 rounded-xl flex flex-col gap-0.5 hover:scale-[1.02] transition-all cursor-pointer shadow-md h-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800",
-                                          isUnavail
-                                            ? "bg-slate-200 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-700 text-slate-500 cursor-not-allowed opacity-90"
-                                            : cn("border-l-4", color.border),
-                                        )}
-                                      >
-                                        <div className="flex justify-between items-start mb-1">
-                                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 tabular-nums leading-none tracking-tight">
-                                            {slot} -{" "}
-                                            {session.endTime
-                                              ? getSlotHeader(
-                                                  safeToDate(session.endTime),
-                                                )
-                                              : "30m"}
-                                          </span>
-                                          {rowSpan > 1 && !isUnavail && (
-                                            <Badge
-                                              variant="outline"
-                                              className="text-[10px] h-4 bg-sky-500/10 border-sky-500/30 text-[#0284c7] dark:text-[#38BDF8] font-bold"
-                                            >
-                                              {Math.round(
-                                                (safeToDate(
-                                                  session.endTime,
-                                                ).getTime() -
-                                                  safeToDate(
-                                                    session.startTime,
-                                                  ).getTime()) /
-                                                  60000,
-                                              )}
-                                              m
-                                            </Badge>
+                                {cellSessions.length > 0 ? (
+                                  <div className="flex flex-col gap-1.5 h-full w-full">
+                                    {cellSessions.map((session, csIdx) => {
+                                      const isUnavail =
+                                        session.isUnavailabilityEvent ||
+                                        session.clientName
+                                          ?.toLowerCase()
+                                          .includes("unavailab");
+                                      return (
+                                        <div
+                                          key={
+                                            session.id ||
+                                            session.mindbodyAppointmentId ||
+                                            csIdx
+                                          }
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!isUnavail)
+                                              handleClientClick(session);
+                                          }}
+                                          className={cn(
+                                            "p-3 rounded-xl flex flex-col gap-0.5 hover:scale-[1.02] transition-all cursor-pointer shadow-md flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800",
+                                            isUnavail
+                                              ? "bg-slate-200 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-700 text-slate-500 cursor-not-allowed opacity-90"
+                                              : cn("border-l-4", color.border),
                                           )}
-                                        </div>
-                                        <span className="text-xs sm:text-sm font-black truncate text-slate-900 dark:text-white leading-tight">
-                                          {isUnavail
-                                            ? "Unavailable"
-                                            : session.clientName}
-                                        </span>
-                                        {rowSpan > 1 &&
-                                          session.serviceName &&
-                                          !isUnavail && (
-                                            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
-                                              {session.serviceName}
+                                        >
+                                          <div className="flex justify-between items-start mb-1">
+                                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 tabular-nums leading-none tracking-tight">
+                                              {slot} -{" "}
+                                              {session.endTime
+                                                ? getSlotHeader(
+                                                    safeToDate(session.endTime),
+                                                  )
+                                                : "30m"}
                                             </span>
-                                          )}
-                                      </div>
-                                    );
-                                  })()
+                                            {rowSpan > 1 && !isUnavail && (
+                                              <Badge
+                                                variant="outline"
+                                                className="text-[10px] h-4 bg-sky-500/10 border-sky-500/30 text-[#0284c7] dark:text-[#38BDF8] font-bold"
+                                              >
+                                                {Math.round(
+                                                  (safeToDate(
+                                                    session.endTime ||
+                                                      session.endDate,
+                                                  ).getTime() -
+                                                    safeToDate(
+                                                      session.startTime ||
+                                                        session.date,
+                                                    ).getTime()) /
+                                                    60000,
+                                                )}
+                                                m
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          <span className="text-xs sm:text-sm font-black truncate text-slate-900 dark:text-white leading-tight">
+                                            {isUnavail
+                                              ? "Unavailable"
+                                              : session.clientName}
+                                          </span>
+                                          {rowSpan > 1 &&
+                                            session.serviceName &&
+                                            !isUnavail && (
+                                              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
+                                                {session.serviceName}
+                                              </span>
+                                            )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
                                 ) : (
                                   <div className="h-full w-full opacity-0 hover:opacity-100 transition-all flex items-center justify-center p-2 bg-slate-100/90 dark:bg-slate-800/90 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer shadow-sm">
                                     <span className="text-[11px] font-black uppercase tracking-widest text-[#0284c7] dark:text-[#38BDF8]">
@@ -1506,26 +1710,28 @@ export function CalendarView({
 
   return (
     <div className="space-y-4 sm:space-y-8 pb-12 w-full overflow-x-hidden p-3 sm:p-8 bg-white dark:bg-slate-950 min-h-screen rounded-[24px] sm:rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-2xl relative">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 relative z-10">
-        <div className="flex items-center gap-3 sm:gap-6">
-          <div className="w-10 h-10 sm:w-14 sm:h-14 bg-slate-100 dark:bg-slate-900 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-inner border border-slate-200 dark:border-slate-800 shrink-0">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 sm:gap-6 relative z-10 pb-2 border-b border-slate-100 dark:border-slate-800/80">
+        <div className="flex items-center gap-3 sm:gap-5">
+          <div className="w-10 h-10 sm:w-14 sm:h-14 bg-slate-100 dark:bg-slate-900 rounded-2xl flex items-center justify-center shadow-inner border border-slate-200 dark:border-slate-800 shrink-0">
             <CalendarIcon className="w-5 h-5 sm:w-7 sm:h-7 text-[#0284c7] dark:text-[#38BDF8]" />
           </div>
           <div>
-            <h2 className="text-xl sm:text-3xl font-black tracking-tight uppercase italic text-slate-900 dark:text-white flex items-center gap-2 sm:gap-3">
-              {viewMode === "month"
-                ? "Month View"
-                : viewMode === "week"
-                  ? "Week View"
-                  : "Day View"}
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <h2 className="text-xl sm:text-3xl font-black tracking-tight uppercase italic text-slate-900 dark:text-white leading-none">
+                {viewMode === "month"
+                  ? "Month View"
+                  : viewMode === "week"
+                    ? "Week View"
+                    : "Day View"}
+              </h2>
               <Badge
                 variant="outline"
-                className="text-[9px] sm:text-[11px] font-black h-4 sm:h-5 px-1.5 sm:px-2 tracking-widest border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 uppercase not-italic"
+                className="text-[9px] sm:text-[11px] font-black h-5 px-2 tracking-widest border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 uppercase not-italic shrink-0"
               >
                 Read Only
               </Badge>
-            </h2>
-            <p className="text-slate-500 dark:text-slate-400 font-black uppercase text-[9px] sm:text-[11px] tracking-[0.15em] sm:tracking-[0.2em] mt-0.5 sm:mt-1 border-l-2 border-[#38BDF8] pl-1.5 sm:pl-2">
+            </div>
+            <p className="text-slate-500 dark:text-slate-400 font-black uppercase text-[9px] sm:text-[11px] tracking-[0.15em] sm:tracking-[0.2em] mt-1 border-l-2 border-[#38BDF8] pl-2 leading-none">
               {viewMode === "month"
                 ? selectedDate.toLocaleDateString(undefined, {
                     month: "long",
@@ -1543,14 +1749,14 @@ export function CalendarView({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-          <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs shrink-0">
             <button
               onClick={() => setFilterMode("all")}
               className={cn(
-                "px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-[9px] sm:text-[11px] font-black uppercase tracking-widest transition-all cursor-pointer",
+                "px-2.5 sm:px-3.5 py-1 rounded-lg text-[9px] sm:text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer",
                 filterMode === "all"
-                  ? "bg-[#0284c7] text-white shadow-sm"
+                  ? "bg-[#0284c7] text-white shadow-xs"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
               )}
             >
@@ -1559,9 +1765,9 @@ export function CalendarView({
             <button
               onClick={() => setFilterMode("sessions")}
               className={cn(
-                "px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-[9px] sm:text-[11px] font-black uppercase tracking-widest transition-all cursor-pointer",
+                "px-2.5 sm:px-3.5 py-1 rounded-lg text-[9px] sm:text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer",
                 filterMode === "sessions"
-                  ? "bg-[#0284c7] text-white shadow-sm"
+                  ? "bg-[#0284c7] text-white shadow-xs"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
               )}
             >
@@ -1570,9 +1776,9 @@ export function CalendarView({
             <button
               onClick={() => setFilterMode("events")}
               className={cn(
-                "px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-[9px] sm:text-[11px] font-black uppercase tracking-widest transition-all cursor-pointer",
+                "px-2.5 sm:px-3.5 py-1 rounded-lg text-[9px] sm:text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer",
                 filterMode === "events"
-                  ? "bg-[#0284c7] text-white shadow-sm"
+                  ? "bg-[#0284c7] text-white shadow-xs"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
               )}
             >
@@ -1580,14 +1786,14 @@ export function CalendarView({
             </button>
           </div>
 
-          <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs shrink-0">
             <Button
               size="sm"
               onClick={() => setViewMode("month")}
               className={cn(
-                "rounded-lg font-black uppercase text-[9px] sm:text-[11px] tracking-widest px-2.5 sm:px-4 h-7 sm:h-8 transition-all duration-200 cursor-pointer",
+                "rounded-lg font-black uppercase text-[9px] sm:text-[11px] tracking-wider px-2.5 sm:px-3.5 h-7 transition-all cursor-pointer",
                 viewMode === "month"
-                  ? "bg-[#0284c7] text-white shadow-sm"
+                  ? "bg-[#0284c7] text-white shadow-xs"
                   : "bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
               )}
             >
@@ -1597,9 +1803,9 @@ export function CalendarView({
               size="sm"
               onClick={() => setViewMode("week")}
               className={cn(
-                "rounded-lg font-black uppercase text-[9px] sm:text-[11px] tracking-widest px-2.5 sm:px-4 h-7 sm:h-8 transition-all duration-200 cursor-pointer",
+                "rounded-lg font-black uppercase text-[9px] sm:text-[11px] tracking-wider px-2.5 sm:px-3.5 h-7 transition-all cursor-pointer",
                 viewMode === "week"
-                  ? "bg-[#0284c7] text-white shadow-sm"
+                  ? "bg-[#0284c7] text-white shadow-xs"
                   : "bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
               )}
             >
@@ -1609,9 +1815,9 @@ export function CalendarView({
               size="sm"
               onClick={() => setViewMode("day")}
               className={cn(
-                "rounded-lg font-black uppercase text-[9px] sm:text-[11px] tracking-widest px-2.5 sm:px-4 h-7 sm:h-8 transition-all duration-200 cursor-pointer",
+                "rounded-lg font-black uppercase text-[9px] sm:text-[11px] tracking-wider px-2.5 sm:px-3.5 h-7 transition-all cursor-pointer",
                 viewMode === "day"
-                  ? "bg-[#0284c7] text-white shadow-sm"
+                  ? "bg-[#0284c7] text-white shadow-xs"
                   : "bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
               )}
             >
@@ -1619,62 +1825,66 @@ export function CalendarView({
             </Button>
           </div>
 
-          <div className="flex items-center bg-slate-100 dark:bg-slate-900 px-2 sm:px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-800 gap-1.5 sm:gap-2 shadow-sm">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-900 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-800 gap-2 shadow-xs shrink-0 h-9">
             <Users className="w-3.5 h-3.5 text-[#0284c7] dark:text-[#38BDF8] shrink-0" />
             <Select
               value={selectedTrainerId}
               onValueChange={setSelectedTrainerId}
             >
-              <SelectTrigger className="h-6 border-none bg-transparent focus:ring-0 text-[10px] sm:text-[11px] font-black uppercase tracking-widest min-w-20 sm:min-w-30 p-0 shadow-none text-slate-900 dark:text-white hover:text-[#0284c7] dark:hover:text-[#38BDF8] transition-colors">
-                <SelectValue placeholder="Team Filter" />
+              <SelectTrigger className="h-6 border-none bg-transparent focus:ring-0 text-[10px] sm:text-[11px] font-black uppercase tracking-wider min-w-24 p-0 shadow-none text-slate-900 dark:text-white hover:text-[#0284c7] dark:hover:text-[#38BDF8] transition-colors">
+                <SelectValue placeholder="Team Filter">
+                  {selectedTrainerId === "all"
+                    ? "Entire Team"
+                    : trainers.find((t) => t.id === selectedTrainerId)
+                        ?.fullName ||
+                      visibleCalendarTrainers.find(
+                        (t) => t.id === selectedTrainerId,
+                      )?.fullName ||
+                      selectedTrainerId}
+                </SelectValue>
               </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                {isAdmin && (
+              <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white max-h-64">
+                <SelectItem
+                  value="all"
+                  className="font-bold focus:bg-slate-100 dark:focus:bg-slate-800 text-xs"
+                >
+                  Entire Team
+                </SelectItem>
+                {trainers.map((t) => (
                   <SelectItem
-                    value="all"
+                    key={t.id}
+                    value={t.id!}
                     className="font-bold focus:bg-slate-100 dark:focus:bg-slate-800 text-xs"
                   >
-                    Entire Team
+                    {t.fullName}
                   </SelectItem>
-                )}
-                {visibleCalendarTrainers
-                  .filter((t) => isAdmin || t.id === authTrainer?.id)
-                  .map((t) => (
-                    <SelectItem
-                      key={t.id}
-                      value={t.id!}
-                      className="font-bold hover:bg-slate-100 dark:hover:bg-slate-800 text-xs"
-                    >
-                      {t.fullName}
-                    </SelectItem>
-                  ))}
+                ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs shrink-0 h-9">
             <Button
               variant="ghost"
               size="icon"
               onClick={handlePrev}
-              className="rounded-lg h-7 w-7 sm:h-8 sm:w-8 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 shrink-0 cursor-pointer"
+              className="rounded-lg h-7 w-7 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 shrink-0 cursor-pointer"
             >
-              <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <ChevronLeft className="w-3.5 h-3.5" />
             </Button>
             <Button
               variant="ghost"
               onClick={() => setSelectedDate(new Date())}
-              className="rounded-lg font-black uppercase text-[9px] sm:text-[11px] tracking-widest px-2.5 sm:px-4 h-7 sm:h-8 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer"
+              className="rounded-lg font-black uppercase text-[10px] sm:text-[11px] tracking-wider px-3 h-7 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer"
             >
               Today
             </Button>
             <Button
               variant="ghost"
-              size="icon"
               onClick={handleNext}
-              className="rounded-lg h-7 w-7 sm:h-8 sm:w-8 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 shrink-0 cursor-pointer"
+              className="rounded-lg h-7 w-7 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 shrink-0 cursor-pointer"
             >
-              <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <ChevronRight className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>

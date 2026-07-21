@@ -69,6 +69,7 @@ export function EditTrainerModal({
     [],
   );
   const [isVisibleOnCalendar, setIsVisibleOnCalendar] = useState(true);
+  const [mindbodyStaffId, setMindbodyStaffId] = useState("");
 
   const [saving, setSaving] = useState(false);
 
@@ -88,6 +89,7 @@ export function EditTrainerModal({
       setAccessibleStudioIds(trainer.accessibleStudioIds || []);
       setActiveGuestStudioIds(trainer.activeGuestStudioIds || []);
       setIsVisibleOnCalendar(trainer.isVisibleOnCalendar !== false);
+      setMindbodyStaffId(trainer.mindbodyStaffId || "");
     }
   }, [trainer, isOpen]);
 
@@ -126,6 +128,7 @@ export function EditTrainerModal({
         email: email.trim(),
         brandColor,
         mindbodyLinked,
+        mindbodyStaffId: mindbodyStaffId.trim() || undefined,
         searchTokens,
       };
 
@@ -272,6 +275,23 @@ export function EditTrainerModal({
                 onCheckedChange={setMindbodyLinked}
               />
             </div>
+          </div>
+
+          {/* Mindbody Staff ID for API sync */}
+          <div className="space-y-2">
+            <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest flex items-center gap-1">
+              <Eye className="w-3 h-3 text-orange-500" />
+              Mindbody Staff ID
+            </Label>
+            <Input
+              value={mindbodyStaffId}
+              onChange={(e) => setMindbodyStaffId(e.target.value.replace(/[^0-9]/g, ''))}
+              className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl h-11 font-mono"
+              placeholder="e.g. 100000123"
+            />
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">
+              Find in Mindbody Admin → Staff → [Name] → Staff ID. Required for API schedule sync.
+            </p>
           </div>
 
           {isAdminMode && (

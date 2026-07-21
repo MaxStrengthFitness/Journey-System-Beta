@@ -184,10 +184,13 @@ export function TrainerControlHubView({
   });
   const [isExportingPayroll, setIsExportingPayroll] = useState(false);
   const [isExportingAttendance, setIsExportingAttendance] = useState(false);
+  const [isExportingProgress, setIsExportingProgress] = useState(false);
   const [studioToDelete, setStudioToDelete] = useState<Studio | null>(null);
 
-  // iCal Edit State
-  const [editingIcalId, setEditingIcalId] = useState<string | null>(null);
+  // Mindbody Staff ID Edit State
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
+  const [newStaffId, setNewStaffId] = useState("");
+  const [isUpdatingStaffId, setIsUpdatingStaffId] = useState(false);
 
   const { theme, setTheme } = useTheme();
 
@@ -220,8 +223,6 @@ export function TrainerControlHubView({
       setIsSubmittingBug(false);
     }
   };
-  const [newIcalUrl, setNewIcalUrl] = useState("");
-  const [isUpdatingIcal, setIsUpdatingIcal] = useState(false);
 
   // New states for Create/Delete overrides
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -526,29 +527,30 @@ export function TrainerControlHubView({
         return;
       }
 
-      const grouped: Record<string, WorkoutSession[]> = {};
-      allSessions.forEach((s) => {
-        const key = s.trainerInitials || "Unknown";
-        if (!grouped[key]) grouped[key] = [];
-        grouped[key].push(s);
+      const payrollData = allSessions.map((s) => {
+        const trainerObj = trainers.find(
+          (t) => t.id === s.trainerId || t.initials === s.trainerInitials,
+        );
+        const clientObj = clients.find((c) => c.id === s.clientId);
+        const studioObj = studios.find((std) => std.id === s.hostedAtStudioId);
+
+        const dateObj = s.createdAt?.toDate?.() || new Date(s.createdAt);
+
+        return {
+          "Trainer Initials": s.trainerInitials || "N/A",
+          "Trainer Name": trainerObj?.fullName || "Unknown Trainer",
+          "Studio ID": s.hostedAtStudioId || "N/A",
+          "Studio Name": studioObj?.name || "Unknown Studio",
+          "Client Name": clientObj
+            ? `${clientObj.firstName} ${clientObj.lastName}`
+            : "Unknown Client",
+          "Session Date": dateObj.toISOString().split("T")[0],
+          "Session Type": s.sessionType || "Standard",
+          "Session Notes": s.notes || "",
+        };
       });
 
-      const payrollData = Object.entries(grouped).map(
-        ([initials, trainerSessions]) => {
-          const trainerObj = trainers.find(
-            (t) =>
-              t.initials === initials || t.id === trainerSessions[0]?.trainerId,
-          );
-          return {
-            "Trainer Initials": initials,
-            "Trainer Name": trainerObj?.fullName || "Unknown Trainer",
-            "Total Sessions Completed": trainerSessions.length,
-            "Date Range": `${exportStartDate} to ${exportEndDate}`,
-          };
-        },
-      );
-
-      const filename = `payroll_summary_${exportStartDate}_to_${exportEndDate}.csv`;
+      const filename = `payroll_details_${exportStartDate}_to_${exportEndDate}.csv`;
       const csv = Papa.unparse(payrollData);
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
@@ -559,7 +561,7 @@ export function TrainerControlHubView({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toastSuccess("Payroll CSV downloaded successfully.");
+      toastSuccess(`Payroll CSV (${filename}) downloaded successfully.`);
     } catch (err: any) {
       console.error(err);
       toastError("Failed to export payroll summary: " + err.message);
@@ -588,7 +590,9 @@ export function TrainerControlHubView({
             hour: "2-digit",
             minute: "2-digit",
           }),
+          "Client ID": s.clientId || "Unassigned",
           "Client Name": s.clientName || "Unknown Client",
+          "Trainer ID": s.trainerId || "Unassigned",
           "Trainer Name": s.trainerName || "Unknown Trainer",
           Status: s.status || "Scheduled",
           Service: s.serviceName || "Workout",
@@ -608,12 +612,117 @@ export function TrainerControlHubView({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toastSuccess("Attendance CSV downloaded successfully.");
+      toastSuccess(`Attendance CSV (${filename}) downloaded successfully.`);
     } catch (err: any) {
       console.error(err);
       toastError("Failed to export attendance summary: " + err.message);
     } finally {
       setIsExportingAttendance(false);
+    }
+  };
+
+  const handleExportProgress = async () => {
+    setIsExportingProgress(true);
+    try {
+      const allSessions = await fetchSessionsForExport(
+        exportStartDate,
+        exportEndDate,
+      );
+      if (allSessions.length === 0) {
+        toastError("No completed sessions found in the selected date range.");
+        return;
+      }
+
+      const start = new Date(exportStartDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(exportEndDate);
+      end.setHours(23, 59, 59, 999);
+
+      const logsSnap = await getDocs(
+        query(
+          collection(db, "exerciseLogs"),
+          where("createdAt", ">=", Timestamp.fromDate(start)),
+          where("createdAt", "<=", Timestamp.fromDate(end)),
+        ),
+      );
+
+      const logsBySession: Record<string, any[]> = {};
+      logsSnap.forEach((doc) => {
+        const data = doc.data();
+        if (data.sessionId) {
+          if (!logsBySession[data.sessionId])
+            logsBySession[data.sessionId] = [];
+          logsBySession[data.sessionId].push(data);
+        }
+      });
+
+      const groupedByClient: Record<
+        string,
+        { sessions: WorkoutSession[]; weights: number[] }
+      > = {};
+      allSessions.forEach((s) => {
+        if (!s.clientId) return;
+        if (!groupedByClient[s.clientId]) {
+          groupedByClient[s.clientId] = { sessions: [], weights: [] };
+        }
+        groupedByClient[s.clientId].sessions.push(s);
+
+        const sLogs = logsBySession[s.id || ""] || [];
+        sLogs.forEach((log) => {
+          const w = parseFloat(log.weight);
+          if (!isNaN(w) && w > 0) {
+            groupedByClient[s.clientId!].weights.push(w);
+          }
+        });
+      });
+
+      const progressData = Object.entries(groupedByClient).map(
+        ([cId, data]) => {
+          const clientObj = clients.find((c) => c.id === cId);
+          const name = clientObj
+            ? `${clientObj.firstName} ${clientObj.lastName}`
+            : "Unknown Client";
+          const studioObj = studios.find(
+            (std) => std.id === clientObj?.homeStudioId,
+          );
+
+          const sessionsCount = data.sessions.length;
+          const totalWeight = data.weights.reduce((sum, w) => sum + w, 0);
+          const avgWeight =
+            data.weights.length > 0
+              ? (totalWeight / data.weights.length).toFixed(1)
+              : "0";
+
+          return {
+            "Client ID": cId,
+            "Client Name": name,
+            "Home Studio": studioObj?.name || "Unknown Studio",
+            "Sessions Completed": sessionsCount,
+            "Average Exercise Resistance (lbs)": avgWeight,
+            "Logs Recorded": data.weights.length,
+          };
+        },
+      );
+
+      const filename = `client_progress_${exportStartDate}_to_${exportEndDate}.csv`;
+      const csv = Papa.unparse(progressData);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toastSuccess(
+        `Client Progress CSV (${filename}) downloaded successfully.`,
+      );
+    } catch (err: any) {
+      console.error(err);
+      toastError("Failed to export client progress: " + err.message);
+    } finally {
+      setIsExportingProgress(false);
     }
   };
 
@@ -641,12 +750,28 @@ export function TrainerControlHubView({
     (filteredTrainers.length > 0 ? filteredTrainers[0] : null);
 
   const handleAllTrainersSync = async () => {
+    if (!activeStudio?.mindbodySiteId) {
+      toastError("Mindbody Site ID must be configured for this studio.");
+      return;
+    }
     setIsSyncingAll(true);
     try {
-      const { executeFrontendMasterSync } =
-        await import("../lib/frontend-sync");
-      await executeFrontendMasterSync(null, false, trainers, clients, studios);
-      toastSuccess("Master Sync completed successfully.");
+      const { syncMindbodySchedules } =
+        await import("../lib/mindbody-api-sync");
+      const result = await syncMindbodySchedules(
+        activeStudio.mindbodySiteId,
+        trainers,
+        clients,
+        studios,
+        null,
+      );
+      if (result.errors.length > 0) {
+        toastError(`Sync completed with errors: ${result.errors[0]}`);
+      } else {
+        toastSuccess(
+          `Sync completed. Added: ${result.added}, Updated: ${result.updated}`,
+        );
+      }
     } catch (err: any) {
       toastError("Mass sync failed: " + err.message);
     } finally {
@@ -655,18 +780,28 @@ export function TrainerControlHubView({
   };
 
   const handleTrainerSync = async (trainerId: string) => {
+    if (!activeStudio?.mindbodySiteId) {
+      toastError("Mindbody Site ID must be configured for this studio.");
+      return;
+    }
     setSyncingTrainerId(trainerId);
     try {
-      const { executeFrontendMasterSync } =
-        await import("../lib/frontend-sync");
-      await executeFrontendMasterSync(
-        trainerId,
-        false,
+      const { syncMindbodySchedules } =
+        await import("../lib/mindbody-api-sync");
+      const result = await syncMindbodySchedules(
+        activeStudio.mindbodySiteId,
         trainers,
         clients,
         studios,
+        trainerId,
       );
-      toastSuccess("Trainer schedule sync completed.");
+      if (result.errors.length > 0) {
+        toastError(`Sync completed with errors: ${result.errors[0]}`);
+      } else {
+        toastSuccess(
+          `Trainer sync completed. Added: ${result.added}, Updated: ${result.updated}`,
+        );
+      }
     } catch (err: any) {
       toastError("Sync failed: " + err.message);
     } finally {
@@ -713,20 +848,23 @@ export function TrainerControlHubView({
     }
   };
 
-  const handleUpdateIcalUrl = async (trainerId: string, url: string | null) => {
-    setIsUpdatingIcal(true);
+  const handleUpdateStaffId = async (
+    trainerId: string,
+    staffId: string | null,
+  ) => {
+    setIsUpdatingStaffId(true);
     try {
       await updateDoc(doc(db, "trainers", trainerId), {
-        mindbody_ical_url: url,
+        mindbodyStaffId: staffId || null,
         updatedAt: serverTimestamp(),
       });
-      setEditingIcalId(null);
-      setNewIcalUrl("");
-      toastSuccess("Trainer iCal URL updated successfully.");
+      setEditingStaffId(null);
+      setNewStaffId("");
+      toastSuccess("Trainer Mindbody Staff ID updated successfully.");
     } catch (err: any) {
-      toastError("Failed to update URL: " + err.message);
+      toastError("Failed to update Staff ID: " + err.message);
     } finally {
-      setIsUpdatingIcal(false);
+      setIsUpdatingStaffId(false);
     }
   };
 
@@ -1281,9 +1419,10 @@ export function TrainerControlHubView({
                                         {t.fullName}
                                       </p>
                                       <p className="text-[11px] font-bold uppercase tracking-widest text-cta truncate mt-0.5">
-                                        checkIsOwner(t) ? 'System Admin' :
-                                        ROLE_LABELS[t.role] || 'Performance
-                                        Trainer'
+                                        {checkIsOwner(t)
+                                          ? "System Admin"
+                                          : ROLE_LABELS[t.role] ||
+                                            "Performance Trainer"}
                                       </p>
                                     </div>
                                   </div>
@@ -1312,8 +1451,8 @@ export function TrainerControlHubView({
                         {currentSelectedTrainer ? (
                           <div className="p-6 bg-background border border-border rounded-[24px] space-y-6">
                             {/* Profile Detail Header */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
-                              <div className="flex items-center gap-4">
+                            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-6 border-b border-border">
+                              <div className="flex items-center gap-4 min-w-0">
                                 <div
                                   className={cn(
                                     "w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl italic shrink-0",
@@ -1324,28 +1463,29 @@ export function TrainerControlHubView({
                                 >
                                   {currentSelectedTrainer.initials}
                                 </div>
-                                <div>
+                                <div className="min-w-0">
                                   <div className="flex flex-wrap items-center gap-2">
-                                    <h3 className="text-lg font-black text-foreground uppercase italic leading-none">
+                                    <h3 className="text-lg font-black text-foreground uppercase italic leading-none truncate">
                                       {currentSelectedTrainer.fullName}
                                     </h3>
                                     {checkIsOwner(currentSelectedTrainer) && (
-                                      <span className="bg-amber/10 text-amber border border-amber/30 px-1.5 py-0.5 rounded text-[11px] font-black uppercase">
+                                      <span className="bg-amber/10 text-amber border border-amber/30 px-1.5 py-0.5 rounded text-[11px] font-black uppercase shrink-0">
                                         Owner
                                       </span>
                                     )}
                                   </div>
-                                  <p className="text-[11px] font-bold uppercase tracking-widest text-cta leading-none mt-2">
-                                    checkIsOwner(currentSelectedTrainer) ?
-                                    'System Admin' :
-                                    ROLE_LABELS[currentSelectedTrainer.role] ||
-                                    'Performance Trainer'
+                                  <p className="text-[11px] font-bold uppercase tracking-widest text-cta leading-none mt-2 truncate">
+                                    {checkIsOwner(currentSelectedTrainer)
+                                      ? "System Admin"
+                                      : ROLE_LABELS[
+                                          currentSelectedTrainer.role
+                                        ] || "Performance Trainer"}
                                   </p>
                                 </div>
                               </div>
 
-                              <div className="flex items-center justify-between p-3 px-4 bg-card rounded-xl border border-border">
-                                <Label className="text-xs font-bold text-muted-foreground cursor-pointer mr-3">
+                              <div className="flex items-center justify-between p-3 px-4 bg-card rounded-xl border border-border shrink-0 self-start xl:self-auto max-w-full">
+                                <Label className="text-xs font-bold text-muted-foreground cursor-pointer mr-3 whitespace-nowrap">
                                   Show on Hub Calendar
                                 </Label>
                                 <Switch
@@ -1361,7 +1501,7 @@ export function TrainerControlHubView({
                                         true,
                                     );
                                   }}
-                                  className="data-[state=checked]:bg-[#10B981] data-[state=unchecked]:bg-muted-foreground"
+                                  className="data-[state=checked]:bg-[#10B981] data-[state=unchecked]:bg-muted-foreground shrink-0"
                                 />
                               </div>
                             </div>
@@ -1495,17 +1635,17 @@ export function TrainerControlHubView({
                               </p>
                             </div>
 
-                            {/* iCal feed and MindBody integrations */}
+                            {/* MindBody integrations */}
                             <div className="pt-4 border-t border-border">
                               <div className="flex flex-col gap-3">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2 text-muted-foreground">
-                                    <RefreshCcw className="w-3.5 h-3.5 text-cta" />
+                                    <RefreshCcw className="w-3.5 h-3.5 text-[#F06C22]" />
                                     <h4 className="font-bold uppercase text-[11px] tracking-widest leading-none">
-                                      MindBody Sync Connection
+                                      Mindbody API Sync Connection
                                     </h4>
                                   </div>
-                                  {currentSelectedTrainer.mindbody_ical_url && (
+                                  {currentSelectedTrainer.mindbodyStaffId && (
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -1519,32 +1659,35 @@ export function TrainerControlHubView({
                                           currentSelectedTrainer.id,
                                         );
                                       }}
-                                      className="h-7 text-[11px] flex items-center px-3 font-black uppercase text-cta hover:text-cta-strong hover:bg-cta/10 rounded-lg border border-cta/30"
+                                      className="h-7 text-[11px] flex items-center px-3 font-black uppercase text-[#F06C22] hover:text-[#F06C22]/90 hover:bg-[#F06C22]/10 rounded-lg border border-[#F06C22]/30"
                                     >
                                       {syncingTrainerId ===
                                       currentSelectedTrainer.id ? (
                                         <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
                                       ) : null}
-                                      Sync Now
+                                      Sync Schedule
                                     </Button>
                                   )}
                                 </div>
 
-                                {editingIcalId === currentSelectedTrainer.id ? (
+                                {editingStaffId ===
+                                currentSelectedTrainer.id ? (
                                   <div className="flex flex-col gap-2">
                                     <Input
-                                      placeholder="https://..."
-                                      value={newIcalUrl}
+                                      placeholder="Mindbody Staff ID (e.g. 100000123)"
+                                      value={newStaffId}
                                       onChange={(e) =>
-                                        setNewIcalUrl(e.target.value)
+                                        setNewStaffId(
+                                          e.target.value.replace(/[^0-9]/g, ""),
+                                        )
                                       }
-                                      className="h-10 rounded-xl bg-card border-border text-xs text-foreground px-3 focus-visible:ring-cta"
+                                      className="h-10 rounded-xl bg-card border-border text-xs text-foreground px-3 focus-visible:ring-[#F06C22]"
                                     />
                                     <div className="flex items-center justify-end gap-1.5">
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => setEditingIcalId(null)}
+                                        onClick={() => setEditingStaffId(null)}
                                         className="h-8 px-3 font-bold uppercase text-[11px] rounded-lg tracking-widest text-muted-foreground"
                                       >
                                         Cancel
@@ -1554,15 +1697,15 @@ export function TrainerControlHubView({
                                         onClick={() => {
                                           if (!currentSelectedTrainer.id)
                                             return;
-                                          handleUpdateIcalUrl(
+                                          handleUpdateStaffId(
                                             currentSelectedTrainer.id,
-                                            newIcalUrl,
+                                            newStaffId,
                                           );
                                         }}
-                                        disabled={isUpdatingIcal}
-                                        className="bg-cta hover:bg-cta-strong text-foreground h-8 px-4 rounded-lg font-black uppercase text-[11px] tracking-widest"
+                                        disabled={isUpdatingStaffId}
+                                        className="bg-[#F06C22] hover:bg-[#F06C22]/90 text-white h-8 px-4 rounded-lg font-black uppercase text-[11px] tracking-widest"
                                       >
-                                        {isUpdatingIcal ? (
+                                        {isUpdatingStaffId ? (
                                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                         ) : (
                                           "Save"
@@ -1572,12 +1715,13 @@ export function TrainerControlHubView({
                                   </div>
                                 ) : (
                                   <div className="flex items-center justify-between gap-2 overflow-hidden group/link bg-card p-3 rounded-xl border border-border">
-                                    {currentSelectedTrainer.mindbody_ical_url ? (
+                                    {currentSelectedTrainer.mindbodyStaffId ? (
                                       <>
-                                        <Link className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                        <span className="text-[11px] text-muted-foreground font-medium truncate flex-1">
+                                        <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                        <span className="text-[11px] text-muted-foreground font-medium truncate flex-1 font-mono">
+                                          Mindbody Staff ID:{" "}
                                           {
-                                            currentSelectedTrainer.mindbody_ical_url
+                                            currentSelectedTrainer.mindbodyStaffId
                                           }
                                         </span>
                                         <Button
@@ -1586,11 +1730,11 @@ export function TrainerControlHubView({
                                           onClick={() => {
                                             if (!currentSelectedTrainer.id)
                                               return;
-                                            setEditingIcalId(
+                                            setEditingStaffId(
                                               currentSelectedTrainer.id,
                                             );
-                                            setNewIcalUrl(
-                                              currentSelectedTrainer.mindbody_ical_url ||
+                                            setNewStaffId(
+                                              currentSelectedTrainer.mindbodyStaffId ||
                                                 "",
                                             );
                                           }}
@@ -1602,7 +1746,7 @@ export function TrainerControlHubView({
                                     ) : (
                                       <>
                                         <span className="text-[11px] text-muted-foreground font-medium italic select-none">
-                                          No feed configured
+                                          No Mindbody Staff ID linked
                                         </span>
                                         <Button
                                           variant="outline"
@@ -1610,14 +1754,14 @@ export function TrainerControlHubView({
                                           onClick={() => {
                                             if (!currentSelectedTrainer.id)
                                               return;
-                                            setEditingIcalId(
+                                            setEditingStaffId(
                                               currentSelectedTrainer.id,
                                             );
-                                            setNewIcalUrl("");
+                                            setNewStaffId("");
                                           }}
                                           className="h-8 border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg px-4 font-black uppercase text-[11px] tracking-widest"
                                         >
-                                          Add Link
+                                          Link Staff ID
                                         </Button>
                                       </>
                                     )}
@@ -1775,7 +1919,7 @@ export function TrainerControlHubView({
                                           )}
                                         >
                                           {client
-                                            ? `${(client.firstName || '?')[0] || '?'}${(client.lastName || '')[0] || ''}`
+                                            ? `${(client.firstName || "?")[0] || "?"}${(client.lastName || "")[0] || ""}`
                                             : "UN"}
                                         </div>
                                         <div className="min-w-0 flex-1">
@@ -2512,7 +2656,7 @@ export function TrainerControlHubView({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <Card className="bg-card border-border shadow-sm">
                           <CardHeader className="pb-3 border-b border-border">
                             <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground flex items-center">
@@ -2527,15 +2671,10 @@ export function TrainerControlHubView({
                               metrics.
                             </p>
                             <Button
-                              onClick={handleExportPayroll}
-                              disabled={isExportingPayroll}
-                              className="w-full text-xs font-bold uppercase bg-cta text-white hover:bg-cta-strong rounded-xl flex items-center justify-center gap-2"
+                              disabled={true}
+                              className="w-full text-xs font-bold uppercase bg-slate-700/50 text-slate-400 cursor-not-allowed opacity-50 rounded-xl flex items-center justify-center gap-2"
                             >
-                              {isExportingPayroll ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                "Download CSV"
-                              )}
+                              Download CSV
                             </Button>
                           </CardContent>
                         </Card>
@@ -2553,15 +2692,32 @@ export function TrainerControlHubView({
                               check-ins, session completions, and no-shows data.
                             </p>
                             <Button
-                              onClick={handleExportAttendance}
-                              disabled={isExportingAttendance}
-                              className="w-full text-xs font-bold uppercase bg-cta text-white hover:bg-cta-strong rounded-xl flex items-center justify-center gap-2"
+                              disabled={true}
+                              className="w-full text-xs font-bold uppercase bg-slate-700/50 text-slate-400 cursor-not-allowed opacity-50 rounded-xl flex items-center justify-center gap-2"
                             >
-                              {isExportingAttendance ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                "Download CSV"
-                              )}
+                              Download CSV
+                            </Button>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="bg-card border-border shadow-sm">
+                          <CardHeader className="pb-3 border-b border-border">
+                            <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground flex items-center">
+                              <TrendingUp className="w-4 h-4 mr-2" />
+                              Client Progress Data
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-4 flex flex-col gap-4">
+                            <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
+                              Export sessions count, average resistance
+                              workload, and target tracking parameters per
+                              client.
+                            </p>
+                            <Button
+                              disabled={true}
+                              className="w-full text-xs font-bold uppercase bg-slate-700/50 text-slate-400 cursor-not-allowed opacity-50 rounded-xl flex items-center justify-center gap-2"
+                            >
+                              Download CSV
                             </Button>
                           </CardContent>
                         </Card>

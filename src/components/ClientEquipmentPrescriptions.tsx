@@ -1427,14 +1427,14 @@ export function ClientEquipmentPrescriptions({
                 <div className="flex items-start justify-between gap-2 min-w-0">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 mb-1">
-                      <h4 className="font-display italic text-[16px] font-black uppercase text-white dark:text-slate-900 leading-tight truncate">
+                      <h4 className="font-display italic text-[16px] font-black uppercase text-slate-900 dark:text-white leading-tight truncate">
                         {machine.name}
                       </h4>
                       {isBig5Machine(machine.id) && (
                         <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400 shrink-0" />
                       )}
                     </div>
-                    <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">
+                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate">
                       {machine.muscleGroup || machine.category}
                     </p>
                   </div>
@@ -1460,22 +1460,22 @@ export function ClientEquipmentPrescriptions({
                 </div>
 
                 <div className="flex items-baseline justify-between mt-auto">
-                  <div className="font-mono tabular-nums text-xs text-white dark:text-slate-900 font-bold flex items-baseline gap-1">
-                    <span className="text-lg font-black text-white dark:text-slate-900">
+                  <div className="font-mono tabular-nums text-xs text-slate-900 dark:text-white font-bold flex items-baseline gap-1">
+                    <span className="text-lg font-black text-slate-900 dark:text-white">
                       {currentWeightDisplay || startingWeightDisplay || "--"}
                     </span>
-                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                       LBS
                     </span>
                     {repsVal !== "--" && (
                       <>
-                        <span className="text-slate-600 dark:text-slate-700 mx-1">
+                        <span className="text-slate-400 dark:text-slate-600 mx-1">
                           •
                         </span>
-                        <span className="text-sm font-black text-white dark:text-slate-900">
+                        <span className="text-sm font-black text-slate-900 dark:text-white">
                           {repsVal}
                         </span>
-                        <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                           REPS
                         </span>
                       </>

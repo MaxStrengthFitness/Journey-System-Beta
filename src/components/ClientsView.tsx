@@ -290,71 +290,112 @@ export function ClientsView({
 
   const now = new Date();
 
+  const isTrainerMatch = (s: any, trainer: Trainer): boolean => {
+    if (!s || !trainer) return false;
+    const sId = s.trainerId || s.staffId || s.StaffId;
+    if (sId && trainer.id && String(sId) === String(trainer.id)) return true;
+
+    const sName = (s.trainerName || s.staffName || s.StaffFirstName || "").trim().toLowerCase();
+    const tFull = (trainer.fullName || "").trim().toLowerCase();
+    const tFirst = ((trainer as any).firstName || trainer.fullName || "").split(" ")[0].trim().toLowerCase();
+
+    if (sName && tFirst && (sName === tFirst || sName.startsWith(tFirst) || tFirst.startsWith(sName))) {
+      return true;
+    }
+    if (sName && tFull && (sName === tFull || sName.includes(tFull) || tFull.includes(sName))) {
+      return true;
+    }
+    return false;
+  };
+
+  const getScheduleSlotStr = (s: any): string => {
+    const date = safeToDate(s?.startTime || s?.StartDateTime || s?.date);
+    if (!date) return "";
+    let h = date.getHours();
+    const m = Math.floor(date.getMinutes() / 30) * 30;
+    const mStr = m.toString().padStart(2, "0");
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12;
+    h = h ? h : 12;
+    return `${h}:${mStr} ${ampm}`;
+  };
+
   // Get sessions for selected day
   const dateStart = new Date(selectedDate);
   dateStart.setHours(0, 0, 0, 0);
   const dateEnd = new Date(selectedDate);
   dateEnd.setHours(23, 59, 59, 999);
 
-  const todaysSchedules = schedules
+  const todaysSchedules = (schedules || [])
     .filter((s) => {
-      const date = safeToDate(s.startTime);
+      const date = safeToDate(s.startTime || s.StartDateTime || s.date);
       if (!date) return false;
       return date >= dateStart && date <= dateEnd && s.status !== "Cancelled";
     })
-    .sort((a, b) => getMillis(a.startTime) - getMillis(b.startTime));
+    .sort((a, b) => getMillis(a.startTime || a.StartDateTime || a.date) - getMillis(b.startTime || b.StartDateTime || b.date));
 
-  const AM_SLOTS = [
-    "7:00 AM",
-    "7:30 AM",
-    "8:00 AM",
-    "8:30 AM",
-    "9:00 AM",
-    "9:30 AM",
-    "10:00 AM",
-    "10:30 AM",
-    "11:00 AM",
-    "11:30 AM",
-    "12:00 PM",
-    "12:30 PM",
-    "1:00 PM",
-  ];
-  const PM_SLOTS = [
-    "2:00 PM",
-    "2:30 PM",
-    "3:00 PM",
-    "3:30 PM",
-    "4:00 PM",
-    "4:30 PM",
-    "5:00 PM",
-    "5:30 PM",
-    "6:00 PM",
-    "6:30 PM",
-    "7:00 PM",
-  ];
+  const AM_SLOTS = React.useMemo(() => {
+    let minHour = 7;
+    let maxHour = 13;
+    (todaysSchedules || []).forEach((s) => {
+      const d = safeToDate(s.startTime || s.StartDateTime || s.date);
+      if (d) {
+        const h = d.getHours();
+        if (h < 14) {
+          if (h < minHour) minHour = h;
+          if (h > maxHour) maxHour = h;
+        }
+      }
+    });
 
-  function get12HourStr(d: Date) {
-    let h = d.getHours();
-    const m = d.getMinutes().toString().padStart(2, "0");
-    const ampm = h >= 12 ? "PM" : "AM";
-    h = h % 12;
-    h = h ? h : 12;
-    return `${h}:${m} ${ampm}`;
-  }
+    const slots: string[] = [];
+    for (let h = minHour; h <= maxHour; h++) {
+      let displayHour = h % 12;
+      displayHour = displayHour ? displayHour : 12;
+      const ampm = h >= 12 ? "PM" : "AM";
+      slots.push(`${displayHour}:00 ${ampm}`);
+      slots.push(`${displayHour}:30 ${ampm}`);
+    }
+    return slots;
+  }, [todaysSchedules]);
+
+  const PM_SLOTS = React.useMemo(() => {
+    let minHour = 14;
+    let maxHour = 19;
+    (todaysSchedules || []).forEach((s) => {
+      const d = safeToDate(s.startTime || s.StartDateTime || s.date);
+      if (d) {
+        const h = d.getHours();
+        if (h >= 14) {
+          if (h < minHour) minHour = h;
+          if (h > maxHour) maxHour = h;
+        }
+      }
+    });
+
+    const slots: string[] = [];
+    for (let h = minHour; h <= maxHour; h++) {
+      let displayHour = h % 12;
+      displayHour = displayHour ? displayHour : 12;
+      const ampm = h >= 12 ? "PM" : "AM";
+      slots.push(`${displayHour}:00 ${ampm}`);
+      slots.push(`${displayHour}:30 ${ampm}`);
+    }
+    return slots;
+  }, [todaysSchedules]);
 
   const amSessionsCount = todaysSchedules.filter((s) => {
     if (s.clientName?.toLowerCase().includes("unavailab")) return false;
-    const sDate = safeToDate(s.startTime);
+    const sDate = safeToDate(s.startTime || s.StartDateTime || s.date);
     if (!sDate) return false;
-    const tStr = get12HourStr(sDate);
-    return AM_SLOTS.includes(tStr);
+    return sDate.getHours() < 14;
   }).length;
 
   const pmSessionsCount = todaysSchedules.filter((s) => {
-    const sDate = safeToDate(s.startTime);
+    if (s.clientName?.toLowerCase().includes("unavailab")) return false;
+    const sDate = safeToDate(s.startTime || s.StartDateTime || s.date);
     if (!sDate) return false;
-    const tStr = get12HourStr(sDate);
-    return PM_SLOTS.includes(tStr);
+    return sDate.getHours() >= 14;
   }).length;
 
   const preBookedCount = amSessionsCount + pmSessionsCount;
@@ -564,6 +605,7 @@ export function ClientsView({
       if (t.isVisibleOnCalendar === false) return false;
 
       const isAssigned =
+        !activeStudioId ||
         t.primaryHomeStudioId === activeStudioId ||
         t.accessibleStudioIds?.includes(activeStudioId) ||
         t.activeGuestStudioIds?.includes(activeStudioId);
@@ -578,20 +620,46 @@ export function ClientsView({
       return hasSessionToday;
     });
 
-    const withSessions = activeTrainers.filter((t) =>
+    const missingTrainerNames = new Set<string>();
+    todaysSchedules.forEach((s) => {
+      if (
+        s.trainerName &&
+        !s.trainerName.toLowerCase().includes("select") &&
+        !s.trainerName.toLowerCase().includes("unavailab") &&
+        !activeTrainers.some(
+          (t) =>
+            t.fullName &&
+            t.fullName.toLowerCase() === s.trainerName.toLowerCase(),
+        )
+      ) {
+        missingTrainerNames.add(s.trainerName);
+      }
+    });
+
+    const extraTrainers = Array.from(missingTrainerNames).map((name) => ({
+      id: `virtual-${name}`,
+      fullName: name,
+      firstName: name.split(" ")[0],
+      lastName: name.split(" ").slice(1).join(" "),
+      role: "Trainer" as const,
+      color: "#0EA5E9",
+      initials: name.substring(0, 2).toUpperCase(),
+    }));
+
+    const combined = [...activeTrainers, ...extraTrainers];
+
+    const withSessions = combined.filter((t) =>
       todaysSchedules.some(
         (s) =>
           s.trainerName &&
           t.fullName &&
-          s.trainerName.toLowerCase() === t.fullName.toLowerCase(),
+          s.trainerName.toLowerCase() === t.fullName.toLowerCase() &&
+          !s.clientName?.toLowerCase().includes("unavailab"),
       ),
     );
-    const withoutSessions = activeTrainers.filter(
-      (t) => !withSessions.includes(t),
-    );
+    const withoutSessions = combined.filter((t) => !withSessions.includes(t));
 
-    const combined = [...withSessions, ...withoutSessions];
-    return combined.slice(0, Math.max(5, withSessions.length));
+    return [...withSessions, ...withoutSessions];
   }, [sortedTrainers, activeStudioId, todaysSchedules]);
 
   return (
@@ -1150,13 +1218,27 @@ export function ClientsView({
                           <th className="w-full bg-slate-50 dark:bg-bg-dark"></th>
                         )}
                         {visibleTrainersList.map((trainer) => {
-                          const sessionCount = todaysSchedules.filter(
-                            (s) =>
-                              s.trainerName === trainer.fullName &&
-                              !s.clientName
-                                ?.toLowerCase()
-                                .includes("unavailab"),
-                          ).length;
+                          const sessionCount = todaysSchedules.filter((s) => {
+                            const sId = s.trainerId || s.staffId || s.StaffId;
+                            const isIdMatch = !!(sId && trainer.id && String(sId) === String(trainer.id));
+                            const sTrainer = (s.trainerName || s.staffName || s.StaffFirstName || "").trim().toLowerCase();
+                            const tFull = (trainer.fullName || "").trim().toLowerCase();
+                            const tFirst = (trainer.firstName || trainer.fullName || "").split(" ")[0].trim().toLowerCase();
+                            const isNameMatch = !!(
+                              sTrainer === tFull ||
+                              sTrainer === tFirst ||
+                              (sTrainer.length > 0 && tFirst.length > 0 && (sTrainer.startsWith(tFirst) || tFirst.startsWith(sTrainer))) ||
+                              (sTrainer.length > 0 && tFull.length > 0 && sTrainer.split(" ")[0] === tFull.split(" ")[0])
+                            );
+                            if (!isIdMatch && !isNameMatch) return false;
+                            if (s.clientName?.toLowerCase().includes("unavailab")) return false;
+                            if (s.status === "Cancelled") return false;
+                            const sDate = safeToDate(s.startTime || s.StartDateTime || s.date);
+                            if (!sDate) return false;
+                            return activeTab === "morning"
+                              ? sDate.getHours() < 14
+                              : sDate.getHours() >= 14;
+                          }).length;
                           return (
                             <th
                               key={trainer.id}
@@ -1214,94 +1296,29 @@ export function ClientsView({
                                 const cellId = `${trainer.id}-${slot}`;
                                 if (skippedGridCells.has(cellId)) return null;
 
-                                const session = todaysSchedules.find((s) => {
-                                  const sDate = safeToDate(s.startTime);
-                                  if (!sDate) return false;
-                                  const tStr = get12HourStr(sDate);
-                                  return (
-                                    tStr === slot &&
-                                    s.trainerName === trainer.fullName &&
-                                    s.status !== "Cancelled"
-                                  );
+                                const cellSessions = todaysSchedules.filter((s) => {
+                                  if (!isTrainerMatch(s, trainer)) return false;
+                                  const tStr = getScheduleSlotStr(s);
+                                  return tStr === slot && s.status !== "Cancelled";
                                 });
 
                                 let rowSpan = 1;
-                                if (session) {
-                                  const start = safeToDate(session.startTime);
-                                  const end = safeToDate(session.endTime);
+                                if (cellSessions.length === 1) {
+                                  const session = cellSessions[0];
+                                  const start = safeToDate(session.startTime || session.StartDateTime || session.date);
+                                  const end = safeToDate(session.endTime || session.EndDateTime);
                                   if (start && end) {
-                                    const duration =
-                                      (end.getTime() - start.getTime()) /
-                                      (1000 * 60);
-                                    rowSpan = Math.max(
-                                      1,
-                                      Math.round(duration / 30),
-                                    );
+                                    const duration = (end.getTime() - start.getTime()) / (1000 * 60);
+                                    rowSpan = Math.max(1, Math.round(duration / 30));
                                     if (rowSpan > 1) {
                                       for (let i = 1; i < rowSpan; i++) {
                                         if (currentSlots[sIdx + i]) {
-                                          skippedGridCells.add(
-                                            `${trainer.id}-${currentSlots[sIdx + i]}`,
-                                          );
+                                          skippedGridCells.add(`${trainer.id}-${currentSlots[sIdx + i]}`);
                                         }
                                       }
                                     }
                                   }
                                 }
-
-                                const color =
-                                  TRAINER_COLORS[tIdx % TRAINER_COLORS.length];
-                                const clientObj = session
-                                  ? findClientForSession(session)
-                                  : null;
-                                const workoutSession = clientObj
-                                  ? sessions.find(
-                                      (s) =>
-                                        s.clientId === clientObj.id &&
-                                        new Date(
-                                          s.createdAt?.toDate?.() || s.date,
-                                        ).toDateString() ===
-                                          new Date().toDateString(),
-                                    )
-                                  : null;
-                                const isInSession =
-                                  workoutSession?.status === "In-Progress";
-                                const isCompleted =
-                                  session &&
-                                  !isInSession &&
-                                  (session.status === "Completed" ||
-                                    getMillis(session.startTime) <
-                                      now.getTime());
-                                const isUnavailable = session?.clientName
-                                  ?.toLowerCase()
-                                  .includes("unavailab");
-                                const isAlreadyCompleted =
-                                  workoutSession?.status === "Completed";
-                                const sessionNumber = clientObj
-                                  ? (clientObj.sessionCount || 0) +
-                                    (isAlreadyCompleted ? 0 : 1)
-                                  : 1;
-                                const isMilestone =
-                                  sessionNumber === 1 ||
-                                  sessionNumber % 25 === 0;
-                                const hasAlert =
-                                  clientObj &&
-                                  ((clientObj.clinicalProfile &&
-                                    clientObj.clinicalProfile.length > 0) ||
-                                    !!clientObj.clinicalNotes ||
-                                    !!clientObj.medicalHistory);
-
-                                const formatClientName = (name: string) => {
-                                  if (!name) return "";
-                                  const parts = name.trim().split(" ");
-                                  if (parts.length > 1) {
-                                    return `${parts[0]} ${parts[parts.length - 1][0]}.`;
-                                  }
-                                  return parts[0];
-                                };
-                                const formattedClientName = formatClientName(
-                                  session?.clientName || "",
-                                );
 
                                 return (
                                   <td
@@ -1312,87 +1329,131 @@ export function ClientsView({
                                       rowSpan > 1 ? "" : "h-18",
                                     )}
                                   >
-                                    {session ? (
-                                      <div
-                                        onClick={() => {
-                                          if (isUnavailable) return;
-                                          if (clientObj) {
-                                            onSelectClient(clientObj.id!);
-                                            setView("profile");
-                                          } else {
-                                            setLinkingSession(session);
-                                            setIsLinking(true);
-                                          }
-                                        }}
-                                        className={cn(
-                                          "flex flex-col p-2 sm:p-2.5 rounded-xl shadow-sm transition-all h-full box-border relative overflow-hidden",
-                                          isUnavailable
-                                            ? "bg-[repeating-linear-gradient(45deg,#f8fafc,#f8fafc_10px,#f1f5f9_10px,#f1f5f9_20px)] dark:bg-[repeating-linear-gradient(45deg,#0f172a,#0f172a_10px,#1e293b_10px,#1e293b_20px)] border-2 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-90"
-                                            : isCompleted
-                                              ? "opacity-60 grayscale bg-slate-50 dark:bg-surface-2 border-2 border-slate-200 dark:border-slate-700/80 cursor-pointer"
-                                              : isInSession
-                                                ? isMilestone
-                                                  ? "bg-[#F06C22] border-2 border-[#F06C22] shadow-[0_0_15px_rgba(240,108,34,0.65)] cursor-pointer hover:shadow-[0_0_20px_rgba(240,108,34,0.8)] text-white"
-                                                  : "bg-cyan border-2 border-cyan shadow-[0_0_12px_rgba(56,189,248,0.5)] cursor-pointer hover:shadow-[0_0_16px_rgba(56,189,248,0.7)] text-slate-955"
-                                                : isMilestone
-                                                  ? "bg-white dark:bg-surface-1 border-2 border-[#F06C22]/85 shadow-[0_0_10px_rgba(240,108,34,0.4)] dark:shadow-[0_0_12px_rgba(240,108,34,0.55)] cursor-pointer hover:border-[#F06C22] hover:shadow-[0_0_16px_rgba(240,108,34,0.7)]"
-                                                  : "bg-white dark:bg-surface-1 border-2 border-cyan/85 shadow-[0_0_8px_rgba(56,189,248,0.3)] dark:shadow-[0_0_10px_rgba(56,189,248,0.45)] cursor-pointer hover:border-cyan hover:shadow-[0_0_14px_rgba(56,189,248,0.6)]",
-                                          hasAlert &&
-                                            !isCompleted &&
-                                            !isUnavailable
-                                            ? "border-l-4 border-l-red-500"
-                                            : "",
-                                        )}
-                                      >
-                                        <div className="flex flex-col w-full h-full justify-between items-start gap-1 relative z-10">
-                                          <div className="w-full">
-                                            <div className="flex items-start justify-between gap-1 mb-0.5 relative z-20">
-                                              <span
-                                                className={cn(
-                                                  "leading-tight truncate",
-                                                  "text-sm font-bold",
-                                                  isUnavailable
-                                                    ? "text-slate-500 italic uppercase tracking-widest text-[11px]"
-                                                    : isInSession
-                                                      ? isMilestone
-                                                        ? "text-white font-black"
-                                                        : "text-slate-950 font-black"
-                                                      : "text-slate-900 dark:text-slate-50",
-                                                )}
-                                              >
-                                                {isUnavailable
-                                                  ? "Unavailable"
-                                                  : formattedClientName}
-                                              </span>
-                                              {hasAlert &&
-                                                !isCompleted &&
-                                                !isUnavailable && (
-                                                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-[pulse_2s_ease-in-out_infinite] shrink-0 mt-1.5" />
-                                                )}
-                                            </div>
-                                          </div>
+                                    {cellSessions.length > 0 ? (
+                                      <div className="flex flex-col gap-1.5 h-full w-full">
+                                        {cellSessions.map((session, sIdx) => {
+                                          const clientObj = findClientForSession(session);
+                                          const workoutSession = clientObj
+                                            ? sessions.find(
+                                                (s) =>
+                                                  s.clientId === clientObj.id &&
+                                                  new Date(s.createdAt?.toDate?.() || s.date).toDateString() === new Date().toDateString(),
+                                              )
+                                            : null;
+                                          const isInSession = workoutSession?.status === "In-Progress";
+                                          const isCompleted =
+                                            session &&
+                                            !isInSession &&
+                                            (session.status === "Completed" ||
+                                              getMillis(session.startTime || session.StartDateTime) < now.getTime());
+                                          const isUnavailable = session?.clientName?.toLowerCase().includes("unavailab");
+                                          const isAlreadyCompleted = workoutSession?.status === "Completed";
+                                          const sessionNumber = clientObj
+                                            ? (clientObj.sessionCount || 0) + (isAlreadyCompleted ? 0 : 1)
+                                            : 1;
+                                          const isMilestone = sessionNumber === 1 || sessionNumber % 25 === 0;
+                                          const hasAlert =
+                                            clientObj &&
+                                            ((clientObj.clinicalProfile && clientObj.clinicalProfile.length > 0) ||
+                                              !!clientObj.clinicalNotes ||
+                                              !!clientObj.medicalHistory);
 
-                                          {!isUnavailable && (
-                                            <div className="w-full flex items-end justify-end mt-auto pt-1 relative z-20">
-                                              <span
-                                                className={cn(
-                                                  "inline-flex items-center text-[11px] sm:text-[12px] font-black leading-none px-1.5 py-0.5 rounded-md border",
-                                                  isCompleted
-                                                    ? "text-slate-500/50 border-slate-200/50 bg-slate-100/50 dark:bg-surface-2"
+                                          const formatClientName = (name: string) => {
+                                            if (!name) return "";
+                                            const parts = name.trim().split(" ");
+                                            if (parts.length > 1) {
+                                              return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+                                            }
+                                            return parts[0];
+                                          };
+                                          const formattedClientName = formatClientName(session?.clientName || "");
+
+                                          const sDate = safeToDate(session.startTime || session.StartDateTime || session.date);
+                                          const exactTimeStr = sDate
+                                            ? sDate.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+                                            : "";
+
+                                          return (
+                                            <div
+                                              key={session.id || session.mindbodyAppointmentId || sIdx}
+                                              onClick={() => {
+                                                if (isUnavailable) return;
+                                                if (clientObj) {
+                                                  onSelectClient(clientObj.id!);
+                                                  setView("profile");
+                                                } else {
+                                                  setLinkingSession(session);
+                                                  setIsLinking(true);
+                                                }
+                                              }}
+                                              className={cn(
+                                                "flex flex-col p-2 sm:p-2.5 rounded-xl shadow-sm transition-all h-full box-border relative overflow-hidden",
+                                                isUnavailable
+                                                  ? "bg-[repeating-linear-gradient(45deg,#f8fafc,#f8fafc_10px,#f1f5f9_10px,#f1f5f9_20px)] dark:bg-[repeating-linear-gradient(45deg,#0f172a,#0f172a_10px,#1e293b_10px,#1e293b_20px)] border-2 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-90"
+                                                  : isCompleted
+                                                    ? "opacity-60 grayscale bg-slate-50 dark:bg-surface-2 border-2 border-slate-200 dark:border-slate-700/80 cursor-pointer"
                                                     : isInSession
                                                       ? isMilestone
-                                                        ? "text-white bg-white/20 border-white/30 font-mono shadow-[0_0_5px_rgba(255,255,255,0.25)]"
-                                                        : "text-slate-955 bg-black/10 border-black/20 font-mono"
+                                                        ? "bg-[#F06C22] border-2 border-[#F06C22] shadow-[0_0_15px_rgba(240,108,34,0.65)] cursor-pointer hover:shadow-[0_0_20px_rgba(240,108,34,0.8)] text-white"
+                                                        : "bg-cyan border-2 border-cyan shadow-[0_0_12px_rgba(56,189,248,0.5)] cursor-pointer hover:shadow-[0_0_16px_rgba(56,189,248,0.7)] text-slate-955"
                                                       : isMilestone
-                                                        ? "text-[#F06C22] bg-[#F06C22]/10 border-[#F06C22]/30 shadow-[0_0_5px_rgba(240,108,34,0.15)] font-mono"
-                                                        : "text-cyan bg-cyan/10 border-cyan/20",
+                                                        ? "bg-white dark:bg-surface-1 border-2 border-[#F06C22]/85 shadow-[0_0_10px_rgba(240,108,34,0.4)] dark:shadow-[0_0_12px_rgba(240,108,34,0.55)] cursor-pointer hover:border-[#F06C22] hover:shadow-[0_0_16px_rgba(240,108,34,0.7)]"
+                                                        : "bg-white dark:bg-surface-1 border-2 border-cyan/85 shadow-[0_0_8px_rgba(56,189,248,0.3)] dark:shadow-[0_0_10px_rgba(56,189,248,0.45)] cursor-pointer hover:border-cyan hover:shadow-[0_0_14px_rgba(56,189,248,0.6)]",
+                                                hasAlert && !isCompleted && !isUnavailable ? "border-l-4 border-l-red-500" : "",
+                                              )}
+                                            >
+                                              <div className="flex flex-col w-full h-full justify-between items-start gap-1 relative z-10">
+                                                <div className="w-full">
+                                                  <div className="flex items-start justify-between gap-1 mb-0.5 relative z-20">
+                                                    <span
+                                                      className={cn(
+                                                        "leading-tight truncate text-sm font-bold",
+                                                        isUnavailable
+                                                          ? "text-slate-500 italic uppercase tracking-widest text-[11px]"
+                                                          : isInSession
+                                                            ? isMilestone
+                                                              ? "text-white font-black"
+                                                              : "text-slate-955 font-black"
+                                                            : "text-slate-900 dark:text-slate-50",
+                                                      )}
+                                                    >
+                                                      {isUnavailable ? "Unavailable" : formattedClientName}
+                                                    </span>
+                                                    {hasAlert && !isCompleted && !isUnavailable && (
+                                                      <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-[pulse_2s_ease-in-out_infinite] shrink-0 mt-1.5" />
+                                                    )}
+                                                  </div>
+                                                  {sDate && sDate.getMinutes() % 30 !== 0 && exactTimeStr && (
+                                                    <div className="text-[10px] font-black text-amber-500 uppercase tracking-tight">
+                                                      {exactTimeStr}
+                                                    </div>
+                                                  )}
+                                                </div>
+
+                                                {!isUnavailable && (
+                                                  <div className="w-full flex items-end justify-end mt-auto pt-1 relative z-20">
+                                                    <span
+                                                      className={cn(
+                                                        "inline-flex items-center text-[11px] sm:text-[12px] font-black leading-none px-1.5 py-0.5 rounded-md border",
+                                                        isCompleted
+                                                          ? "text-slate-500/50 border-slate-200/50 bg-slate-100/50 dark:bg-surface-2"
+                                                          : isInSession
+                                                            ? isMilestone
+                                                              ? "text-white bg-white/20 border-white/30 font-mono shadow-[0_0_5px_rgba(255,255,255,0.25)]"
+                                                              : "text-slate-955 bg-black/10 border-black/20 font-mono"
+                                                            : isMilestone
+                                                              ? "text-[#F06C22] bg-[#F06C22]/10 border-[#F06C22]/30 shadow-[0_0_5px_rgba(240,108,34,0.15)] font-mono"
+                                                              : "text-cyan bg-cyan/10 border-cyan/20",
+                                                      )}
+                                                    >
+                                                      {sessionNumber}
+                                                    </span>
+                                                  </div>
                                                 )}
-                                              >
-                                                {sessionNumber}
-                                              </span>
+                                              </div>
                                             </div>
-                                          )}
-                                        </div>
+                                          );
+                                        })}
                                       </div>
                                     ) : (
                                       <div className="h-full w-full opacity-0 hover:opacity-[0.03] transition-opacity flex items-center justify-center p-2 bg-bg-dark rounded-lg pointer-events-none">

@@ -136,6 +136,9 @@ export interface BriefingScreenProps {
   sessionNotes: SessionNote[];
   logs?: ExerciseLog[];
   isIntroSession?: boolean;
+  rightControls?: React.ReactNode;
+  trainerDropdown?: React.ReactNode;
+  onStudioClick?: () => void;
 }
 
 export function BriefingScreen({
@@ -152,6 +155,9 @@ export function BriefingScreen({
   sessionNotes,
   logs = [],
   isIntroSession = false,
+  rightControls,
+  trainerDropdown,
+  onStudioClick,
 }: BriefingScreenProps) {
   const [selectedRoutineType, setSelectedRoutineType] = useState<
     "A" | "B" | "Free" | "Create_A" | "Create_B"
@@ -336,6 +342,9 @@ export function BriefingScreen({
         <AppHeader
           variant="dark"
           trainerInitials={authTrainer?.initials || "AJ"}
+          rightControls={rightControls}
+          trainerDropdown={trainerDropdown}
+          onStudioClick={onStudioClick}
         />
 
         <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 flex flex-col">
@@ -600,11 +609,22 @@ export function BriefingScreen({
                       const machine = machines.find((m) => m.id === machineId);
                       if (!machine) return null;
 
+                      const getMillis = (ts: any) => {
+                        if (!ts) return 0;
+                        if (typeof ts.toMillis === "function")
+                          return ts.toMillis();
+                        if (typeof ts.toDate === "function")
+                          return ts.toDate().getTime();
+                        if (ts.seconds !== undefined) return ts.seconds * 1000;
+                        const d = new Date(ts);
+                        return isNaN(d.getTime()) ? 0 : d.getTime();
+                      };
+
                       const mLogs = logs
                         .filter((l) => l.machineId === machineId)
                         .sort(
                           (a, b) =>
-                            b.createdAt.toMillis() - a.createdAt.toMillis(),
+                            getMillis(b.createdAt) - getMillis(a.createdAt),
                         );
                       const lastLog = mLogs[0];
 

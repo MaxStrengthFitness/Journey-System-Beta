@@ -403,6 +403,7 @@ export function AdminStudioManager({
       timezone: formData.get("timezone") as string,
       mindbodySiteId: siteIdVal,
       locationType: formData.get("locationType") as any,
+      brandColor: (formData.get("brandColor") as string) || "#F37427",
       ownerId: ownerIdVal === "none" ? deleteField() : ownerIdVal,
       headTrainerId:
         headTrainerIdVal === "none" ? deleteField() : headTrainerIdVal,
@@ -657,6 +658,35 @@ export function AdminStudioManager({
                             </SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-[#F06C22] ml-1">
+                          Brand Accent Color
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="color"
+                            defaultValue={
+                              selectedStudio.brandColor || "#F37427"
+                            }
+                            onChange={(e) => {
+                              const input = e.target.form?.elements.namedItem(
+                                "brandColor",
+                              ) as HTMLInputElement;
+                              if (input) input.value = e.target.value;
+                            }}
+                            className="p-1 h-12 w-16 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-2xl cursor-pointer"
+                          />
+                          <Input
+                            name="brandColor"
+                            defaultValue={
+                              selectedStudio.brandColor || "#F37427"
+                            }
+                            className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-2xl h-12 font-mono text-sm focus:border-[#F06C22] flex-1"
+                            placeholder="#F37427"
+                          />
+                        </div>
                       </div>
 
                       <div className="md:col-span-2 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
