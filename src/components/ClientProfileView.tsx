@@ -19,6 +19,7 @@ import {
   startAfter,
 } from "firebase/firestore";
 import { db, auth } from "../firebase";
+import { studioHour, formatStudioTime } from "../lib/studio-time";
 import {
   User,
   Phone,
@@ -237,6 +238,7 @@ const JOURNAL_CATEGORY_DEFINITIONS: Record<
 
 export function ClientProfileView({
   clientId,
+  isLoadingClient = false,
   clients,
   machines,
   authTrainer,
@@ -251,6 +253,8 @@ export function ClientProfileView({
   activeStudioId,
 }: {
   clientId: string | null;
+  /** True while the selected client document is still being fetched. */
+  isLoadingClient?: boolean;
   clients: Client[];
   machines: Machine[];
   authTrainer?: Trainer | null;
@@ -1827,9 +1831,49 @@ export function ClientProfileView({
                 if (!machine) return null;
 
                 const metric = client?.currentMachineMetrics?.[machineId];
-                const weightVal = metric?.weight || "--";
-                const repsVal = metric?.reps || metric?.seconds || "--";
-                const isHold = metric?.isStaticHold;
+                const latestSessionWithLog = sessions.find((s) =>
+                  allLogs?.some(
+                    (l) => l.sessionId === s.id && l.machineId === machineId,
+                  ),
+                );
+                const latestLog = latestSessionWithLog
+                  ? allLogs.find(
+                      (l) =>
+                        l.sessionId === latestSessionWithLog.id &&
+                        l.machineId === machineId,
+                    )
+                  : allLogs
+                      ?.filter((l) => l.machineId === machineId)
+                      ?.sort((a, b) => {
+                        const sessA = sessions.find((s) => s.id === a.sessionId);
+                        const sessB = sessions.find((s) => s.id === b.sessionId);
+                        const numA =
+                          sessA?.sessionNumber ??
+                          parseSessionDate(sessA?.date || "");
+                        const numB =
+                          sessB?.sessionNumber ??
+                          parseSessionDate(sessB?.date || "");
+                        return numB - numA;
+                      })[0];
+
+                const weightVal =
+                  metric?.weight ||
+                  latestLog?.weight ||
+                  latestLog?.loadLb ||
+                  clientSettings[machineId]?.currentWeight ||
+                  clientSettings[machineId]?.startingWeight ||
+                  "--";
+                const repsVal =
+                  metric?.reps ||
+                  metric?.seconds ||
+                  latestLog?.reps ||
+                  latestLog?.seconds ||
+                  latestLog?.outcomeTut ||
+                  "--";
+                const isHold =
+                  metric?.isStaticHold ??
+                  latestLog?.isStaticHold ??
+                  latestLog?.isTSC;
 
                 return (
                   <div
@@ -2477,7 +2521,35 @@ export function ClientProfileView({
     return volumeByDate;
   }, [memoizedCompletedSessionsAsc, allLogs]);
 
-  if (!client)
+  if (!client) {
+    // Three different situations used to collapse into one "select a client"
+    // message, so opening a profile flashed an empty state while the document
+    // was still being fetched.
+    if (isLoadingClient)
+      return (
+        <div className="flex flex-col items-center justify-center p-20 gap-4">
+          <div
+            role="status"
+            aria-label="Loading client profile"
+            className="w-10 h-10 border-4 border-cyan border-t-transparent rounded-full animate-spin"
+          />
+          <p className="text-muted-foreground font-medium">
+            Loading client profile...
+          </p>
+        </div>
+      );
+
+    if (clientId)
+      return (
+        <div className="flex flex-col items-center justify-center p-20 gap-4">
+          <AlertCircle className="w-12 h-12 text-rose-500 opacity-40" />
+          <p className="text-muted-foreground font-medium">
+            This client could not be found. They may have been deleted.
+          </p>
+          <Button onClick={() => setView("clients")}>Back to Clients</Button>
+        </div>
+      );
+
     return (
       <div className="flex flex-col items-center justify-center p-20 gap-4">
         <AlertCircle className="w-12 h-12 text-muted-foreground opacity-20" />
@@ -2487,6 +2559,7 @@ export function ClientProfileView({
         <Button onClick={() => setView("clients")}>Back to Clients</Button>
       </div>
     );
+  }
 
   if (routineBuilderTarget) {
     return (
@@ -2728,7 +2801,7 @@ export function ClientProfileView({
                       <>
                         <span>
                           {(() => {
-                            const dateVal = scheduledSessions[0].date;
+                            const dateVal = scheduledSessions[0].startTime;
                             if (!dateVal) return "N/A";
                             let d: Date;
                             if (typeof (dateVal as any).toDate === "function") {
@@ -3015,14 +3088,7 @@ export function ClientProfileView({
                               s.trainerInitials === "Legacy" ||
                               s.trainerInitials === "Chart"
                                 ? "Imported"
-                                : s.startTime
-                                  ? new Date(
-                                      s.startTime?.toMillis?.() || s.startTime,
-                                    ).toLocaleTimeString("en-US", {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })
-                                  : ""}
+                                : formatStudioTime(s.startTime, undefined, "")}
                             </span>
                             {s.trainerInitials && (
                               <div
@@ -4373,9 +4439,9 @@ export function ClientProfileView({
             completedSessions.forEach((s) => {
               let hour = 12;
               if (s.startTime?.toDate) {
-                hour = s.startTime.toDate().getHours();
+                hour = studioHour(s.startTime.toDate()) ?? 12;
               } else if (s.createdAt?.toDate) {
-                hour = s.createdAt.toDate().getHours();
+                hour = studioHour(s.createdAt.toDate()) ?? 12;
               }
               if (hour < 12) timeRanges.Morning++;
               else if (hour < 17) timeRanges.Afternoon++;

@@ -17,6 +17,7 @@ import { ConditionChip } from "./ConditionChip";
 import { RoutineCompareCard } from "./RoutineCompareCard";
 import { SequenceRow } from "./SequenceRow";
 import { cn } from "@/lib/utils";
+import { findRoutineByLetter, matchesRoutineLetter } from "../lib/routine-utils";
 import { AppHeader } from "./AppHeader";
 import { StickyCTA } from "./StickyCTA";
 import {
@@ -132,7 +133,7 @@ export interface BriefingScreenProps {
   machines: Machine[];
   routines: Routine[];
   trainerFocuses: TrainerFocus[];
-  focusRecords?: FocusRecord[]; // Added optional FocusRecords
+  focusRecords?: FocusRecord[];
   sessionNotes: SessionNote[];
   logs?: ExerciseLog[];
   isIntroSession?: boolean;
@@ -174,8 +175,29 @@ export function BriefingScreen({
   );
   const [bodyStates, setBodyStates] = useState<BodyStateTag[]>([]);
 
-  const routineA = routines.find((r) => r.name.includes("Routine A"));
-  const routineB = routines.find((r) => r.name.includes("Routine B"));
+  const routineA = findRoutineByLetter(routines, "A");
+  const routineB = findRoutineByLetter(routines, "B");
+
+  /** Set once the trainer picks a routine by hand, so a background refetch of
+   *  `routines` cannot silently reset their choice back to the suggestion. */
+  const [routinePickedByTrainer, setRoutinePickedByTrainer] = useState(false);
+
+  /** Which routine the alternation logic proposed, shown as a hint on the toggle. */
+  const suggestedType: "A" | "B" = matchesRoutineLetter(targetRoutine, "B")
+    ? "B"
+    : "A";
+
+  const handlePickRoutine = (type: "A" | "B") => {
+    setRoutinePickedByTrainer(true);
+    setIsAdjusting(false);
+    if (type === "A") {
+      setSelectedRoutineType(routineA ? "A" : "Create_A");
+      setAdjustedMachineIds(routineA?.machineIds || []);
+    } else {
+      setSelectedRoutineType(routineB ? "B" : "Create_B");
+      setAdjustedMachineIds(routineB?.machineIds || []);
+    }
+  };
 
   useEffect(() => {
     if (isIntroSession) {
@@ -192,30 +214,28 @@ export function BriefingScreen({
       }
     }
 
-    let type: "A" | "B" | "Free" | "Create_A" | "Create_B" = "Create_A";
+    let type: "A" | "B" | "Free" | "Create_A" | "Create_B" = routineA ? "A" : "Create_A";
     if (targetRoutine) {
-      if (targetRoutine.name.includes("Routine A")) type = "A";
-      else if (targetRoutine.name.includes("Routine B")) type = "B";
-    } else if (routineA) {
-      type = "A";
+      if (matchesRoutineLetter(targetRoutine, "A")) type = routineA ? "A" : "Create_A";
+      else if (matchesRoutineLetter(targetRoutine, "B")) type = routineB ? "B" : "Create_B";
     }
 
     if (type === "B" && !routineB) {
       type = "Create_B";
     }
 
-    if (selectedRoutineType !== "Create_A") {
-      setSelectedRoutineType(type);
-      if ((type as string) === "Create_B" || (type as string) === "Free")
-        setAdjustedMachineIds([]);
-      else
-        setAdjustedMachineIds(
-          targetRoutine?.name.includes("Routine B")
-            ? routineB?.machineIds || []
-            : routineA?.machineIds || [],
-        );
+    // A hand-picked routine wins over the suggestion.
+    if (routinePickedByTrainer) return;
+
+    setSelectedRoutineType(type);
+    if (type === "B") {
+      setAdjustedMachineIds(routineB?.machineIds || []);
+    } else if (type === "A") {
+      setAdjustedMachineIds(routineA?.machineIds || []);
+    } else {
+      setAdjustedMachineIds([]);
     }
-  }, [targetRoutine, routineA, routineB]);
+  }, [targetRoutine, routineA, routineB, routinePickedByTrainer, isIntroSession, routines]);
 
   const getCurrentBaseSequence = () => {
     if (
@@ -320,7 +340,10 @@ export function BriefingScreen({
       })
     : "Never";
 
-  const scheduledRoutineName = targetRoutine?.name.includes("Routine B")
+  // Follows the trainer's selection, not the original suggestion — otherwise the
+  // card keeps naming the auto-picked routine after they switch.
+  const isBSelected = ["B", "Create_B"].includes(selectedRoutineType);
+  const scheduledRoutineName = isBSelected
     ? routineB?.name || "Routine B"
     : routineA?.name || "Routine A";
 
@@ -338,7 +361,7 @@ export function BriefingScreen({
 
   return (
     <div className="w-full h-full min-h-screen bg-slate-50 dark:bg-bg-dark font-sans flex flex-col overflow-hidden text-slate-900 dark:text-white">
-      <div className="max-w-205 mx-auto w-full h-full relative flex flex-col pb-28 shadow-2xl">
+      <div className="max-w-3xl lg:max-w-4xl mx-auto w-full h-full relative flex flex-col pb-28 shadow-2xl">
         <AppHeader
           variant="dark"
           trainerInitials={authTrainer?.initials || "AJ"}
@@ -348,7 +371,7 @@ export function BriefingScreen({
         />
 
         <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 flex flex-col">
-          <div className="px-4 sm:px-5 py-5 flex-1 flex flex-col gap-4 pb-60">
+          <div className="px-3.5 sm:px-5 lg:px-6 py-4 sm:py-5 flex-1 flex flex-col gap-3.5 sm:gap-4 pb-4">
             {/* 2. Client hero card */}
             <div className="rounded-2xl p-4 border border-cyan/30 shadow-sm relative overflow-hidden bg-white dark:bg-slate-900 dark:border-slate-800">
               <div className="flex justify-between items-start relative z-10">
@@ -528,17 +551,6 @@ export function BriefingScreen({
                   </div>
                 </div>
 
-                {/* Body State — per-region tags */}
-                <div className="space-y-2 mb-4">
-                  <label className="text-[11px] uppercase tracking-widest text-slate-600 dark:text-slate-300 font-extrabold ml-1 block">
-                    Body State
-                  </label>
-                  <BodyStateTracker
-                    value={bodyStates}
-                    onChange={setBodyStates}
-                  />
-                </div>
-
                 {/* Pre-Session Notes (UNCHANGED from existing implementation) */}
                 <div className="space-y-2">
                   <label className="text-[11px] uppercase tracking-widest text-slate-600 dark:text-slate-300 font-extrabold ml-1">
@@ -551,6 +563,57 @@ export function BriefingScreen({
                     className="w-full min-h-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan transition-all resize-y"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* 3a. Routine selector — the alternation logic proposes one, the
+                    trainer can override it before starting. */}
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 px-1">
+                <span className="text-[11px] uppercase tracking-widest text-slate-600 dark:text-slate-300 font-extrabold">
+                  Today's Routine
+                </span>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">
+                  {routinePickedByTrainer
+                    ? "Manually selected"
+                    : `Suggested: Routine ${suggestedType}`}
+                </span>
+              </div>
+              <div
+                role="group"
+                aria-label="Select today's routine"
+                className="grid grid-cols-2 gap-2"
+              >
+                {(["A", "B"] as const).map((type) => {
+                  const routine = type === "A" ? routineA : routineB;
+                  const active =
+                    type === "A"
+                      ? ["A", "Create_A"].includes(selectedRoutineType)
+                      : ["B", "Create_B"].includes(selectedRoutineType);
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => handlePickRoutine(type)}
+                      aria-pressed={active}
+                      className={cn(
+                        "min-h-14 rounded-xl border px-4 py-2 text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan",
+                        active
+                          ? "bg-cyan/10 border-cyan text-slate-900 dark:text-white shadow-[0_0_16px_rgba(6,182,212,0.25)]"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700",
+                      )}
+                    >
+                      <span className="block font-display italic uppercase tracking-wide text-sm">
+                        Routine {type}
+                      </span>
+                      <span className="block text-[10px] font-bold uppercase tracking-wider mt-0.5 text-slate-400">
+                        {routine
+                          ? `${routine.machineIds?.length || 0} machines`
+                          : "Not set up — tap to build"}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -627,27 +690,53 @@ export function BriefingScreen({
                             getMillis(b.createdAt) - getMillis(a.createdAt),
                         );
                       const lastLog = mLogs[0];
+                      const clientMetric = client?.currentMachineMetrics?.[machineId];
 
                       const isTSC =
                         machine.targetRepRange?.toLowerCase().includes("tsc") ||
                         machine.targetRepRange
                           ?.toLowerCase()
                           .includes("static") ||
-                        machine.targetRepRange?.toLowerCase().includes("time");
+                        machine.targetRepRange?.toLowerCase().includes("time") ||
+                        Boolean(lastLog?.isTSC) ||
+                        Boolean(clientMetric?.isTSC);
+
+                      const rawWeight =
+                        lastLog?.weight !== undefined && lastLog?.weight !== ""
+                          ? lastLog.weight
+                          : lastLog?.loadLb !== undefined && lastLog?.loadLb !== ""
+                            ? lastLog.loadLb
+                            : clientMetric?.weight !== undefined && clientMetric?.weight !== ""
+                              ? clientMetric.weight
+                              : null;
+
+                      const rawReps = isTSC
+                        ? lastLog?.seconds !== undefined && lastLog?.seconds !== ""
+                          ? lastLog.seconds
+                          : lastLog?.outcomeTut !== undefined && lastLog?.outcomeTut !== ""
+                            ? lastLog.outcomeTut
+                            : lastLog?.timeSpent !== undefined && lastLog?.timeSpent !== ""
+                              ? lastLog.timeSpent
+                              : clientMetric?.seconds !== undefined && clientMetric?.seconds !== ""
+                                ? clientMetric.seconds
+                                : lastLog?.reps !== undefined && lastLog?.reps !== ""
+                                  ? lastLog.reps
+                                  : clientMetric?.reps !== undefined && clientMetric?.reps !== ""
+                                    ? clientMetric.reps
+                                    : null
+                        : lastLog?.reps !== undefined && lastLog?.reps !== ""
+                          ? lastLog.reps
+                          : lastLog?.outcomeReps !== undefined && lastLog?.outcomeReps !== ""
+                            ? lastLog.outcomeReps
+                            : clientMetric?.reps !== undefined && clientMetric?.reps !== ""
+                              ? clientMetric.reps
+                              : null;
 
                       const displayMachine = {
                         idx: idx + 1,
                         name: machine.name,
-                        lastLb:
-                          lastLog?.loadLb !== undefined
-                            ? lastLog?.loadLb
-                            : null,
-                        lastReps:
-                          isTSC && lastLog?.outcomeTut
-                            ? lastLog.outcomeTut
-                            : lastLog?.outcomeReps !== undefined
-                              ? lastLog.outcomeReps
-                              : null,
+                        lastLb: rawWeight,
+                        lastReps: rawReps,
                         lastUnit: isTSC ? "sec" : "reps",
                         isTSC: isTSC,
                       };
@@ -691,14 +780,20 @@ export function BriefingScreen({
           </div>
         </div>
 
-        <StickyCTA
-          label="START SESSION"
-          icon={
+        <div
+          className="shrink-0 px-6 pb-4 pt-3 z-20"
+          style={{
+            background: 'linear-gradient(to top, var(--bg-dark) 60%, rgba(13,26,43,0) 100%)'
+          }}
+        >
+          <button
+            onClick={handleStart}
+            className="w-full h-[60px] min-h-[44px] rounded-[30px] font-display italic text-[18px] uppercase tracking-wide bg-gradient-to-br from-cta to-cta-strong text-white shadow-[0_4px_24px_rgba(243,116,39,0.3)] hover:shadow-[0_6px_32px_rgba(243,116,39,0.4)] border border-white/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
             <div className="w-0 h-0 border-t-[5px] border-t-transparent border-l-8 border-l-white border-b-[5px] border-b-transparent mr-1" />
-          }
-          onClick={handleStart}
-          className="mb-20 sm:mb-24"
-        />
+            START SESSION
+          </button>
+        </div>
       </div>
     </div>
   );

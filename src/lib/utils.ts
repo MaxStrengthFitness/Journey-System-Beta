@@ -166,9 +166,13 @@ export function parseMachineSettings(settingsStr: string): Record<string, string
     });
   }
 
-  // If still empty but we have a string, use 'General'
+  // If still empty but we have a valid short string (not noise words like 'Project' or 'Confirm')
   if (Object.keys(settings).length === 0 && settingsStr.trim()) {
-    settings['General'] = settingsStr.trim();
+    const raw = settingsStr.trim();
+    const noiseWords = ['PROJECT', 'CONFIRM', 'UNKNOWN', 'LEGACY', 'CHART', 'GENERAL', 'NONE', 'NULL', 'UNDEFINED'];
+    if (!noiseWords.includes(raw.toUpperCase()) && raw.length <= 8 && !/^[a-zA-Z\s]{4,}$/.test(raw)) {
+      settings['General'] = raw;
+    }
   }
 
   return settings;
@@ -239,7 +243,79 @@ export function orderMachineSettings(
   standardSettings?: Record<string, string> | null,
   options?: string[] | null
 ): [string, string, string][] {
-  const mergedSettings = { ...(settings || {}) };
+  const mergedSettings: Record<string, string> = {};
+
+  const normalizeKey = (k: string): string => {
+    const clean = k.trim().replace(/^PROJECT[-_\s]+/i, '');
+    const lower = clean.toLowerCase();
+    if (lower === 'seat' || lower === 's') return 'Seat';
+    if (lower === 'gap' || lower === 'g') return 'Gap';
+    if (lower === 'backpad' || lower === 'back pad' || lower === 'b' || lower === 'back') return 'Back Pad';
+    if (lower === 'chestpad' || lower === 'chest pad' || lower === 'chest') return 'Chest Pad';
+    if (lower === 'handles' || lower === 'handle' || lower === 'h') return 'Handles';
+    if (lower === 'armpad' || lower === 'arm pad' || lower === 'a') return 'Arm Pad';
+    return clean.charAt(0).toUpperCase() + clean.slice(1);
+  };
+
+  const processEntry = (k: string, v: any) => {
+    if (!k || v === undefined || v === null) return;
+    const strV = String(v).trim();
+    if (!strV) return;
+
+    // Check if strV contains embedded "PROJECT-" tokens or JSON like "6 PROJECT-GAP:6"
+    if (/PROJECT[-_\s]+/i.test(strV)) {
+      const parts = strV.split(/PROJECT[-_\s]+/i);
+      parts.forEach((part, index) => {
+        const trimmed = part.trim();
+        if (!trimmed) return;
+        if (index === 0) {
+          processEntry(k, trimmed);
+        } else {
+          if (trimmed.includes(':')) {
+            const colonIdx = trimmed.indexOf(':');
+            const subK = trimmed.substring(0, colonIdx).trim();
+            const subV = trimmed.substring(colonIdx + 1).trim();
+            if (subK.toLowerCase().includes('rawsettings') || subV.startsWith('{')) {
+              try {
+                const match = subV.match(/\{.*\}/);
+                const jsonStr = match ? match[0] : subV;
+                const parsed = JSON.parse(jsonStr);
+                Object.entries(parsed).forEach(([innerK, innerV]) => processEntry(innerK, innerV));
+              } catch {}
+            } else {
+              processEntry(subK, subV);
+            }
+          } else {
+            const spaceMatch = trimmed.match(/^([a-zA-Z]+)[\s=]+(.+)$/);
+            if (spaceMatch) {
+              processEntry(spaceMatch[1], spaceMatch[2]);
+            }
+          }
+        }
+      });
+      return;
+    }
+
+    // If strV is a JSON string
+    if (strV.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(strV);
+        Object.entries(parsed).forEach(([innerK, innerV]) => processEntry(innerK, innerV));
+        return;
+      } catch {}
+    }
+
+    const finalK = normalizeKey(k);
+    const noiseWords = ['PROJECT', 'CONFIRM', 'UNKNOWN', 'LEGACY', 'CHART', 'NULL', 'UNDEFINED', 'RAWSETTINGS'];
+    if (!noiseWords.includes(strV.toUpperCase()) && !strV.startsWith('{') && strV.length <= 10) {
+      mergedSettings[finalK] = strV;
+    }
+  };
+
+  // Process all incoming raw settings
+  Object.entries(settings || {}).forEach(([rawK, rawV]) => {
+    processEntry(rawK, rawV);
+  });
   
   // 1. If options are provided, normalize "Back/Chest Pad" key mismatches dynamically
   if (options && options.length > 0) {
@@ -263,7 +339,7 @@ export function orderMachineSettings(
     }
   }
 
-  // 2. Ensure "Gap" is ALWAYS present (unless explicitly not wanted, but should always show gap)
+  // 2. Ensure "Gap" is ALWAYS present
   const existingGapKey = Object.keys(mergedSettings).find(k => k.toLowerCase() === 'gap');
   let gapValue: string | undefined = undefined;
   
@@ -275,21 +351,15 @@ export function orderMachineSettings(
   }
   
   if (gapValue === undefined) {
-    // Look up in standardSettings (studio-standard)
     const stdGapKey = standardSettings ? Object.keys(standardSettings).find(k => k.toLowerCase() === 'gap') : undefined;
     if (stdGapKey && standardSettings && standardSettings[stdGapKey] !== undefined && standardSettings[stdGapKey] !== null && standardSettings[stdGapKey] !== '') {
       gapValue = String(standardSettings[stdGapKey]);
     } else {
-      gapValue = "0"; // Default fallback to 0 as very common or if gap is not inputted
+      gapValue = "0";
     }
   }
   
-  if (existingGapKey) {
-    mergedSettings[existingGapKey] = gapValue;
-  } else {
-    // Explicitly add "Gap" if not present
-    mergedSettings["Gap"] = gapValue;
-  }
+  mergedSettings["Gap"] = gapValue;
 
   const entries = Object.entries(mergedSettings);
   
@@ -305,9 +375,12 @@ export function orderMachineSettings(
     return keyA.localeCompare(keyB);
   });
   
-  // 4. Convert keys to just the first letter (upper-cased) for visual shorthand, and also return the original key to preserve context if needed!
+  // 4. Convert keys to just the first letter (upper-cased) for visual shorthand
   return sorted.map(([key, val]) => {
-    const shortKey = key.trim().substring(0, 1).toUpperCase();
+    let shortKey = key.trim().substring(0, 1).toUpperCase();
+    if (key.toLowerCase().includes('arm')) shortKey = 'A';
+    if (key.toLowerCase().includes('back')) shortKey = 'B';
+    if (key.toLowerCase().includes('chest')) shortKey = 'C';
     return [shortKey, val, key];
   }) as [string, string, string][];
 }

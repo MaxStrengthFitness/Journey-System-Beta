@@ -16,7 +16,8 @@ import {
   Activity,
   Dumbbell,
   Copy,
-  Plus
+  Plus,
+  ArrowLeft
 } from 'lucide-react';
 import { Client, Machine, Trainer, WorkoutSession, ExerciseLog } from '../types';
 import { processLegacyChart, extractMachineSettingsFromImage, OCRMachineSetting, ValidationSession, ValidationLog, sanitizeImportedSessions, OCRResult } from '../services/geminiService';
@@ -30,6 +31,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { cn, parseSessionDate, parseMachineSettings } from '../lib/utils';
+import { planLegacyImport } from '../lib/legacy-import-utils';
 
 interface ImporterProps {
   clients: Client[];
@@ -346,13 +348,24 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
     setFinalizeProgress(0);
 
     try {
+      // Empty grid columns must not become sessions — see planLegacyImport.
+      const plan = planLegacyImport(validationSessions);
+      const { sessionsToImport } = plan;
+      const skippedEmptyCount = plan.skippedEmptySessionNumbers.length;
+
+      if (sessionsToImport.length === 0) {
+        toastError('No sessions contain exercise data. Nothing to import.');
+        setIsFinalizing(false);
+        return;
+      }
+
       // Calculate total operations to track progress
       // 1 for each session, 1 for each log, 1 for client update, potentially many for settings
-      const totalSessions = validationSessions.length;
-      const totalLogs = validationSessions.reduce((acc, s) => acc + s.machines.filter(m => m.machineId).length, 0);
+      const totalSessions = sessionsToImport.length;
+      const totalLogs = plan.totalLogs;
       const allMachineIds = new Set<string>();
       extractedSettings.forEach(s => allMachineIds.add(s.machineId));
-      for (const vSess of validationSessions) {
+      for (const vSess of sessionsToImport) {
         vSess.machines.forEach(m => { if (m.machineId) allMachineIds.add(m.machineId); });
       }
       const totalSettings = allMachineIds.size;
@@ -377,7 +390,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
       };
       
       // 1. Process Sessions & Logs
-      for (const vSess of validationSessions) {
+      for (const vSess of sessionsToImport) {
         const sessionRef = doc(collection(db, 'sessions'));
         
         let formattedDate = vSess.date;
@@ -448,14 +461,12 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
       }
 
       // 2. Update client session count and profile
-      const maxSessionNum = validationSessions.length > 0 
-        ? Math.max(...validationSessions.map(s => s.sessionNumber)) 
-        : 0;
+      const maxSessionNum = plan.highestSessionNumber;
       
       let totalImportedReps = 0;
       let totalImportedVolume = 0;
 
-      validationSessions.forEach(vSess => {
+      sessionsToImport.forEach(vSess => {
         vSess.machines.forEach(vLog => {
           if (!vLog.machineId) return;
           
@@ -489,7 +500,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
 
       const clientRef = doc(db, 'clients', selectedClientId);
       const clientUpdateObj: any = {
-        completedSessions: increment(validationSessions.length),
+        completedSessions: increment(sessionsToImport.length),
         sessionCount: maxSessionNum,
         updatedAt: serverTimestamp()
       };
@@ -501,6 +512,108 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
         clientUpdateObj.lifetimeWeight = increment(roundedImportedVolume);
       }
 
+      // Build currentMachineMetrics from imported data so profile cards and live sessions auto-populate weights
+      const targetClient = clients.find(c => c.id === selectedClientId);
+      const currentMachineMetrics: Record<string, any> = {
+        ...(targetClient?.currentMachineMetrics || {})
+      };
+
+      const cleanSettingVal = (val: any): string | null => {
+        if (!val) return null;
+        const str = String(val).trim();
+        const noise = ['PROJECT', 'CONFIRM', 'UNKNOWN', 'LEGACY', 'CHART', 'GENERAL', 'NONE', 'NULL', 'UNDEFINED'];
+        if (noise.includes(str.toUpperCase())) return null;
+        if (/^[a-zA-Z\s]{4,}$/.test(str)) return null; // Reject full descriptive words
+        return str;
+      };
+
+      const sanitizeSettingsMap = (raw: Record<string, any>): Record<string, string> => {
+        const cleaned: Record<string, string> = {};
+        Object.entries(raw || {}).forEach(([k, v]) => {
+          const validVal = cleanSettingVal(v);
+          if (validVal && k && !['project', 'notes', 'general', 'unknown'].includes(k.toLowerCase())) {
+            cleaned[k] = validVal;
+          }
+        });
+        return cleaned;
+      };
+
+      const sortedSess = [...sessionsToImport].sort((a, b) => (a.sessionNumber || 0) - (b.sessionNumber || 0));
+      if (sortedSess.length > 0) {
+        const latestSess = sortedSess[sortedSess.length - 1];
+        if (latestSess.date) {
+          clientUpdateObj.lastSessionDate = latestSess.date;
+          clientUpdateObj.lastWorkoutDate = latestSess.date;
+        }
+      }
+      for (const vSess of sortedSess) {
+        let sessDate: any = serverTimestamp();
+        if (vSess.date) {
+          const parsed = parseSessionDate(vSess.date);
+          if (parsed > 0) sessDate = new Date(parsed);
+        }
+
+        for (const vLog of vSess.machines) {
+          if (!vLog.machineId) continue;
+          if (!vLog.weight && !vLog.reps && !vLog.timeUnderLoad) continue;
+
+          const extracted = extractedSettings.find(s => s.machineId === vLog.machineId);
+          const rawSettingsObj: Record<string, string> = (extracted && extracted.rawSettings && Object.keys(extracted.rawSettings).length > 0)
+            ? { ...extracted.rawSettings }
+            : (vLog.settings ? parseMachineSettings(vLog.settings) : (currentMachineMetrics[vLog.machineId]?.settings || {}));
+
+          if (extracted) {
+            if (extracted.seat) rawSettingsObj['Seat'] = extracted.seat;
+            if (extracted.gap) rawSettingsObj['Gap'] = extracted.gap;
+            if (extracted.backPad) rawSettingsObj['Back Pad'] = extracted.backPad;
+            if (extracted.handles) rawSettingsObj['Handles'] = extracted.handles;
+            if (extracted.armPad) rawSettingsObj['Arm Pad'] = extracted.armPad;
+          }
+
+          const finalSettings = sanitizeSettingsMap(rawSettingsObj);
+
+          currentMachineMetrics[vLog.machineId] = {
+            weight: String(vLog.weight || '0'),
+            reps: vLog.isStaticHold ? '' : String(vLog.reps || ''),
+            seconds: vLog.isStaticHold ? String(vLog.timeUnderLoad || '') : '',
+            isStaticHold: Boolean(vLog.isStaticHold),
+            isTSC: Boolean(vLog.isStaticHold),
+            settings: finalSettings,
+            lastPerformedDate: sessDate,
+            lastPerformedSessionNumber: vSess.sessionNumber
+          };
+        }
+      }
+
+      // Also ensure machines from extracted settings with currentWeight get recorded
+      for (const extracted of extractedSettings) {
+        if (!extracted.machineId) continue;
+        if (!currentMachineMetrics[extracted.machineId]) {
+          const finalSettings: Record<string, string> = { ...(extracted.rawSettings || {}) };
+          if (extracted.seat) finalSettings['Seat'] = extracted.seat;
+          if (extracted.gap) finalSettings['Gap'] = extracted.gap;
+          if (extracted.backPad) finalSettings['Back Pad'] = extracted.backPad;
+          if (extracted.handles) finalSettings['Handles'] = extracted.handles;
+          if (extracted.armPad) finalSettings['Arm Pad'] = extracted.armPad;
+
+          if (extracted.currentWeight || Object.keys(finalSettings).length > 0) {
+            currentMachineMetrics[extracted.machineId] = {
+              weight: String(extracted.currentWeight || '0'),
+              reps: '',
+              seconds: '',
+              isStaticHold: false,
+              isTSC: false,
+              settings: finalSettings,
+              lastPerformedDate: serverTimestamp()
+            };
+          }
+        }
+      }
+
+      if (Object.keys(currentMachineMetrics).length > 0) {
+        clientUpdateObj.currentMachineMetrics = currentMachineMetrics;
+      }
+
       currentBatch.update(clientRef, clientUpdateObj);
       opCount++;
       updateProgress();
@@ -510,7 +623,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
       const machineWeightEntries: Record<string, { weight: number; timestamp: number; sessionIndex: number }[]> = {};
       
       let sessionIndex = 0;
-      for (const vSess of validationSessions) {
+      for (const vSess of sessionsToImport) {
         let timestamp = Date.now();
         if (vSess.date) {
             const parsed = parseSessionDate(vSess.date);
@@ -558,8 +671,9 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
             notes: 'Extracted from legacy chart'
           };
 
-          if (Object.keys(finalSettings).length > 0) {
-            updateData.settings = finalSettings;
+          const cleanedSettings = sanitizeSettingsMap(finalSettings);
+          if (Object.keys(cleanedSettings).length > 0) {
+            updateData.settings = cleanedSettings;
           }
 
           const entries = machineWeightEntries[mId] || [];
@@ -591,7 +705,11 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
       setFinalizeProgress(100);
 
       if (onComplete) onComplete();
-      toastSuccess("Data finalized and imported successfully.");
+      toastSuccess(
+        skippedEmptyCount > 0
+          ? `Imported ${sessionsToImport.length} session(s). Skipped ${skippedEmptyCount} empty column(s) from the chart.`
+          : `Imported ${sessionsToImport.length} session(s) successfully.`,
+      );
     } catch (err: any) {
       console.error(err);
       toastError(err.message || 'Finalization failed. Check Firestore quotas.');
@@ -603,15 +721,26 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
   return (
     <div className="w-full flex flex-col gap-6 p-4 sm:p-6 bg-slate-950 min-h-screen text-slate-100">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black tracking-tighter uppercase italic text-white flex items-center gap-2">
-            <Maximize className="w-8 h-8 text-[#F06C22]" />
-            OCR Legacy Pipeline
-          </h1>
-          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em]">
-            Multimodal Chart Recognition Engine v3.1
-          </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-900">
+        <div className="flex items-center gap-4">
+          {onComplete && (
+            <button
+              type="button"
+              onClick={onComplete}
+              className="h-10 w-10 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-all shrink-0 shadow-sm"
+              title="Back to Client Profile"
+            >
+              <ArrowLeft className="w-5 h-5 text-[#F06C22]" />
+            </button>
+          )}
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase italic text-white flex items-center gap-2">
+              OCR Legacy Pipeline
+            </h1>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
+              Multimodal Chart Recognition Engine v3.1
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -629,7 +758,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
           </Select>
           
           {validationSessions.length > 0 && (
-            <Button 
+            <Button
               onClick={finalizeImport}
               disabled={isFinalizing || validationSessions.some(s => !s.date)}
               className="bg-[#F06C22] hover:bg-[#F06C22]/90 text-white font-black px-6 h-11 tracking-widest uppercase text-xs disabled:opacity-50"

@@ -15,6 +15,7 @@ import {
   ClipboardList,
   PlusCircle,
   History,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -54,6 +55,11 @@ import {
 } from "../types";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
 import {
+  matchesRoutineLetter,
+  routineLetterOf,
+  findRoutineByLetter,
+} from "../lib/routine-utils";
+import {
   parseSessionDate,
   safeToDate,
   orderMachineSettings,
@@ -77,6 +83,12 @@ import {
 
 import { useActiveStudio } from "../ActiveStudioContext";
 import { Stopwatch } from "./Stopwatch";
+import { useToast } from "../contexts/ToastContext";
+import {
+  hasCount,
+  hasRequiredCount,
+  findIncompleteLogs,
+} from "../lib/log-validation";
 import { ActiveSessionTimer } from "./ActiveSessionTimer";
 import { SessionRoutineManagerModal } from "./SessionRoutineManagerModal";
 import { SessionNotesSidebar } from "./SessionNotesSidebar";
@@ -313,6 +325,10 @@ function PerformanceEntryDialog({
       ? parseFloat(currentWeight)
       : parseFloat(prevWeight) || 0;
 
+  // Deliberately NOT seeded from the previous session. Weight carries forward
+  // because a starting load is a setting; a rep or second count is a measurement
+  // and must come from this set. Last session's number appears only as a greyed
+  // placeholder, and `canSave` below refuses to store an empty field.
   const initialReps = currentReps !== "" ? parseFloat(currentReps) : "";
   const initialRepsRight =
     currentRepsRight !== undefined && currentRepsRight !== ""
@@ -337,11 +353,44 @@ function PerformanceEntryDialog({
     return parseFloat(prevValStr) || 0;
   };
 
+  /**
+   * A set is only saveable with a quality *and* an actual rep/second count.
+   * Previously only quality was required, so a blank field saved an empty value
+   * that rendered as "s" with no number and scored zero toward the client's
+   * lifetime volume.
+   */
+  const countsEntered = isTorsoFull
+    ? hasCount(reps) && hasCount(repsRt)
+    : hasCount(reps);
+  const canSave = Boolean(quality) && quality !== 0 && countsEntered;
+
+  const saveLabel = !countsEntered
+    ? isHold
+      ? "Enter Seconds To Save"
+      : "Enter Reps To Save"
+    : !quality || quality === 0
+      ? "Select Quality To Save"
+      : "Save Set";
+
   const prevRepsLeftPlaceholder = isHold
     ? prevLog?.seconds || ""
     : prevLog?.reps || "";
   const prevRepsRightPlaceholder =
     (prevLog as any)?.repsRight || prevRepsLeftPlaceholder;
+
+  /**
+   * Reps and seconds are different units — 8 reps is not 8 seconds — so switching
+   * mode re-seeds the field from that mode's own previous value rather than
+   * carrying the old number across.
+   */
+  const switchMode = (hold: boolean) => {
+    if (hold === isHold) return;
+    setIsHold(hold);
+    // Clear rather than carry the number across: the units are different, so a
+    // rep count left sitting in the seconds field would be saved as a duration.
+    setReps("");
+    if (isTorsoFull) setRepsRt("");
+  };
 
   const adjustReps = (amount: number) => {
     const base = getBaseReps(reps, prevRepsLeftPlaceholder);
@@ -430,7 +479,7 @@ function PerformanceEntryDialog({
             </Label>
             <div className="flex items-center justify-between w-full h-14 px-1">
               <button
-                className="w-11 h-11 rounded-xl bg-slate-700/50 text-slate-500 dark:text-slate-400 font-black text-lg flex items-center justify-center active:scale-95 transition-transform border border-slate-300/30"
+                className="w-11 h-11 rounded-xl bg-slate-200 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 font-black text-lg flex items-center justify-center active:scale-95 transition-transform border border-slate-300 dark:border-slate-700"
                 onClick={() => adjustCurrent(-2)}
               >
                 -2
@@ -469,13 +518,13 @@ function PerformanceEntryDialog({
             <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 flex flex-col items-center relative">
               <div className="flex items-center justify-center gap-1.5 bg-white dark:bg-bg-dark border border-slate-200 dark:border-slate-800 rounded-xl p-1 mb-2.5 w-full max-w-45">
                 <button
-                  onClick={() => setIsHold(false)}
+                  onClick={() => switchMode(false)}
                   className={`flex-1 h-6 rounded-lg font-black uppercase text-[11px] tracking-widest transition-all ${!isHold ? "bg-sky-500 text-slate-900 dark:text-white" : "text-slate-600 hover:text-slate-500 dark:text-slate-400"}`}
                 >
                   REPS
                 </button>
                 <button
-                  onClick={() => setIsHold(true)}
+                  onClick={() => switchMode(true)}
                   className={`flex-1 h-6 rounded-lg font-black uppercase text-[11px] tracking-widest transition-all ${isHold ? "bg-sky-500 text-slate-900 dark:text-white" : "text-slate-600 hover:text-slate-500 dark:text-slate-400"}`}
                 >
                   TSC
@@ -485,7 +534,7 @@ function PerformanceEntryDialog({
               {!isTorsoFull ? (
                 <div className="flex items-center justify-between w-full h-12 px-1">
                   <button
-                    className="w-10 h-10 rounded-xl bg-slate-700/50 text-slate-500 dark:text-slate-400 font-black text-lg flex items-center justify-center active:scale-95 transition-transform border border-slate-300/30 shrink-0"
+                    className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 font-black text-lg flex items-center justify-center active:scale-95 transition-transform border border-slate-300 dark:border-slate-700 shrink-0"
                     onClick={() => adjustReps(-1)}
                   >
                     -1
@@ -588,9 +637,16 @@ function PerformanceEntryDialog({
             </div>
 
             {/* Quality Rating */}
-            <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 flex flex-col items-center relative">
-              <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest text-center block mb-2.5">
-                Set Quality / RPE
+            <div
+              className={`bg-slate-50 dark:bg-slate-950 border rounded-2xl p-3 flex flex-col items-center relative transition-colors ${!quality || quality === 0 ? "border-amber-500/50 dark:border-amber-500/40" : "border-slate-200 dark:border-slate-800"}`}
+            >
+              <Label className="text-[11px] font-black uppercase tracking-widest text-center block mb-2.5 items-center gap-1 text-slate-500 dark:text-slate-400">
+                Set Quality / RPE{" "}
+                {!quality && (
+                  <span className="text-amber-500 font-bold text-xs">
+                    * Required
+                  </span>
+                )}
               </Label>
               <div className="flex items-center gap-1.5 w-full h-9">
                 <button
@@ -701,8 +757,10 @@ function PerformanceEntryDialog({
             Cancel
           </Button>
           <Button
-            className="h-12 rounded-xl font-black uppercase text-[11px] tracking-widest bg-orange-500 dark:bg-orange-600 text-white hover:bg-orange-600 dark:hover:bg-orange-700 shadow-[0_4px_15px_rgba(240,108,34,0.4)] border-none active:scale-95 transition-all"
-            onClick={() =>
+            className="h-12 rounded-xl font-black uppercase text-[11px] tracking-widest bg-orange-500 dark:bg-orange-600 text-white hover:bg-orange-600 dark:hover:bg-orange-700 shadow-[0_4px_15px_rgba(240,108,34,0.4)] border-none active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
+            disabled={!canSave}
+            onClick={() => {
+              if (!canSave) return;
               onSave(
                 current.toString(),
                 reps.toString(),
@@ -710,10 +768,10 @@ function PerformanceEntryDialog({
                 isHold,
                 side,
                 repsRt.toString(),
-              )
-            }
+              );
+            }}
           >
-            Save Set
+            {saveLabel}
           </Button>
         </div>
       </DialogContent>
@@ -896,6 +954,19 @@ function ExerciseHistoryDialog({
   );
 }
 
+/** How long a locally-created session is protected from being cleared by a
+ *  snapshot that has not caught up with the write yet. */
+const JUST_STARTED_GRACE_MS = 15000;
+
+/** Milliseconds from a Firestore Timestamp, Date, or ISO string; null if absent. */
+function toMillisOrNull(value: any): number | null {
+  if (!value) return null;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value.toDate === "function") return value.toDate().getTime();
+  const ms = new Date(value).getTime();
+  return isNaN(ms) ? null : ms;
+}
+
 export function WorkoutTrackerView({
   clientId,
   clients,
@@ -943,6 +1014,7 @@ export function WorkoutTrackerView({
 }) {
   const { activeStudioId: contextActiveStudioId, activeStudio } =
     useActiveStudio();
+  const { error: toastError } = useToast();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [logs, setLogs] = useState<Record<string, ExerciseLog>>({});
   const [routines, setRoutines] = useState<Routine[]>([]);
@@ -968,6 +1040,7 @@ export function WorkoutTrackerView({
   const [editingWeightMachineId, setEditingWeightMachineId] = useState<
     string | null
   >(null);
+  const [isStaticHoldOverride, setIsStaticHoldOverride] = useState(false);
   const [historyMachineId, setHistoryMachineId] = useState<string | null>(null);
   const [isSettingUpRoutine, setIsSettingUpRoutine] = useState(false);
   const [showAllMachines, setShowAllMachines] = useState(true);
@@ -986,6 +1059,59 @@ export function WorkoutTrackerView({
     useState<RoutineType>("A");
   const [targetRoutine, setTargetRoutine] = useState<Routine | null>(null);
   const [isPaused, setIsPaused] = useState(false);
+
+  /**
+   * Pause/resume, recorded on the session document.
+   *
+   * Pausing stores the instant; resuming folds that span into totalPausedMs.
+   * Keeping it here rather than in component state means a refresh mid-pause no
+   * longer counts the break as training time.
+   */
+  const toggleSessionPause = async () => {
+    const session = currentSession;
+    if (!session?.id) {
+      setIsPaused((p) => !p);
+      return;
+    }
+
+    const pausedAtMs = toMillisOrNull(session.pausedAt);
+    const alreadyPaused = pausedAtMs !== null;
+
+    // Update locally first so the button responds immediately.
+    setIsPaused(!alreadyPaused);
+
+    const updates = alreadyPaused
+      ? {
+          pausedAt: null,
+          totalPausedMs:
+            (Number(session.totalPausedMs) || 0) +
+            Math.max(0, Date.now() - pausedAtMs),
+        }
+      : { pausedAt: Timestamp.now() };
+
+    setCurrentSession((prev) =>
+      prev && prev.id === session.id
+        ? ({ ...prev, ...updates } as WorkoutSession)
+        : prev,
+    );
+
+    try {
+      await updateDoc(doc(db, "sessions", session.id), updates);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "sessions");
+    }
+  };
+
+  /**
+   * Set the instant a session is created locally. Firestore's snapshot can lag a
+   * beat behind the write, and without this the very next snapshot would report
+   * "no session in progress" and immediately clear the one just started.
+   */
+  const justStartedSessionRef = useRef<{
+    id: string;
+    clientId: string;
+    at: number;
+  } | null>(null);
 
   const [machineTimeElapsed, setMachineTimeElapsed] = useState<number>(0);
 
@@ -1034,10 +1160,11 @@ export function WorkoutTrackerView({
           logL?.repQuality &&
           !logL?.timeSpent
         ) {
+          const manualSeconds = logL?.seconds ? parseFloat(logL.seconds) : 0;
           const rawTimeDiff = Math.floor(
             (Date.now() - lastMachineLoggedAt.current) / 1000,
           );
-          const timeDiff = Math.max(
+          const computedTimeDiff = Math.max(
             0,
             Math.floor(
               (Date.now() -
@@ -1046,6 +1173,7 @@ export function WorkoutTrackerView({
                 1000,
             ),
           );
+          const timeDiff = manualSeconds > 0 ? manualSeconds : computedTimeDiff;
           const isStatic =
             logL.isStaticHold ||
             logL.isTSC ||
@@ -1062,6 +1190,7 @@ export function WorkoutTrackerView({
             {
               timeSpent: rawTimeDiff.toString(),
               totalTimeUnderLoad: timeDiff,
+              machineDurationSeconds: timeDiff,
               ...(avgTime !== undefined && { averageTimePerRep: avgTime }),
             },
             "Left",
@@ -1076,10 +1205,11 @@ export function WorkoutTrackerView({
           logR?.repQuality &&
           !logR?.timeSpent
         ) {
+          const manualSeconds = logR?.seconds ? parseFloat(logR.seconds) : 0;
           const rawTimeDiff = Math.floor(
             (Date.now() - lastMachineLoggedAt.current) / 1000,
           );
-          const timeDiff = Math.max(
+          const computedTimeDiff = Math.max(
             0,
             Math.floor(
               (Date.now() -
@@ -1088,6 +1218,7 @@ export function WorkoutTrackerView({
                 1000,
             ),
           );
+          const timeDiff = manualSeconds > 0 ? manualSeconds : computedTimeDiff;
           const isStatic =
             logR.isStaticHold ||
             logR.isTSC ||
@@ -1104,6 +1235,7 @@ export function WorkoutTrackerView({
             {
               timeSpent: rawTimeDiff.toString(),
               totalTimeUnderLoad: timeDiff,
+              machineDurationSeconds: timeDiff,
               ...(avgTime !== undefined && { averageTimePerRep: avgTime }),
             },
             "Right",
@@ -1120,10 +1252,11 @@ export function WorkoutTrackerView({
           log?.repQuality &&
           !log?.timeSpent
         ) {
+          const manualSeconds = log?.seconds ? parseFloat(log.seconds) : 0;
           const rawTimeDiff = Math.floor(
             (Date.now() - lastMachineLoggedAt.current) / 1000,
           );
-          const timeDiff = Math.max(
+          const computedTimeDiff = Math.max(
             0,
             Math.floor(
               (Date.now() -
@@ -1132,6 +1265,7 @@ export function WorkoutTrackerView({
                 1000,
             ),
           );
+          const timeDiff = manualSeconds > 0 ? manualSeconds : computedTimeDiff;
           const isStatic =
             log.isStaticHold ||
             log.isTSC ||
@@ -1145,6 +1279,7 @@ export function WorkoutTrackerView({
           updateLogMultiple(currentSession.id, mId, {
             timeSpent: rawTimeDiff.toString(),
             totalTimeUnderLoad: timeDiff,
+            machineDurationSeconds: timeDiff,
             ...(avgTime !== undefined && { averageTimePerRep: avgTime }),
           });
           lastMachineLoggedAt.current = Date.now();
@@ -1158,6 +1293,13 @@ export function WorkoutTrackerView({
       // Optional: Since it auto-advances focus, we could log that time tracked.
     }
   }, [logs, currentSession, activeMachineIds]);
+
+  // Mirror the session's persisted pause state into local state, so per-machine
+  // timing and the heartbeat also know the session is paused after a refresh.
+  useEffect(() => {
+    const paused = toMillisOrNull((currentSession as any)?.pausedAt) !== null;
+    setIsPaused((prev) => (prev === paused ? prev : paused));
+  }, [(currentSession as any)?.pausedAt, currentSession?.id]);
 
   useEffect(() => {
     if (!currentSession) return;
@@ -1243,20 +1385,25 @@ export function WorkoutTrackerView({
     }
 
     if (activeFocusMachineId) {
-      await updateLog(
-        currentSession.id,
-        activeFocusMachineId,
-        "seconds",
-        seconds.toString(),
-      );
-      await updateLog(currentSession.id, activeFocusMachineId, "reps", "0");
-      await updateLog(currentSession.id, activeFocusMachineId, "isTSC", true);
-      await updateLog(
-        currentSession.id,
-        activeFocusMachineId,
-        "isStaticHold",
-        true,
-      );
+      // Order matters. The dialog reads its starting value once, when it mounts,
+      // so the seconds have to be in `logs` before it opens. Previously the
+      // dialog was opened first and the writes followed behind four `await`s —
+      // each of which yields to the microtask queue — so the dialog mounted on
+      // the pre-write state and showed nothing.
+      //
+      // One combined write rather than four: updateLogMultiple also stamps a
+      // session heartbeat, so the old version fired four Firestore writes per
+      // logged hold.
+      if (seconds > 0) {
+        updateLogMultiple(currentSession.id, activeFocusMachineId, {
+          seconds: seconds.toString(),
+          reps: "0",
+          isTSC: true,
+          isStaticHold: true,
+        });
+      }
+      setIsStaticHoldOverride(true);
+      setEditingWeightMachineId(activeFocusMachineId);
     }
   };
   const [searchTerm, setSearchTerm] = useState("");
@@ -1361,15 +1508,11 @@ export function WorkoutTrackerView({
       const sessionsQuery = query(
         collection(db, "sessions"),
         where("clientId", "==", clientId),
-        orderBy("createdAt", "desc"),
-        limit(5),
       );
 
       const notesQuery = query(
         collection(db, "sessionNotes"),
         where("clientId", "==", clientId),
-        orderBy("createdAt", "desc"),
-        limit(5),
       );
 
       const focusQuery = query(
@@ -1380,9 +1523,25 @@ export function WorkoutTrackerView({
       const unsubscribeSessions = onSnapshot(
         sessionsQuery,
         async (snapshot) => {
-          const sessionsData = snapshot.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as WorkoutSession,
-          );
+          const sessionsData = snapshot.docs
+            .map((doc) => ({ id: doc.id, ...doc.data() }) as WorkoutSession)
+            .sort((a, b) => {
+              const timeA = a.createdAt?.toDate
+                ? a.createdAt.toDate().getTime()
+                : a.startTime
+                  ? new Date(a.startTime).getTime()
+                  : a.date
+                    ? new Date(a.date).getTime()
+                    : 0;
+              const timeB = b.createdAt?.toDate
+                ? b.createdAt.toDate().getTime()
+                : b.startTime
+                  ? new Date(b.startTime).getTime()
+                  : b.date
+                    ? new Date(b.date).getTime()
+                    : 0;
+              return timeB - timeA;
+            });
           setSessions(sessionsData);
 
           // Auto-select In-Progress session if it exists
@@ -1394,8 +1553,23 @@ export function WorkoutTrackerView({
             setShowRoutinePicker(false);
             setIsPreSessionMode(false);
           } else {
-            setCurrentSession(null);
-            setIsPreSessionMode(true);
+            // A session created a moment ago may not be in this snapshot yet, so
+            // hold onto it briefly. Bounded on purpose: the previous version kept
+            // *any* in-progress session forever, so one that had been completed or
+            // deleted elsewhere stayed pinned and blocked starting a new one.
+            const pending = justStartedSessionRef.current;
+            const stillSettling =
+              pending !== null &&
+              pending.clientId === clientId &&
+              Date.now() - pending.at < JUST_STARTED_GRACE_MS;
+
+            if (!stillSettling) {
+              justStartedSessionRef.current = null;
+              // Set outside a state updater — updaters must stay pure, and React
+              // invokes them twice under StrictMode.
+              setCurrentSession(null);
+              setIsPreSessionMode(true);
+            }
           }
         },
         (error) => {
@@ -1440,9 +1614,16 @@ export function WorkoutTrackerView({
   }, [clientId, user?.uid, clients]);
 
   useEffect(() => {
-    if (sessions.length > 0) {
-      const sessionIds = sessions.map((s) => s.id!).filter(Boolean);
-      if (sessionIds.length === 0) return;
+    const allSessionIds = new Set<string>();
+    sessions.forEach((s) => {
+      if (s.id) allSessionIds.add(s.id);
+    });
+    if (currentSession?.id) {
+      allSessionIds.add(currentSession.id);
+    }
+
+    const sessionIds = Array.from(allSessionIds).filter(Boolean).slice(0, 30);
+    if (sessionIds.length > 0) {
       const logsQuery = query(
         collection(db, "exerciseLogs"),
         where("sessionId", "in", sessionIds),
@@ -1468,7 +1649,7 @@ export function WorkoutTrackerView({
     sessions
       .map((s) => s.id)
       .sort()
-      .join(","),
+      .join(",") + `_${currentSession?.id || ""}`,
   ]);
 
   // Routine Alternation Logic & Historical Lifts Fetching
@@ -1636,31 +1817,70 @@ export function WorkoutTrackerView({
         currentStudioId !== null &&
         clientHomeStudioId !== currentStudioId;
 
-      const sessionData: any = {
-        clientId,
-        homeStudioId: clientHomeStudioId, // Explicit homeStudioId security stamp
-        routineId: routineId || null,
-        hostedAtStudioId: currentStudioId,
-        clientHomeStudioId: clientHomeStudioId,
-        sessionType,
-        sessionNumber: nextNum,
-        date,
-        isCrossTrain,
-        trainerInitials,
-        trainerName,
-        trainerId,
-        startedByTrainerId: trainerId,
-        lastHeartbeatAt: serverTimestamp(),
-        status: "In-Progress",
-        startTime: serverTimestamp(),
-        createdAt: serverTimestamp(),
+      const cleanFirestorePayload = (obj: any): any => {
+        if (obj === null || obj === undefined) return null;
+        if (Array.isArray(obj)) return obj.map(cleanFirestorePayload);
+        if (typeof obj !== "object") return obj;
+        if (
+          typeof obj.toDate === "function" ||
+          obj.constructor?.name === "FieldValue" ||
+          obj instanceof Date
+        )
+          return obj;
+
+        const cleaned: Record<string, any> = {};
+        Object.entries(obj).forEach(([k, v]) => {
+          if (v !== undefined) {
+            cleaned[k] = cleanFirestorePayload(v);
+          }
+        });
+        return cleaned;
       };
 
-      if (preSessionCheckIn) {
-        sessionData.preSessionCheckIn = preSessionCheckIn;
-      }
+      const sessionData: any = cleanFirestorePayload({
+        clientId,
+        mindbodyClientId:
+          selectedClient?.mindbodyClientId ||
+          selectedClient?.mindbodyId ||
+          null,
+        clientName: selectedClient
+          ? `${selectedClient.firstName} ${selectedClient.lastName}`.trim()
+          : "",
+        homeStudioId: clientHomeStudioId || "",
+        routineId: routineId || null,
+        hostedAtStudioId: currentStudioId || "",
+        clientHomeStudioId: clientHomeStudioId || "",
+        sessionType: sessionType || "Standard",
+        sessionNumber: nextNum,
+        date,
+        isCrossTrain: Boolean(isCrossTrain),
+        trainerInitials: trainerInitials || "??",
+        trainerName: trainerName || "",
+        trainerId: trainerId || "",
+        startedByTrainerId: trainerId || "",
+        lastHeartbeatAt: serverTimestamp(),
+        status: "In-Progress",
+        // Timer bookkeeping lives on the document so elapsed time survives a
+        // refresh, a navigation, or moving to another device.
+        pausedAt: null,
+        totalPausedMs: 0,
+        // Client clock fallback: serverTimestamp() reads as null in the local
+        // snapshot until the server confirms, which left the timer frozen at
+        // 00:00 for that round trip.
+        clientStartTime: new Date().toISOString(),
+        startTime: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        ...(preSessionCheckIn ? { preSessionCheckIn } : {}),
+      });
 
       const docRef = await addDoc(collection(db, "sessions"), sessionData);
+
+      // Protects this session from being cleared by a snapshot that predates it.
+      justStartedSessionRef.current = {
+        id: docRef.id,
+        clientId,
+        at: Date.now(),
+      };
 
       const clientUpdateData: any = {};
       if (routineType === "B" && !selectedClient?.isRoutineBActive) {
@@ -1680,9 +1900,13 @@ export function WorkoutTrackerView({
           sessionId: docRef.id,
           clientId,
           trainerId: authTrainer.id || "",
+          // Threw when a trainer record had neither initials nor a full name.
+          // It only runs if a pre-session note was written, which is why the
+          // crash looked intermittent.
           trainerInitials:
             authTrainer.initials ||
-            authTrainer.fullName.substring(0, 2).toUpperCase(),
+            (authTrainer.fullName || "").substring(0, 2).toUpperCase() ||
+            "??",
           date: new Date().toLocaleDateString(),
           content: `[Protocol Adjustment]: ${adjustmentNote}`,
           createdAt: serverTimestamp(),
@@ -1711,6 +1935,25 @@ export function WorkoutTrackerView({
         );
       }
 
+      // Also fallback to clientMachineSettings if machine is not yet in currentMachineMetrics
+      if (clientMachineSettings) {
+        Object.entries(clientMachineSettings).forEach(
+          ([mId, settingObjVal]) => {
+            const settingObj = settingObjVal as any;
+            if (!machineLastLogs[mId] && settingObj) {
+              const w = settingObj.currentWeight ?? settingObj.startingWeight;
+              if (w !== undefined && w !== null && String(w).trim() !== "") {
+                machineLastLogs[mId] = {
+                  weight: String(w),
+                  machineId: mId,
+                  repQuality: 2,
+                };
+              }
+            }
+          },
+        );
+      }
+
       // 3. Auto-populate logs for routine machines
       let activeMachineIds = customMachines;
       if (!activeMachineIds) {
@@ -1732,9 +1975,9 @@ export function WorkoutTrackerView({
           const payload: any = {
             sessionId: docRef.id,
             clientId,
-            homeStudioId: clientHomeStudioId, // Explicit homeStudioId security stamp
-            clientHomeStudioId: clientHomeStudioId,
-            studioId: currentStudioId || clientHomeStudioId,
+            homeStudioId: clientHomeStudioId || "",
+            clientHomeStudioId: clientHomeStudioId || "",
+            studioId: currentStudioId || clientHomeStudioId || "",
             machineId: mId,
             machineSettings:
               currentSettings[mId]?.settings || prevLog?.machineSettings || {},
@@ -1742,22 +1985,28 @@ export function WorkoutTrackerView({
           };
           if (side) payload.side = side;
           if (prevLog) {
-            if (prevLog.weight) payload.weight = prevLog.weight;
+            if (prevLog.weight) payload.weight = String(prevLog.weight);
 
             // Intentionally not auto-filling reps, seconds, or repQuality per user request
 
             if (prevLog.isStaticHold !== undefined)
-              payload.isStaticHold = prevLog.isStaticHold;
-            if (prevLog.isTSC !== undefined) payload.isTSC = prevLog.isTSC;
+              payload.isStaticHold = Boolean(prevLog.isStaticHold);
+            if (prevLog.isTSC !== undefined)
+              payload.isTSC = Boolean(prevLog.isTSC);
           } else if (defaultWeight) {
             payload.weight = String(defaultWeight);
           }
-          return payload;
+          return cleanFirestorePayload(payload);
         };
 
         for (const mId of activeMachineIds) {
           const mac = machines.find((m) => m.id === mId);
-          const isTorsoMac = mac?.name.toLowerCase().includes("torso rotation");
+          // `mac?.name` guarded the machine but not the field: a machine
+          // document without a name threw here, after the session had already
+          // been created, leaving an In-Progress session with no logs.
+          const isTorsoMac = (mac?.name || "")
+            .toLowerCase()
+            .includes("torso rotation");
 
           let defaultWeight: number | null = null;
           if (!machineLastLogs[mId] && selectedClient && mac && mac.name) {
@@ -1825,6 +2074,10 @@ export function WorkoutTrackerView({
 
       lastMachineLoggedAt.current = Date.now();
       setCurrentSession(newSession as WorkoutSession);
+      setSessions((prev) => [
+        newSession as WorkoutSession,
+        ...prev.filter((s) => s.id !== newSession.id),
+      ]);
       setShowRoutinePicker(false);
       setIsPreSessionMode(false);
     } catch (error) {
@@ -1908,6 +2161,34 @@ export function WorkoutTrackerView({
   };
 
   const handleEndSessionPress = () => {
+    // Last line of defence. Logs are only written to Firestore at completion, so
+    // this is the final chance to catch a set that was begun but never given a
+    // count — it would be stored looking complete and score zero volume.
+    const incomplete = findIncompleteLogs(logs);
+    if (incomplete.length > 0) {
+      const names = incomplete
+        .map(
+          (i) =>
+            machines.find((m) => m.id === i.machineId)?.name || i.machineId,
+        )
+        .filter(Boolean);
+      const unique = Array.from(new Set(names));
+      toastError(
+        `Add ${incomplete[0].reason === "missing-seconds" ? "a duration" : "reps"} for ${unique.join(", ")} before finishing. Sets without a count are recorded as zero.`,
+      );
+      setEditingWeightMachineId(incomplete[0].machineId);
+      setIsStaticHoldOverride(incomplete[0].reason === "missing-seconds");
+      return;
+    }
+
+    if (currentSession?.id && !currentSession.endTime) {
+      const now = new Date();
+      updateDoc(doc(db, "sessions", currentSession.id), {
+        endTime: serverTimestamp(),
+      }).catch(console.error);
+      setCurrentSession((prev) => (prev ? { ...prev, endTime: now } : prev));
+    }
+    setIsPaused(true);
     setShowEndConfirmation(true);
   };
 
@@ -1963,6 +2244,37 @@ export function WorkoutTrackerView({
     side?: "Left" | "Right",
   ) => {
     updateLogMultiple(sessionId, machineId, { [field]: value }, side);
+  };
+
+  /**
+   * Setting a quality is what marks a set as done, so it must not be possible
+   * before a count exists. Tapping a quality dot on an empty row used to create
+   * a log with a weight and a quality but no reps or seconds — which reads as
+   * complete on screen and scores zero in the session rollup.
+   */
+  const setQualityWithGuard = (
+    sessionId: string,
+    machineId: string,
+    quality: number,
+    side?: "Left" | "Right",
+  ) => {
+    const key = `${sessionId}_${machineId}${side ? "_" + side : ""}`;
+    const log = logs[key];
+
+    if (!hasRequiredCount(log)) {
+      const needsSeconds = Boolean(log?.isStaticHold || log?.isTSC);
+      toastError(
+        needsSeconds
+          ? "Enter the hold duration before setting a quality."
+          : "Enter reps before setting a quality.",
+      );
+      // Open the entry dialog so the count can be filled in straight away.
+      setIsStaticHoldOverride(needsSeconds);
+      setEditingWeightMachineId(machineId);
+      return;
+    }
+
+    updateLog(sessionId, machineId, "repQuality", quality, side);
   };
 
   const updateLogMultiple = (
@@ -2076,15 +2388,22 @@ export function WorkoutTrackerView({
     setShowCancelConfirmation(true);
   };
 
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
+
   const confirmScrapSession = async () => {
-    if (currentSession?.id) {
-      await deleteSession(currentSession.id);
-    } else {
-      setCurrentSession(null);
-      setLogs({});
-      setSelectedClientId(null);
-      setView("clients");
-      setShowCancelConfirmation(false);
+    setIsDeletingSession(true);
+    try {
+      if (currentSession?.id) {
+        await deleteSession(currentSession.id);
+      } else {
+        setCurrentSession(null);
+        setLogs({});
+        setSelectedClientId(null);
+        setView("clients");
+        setShowCancelConfirmation(false);
+      }
+    } finally {
+      setIsDeletingSession(false);
     }
   };
 
@@ -2192,7 +2511,9 @@ export function WorkoutTrackerView({
         focusRecords={focusRecords}
         sessionNotes={sessionNotes}
         logs={
-          Object.values(logs).filter((l: any) => l.clientId === clientId) as any
+          Object.values(logs).filter(
+            (l: any) => !l.clientId || l.clientId === clientId,
+          ) as any
         }
         isIntroSession={isIntroSession}
         rightControls={rightControls}
@@ -2236,16 +2557,15 @@ export function WorkoutTrackerView({
   const previousSession = sessions.length > 1 ? sessions[1] : null;
 
   // Suggested routine from targetRoutine state
-  const getSuggestedType = (rt: Routine | null): "A" | "B" | "Free" => {
-    if (!rt) return "A";
-    if (rt.name.includes("Routine A")) return "A";
-    if (rt.name.includes("Routine B")) return "B";
-    return "Free";
-  };
+  const getSuggestedType = (rt: Routine | null): "A" | "B" | "Free" =>
+    routineLetterOf(rt) ?? (rt ? "Free" : "A");
+
   const suggestedRoutineType = (() => {
     if (routines.length === 0) return "A";
     if (routines.length === 1)
-      return (routines[0].name.includes("B") ? "B" : "A") as RoutineType;
+      return (
+        matchesRoutineLetter(routines[0], "B") ? "B" : "A"
+      ) as RoutineType;
 
     // If we have both, alternate based on last session
     if (!lastSession || !lastSession.routineId) return "A";
@@ -2253,8 +2573,7 @@ export function WorkoutTrackerView({
     const lastR = routines.find((r) => r.id === lastSession.routineId);
     if (!lastR) return "A";
 
-    if (lastR.name.includes("Routine A")) return "B";
-    return "A";
+    return matchesRoutineLetter(lastR, "A") ? "B" : "A";
   })();
   const isRoutineBActive = selectedClient?.isRoutineBActive || false;
 
@@ -2275,7 +2594,7 @@ export function WorkoutTrackerView({
       animate={{ opacity: 1 }}
       className={cn(
         "h-[calc(100vh-80px)] flex flex-col gap-1 overflow-hidden relative",
-        hasActiveHeader ? "pt-40 md:pt-28" : "",
+        hasActiveHeader ? "pt-30 sm:pt-32 lg:pt-24" : "",
       )}
     >
       {isIntroSession && (
@@ -2289,28 +2608,28 @@ export function WorkoutTrackerView({
       )}
       {/* Persistent Active Header - Refactored as Sticky Fixed */}
       {(selectedClient || currentSession) && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-bg-dark/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3 md:py-4 flex flex-col md:flex-row md:items-center justify-between h-37 md:h-25 shadow-md transition-all gap-3 md:gap-0">
-          {/* Row 1 on mobile, left block on desktop */}
-          <div className="flex items-center justify-between w-full md:w-auto gap-3">
-            <div className="flex items-center gap-3">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-bg-dark/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 flex flex-col lg:flex-row lg:items-center justify-between min-h-25 lg:h-19 shadow-md transition-all gap-2 lg:gap-0">
+          {/* Mobile & Tablet: Row 1 (Identity & Timer), Desktop: Left Column */}
+          <div className="flex items-center justify-between lg:justify-start w-full lg:w-auto gap-2 sm:gap-3 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
               {/* Left: Client & Trainer Identity */}
-              <div className="flex flex-col min-w-0 max-w-37.5 sm:max-w-xs">
-                <h3 className="text-base sm:text-lg md:text-xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
+              <div className="flex flex-col min-w-0 max-w-32.5 sm:max-w-50 lg:max-w-55">
+                <h3 className="text-xs sm:text-sm lg:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate">
                   {selectedClient
                     ? `${selectedClient.firstName} ${selectedClient.lastName}`
                     : currentSession?.isUnassigned
                       ? "Unassigned Tracking"
                       : "Initializing..."}
                 </h3>
-                <div className="flex items-center gap-1.5 mt-0.5 text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
-                  <div className="w-5 h-5 rounded-full bg-white dark:bg-bg-dark flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
-                    <span className="text-[11px] font-bold">
+                <div className="flex items-center gap-1 mt-0.5 text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400">
+                  <div className="w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full bg-white dark:bg-bg-dark flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
+                    <span className="text-[9px] sm:text-[10px] font-bold">
                       {authTrainer?.initials ||
                         currentSession?.trainerInitials ||
                         "??"}
                     </span>
                   </div>
-                  Trainer
+                  <span className="truncate">Trainer</span>
                 </div>
               </div>
 
@@ -2319,67 +2638,82 @@ export function WorkoutTrackerView({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsShowingSessionNotes(true)}
-                className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-8.5 px-3 rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ml-1.5 md:ml-3"
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-7 sm:h-8 px-2 sm:px-2.5 rounded-lg text-[10px] sm:text-[11px] flex items-center gap-1 transition-colors cursor-pointer shrink-0"
               >
-                <MessageSquare className="w-3.5 h-3.5 text-cta shrink-0 fill-current" />
+                <MessageSquare className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-cta shrink-0 fill-current" />
                 Notes
               </Button>
             </div>
 
-            {/* Mobile Timer: display timer next to client name on mobile */}
-            <div className="flex md:hidden items-center shrink-0">
-              {currentSession && currentSession.startTime && (
+            {/* Mobile & Tablet Timer on right side of Row 1 */}
+            <div className="flex lg:hidden items-center shrink-0">
+              {currentSession && (
                 <ActiveSessionTimer
                   startTime={currentSession.startTime}
-                  paused={isPaused}
-                  onTogglePause={() => setIsPaused(!isPaused)}
+                  fallbackStartTime={(currentSession as any).clientStartTime}
+                  pausedAt={(currentSession as any).pausedAt}
+                  totalPausedMs={(currentSession as any).totalPausedMs}
+                  onTogglePause={toggleSessionPause}
                   isMobile
                 />
               )}
             </div>
           </div>
 
-          {/* Desktop Center: Focal Clock with Play/Pause button inside */}
-          <div className="hidden md:flex flex-col items-center absolute left-1/2 -translate-x-1/2 z-50">
-            {currentSession && currentSession.startTime && (
+          {/* Desktop Center Timer: Non-colliding flex child */}
+          <div className="hidden lg:flex items-center justify-center shrink-0 mx-2">
+            {currentSession && (
               <ActiveSessionTimer
                 startTime={currentSession.startTime}
-                paused={isPaused}
-                onTogglePause={() => setIsPaused(!isPaused)}
+                fallbackStartTime={(currentSession as any).clientStartTime}
+                pausedAt={(currentSession as any).pausedAt}
+                totalPausedMs={(currentSession as any).totalPausedMs}
+                onTogglePause={toggleSessionPause}
               />
             )}
           </div>
 
-          {/* Row 2 on mobile, right block on desktop */}
-          <div className="flex items-center justify-between md:justify-end gap-2 w-full md:w-auto shrink-0 z-50">
+          {/* Action Buttons: Row 2 on mobile, Right side on desktop */}
+          <div className="flex items-center justify-end gap-1 sm:gap-2 w-full lg:w-auto shrink-0">
             <Button
               variant="outline"
               className={cn(
-                "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-9 md:h-10 px-3 text-xs md:text-sm transition-colors flex-1 md:flex-initial",
+                "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-7 sm:h-8.5 lg:h-9 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold transition-colors flex-1 lg:flex-initial",
                 !showAllMachines
                   ? "bg-cta text-white hover:opacity-90 dark:text-white border-transparent"
                   : "",
               )}
               onClick={() => setShowAllMachines(!showAllMachines)}
             >
-              <LayoutList className="w-4 h-4 mr-1.5" />
-              Focus
+              <LayoutList className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
+              <span>Focus</span>
             </Button>
 
             <Button
               variant="outline"
-              className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-9 md:h-10 px-3 text-xs md:text-sm transition-colors flex-1 md:flex-initial"
+              className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-7 sm:h-8.5 lg:h-9 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold transition-colors flex-1 lg:flex-initial"
               onClick={() => setIsSessionRoutineManagerOpen(true)}
             >
-              <Settings2 className="w-4 h-4 mr-1.5" />
-              Routine
+              <Settings2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
+              <span>Routine</span>
             </Button>
 
             <Button
-              className="bg-cta hover:opacity-90 text-white font-semibold shadow-sm transition-all h-9 md:h-10 px-4 md:px-6 rounded-lg text-xs md:text-sm flex-1 md:flex-initial cursor-pointer"
+              variant="outline"
+              className="border-red-500/30 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 h-7 sm:h-8.5 lg:h-9 px-2 sm:px-3 text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-colors flex-1 lg:flex-initial"
+              onClick={() => setShowCancelConfirmation(true)}
+              title="Discard active session without saving"
+            >
+              <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
+              <span>Discard</span>
+            </Button>
+
+            <Button
+              className="bg-cta hover:opacity-90 text-white font-bold shadow-sm transition-all h-7 sm:h-8.5 lg:h-9 px-2.5 sm:px-4 lg:px-5 rounded-lg text-[10px] sm:text-xs flex-1 lg:flex-initial cursor-pointer whitespace-nowrap"
               onClick={handleEndSessionPress}
             >
-              Finish Session
+              <span>Finish</span>
+              <span className="hidden sm:inline">&nbsp;Session</span>
             </Button>
           </div>
         </div>
@@ -2455,10 +2789,11 @@ export function WorkoutTrackerView({
                     Boolean(x),
                 )
                 .slice(0, 3)}
-              isStaticHold={logL?.isStaticHold}
+              isStaticHold={isStaticHoldOverride || logL?.isStaticHold}
               onClose={() => {
                 setEditingWeightMachineId(null);
                 setEditingWeightSide(undefined);
+                setIsStaticHoldOverride(false);
               }}
               onSave={async (
                 weight,
@@ -2637,21 +2972,6 @@ export function WorkoutTrackerView({
 
                 setEditingWeightMachineId(null);
                 setEditingWeightSide(undefined);
-
-                // Advance UI to the next machine automatically after a brief delay
-                const currentIndex = activeMachineIds.indexOf(
-                  editingWeightMachineId,
-                );
-                if (
-                  currentIndex !== -1 &&
-                  currentIndex < activeMachineIds.length - 1
-                ) {
-                  setTimeout(() => {
-                    const nextMachineId = activeMachineIds[currentIndex + 1];
-                    setEditingWeightMachineId(nextMachineId);
-                    setEditingWeightSide(undefined);
-                  }, 150);
-                }
               }}
             />
           );
@@ -2824,35 +3144,53 @@ export function WorkoutTrackerView({
       {/* Scrap Session Confirmation Dialog */}
       <Dialog
         open={showCancelConfirmation}
-        onOpenChange={setShowCancelConfirmation}
+        onOpenChange={(v) => !isDeletingSession && setShowCancelConfirmation(v)}
       >
         <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
           <div className="bg-white dark:bg-bg-dark p-8 text-slate-900 dark:text-white space-y-3">
-            <div className="w-12 h-12 bg-red-500 rounded-2xl flex items-center justify-center mb-2 shadow-[0_0_20px_rgba(239,68,68,0.4)]">
-              <Trash2 className="w-6 h-6 text-slate-900 dark:text-white" />
+            <div
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-2 transition-all ${isDeletingSession ? "bg-red-500/20 text-red-500 animate-pulse" : "bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)]"}`}
+            >
+              {isDeletingSession ? (
+                <Loader2 className="w-6 h-6 animate-spin text-red-500" />
+              ) : (
+                <Trash2 className="w-6 h-6" />
+              )}
             </div>
             <h3 className="text-2xl font-black italic uppercase tracking-tight">
-              Scrap Active Session?
+              {isDeletingSession
+                ? "Deleting Session..."
+                : "Scrap Active Session?"}
             </h3>
             <p className="text-slate-500 dark:text-slate-400 font-medium text-sm leading-relaxed">
-              Are you sure you want to cancel this session? All data logged so
-              far will be scrapped and will not be recorded in the database.
+              {isDeletingSession
+                ? "Scrapping all logged sets, timers, and notes. Cleaning database records..."
+                : "Are you sure you want to cancel this session? All data logged so far will be scrapped and will not be recorded in the database."}
             </p>
           </div>
 
-          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-bg-dark">
+          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-bg-dark border-t border-slate-100 dark:border-slate-800">
             <Button
               variant="outline"
-              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2"
+              disabled={isDeletingSession}
+              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-50"
               onClick={() => setShowCancelConfirmation(false)}
             >
               Resume Session
             </Button>
             <Button
-              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-red-600 text-white shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700"
+              disabled={isDeletingSession}
+              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-red-600 text-white shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 disabled:opacity-80 flex items-center justify-center gap-2"
               onClick={confirmScrapSession}
             >
-              Scrap Session
+              {isDeletingSession ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                "Scrap Session"
+              )}
             </Button>
           </div>
         </DialogContent>
@@ -3351,10 +3689,9 @@ export function WorkoutTrackerView({
                                           key={v}
                                           onClick={() =>
                                             currentSession?.id &&
-                                            updateLog(
+                                            setQualityWithGuard(
                                               currentSession.id,
                                               machine.id!,
-                                              "repQuality",
                                               v,
                                               "Left",
                                             )
@@ -3385,10 +3722,9 @@ export function WorkoutTrackerView({
                                           key={v}
                                           onClick={() =>
                                             currentSession?.id &&
-                                            updateLog(
+                                            setQualityWithGuard(
                                               currentSession.id,
                                               machine.id!,
-                                              "repQuality",
                                               v,
                                               "Right",
                                             )
@@ -3422,10 +3758,9 @@ export function WorkoutTrackerView({
                                         key={v}
                                         onClick={() => {
                                           if (currentSession?.id) {
-                                            updateLog(
+                                            setQualityWithGuard(
                                               currentSession.id,
                                               machine.id!,
-                                              "repQuality",
                                               v,
                                             );
                                           }
@@ -3478,7 +3813,7 @@ export function WorkoutTrackerView({
         !editingWeightMachineId &&
         !editingSettingsMachineId &&
         !isShowingSessionNotes && (
-          <div className="fixed bottom-20 left-0 right-0 z-110">
+          <div className="fixed bottom-16 sm:bottom-20 left-0 right-0 z-110">
             <Stopwatch onLogTSC={handleLogTSC} />
           </div>
         )}

@@ -49,6 +49,7 @@ import {
   OAuthProvider,
   User as FirebaseUser,
   signInWithPopup,
+  signOut,
 } from "firebase/auth";
 
 import { db, auth } from "./firebase";
@@ -471,10 +472,22 @@ export default function AppContent({
   const [newClientOnboardingName, setNewClientOnboardingName] = useState<
     string | null
   >(null);
+  const [pendingLinkSchedule, setPendingLinkSchedule] = useState<{
+    scheduleId: string;
+    clientName: string;
+  } | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedClientDoc, setSelectedClientDoc] = useState<Client | null>(
     null,
   );
+  /** Id of the last client whose fetch finished, successfully or not. */
+  const [resolvedClientId, setResolvedClientId] = useState<string | null>(null);
+
+  // Derived rather than a flag set inside the effect: effects run *after* render,
+  // so a boolean would still read false on the first paint and flash the
+  // "not found" state before loading even began.
+  const isLoadingClient =
+    !!selectedClientId && resolvedClientId !== selectedClientId;
   const [hasQuotaError, setHasQuotaError] = useState(false);
   const [lastQuotaErrorMessage, setLastQuotaErrorMessage] = useState("");
 
@@ -496,12 +509,18 @@ export default function AppContent({
   useEffect(() => {
     if (!selectedClientId) {
       setSelectedClientDoc(null);
+      setResolvedClientId(null);
       return;
     }
+
+    let cancelled = false;
+    setSelectedClientDoc(null);
+
     const fetchClient = async () => {
       try {
         const clientRef = doc(db, "clients", selectedClientId);
         const snap = await getDoc(clientRef);
+        if (cancelled) return;
         if (snap.exists()) {
           setSelectedClientDoc({ id: snap.id, ...snap.data() } as Client);
         } else {
@@ -509,11 +528,20 @@ export default function AppContent({
         }
       } catch (e) {
         console.error("Error fetching client", e);
+      } finally {
+        // Marks the fetch as settled so the profile stops showing the spinner,
+        // whether the client was found, missing, or the read failed.
+        if (!cancelled) setResolvedClientId(selectedClientId);
       }
     };
     fetchClient().catch((err) =>
       console.error("Unhandled rejection in fetchClient:", err),
     );
+
+    // Switching clients mid-flight must not let a stale response win.
+    return () => {
+      cancelled = true;
+    };
   }, [selectedClientId]);
 
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
@@ -571,17 +599,54 @@ export default function AppContent({
   );
 
   const handleRefreshSchedule = async () => {
+    const activeStudio = studios.find((s) => s.id === activeStudioId);
+
+    if (!activeStudio?.mindbodySiteId) {
+      toastError(
+        `${activeStudio?.name || "This studio"} has no MindBody Site ID. Set it in Admin → Studios before syncing.`,
+      );
+      return;
+    }
+
+    const sharesSite = studios.some(
+      (s) =>
+        s.id !== activeStudio.id &&
+        s.mindbodySiteId &&
+        String(s.mindbodySiteId).trim() ===
+          String(activeStudio.mindbodySiteId).trim(),
+    );
+    if (sharesSite && !activeStudio.mindbodyLocationId) {
+      toastError(
+        `${activeStudio.name} shares MindBody Site ${activeStudio.mindbodySiteId} with another studio but has no Location ID. Set it in Admin → Studios to keep schedules separate.`,
+      );
+      return;
+    }
+
     setIsRefreshingSchedule(true);
     try {
-      const { executeFrontendMasterSync } = await import("./lib/frontend-sync");
-      await executeFrontendMasterSync(
-        null,
-        false,
+      const siteId = String(activeStudio.mindbodySiteId);
+
+      const { syncMindbodySchedules } = await import("./lib/mindbody-api-sync");
+      const res = await syncMindbodySchedules(
+        siteId,
         trainers,
-        liveRosterClients,
+        clients,
         studios,
+        null,
+        undefined,
+        undefined,
+        activeStudioId,
+        activeStudio?.mindbodyLocationId,
       );
-      console.log("Schedule refresh result: completed on frontend.");
+
+      if (res.errors && res.errors.length > 0) {
+        toastError(`Sync completed with issues: ${res.errors[0]}`);
+      } else {
+        toastSuccess(
+          `Schedule refreshed: ${res.added} added, ${res.updated} updated.`,
+        );
+      }
+      console.log("Schedule refresh result:", res);
     } catch (error: any) {
       console.error("Failed to refresh schedule:", error);
       toastError("Failed to refresh schedule: " + error.message);
@@ -1082,6 +1147,9 @@ export default function AppContent({
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
+  /** Microsoft sign-in is limited to company staff. */
+  const MICROSOFT_ALLOWED_DOMAIN = "maxstrengthfitness.com";
+
   const handleLogin = async (providerName: "google" | "microsoft") => {
     if (isLoggingIn) return;
     setIsLoggingIn(true);
@@ -1092,21 +1160,55 @@ export default function AppContent({
         provider = new GoogleAuthProvider();
       } else {
         provider = new OAuthProvider("microsoft.com");
-        const tenantId =
-          (import.meta as any).env.VITE_MICROSOFT_TENANT_ID ||
-          "bbd57ae5-2a1c-4a5c-88df-faef01b58d91";
-        if (tenantId) {
-          provider.setCustomParameters({
-            prompt: "select_account",
-            tenant: tenantId,
-          });
-        } else {
-          provider.setCustomParameters({
-            prompt: "select_account",
-          });
+
+        const rawTenant = (
+          (import.meta as any).env.VITE_MICROSOFT_TENANT_ID || ""
+        ).trim();
+        const isValidTenant =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            rawTenant,
+          ) || ["common", "organizations", "consumers"].includes(rawTenant);
+
+        if (rawTenant && !isValidTenant) {
+          console.warn(
+            `Ignoring VITE_MICROSOFT_TENANT_ID="${rawTenant}" — not a tenant GUID or known alias. Falling back to /common.`,
+          );
+        }
+
+        provider.setCustomParameters({
+          prompt: "select_account",
+          ...(isValidTenant ? { tenant: rawTenant } : {}),
+        });
+        // Ask for the profile fields Firebase needs to populate user.email.
+        provider.addScope("openid");
+        provider.addScope("email");
+        provider.addScope("profile");
+        provider.addScope("User.Read");
+      }
+      const credential = await signInWithPopup(auth, provider);
+
+      // Microsoft sign-in is for company staff only. The single-tenant Azure app
+      // already blocks outsiders, but a guest invited into the tenant would
+      // otherwise slip through, so the address is checked here too.
+      if (providerName === "microsoft") {
+        const signedInEmail = (
+          credential.user.email ||
+          credential.user.providerData.find((p) => p?.email)?.email ||
+          ""
+        ).toLowerCase();
+
+        if (!signedInEmail.endsWith(`@${MICROSOFT_ALLOWED_DOMAIN}`)) {
+          await signOut(auth);
+          setLoginError(
+            `Microsoft sign-in is restricted to @${MICROSOFT_ALLOWED_DOMAIN} accounts. ${
+              signedInEmail
+                ? `"${signedInEmail}" is not permitted.`
+                : "That account has no usable email address."
+            }`,
+          );
+          return;
         }
       }
-      await signInWithPopup(auth, provider);
     } catch (error: any) {
       if (
         error.code === "auth/popup-closed-by-user" ||
@@ -1117,7 +1219,18 @@ export default function AppContent({
       console.error("Login failed:", error);
 
       const errMsg = error.message || "";
-      if (errMsg.includes("AADSTS50194")) {
+      if (
+        errMsg.includes("unauthorized_client") ||
+        errMsg.includes("not enabled for consumers")
+      ) {
+        setLoginError(
+          "Login failed: this Microsoft app does not accept personal Microsoft accounts. Set VITE_MICROSOFT_TENANT_ID=organizations in .env (or your tenant GUID if the app is single-tenant) and restart the dev server.",
+        );
+      } else if (errMsg.includes("AADSTS50011")) {
+        setLoginError(
+          "Login failed: redirect URI mismatch. In Azure App Registrations, add the callback URL shown on Firebase's Microsoft provider page to your app's Web redirect URIs.",
+        );
+      } else if (errMsg.includes("AADSTS50194")) {
         setLoginError(
           "Login failed: Your Microsoft App Registration is configured as single-tenant. Please go to Azure Portal and configure application 'dd2ae28c-1a71-4de3-bc12-5b0683032526' to be multi-tenant ('Accounts in any organizational directory and personal Microsoft accounts'), or set VITE_MICROSOFT_TENANT_ID in your environment variables to your tenant ID.",
         );
@@ -1208,11 +1321,14 @@ export default function AppContent({
               </div>
             </motion.button>
 
-            <motion.div
+            <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
+              onClick={() => handleLogin("microsoft")}
+              disabled={isLoggingIn}
               className={cn(
-                "relative overflow-hidden group w-full max-w-[320px] rounded-[40px] p-0.5 shadow-[0_15px_30px_rgba(0,0,0,0.5)] transition-opacity opacity-50 cursor-not-allowed",
+                "relative overflow-hidden group w-full max-w-[320px] rounded-[40px] p-0.5 shadow-[0_15px_30px_rgba(0,0,0,0.5)] transition-opacity",
+                isLoggingIn ? "opacity-50 cursor-not-allowed" : "opacity-100",
               )}
             >
               {/* Outer Metallic Ring */}
@@ -1221,13 +1337,8 @@ export default function AppContent({
               <div className="absolute inset-px bg-linear-to-b from-white/30 to-transparent rounded-[39px]"></div>
 
               <div className="relative bg-[#1d2736]/90 px-8 py-4 rounded-[38px] flex flex-row items-center justify-center gap-4 w-full h-full shadow-[inset_0_2px_15px_rgba(0,0,0,0.8)] backdrop-blur-md">
-                <div className="absolute inset-0 bg-black/60 rounded-[38px] flex items-center justify-center z-10">
-                  <span className="text-white font-bold text-sm tracking-wider uppercase drop-shadow-md">
-                    Coming Soon
-                  </span>
-                </div>
                 <svg
-                  className="w-6 h-6 text-slate-900 dark:text-white/40"
+                  className="w-6 h-6 text-slate-900 dark:text-white/90"
                   viewBox="0 0 24 24"
                   fill="currentColor"
                 >
@@ -1237,7 +1348,7 @@ export default function AppContent({
                   Continue with Microsoft
                 </span>
               </div>
-            </motion.div>
+            </motion.button>
           </div>
         </motion.div>
 
@@ -1269,7 +1380,10 @@ export default function AppContent({
   // Moved up to avoid hook order violation
 
   // Studio Selection Screen (if no active studio or changing studio)
-  if (!activeStudioId || isChangingStudio) {
+  if (
+    (!activeStudioId || isChangingStudio) &&
+    currentView !== "admin-dashboard"
+  ) {
     return (
       <StudioSelectionView
         studios={studios}
@@ -1288,6 +1402,11 @@ export default function AppContent({
             localStorage.setItem("max_strength_authenticated", "false");
             setIsAuthenticated(false);
           }
+          setIsChangingStudio(false);
+        }}
+        onGoToAdmin={() => {
+          setAppMode("admin");
+          setCurrentView("admin-dashboard");
           setIsChangingStudio(false);
         }}
         onBack={() => {
@@ -1321,16 +1440,38 @@ export default function AppContent({
         clients={clients}
         studios={studios}
         initialName={newClientOnboardingName}
-        onClientCreated={(clientId, routeToImporter) => {
+        onClientCreated={async (clientId, routeToImporter) => {
           setSelectedClientId(clientId);
           setNewClientOnboardingName(null);
+
+          // Auto-link the schedule and set mindbody_name if created from an unlinked reservation
+          if (pendingLinkSchedule) {
+            try {
+              await Promise.all([
+                updateDoc(doc(db, "schedules", pendingLinkSchedule.scheduleId), {
+                  clientId,
+                }),
+                updateDoc(doc(db, "clients", clientId), {
+                  mindbody_name: pendingLinkSchedule.clientName,
+                }),
+              ]);
+            } catch (err) {
+              console.error("Failed to auto-link schedule to new client:", err);
+            } finally {
+              setPendingLinkSchedule(null);
+            }
+          }
+
           if (routeToImporter) {
             setCurrentView("chart-importer");
           } else {
             setCurrentView("profile");
           }
         }}
-        onClose={() => setNewClientOnboardingName(null)}
+        onClose={() => {
+          setNewClientOnboardingName(null);
+          setPendingLinkSchedule(null);
+        }}
       />
     );
   }
@@ -1464,7 +1605,8 @@ export default function AppContent({
             {currentView === "consultation-wizard" && selectedClientId && (
               <ConsultationWizard
                 client={
-                  clients.find((c) => c.id === selectedClientId) || ({} as Client)
+                  clients.find((c) => c.id === selectedClientId) ||
+                  ({} as Client)
                 }
                 machines={machines}
                 authTrainer={authTrainer}
@@ -1527,7 +1669,12 @@ export default function AppContent({
                   setSelectedClientId(id);
                   setView("profile");
                 }}
-                onStartNewClientOnboarding={setNewClientOnboardingName}
+                onStartNewClientOnboarding={(name, scheduleInfo) => {
+                  setNewClientOnboardingName(name);
+                  if (scheduleInfo) {
+                    setPendingLinkSchedule(scheduleInfo);
+                  }
+                }}
                 setView={setView}
                 schedules={schedules}
                 sessions={sessions}
@@ -1609,6 +1756,7 @@ export default function AppContent({
             {currentView === "profile" && (
               <ClientProfileView
                 clientId={selectedClientId}
+                isLoadingClient={isLoadingClient}
                 clients={clients}
                 machines={machines}
                 authTrainer={authTrainer}
@@ -1630,7 +1778,10 @@ export default function AppContent({
               selectedClientId &&
               authTrainer && (
                 <ClientClinicalReviewPreloader
-                  client={clients.find((c) => c.id === selectedClientId) || ({} as Client)}
+                  client={
+                    clients.find((c) => c.id === selectedClientId) ||
+                    ({} as Client)
+                  }
                   machines={machines}
                   onOpenBriefing={() => {
                     setCurrentView("workouts");
@@ -1644,7 +1795,10 @@ export default function AppContent({
               selectedClientId &&
               authTrainer && (
                 <ClientProgressReportView
-                  client={clients.find((c) => c.id === selectedClientId) || ({} as Client)}
+                  client={
+                    clients.find((c) => c.id === selectedClientId) ||
+                    ({} as Client)
+                  }
                   trainer={authTrainer}
                   machines={machines}
                   existingReportId={selectedReportId || undefined}
@@ -2366,8 +2520,8 @@ export default function AppContent({
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center font-black text-primary border shadow-sm dark:shadow-none group-hover:scale-110 transition-transform">
-                        {(client.firstName || '?')[0] || '?'}
-                        {(client.lastName || '')[0] || ''}
+                        {(client.firstName || "?")[0] || "?"}
+                        {(client.lastName || "")[0] || ""}
                       </div>
                       <div>
                         <p className="font-black uppercase tracking-tight text-sm">
@@ -2407,8 +2561,8 @@ export default function AppContent({
         open={isReorderingTrainers}
         onOpenChange={setIsReorderingTrainers}
       >
-        <DialogContent className="max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none min-h-100">
-          <DialogHeader className="p-8 bg-white dark:bg-bg-dark border-b">
+        <DialogContent className="max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none max-h-[85vh] flex flex-col">
+          <DialogHeader className="p-8 bg-white dark:bg-bg-dark border-b shrink-0">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-primary/10 rounded-2xl">
                 <GripVertical className="w-6 h-6 text-primary" />
@@ -2423,75 +2577,83 @@ export default function AppContent({
               </div>
             </div>
           </DialogHeader>
-          <div className="p-6 space-y-3 flex-1 overflow-y-auto">
-            {sortedTrainers.map((trainer, idx) => (
-              <div
-                key={trainer.id}
-                className="flex items-center gap-4 p-4 bg-white dark:bg-bg-dark rounded-2xl border border-border/50 group"
-              >
-                <div className="w-8 h-8 rounded-lg bg-background border flex items-center justify-center font-black text-xs text-muted-foreground">
-                  {idx + 1}
-                </div>
-                <div className="flex-1">
-                  <p className="font-black uppercase tracking-tighter text-sm">
-                    {trainer.fullName}
-                  </p>
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase italic">
-                    {trainer.initials}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={idx === 0}
-                    className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
-                    onClick={async () => {
-                      const newSorted = [...sortedTrainers];
-                      [newSorted[idx], newSorted[idx - 1]] = [
-                        newSorted[idx - 1],
-                        newSorted[idx],
-                      ];
-                      for (let i = 0; i < newSorted.length; i++) {
-                        if (newSorted[i].id) {
-                          await updateDoc(
-                            doc(db, "trainers", newSorted[i].id!),
-                            { order: i },
-                          );
+          <div className="p-6 space-y-3 flex-1 overflow-y-auto custom-scrollbar">
+            {sortedTrainers
+              .filter(
+                (t) =>
+                  !activeStudioId ||
+                  t.primaryHomeStudioId === activeStudioId ||
+                  t.accessibleStudioIds?.includes(activeStudioId) ||
+                  t.activeGuestStudioIds?.includes(activeStudioId),
+              )
+              .map((trainer, idx, studioTrainers) => (
+                <div
+                  key={trainer.id}
+                  className="flex items-center gap-4 p-4 bg-white dark:bg-bg-dark rounded-2xl border border-border/50 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-background border flex items-center justify-center font-black text-xs text-muted-foreground">
+                    {idx + 1}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-black uppercase tracking-tighter text-sm">
+                      {trainer.fullName}
+                    </p>
+                    <p className="text-[11px] font-bold text-muted-foreground uppercase italic">
+                      {trainer.initials}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={idx === 0}
+                      className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
+                      onClick={async () => {
+                        const newSorted = [...studioTrainers];
+                        [newSorted[idx], newSorted[idx - 1]] = [
+                          newSorted[idx - 1],
+                          newSorted[idx],
+                        ];
+                        for (let i = 0; i < newSorted.length; i++) {
+                          if (newSorted[i].id) {
+                            await updateDoc(
+                              doc(db, "trainers", newSorted[i].id!),
+                              { order: i },
+                            );
+                          }
                         }
-                      }
-                    }}
-                  >
-                    <ChevronUp className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={idx === sortedTrainers.length - 1}
-                    className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
-                    onClick={async () => {
-                      const newSorted = [...sortedTrainers];
-                      [newSorted[idx], newSorted[idx + 1]] = [
-                        newSorted[idx + 1],
-                        newSorted[idx],
-                      ];
-                      for (let i = 0; i < newSorted.length; i++) {
-                        if (newSorted[i].id) {
-                          await updateDoc(
-                            doc(db, "trainers", newSorted[i].id!),
-                            { order: i },
-                          );
+                      }}
+                    >
+                      <ChevronUp className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={idx === studioTrainers.length - 1}
+                      className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
+                      onClick={async () => {
+                        const newSorted = [...studioTrainers];
+                        [newSorted[idx], newSorted[idx + 1]] = [
+                          newSorted[idx + 1],
+                          newSorted[idx],
+                        ];
+                        for (let i = 0; i < newSorted.length; i++) {
+                          if (newSorted[i].id) {
+                            await updateDoc(
+                              doc(db, "trainers", newSorted[i].id!),
+                              { order: i },
+                            );
+                          }
                         }
-                      }
-                    }}
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                  </Button>
+                      }}
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
-          <DialogFooter className="p-6 border-t bg-white dark:bg-bg-dark">
+          <DialogFooter className="p-6 border-t bg-white dark:bg-bg-dark shrink-0">
             <Button
               onClick={() => setIsReorderingTrainers(false)}
               className="rounded-xl font-bold uppercase tracking-widest w-full h-12"
