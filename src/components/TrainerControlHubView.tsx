@@ -1268,7 +1268,7 @@ export function TrainerControlHubView({
           {[
             {
               id: "equipment_settings",
-              label: "Hardware Settings",
+              label: "Machine Settings",
               icon: MonitorPlay,
             },
             { id: "app_settings", label: "App Settings", icon: Settings },
@@ -2370,7 +2370,7 @@ export function TrainerControlHubView({
                           </div>
                           <div>
                             <h3 className="text-2xl font-black text-foreground italic tracking-tight">
-                              Hardware & Equipment Configuration
+                              Machine & Equipment Configuration
                             </h3>
                             <p className="text-muted-foreground font-medium uppercase text-[11px] tracking-widest">
                               Map, test, and calibrate live floor biometric
@@ -2389,7 +2389,11 @@ export function TrainerControlHubView({
                       </button>
                       {isEquipmentExpanded && (
                         <div className="p-8 border-t border-border bg-muted/50">
-                          <TrainerMachineEditor machines={machines} />
+                          <TrainerMachineEditor
+                            machines={machines}
+                            activeStudioId={activeStudioId}
+                            studioName={activeStudio?.name}
+                          />
                         </div>
                       )}
                     </div>

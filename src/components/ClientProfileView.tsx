@@ -51,8 +51,6 @@ import {
   UserCheck,
   Award,
   Target,
-  X,
-  GripVertical,
   ChevronDown,
   ChevronUp,
   Check,
@@ -62,24 +60,8 @@ import {
   Orbit,
   MessageSquare,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
-import {
-  DndContext,
-  closestCenter,
-  useSensor,
-  useSensors,
-  PointerSensor,
-  KeyboardSensor,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { generateMockClientWithHistory } from "../lib/mockDataGenerator";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -184,8 +166,11 @@ import {
   AccordionContent,
 } from "@/components/ui/accordion";
 import { useActiveSessionCheck } from "../hooks/useActiveSessionCheck";
+import { useStudioMachineSettings } from "../hooks/useStudioMachineSettings";
+import { resolveMachineOrder } from "../data/machine-display-order";
 import { isOwner as checkIsOwner } from "../lib/permissions";
 import { FocusCategory } from "../types";
+import { EditRoutineDrawer } from "./EditRoutineDrawer";
 
 const JOURNAL_CATEGORY_DEFINITIONS: Record<
   FocusCategory,
@@ -341,19 +326,12 @@ export function ClientProfileView({
     string | null
   >(null);
 
-  // States for routine edit drawer
-  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
-  const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
-  const [editDrawerMachineIds, setEditDrawerMachineIds] = useState<string[]>(
-    [],
-  );
-  const [editingRoutineName, setEditingRoutineName] = useState<string>("");
-  const [originalMachineIdsSnapshot, setOriginalMachineIdsSnapshot] = useState<
-    string[]
-  >([]);
-  const [drawerReason, setDrawerReason] = useState<string>("");
-  const [isSavingDrawer, setIsSavingDrawer] = useState(false);
-  const [machineSearchQuery, setMachineSearchQuery] = useState("");
+  // Which routine the Edit Routine drawer is open against ("Routine A" /
+  // "Routine B"), or null when closed. All the drawer's own state (machine
+  // list, filters, reason, presets) now lives in EditRoutineDrawer.tsx.
+  const [editRoutineTarget, setEditRoutineTarget] = useState<
+    "Routine A" | "Routine B" | null
+  >(null);
 
   // States for toggle B reason dialog
   const [isToggleReasonDialogOpen, setIsToggleReasonDialogOpen] =
@@ -375,6 +353,65 @@ export function ClientProfileView({
   // Use the new soft lock handoff hook
   const { activeInProgressSession, isCheckingActiveSession } =
     useActiveSessionCheck(clientId);
+
+  // Per-studio machine display order (Aug 2026): resolves a studio's own
+  // custom Journey-grid ordering when it has one, falling back to the new
+  // shared default sequence (data/machine-display-order.ts), and then to
+  // any legacy machine.order value. This is a flat display-order concern
+  // only — separate from the kinematic MOVEMENT_PATTERN_ORDER grouping
+  // used by the Edit Routine drawer and Catalog, which is untouched here.
+  const { settingsByMachineId: studioMachineSettingsById } =
+    useStudioMachineSettings(activeStudioId);
+
+  // Discard Session (round: In-Progress dropdown) — lets a trainer scrap
+  // someone else's abandoned/stuck in-progress session right from the
+  // profile, without having to take it over first. Mirrors the exact
+  // deletion sequence WorkoutTrackerView's own "Scrap Session" flow uses
+  // (logs, then notes, then the session doc itself) so a discarded session
+  // leaves nothing orphaned behind.
+  const [showDiscardActiveSessionConfirm, setShowDiscardActiveSessionConfirm] =
+    useState(false);
+  const [isDiscardingActiveSession, setIsDiscardingActiveSession] =
+    useState(false);
+
+  const handleDiscardActiveSession = async () => {
+    if (!activeInProgressSession?.id) return;
+    setIsDiscardingActiveSession(true);
+    try {
+      const sessionId = activeInProgressSession.id;
+      const logsQ = query(
+        collection(db, "exerciseLogs"),
+        where("sessionId", "==", sessionId),
+      );
+      const logsSnap = await getDocs(logsQ);
+      for (const logDoc of logsSnap.docs) {
+        await deleteDoc(logDoc.ref);
+      }
+      const notesQ = query(
+        collection(db, "sessionNotes"),
+        where("sessionId", "==", sessionId),
+      );
+      const notesSnap = await getDocs(notesQ);
+      for (const noteDoc of notesSnap.docs) {
+        await deleteDoc(noteDoc.ref);
+      }
+      await deleteDoc(doc(db, "sessions", sessionId));
+
+      if (
+        localStorage.getItem("max_strength_active_session_id") === sessionId
+      ) {
+        localStorage.removeItem("max_strength_active_session_id");
+      }
+
+      toastSuccess("Active session discarded.");
+      setShowDiscardActiveSessionConfirm(false);
+    } catch (err) {
+      console.error("Error discarding active session:", err);
+      toastError("Couldn't discard that session. Try again.");
+    } finally {
+      setIsDiscardingActiveSession(false);
+    }
+  };
 
   const client = clients.find((c) => c.id === clientId);
 
@@ -1382,111 +1419,6 @@ export function ClientProfileView({
     }
   }, [activeInProgressSession?.routineId, client?.preferredTodayRoutineId]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
-  const handleDragEndDrawer = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (active && over && active.id !== over.id) {
-      setEditDrawerMachineIds((items) => {
-        const oldIndex = items.indexOf(active.id as string);
-        const newIndex = items.indexOf(over.id as string);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
-  };
-
-  const handleOpenEditDrawer = (r: Routine) => {
-    setEditingRoutineId(r.id || null);
-    setEditingRoutineName(r.name);
-    setEditDrawerMachineIds([...r.machineIds]);
-    setOriginalMachineIdsSnapshot([...r.machineIds]);
-    setDrawerReason("");
-    setMachineSearchQuery("");
-    setIsEditDrawerOpen(true);
-  };
-
-  const handleSaveEditDrawer = async () => {
-    if (!editingRoutineId || !clientId) return;
-    if (drawerReason.trim().length < 12) return;
-
-    setIsSavingDrawer(true);
-    try {
-      const routineName =
-        editingRoutineId.includes("-a") ||
-        editingRoutineId.includes("A") ||
-        editingRoutineName === "Routine A"
-          ? "Routine A"
-          : "Routine B";
-
-      let finalId = editingRoutineId;
-      if (editingRoutineId.startsWith("temp-")) {
-        const docRef = await addDoc(collection(db, "routines"), {
-          clientId,
-          name: routineName,
-          machineIds: editDrawerMachineIds,
-          createdAt: serverTimestamp(),
-          studioId: client?.homeStudioId || activeStudioId || "",
-        });
-        finalId = docRef.id;
-
-        await addDoc(collection(db, "routineAdjustments"), {
-          clientId,
-          routineId: finalId,
-          previousMachineIds: [],
-          newMachineIds: editDrawerMachineIds,
-          trainerId: authTrainer?.id || "unknown",
-          notes: drawerReason,
-          studioId: client?.homeStudioId || activeStudioId || "",
-          changeType: "created",
-          createdAt: serverTimestamp(),
-        });
-      } else {
-        await updateDoc(doc(db, "routines", editingRoutineId), {
-          machineIds: editDrawerMachineIds,
-          updatedAt: serverTimestamp(),
-        });
-
-        await addDoc(collection(db, "routineAdjustments"), {
-          clientId,
-          routineId: editingRoutineId,
-          previousMachineIds: originalMachineIdsSnapshot,
-          newMachineIds: editDrawerMachineIds,
-          trainerId: authTrainer?.id || "unknown",
-          notes: drawerReason,
-          studioId: client?.homeStudioId || activeStudioId || "",
-          changeType: "machines",
-          createdAt: serverTimestamp(),
-        });
-      }
-
-      // Re-trigger routines fetch
-      const qRoutines = query(
-        collection(db, "routines"),
-        where("clientId", "==", clientId),
-      );
-      const snap = await getDocs(qRoutines);
-      setRoutines(
-        snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Routine),
-      );
-
-      setIsEditDrawerOpen(false);
-      setDrawerReason("");
-    } catch (error) {
-      console.error("Error saving routine edit drawer:", error);
-    } finally {
-      setIsSavingDrawer(false);
-    }
-  };
-
   const handlePromptToggleB = (checked: boolean) => {
     setPendingToggleBValue(checked);
     setToggleBReason("");
@@ -1495,7 +1427,7 @@ export function ClientProfileView({
 
   const handleConfirmToggleB = async () => {
     if (pendingToggleBValue === null || !clientId) return;
-    if (toggleBReason.trim().length < 12) return;
+    if (toggleBReason.trim().length < 3) return;
 
     setIsSavingToggle(true);
     try {
@@ -1635,20 +1567,6 @@ export function ClientProfileView({
     [machines],
   );
 
-  const availableMachines = useMemo(() => {
-    return machines.filter((m) => {
-      if (editDrawerMachineIds.includes(m.id!)) return false;
-      if (machineSearchQuery) {
-        const q = machineSearchQuery.toLowerCase();
-        const nameMatch = m.name?.toLowerCase().includes(q);
-        const fullNameMatch = m.fullName?.toLowerCase().includes(q);
-        const regionMatch = m.anatomicalRegion?.toLowerCase().includes(q);
-        return nameMatch || fullNameMatch || regionMatch;
-      }
-      return true;
-    });
-  }, [machines, editDrawerMachineIds, machineSearchQuery]);
-
   const getSelectedRoutineLabel = () => {
     if (!selectedRoutineTodayId) return "";
     const found = routines.find((r) => r.id === selectedRoutineTodayId);
@@ -1731,18 +1649,18 @@ export function ClientProfileView({
         )}
 
         <CardHeader className="p-5 lg:p-6 pb-4 border-b border-slate-100 dark:border-slate-800/40 bg-slate-50/50 dark:bg-slate-900/40">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <div
                 className={cn(
-                  "w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold font-sans italic shadow-sm text-white",
+                  "w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold font-sans italic shadow-sm text-white shrink-0",
                   isB ? "bg-cta shadow-cta/20" : "bg-cyan shadow-cyan/20",
                 )}
               >
                 {routineName.split(" ")[1]}
               </div>
-              <div>
-                <div className="flex items-center gap-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
                   <CardTitle className="text-lg lg:text-xl font-bold uppercase tracking-tight text-slate-800 dark:text-neutral-100">
                     {routineName}
                   </CardTitle>
@@ -1780,12 +1698,12 @@ export function ClientProfileView({
             </div>
 
             {isBActive && (
-              <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 animate-fade-in animate-duration-150">
+              <div className="flex items-center gap-2 ml-auto shrink-0 animate-fade-in animate-duration-150">
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-9 rounded-xl font-bold uppercase text-[11px] tracking-wider border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all px-4"
-                  onClick={() => handleOpenEditDrawer(routine)}
+                  onClick={() => setEditRoutineTarget(routineName)}
                 >
                   Edit
                 </Button>
@@ -1815,7 +1733,7 @@ export function ClientProfileView({
               </p>
               {isBActive && (
                 <Button
-                  onClick={() => handleOpenEditDrawer(routine)}
+                  onClick={() => setEditRoutineTarget(routineName)}
                   variant="outline"
                   size="sm"
                   className="text-xs font-bold uppercase tracking-wider rounded-xl border-slate-200 dark:border-slate-800"
@@ -1919,6 +1837,29 @@ export function ClientProfileView({
   const renderRoutineJournalList = () => {
     const changesThisMonth = calculateChangesThisMonth(routineAdjustments);
 
+    // Most recent adjustment across BOTH routines (routineAdjustments is
+    // already sorted newest-first) — drives the "last modified" timestamp
+    // shown above the changes-this-month badge.
+    const mostRecentAdj = routineAdjustments[0];
+    let lastModifiedText = "No changes logged yet";
+    if (mostRecentAdj?.createdAt) {
+      const time =
+        mostRecentAdj.createdAt.toMillis?.() ||
+        (typeof mostRecentAdj.createdAt === "number"
+          ? mostRecentAdj.createdAt
+          : 0);
+      if (time) {
+        const modifiedDate = new Date(time);
+        lastModifiedText = `Last modified ${modifiedDate.toLocaleDateString(
+          undefined,
+          { month: "short", day: "numeric", year: "numeric" },
+        )} at ${modifiedDate.toLocaleTimeString(undefined, {
+          hour: "numeric",
+          minute: "2-digit",
+        })}`;
+      }
+    }
+
     return (
       <Card className="col-span-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm mt-4 p-5 lg:p-6">
         <div className="flex items-center justify-between flex-wrap gap-2">
@@ -1928,23 +1869,28 @@ export function ClientProfileView({
               Routine Adjustment Journal
             </h3>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsJournalExpanded(!isJournalExpanded)}
-            className="rounded-xl font-bold uppercase text-[11px] tracking-wider border-slate-200 dark:border-slate-800"
-          >
-            {isJournalExpanded ? "Collapse Journal" : "Open Journal"}
-            <span className="ml-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full text-[10px]">
-              {changesThisMonth} {changesThisMonth === 1 ? "change" : "changes"}{" "}
-              this month
+          <div className="flex flex-col items-end gap-1">
+            <span className="text-[10px] text-slate-400 font-medium tracking-wide">
+              {lastModifiedText}
             </span>
-            {isJournalExpanded ? (
-              <ChevronUp className="w-3.5 h-3.5 ml-1.5" />
-            ) : (
-              <ChevronDown className="w-3.5 h-3.5 ml-1.5" />
-            )}
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsJournalExpanded(!isJournalExpanded)}
+              className="rounded-xl font-bold uppercase text-[11px] tracking-wider border-slate-200 dark:border-slate-800"
+            >
+              {isJournalExpanded ? "Collapse Journal" : "Open Journal"}
+              <span className="ml-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full text-[10px]">
+                {changesThisMonth} {changesThisMonth === 1 ? "change" : "changes"}{" "}
+                this month
+              </span>
+              {isJournalExpanded ? (
+                <ChevronUp className="w-3.5 h-3.5 ml-1.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 ml-1.5" />
+              )}
+            </Button>
+          </div>
         </div>
 
         {isJournalExpanded && (
@@ -2922,6 +2868,15 @@ export function ClientProfileView({
                       View Current Profile
                     </span>
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setShowDiscardActiveSessionConfirm(true)}
+                    className="rounded-xl hover:bg-red-50 dark:hover:bg-red-500/20 transition-colors cursor-pointer flex items-center gap-2 p-3 text-red-600 dark:text-red-500"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span className="font-bold uppercase text-xs">
+                      Discard Session
+                    </span>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
@@ -3138,7 +3093,19 @@ export function ClientProfileView({
 
                     return hasPerformed || hasTarget || hasStarting;
                   })
-                  .sort((a, b) => (a.order || 0) - (b.order || 0))
+                  .sort(
+                    (a, b) =>
+                      resolveMachineOrder(
+                        a.id,
+                        a.order,
+                        a.id ? studioMachineSettingsById[a.id]?.order : undefined,
+                      ) -
+                      resolveMachineOrder(
+                        b.id,
+                        b.order,
+                        b.id ? studioMachineSettingsById[b.id]?.order : undefined,
+                      ),
+                  )
                   .map((machine, idx) => {
                     const machineLogs = allLogs.filter(
                       (l) => l.machineId === machine.id,
@@ -3383,7 +3350,7 @@ export function ClientProfileView({
           value="routines"
           className="mt-0 flex-1 min-h-0 focus-visible:outline-none"
         >
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-stretch">
             {/* Render Routine A Card */}
             {renderRoutineCard("Routine A")}
 
@@ -3440,12 +3407,12 @@ export function ClientProfileView({
                   <span
                     className={cn(
                       "font-semibold tracking-wide",
-                      toggleBReason.trim().length >= 12
+                      toggleBReason.trim().length >= 3
                         ? "text-emerald-500"
                         : "text-amber-500",
                     )}
                   >
-                    {toggleBReason.trim().length}/12 characters minimum
+                    {toggleBReason.trim().length >= 3 ? "✓ Reason captured" : "Reason required"}
                   </span>
                 </div>
               </div>
@@ -3459,7 +3426,7 @@ export function ClientProfileView({
                 </Button>
                 <Button
                   onClick={handleConfirmToggleB}
-                  disabled={toggleBReason.trim().length < 12 || isSavingToggle}
+                  disabled={toggleBReason.trim().length < 3 || isSavingToggle}
                   className="bg-cta text-white hover:bg-cta-strong rounded-xl uppercase font-bold text-xs shadow-md shadow-cta/15"
                 >
                   {isSavingToggle ? "Saving..." : "Confirm Switch"}
@@ -3468,171 +3435,92 @@ export function ClientProfileView({
             </DialogContent>
           </Dialog>
 
-          {/* RoutineEditDrawer Bottom Sheet Slide-Up Dialog */}
-          <Dialog open={isEditDrawerOpen} onOpenChange={setIsEditDrawerOpen}>
-            <DialogContent
-              showCloseButton={false}
-              className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-6 bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl border border-div-l"
-            >
-              <DialogHeader className="pb-4 border-b border-div-l shrink-0">
-                <div className="flex items-center justify-between">
-                  <DialogTitle className="text-xl font-bold uppercase tracking-tight text-slate-900 dark:text-neutral-100 italic font-display">
-                    Edit {editingRoutineName}
-                  </DialogTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsEditDrawerOpen(false)}
-                    className="h-8 w-8 p-0"
-                  >
-                    <X className="w-5 h-5" />
-                  </Button>
-                </div>
-                <DialogDescription className="text-xs text-slate-500 mt-1">
-                  Adjust the machine order, remove/add machines, and provide a
-                  mandatory reason explaining this clinical adjustment.
-                </DialogDescription>
-              </DialogHeader>
-
-              {/* Drawer Body: Sortable Machines List and Add Machine form */}
-              <div className="flex-1 overflow-y-auto py-4 space-y-6">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 font-mono">
-                    Sequence Order (Drag to Reorder)
-                  </h3>
-
-                  {editDrawerMachineIds.length === 0 ? (
-                    <p className="text-xs text-slate-400 italic py-4">
-                      No units in routine. Tap Add Machine below.
-                    </p>
+          {/* Discard Session confirmation (round: Discard Session option) —
+              same delete sequence, same "are you sure" pattern as
+              WorkoutTrackerView's own Scrap Session dialog, just reachable
+              from the profile's In-Progress dropdown so a trainer can clear
+              a stuck/abandoned session without opening it first. */}
+          <Dialog
+            open={showDiscardActiveSessionConfirm}
+            onOpenChange={(v) => !isDiscardingActiveSession && setShowDiscardActiveSessionConfirm(v)}
+          >
+            <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
+              <div className="bg-white dark:bg-bg-dark p-8 text-slate-900 dark:text-white space-y-3">
+                <div
+                  className={cn(
+                    "w-12 h-12 rounded-2xl flex items-center justify-center mb-2 transition-all",
+                    isDiscardingActiveSession
+                      ? "bg-red-500/20 text-red-500 animate-pulse"
+                      : "bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)]",
+                  )}
+                >
+                  {isDiscardingActiveSession ? (
+                    <Loader2 className="w-6 h-6 animate-spin text-red-500" />
                   ) : (
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleDragEndDrawer}
-                    >
-                      <SortableContext
-                        items={editDrawerMachineIds}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <div className="space-y-2">
-                          {editDrawerMachineIds.map((machineId, idx) => {
-                            const machine = machines.find(
-                              (m) => m.id === machineId,
-                            );
-                            if (!machine) return null;
-
-                            return (
-                              <SortableRoutineMachineRow
-                                key={machineId}
-                                id={machineId}
-                                machineName={machine.name || "Unknown Machine"}
-                                weightText=""
-                                repsText=""
-                                isEditMode={true}
-                                onRemove={() => {
-                                  setEditDrawerMachineIds((prev) =>
-                                    prev.filter((id) => id !== machineId),
-                                  );
-                                }}
-                              />
-                            );
-                          })}
-                        </div>
-                      </SortableContext>
-                    </DndContext>
+                    <Trash2 className="w-6 h-6" />
                   )}
                 </div>
-
-                {/* Add Machine Search Picker */}
-                <div className="pt-4 border-t border-div-l/40">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 font-mono">
-                    Add Machine Unit
-                  </h3>
-                  <div className="relative mb-3">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input
-                      value={machineSearchQuery}
-                      onChange={(e) => setMachineSearchQuery(e.target.value)}
-                      placeholder="Search by machine name or body region..."
-                      className="pl-9 rounded-xl border-div-l text-xs h-10 bg-slate-50/50 dark:bg-slate-950/20"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-900/30 rounded-xl border border-div-l/30">
-                    {availableMachines.length === 0 ? (
-                      <p className="col-span-full text-xs text-slate-400 text-center py-4">
-                        No matching machines
-                      </p>
-                    ) : (
-                      availableMachines.map((m) => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => {
-                            setEditDrawerMachineIds((prev) => [...prev, m.id!]);
-                            setMachineSearchQuery(""); // clear search on add
-                          }}
-                          className="flex items-center gap-1.5 p-2 bg-white dark:bg-slate-900 border border-div-l/50 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-left transition-colors text-xs font-medium uppercase tracking-tight text-slate-700 dark:text-neutral-300"
-                        >
-                          <Plus className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                          <span className="truncate">{m.name}</span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Reason Area */}
-                <div className="pt-4 border-t border-div-l/40 bg-slate-50/20 dark:bg-slate-950/20 p-4 rounded-xl">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-neutral-350 mb-2 font-display">
-                    Why are you making this change?{" "}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <Textarea
-                    value={drawerReason}
-                    onChange={(e) => setDrawerReason(e.target.value)}
-                    placeholder="e.g., Decreasing spinal load post L4 herniation flare-up; swapping leg press for leg extension today."
-                    rows={3}
-                    className="rounded-xl border-div-l bg-white dark:bg-slate-900 resize-none text-xs text-slate-800 dark:text-neutral-100"
-                  />
-                  <div className="flex justify-between items-center mt-2">
-                    <p className="text-[10px] text-slate-400">
-                      Provide a brief clinical rationale for Sandra's profile
-                      logs.
-                    </p>
-                    <p
-                      className={cn(
-                        "text-[10px] font-semibold tracking-wide",
-                        drawerReason.trim().length >= 12
-                          ? "text-emerald-500"
-                          : "text-amber-500",
-                      )}
-                    >
-                      {drawerReason.trim().length}/12 characters
-                    </p>
-                  </div>
-                </div>
+                <h3 className="text-2xl font-black italic uppercase tracking-tight">
+                  {isDiscardingActiveSession
+                    ? "Discarding Session..."
+                    : "Discard Active Session?"}
+                </h3>
+                <p className="text-slate-500 dark:text-slate-400 font-medium text-sm leading-relaxed">
+                  {isDiscardingActiveSession
+                    ? "Scrapping all logged sets, timers, and notes. Cleaning database records..."
+                    : `This will end and permanently clear the session ${
+                        activeInProgressSession?.trainerInitials
+                          ? `started by ${activeInProgressSession.trainerInitials}`
+                          : "in progress"
+                      }. All data logged so far will be scrapped and will not be recorded in the database.`}
+                </p>
               </div>
-
-              <div className="pt-4 border-t border-div-l flex justify-end gap-3 shrink-0">
+              <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-bg-dark border-t border-slate-100 dark:border-slate-800">
                 <Button
-                  variant="ghost"
-                  onClick={() => setIsEditDrawerOpen(false)}
-                  className="rounded-xl uppercase font-bold text-xs"
+                  variant="outline"
+                  disabled={isDiscardingActiveSession}
+                  className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-50"
+                  onClick={() => setShowDiscardActiveSessionConfirm(false)}
                 >
-                  Close
+                  Keep Session
                 </Button>
                 <Button
-                  onClick={handleSaveEditDrawer}
-                  disabled={drawerReason.trim().length < 12 || isSavingDrawer}
-                  className="bg-cta text-white hover:bg-cta-strong rounded-xl uppercase font-bold text-xs shadow-md shadow-cta/15"
+                  disabled={isDiscardingActiveSession}
+                  className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-red-600 text-white shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 disabled:opacity-80 flex items-center justify-center gap-2"
+                  onClick={handleDiscardActiveSession}
                 >
-                  {isSavingDrawer ? "Saving Changes..." : "Apply Routine"}
+                  {isDiscardingActiveSession ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Discarding...</span>
+                    </>
+                  ) : (
+                    "Discard Session"
+                  )}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Edit Routine drawer — widened, with in-drawer A/B switching,
+              a horizontal filter row, and two-tier Preset Routines. Lives in
+              its own file now; this just mounts it and hands back the fresh
+              routines list on save so the cards above stay in sync. */}
+          <EditRoutineDrawer
+            client={client || null}
+            clientId={clientId}
+            routines={routines}
+            machines={machines}
+            activeStudioId={activeStudioId}
+            studioName={studios?.find((s) => s.id === activeStudioId)?.name}
+            authTrainer={authTrainer}
+            sessions={sessions}
+            allLogs={allLogs}
+            target={editRoutineTarget}
+            onClose={() => setEditRoutineTarget(null)}
+            onSaved={(updated) => setRoutines(updated)}
+            onRequestActivateRoutineB={() => handlePromptToggleB(true)}
+          />
         </TabsContent>
         <TabsContent
           value="journal"
@@ -6552,93 +6440,5 @@ export function ClientProfileView({
         onCancel={() => setShowMockConfirm(false)}
       />
     </motion.div>
-  );
-}
-
-interface SortableRoutineMachineRowProps {
-  key?: any;
-  id: string;
-  machineName: string;
-  weightText: string;
-  repsText: string;
-  isEditMode?: boolean;
-  onRemove?: () => void;
-}
-
-export function SortableRoutineMachineRow({
-  id,
-  machineName,
-  weightText,
-  repsText,
-  isEditMode,
-  onRemove,
-}: SortableRoutineMachineRowProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : "auto",
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800/60 transition-all",
-        isDragging &&
-          "opacity-95 scale-[1.02] shadow-md ring-2 ring-cyan/30 z-50 bg-white dark:bg-slate-850 border-cyan/40",
-      )}
-    >
-      <div className="flex items-center gap-3 min-w-0 flex-1">
-        {isEditMode ? (
-          <div
-            {...attributes}
-            {...listeners}
-            className="flex items-center justify-center h-12 w-12 cursor-grab active:cursor-grabbing bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 rounded-lg shrink-0 touch-none"
-            title="Drag to reorder"
-          >
-            <GripVertical className="w-5 h-5 text-slate-400 dark:text-slate-500" />
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-7 w-7 rounded bg-slate-100 dark:bg-slate-800 text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 shrink-0">
-            •
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold uppercase tracking-tight text-slate-800 dark:text-neutral-200 truncate">
-            {machineName}
-          </p>
-          {!isEditMode && weightText && (
-            <p className="text-[10px] text-slate-400 font-mono">
-              {weightText} × {repsText}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {isEditMode && onRemove && (
-        <Button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-          variant="ghost"
-          size="sm"
-          className="h-10 w-10 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg shrink-0"
-        >
-          <X className="w-4 h-4" />
-        </Button>
-      )}
-    </div>
   );
 }

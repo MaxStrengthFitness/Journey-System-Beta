@@ -16,6 +16,10 @@ import {
   PlusCircle,
   History,
   Loader2,
+  Timer,
+  ClipboardPenLine,
+  Wrench,
+  TriangleAlert,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -72,6 +76,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -82,6 +87,8 @@ import {
 } from "@/components/ui/dialog";
 
 import { useActiveStudio } from "../ActiveStudioContext";
+import { useStudioMachineSettings } from "../hooks/useStudioMachineSettings";
+import { resolveMachineOrder } from "../data/machine-display-order";
 import { Stopwatch } from "./Stopwatch";
 import { useToast } from "../contexts/ToastContext";
 import {
@@ -1014,13 +1021,41 @@ export function WorkoutTrackerView({
 }) {
   const { activeStudioId: contextActiveStudioId, activeStudio } =
     useActiveStudio();
-  const { error: toastError } = useToast();
+  // Per-studio machine display order (Aug 2026) — same resolution chain
+  // as the Client Profile Journey grid: studio override, else the shared
+  // default sequence (data/machine-display-order.ts), else legacy
+  // machine.order. Kinematic MOVEMENT_PATTERN_ORDER grouping (Edit Routine
+  // drawer / Catalog) is a separate, untouched system.
+  const { settingsByMachineId: studioMachineSettingsById } =
+    useStudioMachineSettings(contextActiveStudioId);
+
+  const { error: toastError, success: toastSuccess } = useToast();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [logs, setLogs] = useState<Record<string, ExerciseLog>>({});
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [currentSession, setCurrentSession] = useState<WorkoutSession | null>(
     null,
+  );
+
+  // The 5-session window that drives the Active Session table's History
+  // grid — hoisted up here (round: global date headers) so both the
+  // <thead> date columns AND the machine rows below can read the exact
+  // same 5 sessions. Sessions is already sorted newest-first, so this is
+  // simply the 5 most recent past sessions, excluding the in-progress one.
+  // IMPORTANT: this must stay above every early `return` in this component
+  // (Rules of Hooks) — it was previously declared right before the main
+  // JSX return, after several conditional returns, which crashed with
+  // "Rendered more hooks than during the previous render" the first time a
+  // render's hook count differed (e.g. transitioning from no-client to
+  // client-selected). Fixed Aug 29 by moving it here, below the sessions/
+  // currentSession state it reads.
+  const recentSessions = useMemo(
+    () =>
+      sessions
+        .filter((s) => (currentSession ? s.id !== currentSession.id : true))
+        .slice(0, 5),
+    [sessions, currentSession],
   );
   const [activeMachineIds, setActiveMachineIds] = useState<string[]>([]);
   const [clientMachineSettings, setClientMachineSettings] = useState<
@@ -1042,8 +1077,25 @@ export function WorkoutTrackerView({
   >(null);
   const [isStaticHoldOverride, setIsStaticHoldOverride] = useState(false);
   const [historyMachineId, setHistoryMachineId] = useState<string | null>(null);
+  // Machine-specific notes (Active Session "Notes" column) — a persistent,
+  // per-client-per-machine log stored on the same clientMachineSettings doc
+  // the Journey grid and Equipment Prescriptions already read/write
+  // (machineNotes: MachineNote[]), so a note left here shows up everywhere
+  // else in the app that surfaces that same data, and vice versa.
+  const [notesDialogMachineId, setNotesDialogMachineId] = useState<
+    string | null
+  >(null);
+  const [newMachineNoteText, setNewMachineNoteText] = useState("");
+  const [isImportantMachineNote, setIsImportantMachineNote] = useState(false);
+  const [isSavingMachineNote, setIsSavingMachineNote] = useState(false);
+  // Quick-add confirmation — clicking the small dot next to a machine that
+  // isn't part of today's routine (while a session is already running)
+  // prompts before adding it, rather than toggling it in silently.
+  const [quickAddMachineId, setQuickAddMachineId] = useState<string | null>(
+    null,
+  );
   const [isSettingUpRoutine, setIsSettingUpRoutine] = useState(false);
-  const [showAllMachines, setShowAllMachines] = useState(true);
+  const [showAllMachines, setShowAllMachines] = useState(false);
   const [routineMachines, setRoutineMachines] = useState<string[]>([]);
   const [lastRoutineLogs, setLastRoutineLogs] = useState<
     Record<string, ExerciseLog>
@@ -1526,20 +1578,22 @@ export function WorkoutTrackerView({
           const sessionsData = snapshot.docs
             .map((doc) => ({ id: doc.id, ...doc.data() }) as WorkoutSession)
             .sort((a, b) => {
-              const timeA = a.createdAt?.toDate
-                ? a.createdAt.toDate().getTime()
-                : a.startTime
-                  ? new Date(a.startTime).getTime()
-                  : a.date
-                    ? new Date(a.date).getTime()
-                    : 0;
-              const timeB = b.createdAt?.toDate
-                ? b.createdAt.toDate().getTime()
-                : b.startTime
-                  ? new Date(b.startTime).getTime()
-                  : b.date
-                    ? new Date(b.date).getTime()
-                    : 0;
+              // Sort by the session's actual workout date (parseSessionDate),
+              // the same field the History grid's date headers display —
+              // NOT createdAt. createdAt is when the Firestore doc was
+              // written, which for legacy-imported sessions (see
+              // LegacyChartImporter.tsx) is whenever the import ran, not
+              // when the workout happened. Sorting by createdAt first
+              // scrambled the 5 most-recent-session columns into import
+              // order instead of chronological order (e.g. "Jun 1, Jun 11,
+              // Mar 16, Feb 26, Jun 8"). Falls back to startTime only when
+              // a session has no date at all.
+              const timeA =
+                parseSessionDate(a.date) ||
+                (a.startTime ? new Date(a.startTime).getTime() : 0);
+              const timeB =
+                parseSessionDate(b.date) ||
+                (b.startTime ? new Date(b.startTime).getTime() : 0);
               return timeB - timeA;
             });
           setSessions(sessionsData);
@@ -2312,6 +2366,59 @@ export function WorkoutTrackerView({
     });
   };
 
+  const addMachineNote = async (machineId: string) => {
+    if (!clientId || !authTrainer || !newMachineNoteText.trim()) return;
+    setIsSavingMachineNote(true);
+    try {
+      const docRef = doc(db, "clientMachineSettings", `${clientId}_${machineId}`);
+      const existingNotes = clientMachineSettings[machineId]?.machineNotes || [];
+      const note = {
+        id: Date.now().toString(),
+        content: newMachineNoteText.trim(),
+        authorId: authTrainer.id || "unknown",
+        authorName: authTrainer.fullName || authTrainer.initials || "Trainer",
+        timestamp: new Date().toISOString(),
+        isImportant: isImportantMachineNote,
+      };
+      await setDoc(
+        docRef,
+        {
+          clientId,
+          machineId,
+          machineNotes: [...existingNotes, note],
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+      setNewMachineNoteText("");
+      setIsImportantMachineNote(false);
+      toastSuccess("Note saved.");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, "clientMachineSettings");
+    } finally {
+      setIsSavingMachineNote(false);
+    }
+  };
+
+  const deleteMachineNote = async (machineId: string, noteId: string) => {
+    if (!clientId) return;
+    setIsSavingMachineNote(true);
+    try {
+      const docRef = doc(db, "clientMachineSettings", `${clientId}_${machineId}`);
+      const existingNotes = clientMachineSettings[machineId]?.machineNotes || [];
+      const filtered = existingNotes.filter((n) => n.id !== noteId);
+      await setDoc(
+        docRef,
+        { machineNotes: filtered, updatedAt: serverTimestamp() },
+        { merge: true },
+      );
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, "clientMachineSettings");
+    } finally {
+      setIsSavingMachineNote(false);
+    }
+  };
+
   const saveMachineSettings = async (
     machineId: string,
     newSettings: Record<string, string>,
@@ -2695,7 +2802,7 @@ export function WorkoutTrackerView({
               onClick={() => setIsSessionRoutineManagerOpen(true)}
             >
               <Settings2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
-              <span>Routine</span>
+              <span>Edit Routine</span>
             </Button>
 
             <Button
@@ -2990,6 +3097,178 @@ export function WorkoutTrackerView({
         />
       )}
 
+      {/* Machine Notes Dialog — same clientMachineSettings.machineNotes
+          data the Journey grid's red-alert icon and Equipment
+          Prescriptions' note log already read/write, so a note left here
+          shows up there too. */}
+      {notesDialogMachineId &&
+        (() => {
+          const noteMachine = machines.find(
+            (m) => m.id === notesDialogMachineId,
+          );
+          const machineNotesList =
+            clientMachineSettings[notesDialogMachineId]?.machineNotes || [];
+          return (
+            <Dialog
+              open={!!notesDialogMachineId}
+              onOpenChange={(v) => {
+                if (!v) {
+                  setNotesDialogMachineId(null);
+                  setNewMachineNoteText("");
+                  setIsImportantMachineNote(false);
+                }
+              }}
+            >
+              <DialogContent className="max-w-md rounded-[32px] p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                <DialogHeader className="mb-4">
+                  <DialogTitle className="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">
+                    Machine Notes
+                  </DialogTitle>
+                  <DialogDescription className="text-xs font-bold uppercase tracking-widest text-[#F06C22]">
+                    {noteMachine?.name || "Machine"} — {selectedClient?.firstName}{" "}
+                    {selectedClient?.lastName}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
+                  {machineNotesList.length === 0 ? (
+                    <div className="text-center py-8 text-xs font-bold text-slate-400 uppercase tracking-widest border border-dashed rounded-2xl dark:border-slate-800">
+                      No notes recorded
+                    </div>
+                  ) : (
+                    [...machineNotesList]
+                      .sort(
+                        (a, b) =>
+                          new Date(b.timestamp).getTime() -
+                          new Date(a.timestamp).getTime(),
+                      )
+                      .map((note) => (
+                        <div
+                          key={note.id}
+                          className={cn(
+                            "p-3 rounded-2xl border relative group flex flex-col",
+                            note.isImportant
+                              ? "bg-rose-50 dark:bg-rose-950/30 border-rose-100 dark:border-rose-900/50"
+                              : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800",
+                          )}
+                        >
+                          {note.isImportant && (
+                            <div className="text-[11px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-400 mb-1 flex items-center gap-1">
+                              <TriangleAlert className="w-3 h-3" /> High
+                              Importance
+                            </div>
+                          )}
+                          <p className="text-xs text-slate-700 dark:text-slate-300 pr-8">
+                            {note.content}
+                          </p>
+                          <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-2">
+                            {note.authorName} •{" "}
+                            {new Date(note.timestamp).toLocaleDateString()}
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={isSavingMachineNote}
+                            onClick={() =>
+                              deleteMachineNote(notesDialogMachineId, note.id!)
+                            }
+                            className="absolute right-1 top-1 h-6 w-6 text-slate-400 dark:text-slate-500 hover:text-rose-500 hover:bg-white dark:hover:bg-slate-900 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))
+                  )}
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor={`important-note-${notesDialogMachineId}`}
+                      className="text-xs font-bold text-slate-600 dark:text-slate-400"
+                    >
+                      High Importance
+                    </Label>
+                    <Switch
+                      id={`important-note-${notesDialogMachineId}`}
+                      checked={isImportantMachineNote}
+                      onCheckedChange={(c) => setIsImportantMachineNote(!!c)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={newMachineNoteText}
+                      onChange={(e) => setNewMachineNoteText(e.target.value)}
+                      placeholder="Note about this machine for this client..."
+                      className="flex-1 bg-slate-50 dark:bg-slate-950 h-10 rounded-xl text-xs dark:border-slate-800"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter")
+                          addMachineNote(notesDialogMachineId);
+                      }}
+                    />
+                    <Button
+                      disabled={
+                        isSavingMachineNote || !newMachineNoteText.trim()
+                      }
+                      onClick={() => addMachineNote(notesDialogMachineId)}
+                      className="h-10 px-4 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 font-bold uppercase tracking-widest text-[11px]"
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          );
+        })()}
+
+      {/* Quick-Add-to-Routine Confirmation — clicking the small dot next to
+          a machine not currently in today's routine, mid-session. */}
+      {quickAddMachineId && (
+        <Dialog
+          open={!!quickAddMachineId}
+          onOpenChange={(v) => !v && setQuickAddMachineId(null)}
+        >
+          <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
+            <div className="bg-white dark:bg-bg-dark p-8 text-slate-900 dark:text-white space-y-3">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-2 bg-blue-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.4)]">
+                <PlusCircle className="w-6 h-6" />
+              </div>
+              <h3 className="text-2xl font-black italic uppercase tracking-tight">
+                Add to Today's Routine?
+              </h3>
+              <p className="text-slate-500 dark:text-slate-400 font-medium text-sm leading-relaxed">
+                {machines.find((m) => m.id === quickAddMachineId)?.name ||
+                  "This machine"}{" "}
+                isn't part of today's routine yet. Add it to this session?
+              </p>
+            </div>
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-bg-dark border-t border-slate-100 dark:border-slate-800">
+              <Button
+                variant="outline"
+                className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2"
+                onClick={() => setQuickAddMachineId(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-none hover:bg-blue-700"
+                onClick={() => {
+                  setActiveMachineIds((prev) =>
+                    prev.includes(quickAddMachineId)
+                      ? prev
+                      : [...prev, quickAddMachineId],
+                  );
+                  setQuickAddMachineId(null);
+                }}
+              >
+                Add Machine
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Exercise History Dialog */}
       {historyMachineId && clientId && (
         <ExerciseHistoryDialog
@@ -3201,7 +3480,7 @@ export function WorkoutTrackerView({
           <table className="w-full text-left border-collapse table-fixed select-none min-w-150 h-full flex flex-col bg-white dark:bg-bg-dark border border-slate-200 dark:border-slate-800 shadow-sm">
             <thead className="flex w-full shrink-0">
               <tr className="bg-slate-50 dark:bg-surface-1 border-b border-slate-200 dark:border-slate-700 uppercase text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 leading-none h-9 w-full flex items-center">
-                <th className="p-0 flex items-center justify-center w-10 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full">
+                <th className="p-0 flex items-center justify-center w-12 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full">
                   {currentSession ? (
                     <button
                       onClick={() => setIsSessionRoutineManagerOpen(true)}
@@ -3214,12 +3493,74 @@ export function WorkoutTrackerView({
                     "#"
                   )}
                 </th>
-                <th className="p-1.5 pl-3 flex-1 border-r border-slate-200 dark:border-slate-700 h-full flex items-center truncate">
+                {/* Notes column — round: moved to be the 2nd column,
+                    right next to the sequence/routine column, instead of
+                    sitting off to the right past the History grid. */}
+                <th className="p-1 text-center w-10 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center text-[9px]">
+                  Notes
+                </th>
+                {/* Fixed width instead of flex-1 (round: shift weight
+                    columns left) — flex-1 was letting this column swallow
+                    all the table's leftover width, which is what pushed
+                    Starting Weight/Last Weight Performed far to the right
+                    with a big dead gap in between. */}
+                <th className="p-1.5 pl-3 w-64 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center truncate">
                   Exercise & Settings
                 </th>
-                <th className="p-1.5 text-center w-12.5 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center">
-                  Prev
+                {/* Starting Weight / Last Weight Performed — dedicated
+                    solo-value columns, now sitting directly against
+                    Exercise & Settings. Last Weight Performed intentionally
+                    looks further back than the 5-session History window
+                    when it needs to. */}
+                <th className="p-1 text-center w-16 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex flex-col items-center justify-center leading-tight text-[9px]">
+                  <span>Starting</span>
+                  <span>Weight</span>
                 </th>
+                <th className="p-1 text-center w-16 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex flex-col items-center justify-center leading-tight text-[9px]">
+                  <span>Last Weight</span>
+                  <span>Performed</span>
+                </th>
+                {/* Visual spacer — a small physical gap separating the
+                    Starting/Last Weight columns from the dated History
+                    grid, so the two don't read as one continuous block. */}
+                <th
+                  aria-hidden="true"
+                  className="w-3 shrink-0 h-full bg-slate-100 dark:bg-slate-950/70"
+                />
+                {/* History grid — 5 date column headers (round: global date
+                    headers), one per session in the shared recentSessions
+                    window, instead of repeating each date inside every
+                    cell below. A machine not performed in one of these 5
+                    sessions just shows blank under that date. */}
+                {Array.from({ length: 5 }).map((_, i) => {
+                  const s = recentSessions[i];
+                  const dateLabel = s?.date
+                    ? new Date(parseSessionDate(s.date)).toLocaleDateString(
+                        "en-US",
+                        { month: "short", day: "numeric" },
+                      )
+                    : "--";
+                  return (
+                    <th
+                      key={s?.id || `history-header-${i}`}
+                      className="p-1 text-center w-15 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center text-[9px] leading-tight"
+                    >
+                      {dateLabel}
+                    </th>
+                  );
+                })}
+                {/* Filler (round: right-align the active input columns) —
+                    every other visible column is a fixed shrink-0 width,
+                    so on a screen wider than their sum this cell absorbs
+                    the leftover width here, between the History grid and
+                    Weight/Reps/Quality, instead of trailing after Quality.
+                    Capped with max-w and shaded so it reads as an
+                    intentional gap between column groups, not a rendering
+                    glitch. */}
+                <th
+                  aria-hidden="true"
+                  className="flex-1 max-w-16 h-full bg-slate-100 dark:bg-slate-950/70"
+                />
                 <th className="p-1.5 text-center w-15 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center">
                   Weight
                 </th>
@@ -3275,6 +3616,10 @@ export function WorkoutTrackerView({
                   }
                 }
 
+                // recentSessions (the shared 5-session window) now lives
+                // above the main return, so both this tbody and the thead's
+                // date-column headers read the exact same 5 sessions.
+
                 return (
                   <>
                     {currentSession?.routineId &&
@@ -3301,7 +3646,18 @@ export function WorkoutTrackerView({
                             if (idxB !== -1) return 1;
                           }
                         }
-                        return a.order - b.order;
+                        return (
+                          resolveMachineOrder(
+                            a.id,
+                            a.order,
+                            a.id ? studioMachineSettingsById[a.id]?.order : undefined,
+                          ) -
+                          resolveMachineOrder(
+                            b.id,
+                            b.order,
+                            b.id ? studioMachineSettingsById[b.id]?.order : undefined,
+                          )
+                        );
                       })
                       .map((machine) => {
                         const isTorso = machine.name
@@ -3342,17 +3698,43 @@ export function WorkoutTrackerView({
                         const seqPosition = isActive
                           ? activeMachineIds.indexOf(machine.id!) + 1
                           : null;
-                        const pastMachineLogs = sessions
+
+                        const machineNotesForRow =
+                          clientMachineSettings[machine.id!]?.machineNotes ||
+                          [];
+                        const hasMachineNotes = machineNotesForRow.length > 0;
+                        const hasImportantNote = machineNotesForRow.some(
+                          (n) => n.isImportant,
+                        );
+
+                        const findLogForSession = (s: WorkoutSession) =>
+                          isTorso
+                            ? logs[`${s.id}_${machine.id}_Left`] ||
+                              logs[`${s.id}_${machine.id}_Right`] ||
+                              logs[`${s.id}_${machine.id}`]
+                            : logs[`${s.id}_${machine.id}`];
+
+                        // History grid entries (Box 1) — aligned 1:1 with
+                        // the shared recentSessions window above, so a slot
+                        // is blank when this machine wasn't performed that
+                        // session rather than silently borrowing an older
+                        // one.
+                        const historyEntries = recentSessions.map((s) => {
+                          const log = findLogForSession(s);
+                          return log && log.weight ? { log, session: s } : null;
+                        });
+
+                        // Full, UNBOUNDED history for this machine — Starting
+                        // Weight and Last Weight Performed (Box 2) are
+                        // deliberately not limited to the 5-session window,
+                        // so a trainer can still see the last weight used
+                        // even if it falls outside the recent grid.
+                        const allMachineLogs = sessions
                           .filter((s) =>
                             currentSession ? s.id !== currentSession.id : true,
                           )
                           .map((s) => {
-                            // For historical check, favor specific side if we are in side-mode, else look for any
-                            const log = isTorso
-                              ? logs[`${s.id}_${machine.id}_Left`] ||
-                                logs[`${s.id}_${machine.id}_Right`] ||
-                                logs[`${s.id}_${machine.id}`]
-                              : logs[`${s.id}_${machine.id}`];
+                            const log = findLogForSession(s);
                             return log && log.weight
                               ? { log, session: s }
                               : null;
@@ -3364,9 +3746,13 @@ export function WorkoutTrackerView({
                               log: ExerciseLog;
                               session: WorkoutSession;
                             } => Boolean(x),
-                          )
-                          .slice(0, 3);
-                        const prevLog = pastMachineLogs[0]?.log || null;
+                          );
+                        const lastWeightPerformed =
+                          allMachineLogs[0]?.log.weight || null;
+                        const startingWeight =
+                          allMachineLogs[allMachineLogs.length - 1]?.log
+                            .weight || null;
+
                         const isFocusMachine =
                           activeFocusMachineId === machine.id;
 
@@ -3391,14 +3777,14 @@ export function WorkoutTrackerView({
                                 key={originalKey || i}
                                 className="flex gap-0.5 items-baseline"
                               >
-                                <span className="text-slate-500 dark:text-slate-400 text-[11px] uppercase font-medium">
+                                <span className="text-slate-400 dark:text-slate-500 text-[10px] font-semibold uppercase tracking-wider">
                                   {k}:
                                 </span>
-                                <span className="font-medium text-slate-700 dark:text-slate-300 text-[11px] uppercase">
+                                <span className="font-semibold text-slate-600 dark:text-slate-400 text-[10px] uppercase tracking-wide">
                                   {v}
                                 </span>
                                 {i < sortedEntries.length - 1 && (
-                                  <span className="text-slate-300 dark:text-slate-600 ml-0.5 text-[11px]">
+                                  <span className="text-slate-300 dark:text-slate-600 ml-0.5 text-[10px]">
                                     •
                                   </span>
                                 )}
@@ -3410,19 +3796,31 @@ export function WorkoutTrackerView({
                         return (
                           <tr
                             key={machine.id}
-                            className={`flex w-full group transition-colors h-8.5 sm:h-9 items-center border-b border-slate-100 dark:border-slate-800/50 last:border-b-0 border-l-4 bg-white dark:bg-bg-dark hover:bg-slate-50 dark:hover:bg-surface-2
+                            className={`flex w-full group transition-colors h-16 sm:h-17 items-center border-b border-slate-200/70 dark:border-slate-600/70 last:border-b-0 border-l-4 bg-white dark:bg-bg-dark hover:bg-slate-50 dark:hover:bg-surface-2
                               ${!isActive && !showAllMachines ? "opacity-30 grayscale hover:grayscale-0" : ""}
                               ${isFocusMachine ? "border-l-blue-500" : isCompleted && isActive ? "border-l-emerald-500" : "border-l-transparent"}`}
                           >
-                            <td className="w-10 shrink-0 flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
+                            <td className="w-12 shrink-0 flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
                               {isActive ? (
                                 <div
-                                  className={`flex items-center justify-center rounded-md px-1.5 h-5 shadow-sm ${isFocusMachine ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold" : isCompleted ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" : "bg-slate-100 dark:bg-surface-1 text-slate-500 font-medium"}`}
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingWeightMachineId(machine.id!);
+                                    if (isTorso) {
+                                      setEditingWeightSide(
+                                        logL.weight ? "Right" : "Left",
+                                      );
+                                    }
+                                  }}
+                                  className={`flex items-center justify-center rounded-lg px-2 h-8 min-w-8 shadow-sm cursor-pointer hover:opacity-80 transition-opacity ${isFocusMachine ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold" : isCompleted ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" : "bg-slate-100 dark:bg-surface-1 text-slate-500 font-medium"}`}
+                                  title="Log weight & reps for this machine"
                                 >
                                   {isCompleted ? (
-                                    <Check className="w-3 h-3" />
+                                    <Check className="w-4.5 h-4.5" />
                                   ) : (
-                                    <span className="font-bold text-[11px] leading-none">
+                                    <span className="font-extrabold text-base leading-none">
                                       {seqPosition}
                                     </span>
                                   )}
@@ -3435,14 +3833,76 @@ export function WorkoutTrackerView({
                                   <Plus className="w-2.5 h-2.5" />
                                 </button>
                               ) : (
-                                <div className="w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+                                // Quick-add: this machine isn't part of
+                                // today's routine, but a session is already
+                                // running — clicking prompts to add it
+                                // instead of silently toggling it in.
+                                <button
+                                  type="button"
+                                  title="Add this machine to today's routine"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setQuickAddMachineId(machine.id!);
+                                  }}
+                                  className="group/dot flex items-center justify-center w-5 h-5 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                                >
+                                  <div className="w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-700 group-hover/dot:w-1.5 group-hover/dot:h-1.5 group-hover/dot:bg-blue-500 transition-all"></div>
+                                </button>
                               )}
                             </td>
 
-                            <td className="flex-1 p-1 pl-3 border-r border-slate-200 dark:border-slate-800/60 h-full flex flex-col justify-center min-w-0 truncate">
+                            {/* Notes — persistent, per-machine trainer
+                                notes (not tied to this session). Gray when
+                                empty, blue once a note exists, red/alert
+                                when any note on this machine is flagged
+                                High Importance. */}
+                            <td className="w-10 shrink-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setNotesDialogMachineId(machine.id!);
+                                }}
+                                title={
+                                  hasImportantNote
+                                    ? "High-importance note on file"
+                                    : hasMachineNotes
+                                      ? "View/add notes"
+                                      : "Add a note"
+                                }
+                                className={cn(
+                                  "relative h-8 w-8 rounded-full flex items-center justify-center transition-colors hover:bg-slate-100 dark:hover:bg-slate-800",
+                                  hasImportantNote
+                                    ? "text-rose-500 hover:text-rose-600"
+                                    : hasMachineNotes
+                                      ? "text-blue-500 hover:text-blue-600"
+                                      : "text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400",
+                                )}
+                              >
+                                {hasImportantNote ? (
+                                  <TriangleAlert className="w-4 h-4" />
+                                ) : hasMachineNotes ? (
+                                  <Wrench className="w-4 h-4" />
+                                ) : (
+                                  <ClipboardPenLine className="w-4 h-4" />
+                                )}
+                                {hasMachineNotes && (
+                                  <span
+                                    className={cn(
+                                      "absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full ring-2 ring-white dark:ring-bg-dark",
+                                      hasImportantNote
+                                        ? "bg-rose-500"
+                                        : "bg-blue-500",
+                                    )}
+                                  />
+                                )}
+                              </button>
+                            </td>
+
+                            <td className="w-64 shrink-0 p-1 pl-3 border-r border-slate-200 dark:border-slate-800/60 h-full flex flex-col justify-center min-w-0 truncate">
                               <div className="flex items-center">
                                 <span
-                                  className={`font-medium text-xs ${isFocusMachine ? "text-blue-600 dark:text-blue-400 font-bold" : "text-slate-900 dark:text-slate-50"} leading-none truncate`}
+                                  className={`font-semibold text-sm ${isFocusMachine ? "text-blue-600 dark:text-blue-400 font-bold" : "text-slate-900 dark:text-slate-50"} leading-none truncate`}
                                 >
                                   {machine.name}
                                 </span>
@@ -3456,7 +3916,7 @@ export function WorkoutTrackerView({
                                 {isTorso ? (
                                   settingsDisplay
                                 ) : isCompleted ? (
-                                  <span className="font-medium text-[11px] text-slate-500 dark:text-slate-400">
+                                  <span className="font-semibold text-[10px] text-slate-500 dark:text-slate-400 tracking-wide">
                                     {currentLog.weight} lbs |{" "}
                                     {currentLog.repsLeft !== undefined &&
                                     currentLog.repsRight !== undefined ? (
@@ -3474,49 +3934,132 @@ export function WorkoutTrackerView({
                               </div>
                             </td>
 
-                            <td className="w-12.5 shrink-0 flex flex-col items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
-                              {prevLog && prevLog.weight ? (
-                                <div className="flex flex-col items-center leading-none">
-                                  <span className="font-medium text-xs text-slate-500 dark:text-slate-400">
-                                    {prevLog.weight}
-                                  </span>
-                                  <span className="font-medium text-[11px] text-slate-400 dark:text-slate-500 mt-px">
-                                    {prevLog.repsLeft !== undefined &&
-                                    prevLog.repsRight !== undefined ? (
-                                      `${prevLog.repsLeft}L|${prevLog.repsRight}R`
-                                    ) : prevLog.isStaticHold ? (
+                            {/* Starting Weight / Last Weight Performed
+                                (Box 2, round: dedicated weight columns) —
+                                strictly solo weight values, deliberately
+                                unbounded by the 5-session History window so
+                                a trainer can still see the true last weight
+                                even when it falls outside that window. */}
+                            <td className="w-16 shrink-0 flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
+                              <span className="font-medium text-xs text-slate-500 dark:text-slate-400">
+                                {startingWeight || "--"}
+                              </span>
+                            </td>
+                            <td className="w-16 shrink-0 flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
+                              <span className="font-medium text-xs text-slate-500 dark:text-slate-400">
+                                {lastWeightPerformed || "--"}
+                              </span>
+                            </td>
+
+                            {/* Visual spacer, matching the header's —
+                                keeps Starting/Last Weight visually separate
+                                from the History grid below. */}
+                            <td
+                              aria-hidden="true"
+                              className="w-3 shrink-0 h-full bg-slate-50/50 dark:bg-slate-950/40 border-r-0"
+                            />
+
+                            {/* History grid — one real <td> per session in
+                                the shared 5-session window (round: declutter
+                                data cells), aligned under its date header in
+                                the thead above. Dates now live only in that
+                                header row, so each cell here shows just the
+                                raw weight/reps — a blank cell means this
+                                machine genuinely wasn't performed that
+                                session. */}
+                            {historyEntries.map((entry, i) => {
+                              const log = entry?.log;
+                              if (!log || !log.weight) {
+                                return (
+                                  <td
+                                    key={i}
+                                    className="w-15 shrink-0 flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full"
+                                  >
+                                    <span className="text-[10px] text-slate-300 dark:text-slate-700 font-medium">
+                                      --
+                                    </span>
+                                  </td>
+                                );
+                              }
+                              // Quality reads as a thick inset ring
+                              // around the cell rather than a solid
+                              // background wash — a full-cell color fill
+                              // was competing with the weight/reps numbers
+                              // for attention. Using an inset ring (a
+                              // box-shadow, not a border) means it doesn't
+                              // fight the cell's existing border-r divider
+                              // or add to the cell's layout width.
+                              const qualityRingClass =
+                                log.repQuality === 3
+                                  ? "ring-2 ring-inset ring-emerald-500"
+                                  : log.repQuality === 2
+                                    ? "ring-2 ring-inset ring-amber-500"
+                                    : log.repQuality === 1
+                                      ? "ring-2 ring-inset ring-rose-500"
+                                      : "";
+                              // Split-cell redesign (Aug 2026): weight
+                              // on top with its unit, a hairline divider,
+                              // then a labeled TIME-or-REPS bottom half so
+                              // the two never run together on one line.
+                              const isDoubleSided =
+                                log.repsLeft !== undefined &&
+                                log.repsRight !== undefined;
+                              const formattedHoldTime = (() => {
+                                const totalSeconds = log.seconds || 0;
+                                const mins = Math.floor(totalSeconds / 60);
+                                const secs = Math.floor(totalSeconds % 60);
+                                return `${mins}:${secs.toString().padStart(2, "0")}`;
+                              })();
+                              return (
+                                <td
+                                  key={entry?.session?.id || i}
+                                  className={cn(
+                                    "w-15 shrink-0 flex flex-col p-0 border-r border-slate-200 dark:border-slate-800/60 h-full overflow-hidden",
+                                    qualityRingClass,
+                                  )}
+                                >
+                                  {/* Top half: weight + unit */}
+                                  <div className="flex-1 min-h-0 w-full flex items-center justify-center leading-none">
+                                    <span className="font-bold text-[13px] text-slate-700 dark:text-slate-200">
+                                      {log.weight}
+                                    </span>
+                                  </div>
+
+                                  <div className="w-full h-px shrink-0 bg-slate-200/70 dark:bg-slate-700/40" />
+
+                                  {/* Bottom half: TIME for static holds, REPS otherwise */}
+                                  <div className="flex-1 min-h-0 w-full flex flex-col items-center justify-center leading-none gap-0.5">
+                                    {!isDoubleSided && log.isStaticHold ? (
                                       <>
-                                        {prevLog.seconds}
-                                        <span className="text-[7px] ml-0.5 lowercase">
-                                          s
+                                        <span className="text-[7px] font-medium text-slate-400/60 dark:text-slate-500/50 uppercase tracking-wide">
+                                          Time
+                                        </span>
+                                        <span className="flex items-center gap-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                                          <Timer className="w-2 h-2" />
+                                          {formattedHoldTime}
                                         </span>
                                       </>
                                     ) : (
-                                      `${prevLog.reps}R`
+                                      <>
+                                        <span className="text-[7px] font-medium text-slate-400/60 dark:text-slate-500/50 uppercase tracking-wide">
+                                          Reps
+                                        </span>
+                                        <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                                          {isDoubleSided
+                                            ? `${log.repsLeft}L|${log.repsRight}R`
+                                            : log.reps}
+                                        </span>
+                                      </>
                                     )}
-                                  </span>
-                                  {prevLog.repQuality !== undefined &&
-                                    prevLog.repQuality !== null && (
-                                      <span
-                                        className={
-                                          `font-black text-[7px] mt-0.5 px-1 rounded-sm ` +
-                                          (prevLog.repQuality === 1
-                                            ? "bg-red-500/10 text-red-600"
-                                            : prevLog.repQuality === 2
-                                              ? "bg-amber-500/10 text-amber-600"
-                                              : "bg-emerald-500/10 text-emerald-600")
-                                        }
-                                      >
-                                        Q{prevLog.repQuality}
-                                      </span>
-                                    )}
-                                </div>
-                              ) : (
-                                <span className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
-                                  --
-                                </span>
-                              )}
-                            </td>
+                                  </div>
+                                </td>
+                              );
+                            })}
+
+                            <td
+                              aria-hidden="true"
+                              className="flex-1 max-w-16 h-full bg-slate-100 dark:bg-slate-950/70"
+                            />
 
                             <td
                               className={`w-15 shrink-0 cursor-pointer group/weight p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50" : "bg-slate-50/50 dark:bg-surface-2 hover:bg-slate-100 dark:hover:bg-surface-1"}`}
