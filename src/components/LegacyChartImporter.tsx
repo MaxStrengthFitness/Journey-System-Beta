@@ -446,7 +446,13 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
             isTSC: vLog.isStaticHold,
             isStaticHold: vLog.isStaticHold,
             machineSettings: vLog.settings ? parseMachineSettings(vLog.settings) : {},
-            repQuality: 2,
+            // Left unset intentionally: legacy paper charts never recorded a
+            // rep-quality rating, so hardcoding one here (this used to be a
+            // blanket `repQuality: 2`) made every imported set render as a
+            // fake "good" (amber) quality dot/tint in the Active Session and
+            // History views, indistinguishable from a real trainer-entered
+            // rating. Omitting the field leaves these sets showing as
+            // "no quality recorded" instead.
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             studioId: hostedAtStudioId,
