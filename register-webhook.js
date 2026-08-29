@@ -21,7 +21,12 @@ function getEnv(key) {
 }
 
 async function main() {
-  const apiKey = getEnv('MINDBODY_API_KEY') || '46130dab676a454e89e84aa50d7f5dc8';
+  // No hardcoded fallback: this key was previously committed in plain text.
+  const apiKey = getEnv('MINDBODY_API_KEY');
+  if (!apiKey) {
+    console.error('Missing MINDBODY_API_KEY in .env -- add it before running this script.');
+    process.exit(1);
+  }
   const siteId = '5746957';
   const webhookUrl = 'https://us-central1-gen-lang-client-0731527386.cloudfunctions.net/mindbodyWebhook';
 

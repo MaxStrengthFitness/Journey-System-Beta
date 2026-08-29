@@ -1,8 +1,37 @@
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const webhookSecret = "jkbIX7a91zKWxNeL27afFr1EmqdesE2ccBJYpaL+JEA=";
-const webhookUrl =
-  "https://us-central1-gen-lang-client-0731527386.cloudfunctions.net/mindbodyWebhook";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Simple .env reader -- same helper the other webhook scripts use.
+function getEnv(key) {
+  try {
+    const dotenvPath = path.join(__dirname, ".env");
+    if (!fs.existsSync(dotenvPath)) return null;
+    const content = fs.readFileSync(dotenvPath, "utf8");
+    const matches = content.match(
+      new RegExp(`^${key}\\s*=\\s*["']?([^"'\r\n]+)["']?`, "m"),
+    );
+    return matches ? matches[1] : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// NEVER hardcode these. This script signs payloads that the live webhook will
+// accept as genuine, so the signing secret belongs in .env (gitignored) only.
+const webhookSecret = getEnv("MINDBODY_WEBHOOK_SECRET");
+const webhookUrl = getEnv("MINDBODY_WEBHOOK_URL");
+
+if (!webhookSecret || !webhookUrl) {
+  console.error(
+    "Missing MINDBODY_WEBHOOK_SECRET and/or MINDBODY_WEBHOOK_URL in .env -- add them before running this script.",
+  );
+  process.exit(1);
+}
 
 async function main() {
   console.log("Preparing test client update payload...");
