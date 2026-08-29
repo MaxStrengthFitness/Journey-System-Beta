@@ -3,12 +3,13 @@ import * as crypto from "node:crypto";
 import {
   handleMindbodyWebhook,
   resetStudioCache,
+  toUtcTimestamp,
   WebhookRequest,
   WebhookDeps,
 } from "./index";
 import { recordHealthEvent } from "./healthState";
 import { tryRecordEvent } from "./idempotency";
-import { Firestore } from "firebase-admin/firestore";
+import { Firestore, Timestamp } from "firebase-admin/firestore";
 
 vi.mock("./healthState", () => ({
   recordHealthEvent: vi.fn(),
@@ -49,6 +50,9 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
   let mockSet: ReturnType<typeof vi.fn>;
   // Per-test studio roster; the default is a single studio owning site 99999.
   let studioDocs: Array<{ id: string; data: () => Record<string, unknown> }>;
+  // Docs returned by a `clients.where(...)` lookup -- empty unless a test is
+  // exercising the fallback match onto an app-created (random id) client doc.
+  let clientQueryDocs: Array<{ id: string; ref: unknown }>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -59,6 +63,8 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
     studioDocs = [
       { id: "studio-123", data: () => ({ mindbodySiteId: 99999 }) },
     ];
+
+    clientQueryDocs = [];
 
     mockSet = vi.fn().mockResolvedValue(undefined);
     const mockDoc = vi.fn().mockReturnValue({
@@ -84,7 +90,17 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
           }),
         };
       }
-      return { doc: mockDoc };
+      return {
+        doc: mockDoc,
+        where: vi.fn(() => ({
+          limit: vi.fn(() => ({
+            get: vi.fn().mockResolvedValue({
+              docs: clientQueryDocs,
+              empty: clientQueryDocs.length === 0,
+            }),
+          })),
+        })),
+      };
     });
 
     deps = {
@@ -248,6 +264,80 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
       },
       { merge: true },
     );
+  });
+
+  it("10a. client.created payload writes mindbodyNotes and photoUrl, never trainer notes", async () => {
+    const photo =
+      "https://clients.mindbodyonline.com/studios/ACMEYoga/clients/100000009_large.jpg?osv=637136734414821811";
+    const rawBody = createValidEnvelope({
+      eventId: "client.created",
+      eventData: {
+        siteId: 99999,
+        clientId: "100000009",
+        firstName: "John",
+        lastName: "Smith",
+        notes: "Notes about the client.",
+        photoUrl: photo,
+      },
+    });
+    const req: WebhookRequest = {
+      rawBody,
+      signatureHeader: signForTest(rawBody, mockSecret),
+    };
+
+    const response = await handleMindbodyWebhook(deps, req);
+    expect(response.statusCode).toBe(200);
+
+    expect(mockSet).toHaveBeenCalledTimes(1);
+    const [written, opts] = mockSet.mock.calls[0];
+    expect(opts).toEqual({ merge: true });
+    expect(written.mindbodyNotes).toBe("Notes about the client.");
+    expect(written.photoUrl).toBe(photo);
+    // The trainer-authored `notes` field must never be written by the webhook.
+    expect(written).not.toHaveProperty("notes");
+  });
+
+  it("10b. Mindbody notes are capped at 1000 characters", async () => {
+    const rawBody = createValidEnvelope({
+      eventId: "client.updated",
+      eventData: {
+        siteId: 99999,
+        clientId: "100000009",
+        notes: "x".repeat(1500),
+      },
+    });
+    const req: WebhookRequest = {
+      rawBody,
+      signatureHeader: signForTest(rawBody, mockSecret),
+    };
+
+    await handleMindbodyWebhook(deps, req);
+
+    const [written] = mockSet.mock.calls[0];
+    expect(written.mindbodyNotes).toHaveLength(1000);
+  });
+
+  it("10c. Blank notes and non-HTTPS photoUrl are ignored", async () => {
+    const rawBody = createValidEnvelope({
+      eventId: "client.updated",
+      eventData: {
+        siteId: 99999,
+        clientId: "100000009",
+        notes: "   ",
+        photoUrl: "javascript:alert(1)",
+      },
+    });
+    const req: WebhookRequest = {
+      rawBody,
+      signatureHeader: signForTest(rawBody, mockSecret),
+    };
+
+    await handleMindbodyWebhook(deps, req);
+
+    const [written] = mockSet.mock.calls[0];
+    expect(written).not.toHaveProperty("mindbodyNotes");
+    expect(written).not.toHaveProperty("photoUrl");
+    expect(written).not.toHaveProperty("notes");
   });
 
   it("11. Booking created event maps and writes to schedules collection", async () => {
@@ -531,6 +621,214 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
         expect.objectContaining({ homeStudioId: "studio-westlake" }),
         { merge: true },
       );
+    });
+  });
+
+  describe("membership and contract events", () => {
+    it("20. clientMembershipAssignment.created writes an active membership record", async () => {
+      const rawBody = createValidEnvelope({
+        eventId: "clientMembershipAssignment.created",
+        eventData: {
+          siteId: 99999,
+          clientId: "100000009",
+          clientUniqueId: 100000009,
+          clientFirstName: "John",
+          clientLastName: "Smith",
+          membershipId: 12,
+          membershipName: "Gold Level Member",
+        },
+      });
+      const response = await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(mockSet).toHaveBeenCalledTimes(1);
+
+      const [written, opts] = mockSet.mock.calls[0];
+      expect(opts).toEqual({ merge: true });
+      expect(written.mindbodyMemberships["12"]).toMatchObject({
+        membershipId: 12,
+        membershipName: "Gold Level Member",
+        status: "Active",
+        siteId: 99999,
+      });
+      // A membership event must not touch the generic profile fields.
+      expect(written).not.toHaveProperty("homeStudioId");
+      expect(written).not.toHaveProperty("mindbody_name");
+      expect(written).not.toHaveProperty("mindbodyContracts");
+    });
+
+    it("21. clientMembershipAssignment.cancelled flips status without clearing the name", async () => {
+      const rawBody = createValidEnvelope({
+        eventId: "clientMembershipAssignment.cancelled",
+        eventData: { siteId: 99999, clientId: "100000009", membershipId: 12 },
+      });
+      const response = await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const [written] = mockSet.mock.calls[0];
+      const record = written.mindbodyMemberships["12"];
+      expect(record.status).toBe("Cancelled");
+      expect(record.cancelledAt).toBeDefined();
+      // Nothing overwrites the previously synced name -- the merge preserves it.
+      expect(record).not.toHaveProperty("membershipName");
+    });
+
+    it("22. clientContract.created stores the full contract with UTC timestamps", async () => {
+      const rawBody = createValidEnvelope({
+        eventId: "clientContract.created",
+        eventData: {
+          siteId: 99999,
+          clientId: "100000009",
+          clientUniqueId: 100000009,
+          agreementDateTime: "2018-03-20T10:29:42Z",
+          contractSoldByStaffId: 12,
+          contractSoldByStaffFirstName: "Jane",
+          contractSoldByStaffLastName: "Doe",
+          contractOriginationLocation: 1,
+          contractId: 3,
+          contractName: "Gold Membership Contract",
+          clientContractId: 117,
+          contractStartDateTime: "2018-03-20T00:00:00Z",
+          contractEndDateTime: "2019-03-20T00:00:00Z",
+          isAutoRenewing: true,
+        },
+      });
+      const response = await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const [written, opts] = mockSet.mock.calls[0];
+      expect(opts).toEqual({ merge: true });
+
+      const record = written.mindbodyContracts["117"];
+      expect(record).toMatchObject({
+        clientContractId: 117,
+        contractId: 3,
+        contractName: "Gold Membership Contract",
+        status: "Active",
+        isAutoRenewing: true,
+        soldByStaffName: "Jane Doe",
+        originationLocationId: 1,
+      });
+      expect(record.startDate).toEqual(
+        Timestamp.fromDate(new Date("2018-03-20T00:00:00Z")),
+      );
+      expect(record.endDate).toEqual(
+        Timestamp.fromDate(new Date("2019-03-20T00:00:00Z")),
+      );
+      expect(record.agreementDate).toEqual(
+        Timestamp.fromDate(new Date("2018-03-20T10:29:42Z")),
+      );
+      expect(record.cancelledAt).toBeNull();
+    });
+
+    it("23. clientContract.updated merges dates without clearing contractName", async () => {
+      const rawBody = createValidEnvelope({
+        eventId: "clientContract.updated",
+        eventData: {
+          siteId: 99999,
+          agreementDateTime: "2018-03-20T10:29:42Z",
+          clientId: "100000009",
+          clientUniqueId: 100000009,
+          clientContractId: 117,
+          contractStartDateTime: "2018-03-20T00:00:00Z",
+          contractEndDateTime: "2020-03-20T00:00:00Z",
+          isAutoRenewing: false,
+        },
+      });
+      const response = await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const record = mockSet.mock.calls[0][0].mindbodyContracts["117"];
+      expect(record.isAutoRenewing).toBe(false);
+      expect(record.endDate).toEqual(
+        Timestamp.fromDate(new Date("2020-03-20T00:00:00Z")),
+      );
+      // The update event carries neither, so neither may be written -- a
+      // written `undefined` would blow away the stored name.
+      expect(record).not.toHaveProperty("contractName");
+      expect(record).not.toHaveProperty("contractId");
+      expect(record).not.toHaveProperty("createdAt");
+    });
+
+    it("24. clientContract.cancelled marks the record cancelled and keeps its history", async () => {
+      const rawBody = createValidEnvelope({
+        eventId: "clientContract.cancelled",
+        eventData: {
+          siteId: 99999,
+          clientId: "100000009",
+          clientUniqueId: 100000009,
+          clientContractId: 117,
+        },
+      });
+      const response = await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const record = mockSet.mock.calls[0][0].mindbodyContracts["117"];
+      expect(record.status).toBe("Cancelled");
+      expect(record.cancelledAt).toBeDefined();
+      expect(record).not.toHaveProperty("startDate");
+      expect(record).not.toHaveProperty("endDate");
+      expect(record).not.toHaveProperty("contractName");
+    });
+
+    it("25. Falls back to the client doc matched on mindbodyClientId when no doc sits at the canonical id", async () => {
+      const orphanSet = vi.fn().mockResolvedValue(undefined);
+      clientQueryDocs = [
+        { id: "random-app-doc-id", ref: { set: orphanSet } },
+      ];
+
+      const rawBody = createValidEnvelope({
+        eventId: "clientContract.created",
+        eventData: {
+          siteId: 99999,
+          clientId: "100000009",
+          clientContractId: 117,
+          contractId: 3,
+          contractName: "Gold Membership Contract",
+          contractStartDateTime: "2018-03-20T00:00:00Z",
+          contractEndDateTime: "2019-03-20T00:00:00Z",
+          isAutoRenewing: true,
+        },
+      });
+      const response = await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+
+      expect(response.statusCode).toBe(200);
+      // Written to the app-created doc, not to clients/100000009.
+      expect(orphanSet).toHaveBeenCalledTimes(1);
+      expect(mockSet).not.toHaveBeenCalled();
+      expect(
+        orphanSet.mock.calls[0][0].mindbodyContracts["117"].contractName,
+      ).toBe("Gold Membership Contract");
+    });
+
+    it("26. toUtcTimestamp reads zoneless Mindbody strings as UTC, not host-local", () => {
+      expect(toUtcTimestamp("2019-03-20T00:00:00")).toEqual(
+        Timestamp.fromDate(new Date("2019-03-20T00:00:00Z")),
+      );
+      expect(toUtcTimestamp("2019-03-20T00:00:00Z")).toEqual(
+        Timestamp.fromDate(new Date("2019-03-20T00:00:00Z")),
+      );
+      expect(toUtcTimestamp("")).toBeUndefined();
+      expect(toUtcTimestamp("not a date")).toBeUndefined();
+      expect(toUtcTimestamp(undefined)).toBeUndefined();
     });
   });
 });

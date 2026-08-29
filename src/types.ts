@@ -272,6 +272,77 @@ export interface ClientRetentionMeta {
   lastContactedDate?: any; // Timestamp or string Date
 }
 
+/**
+ * A Mindbody membership assignment mirrored onto the client document by the
+ * `clientMembershipAssignment.*` webhooks. Cancelled records are kept (status
+ * flips to "Cancelled") so we never lose the history of what a client held.
+ */
+export interface MindbodyMembership {
+  membershipId: number | string;
+  /** Absent when the only event we ever saw for this membership was a cancel. */
+  membershipName?: string;
+  status: "Active" | "Cancelled";
+  /** Mindbody site the membership belongs to (multi-site disambiguation). */
+  siteId?: number | string;
+  /** Firestore Timestamp. */
+  assignedAt?: any;
+  /** Firestore Timestamp; only set once the membership is removed. */
+  cancelledAt?: any;
+  /** Firestore Timestamp of the last webhook that touched this record. */
+  lastSyncAt?: any;
+
+  /* --- Pull-sync only (GetActiveClientMemberships); webhooks never send these. --- */
+  /** Firestore Timestamp. */
+  activeDate?: any;
+  /** Firestore Timestamp. */
+  expirationDate?: any;
+  /** Sessions the membership includes, when it is a session-based one. */
+  sessionCount?: number | null;
+  /** Sessions left on the membership. */
+  sessionsRemaining?: number | null;
+  programName?: string;
+  /** Firestore Timestamp of the last Mindbody API pull that touched this. */
+  lastPullSyncAt?: any;
+}
+
+/**
+ * A Mindbody contract mirrored onto the client document by the
+ * `clientContract.*` webhooks, keyed by `clientContractId` (the unique
+ * client + contract pairing). `clientContract.updated` carries dates only, so
+ * writes are deep-merged and never clear a previously synced name.
+ */
+export interface MindbodyContract {
+  /** Unique identifier for the contract + client pairing. Map key. */
+  clientContractId: number | string;
+  /** The contract template id. Absent on update-only records. */
+  contractId?: number | string;
+  /** Absent on update-only records -- the update event omits the name. */
+  contractName?: string;
+  status: "Active" | "Cancelled";
+  siteId?: number | string;
+  isAutoRenewing?: boolean;
+  /** Firestore Timestamps parsed from Mindbody's UTC strings. */
+  startDate?: any;
+  endDate?: any;
+  agreementDate?: any;
+  soldByStaffName?: string;
+  /** 98 means the client bought it themselves (app / online store / API). */
+  originationLocationId?: number | string;
+  createdAt?: any;
+  updatedAt?: any;
+  cancelledAt?: any;
+  lastSyncAt?: any;
+
+  /**
+   * Pull-sync only. The Mindbody API exposes `AutopayStatus` (a string) rather
+   * than the webhook's `isAutoRenewing` boolean, so it is stored under its own
+   * name and never overwrites the boolean.
+   */
+  autopayStatus?: string;
+  /** Firestore Timestamp of the last Mindbody API pull that touched this. */
+  lastPullSyncAt?: any;
+}
+
 export interface Client {
   id?: string;
   mindbodyId?: string;
@@ -319,6 +390,14 @@ export interface Client {
   remainingSessions: number;
   legacy_filemaker_id?: string;
   mindbody_name?: string;
+  /** First 1000 chars of the client's Mindbody account notes (webhook-synced, read-only in app). */
+  mindbodyNotes?: string;
+  /** Mindbody memberships keyed by membershipId. Webhook-synced, read-only. */
+  mindbodyMemberships?: Record<string, MindbodyMembership>;
+  /** Mindbody contracts keyed by clientContractId. Webhook-synced, read-only. */
+  mindbodyContracts?: Record<string, MindbodyContract>;
+  /** Firestore Timestamp of the last Mindbody contract/membership pull. */
+  mindbodyCommercialSyncedAt?: any;
   completedSessions?: number;
   sessionCount?: number;
   lifetimeReps?: number;
@@ -392,6 +471,54 @@ export interface Routine {
   machineNotes?: Record<string, string>; // Machine ID -> Routine-specific Note
   createdAt?: any;
   updatedAt?: any;
+}
+
+/**
+ * A reusable machine sequence a trainer can drop into a client's Routine A/B
+ * in one tap. Two tiers, matching the LeaderboardDocument scope convention:
+ *  - scope: "global"   -> shipped in code (see data/routine-presets.ts), not
+ *    a Firestore doc, so it has no studioId/createdBy.
+ *  - scope: <studioId> -> a studio's own saved preset, stored in the
+ *    routinePresets collection and only ever shown to that studio.
+ */
+export interface RoutinePreset {
+  id?: string;
+  name: string;
+  description?: string;
+  machineIds: string[];
+  scope: "global" | string;
+  studioId?: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: any;
+}
+
+/**
+ * Per-studio override of a machine's adjustable settings, display order,
+ * and whether this studio even has that piece of equipment (round: Multi-
+ * Tenant Machine Settings, Aug 2026). Doc id is `${studioId}_${machineId}`.
+ * The base `machines` collection stays the shared, global catalog (names,
+ * anatomy mapping, etc.) — this collection layers studio-specific
+ * customization on top without ever mutating that shared doc, so one
+ * studio's settings edit can no longer silently change what every other
+ * studio sees.
+ */
+export interface StudioMachineSetting {
+  id?: string;
+  studioId: string;
+  machineId: string;
+  settingOptions?: string[];
+  standardSettings?: Record<string, string>;
+  /** Custom display order for this studio; falls back to
+   * DEFAULT_MACHINE_DISPLAY_ORDER (data/machine-display-order.ts) when
+   * unset. */
+  order?: number;
+  /** Whether this studio possesses/uses this piece of equipment.
+   * Undefined/true = possessed (matches pre-existing behavior for studios
+   * that haven't customized anything yet). */
+  isActive?: boolean;
+  updatedAt?: any;
+  updatedBy?: string;
 }
 
 export interface RoutineAdjustment {

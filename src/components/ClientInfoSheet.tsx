@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { OccupationSelect } from "./OccupationSelect";
+import { ClientMembershipsCard } from "./mindbody/ClientMembershipsCard";
 import { CLINICAL_FLAGS_MATRIX } from "../data/clinical-matrix";
 
 interface ClientInfoSheetProps {
@@ -69,6 +70,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
         mindbodyId: client.mindbodyId || "",
         mindbodyClientId: client.mindbodyClientId || client.mindbodyId || "",
         mindbody_name: client.mindbody_name || "",
+        mindbodyNotes: client.mindbodyNotes || "",
         photoUrl: client.photoUrl || "",
         dateOfBirth: client.dateOfBirth || "",
         gender: client.gender || "",
@@ -279,7 +281,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
                 value="identity"
                 className="data-[state=active]:bg-[#38BDF8]/10 data-[state=active]:text-[#38BDF8] data-[state=active]:shadow-none rounded-xl text-slate-600 dark:text-slate-400 text-[11px] sm:text-xs font-bold uppercase tracking-widest h-10 px-4 transition-all border border-transparent data-[state=active]:border-[#38BDF8]/20 shrink-0 w-auto md:w-full justify-start cursor-pointer"
               >
-                Identity
+                General
               </TabsTrigger>
               <TabsTrigger
                 value="lifestyle"
@@ -316,7 +318,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
 
           <div className="flex-1 min-h-0 h-full overflow-y-auto p-6 md:p-10 bg-white dark:bg-slate-900">
             <div className="max-w-3xl pb-16">
-              {/* 1. Identity & Contact */}
+              {/* 1. General (identity & contact) */}
               <TabsContent value="identity" className="m-0 space-y-8">
                 <div className="flex flex-col gap-6">
                   <div className="flex items-center gap-4 p-6 border border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-800/60 shadow-sm">
@@ -449,6 +451,9 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
                               if (mbData.gender) updateField("gender", mbData.gender);
                               if (mbData.address) updateField("address", mbData.address);
                               if (mbData.photoUrl) updateField("photoUrl", mbData.photoUrl);
+                              // Mindbody's account notes -- never the app's
+                              // trainer-authored `notes` field.
+                              if (mbData.notes) updateField("mindbodyNotes", mbData.notes.slice(0, 1000));
                             } catch (e: any) {
                               alert(e.message || "Failed to sync MindBody demographics");
                             } finally {
@@ -519,6 +524,32 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
                           updateField("emergencyContactPhone", e.target.value)
                         }
                       />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-6 md:pt-8 border-t border-slate-200 dark:border-slate-800">
+                    <div className="p-6 border border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-800/60 shadow-sm">
+                      <div className="flex items-center justify-between gap-4">
+                        <p className="text-[12px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">
+                          MindBody Account Notes
+                        </p>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                          Read-only
+                        </span>
+                      </div>
+                      {formData.mindbodyNotes || client.mindbodyNotes ? (
+                        <p className="mt-3 text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                          {formData.mindbodyNotes || client.mindbodyNotes}
+                        </p>
+                      ) : (
+                        <p className="mt-3 text-xs italic text-slate-500 dark:text-slate-400">
+                          No account notes synced from MindBody yet.
+                        </p>
+                      )}
+                      <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                        Synced automatically from this client&apos;s MindBody
+                        profile. To change it, edit the note in MindBody.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -813,6 +844,11 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
                       </span>
                     </div>
                   </div>
+                </div>
+
+                {/* MindBody-owned commercial state; read-only by design. */}
+                <div className="mt-6 border-t border-slate-200 dark:border-slate-800 pt-8">
+                  <ClientMembershipsCard client={client} />
                 </div>
 
                 <div className="space-y-4 mt-6 border-t border-slate-200 dark:border-slate-800 pt-8">

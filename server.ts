@@ -913,9 +913,111 @@ async function startServer() {
         photoUrl: client.PhotoUrl || "",
         emergencyContactName: client.EmergencyContactInfoName || "",
         emergencyContactPhone: client.EmergencyContactInfoPhone || "",
+        // Mindbody's account notes. Kept separate from the app's trainer-authored
+        // `notes` field -- the caller writes this to `mindbodyNotes`.
+        notes: typeof client.Notes === "string" ? client.Notes : "",
       });
     } catch (error: any) {
       console.error("Error fetching MindBody client demographics:", error);
+      return res.status(500).json({ error: error.message || "Server error" });
+    }
+  });
+
+  /**
+   * Pulls a client's contracts and active memberships from Mindbody.
+   *
+   * The `clientContract.*` / `clientMembershipAssignment.*` webhooks only fire
+   * on future changes and only reach the live project, so this is how existing
+   * clients (and any non-live environment) get populated. The response is
+   * shaped to match the webhook's Firestore records so both writers agree.
+   */
+  app.post("/api/mindbody/client-commercial", async (req, res) => {
+    try {
+      const mindbodyApiKey = process.env.MINDBODY_API_KEY;
+      if (!mindbodyApiKey) {
+        return res
+          .status(500)
+          .json({ error: "MINDBODY_API_KEY environment variable is not set." });
+      }
+
+      const { siteId, mindbodyClientId } = req.body || {};
+      if (!siteId) return res.status(400).json({ error: "siteId is required" });
+      if (!mindbodyClientId) {
+        return res.status(400).json({ error: "mindbodyClientId is required" });
+      }
+
+      const site = String(siteId).trim();
+      const clientId = String(mindbodyClientId).trim();
+      const userToken = await getMindbodyToken(site);
+
+      const mbHeaders = {
+        "Content-Type": "application/json",
+        "Api-Key": mindbodyApiKey,
+        SiteId: site,
+        Authorization: userToken,
+      };
+
+      const callMindbody = async (path: string) => {
+        const url = `https://api.mindbodyonline.com/public/v6/client/${path}?ClientId=${encodeURIComponent(clientId)}&Limit=100`;
+        const r = await fetch(url, { method: "GET", headers: mbHeaders });
+        if (!r.ok) {
+          const text = await r.text();
+          console.warn(`Mindbody ${path} failed (Site ${site}):`, r.status, text);
+          return { ok: false as const, error: text, data: null as any };
+        }
+        return { ok: true as const, error: "", data: await r.json() };
+      };
+
+      // Fetched independently: a client can hold contracts but no membership,
+      // and one endpoint failing should not blank the other.
+      const [contractsRes, membershipsRes] = await Promise.all([
+        callMindbody("clientcontracts"),
+        callMindbody("activeclientmemberships"),
+      ]);
+
+      if (!contractsRes.ok && !membershipsRes.ok) {
+        return res.status(502).json({
+          error: `MindBody API Response: ${contractsRes.error || membershipsRes.error}`,
+        });
+      }
+
+      const contracts = (contractsRes.data?.Contracts || []).map((c: any) => ({
+        // Mindbody's ClientContract `Id` IS the clientContractId the webhook
+        // keys on, so pull-synced and webhook-synced records land on the
+        // same map entry instead of duplicating.
+        clientContractId: c.Id,
+        contractName: c.ContractName || "",
+        agreementDate: c.AgreementDate || null,
+        startDate: c.StartDate || null,
+        endDate: c.EndDate || null,
+        // The pull API exposes AutopayStatus, not the webhook's boolean
+        // isAutoRenewing, so it is reported under its own name and never
+        // overwrites a value a webhook already supplied.
+        autopayStatus: c.AutopayStatus || "",
+        originationLocationId: c.OriginationLocationId ?? null,
+        siteId: c.SiteId ?? Number(site),
+      }));
+
+      const memberships = (membershipsRes.data?.ClientMemberships || []).map(
+        (m: any) => ({
+          membershipId: m.Id,
+          membershipName: m.Name || "",
+          activeDate: m.ActiveDate || null,
+          expirationDate: m.ExpirationDate || null,
+          count: m.Count ?? null,
+          remaining: m.Remaining ?? null,
+          programName: m.Program?.Name || "",
+          siteId: m.SiteId ?? Number(site),
+        }),
+      );
+
+      return res.json({
+        contracts,
+        memberships,
+        partial: !contractsRes.ok || !membershipsRes.ok,
+      });
+    } catch (error: any) {
+      console.error("Error fetching MindBody client commercial data:", error);
       return res.status(500).json({ error: error.message || "Server error" });
     }
   });

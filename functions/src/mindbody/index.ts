@@ -108,6 +108,66 @@ async function resolveStudio(
 }
 
 /**
+ * Parses a Mindbody UTC datetime string into a Timestamp.
+ *
+ * Unlike the booking events -- whose times are naive studio wall-clock strings
+ * and go through `wallClockToInstant` -- membership and contract events send
+ * true UTC (`2018-03-20T00:00:00Z`). A missing zone designator is treated as
+ * UTC rather than as the container's clock, so behaviour never depends on where
+ * the function happens to run.
+ */
+export function toUtcTimestamp(value: unknown): Timestamp | undefined {
+  if (typeof value !== "string") return undefined;
+  const raw = value.trim();
+  if (!raw) return undefined;
+  const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw) ? raw : `${raw}Z`;
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  return Timestamp.fromDate(parsed);
+}
+
+/** Firestore map keys cannot contain path characters; Mindbody ids are numeric. */
+function toMapKey(value: unknown): string | undefined {
+  if (typeof value !== "string" && typeof value !== "number") return undefined;
+  const key = String(value).trim();
+  if (!key || /[.~*/[\]]/.test(key)) return undefined;
+  return key;
+}
+
+/**
+ * Finds the client document a Mindbody event belongs to.
+ *
+ * Clients created inside the app carry a random doc id with the Mindbody id in
+ * a field, while webhook-created clients live at `clients/{mindbodyClientId}`.
+ * We try the canonical path first, then fall back to the id fields (single-field
+ * equality -- no composite index required) so membership and contract data does
+ * not land on an orphan document. When nothing matches we return the canonical
+ * ref, which is the existing upsert behaviour.
+ */
+async function resolveClientRef(
+  firestore: Firestore,
+  clientId: string | number,
+) {
+  const id = String(clientId).trim();
+  const canonical = firestore.collection("clients").doc(id);
+
+  const direct = await canonical.get();
+  if (direct.exists) return canonical;
+
+  for (const field of ["mindbodyClientId", "mindbodyId"]) {
+    const snap = await firestore
+      .collection("clients")
+      .where(field, "==", id)
+      .limit(1)
+      .get();
+    const docs = snap?.docs ?? [];
+    if (docs.length > 0) return docs[0].ref;
+  }
+
+  return canonical;
+}
+
+/**
  * Handles incoming Mindbody webhooks.
  * Validates the signature, ensures uniqueness via idempotency checks,
  * and updates client records directly in Firestore.
@@ -199,12 +259,136 @@ export async function handleMindbodyWebhook(
         ? rawLocationId
         : undefined;
 
-    const isBookingEvent =
-      eventType.toLowerCase().includes("booking") ||
-      eventType.toLowerCase().includes("appointment");
-    const isClientEvent = !isBookingEvent;
+    const lowerType = eventType.toLowerCase();
 
-    if (isClientEvent && clientId) {
+    // Membership and contract events are checked first: they look like client
+    // events, but their payloads carry none of the generic client fields and
+    // must not fall through to the profile upsert.
+    const isMembershipEvent = lowerType.includes("clientmembershipassignment");
+    const isContractEvent = lowerType.includes("clientcontract");
+    const isCommercialEvent = isMembershipEvent || isContractEvent;
+
+    const isBookingEvent =
+      !isCommercialEvent &&
+      (lowerType.includes("booking") || lowerType.includes("appointment"));
+    const isClientEvent = !isBookingEvent && !isCommercialEvent;
+
+    if (isCommercialEvent && clientId) {
+      const clientRef = await resolveClientRef(deps.firestore, clientId);
+      const isCancelEvent =
+        lowerType.includes("cancel") || lowerType.includes("delete");
+      const now = FieldValue.serverTimestamp();
+      const updates: Record<string, unknown> = {};
+
+      if (isMembershipEvent) {
+        // `clientMembershipAssignment.cancelled` carries only siteId, clientId
+        // and membershipId, so the record is merged, never replaced -- the name
+        // captured at assignment time survives the cancel.
+        const key = toMapKey(payloadData.membershipId);
+        if (key) {
+          const record: Record<string, unknown> = {
+            membershipId: payloadData.membershipId,
+            status: isCancelEvent ? "Cancelled" : "Active",
+            lastSyncAt: now,
+          };
+          if (siteId !== undefined) record.siteId = siteId;
+          if (
+            typeof payloadData.membershipName === "string" &&
+            payloadData.membershipName.trim()
+          ) {
+            record.membershipName = payloadData.membershipName.trim();
+          }
+          if (isCancelEvent) {
+            record.cancelledAt = now;
+          } else {
+            record.assignedAt = now;
+            // A re-assigned membership must not keep looking cancelled.
+            record.cancelledAt = null;
+          }
+          updates.mindbodyMemberships = { [key]: record };
+        } else {
+          console.warn(
+            `Mindbody webhook: membership event ${eventId} for client ${clientId} had no usable membershipId; skipping.`,
+          );
+        }
+      }
+
+      if (isContractEvent) {
+        // Keyed on clientContractId -- the unique client + contract pairing.
+        // One client can hold two instances of the same contractId.
+        const key = toMapKey(payloadData.clientContractId);
+        if (key) {
+          const record: Record<string, unknown> = {
+            clientContractId: payloadData.clientContractId,
+            lastSyncAt: now,
+            updatedAt: now,
+          };
+          if (siteId !== undefined) record.siteId = siteId;
+
+          if (isCancelEvent) {
+            // Deleted in Mindbody. We keep the record and flip its status so
+            // the studio can still see what the client used to hold.
+            record.status = "Cancelled";
+            record.cancelledAt = now;
+          } else {
+            record.status = "Active";
+            record.cancelledAt = null;
+
+            // `.updated` (suspensions, terminations, date changes) omits
+            // contractId and contractName, so those keys are only written when
+            // the event actually carries them.
+            if (payloadData.contractId !== undefined) {
+              record.contractId = payloadData.contractId;
+            }
+            if (
+              typeof payloadData.contractName === "string" &&
+              payloadData.contractName.trim()
+            ) {
+              record.contractName = payloadData.contractName.trim();
+            }
+            if (typeof payloadData.isAutoRenewing === "boolean") {
+              record.isAutoRenewing = payloadData.isAutoRenewing;
+            }
+            if (payloadData.contractOriginationLocation !== undefined) {
+              record.originationLocationId =
+                payloadData.contractOriginationLocation;
+            }
+
+            const soldBy = `${
+              typeof payloadData.contractSoldByStaffFirstName === "string"
+                ? payloadData.contractSoldByStaffFirstName
+                : ""
+            } ${
+              typeof payloadData.contractSoldByStaffLastName === "string"
+                ? payloadData.contractSoldByStaffLastName
+                : ""
+            }`.trim();
+            if (soldBy) record.soldByStaffName = soldBy;
+
+            const startDate = toUtcTimestamp(payloadData.contractStartDateTime);
+            if (startDate) record.startDate = startDate;
+            const endDate = toUtcTimestamp(payloadData.contractEndDateTime);
+            if (endDate) record.endDate = endDate;
+            const agreementDate = toUtcTimestamp(payloadData.agreementDateTime);
+            if (agreementDate) record.agreementDate = agreementDate;
+
+            if (lowerType.includes("created")) record.createdAt = now;
+          }
+
+          updates.mindbodyContracts = { [key]: record };
+        } else {
+          console.warn(
+            `Mindbody webhook: contract event ${eventId} for client ${clientId} had no usable clientContractId; skipping.`,
+          );
+        }
+      }
+
+      // A merge write on nested maps leaves every other membership, contract
+      // and profile field on the document untouched.
+      if (Object.keys(updates).length > 0) {
+        await clientRef.set(updates, { merge: true });
+      }
+    } else if (isClientEvent && clientId) {
       const updates: Record<string, unknown> = {};
 
       // Extract Active Membership Status / Tier Name
@@ -235,6 +419,20 @@ export async function handleMindbodyWebhook(
       ) {
         updates.mindbody_name =
           `${typeof payloadData.firstName === "string" ? payloadData.firstName : ""} ${typeof payloadData.lastName === "string" ? payloadData.lastName : ""}`.trim();
+      }
+
+      // Profile enrichment from client.created / client.updated payloads.
+      // Mindbody's account notes go to their OWN field (mindbodyNotes) --
+      // `notes` on client docs is trainer-authored and must never be
+      // overwritten by a sync.
+      if (typeof payloadData.notes === "string" && payloadData.notes.trim()) {
+        updates.mindbodyNotes = payloadData.notes.slice(0, 1000);
+      }
+      if (
+        typeof payloadData.photoUrl === "string" &&
+        /^https:\/\//i.test(payloadData.photoUrl.trim())
+      ) {
+        updates.photoUrl = payloadData.photoUrl.trim();
       }
 
       if (siteId) {
