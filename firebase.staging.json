@@ -1,0 +1,9 @@
+{
+  "firestore": [
+    {
+      "database": "(default)",
+      "rules": "firestore.staging.rules",
+      "indexes": "firestore.indexes.json"
+    }
+  ]
+}

@@ -1,3 +1,14 @@
+// ============================================================
+// STAGING RULES for the msftesting-cda43 project ONLY.
+// Same as firestore.rules, with two locks added because this
+// database holds REAL client data:
+//   1. Reading data requires a trainer profile, not just any
+//      signed-in Google account.
+//   2. Nobody can create their own trainer profile; only admins
+//      and owners create trainers. (Sign in ONCE before publishing
+//      these rules, so your admin profile exists first.)
+// Do NOT deploy to the live project without review.
+// ============================================================
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -225,14 +236,12 @@ service cloud.firestore {
 
     // TRAINERS: Directory search, auth checks, and creation permissions
     match /trainers/{trainerId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create: if isAuthenticated() && 
                     request.resource.data.primaryHomeStudioId != null &&
                     isValidTrainer(request.resource.data) &&
                     (isSuperAdmin() || isFranchiseOwner() || 
-                     isStudioOwnerOrHeadTrainer(request.resource.data.primaryHomeStudioId) ||
-                     // Allow any authenticated user to create the first trainer (bootstrap)
-                     (request.auth.uid == trainerId));
+                     isStudioOwnerOrHeadTrainer(request.resource.data.primaryHomeStudioId));
       allow update: if isSuperAdmin() || 
                     ( (isFranchiseOwner() || 
                       (resource.data.primaryHomeStudioId != null && isStudioOwnerOrHeadTrainer(resource.data.primaryHomeStudioId)) || 
@@ -269,7 +278,7 @@ service cloud.firestore {
 
     // CLIENTS: All authenticated trainers can read clients (needed to start sessions)
     match /clients/{clientId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create: if isAuthenticated() && 
                     isValidClient(request.resource.data) && 
                     (isSuperAdmin() || isAnyAuthenticatedTrainer());
@@ -281,7 +290,7 @@ service cloud.firestore {
 
     // DISK SETTINGS: Machine settings assigned to specific athletes
     match /clientMachineSettings/{settingId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow update: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow delete: if isSuperAdmin() || isFranchiseOwner() || isAuthenticated();
@@ -289,7 +298,7 @@ service cloud.firestore {
 
     // PHYSICAL MACHINES
     match /machines/{machineId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create, update: if isSuperAdmin() || isFranchiseOwner();
       allow delete: if isSuperAdmin();
 
@@ -299,20 +308,20 @@ service cloud.firestore {
     }
 
     match /machineSettingChanges/{changeId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
     }
 
     // ROUTINES & ADJUSTMENTS
     match /routines/{routineId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow update: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
     match /routineAdjustments/{adjustmentId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
     }
 
@@ -322,7 +331,7 @@ service cloud.firestore {
     // routines/routineAdjustments blocks above (isolation is client-side
     // pending the pre-launch security hardening pass).
     match /routinePresets/{presetId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow update: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow delete: if isAuthenticated() && isAnyAuthenticatedTrainer();
@@ -335,7 +344,7 @@ service cloud.firestore {
     // deliberately unhardened posture as routinePresets above, pending the
     // pre-launch security hardening pass already tracked in ROADMAP.md.
     match /studioMachineSettings/{settingId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow update: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow delete: if isAuthenticated() && isAnyAuthenticatedTrainer();
@@ -343,7 +352,7 @@ service cloud.firestore {
 
     // TRAINING SESSIONS — KEY FIX: Any authenticated trainer with a profile can write sessions
     match /sessions/{sessionId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create: if isAuthenticated() && isAnyAuthenticatedTrainer() && isValidSession(request.resource.data);
       allow update: if isAuthenticated() && isAnyAuthenticatedTrainer() && isValidSession(request.resource.data);
       allow delete: if isSuperAdmin() || isFranchiseOwner();
@@ -355,7 +364,7 @@ service cloud.firestore {
 
     // EXERCISE LOGS — KEY FIX: Any authenticated trainer can write exercise logs
     match /exerciseLogs/{logId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create: if isAuthenticated() && isAnyAuthenticatedTrainer() && isValidLog(request.resource.data);
       allow update: if isAuthenticated() && isAnyAuthenticatedTrainer() && isValidLog(request.resource.data) && (
         resource.data.get('sessionId', null) == request.resource.data.get('sessionId', null) &&
@@ -366,7 +375,7 @@ service cloud.firestore {
 
     // CALENDAR SCHEDULES
     match /schedules/{scheduleId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create, update: if isAuthenticated() && (
         isFranchiseOwner() || 
         isSuperAdmin() ||
@@ -377,7 +386,7 @@ service cloud.firestore {
     
     // CLINICAL NOTES
     match /sessionNotes/{noteId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow update: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow delete: if isSuperAdmin() || isFranchiseOwner();
@@ -396,27 +405,27 @@ service cloud.firestore {
     }
   
     match /leaderboards/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow write: if isSuperAdmin();
     }
 
     // SPECIAL ATHLETE FOCUS PATTERNS
     match /trainerFocuses/{focusId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow update: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
     match /progressReports/{reportId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow update: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
     match /focusRecords/{focusId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow update: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow delete: if isSuperAdmin() || isFranchiseOwner();
@@ -424,7 +433,7 @@ service cloud.firestore {
 
     // STUDIOS: Territory configurations
     match /studios/{studioId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       // Relaxed: allow any admin/franchise owner/studio leader to create/update studios
       // mindbodySiteId is no longer required at create time
       allow create, update: if isSuperAdmin() || isFranchiseOwner() || isStudioOwnerOrHeadTrainer(studioId) ||
@@ -435,24 +444,24 @@ service cloud.firestore {
 
     // NETWORKS: Regional Franchise Groupings
     match /networks/{networkId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create, update: if isSuperAdmin() || isFranchiseOwner();
       allow delete: if isSuperAdmin();
     }
 
     match /aggregations/{aggId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow write: if isSuperAdmin();
     }
 
     match /clinicalIncidents/{incidentId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow write: if isAuthenticated() && isAnyAuthenticatedTrainer();
     }
 
     // ACCESS REQUESTS
     match /access_requests/{requestId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create: if (
                       // Type 1: Initial System Access
                       (
@@ -484,7 +493,7 @@ service cloud.firestore {
 
     // ANNOUNCEMENTS
     match /hub_announcements/{announcementId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create, update: if isAuthenticated() && isValidHubAnnouncement(request.resource.data);
       allow delete: if isSuperAdmin() || isFranchiseOwner() || 
                     (resource.data.studioId != null && isStudioOwnerOrHeadTrainer(resource.data.studioId));
@@ -503,7 +512,7 @@ service cloud.firestore {
 
     // Permanent cross-train access record
     match /clients/{clientId}/crossTrainAccess/{studioId} {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow create, update: if isSuperAdmin() || (
         isStudioOwnerOrHeadTrainer(studioId) &&
         request.resource.data.grantedBy == request.auth.uid &&
@@ -518,7 +527,7 @@ service cloud.firestore {
       allow create: if isAuthenticated() &&
         request.resource.data.requestingTrainerId == request.auth.uid &&
         request.resource.data.status == 'pending';
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow update: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(resource.data.targetStudioId);
       allow delete: if isSuperAdmin();
     }
@@ -538,7 +547,7 @@ service cloud.firestore {
 
     // Global integration health (server writes; all authenticated users read for UI)
     match /system/health {
-      allow read: if isAuthenticated();
+      allow read: if hasAnyTrainerProfile();
       allow write: if false;
     }
 
