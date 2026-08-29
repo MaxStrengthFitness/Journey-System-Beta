@@ -12,7 +12,36 @@ export default defineConfig(({mode}) => {
     },
     build: {
       outDir: "dist",
-      emptyOutDir: false
+      emptyOutDir: false,
+      rollupOptions: {
+        output: {
+          // Big third-party libraries get their own files ("chunks").
+          // They rarely change between releases, so returning browsers
+          // reuse the cached copy instead of re-downloading them.
+          manualChunks(id) {
+            if (!id.includes("node_modules")) return undefined;
+            if (
+              id.includes("node_modules/react/") ||
+              id.includes("node_modules/react-dom/") ||
+              id.includes("node_modules/scheduler/")
+            )
+              return "vendor-react";
+            if (
+              id.includes("node_modules/firebase/") ||
+              id.includes("node_modules/@firebase/")
+            )
+              return "vendor-firebase";
+            if (
+              id.includes("node_modules/motion/") ||
+              id.includes("node_modules/framer-motion/") ||
+              id.includes("node_modules/motion-dom/") ||
+              id.includes("node_modules/motion-utils/")
+            )
+              return "vendor-motion";
+            return undefined;
+          },
+        },
+      },
     },
     resolve: {
       alias: {

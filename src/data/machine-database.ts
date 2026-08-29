@@ -1,9 +1,9 @@
-import legPressImg from '../assets/images/regenerated_image_1778764853982.png';
-import legCurlImg from '../assets/images/regenerated_image_1778764857234.png';
-import legExtensionImg from '../assets/images/regenerated_image_1778764860741.png';
-import abductionImg from '../assets/images/regenerated_image_1778764863940.png';
-import adductionImg from '../assets/images/regenerated_image_1778764867344.png';
-import chestPressImg from '../assets/images/regenerated_image_1778764870689.png';
+import legPressImg from '../assets/images/leg-press.webp';
+import legCurlImg from '../assets/images/leg-curl.webp';
+import legExtensionImg from '../assets/images/leg-extension.webp';
+import abductionImg from '../assets/images/hip-abduction.webp';
+import adductionImg from '../assets/images/hip-adduction.webp';
+import chestPressImg from '../assets/images/chest-press.webp';
 
 export interface MachineKnowledge {
   kinematicClassification?: string;

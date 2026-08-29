@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import {
   Users,
   Plus,
@@ -68,29 +68,83 @@ import { isSessionValid } from "./lib/utils";
 import { useToast } from "./contexts/ToastContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import AccessRequestView from "./components/AccessRequestView";
-import { TrainerControlHubView } from "./components/TrainerControlHubView";
-import { ClientProfileView } from "./components/ClientProfileView";
-import { CalendarView } from "./components/CalendarView";
-import { LegacyChartImporter } from "./components/LegacyChartImporter";
-import { MachineLeaderboardDashboard } from "./components/MachineLeaderboardDashboard";
-import { ProfilesView } from "./components/ProfilesView";
-import { ClientDirectoryView } from "./components/ClientDirectoryView";
-import { TrainerProfileView } from "./components/TrainerProfileView";
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const TrainerControlHubView = lazy(() =>
+  import("./components/TrainerControlHubView").then((m) => ({ default: m.TrainerControlHubView })),
+);
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const ClientProfileView = lazy(() =>
+  import("./components/ClientProfileView").then((m) => ({ default: m.ClientProfileView })),
+);
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const CalendarView = lazy(() =>
+  import("./components/CalendarView").then((m) => ({ default: m.CalendarView })),
+);
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const LegacyChartImporter = lazy(() =>
+  import("./components/LegacyChartImporter").then((m) => ({ default: m.LegacyChartImporter })),
+);
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const MachineLeaderboardDashboard = lazy(() =>
+  import("./components/MachineLeaderboardDashboard").then((m) => ({ default: m.MachineLeaderboardDashboard })),
+);
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const ProfilesView = lazy(() =>
+  import("./components/ProfilesView").then((m) => ({ default: m.ProfilesView })),
+);
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const ClientDirectoryView = lazy(() =>
+  import("./components/ClientDirectoryView").then((m) => ({ default: m.ClientDirectoryView })),
+);
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const TrainerProfileView = lazy(() =>
+  import("./components/TrainerProfileView").then((m) => ({ default: m.TrainerProfileView })),
+);
 import { StudioSelectionView } from "./components/StudioSelectionView";
-import { IntegrationsHubView } from "./components/IntegrationsHubView";
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const IntegrationsHubView = lazy(() =>
+  import("./components/IntegrationsHubView").then((m) => ({ default: m.IntegrationsHubView })),
+);
 import { AppHeader } from "./components/AppHeader";
 import { useTheme } from "./components/ThemeProvider";
 import { ClientsView } from "./components/ClientsView";
-import { ClientHistoryView } from "./components/ClientHistoryView";
-import { MachinesView } from "./components/MachinesView";
-import { WorkoutTrackerView } from "./components/WorkoutTrackerView";
-import { ConsultationWizard } from "./components/ConsultationWizard";
-import { AdminDashboardView } from "./components/AdminDashboardView";
-import { FranchiseDashboardView } from "./components/FranchiseDashboardView";
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const ClientHistoryView = lazy(() =>
+  import("./components/ClientHistoryView").then((m) => ({ default: m.ClientHistoryView })),
+);
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const MachinesView = lazy(() =>
+  import("./components/MachinesView").then((m) => ({ default: m.MachinesView })),
+);
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const WorkoutTrackerView = lazy(() =>
+  import("./components/WorkoutTrackerView").then((m) => ({ default: m.WorkoutTrackerView })),
+);
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const ConsultationWizard = lazy(() =>
+  import("./components/ConsultationWizard").then((m) => ({ default: m.ConsultationWizard })),
+);
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const AdminDashboardView = lazy(() =>
+  import("./components/AdminDashboardView").then((m) => ({ default: m.AdminDashboardView })),
+);
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const FranchiseDashboardView = lazy(() =>
+  import("./components/FranchiseDashboardView").then((m) => ({ default: m.FranchiseDashboardView })),
+);
 import { CreateClientModal } from "./components/CreateClientModal";
-import { ClientProgressReportView } from "./components/ClientProgressReportView";
-import { ClientClinicalReviewPreloader } from "./components/ClientClinicalReviewPreloader";
-import { MachineAnatomyCatalogView } from "./components/MachineAnatomyCatalogView";
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const ClientProgressReportView = lazy(() =>
+  import("./components/ClientProgressReportView").then((m) => ({ default: m.ClientProgressReportView })),
+);
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const ClientClinicalReviewPreloader = lazy(() =>
+  import("./components/ClientClinicalReviewPreloader").then((m) => ({ default: m.ClientClinicalReviewPreloader })),
+);
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const MachineAnatomyCatalogView = lazy(() =>
+  import("./components/MachineAnatomyCatalogView").then((m) => ({ default: m.MachineAnatomyCatalogView })),
+);
 import { MaxStrengthLogo } from "./components/MaxStrengthLogo";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { HubAnnouncementsWidget } from "./components/HubAnnouncementsWidget";
@@ -123,6 +177,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+// Shown in the content area while a lazy view downloads on first visit.
+const ViewLoader = () => (
+  <div className="flex flex-1 items-center justify-center min-h-[40vh]">
+    <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
 const DEFAULT_MACHINES: Machine[] = [
   {
@@ -419,7 +480,10 @@ export const getMachineImageUrl = (machineId?: string): string => {
 
 import { useActiveStudio } from "./ActiveStudioContext";
 
-import { PurchaseView } from "./components/mindbody/PurchaseView";
+// Lazy-loaded: downloaded on first visit to this view, not at app start.
+const PurchaseView = lazy(() =>
+  import("./components/mindbody/PurchaseView").then((m) => ({ default: m.PurchaseView })),
+);
 
 import { useTrainers } from "./hooks/useTrainers";
 import { useStudios } from "./hooks/useStudios";
@@ -1601,6 +1665,7 @@ export default function AppContent({
               : undefined
           }
         >
+          <Suspense fallback={<ViewLoader />}>
           <AnimatePresence mode="wait">
             {currentView === "consultation-wizard" && selectedClientId && (
               <ConsultationWizard
@@ -1948,6 +2013,7 @@ export default function AppContent({
               />
             )}
           </AnimatePresence>
+          </Suspense>
         </main>
 
         {/* Navigation Bar */}
