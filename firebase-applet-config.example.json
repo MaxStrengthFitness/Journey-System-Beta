@@ -1,0 +1,10 @@
+{
+  "projectId": "YOUR_TEST_PROJECT_ID",
+  "appId": "YOUR_TEST_APP_ID",
+  "apiKey": "YOUR_TEST_API_KEY",
+  "authDomain": "YOUR_TEST_PROJECT_ID.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "YOUR_TEST_PROJECT_ID.appspot.com",
+  "messagingSenderId": "YOUR_TEST_MESSAGING_SENDER_ID",
+  "measurementId": "G-XXXXXXXXXX"
+}

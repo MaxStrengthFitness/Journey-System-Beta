@@ -53,6 +53,8 @@ Use this checklist to track pending features, bugs, and final polish items.
 ### High Priority
 - [ ] **Data Persistence Check**: Ensure all newly added settings (Notifications, Auto-sync) correctly save to Firestore.
 - [ ] **OAuth / Webhook E2E Testing**: Verify real-time schedule syncing with Mindbody using actual webhook payloads.
+- [ ] **Webhook DLQ wiring (contractor scope)**: `recordDeadLetter` in `functions/src/mindbody/dlq.ts` is implemented and unit-tested but never invoked by the webhook handler, so failed events skip the dead-letter queue.
+- [ ] **Webhook idempotency ordering (contractor scope)**: `tryRecordEvent` commits before business logic in `functions/src/mindbody/index.ts` — an event that fails mid-processing is treated as a duplicate on MindBody's retry and is permanently lost.
 - [ ] **Mobile Responsiveness**: Audit the Integrations Hub and Data Exports tabs on small screens to ensure no horizontal scrolling issues.
 
 ### Medium Priority

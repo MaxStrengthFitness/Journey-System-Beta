@@ -80,7 +80,7 @@ export function useAuthInitialization() {
               // Bootstrap the owner if they have no profile at all
               if (
                 !trainerData &&
-                resolvedEmail.toLowerCase() === "developertesting336@gmail.com"
+                resolvedEmail.toLowerCase() === "jurgensaj@gmail.com"
               ) {
                 const newTrainer: Trainer = {
                   id: u.uid,

@@ -31,7 +31,7 @@ const projectId = config.projectId || "gen-lang-client-0731527386";
 const databaseId = config.firestoreDatabaseId || "ai-studio-32cbbdcc-6e08-4770-9665-867c68878efa";
 const baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents`;
 
-const PRESERVED_EMAIL = "developertesting336@gmail.com";
+const PRESERVED_EMAIL = "jurgensaj@gmail.com";
 
 const COLLECTIONS_TO_PURGE = [
   "clients",

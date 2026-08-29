@@ -59,7 +59,7 @@ export function StudioSelectionView({
     authTrainer?.role === "Admin" ||
     authTrainer?.role === "Founder" ||
     authTrainer?.role === "Overseer" ||
-    authTrainer?.email === "developertesting336@gmail.com";
+    authTrainer?.email === "jurgensaj@gmail.com";
 
   // Check if we've already requested access on mount
   React.useEffect(() => {
