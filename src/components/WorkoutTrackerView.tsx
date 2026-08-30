@@ -2241,8 +2241,17 @@ export function WorkoutTrackerView({
         )
         .filter(Boolean);
       const unique = Array.from(new Set(names));
+      // The list can mix both kinds of offender; naming only the first one's
+      // unit sends the trainer looking for the wrong field.
+      const reasons = new Set(incomplete.map((i) => i.reason));
+      const missing =
+        reasons.size > 1
+          ? "a rep count or a duration"
+          : incomplete[0].reason === "missing-seconds"
+            ? "a duration"
+            : "reps";
       toastError(
-        `Add ${incomplete[0].reason === "missing-seconds" ? "a duration" : "reps"} for ${unique.join(", ")} before finishing. Sets without a count are recorded as zero.`,
+        `Add ${missing} for ${unique.join(", ")} before finishing. Sets without a count are recorded as zero.`,
       );
       setEditingWeightMachineId(incomplete[0].machineId);
       // Sided machines keep a log per side — open the dialog on the side that
@@ -2927,171 +2936,54 @@ export function WorkoutTrackerView({
                 side,
                 repsRightStr,
               ) => {
-                const timeDiff = Math.floor(
-                  (Date.now() - lastMachineLoggedAt.current) / 1000,
-                );
+                /**
+                 * `isStaticHold` and `isTSC` both mean "this set is timed", and
+                 * hasRequiredCount treats them as an OR. Writing only one of
+                 * them leaves the other stuck true, so a set switched back to
+                 * reps is still judged as a hold — with `seconds` just zeroed —
+                 * and can never satisfy the finish guard. They move together.
+                 *
+                 * One combined write per side rather than five sequential ones:
+                 * updateLogMultiple also stamps a session heartbeat, so the old
+                 * version fired five Firestore writes per set saved (ten for a
+                 * torso rotation).
+                 */
+                const performanceFields = (
+                  hold: boolean,
+                  count: string,
+                ): Partial<ExerciseLog> => ({
+                  weight,
+                  // The dialog's `quality` is a plain number (0 = none yet);
+                  // the stored field is 1 | 2 | 3. canSave already refuses 0,
+                  // so anything reaching here is a real rating.
+                  repQuality: quality as ExerciseLog["repQuality"],
+                  isStaticHold: hold,
+                  isTSC: hold,
+                  seconds: hold ? count : "0",
+                  reps: hold ? "0" : count,
+                });
 
                 if (isTorso) {
-                  // Save Left Side
-                  await updateLog(
+                  // Both sides share the weight and quality, each keeps its own count.
+                  updateLogMultiple(
                     currentSession.id!,
                     editingWeightMachineId,
-                    "weight",
-                    weight,
+                    performanceFields(isHold, repsOrSeconds),
                     "Left",
                   );
-                  await updateLog(
+                  updateLogMultiple(
                     currentSession.id!,
                     editingWeightMachineId,
-                    "repQuality",
-                    quality,
-                    "Left",
-                  );
-                  await updateLog(
-                    currentSession.id!,
-                    editingWeightMachineId,
-                    "isStaticHold",
-                    isHold,
-                    "Left",
-                  );
-                  if (isHold) {
-                    await updateLog(
-                      currentSession.id!,
-                      editingWeightMachineId,
-                      "seconds",
-                      repsOrSeconds,
-                      "Left",
-                    );
-                    await updateLog(
-                      currentSession.id!,
-                      editingWeightMachineId,
-                      "reps",
-                      "0",
-                      "Left",
-                    );
-                  } else {
-                    await updateLog(
-                      currentSession.id!,
-                      editingWeightMachineId,
-                      "reps",
-                      repsOrSeconds,
-                      "Left",
-                    );
-                    await updateLog(
-                      currentSession.id!,
-                      editingWeightMachineId,
-                      "seconds",
-                      "0",
-                      "Left",
-                    );
-                  }
-
-                  // Save Right Side (using the same weight and quality, but its own reps)
-                  await updateLog(
-                    currentSession.id!,
-                    editingWeightMachineId,
-                    "weight",
-                    weight,
+                    performanceFields(isHold, repsRightStr || "0"),
                     "Right",
                   );
-                  await updateLog(
-                    currentSession.id!,
-                    editingWeightMachineId,
-                    "repQuality",
-                    quality,
-                    "Right",
-                  );
-                  await updateLog(
-                    currentSession.id!,
-                    editingWeightMachineId,
-                    "isStaticHold",
-                    isHold,
-                    "Right",
-                  );
-                  if (isHold) {
-                    await updateLog(
-                      currentSession.id!,
-                      editingWeightMachineId,
-                      "seconds",
-                      repsRightStr || "0",
-                      "Right",
-                    );
-                    await updateLog(
-                      currentSession.id!,
-                      editingWeightMachineId,
-                      "reps",
-                      "0",
-                      "Right",
-                    );
-                  } else {
-                    await updateLog(
-                      currentSession.id!,
-                      editingWeightMachineId,
-                      "reps",
-                      repsRightStr || "0",
-                      "Right",
-                    );
-                    await updateLog(
-                      currentSession.id!,
-                      editingWeightMachineId,
-                      "seconds",
-                      "0",
-                      "Right",
-                    );
-                  }
                 } else {
-                  await updateLog(
+                  updateLogMultiple(
                     currentSession.id!,
                     editingWeightMachineId,
-                    "weight",
-                    weight,
+                    performanceFields(isHold, repsOrSeconds),
                     side,
                   );
-                  await updateLog(
-                    currentSession.id!,
-                    editingWeightMachineId,
-                    "repQuality",
-                    quality,
-                    side,
-                  );
-                  await updateLog(
-                    currentSession.id!,
-                    editingWeightMachineId,
-                    "isStaticHold",
-                    isHold,
-                    side,
-                  );
-                  if (isHold) {
-                    await updateLog(
-                      currentSession.id!,
-                      editingWeightMachineId,
-                      "seconds",
-                      repsOrSeconds,
-                      side,
-                    );
-                    await updateLog(
-                      currentSession.id!,
-                      editingWeightMachineId,
-                      "reps",
-                      "0",
-                      side,
-                    );
-                  } else {
-                    await updateLog(
-                      currentSession.id!,
-                      editingWeightMachineId,
-                      "reps",
-                      repsOrSeconds,
-                      side,
-                    );
-                    await updateLog(
-                      currentSession.id!,
-                      editingWeightMachineId,
-                      "seconds",
-                      "0",
-                      side,
-                    );
-                  }
                 }
 
                 setEditingWeightMachineId(null);

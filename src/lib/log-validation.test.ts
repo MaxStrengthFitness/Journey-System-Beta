@@ -46,6 +46,21 @@ describe("hasRequiredCount", () => {
     expect(hasRequiredCount({ reps: "", seconds: "43" })).toBe(false);
   });
 
+  it("treats contradictory hold flags as a hold", () => {
+    // Why writers must set isStaticHold and isTSC together. A set toggled back
+    // to reps but left with a stale isTSC is still read as timed by the OR
+    // below — and its seconds were zeroed when it saved, so it can never pass
+    // the finish guard no matter how many reps the trainer enters.
+    expect(
+      hasRequiredCount({
+        isTSC: true,
+        isStaticHold: false,
+        reps: "9",
+        seconds: "0",
+      }),
+    ).toBe(false);
+  });
+
   it("treats a missing log as incomplete", () => {
     expect(hasRequiredCount(undefined)).toBe(false);
     expect(hasRequiredCount(null)).toBe(false);
