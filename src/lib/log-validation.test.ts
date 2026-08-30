@@ -113,6 +113,33 @@ describe("findIncompleteLogs", () => {
     ).toEqual([]);
   });
 
+  it("carries the side through so the dialog opens on the flagged set", () => {
+    const result = findIncompleteLogs({
+      "s1_hipabd_Left": {
+        machineId: "m-hip-abd",
+        side: "Left",
+        weight: "92",
+        reps: "",
+        repQuality: 2,
+      },
+      "s1_hipabd_Right": {
+        machineId: "m-hip-abd",
+        side: "Right",
+        weight: "92",
+        reps: "10",
+        repQuality: 2,
+      },
+    });
+    expect(result).toEqual([
+      {
+        key: "s1_hipabd_Left",
+        machineId: "m-hip-abd",
+        side: "Left",
+        reason: "missing-reps",
+      },
+    ]);
+  });
+
   it("returns every offender, not just the first", () => {
     const result = findIncompleteLogs({
       a: { machineId: "m-hip-abd", weight: "92", isStaticHold: true, seconds: "" },

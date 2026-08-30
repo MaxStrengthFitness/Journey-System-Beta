@@ -50,12 +50,21 @@ export function isLogStarted(
  */
 export function findIncompleteLogs(
   logs: Record<string, Partial<ExerciseLog>>,
-): { key: string; machineId: string; reason: "missing-seconds" | "missing-reps" }[] {
+): {
+  key: string;
+  machineId: string;
+  side?: "Left" | "Right";
+  reason: "missing-seconds" | "missing-reps";
+}[] {
   return Object.entries(logs)
     .filter(([, log]) => isLogStarted(log) && !hasRequiredCount(log))
     .map(([key, log]) => ({
       key,
       machineId: String(log.machineId ?? ""),
+      // Sided machines store one log per side. The caller opens the entry
+      // dialog on the offending set, so it needs the side too — without it the
+      // dialog lands on the unsided key and the flagged set is never fixed.
+      side: log.side,
       reason: (log.isStaticHold || log.isTSC
         ? "missing-seconds"
         : "missing-reps") as "missing-seconds" | "missing-reps",

@@ -2218,7 +2218,21 @@ export function WorkoutTrackerView({
     // Last line of defence. Logs are only written to Firestore at completion, so
     // this is the final chance to catch a set that was begun but never given a
     // count — it would be stored looking complete and score zero volume.
-    const incomplete = findIncompleteLogs(logs);
+    //
+    // Scope matters: `logs` is keyed across every session loaded for this client
+    // (see the exerciseLogs snapshot — up to 30 sessions), so validating it whole
+    // flags zero-count sets from PAST workouts. Those cannot be fixed from here —
+    // the entry dialog writes `${currentSession.id}_${machineId}` — so the guard
+    // would block finishing forever. Only today's sets are this session's problem.
+    const currentSessionLogs: Record<string, ExerciseLog> = {};
+    Object.entries(logs as Record<string, ExerciseLog>).forEach(
+      ([key, log]) => {
+        if (log && log.sessionId === currentSession?.id) {
+          currentSessionLogs[key] = log;
+        }
+      },
+    );
+    const incomplete = findIncompleteLogs(currentSessionLogs);
     if (incomplete.length > 0) {
       const names = incomplete
         .map(
@@ -2231,6 +2245,9 @@ export function WorkoutTrackerView({
         `Add ${incomplete[0].reason === "missing-seconds" ? "a duration" : "reps"} for ${unique.join(", ")} before finishing. Sets without a count are recorded as zero.`,
       );
       setEditingWeightMachineId(incomplete[0].machineId);
+      // Sided machines keep a log per side — open the dialog on the side that
+      // was actually flagged, or it edits a different (complete) set.
+      setEditingWeightSide(incomplete[0].side);
       setIsStaticHoldOverride(incomplete[0].reason === "missing-seconds");
       return;
     }
@@ -3079,6 +3096,10 @@ export function WorkoutTrackerView({
 
                 setEditingWeightMachineId(null);
                 setEditingWeightSide(undefined);
+                // Must be cleared here too, not only in onClose: a stale `true`
+                // opens the next machine's dialog in hold mode, storing its rep
+                // count as `seconds` with reps "0".
+                setIsStaticHoldOverride(false);
               }}
             />
           );
