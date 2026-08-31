@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/select";
 import { ScheduleEntry, Trainer } from "../types";
 import { cn } from "../lib/utils";
-import { isFuzzyNameMatch } from "../lib/sync-utils";
 import {
   studioDateKey,
   zonedHM,
@@ -429,241 +428,32 @@ export function CalendarView({
     });
   };
 
+  /**
+   * STRICT resolution, matching the Hub.
+   *
+   * This used to fuzzy-match the block's NAME against local state, then query
+   * Firestore, then copy a link from any past schedule row with the same name —
+   * and on a hit it WROTE `schedules/{id}.clientId` and `clients/{id}.mindbody_name`
+   * as a side effect of a click. On a miss it offered to create a client.
+   *
+   * All of that is gone. Under strict mode a schedule's clientId already IS
+   * `clients/{mindbodyClientId}`, so a name match can only disagree with it,
+   * and acting on that disagreement means writing a schedule row that points
+   * outside the canonical path (or creating a duplicate client). A block that
+   * does not resolve simply does not navigate.
+   */
   const handleClientClick = (session: ScheduleEntry) => {
-    if (onSelectClient && setView) {
-      const clientName = session.clientName || "";
+    if (!onSelectClient || !setView) return;
+    if (!session.clientId) return;
 
-      const scheduleTrainer = trainers.find(
-        (t) =>
-          t.id === session.trainerId ||
-          (t.fullName &&
-            session.trainerName &&
-            t.fullName.toLowerCase() === session.trainerName.toLowerCase()),
-      );
-      const targetStudioId = scheduleTrainer?.primaryHomeStudioId;
+    const target = String(session.clientId).trim();
+    const matchedClient = (clients || []).find(
+      (c) => c.id && String(c.id).trim() === target,
+    );
+    if (!matchedClient?.id) return;
 
-      let matchedClient: any = null;
-
-      // 1. Try matching with strict name/fuzzy in the trainer's home studio first
-      if (clients && targetStudioId) {
-        matchedClient = clients.find(
-          (c) =>
-            c.homeStudioId === targetStudioId &&
-            (c.id === session.clientId ||
-              isFuzzyNameMatch(
-                clientName,
-                c.firstName || "",
-                c.lastName || "",
-                c.mindbody_name,
-              )),
-        );
-      }
-
-      // 2. Fallback globally
-      if (!matchedClient && clients) {
-        matchedClient = clients.find(
-          (c) =>
-            c.id === session.clientId ||
-            isFuzzyNameMatch(
-              clientName,
-              c.firstName || "",
-              c.lastName || "",
-              c.mindbody_name,
-            ),
-        );
-      }
-
-      // 3. Quick check: Has this exact name been linked in any previous schedule entry?
-      if (!matchedClient && schedules) {
-        const pastLink = schedules.find(
-          (s) => s.clientName === clientName && !!s.clientId,
-        );
-        if (pastLink && clients) {
-          matchedClient = clients.find((c) => c.id === pastLink.clientId);
-        }
-      }
-
-      // Helper to trigger navigation
-      const selectMatchedClient = (clientId: string, nameToStore?: string) => {
-        if (
-          session.id &&
-          (!session.clientId || session.clientId !== clientId)
-        ) {
-          try {
-            updateDoc(doc(db, "schedules", session.id!), {
-              clientId: clientId,
-            }).catch((err) =>
-              console.error(
-                "Error auto-linking clicked calendar schedule:",
-                err,
-              ),
-            );
-            if (nameToStore) {
-              updateDoc(doc(db, "clients", clientId), {
-                mindbody_name: nameToStore,
-              }).catch((err) =>
-                console.error("Error setting mindbody_name on click:", err),
-              );
-            }
-          } catch (e) {
-            console.error("Could not update Firebase for auto-link:", e);
-          }
-        }
-
-        onSelectClient(clientId);
-        setView("profile");
-      };
-
-      if (matchedClient) {
-        selectMatchedClient(
-          matchedClient.id,
-          !matchedClient.mindbody_name ? clientName : undefined,
-        );
-      } else {
-        // If not found in current UI state array (or if the day of schedule is different),
-        // query Firestore in real-time under trainer's home studio first, then globally.
-        const searchDatabase = async () => {
-          try {
-            const clientsRef = collection(db, "clients");
-            let dbMatched: any = null;
-
-            const nameVariants = Array.from(
-              new Set([
-                clientName,
-                clientName.toLowerCase(),
-                clientName.toUpperCase(),
-                clientName
-                  .split(/\s+/)
-                  .map(
-                    (p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase(),
-                  )
-                  .join(" "),
-              ]),
-            );
-
-            // A. Try querying trainer's home studio clients first
-            if (targetStudioId) {
-              const mbSnap = await getDocs(
-                query(
-                  clientsRef,
-                  where("homeStudioId", "==", targetStudioId),
-                  where("mindbody_name", "in", nameVariants),
-                ),
-              );
-
-              if (!mbSnap.empty) {
-                dbMatched = { id: mbSnap.docs[0].id, ...mbSnap.docs[0].data() };
-              } else {
-                const parts = clientName.split(/\s+/);
-                if (parts.length >= 1) {
-                  const first = parts[0];
-                  const firstVariants = Array.from(
-                    new Set([
-                      first,
-                      first.toLowerCase(),
-                      first.toUpperCase(),
-                      first.charAt(0).toUpperCase() +
-                        first.slice(1).toLowerCase(),
-                      ...nameVariants,
-                    ]),
-                  );
-
-                  const flSnap = await getDocs(
-                    query(
-                      clientsRef,
-                      where("homeStudioId", "==", targetStudioId),
-                      where("firstName", "in", firstVariants),
-                    ),
-                  );
-
-                  const matchingDoc = flSnap.docs.find((docData) => {
-                    const data = docData.data();
-                    return isFuzzyNameMatch(
-                      clientName,
-                      data.firstName || "",
-                      data.lastName || "",
-                      data.mindbody_name,
-                    );
-                  });
-
-                  if (matchingDoc) {
-                    dbMatched = { id: matchingDoc.id, ...matchingDoc.data() };
-                  }
-                }
-              }
-            }
-
-            // B. Fallback globally
-            if (!dbMatched) {
-              const mbSnapGlobal = await getDocs(
-                query(clientsRef, where("mindbody_name", "in", nameVariants)),
-              );
-
-              if (!mbSnapGlobal.empty) {
-                dbMatched = {
-                  id: mbSnapGlobal.docs[0].id,
-                  ...mbSnapGlobal.docs[0].data(),
-                };
-              } else {
-                const parts = clientName.split(/\s+/);
-                if (parts.length >= 1) {
-                  const first = parts[0];
-                  const firstVariants = Array.from(
-                    new Set([
-                      first,
-                      first.toLowerCase(),
-                      first.toUpperCase(),
-                      first.charAt(0).toUpperCase() +
-                        first.slice(1).toLowerCase(),
-                      ...nameVariants,
-                    ]),
-                  );
-
-                  const flSnapGlobal = await getDocs(
-                    query(clientsRef, where("firstName", "in", firstVariants)),
-                  );
-
-                  const matchingDoc = flSnapGlobal.docs.find((docData) => {
-                    const data = docData.data();
-                    return isFuzzyNameMatch(
-                      clientName,
-                      data.firstName || "",
-                      data.lastName || "",
-                      data.mindbody_name,
-                    );
-                  });
-
-                  if (matchingDoc) {
-                    dbMatched = { id: matchingDoc.id, ...matchingDoc.data() };
-                  }
-                }
-              }
-            }
-
-            if (dbMatched) {
-              selectMatchedClient(
-                dbMatched.id,
-                !dbMatched.mindbody_name ? clientName : undefined,
-              );
-            } else {
-              if (onStartNewClientOnboarding) {
-                onStartNewClientOnboarding(clientName);
-              }
-            }
-          } catch (err) {
-            console.error(
-              "Calendar real-time Firestore client match failed:",
-              err,
-            );
-            if (onStartNewClientOnboarding) {
-              onStartNewClientOnboarding(clientName);
-            }
-          }
-        };
-
-        searchDatabase();
-      }
-    }
+    onSelectClient(matchedClient.id);
+    setView("profile");
   };
 
   const renderMonth = () => {

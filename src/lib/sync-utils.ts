@@ -102,6 +102,7 @@ export function mapMindbodySessions(sessions: any[], trainers: Trainer[]): Parti
 }
 
 import { Firestore, writeBatch, doc, collection, serverTimestamp, increment } from 'firebase/firestore';
+import { invalidateSessionCount } from './session-count-cache';
 
 /**
  * Atomic Session Completion Engine
@@ -242,6 +243,10 @@ export async function completeWorkoutSession(
 
     const roundedSessionReps = Math.round(totalSessionReps);
     const roundedSessionVolume = Math.round(totalSessionVolume);
+
+    // The profile's cached completed-session count is stale the moment this
+    // session lands, so drop it rather than waiting out the TTL.
+    invalidateSessionCount(selectedClient.id);
 
     const clientRef = doc(db, 'clients', selectedClient.id);
     const clientUpdates: any = {

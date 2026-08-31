@@ -24,6 +24,7 @@ import {
 import { db } from "../firebase";
 import { Client, Trainer, View, WorkoutSession } from "../types";
 import { isFuzzyNameMatch } from "../lib/sync-utils";
+import { ScheduleBlock } from "./schedule/ScheduleBlock";
 import {
   zonedHM,
   studioHour,
@@ -68,7 +69,6 @@ export function ClientsView({
   sortedTrainers,
   activeStudioId,
   onSelectClient,
-  onStartNewClientOnboarding,
   setView,
   schedules,
   sessions,
@@ -88,7 +88,6 @@ export function ClientsView({
   activeStudioId: string;
   authTrainer: Trainer | null;
   onSelectClient: (id: string) => void;
-  onStartNewClientOnboarding?: (name: string, scheduleInfo?: { scheduleId: string; clientName: string }) => void;
   setView: (v: View) => void;
   schedules: any[];
   sessions: WorkoutSession[];
@@ -112,11 +111,6 @@ export function ClientsView({
     return (studioHour(new Date()) ?? 0) >= 12 ? "afternoon" : "morning";
   });
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [linkingSession, setLinkingSession] = useState<any | null>(null);
-  const [isLinking, setIsLinking] = useState(false);
-  const [searchTermLink, setSearchTermLink] = useState("");
-  const [dbSearchResultsLink, setDbSearchResultsLink] = useState<Client[]>([]);
-  const [isSearchingDbLink, setIsSearchingDbLink] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -202,85 +196,6 @@ export function ClientsView({
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm]);
-
-  // Sync / search database in real-time when trainer searches on Link Client Dialog
-  useEffect(() => {
-    if (!searchTermLink.trim()) {
-      setDbSearchResultsLink([]);
-      return;
-    }
-    const fetchClientsLink = async () => {
-      setIsSearchingDbLink(true);
-      try {
-        const term = searchTermLink.trim().toLowerCase();
-        const alphaOnly = term.replace(/[^a-z]/g, "");
-        const prefixLen = alphaOnly.length > 3 ? 3 : alphaOnly.length;
-        const prefix = alphaOnly.slice(0, prefixLen);
-        const prefixCapitalized =
-          prefix.charAt(0).toUpperCase() + prefix.slice(1);
-
-        if (!prefixCapitalized) {
-          setDbSearchResultsLink([]);
-          return;
-        }
-
-        const clientsRef = collection(db, "clients");
-        const q1 = query(
-          clientsRef,
-          where("firstName", ">=", prefixCapitalized),
-          where("firstName", "<=", prefixCapitalized + "\uf8ff"),
-          limit(30),
-        );
-        const q2 = query(
-          clientsRef,
-          where("lastName", ">=", prefixCapitalized),
-          where("lastName", "<=", prefixCapitalized + "\uf8ff"),
-          limit(30),
-        );
-
-        const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-        const uniqueDocs = new Map<string, any>();
-        [...snap1.docs, ...snap2.docs].forEach((d) => {
-          uniqueDocs.set(d.id, { id: d.id, ...d.data() });
-        });
-
-        const candidates = Array.from(uniqueDocs.values());
-        const fetched = candidates.filter((c) => {
-          const first = (c.firstName || "").toLowerCase();
-          const last = (c.lastName || "").toLowerCase();
-          const full = `${first} ${last}`;
-          const mb = (c.mindbody_name || "").toLowerCase();
-
-          return (
-            first.includes(term) ||
-            last.includes(term) ||
-            full.includes(term) ||
-            mb.includes(term) ||
-            term.includes(first) ||
-            term.includes(last) ||
-            isFuzzyNameMatch(
-              term,
-              c.firstName || "",
-              c.lastName || "",
-              c.mindbody_name,
-            )
-          );
-        });
-
-        setDbSearchResultsLink(fetched);
-      } catch (err) {
-        console.error("Error searching clients in link dialog:", err);
-      } finally {
-        setIsSearchingDbLink(false);
-      }
-    };
-
-    const delayDebounceFn = setTimeout(() => {
-      fetchClientsLink();
-    }, 300);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTermLink]);
 
   const filteredClients = clients.filter((c) =>
     `${c.firstName} ${c.lastName}`
@@ -534,61 +449,27 @@ export function ClientsView({
     });
   };
 
-  const findClientForSession = (session: any) => {
-    if (!session) return null;
-    const sName = (session.clientName || "").trim();
-
-    const scheduleTrainer = trainers.find(
-      (t) =>
-        t.id === session.trainerId ||
-        (t.fullName &&
-          session.trainerName &&
-          t.fullName.toLowerCase() === session.trainerName.toLowerCase()),
-    );
-    const targetStudioId = scheduleTrainer?.primaryHomeStudioId;
-
-    let matched: Client | undefined = undefined;
-
-    // 1. First, search under the trainer's home studio
-    if (targetStudioId) {
-      matched = clients.find(
-        (c) =>
-          c.homeStudioId === targetStudioId &&
-          (c.id === session.clientId ||
-            isFuzzyNameMatch(
-              sName,
-              c.firstName || "",
-              c.lastName || "",
-              c.mindbody_name,
-            )),
-      );
-    }
-
-    // 2. Global fallback
-    if (!matched) {
-      matched = clients.find(
-        (c) =>
-          c.id === session.clientId ||
-          isFuzzyNameMatch(
-            sName,
-            c.firstName || "",
-            c.lastName || "",
-            c.mindbody_name,
-          ),
-      );
-    }
-
-    // 3. Quick check: Has this exact name been linked in any previous schedule entry?
-    if (!matched && schedules) {
-      const pastLink = schedules.find(
-        (s) => s.clientName === sName && !!s.clientId,
-      );
-      if (pastLink) {
-        matched = clients.find((c) => c.id === pastLink.clientId);
-      }
-    }
-
-    return matched || null;
+  /**
+   * STRICT resolution: a schedule block resolves to `clients/{mindbodyClientId}`
+   * or to nothing.
+   *
+   * This used to fuzzy-match on the client's NAME — first the trainer's home
+   * studio, then globally, then by copying a link from any past schedule row
+   * with the same name. All three are gone. Under strict mode the schedule's
+   * clientId IS the canonical document id, so a name match can only ever
+   * disagree with it, and disagreeing means opening the wrong person's medical
+   * record from the grid.
+   *
+   * A block that does not resolve stays greyed out as "Not synced" until the
+   * next sync creates the client document. There is deliberately no manual
+   * fallback: creating a profile by hand here is what produced duplicate
+   * documents outside the canonical path.
+   */
+  const findClientForSession = (session: any): Client | null => {
+    if (!session?.clientId) return null;
+    const target = String(session.clientId).trim();
+    if (!target) return null;
+    return clients.find((c) => c.id && String(c.id).trim() === target) || null;
   };
 
   const hasUnassignedAnywhereInGrid =
@@ -697,42 +578,18 @@ export function ClientsView({
       className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 text-foreground dark:text-white w-full overflow-hidden"
     >
       <div className="flex flex-col gap-3 shrink-0 p-4 pb-0 bg-slate-50 dark:bg-slate-950 z-30">
-        <div className="flex items-center gap-3 w-full">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-400" />
+        {/* Manual client creation removed: profiles arrive via the Mindbody sync.
+            Search is intentionally recessive so the daily schedule stays the focus. */}
+        <div className="flex items-center w-full">
+          <div className="relative w-full sm:max-w-[260px] opacity-60 hover:opacity-100 focus-within:opacity-100 transition-opacity">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
             <Input
-              placeholder="Search clients..."
-              className="pl-12 h-12 rounded-2xl bg-white dark:bg-bg-dark border-none font-bold text-base text-foreground dark:text-white focus-visible:ring-sky-500"
+              placeholder="Search clients"
+              className="pl-9 h-9 rounded-xl bg-transparent border border-slate-200 dark:border-slate-800 font-semibold text-sm text-foreground dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus-visible:ring-1 focus-visible:ring-sky-500/60 focus-visible:bg-white dark:focus-visible:bg-bg-dark"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button
-            onClick={() => {
-              if (onStartNewClientOnboarding) {
-                onStartNewClientOnboarding("");
-              }
-            }}
-            size="lg"
-            className="rounded-xl h-12 px-8 shadow-[0_0_20px_rgba(56,189,248,0.2)] bg-sky-500 hover:bg-[#0284C7] text-foreground font-black uppercase tracking-widest text-sm hidden sm:flex items-center shrink-0"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Add New Client
-          </Button>
-        </div>
-        <div className="sm:hidden w-full">
-          <Button
-            onClick={() => {
-              if (onStartNewClientOnboarding) {
-                onStartNewClientOnboarding("");
-              }
-            }}
-            size="lg"
-            className="rounded-xl h-12 px-8 shadow-[0_0_20px_rgba(56,189,248,0.2)] bg-sky-500 hover:bg-[#0284C7] text-foreground font-black w-full uppercase tracking-widest text-sm flex items-center justify-center"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Add New Client
-          </Button>
         </div>
       </div>
 
@@ -1383,162 +1240,22 @@ export function ClientsView({
                                                     new Date().toDateString(),
                                               )
                                             : null;
-                                          const isInSession =
-                                            workoutSession?.status ===
-                                            "In-Progress";
-                                          const isCompleted =
-                                            session &&
-                                            !isInSession &&
-                                            (session.status === "Completed" ||
-                                              getMillis(
-                                                session.startTime ||
-                                                  session.StartDateTime,
-                                              ) < now.getTime());
-                                          const isUnavailable =
-                                            session?.clientName
-                                              ?.toLowerCase()
-                                              .includes("unavailab");
-                                          const isAlreadyCompleted =
-                                            workoutSession?.status ===
-                                            "Completed";
-                                          const sessionNumber = clientObj
-                                            ? (clientObj.sessionCount || 0) +
-                                              (isAlreadyCompleted ? 0 : 1)
-                                            : 1;
-                                          const isMilestone =
-                                            sessionNumber === 1 ||
-                                            sessionNumber % 25 === 0;
-                                          const hasAlert =
-                                            clientObj &&
-                                            ((clientObj.clinicalProfile &&
-                                              clientObj.clinicalProfile.length >
-                                                0) ||
-                                              !!clientObj.clinicalNotes ||
-                                              !!clientObj.medicalHistory);
-
-                                          const formatClientName = (
-                                            name: string,
-                                          ) => {
-                                            if (!name) return "";
-                                            const parts = name
-                                              .trim()
-                                              .split(" ");
-                                            if (parts.length > 1) {
-                                              return `${parts[0]} ${parts[parts.length - 1][0]}.`;
-                                            }
-                                            return parts[0];
-                                          };
-                                          const formattedClientName =
-                                            formatClientName(
-                                              session?.clientName || "",
-                                            );
-
-                                          const sDate = safeToDate(
-                                            session.startTime ||
-                                              session.StartDateTime ||
-                                              session.date,
-                                          );
-                                          const exactTimeStr = sDate
-                                            ? sDate.toLocaleTimeString([], {
-                                                hour: "numeric",
-                                                minute: "2-digit",
-                                              })
-                                            : "";
 
                                           return (
-                                            <div
+                                            <ScheduleBlock
                                               key={
                                                 session.id ||
                                                 session.mindbodyAppointmentId ||
                                                 sIdx
                                               }
-                                              onClick={() => {
-                                                if (isUnavailable) return;
-                                                if (clientObj) {
-                                                  onSelectClient(clientObj.id!);
-                                                  setView("profile");
-                                                } else {
-                                                  setLinkingSession(session);
-                                                  setIsLinking(true);
-                                                }
+                                              session={session}
+                                              client={clientObj}
+                                              workoutSession={workoutSession}
+                                              onOpenClient={(clientId) => {
+                                                onSelectClient(clientId);
+                                                setView("profile");
                                               }}
-                                              className={cn(
-                                                "flex flex-col p-2 sm:p-2.5 rounded-xl shadow-sm transition-all h-full box-border relative overflow-hidden",
-                                                isUnavailable
-                                                  ? "bg-[repeating-linear-gradient(45deg,#f8fafc,#f8fafc_10px,#f1f5f9_10px,#f1f5f9_20px)] dark:bg-[repeating-linear-gradient(45deg,#0f172a,#0f172a_10px,#1e293b_10px,#1e293b_20px)] border-2 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-90"
-                                                  : isCompleted
-                                                    ? "opacity-60 grayscale bg-slate-50 dark:bg-surface-2 border-2 border-slate-200 dark:border-slate-700/80 cursor-pointer"
-                                                    : isInSession
-                                                      ? isMilestone
-                                                        ? "bg-[#F06C22] border-2 border-[#F06C22] shadow-[0_0_15px_rgba(240,108,34,0.65)] cursor-pointer hover:shadow-[0_0_20px_rgba(240,108,34,0.8)] text-white"
-                                                        : "bg-cyan border-2 border-cyan shadow-[0_0_12px_rgba(56,189,248,0.5)] cursor-pointer hover:shadow-[0_0_16px_rgba(56,189,248,0.7)] text-slate-955"
-                                                      : isMilestone
-                                                        ? "bg-white dark:bg-surface-1 border-2 border-[#F06C22]/85 shadow-[0_0_10px_rgba(240,108,34,0.4)] dark:shadow-[0_0_12px_rgba(240,108,34,0.55)] cursor-pointer hover:border-[#F06C22] hover:shadow-[0_0_16px_rgba(240,108,34,0.7)]"
-                                                        : "bg-white dark:bg-surface-1 border-2 border-cyan/85 shadow-[0_0_8px_rgba(56,189,248,0.3)] dark:shadow-[0_0_10px_rgba(56,189,248,0.45)] cursor-pointer hover:border-cyan hover:shadow-[0_0_14px_rgba(56,189,248,0.6)]",
-                                                hasAlert &&
-                                                  !isCompleted &&
-                                                  !isUnavailable
-                                                  ? "border-l-4 border-l-red-500"
-                                                  : "",
-                                              )}
-                                            >
-                                              <div className="flex flex-col w-full h-full justify-between items-start gap-1 relative z-10">
-                                                <div className="w-full">
-                                                  <div className="flex items-start justify-between gap-1 mb-0.5 relative z-20">
-                                                    <span
-                                                      className={cn(
-                                                        "leading-tight truncate text-sm font-bold",
-                                                        isUnavailable
-                                                          ? "text-slate-500 italic uppercase tracking-widest text-[11px]"
-                                                          : isInSession
-                                                            ? isMilestone
-                                                              ? "text-white font-black"
-                                                              : "text-slate-955 font-black"
-                                                            : "text-slate-900 dark:text-slate-50",
-                                                      )}
-                                                    >
-                                                      {isUnavailable
-                                                        ? "Unavailable"
-                                                        : formattedClientName}
-                                                    </span>
-                                                    {hasAlert &&
-                                                      !isCompleted &&
-                                                      !isUnavailable && (
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-[pulse_2s_ease-in-out_infinite] shrink-0 mt-1.5" />
-                                                      )}
-                                                  </div>
-                                                  {sDate &&
-                                                    (zonedHM(sDate)?.minute ?? 0) % 30 !==
-                                                      0 &&
-                                                    exactTimeStr && (
-                                                      <div className="text-[10px] font-black text-amber-500 uppercase tracking-tight">
-                                                        {exactTimeStr}
-                                                      </div>
-                                                    )}
-                                                </div>
-
-                                                {!isUnavailable && (
-                                                  <div className="w-full flex items-end justify-end mt-auto pt-1 relative z-20">
-                                                    <span
-                                                      className={cn(
-                                                        "inline-flex items-center text-[11px] sm:text-[12px] font-black leading-none px-1.5 py-0.5 rounded-md border",
-                                                        isCompleted
-                                                          ? "text-slate-500/50 border-slate-200/50 bg-slate-100/50 dark:bg-surface-2"
-                                                          : isInSession
-                                                            ? isMilestone
-                                                              ? "text-white bg-white/20 border-white/30 font-mono shadow-[0_0_5px_rgba(255,255,255,0.25)]"
-                                                              : "text-slate-955 bg-black/10 border-black/20 font-mono"
-                                                            : isMilestone
-                                                              ? "text-[#F06C22] bg-[#F06C22]/10 border-[#F06C22]/30 shadow-[0_0_5px_rgba(240,108,34,0.15)] font-mono"
-                                                              : "text-cyan bg-cyan/10 border-cyan/20",
-                                                      )}
-                                                    >
-                                                      {sessionNumber}
-                                                    </span>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            </div>
+                                            />
                                           );
                                         })}
                                       </div>
@@ -1797,148 +1514,6 @@ export function ClientsView({
         )}
       </div>
 
-      <Dialog open={isLinking} onOpenChange={setIsLinking}>
-        <DialogContent className="rounded-[32px] border-2 w-[calc(100%-2rem)] sm:max-w-md bg-background shadow-2xl dark:shadow-none">
-          <DialogHeader>
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-4">
-              <Users className="w-6 h-6 text-amber-500" />
-            </div>
-            <DialogTitle className="text-2xl font-black uppercase italic tracking-tight">
-              Unlinked Reservation
-            </DialogTitle>
-            <DialogDescription className="font-bold text-xs">
-              "{linkingSession?.clientName}" is booked via Mindbody but has no
-              Max Strength profile.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6 pt-4">
-            <div className="bg-[#F06C22]/5 border-2 border-dashed border-[#F06C22]/20 rounded-2xl p-4 flex flex-col items-center justify-center gap-4 text-center">
-              <div className="space-y-1">
-                <p className="text-[11px] font-bold text-muted-foreground uppercase">
-                  Time Slot
-                </p>
-                <p className="text-base font-black text-foreground dark:text-white">
-                  {linkingSession
-                    ? safeToDate(linkingSession.startTime)?.toLocaleTimeString(
-                        [],
-                        {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        },
-                      )
-                    : ""}{" "}
-                  with {linkingSession?.trainerName || "Unassigned"}
-                </p>
-              </div>
-              <Button
-                className="w-full h-12 rounded-xl font-black bg-cyan border-2 border-cyan shadow-[0_0_15px_rgba(56,189,248,0.3)] hover:shadow-[0_0_20px_rgba(56,189,248,0.5)] text-slate-950 text-xs uppercase"
-                onClick={() => {
-                  if (onStartNewClientOnboarding) {
-                    onStartNewClientOnboarding(
-                      linkingSession?.clientName || "",
-                      linkingSession?.id
-                        ? {
-                            scheduleId: linkingSession.id,
-                            clientName: linkingSession.clientName || "",
-                          }
-                        : undefined,
-                    );
-                  }
-                  setIsLinking(false);
-                }}
-              >
-                Create Hub Profile for "{linkingSession?.clientName}"
-                <Plus className="w-5 h-5" />
-              </Button>
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground font-bold">
-                  Or Link to Existing
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="relative">
-                {isSearchingDbLink ? (
-                  <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sky-500 animate-spin" />
-                ) : (
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                )}
-                <Input
-                  placeholder="Search existing clients..."
-                  className="pl-10 h-12 rounded-xl border-2"
-                  value={searchTermLink}
-                  onChange={(e) => setSearchTermLink(e.target.value)}
-                />
-              </div>
-              <div className="max-h-50 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
-                {(() => {
-                  const filteredLocal = clients.filter((c) =>
-                    `${c.firstName} ${c.lastName}`
-                      .toLowerCase()
-                      .includes(searchTermLink.toLowerCase()),
-                  );
-                  const mergedLink = Array.from(
-                    new Map(
-                      [...filteredLocal, ...dbSearchResultsLink].map((c) => [
-                        c.id,
-                        c,
-                      ]),
-                    ).values(),
-                  );
-
-                  return mergedLink.map((client) => (
-                    <Button
-                      key={client.id}
-                      variant="ghost"
-                      className="w-full h-10 rounded-lg justify-start font-bold text-xs hover:bg-primary/5 hover:text-primary transition-all border border-transparent hover:border-primary/10"
-                      onClick={async () => {
-                        try {
-                          await updateDoc(doc(db, "clients", client.id!), {
-                            mindbody_name: linkingSession.clientName,
-                          });
-                          // Also immediately link the current schedule in Firestore
-                          await updateDoc(
-                            doc(db, "schedules", linkingSession.id),
-                            {
-                              clientId: client.id!,
-                            },
-                          );
-                          setIsLinking(false);
-                          setSearchTermLink("");
-                        } catch (err) {
-                          console.error("Link failed:", err);
-                        }
-                      }}
-                    >
-                      {client.firstName} {client.lastName}
-                    </Button>
-                  ));
-                })()}
-                {clients.length > 0 &&
-                  clients.filter((c) =>
-                    `${c.firstName} ${c.lastName}`
-                      .toLowerCase()
-                      .includes(searchTermLink.toLowerCase()),
-                  ).length === 0 &&
-                  dbSearchResultsLink.length === 0 &&
-                  !isSearchingDbLink && (
-                    <p className="text-[11px] text-center py-4 text-muted-foreground italic font-medium">
-                      No clients match your search
-                    </p>
-                  )}
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </motion.div>
   );
 }

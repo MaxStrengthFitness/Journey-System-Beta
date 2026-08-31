@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   collection,
@@ -14,7 +14,6 @@ import {
   doc,
   serverTimestamp,
   Timestamp,
-  getCountFromServer,
   deleteDoc,
   startAfter,
 } from "firebase/firestore";
@@ -119,6 +118,7 @@ import {
 } from "@/components/ui/select";
 import { ROUTINE_TEMPLATES, RoutineTemplateType } from "../constants";
 import { ClientFocusDashboard } from "./ClientFocusDashboard";
+import { getCompletedSessionCount } from "../lib/session-count-cache";
 import { ClientClinicalReviewPreloader } from "./ClientClinicalReviewPreloader";
 import { ClientInfoSheet } from "./ClientInfoSheet";
 import {
@@ -415,33 +415,57 @@ export function ClientProfileView({
 
   const client = clients.find((c) => c.id === clientId);
 
+  /**
+   * A PRIMITIVE summary of the loaded sessions, not the array itself.
+   *
+   * The count effect below used to depend on `sessions`, and the profile's
+   * snapshot listener rebuilds that array on every Firestore write (it maps
+   * into a fresh array each time). During a bulk schedule sync that meant one
+   * aggregation query per snapshot — the 429 storm. Depending on a number
+   * instead means re-renders that did not actually change the session history
+   * cost nothing.
+   */
+  const loadedCompletedCount = useMemo(
+    () => sessions.filter((s) => s.status === "Completed").length,
+    [sessions],
+  );
+
+  /**
+   * Read through a ref so the reconciliation write does not feed itself.
+   * `client.sessionCount` was previously a dependency, so the write below
+   * changed the client document, which changed the prop, which re-ran the
+   * effect, which queried again.
+   */
+  const clientSessionCountRef = useRef<number | undefined>(client?.sessionCount);
+  useEffect(() => {
+    clientSessionCountRef.current = client?.sessionCount;
+  }, [client?.sessionCount]);
+
   useEffect(() => {
     if (!clientId) return;
-    const fetchSessionCount = async () => {
-      try {
-        const snapshot = await getCountFromServer(
-          query(
-            collection(db, "sessions"),
-            where("clientId", "==", clientId),
-            where("status", "==", "Completed"),
-          ),
-        );
-        const actualCount = snapshot.data().count;
-        setCalculatedSessionCount(actualCount);
+    let cancelled = false;
 
-        // Ensure client document stays perfectly in sync with actual history length
-        if (client && client.sessionCount !== actualCount) {
-          // Fire and forget update
-          updateDoc(doc(db, "clients", clientId), {
-            sessionCount: actualCount,
-          }).catch(console.error);
-        }
-      } catch (err) {
-        console.error("Error fetching session count", err);
+    (async () => {
+      // Cached + de-duplicated + quota-aware; see lib/session-count-cache.ts.
+      const actualCount = await getCompletedSessionCount(clientId);
+      // null means "could not determine right now" — never treat that as zero.
+      if (cancelled || actualCount === null) return;
+
+      setCalculatedSessionCount(actualCount);
+
+      // Keep the client document in step with the real history length.
+      if (clientSessionCountRef.current !== actualCount) {
+        clientSessionCountRef.current = actualCount;
+        updateDoc(doc(db, "clients", clientId), {
+          sessionCount: actualCount,
+        }).catch(console.error);
       }
+    })();
+
+    return () => {
+      cancelled = true;
     };
-    fetchSessionCount();
-  }, [clientId, sessions, client?.sessionCount]); // re-fetch when sessions state changes
+  }, [clientId, loadedCompletedCount]);
 
   useEffect(() => {
     const handleOpenImport = () => setView("chart-importer" as any);
