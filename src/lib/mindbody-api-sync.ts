@@ -3,14 +3,14 @@ import {
   getDocs,
   writeBatch,
   doc,
-  setDoc,
   query,
   where,
   Timestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { parkPullSyncBooking } from "./mindbody-limbo";
+import { extractBookingExtras } from "./mindbody-pass";
 import { Trainer, Client, Studio } from "../types";
-import { normalizeName, cleanAlphanumeric } from "./sync-utils";
 import {
   wallClockToInstant,
   isValidTimeZone,
@@ -22,6 +22,8 @@ export interface MindbodySyncResult {
   updated: number;
   skipped: number;
   errors: string[];
+  /** Canonical client docs created because Mindbody knew someone we did not. */
+  clientsCreated?: number;
 }
 
 export interface MindbodyAppointment {
@@ -45,106 +47,104 @@ export interface MindbodyAppointment {
   Status?: string;
   SessionTypeName?: string;
   LocationId?: number;
+  /**
+   * Pass / waitlist / visit-count passthrough from server.ts's normalizer.
+   * Mindbody's published appointment schema does not document these (they
+   * appear on class bookings), so expect null until proven otherwise.
+   */
+  ClientPassId?: string | number | null;
+  ClientPassSessionsTotal?: number | null;
+  ClientPassSessionsDeducted?: number | null;
+  ClientPassSessionsRemaining?: number | null;
+  ClientPassActivationDateTime?: string | null;
+  ClientPassExpirationDateTime?: string | null;
+  BookingOriginatedFromWaitlist?: boolean | null;
+  ClientsNumberOfVisitsAtSite?: number | null;
 }
 
-function findClientId(
-  clientName: string,
+/**
+ * Strict canonical client resolution. The doc id IS the join key.
+ *
+ * Fuzzy name matching used to live here — it compared "Judy D." against every
+ * client's first name plus a last initial. It is gone deliberately. Name
+ * matching is what allowed one person to exist as two documents (the webhook
+ * keying on the Mindbody id, this importer keying on a name), and a wrong match
+ * files a session against the wrong client's medical record.
+ *
+ * A fallback that searched the `mindbodyClientId` / `mindbodyId` FIELDS was
+ * also removed, to match the webhook's strict mode. Keeping it would recreate
+ * the very split being fixed: this importer would link the schedule to a stale
+ * document while the webhook wrote the canonical one.
+ */
+function resolveCanonicalClientId(
+  mbClientId: string | null,
   clientsData: Client[],
-  trainerHomeStudioId?: string,
-  mbClientId?: string | null,
 ): string | null {
-  if (!clientName && !mbClientId) return null;
-  const normalizedSName = normalizeName(clientName || "");
-  const cleanSName = cleanAlphanumeric(clientName || "");
+  if (!mbClientId) return null;
+  const target = String(mbClientId).trim();
+  if (!target) return null;
 
-  if (mbClientId) {
-    const mbMatch = clientsData.find(
-      (c) =>
-        (c.mindbodyClientId &&
-          String(c.mindbodyClientId).trim() === String(mbClientId).trim()) ||
-        (c.id && String(c.id).trim() === String(mbClientId).trim()),
-    );
-    if (mbMatch) return mbMatch.id;
-  }
+  const canonical = clientsData.find(
+    (c) => c.id && String(c.id).trim() === target,
+  );
+  return canonical ? canonical.id || null : null;
+}
 
-  const isFuzzyMatch = (
-    sName: string,
-    first: string,
-    last: string,
-    mbName?: string,
-  ): boolean => {
-    const sNameClean = sName
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, "");
-    const cFirstClean = (first || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "");
-    const cLastClean = (last || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "");
-    const cFullClean = `${cFirstClean} ${cLastClean}`.trim();
+/**
+ * Creates the canonical client document for an appointment whose client we have
+ * never seen.
+ *
+ * Without this, removing fuzzy matching would produce MORE unlinked blocks, not
+ * fewer: the webhook only runs against the live project, so on staging (and for
+ * any booking whose client event was missed) this importer is the only thing
+ * that can bring a client into the database. Appointment payloads carry enough
+ * to build a complete profile.
+ *
+ * `homeStudioId` is safe to set here — unlike a webhook, this importer is
+ * explicitly scoped to one studio, which the caller has already resolved from
+ * the appointment's own location. The caller MUST only pass appointments that
+ * genuinely belong to `studioId`, or clients land in the wrong tenant.
+ */
+function buildCanonicalClientPayload(
+  appt: MindbodyAppointment,
+  mbClientId: string,
+  studioId: string,
+): Record<string, any> {
+  const firstName = (appt.ClientFirstName || "").trim();
+  const lastName = (appt.ClientLastName || "").trim();
 
-    if (mbName) {
-      const mbClean = mbName
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, "");
-      if (sNameClean === mbClean) return true;
-    }
-    if (sNameClean === cFullClean) return true;
-
-    const sWords = sNameClean.split(/\s+/).filter(Boolean);
-    const cWords = [cFirstClean, cLastClean].filter(Boolean);
-    if (sWords.length === 0 || cWords.length === 0) return false;
-    if (sWords[0] !== cWords[0]) return false;
-    if (sWords.length === 1 && cWords.length > 1) return true;
-    if (sWords.length > 1 && cWords.length === 1) return true;
-    if (sWords.length >= 2 && cWords.length >= 2) {
-      const sLast = sWords.slice(1).join(" ");
-      const cLast = cWords.slice(1).join(" ");
-      if (sLast === cLast) return true;
-      if (sLast.length === 1 && cLast.startsWith(sLast)) return true;
-      if (cLast.length === 1 && sLast.startsWith(cLast)) return true;
-    }
-    return false;
+  const payload: Record<string, any> = {
+    firstName: firstName || "Mindbody",
+    lastName: lastName || `Client ${mbClientId}`,
+    mindbodyClientId: mbClientId,
+    mindbody_name: `${firstName} ${lastName}`.trim(),
+    homeStudioId: studioId,
+    isActive: true,
+    height: "",
+    remainingSessions: 0,
+    sessionCount: 0,
+    completedSessions: 0,
+    createdAt: Timestamp.now(),
+    mindbodySyncedAt: Timestamp.now(),
+    createdBy: "mindbody:pull-sync",
+    isMindbodyStub: false,
   };
 
-  if (trainerHomeStudioId) {
-    const match = clientsData.find((c) => {
-      if (c.homeStudioId && c.homeStudioId !== trainerHomeStudioId)
-        return false;
-      const first = c.firstName || "";
-      const last = c.lastName || "";
-      const fullName = normalizeName(`${first} ${last}`);
-      if (
-        fullName === normalizedSName ||
-        cleanAlphanumeric(fullName) === cleanSName
-      )
-        return true;
-      if (c.mindbody_name && normalizeName(c.mindbody_name) === normalizedSName)
-        return true;
-      return isFuzzyMatch(clientName, first, last, c.mindbody_name);
-    });
-    if (match) return match.id || null;
+  if (appt.ClientPhone) payload.phone = appt.ClientPhone;
+  if (appt.ClientEmail) payload.email = appt.ClientEmail;
+  if (appt.ClientDOB) payload.dateOfBirth = appt.ClientDOB;
+  if (appt.ClientGender) payload.gender = appt.ClientGender;
+  if (appt.ClientAddress) payload.address = appt.ClientAddress;
+  if (appt.ClientPhotoUrl) payload.photoUrl = appt.ClientPhotoUrl;
+  if (appt.ClientEmergencyName)
+    payload.emergencyContactName = appt.ClientEmergencyName;
+  if (appt.ClientEmergencyPhone)
+    payload.emergencyContactPhone = appt.ClientEmergencyPhone;
+  if (typeof appt.ClientsNumberOfVisitsAtSite === "number") {
+    payload.clientsNumberOfVisitsAtSite = appt.ClientsNumberOfVisitsAtSite;
   }
 
-  const matchGlobal = clientsData.find((c) => {
-    const first = c.firstName || "";
-    const last = c.lastName || "";
-    const fullName = normalizeName(`${first} ${last}`);
-    if (
-      fullName === normalizedSName ||
-      cleanAlphanumeric(fullName) === cleanSName
-    )
-      return true;
-    if (c.mindbody_name && normalizeName(c.mindbody_name) === normalizedSName)
-      return true;
-    return isFuzzyMatch(clientName, first, last, c.mindbody_name);
-  });
-  return matchGlobal ? matchGlobal.id || null : null;
+  return payload;
 }
 
 /**
@@ -288,6 +288,48 @@ export async function syncMindbodySchedules(
     const data = await response.json();
     let appointments: MindbodyAppointment[] = data.appointments || [];
 
+    // Before narrowing to this studio's location, park anything belonging to a
+    // location NO studio claims.
+    //
+    // This is where the pull path actually lost bookings. The filter below
+    // removes them silently, and the `!studioId` guard inside the loop never
+    // fires because these never reach it — so a location that came online
+    // before anyone mapped it was invisible to trainers with nothing to show
+    // for it. Appointments belonging to a SIBLING studio are a different case
+    // and are left alone: they are not unmapped, just someone else's.
+    for (const a of appointments) {
+      if (a.LocationId === undefined || a.LocationId === null) continue;
+      if (resolveStudioId(a.LocationId, siteId, studios)) continue;
+      try {
+        await parkPullSyncBooking({
+          siteId: String(siteId),
+          appointmentId: a.Id,
+          locationId: a.LocationId,
+          clientId: a.ClientId ? String(a.ClientId) : null,
+          clientName:
+            `${a.ClientFirstName || ""} ${a.ClientLastName || ""}`.trim() ||
+            "Unknown Client",
+          staffName:
+            `${a.StaffFirstName || ""} ${a.StaffLastName || ""}`.trim() ||
+            undefined,
+          serviceName: a.SessionTypeName || undefined,
+          // Raw and unconverted: no studio means no timezone to read these
+          // naive wall-clock strings against.
+          rawStartDateTime: a.StartDateTime,
+          rawEndDateTime: a.EndDateTime,
+          status: a.Status,
+          reason: `No studio on Mindbody site ${siteId} claims location ${a.LocationId}. Set mindbodyLocationId in Admin -> Studios, or assign a studio here to release this booking.`,
+          payload: a as unknown as Record<string, unknown>,
+        });
+        result.skipped++;
+        unresolvedLocations.add(String(a.LocationId));
+      } catch (parkError: any) {
+        result.errors.push(
+          `Appt ${a.Id}: could not park in Limbo: ${parkError?.message || parkError}`,
+        );
+      }
+    }
+
     if (effectiveLocationId) {
       appointments = appointments.filter(
         (a) =>
@@ -302,7 +344,7 @@ export async function syncMindbodySchedules(
     }
 
     // Fetch all clients from Firestore to guarantee clientId matching across all dates/studios
-    let allClients = clients;
+    let allClients = [...clients];
     try {
       const clientsSnap = await getDocs(collection(db, "clients"));
       if (!clientsSnap.empty) {
@@ -336,6 +378,69 @@ export async function syncMindbodySchedules(
       }
     });
 
+    // ------------------------------------------------------------------
+    // PHASE 1 — make sure every client on this schedule EXISTS, before any
+    // schedule row references them.
+    //
+    // Clients used to be created one at a time, with an awaited setDoc inside
+    // the appointment loop. Across 432 appointments that is hundreds of
+    // sequential round trips: slow enough that the grid rendered before the
+    // documents landed, and heavy enough to help exhaust the write quota — so
+    // blocks sat on "Not synced" pointing at clients that did not exist yet.
+    //
+    // Batched up front, the whole roster is created in a couple of commits and
+    // the schedule rows written afterwards always resolve.
+    // ------------------------------------------------------------------
+    const missingClients = new Map<string, MindbodyAppointment>();
+    for (const appt of appointments) {
+      const mbId = appt.ClientId ? String(appt.ClientId).trim() : "";
+      if (!mbId) continue;
+      if (missingClients.has(mbId)) continue;
+      if (resolveCanonicalClientId(mbId, allClients)) continue;
+
+      // MULTI-TENANT GUARD: only create a client for an appointment that will
+      // actually be filed under the studio being synced. Without this, a
+      // sibling studio's appointment (same Mindbody site, different location)
+      // would create its client with the WRONG homeStudioId, putting them on
+      // another location's roster and inside another location's permissions.
+      if (resolveStudioId(appt.LocationId, siteId, studios) !== targetStudioId) {
+        continue;
+      }
+      missingClients.set(mbId, appt);
+    }
+
+    if (missingClients.size > 0) {
+      let clientBatch = writeBatch(db);
+      let pending = 0;
+      let created = 0;
+      try {
+        for (const [mbId, appt] of missingClients) {
+          const payload = buildCanonicalClientPayload(appt, mbId, targetStudioId);
+          clientBatch.set(doc(db, "clients", mbId), payload, { merge: true });
+          // Keep the in-memory roster in step so the loop below resolves them.
+          allClients.push({ id: mbId, ...payload } as unknown as Client);
+          created++;
+          pending++;
+          if (pending >= 400) {
+            await clientBatch.commit();
+            clientBatch = writeBatch(db);
+            pending = 0;
+          }
+        }
+        if (pending > 0) await clientBatch.commit();
+        result.clientsCreated = created;
+        console.log(
+          `[REFRESH SCHEDULE] Created/updated ${created} canonical client profile(s) before writing schedules.`,
+        );
+      } catch (e: any) {
+        // Schedules are still written below; those rows simply stay unlinked
+        // and will resolve on the next sync rather than being lost.
+        result.errors.push(
+          `Could not create ${missingClients.size} client profile(s): ${e?.message || e}`,
+        );
+      }
+    }
+
     const currentMbIds = new Set(appointments.map((a) => String(a.Id)));
     let batch = writeBatch(db);
     let batchCount = 0;
@@ -351,10 +456,42 @@ export async function syncMindbodySchedules(
         const studioId = resolveStudioId(appt.LocationId, siteId, studios);
 
         if (!studioId) {
+          // Backstop. Unmappable appointments are normally parked above, before
+          // the location filter; this only fires if one slips through (e.g. an
+          // appointment with no LocationId at all on a single-studio site).
           result.skipped++;
           unresolvedLocations.add(
             appt.LocationId != null ? String(appt.LocationId) : "none",
           );
+          try {
+            await parkPullSyncBooking({
+              siteId: String(siteId),
+              appointmentId: appt.Id,
+              locationId: appt.LocationId ?? null,
+              clientId: appt.ClientId ? String(appt.ClientId) : null,
+              clientName:
+                `${appt.ClientFirstName || ""} ${appt.ClientLastName || ""}`.trim() ||
+                "Unknown Client",
+              staffName:
+                `${appt.StaffFirstName || ""} ${appt.StaffLastName || ""}`.trim() ||
+                undefined,
+              serviceName: appt.SessionTypeName || undefined,
+              // Raw and unconverted: no studio means no timezone to read these
+              // naive wall-clock strings against.
+              rawStartDateTime: appt.StartDateTime,
+              rawEndDateTime: appt.EndDateTime,
+              status: appt.Status,
+              reason:
+                appt.LocationId != null
+                  ? `No studio on Mindbody site ${siteId} claims location ${appt.LocationId}. Set mindbodyLocationId in Admin -> Studios, then release this booking.`
+                  : `This appointment names no Mindbody location and site ${siteId} is shared by more than one studio, so it cannot be filed automatically. Assign a studio to release it.`,
+              payload: appt as unknown as Record<string, unknown>,
+            });
+          } catch (parkError: any) {
+            result.errors.push(
+              `Appt ${appt.Id}: could not park in Limbo: ${parkError?.message || parkError}`,
+            );
+          }
           continue;
         }
 
@@ -404,12 +541,30 @@ export async function syncMindbodySchedules(
 
         const mbClientId = appt.ClientId ? String(appt.ClientId).trim() : null;
 
-        const clientId = findClientId(
-          clientName,
-          allClients,
-          trainer?.primaryHomeStudioId || targetStudioId || undefined,
-          mbClientId,
+        // Pass / waitlist / visit-count data, when the proxy passed any through.
+        // Read before the client block, which uses the visit count.
+        const bookingExtras = extractBookingExtras(
+          appt as unknown as Record<string, unknown>,
         );
+
+        const clientId = resolveCanonicalClientId(mbClientId, allClients);
+
+        if (!clientId && mbClientId) {
+          // Phase 1 above creates every client for this studio before the loop
+          // runs, so reaching here means that batch failed. The schedule row is
+          // still written (unlinked) and will resolve on the next sync.
+          result.errors.push(
+            `Appt ${appt.Id}: client ${mbClientId} could not be resolved or created; left unlinked.`,
+          );
+        }
+
+        if (!clientId && !mbClientId) {
+          // No Mindbody client id on the appointment at all. Nothing to key on,
+          // and guessing by name is exactly what we removed.
+          result.errors.push(
+            `Appt ${appt.Id} ("${clientName}") carries no Mindbody ClientId; left unlinked.`,
+          );
+        }
 
         if (clientId) {
           const matchedClient = allClients.find((c) => c.id === clientId);
@@ -458,6 +613,20 @@ export async function syncMindbodySchedules(
               matchedClient.emergencyContactPhone = appt.ClientEmergencyPhone;
             }
 
+            // Mindbody-owned, so unlike the blank-filling backfills above this
+            // always refreshes. It is NOT the same number as `sessionCount` —
+            // that is this app's own count of completed workouts.
+            if (
+              bookingExtras.clientsNumberOfVisitsAtSite !== undefined &&
+              matchedClient.clientsNumberOfVisitsAtSite !==
+                bookingExtras.clientsNumberOfVisitsAtSite
+            ) {
+              clientUpdates.clientsNumberOfVisitsAtSite =
+                bookingExtras.clientsNumberOfVisitsAtSite;
+              matchedClient.clientsNumberOfVisitsAtSite =
+                bookingExtras.clientsNumberOfVisitsAtSite;
+            }
+
             if (Object.keys(clientUpdates).length > 0) {
               batch.update(doc(db, "clients", clientId), clientUpdates);
               batchCount++;
@@ -503,11 +672,35 @@ export async function syncMindbodySchedules(
           lastSyncAt: Timestamp.now(),
         };
 
+        // Only written when reported, so a payload without pass data cannot
+        // blank out what an earlier sync or the webhook already stored.
+        if (bookingExtras.pass) payload.mindbodyPass = bookingExtras.pass;
+        if (bookingExtras.bookingOriginatedFromWaitlist !== undefined) {
+          payload.bookingOriginatedFromWaitlist =
+            bookingExtras.bookingOriginatedFromWaitlist;
+        }
+
+        // Doc id = the Mindbody appointment id, which is exactly what the
+        // webhook uses for `schedules/{bookingId}`. While this importer minted
+        // random ids and the webhook used booking ids, the same appointment
+        // could exist as two documents and show up twice on the grid.
+        const scheduleRef = doc(db, "schedules", mbId);
         const existing = existingByMbId[mbId];
+
         if (!existing) {
-          const newRef = doc(collection(db, "schedules"));
-          batch.set(newRef, { ...payload, createdAt: Timestamp.now() });
+          batch.set(scheduleRef, { ...payload, createdAt: Timestamp.now() });
           result.added++;
+        } else if (existing.docId !== mbId) {
+          // A legacy random-id row for this appointment. Fold it onto the
+          // canonical id and drop the stray in the same batch.
+          batch.set(scheduleRef, {
+            ...existing.data,
+            ...payload,
+            createdAt: existing.data.createdAt || Timestamp.now(),
+          });
+          batch.delete(doc(db, "schedules", existing.docId));
+          result.updated++;
+          batchCount++;
         } else {
           const curr = existing.data;
           const hasChanged =

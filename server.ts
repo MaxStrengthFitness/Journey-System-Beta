@@ -808,6 +808,41 @@ async function startServer() {
             appt.SessionTypeName ||
             "Training Session",
           LocationId: appt.Location?.Id || appt.LocationId || null,
+
+          // Pass / waitlist / visit-count passthrough. This normalizer is a
+          // whitelist — anything not listed here is dropped before the app ever
+          // sees it, which is why these have to be named explicitly.
+          //
+          // Mindbody's published appointment schema does not document these
+          // (they appear on CLASS bookings), so they may simply be absent. Read
+          // from several shapes and pass null through; the client-side
+          // extractor ignores nulls, so an absent field writes nothing.
+          ClientPassId:
+            appt.ClientPassId ?? appt.ClientPass?.Id ?? null,
+          ClientPassSessionsTotal:
+            appt.ClientPassSessionsTotal ?? appt.ClientPass?.SessionsTotal ?? null,
+          ClientPassSessionsDeducted:
+            appt.ClientPassSessionsDeducted ??
+            appt.ClientPass?.SessionsDeducted ??
+            null,
+          ClientPassSessionsRemaining:
+            appt.ClientPassSessionsRemaining ??
+            appt.ClientPass?.SessionsRemaining ??
+            null,
+          ClientPassActivationDateTime:
+            appt.ClientPassActivationDateTime ??
+            appt.ClientPass?.ActivationDateTime ??
+            null,
+          ClientPassExpirationDateTime:
+            appt.ClientPassExpirationDateTime ??
+            appt.ClientPass?.ExpirationDateTime ??
+            null,
+          BookingOriginatedFromWaitlist:
+            appt.BookingOriginatedFromWaitlist ?? null,
+          ClientsNumberOfVisitsAtSite:
+            appt.ClientsNumberOfVisitsAtSite ??
+            appt.Client?.NumberOfVisitsAtSite ??
+            null,
         };
       });
 

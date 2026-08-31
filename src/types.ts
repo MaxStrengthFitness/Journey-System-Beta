@@ -384,6 +384,10 @@ export interface Client {
   leadSource?: string;
   referredBy?: string;
   notes?: string;
+  /** Pinned "read this before the session" note. Raises the loud flag on the hub schedule block. */
+  priorityNote?: string;
+  /** Denormalized: true while the client has an outstanding High-priority session note. */
+  hasPriorityNote?: boolean;
   events?: ClientEvent[];
   isRoutineBActive?: boolean;
   preferredTodayRoutineId?: string;
@@ -400,6 +404,12 @@ export interface Client {
   mindbodyCommercialSyncedAt?: any;
   completedSessions?: number;
   sessionCount?: number;
+  /**
+   * Lifetime visit count as Mindbody counts it at the site. Distinct from
+   * `sessionCount`, which is this app's own count of completed workouts — the
+   * two will not agree and neither is wrong.
+   */
+  clientsNumberOfVisitsAtSite?: number;
   lifetimeReps?: number;
   lifetimeWeight?: number;
   packageTier?: "6-Month" | "12-Month" | "18-Month" | "None";
@@ -681,9 +691,64 @@ export interface ClientMachineSetting {
   currentWeight?: number;
 }
 
+/**
+ * Client-pass snapshot as Mindbody reported it at booking time. Only the keys
+ * Mindbody actually sent are present — see lib/mindbody-pass.ts.
+ */
+export interface MindbodyPass {
+  passId?: string;
+  sessionsTotal?: number;
+  sessionsDeducted?: number;
+  sessionsRemaining?: number;
+  activationDateTime?: string;
+  expirationDateTime?: string;
+}
+
+/**
+ * A Mindbody event that could not be attributed to a studio, parked rather than
+ * dropped. Written by both the webhook and the pull-sync; cleared from the
+ * Admin -> Limbo screen.
+ */
+export interface LimboEntry {
+  id?: string;
+  eventId: string;
+  eventType: string;
+  kind: "booking" | "client" | "commercial";
+  source?: "webhook" | "pull-sync";
+  siteId: string | null;
+  locationId: string | null;
+  clientId: string | null;
+  reason: string;
+  summary?: {
+    bookingId?: string;
+    clientName?: string;
+    /** RAW Mindbody wall-clock strings — unconverted, no timezone known yet. */
+    rawStartDateTime?: string | null;
+    rawEndDateTime?: string | null;
+    staffName?: string | null;
+    serviceName?: string | null;
+    status?: string;
+    mindbodyPass?: MindbodyPass;
+  };
+  payload?: Record<string, any>;
+  firstSeenAt?: any;
+  lastSeenAt?: any;
+  resolvedAt?: any;
+  resolvedStudioId?: string;
+  dismissed?: boolean;
+}
+
 export interface ScheduleEntry {
   id?: string;
   clientId?: string;
+  /** Raw Mindbody client id, kept alongside clientId for reconciliation. */
+  mindbodyClientId?: string;
+  /** Mindbody's booking id. Also used as this document's id. */
+  mindbodyAppointmentId?: string;
+  /** Pass/package state at booking time, when Mindbody reports it. */
+  mindbodyPass?: MindbodyPass;
+  /** True when the booking came off a waitlist rather than a direct booking. */
+  bookingOriginatedFromWaitlist?: boolean;
   clientName: string;
   trainerId?: string;
   trainerName: string;

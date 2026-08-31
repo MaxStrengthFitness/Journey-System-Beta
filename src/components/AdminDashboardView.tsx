@@ -8,7 +8,8 @@ import { AdminHubAnnouncements } from "./AdminHubAnnouncements";
 import { InsightsDashboardView } from "./InsightsDashboardView";
 import { RetentionDashboardView } from "./RetentionDashboardView";
 import { MindbodyDashboard } from "./mindbody/MindbodyDashboard";
-import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, ShieldAlert, Zap, CreditCard } from "lucide-react";
+import { AdminLimboQueue } from "./AdminLimboQueue";
+import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, ShieldAlert, Zap, CreditCard, Inbox } from "lucide-react";
 
 import { AdminSystemClients } from "./AdminSystemClients";
 
@@ -48,7 +49,7 @@ export function AdminDashboardView({
   onNavigateProfile,
 }: Props) {
   const [activeTab, setActiveTab] = useState<
-    "metrics" | "users" | "studios" | "clients" | "announcements" | "bugs" | "insights" | "retention" | "mindbody"
+    "metrics" | "users" | "studios" | "clients" | "announcements" | "bugs" | "insights" | "retention" | "mindbody" | "limbo"
   >("metrics");
 
   const isFranchiseOwnerOrAdmin = isAdmin || authTrainer?.role === "FranchiseOwner" || authTrainer?.role === "Owner";
@@ -90,6 +91,11 @@ export function AdminDashboardView({
       icon: <Zap className="w-4 h-4" />,
     },
     {
+      id: "limbo",
+      label: "Limbo",
+      icon: <Inbox className="w-4 h-4" />,
+    },
+    {
       id: "announcements",
       label: "Announcements",
       icon: <Megaphone className="w-4 h-4" />,
@@ -100,6 +106,9 @@ export function AdminDashboardView({
   const tabs = allTabs.filter(tab => {
     if (tab.id === "users") return isFranchiseOwnerOrAdmin;
     if (tab.id === "mindbody") return isAdmin;
+    // Releasing a booking assigns it to a studio, so this is admin-only for the
+    // same reason studio management is.
+    if (tab.id === "limbo") return isAdmin;
     if (tab.id === "bugs") return isAdmin;
     if (tab.id === "announcements") return isFranchiseOwnerOrAdmin;
     return true;
@@ -187,6 +196,9 @@ export function AdminDashboardView({
         )}
         {activeTab === "announcements" && (
           <AdminHubAnnouncements studios={studios} authTrainer={authTrainer} />
+        )}
+        {activeTab === "limbo" && (
+          <AdminLimboQueue studios={studios} clients={clients} />
         )}
         {activeTab === "bugs" && <AdminBugReports />}
       </div>
