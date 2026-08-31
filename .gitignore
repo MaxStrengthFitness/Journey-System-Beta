@@ -48,3 +48,6 @@ yarn-error.log*
 
 # Misc
 .gcloudignore
+
+# Local test run captures
+test-output.txt
