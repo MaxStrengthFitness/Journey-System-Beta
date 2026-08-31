@@ -10,6 +10,14 @@ import { verifyMindbodySignature } from "./verifySignature";
 import { recordHealthEvent } from "./healthState";
 import { tryRecordEvent } from "./idempotency";
 import { wallClockToInstant, isValidTimeZone, DEFAULT_TIME_ZONE } from "./time";
+import {
+  ensureCanonicalClient,
+  recordLimboEvent,
+  LIMBO_QUEUE,
+  MindbodyClientProfile,
+} from "./clientResolver";
+import { recordAttemptFailure } from "./retryLedger";
+import { extractBookingExtras } from "./passFields";
 
 export type WebhookRequest = {
   rawBody: string;
@@ -76,6 +84,8 @@ export type StudioResolution = {
   studioId?: string;
   /** True when several studios share the site and the event names no location. */
   ambiguous: boolean;
+  /** True when NO studio claims this Mindbody site at all. */
+  unmapped: boolean;
   /** Timezone of the resolved studio, for reading MindBody's naive times. */
   timeZone?: string;
 };
@@ -89,22 +99,28 @@ async function resolveStudio(
   const site = String(siteId).trim();
   const onSite = studios.filter((s) => s.siteId === site);
 
-  if (onSite.length === 0) return { ambiguous: false };
+  if (onSite.length === 0) return { ambiguous: false, unmapped: true };
   if (locationId !== undefined && locationId !== null && locationId !== "") {
     const loc = String(locationId).trim();
     const match = onSite.find((s) => s.locationId === loc);
     return match
-      ? { studioId: match.id, ambiguous: false, timeZone: match.timeZone }
-      : { ambiguous: true };
+      ? {
+          studioId: match.id,
+          ambiguous: false,
+          unmapped: false,
+          timeZone: match.timeZone,
+        }
+      : { ambiguous: true, unmapped: false };
   }
 
   if (onSite.length === 1)
     return {
       studioId: onSite[0].id,
       ambiguous: false,
+      unmapped: false,
       timeZone: onSite[0].timeZone,
     };
-  return { ambiguous: true };
+  return { ambiguous: true, unmapped: false };
 }
 
 /**
@@ -135,36 +151,16 @@ function toMapKey(value: unknown): string | undefined {
 }
 
 /**
- * Finds the client document a Mindbody event belongs to.
+ * The client document a Mindbody event belongs to. STRICT: always the canonical
+ * path, never a document found by searching id fields.
  *
- * Clients created inside the app carry a random doc id with the Mindbody id in
- * a field, while webhook-created clients live at `clients/{mindbodyClientId}`.
- * We try the canonical path first, then fall back to the id fields (single-field
- * equality -- no composite index required) so membership and contract data does
- * not land on an orphan document. When nothing matches we return the canonical
- * ref, which is the existing upsert behaviour.
+ * This used to fall back to a `mindbodyClientId`/`mindbodyId` field query so
+ * commercial data would not land on an orphan record. That fallback is gone on
+ * purpose: with one canonical location there is nothing to search for, and a
+ * search could only ever return a stale document we have decided to ignore.
  */
-async function resolveClientRef(
-  firestore: Firestore,
-  clientId: string | number,
-) {
-  const id = String(clientId).trim();
-  const canonical = firestore.collection("clients").doc(id);
-
-  const direct = await canonical.get();
-  if (direct.exists) return canonical;
-
-  for (const field of ["mindbodyClientId", "mindbodyId"]) {
-    const snap = await firestore
-      .collection("clients")
-      .where(field, "==", id)
-      .limit(1)
-      .get();
-    const docs = snap?.docs ?? [];
-    if (docs.length > 0) return docs[0].ref;
-  }
-
-  return canonical;
+function resolveClientRef(firestore: Firestore, clientId: string | number) {
+  return firestore.collection("clients").doc(String(clientId).trim());
 }
 
 /**
@@ -176,6 +172,9 @@ export async function handleMindbodyWebhook(
   deps: WebhookDeps,
   req: WebhookRequest,
 ): Promise<WebhookResponse> {
+  // Health reporting requires a real, non-negative latency figure; this used to
+  // be hardcoded to 0, which made the Integrations Hub health card meaningless.
+  const processingStartedAt = Date.now();
   const signature = req.signatureHeader || "";
 
   // 1. Strict Verification Guard
@@ -274,7 +273,7 @@ export async function handleMindbodyWebhook(
     const isClientEvent = !isBookingEvent && !isCommercialEvent;
 
     if (isCommercialEvent && clientId) {
-      const clientRef = await resolveClientRef(deps.firestore, clientId);
+      const clientRef = resolveClientRef(deps.firestore, clientId);
       const isCancelEvent =
         lowerType.includes("cancel") || lowerType.includes("delete");
       const now = FieldValue.serverTimestamp();
@@ -389,74 +388,133 @@ export async function handleMindbodyWebhook(
         await clientRef.set(updates, { merge: true });
       }
     } else if (isClientEvent && clientId) {
-      const updates: Record<string, unknown> = {};
+      // Mindbody-owned facts. These always overwrite: Mindbody is the source of
+      // truth for commercial status, and nobody types these in the app.
+      const enrichment: Record<string, unknown> = {};
 
-      // Extract Active Membership Status / Tier Name
       if (typeof payloadData.membershipStatus === "string")
-        updates.membershipStatus = payloadData.membershipStatus;
+        enrichment.membershipStatus = payloadData.membershipStatus;
       if (typeof payloadData.tierName === "string")
-        updates.packageTier = payloadData.tierName;
+        enrichment.packageTier = payloadData.tierName;
       if (
         typeof payloadData.activeMembership === "boolean" ||
         typeof payloadData.activeMembership === "string"
       )
-        updates.activeMembership = payloadData.activeMembership;
-
-      // Last Visited Timestamp
+        enrichment.activeMembership = payloadData.activeMembership;
       if (typeof payloadData.lastVisited === "string")
-        updates.lastSessionDate = payloadData.lastVisited;
-
-      // Prebooked Schedule Arrays
+        enrichment.lastSessionDate = payloadData.lastVisited;
       if (Array.isArray(payloadData.prebookedSchedules))
-        updates.prebookedSchedules = payloadData.prebookedSchedules;
+        enrichment.prebookedSchedules = payloadData.prebookedSchedules;
       if (Array.isArray(payloadData.upcomingBookings))
-        updates.upcomingBookings = payloadData.upcomingBookings;
+        enrichment.upcomingBookings = payloadData.upcomingBookings;
 
-      // Extract mindbody_name if given to help match
-      if (
-        typeof payloadData.firstName === "string" ||
-        typeof payloadData.lastName === "string"
-      ) {
-        updates.mindbody_name =
-          `${typeof payloadData.firstName === "string" ? payloadData.firstName : ""} ${typeof payloadData.lastName === "string" ? payloadData.lastName : ""}`.trim();
-      }
-
-      // Profile enrichment from client.created / client.updated payloads.
-      // Mindbody's account notes go to their OWN field (mindbodyNotes) --
-      // `notes` on client docs is trainer-authored and must never be
-      // overwritten by a sync.
+      // Mindbody's account notes go to their OWN field. `notes` on a client doc
+      // is trainer-authored and must never be overwritten by a sync.
       if (typeof payloadData.notes === "string" && payloadData.notes.trim()) {
-        updates.mindbodyNotes = payloadData.notes.slice(0, 1000);
-      }
-      if (
-        typeof payloadData.photoUrl === "string" &&
-        /^https:\/\//i.test(payloadData.photoUrl.trim())
-      ) {
-        updates.photoUrl = payloadData.photoUrl.trim();
+        enrichment.mindbodyNotes = payloadData.notes.slice(0, 1000);
       }
 
+      // A real client event supersedes any stub a booking created earlier.
+      enrichment.isMindbodyStub = false;
+
+      // Person-facts. These only ever FILL BLANKS on an existing profile.
+      const pickString = (...keys: string[]): string | undefined => {
+        for (const key of keys) {
+          const v = payloadData[key];
+          if (typeof v === "string" && v.trim()) return v.trim();
+        }
+        return undefined;
+      };
+
+      const firstName = pickString("firstName", "FirstName", "clientFirstName");
+      const lastName = pickString("lastName", "LastName", "clientLastName");
+
+      const profile: MindbodyClientProfile = {
+        firstName,
+        lastName,
+        email: pickString("email", "Email"),
+        phone: pickString("mobilePhone", "homePhone", "workPhone", "phone"),
+        dateOfBirth: pickString("birthDate", "birthDateTime", "dateOfBirth"),
+        gender: pickString("gender"),
+        address: pickString("addressLine1", "address"),
+        emergencyContactName: pickString(
+          "emergencyContactInfoName",
+          "emergencyContactName",
+        ),
+        emergencyContactPhone: pickString(
+          "emergencyContactInfoPhone",
+          "emergencyContactPhone",
+        ),
+      };
+
+      if (firstName || lastName) {
+        profile.mindbody_name = `${firstName || ""} ${lastName || ""}`.trim();
+      }
+
+      const rawPhoto = pickString("photoUrl");
+      if (rawPhoto && /^https:\/\//i.test(rawPhoto)) {
+        profile.photoUrl = rawPhoto;
+      }
+
+      let studioId: string | null = null;
       if (siteId) {
-        const { studioId, ambiguous } = await resolveStudio(
+        const resolution = await resolveStudio(
           deps.firestore,
           siteId,
           locationId,
         );
-        if (studioId) {
-          updates.homeStudioId = studioId;
-        } else if (ambiguous) {
+        if (resolution.studioId) {
+          studioId = resolution.studioId;
+          // A client event is authoritative about which studio owns the person,
+          // so it may reassign an existing homeStudioId (pre-existing behaviour).
+          enrichment.homeStudioId = resolution.studioId;
+        } else if (resolution.ambiguous) {
           // Reassigning a client's home studio decides who may view their
           // clinical record, so leave it alone rather than pick one.
           console.warn(
             `Mindbody webhook: site ${siteId} maps to multiple studios and the event named no resolvable location; leaving homeStudioId untouched for client ${clientId}.`,
           );
+          await recordLimboEvent(deps.firestore, {
+            eventId,
+            eventType,
+            kind: "client",
+            siteId,
+            locationId,
+            clientId,
+            reason:
+              "Client profile saved, but its home studio is unset: the site is shared by several studios and the event named no resolvable location. Set mindbodyLocationId on each studio in Admin -> Studios.",
+            payload: parsed,
+          });
+        } else if (resolution.unmapped) {
+          // No studio claims this site. The client is still created so their
+          // history starts accruing, but with homeStudioId null rather than a
+          // guessed default — a mis-tenanted client shows on the wrong
+          // location's schedule and is readable by the wrong trainers.
+          console.warn(
+            `Mindbody webhook: site ${siteId} maps to no studio; client ${clientId} created without a home studio.`,
+          );
+          await recordLimboEvent(deps.firestore, {
+            eventId,
+            eventType,
+            kind: "client",
+            siteId,
+            locationId,
+            clientId,
+            reason:
+              "Client profile saved, but its home studio is unset: no studio has this Mindbody site id. Set mindbodySiteId on the studio in Admin -> Studios, then re-run the pull-sync.",
+            payload: parsed,
+          });
         }
       }
 
-      // Execute an atomic Firestore set() operation with { merge: true }
-      const clientDocId = String(clientId);
-      const clientRef = deps.firestore.collection("clients").doc(clientDocId);
+      await ensureCanonicalClient(deps.firestore, {
+        mindbodyClientId: clientId,
+        profile,
+        enrichment,
+        studioId,
+        origin: "client-event",
+      });
 
-      await clientRef.set(updates, { merge: true });
     } else if (isBookingEvent) {
       const bookingId =
         typeof payloadData.id === "string" || typeof payloadData.id === "number"
@@ -475,53 +533,17 @@ export async function handleMindbodyWebhook(
         (typeof payloadData.status === "string" &&
           payloadData.status.toLowerCase() === "cancelled");
 
+      // Pass / waitlist / visit-count data, when Mindbody sends any of it.
+      // Strictly additive: absent fields write nothing.
+      const bookingExtras = extractBookingExtras(payloadData);
+
       const rawStart =
         payloadData.startDateTime || payloadData.startTime || payloadData.start;
       const rawEnd =
         payloadData.endDateTime || payloadData.endTime || payloadData.end;
 
-      // Resolved before the times are read: MindBody's wall-clock strings are
-      // meaningless without knowing which studio's clock they belong to.
-      let studioId: string | null = null;
-      let studioTimeZone = DEFAULT_TIME_ZONE;
-      if (siteId) {
-        const resolution = await resolveStudio(
-          deps.firestore,
-          siteId,
-          locationId,
-        );
-        if (resolution.studioId) {
-          studioId = resolution.studioId;
-          if (resolution.timeZone) studioTimeZone = resolution.timeZone;
-        } else if (resolution.ambiguous) {
-          // A booking filed against the wrong studio shows on that studio's
-          // roster and desyncs the schedule importer's duplicate check, so drop
-          // it here. 200 stops MindBody retrying an event we will never accept;
-          // the scheduled importer picks the booking up once the location is
-          // mapped in Admin -> Studios.
-          console.warn(
-            `Mindbody webhook: dropping booking ${bookingId} — site ${siteId}${
-              locationId !== undefined ? ` / location ${locationId}` : ""
-            } does not resolve to a single studio.`,
-          );
-          await recordHealthEvent(deps.firestore, {
-            type: "webhook_success",
-            hydrationLatencyMs: 0,
-          });
-          return { statusCode: 200 };
-        }
-      }
-
-      // Now that the owning studio is known, read its wall clock.
-      const startDate = wallClockToInstant(rawStart, studioTimeZone);
-      const endDate = wallClockToInstant(rawEnd, studioTimeZone);
-      const startTime: Timestamp | null = startDate
-        ? Timestamp.fromDate(startDate)
-        : null;
-      const endTime: Timestamp | null = endDate
-        ? Timestamp.fromDate(endDate)
-        : null;
-
+      // Read before the studio is resolved: a booking that ends up parked in
+      // Limbo still has to tell an admin WHO is arriving.
       let clientName = "";
       if (typeof payloadData.clientName === "string") {
         clientName = payloadData.clientName;
@@ -538,6 +560,83 @@ export async function handleMindbodyWebhook(
         clientName =
           `${typeof payloadData.clientFirstName === "string" ? payloadData.clientFirstName : ""} ${typeof payloadData.clientLastName === "string" ? payloadData.clientLastName : ""}`.trim();
       }
+
+      // Resolved before the times are read: MindBody's wall-clock strings are
+      // meaningless without knowing which studio's clock they belong to.
+      let studioId: string | null = null;
+      let studioTimeZone = DEFAULT_TIME_ZONE;
+      if (siteId) {
+        const resolution = await resolveStudio(
+          deps.firestore,
+          siteId,
+          locationId,
+        );
+        if (resolution.studioId) {
+          studioId = resolution.studioId;
+          if (resolution.timeZone) studioTimeZone = resolution.timeZone;
+        } else if (resolution.ambiguous || resolution.unmapped) {
+          // The booking is PARKED, not dropped. It must not reach `schedules`:
+          // a row with a null studioId is treated as "belongs to everyone" by
+          // the hub's studio filter and would surface on every location's grid,
+          // and a row filed under a guessed studio would show on the wrong
+          // roster. Limbo keeps it visible to an admin without either failure.
+          //
+          // NOTE ON TIMES: Mindbody sends naive wall-clock strings. Without a
+          // studio there is no timezone to read them against, so the RAW
+          // strings are stored, unconverted. Guessing UTC here would park the
+          // booking at the wrong hour and it would stay wrong after linking.
+          console.warn(
+            `Mindbody webhook: parking booking ${bookingId} in ${LIMBO_QUEUE} — site ${siteId}${
+              locationId !== undefined ? ` / location ${locationId}` : ""
+            } ${resolution.unmapped ? "maps to no studio" : "does not resolve to a single studio"}.`,
+          );
+          await recordLimboEvent(deps.firestore, {
+            eventId,
+            eventType,
+            kind: "booking",
+            siteId,
+            locationId,
+            clientId,
+            reason: resolution.unmapped
+              ? "Booking parked: no studio has this Mindbody site id. Set mindbodySiteId in Admin -> Studios, then run Refresh Schedule to release it onto the roster."
+              : "Booking parked: site is shared by several studios and the event named no resolvable location. Set mindbodyLocationId in Admin -> Studios, then run Refresh Schedule to release it onto the roster.",
+            summary: {
+              bookingId,
+              clientName: clientName || "Unknown Client",
+              // Raw, unconverted — see the note above.
+              rawStartDateTime: typeof rawStart === "string" ? rawStart : null,
+              rawEndDateTime: typeof rawEnd === "string" ? rawEnd : null,
+              staffName:
+                typeof payloadData.staffName === "string"
+                  ? payloadData.staffName
+                  : typeof payloadData.trainerName === "string"
+                    ? payloadData.trainerName
+                    : null,
+              serviceName:
+                typeof payloadData.serviceName === "string"
+                  ? payloadData.serviceName
+                  : null,
+              status: isCancelled ? "Cancelled" : "Scheduled",
+            },
+            payload: parsed,
+          });
+          await recordHealthEvent(deps.firestore, {
+            type: "webhook_success",
+            hydrationLatencyMs: Math.max(0, Date.now() - processingStartedAt),
+          });
+          return { statusCode: 200 };
+        }
+      }
+
+      // Now that the owning studio is known, read its wall clock.
+      const startDate = wallClockToInstant(rawStart, studioTimeZone);
+      const endDate = wallClockToInstant(rawEnd, studioTimeZone);
+      const startTime: Timestamp | null = startDate
+        ? Timestamp.fromDate(startDate)
+        : null;
+      const endTime: Timestamp | null = endDate
+        ? Timestamp.fromDate(endDate)
+        : null;
 
       if (!clientName && clientId) {
         const clientSnap = await deps.firestore
@@ -607,11 +706,54 @@ export async function handleMindbodyWebhook(
         status: isCancelled ? "Cancelled" : "Scheduled",
         serviceName,
         source: "MindBody",
+        mindbodyAppointmentId: bookingId,
         lastSyncAt: FieldValue.serverTimestamp(),
       };
 
+      // Trainers see pass state on the block; only written when reported, so a
+      // payload without pass data never blanks out what a previous one set.
+      if (bookingExtras.pass) scheduleData.mindbodyPass = bookingExtras.pass;
+      if (bookingExtras.bookingOriginatedFromWaitlist !== undefined) {
+        scheduleData.bookingOriginatedFromWaitlist =
+          bookingExtras.bookingOriginatedFromWaitlist;
+      }
+
       if (clientId) {
-        scheduleData.clientId = String(clientId);
+        // ORDERING HAZARD: a booking can arrive before the client.created event
+        // for a brand-new client. Rather than write a clientId that points at
+        // nothing (which the hub self-heals to null, producing an unlinked
+        // block a trainer has to fix by hand), create a stub profile now. The
+        // client event enriches it moments later and clears isMindbodyStub.
+        //
+        // The doc id this returns is used verbatim: if the client still lives
+        // at a legacy doc id, the schedule must point THERE, not at a canonical
+        // path that does not exist yet.
+        const resolvedClient = await ensureCanonicalClient(deps.firestore, {
+          mindbodyClientId: clientId,
+          profile: {
+            mindbody_name: clientName !== "Unknown Client" ? clientName : undefined,
+            firstName:
+              clientName !== "Unknown Client"
+                ? clientName.split(" ")[0]
+                : undefined,
+            lastName:
+              clientName !== "Unknown Client"
+                ? clientName.split(" ").slice(1).join(" ") || undefined
+                : undefined,
+          },
+          studioId,
+          origin: "booking-stub",
+          // Mindbody's own lifetime visit count for this client at the site.
+          enrichment:
+            bookingExtras.clientsNumberOfVisitsAtSite !== undefined
+              ? {
+                  clientsNumberOfVisitsAtSite:
+                    bookingExtras.clientsNumberOfVisitsAtSite,
+                }
+              : undefined,
+        });
+        scheduleData.clientId = resolvedClient.clientDocId;
+        scheduleData.mindbodyClientId = String(clientId);
       }
 
       const scheduleRef = deps.firestore.collection("schedules").doc(bookingId);
@@ -625,7 +767,7 @@ export async function handleMindbodyWebhook(
 
     await recordHealthEvent(deps.firestore, {
       type: "webhook_success",
-      hydrationLatencyMs: 0,
+      hydrationLatencyMs: Math.max(0, Date.now() - processingStartedAt),
     });
     return { statusCode: 200 };
 
@@ -634,6 +776,32 @@ export async function handleMindbodyWebhook(
     console.error("Webhook processing error:", { error: String(error) });
 
     await recordHealthEvent(deps.firestore, { type: "webhook_failure" });
+
+    // The idempotency record was committed before this business logic ran, so
+    // without a release the retry would be waved through as a duplicate and the
+    // event lost. recordAttemptFailure either frees the gate for another
+    // attempt or, once the budget is spent, dead-letters the event.
+    try {
+      const { willRetry, attempts } = await recordAttemptFailure(deps.firestore, {
+        messageId: eventId,
+        eventType,
+        payload: parsed,
+        error,
+      });
+      if (!willRetry) {
+        console.error(
+          `Mindbody webhook: event ${eventId} (${eventType}) dead-lettered after ${attempts} attempts.`,
+        );
+        // 200 stops the retry storm for an event we have given up on; it is
+        // preserved in mindbodyDLQ for a human.
+        return { statusCode: 200 };
+      }
+    } catch (ledgerError) {
+      console.error(
+        "Mindbody webhook: retry ledger failed; falling back to a plain 500.",
+        ledgerError,
+      );
+    }
 
     // Catch errors without silently swallowing them
     return { statusCode: 500 };

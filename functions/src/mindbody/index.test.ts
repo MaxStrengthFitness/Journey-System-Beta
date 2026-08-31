@@ -50,6 +50,15 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
   let mockSet: ReturnType<typeof vi.fn>;
   // Per-test studio roster; the default is a single studio owning site 99999.
   let studioDocs: Array<{ id: string; data: () => Record<string, unknown> }>;
+  // Every set() the handler performed, tagged with its collection.
+  let writes: Array<{
+    collection: string;
+    id: string;
+    data: any;
+    options: any;
+  }>;
+  const writesTo = (collection: string) =>
+    writes.filter((w) => w.collection === collection);
   // Docs returned by a `clients.where(...)` lookup -- empty unless a test is
   // exercising the fallback match onto an app-created (random id) client doc.
   let clientQueryDocs: Array<{ id: string; ref: unknown }>;
@@ -66,14 +75,25 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
 
     clientQueryDocs = [];
 
+    writes = [];
     mockSet = vi.fn().mockResolvedValue(undefined);
-    const mockDoc = vi.fn().mockReturnValue({
-      set: mockSet,
-      get: vi.fn().mockResolvedValue({
-        exists: false,
-        data: () => undefined,
-      }),
-    });
+    // Writes are recorded WITH their collection. The webhook now writes to more
+    // than one place per event (a client profile plus, on an unresolvable site,
+    // a quarantine record), so "was anything written" is no longer a useful
+    // assertion — "what was written to schedules" is.
+    const mockDoc = (collectionName: string) =>
+      vi.fn((id: string) => ({
+        id,
+        set: vi.fn(async (data: any, options: any) => {
+          writes.push({ collection: collectionName, id, data, options });
+          return (mockSet as (...args: any[]) => any)(data, options);
+        }),
+        get: vi.fn().mockResolvedValue({
+          exists: false,
+          data: () => undefined,
+        }),
+        delete: vi.fn().mockResolvedValue(undefined),
+      }));
     const mockCollection = vi.fn((path: string) => {
       if (path === "studios") {
         return {
@@ -91,7 +111,7 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
         };
       }
       return {
-        doc: mockDoc,
+        doc: mockDoc(path),
         where: vi.fn(() => ({
           limit: vi.fn(() => ({
             get: vi.fn().mockResolvedValue({
@@ -104,7 +124,21 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
     });
 
     deps = {
-      firestore: { collection: mockCollection } as unknown as Firestore,
+      firestore: {
+        collection: mockCollection,
+        // The retry ledger runs a transaction on every processing failure.
+        // Without this the ledger threw and the handler fell back to a plain
+        // 500, so the release-and-dead-letter path was never exercised here.
+        runTransaction: vi.fn(async (cb: any) =>
+          cb({
+            get: vi.fn().mockResolvedValue({
+              exists: false,
+              data: () => undefined,
+            }),
+            set: vi.fn(),
+          }),
+        ),
+      } as unknown as Firestore,
       webhookSecret: mockSecret,
     };
 
@@ -125,16 +159,30 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
       "evt-client-updated",
     );
 
-    expect(mockSet).toHaveBeenCalledTimes(1);
-    expect(mockSet).toHaveBeenCalledWith(
-      {
-        membershipStatus: "Active",
-        packageTier: "12-Pack",
-        lastSessionDate: "2024-01-13T10:00:00Z",
-        homeStudioId: "studio-123",
-      },
-      { merge: true },
-    );
+    // A client event now creates a COMPLETE profile rather than the handful of
+    // enrichment fields it used to write, so this asserts the Mindbody-owned
+    // values AND that nothing required by the app's Client type is missing.
+    const clientWrites = writesTo("clients");
+    expect(clientWrites).toHaveLength(1);
+    expect(clientWrites[0].id).toBe("12345");
+    expect(clientWrites[0].data).toMatchObject({
+      membershipStatus: "Active",
+      packageTier: "12-Pack",
+      lastSessionDate: "2024-01-13T10:00:00Z",
+      homeStudioId: "studio-123",
+      mindbodyClientId: "12345",
+      isActive: true,
+      height: "",
+      remainingSessions: 0,
+      sessionCount: 0,
+      isMindbodyStub: false,
+    });
+    // This payload carries no name at all, so a placeholder identifies the row.
+    expect(clientWrites[0].data.firstName).toBe("Mindbody");
+    expect(clientWrites[0].data.lastName).toBe("Client 12345");
+    // ...and an empty display name is omitted rather than stored blank.
+    expect(clientWrites[0].data).not.toHaveProperty("mindbody_name");
+    expect(clientWrites[0].options).toEqual({ merge: true });
   });
 
   it("2. Valid signature + duplicate event (wasNew: false) -> returns 200, no write", async () => {
@@ -257,13 +305,17 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
 
     await handleMindbodyWebhook(deps, req);
 
-    expect(mockSet).toHaveBeenCalledWith(
-      {
-        mindbody_name: "Alice",
-        upcomingBookings: ["booking-1"],
-      },
-      { merge: true },
-    );
+    const [write] = writesTo("clients");
+    expect(write.data).toMatchObject({
+      mindbody_name: "Alice",
+      firstName: "Alice",
+      upcomingBookings: ["booking-1"],
+    });
+    // A first name with no surname must NOT get "Client 999" as a last name —
+    // that would read as the person's actual surname throughout the app.
+    expect(write.data.lastName).toBe("");
+    // No siteId in this payload, so no studio may be guessed.
+    expect(write.data.homeStudioId).toBeNull();
   });
 
   it("10a. client.created payload writes mindbodyNotes and photoUrl, never trainer notes", async () => {
@@ -456,7 +508,7 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
       );
     });
 
-    it("14. Booking on a shared site with no location is dropped rather than misfiled", async () => {
+    it("14. Booking on a shared site with no location is parked in Limbo, not misfiled", async () => {
       studioDocs = [...sharedSite];
 
       const rawBody = JSON.stringify({
@@ -477,10 +529,25 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
       const response = await handleMindbodyWebhook(deps, req);
 
       expect(response.statusCode).toBe(200);
-      expect(mockSet).not.toHaveBeenCalled();
+      // The booking is PARKED, not dropped: nothing reaches schedules (a null
+      // studioId would leak it onto every location's grid) and no client is
+      // created, but the event is preserved in Limbo for an admin.
+      expect(writesTo("schedules")).toHaveLength(0);
+      expect(writesTo("clients")).toHaveLength(0);
+      const [parked] = writesTo("mindbodyLimbo");
+      expect(parked.data).toMatchObject({
+        kind: "booking",
+        resolvedAt: null,
+      });
+      // The admin has to be able to see who is arriving without opening the
+      // raw payload.
+      expect(parked.data.summary).toMatchObject({
+        bookingId: "booking-unknown",
+        clientName: "Alice Smith",
+      });
     });
 
-    it("15. Booking naming a location no studio owns is dropped", async () => {
+    it("15. Booking naming a location no studio owns is parked in Limbo", async () => {
       studioDocs = [...sharedSite];
 
       const rawBody = JSON.stringify({
@@ -501,7 +568,125 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
       const response = await handleMindbodyWebhook(deps, req);
 
       expect(response.statusCode).toBe(200);
-      expect(mockSet).not.toHaveBeenCalled();
+      expect(writesTo("schedules")).toHaveLength(0);
+      expect(writesTo("clients")).toHaveLength(0);
+      const [parked] = writesTo("mindbodyLimbo");
+      expect(parked.data).toMatchObject({
+        kind: "booking",
+        siteId: "99999",
+        locationId: "7",
+        resolvedAt: null,
+      });
+      expect(parked.data.summary.bookingId).toBe("booking-orphan");
+    });
+
+    it("13b. Pass, waitlist and visit data land on the right documents when sent", async () => {
+      const rawBody = JSON.stringify({
+        messageId: "booking-msg-013b",
+        eventId: "appointmentBooking.created",
+        eventData: {
+          siteId: 99999,
+          clientId: "client-123",
+          id: "booking-pass",
+          clientName: "Alice Smith",
+          startDateTime: "2026-08-18T07:00:00",
+          endDateTime: "2026-08-18T07:30:00",
+          clientPassId: "pass-9",
+          clientPassSessionsTotal: 24,
+          clientPassSessionsDeducted: 9,
+          clientPassSessionsRemaining: 15,
+          clientPassActivationDateTime: "2026-01-01T00:00:00Z",
+          clientPassExpirationDateTime: "2026-12-31T00:00:00Z",
+          bookingOriginatedFromWaitlist: true,
+          clientsNumberOfVisitsAtSite: 87,
+        },
+      });
+
+      const response = await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      // Pass + waitlist belong to the BOOKING.
+      const [schedule] = writesTo("schedules");
+      expect(schedule.data.mindbodyPass).toEqual({
+        passId: "pass-9",
+        sessionsTotal: 24,
+        sessionsDeducted: 9,
+        sessionsRemaining: 15,
+        activationDateTime: "2026-01-01T00:00:00Z",
+        expirationDateTime: "2026-12-31T00:00:00Z",
+      });
+      expect(schedule.data.bookingOriginatedFromWaitlist).toBe(true);
+
+      // The lifetime visit count belongs to the CLIENT.
+      const [client] = writesTo("clients");
+      expect(client.data.clientsNumberOfVisitsAtSite).toBe(87);
+    });
+
+    it("13c. A booking without pass data writes no pass keys at all", async () => {
+      // The expected case for 1:1 appointments. An absent field must not blank
+      // out what a previous event or the pull-sync already stored.
+      const rawBody = JSON.stringify({
+        messageId: "booking-msg-013c",
+        eventId: "appointmentBooking.created",
+        eventData: {
+          siteId: 99999,
+          clientId: "client-123",
+          id: "booking-nopass",
+          clientName: "Alice Smith",
+          startDateTime: "2026-08-18T07:00:00",
+        },
+      });
+
+      await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+
+      const [schedule] = writesTo("schedules");
+      expect(schedule.data).not.toHaveProperty("mindbodyPass");
+      expect(schedule.data).not.toHaveProperty("bookingOriginatedFromWaitlist");
+      const [client] = writesTo("clients");
+      expect(client.data).not.toHaveProperty("clientsNumberOfVisitsAtSite");
+    });
+
+    it("15b. A parked booking keeps Mindbody's raw wall-clock times, unconverted", async () => {
+      studioDocs = [...sharedSite];
+
+      const rawBody = JSON.stringify({
+        messageId: "booking-msg-015b",
+        eventId: "appointmentBooking.created",
+        eventData: {
+          siteId: 99999,
+          clientId: "client-123",
+          id: "booking-timed",
+          clientName: "Alice Smith",
+          staffName: "Marina",
+          startDateTime: "2026-08-18T07:00:00",
+          endDateTime: "2026-08-18T07:30:00",
+        },
+      });
+
+      const response = await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const [parked] = writesTo("mindbodyLimbo");
+      // With no studio there is no timezone to read a naive time against.
+      // Storing a guessed UTC value would park the booking hours off, and it
+      // would still be wrong after an admin links it.
+      expect(parked.data.summary).toMatchObject({
+        rawStartDateTime: "2026-08-18T07:00:00",
+        rawEndDateTime: "2026-08-18T07:30:00",
+        clientName: "Alice Smith",
+        staffName: "Marina",
+        status: "Scheduled",
+      });
     });
 
     it("16. Client event on a shared site leaves homeStudioId untouched", async () => {
@@ -517,10 +702,16 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
 
       expect(response.statusCode).toBe(200);
       // Membership fields still sync; only the studio assignment is withheld.
-      expect(mockSet).toHaveBeenCalledTimes(1);
-      const [written] = mockSet.mock.calls[0];
-      expect(written).not.toHaveProperty("homeStudioId");
-      expect(written).toMatchObject({ membershipStatus: "Active" });
+      // The event is also quarantined so an admin can map the location.
+      const clientWrites = writesTo("clients");
+      expect(clientWrites).toHaveLength(1);
+      expect(clientWrites[0].data).toMatchObject({ membershipStatus: "Active" });
+      // A brand-new client doc is created with a null studio rather than a
+      // guessed one; what must never happen is it being filed under a studio.
+      expect(clientWrites[0].data.homeStudioId).toBeNull();
+      // The profile is saved either way; Limbo records that its studio is unset.
+      const [parked] = writesTo("mindbodyLimbo");
+      expect(parked.data).toMatchObject({ kind: "client", resolvedAt: null });
     });
 
     it("18. Booking times are read on the studio clock, not the host's UTC", async () => {
@@ -556,7 +747,10 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
 
       await handleMindbodyWebhook(deps, req);
 
-      const [written] = mockSet.mock.calls[0];
+      // A booking now also creates a stub client, so the schedule write is no
+      // longer the first one — select it by collection instead of by order.
+      const [scheduleWrite] = writesTo("schedules");
+      const written = scheduleWrite.data;
       // 07:00 Eastern in August is 11:00 UTC. Storing 07:00 UTC would place the
       // booking at 3 AM on the studio's own roster.
       expect(written.startTime.toDate().toISOString()).toBe(
@@ -786,7 +980,11 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
       expect(record).not.toHaveProperty("contractName");
     });
 
-    it("25. Falls back to the client doc matched on mindbodyClientId when no doc sits at the canonical id", async () => {
+    it("25. STRICT: writes commercial data to the canonical id, ignoring a doc at another id", async () => {
+      // Pre-strict this fell back to a doc found by querying mindbodyClientId,
+      // so contract data would not land on an orphan record. Strict mode
+      // reverses that on purpose: there is one canonical location, and a stale
+      // document elsewhere is ignored rather than written to.
       const orphanSet = vi.fn().mockResolvedValue(undefined);
       clientQueryDocs = [
         { id: "random-app-doc-id", ref: { set: orphanSet } },
@@ -811,12 +1009,13 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
       });
 
       expect(response.statusCode).toBe(200);
-      // Written to the app-created doc, not to clients/100000009.
-      expect(orphanSet).toHaveBeenCalledTimes(1);
-      expect(mockSet).not.toHaveBeenCalled();
-      expect(
-        orphanSet.mock.calls[0][0].mindbodyContracts["117"].contractName,
-      ).toBe("Gold Membership Contract");
+      // Written to clients/100000009, NOT to the doc sitting at another id.
+      expect(orphanSet).not.toHaveBeenCalled();
+      const [written] = writesTo("clients");
+      expect(written.id).toBe("100000009");
+      expect(written.data.mindbodyContracts["117"].contractName).toBe(
+        "Gold Membership Contract",
+      );
     });
 
     it("26. toUtcTimestamp reads zoneless Mindbody strings as UTC, not host-local", () => {
