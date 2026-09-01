@@ -6,11 +6,12 @@ import {
 } from "./resolve-machine";
 import {
   MachineCatalogEntry,
+  MachineDefinition,
   RosterEntryCustom,
   RosterEntryFromCatalog,
-  MachineDefinition,
+  settingFieldKey,
   studioMachineId,
-  toBodyHighlighter,
+  toBodySlugs,
 } from "../types/machines";
 
 const STUDIO = "studio-solon";
@@ -25,25 +26,74 @@ const legPress: MachineCatalogEntry = {
   name: "LEG PRESS",
   anatomicalRegion: "Thigh / Quad",
   movementPattern: "Lower Body: Quad Dominant",
+  kinematicClass: "compound-linear",
   kinematicClassification: "Compound Push",
   executionPosture: "Chest Up / Anterior Pelvic Tilt",
 
   primaryMuscles: ["quads", "glutes"],
-  secondaryMuscles: ["hamstrings", "calves"],
+  secondaryMuscles: ["hamstrings"],
+  synergistMuscles: ["calves", "adductors"],
+  musculature: {
+    primary: ["Quadriceps (knee extension)", "Gluteus Maximus (hip extension)"],
+    secondary: ["Hamstrings"],
+    synergists: ["Gastrocnemius", "Soleus", "Adductor Magnus"],
+  },
   preferredView: "front",
   clinicalNote: "Compound knee and hip extension.",
 
-  setup: "Default to P2 seat. Feet hip-width apart.",
-  execution: "No pause at turnarounds.",
-  setupCues: ["Set shoulder pads to touch the tops of shoulders."],
-  executionCues: ["Keep hips down; avoid pelvis roll."],
+  universalBaseline: {
+    seatHeightPosition: "Seat back to Position 2 (P2).",
+    padAxisAlignment: "Feet parallel, hip-width; ankles, knees and hips stacked.",
+    restraintsAnchoring: "Shoulder pads snug on the tops of the shoulders.",
+    startingWeightStackGap: "Custom — pin the main stack and record the gap.",
+  },
+  bodyTypeAdjustments: {
+    shorterStature: {
+      seatAdjustment: "Push the seat settings closer to the footplate.",
+      padHandlePlacement: "Lower foot position on the platform.",
+    },
+    tallerStature: {
+      seatAdjustment: "Recline the seat back to Position 3 (P3).",
+      specialNotes: "Wider stance, toes slightly out, knees tracking over feet.",
+    },
+    limitedMobility: {
+      romRestrictions: "Increase the gap for a shallower lower turnaround.",
+      alternativeProtocols: "TSC at the midpoint if dynamic loading is not tolerated.",
+    },
+  },
+  alignmentCheckpoints: [
+    {
+      title: "Knee Tracking",
+      verify: "Knees track in line with the feet; ankles, knees, hips stacked.",
+    },
+    {
+      title: "Pelvic Stability",
+      verify: "Hips stay down; the pelvis does not roll up at the lower turnaround.",
+    },
+  ],
+  execution: {
+    requiresHandoff: false,
+    loadUpProtocol: "Build pressure through the footplate over 3–5 seconds.",
+    concentricSeconds: 6,
+    eccentricSeconds: 6,
+    upperTurnaround: {
+      style: "touch-and-go",
+      description: "Click at the end stop, just before lock-out.",
+      cue: "Ease out... do not speed up.",
+    },
+    lowerTurnaround: {
+      style: "touch-and-go",
+      description: "Seamless reversal, no momentum, no pause.",
+      cue: "Barely touch, barely start.",
+    },
+    keyCues: ["Chin down", "Hips stay down"],
+  },
+
   clinicalWarnings: [
-    "Avoid pairing LP with Lumbar if client has a sensitive lower back.",
+    "Avoid pairing LP with Lumbar if the client has a sensitive lower back.",
   ],
   contraindicatedFor: ["Acute knee effusion"],
-  sequencingContraindications: [],
-  requiresHandoff: false,
-  baselineLoad: { male: 160, female: 60 },
+  sequencingContraindications: ["Do not follow directly with Lumbar Extension."],
 
   settingFields: [
     { key: "gap", label: "Gap", type: "enum", options: ["1", "2", "3"] },
@@ -51,6 +101,7 @@ const legPress: MachineCatalogEntry = {
     { key: "seat", label: "Seat", type: "number", min: 1, max: 10 },
   ],
   defaultSettings: { gap: "2", "back-pad": "P2", seat: "5" },
+  baselineLoad: { male: 160, female: 60 },
 };
 
 function fromCatalog(
@@ -97,24 +148,40 @@ describe("resolveMachine — catalog-sourced", () => {
     expect(r.secondaryMuscles).toEqual(["quads"]);
   });
 
+  it("lets a studio replace the whole baseline for a different model", () => {
+    const r = resolveMachine(
+      fromCatalog({
+        universalBaseline: {
+          seatHeightPosition: "Plate-loaded: no seat positions.",
+          padAxisAlignment: "Align the hip crease with the pivot.",
+          restraintsAnchoring: "No belt on this unit.",
+          startingWeightStackGap: "N/A — plate loaded.",
+        },
+      }),
+      legPress,
+    )!;
+    expect(r.universalBaseline.seatHeightPosition).toContain("Plate-loaded");
+    expect(r.overriddenFields).toContain("universalBaseline");
+  });
+
   it("keeps catalog fields live-inherited so admin edits still propagate", () => {
     const corrected: MachineCatalogEntry = {
       ...legPress,
-      setup: "CORRECTED: default to P3 seat.",
+      clinicalNote: "CORRECTED clinical note.",
     };
     const r = resolveMachine(fromCatalog({ name: "Ours" }), corrected)!;
-    expect(r.setup).toBe("CORRECTED: default to P3 seat.");
+    expect(r.clinicalNote).toBe("CORRECTED clinical note.");
   });
 });
 
-describe("resolveMachine — clinical safety content is additive", () => {
+describe("resolveMachine — safety content is additive", () => {
   it("keeps the catalog warning when a studio adds its own", () => {
     const r = resolveMachine(
       fromCatalog({ clinicalWarnings: ["Our unit's footplate sticks."] }),
       legPress,
     )!;
     expect(r.clinicalWarnings).toEqual([
-      "Avoid pairing LP with Lumbar if client has a sensitive lower back.",
+      "Avoid pairing LP with Lumbar if the client has a sensitive lower back.",
       "Our unit's footplate sticks.",
     ]);
   });
@@ -124,12 +191,13 @@ describe("resolveMachine — clinical safety content is additive", () => {
     expect(r.clinicalWarnings).toEqual(legPress.clinicalWarnings);
   });
 
-  it("applies the same rule to contraindications", () => {
+  it("applies the same rule to contraindications and sequencing", () => {
     const r = resolveMachine(
-      fromCatalog({ contraindicatedFor: [] }),
+      fromCatalog({ contraindicatedFor: [], sequencingContraindications: [] }),
       legPress,
     )!;
     expect(r.contraindicatedFor).toEqual(["Acute knee effusion"]);
+    expect(r.sequencingContraindications).toHaveLength(1);
   });
 
   it("does not duplicate a warning the studio restates verbatim", () => {
@@ -150,6 +218,46 @@ describe("resolveMachine — clinical safety content is additive", () => {
       corrected,
     )!;
     expect(r.clinicalWarnings).toEqual(["Updated by admin.", "Studio note."]);
+  });
+});
+
+describe("resolveMachine — alignment checkpoints are additive", () => {
+  it("appends a studio checkpoint and keeps both catalog ones", () => {
+    const r = resolveMachine(
+      fromCatalog({
+        alignmentCheckpoints: [
+          { title: "Footplate Wear", verify: "Check the left footplate bolt." },
+        ],
+      }),
+      legPress,
+    )!;
+    expect(r.alignmentCheckpoints.map((c) => c.title)).toEqual([
+      "Knee Tracking",
+      "Pelvic Stability",
+      "Footplate Wear",
+    ]);
+  });
+
+  it("cannot drop a non-negotiable checkpoint", () => {
+    const r = resolveMachine(
+      fromCatalog({ alignmentCheckpoints: [] }),
+      legPress,
+    )!;
+    expect(r.alignmentCheckpoints).toHaveLength(2);
+  });
+
+  it("lets a studio reword a checkpoint by reusing its title", () => {
+    const r = resolveMachine(
+      fromCatalog({
+        alignmentCheckpoints: [
+          { title: "Knee Tracking", verify: "REWORDED for our unit." },
+        ],
+      }),
+      legPress,
+    )!;
+    // Catalog wins on a title collision — the studio cannot weaken it.
+    expect(r.alignmentCheckpoints).toHaveLength(2);
+    expect(r.alignmentCheckpoints[0].verify).toContain("Knees track in line");
   });
 });
 
@@ -187,6 +295,11 @@ describe("resolveMachine — setting fields and values", () => {
     expect(r.settingFields[1].label).toBe("Backpad");
     expect(r.defaultSettings["back-pad"]).toBe("P2");
   });
+
+  it("derives stable keys from labels", () => {
+    expect(settingFieldKey("Back Pad")).toBe("back-pad");
+    expect(settingFieldKey("  Seat / Position  ")).toBe("seat-position");
+  });
 });
 
 describe("resolveMachine — studio-original machines", () => {
@@ -197,22 +310,11 @@ describe("resolveMachine — studio-original machines", () => {
     basedOn: "m-leg-press",
     status: "active",
     definition: {
+      ...legPress,
       name: "Hammer Plate Leg Press",
-      anatomicalRegion: "Thigh / Quad",
-      movementPattern: "Lower Body: Quad Dominant",
-      kinematicClassification: "Compound Push",
-      primaryMuscles: ["quads"],
-      secondaryMuscles: ["glutes"],
-      preferredView: "front",
-      clinicalNote: "Plate-loaded quad dominant press.",
-      setup: "Load plates evenly.",
-      execution: "Controlled turnarounds.",
-      setupCues: [],
-      executionCues: [],
       clinicalWarnings: [],
       contraindicatedFor: [],
-      sequencingContraindications: [],
-      requiresHandoff: true,
+      alignmentCheckpoints: [],
       settingFields: [
         { key: "seat", label: "Seat", type: "number", min: 1, max: 8 },
       ],
@@ -229,8 +331,8 @@ describe("resolveMachine — studio-original machines", () => {
 
   it("inherits nothing from its lineage machine", () => {
     const r = resolveMachine(custom, legPress)!;
-    expect(r.setup).toBe("Load plates evenly.");
     expect(r.clinicalWarnings).toEqual([]);
+    expect(r.alignmentCheckpoints).toEqual([]);
   });
 
   it("stays comparable to the catalog machine for cross-studio roll-ups", () => {
@@ -298,6 +400,23 @@ describe("resolveMachine — ordering and edge cases", () => {
     expect(r.catalogStatus).toBe("retired");
     expect(r.rosterStatus).toBe("active");
   });
+
+  it("carries the never-to-failure flag through untouched", () => {
+    const lumbar: MachineCatalogEntry = {
+      ...legPress,
+      id: "m-lumbar",
+      execution: {
+        ...legPress.execution,
+        neverToFailure: true,
+        safetyNotice: "Never take Lumbar Extension to failure.",
+      },
+    };
+    const r = resolveMachine(
+      { ...fromCatalog(), machineId: "m-lumbar", basedOn: "m-lumbar" },
+      lumbar,
+    )!;
+    expect(r.execution.neverToFailure).toBe(true);
+  });
 });
 
 describe("resolveUnrostered", () => {
@@ -325,20 +444,28 @@ describe("mergeMachineDefinition", () => {
   });
 });
 
-describe("toBodyHighlighter", () => {
-  it("translates our vocabulary into the library's", () => {
-    expect(toBodyHighlighter(["pecs", "delts-front"])).toEqual([
-      "chest",
-      "front-deltoids",
-    ]);
+describe("toBodySlugs", () => {
+  it("translates our vocabulary into the body model's", () => {
+    expect(toBodySlugs(["pecs", "quads"])).toEqual(["chest", "quadriceps"]);
   });
 
   it("collapses lats and rhomboids without double-highlighting", () => {
-    expect(toBodyHighlighter(["lats", "rhomboids"])).toEqual(["upper-back"]);
+    expect(toBodySlugs(["lats", "rhomboids"])).toEqual(["upper-back"]);
   });
 
-  it("uses the library's own spelling for adductors", () => {
-    expect(toBodyHighlighter(["adductors"])).toEqual(["adductor"]);
-    expect(toBodyHighlighter(["abductors"])).toEqual(["abductors"]);
+  it("collapses front and rear delts — the figure has one shoulder region", () => {
+    expect(toBodySlugs(["delts-front", "delts-rear"])).toEqual(["deltoids"]);
+  });
+
+  it("maps abductors onto gluteal, since Gluteus Medius is gluteal", () => {
+    expect(toBodySlugs(["abductors"])).toEqual(["gluteal"]);
+  });
+
+  it("does not double-paint gluteal when both glutes and abductors are set", () => {
+    expect(toBodySlugs(["glutes", "abductors"])).toEqual(["gluteal"]);
+  });
+
+  it("uses the model's plural spelling for adductors", () => {
+    expect(toBodySlugs(["adductors"])).toEqual(["adductors"]);
   });
 });

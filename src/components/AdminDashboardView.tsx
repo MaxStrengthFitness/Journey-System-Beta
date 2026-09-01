@@ -9,9 +9,10 @@ import { InsightsDashboardView } from "./InsightsDashboardView";
 import { RetentionDashboardView } from "./RetentionDashboardView";
 import { MindbodyDashboard } from "./mindbody/MindbodyDashboard";
 import { AdminLimboQueue } from "./AdminLimboQueue";
-import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, ShieldAlert, Zap, CreditCard, Inbox } from "lucide-react";
+import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, ShieldAlert, Zap, CreditCard, Inbox, Dumbbell } from "lucide-react";
 
 import { AdminSystemClients } from "./AdminSystemClients";
+import { AdminMachinesTab } from "./machines/AdminMachinesTab";
 
 interface Props {
   authTrainer: Trainer;
@@ -49,7 +50,7 @@ export function AdminDashboardView({
   onNavigateProfile,
 }: Props) {
   const [activeTab, setActiveTab] = useState<
-    "metrics" | "users" | "studios" | "clients" | "announcements" | "bugs" | "insights" | "retention" | "mindbody" | "limbo"
+    "metrics" | "users" | "studios" | "clients" | "machines" | "announcements" | "bugs" | "insights" | "retention" | "mindbody" | "limbo"
   >("metrics");
 
   const isFranchiseOwnerOrAdmin = isAdmin || authTrainer?.role === "FranchiseOwner" || authTrainer?.role === "Owner";
@@ -74,6 +75,11 @@ export function AdminDashboardView({
       id: "studios",
       label: "Studios",
       icon: <Building2 className="w-4 h-4" />,
+    },
+    {
+      id: "machines",
+      label: "Machines",
+      icon: <Dumbbell className="w-4 h-4" />,
     },
     {
       id: "insights",
@@ -111,6 +117,7 @@ export function AdminDashboardView({
     if (tab.id === "limbo") return isAdmin;
     if (tab.id === "bugs") return isAdmin;
     if (tab.id === "announcements") return isFranchiseOwnerOrAdmin;
+    if (tab.id === "machines") return isFranchiseOwnerOrAdmin;
     return true;
   });
 
@@ -160,6 +167,13 @@ export function AdminDashboardView({
             trainers={trainers}
             isAdmin={isAdmin}
             onRefresh={onRefresh}
+          />
+        )}
+        {activeTab === "machines" && (
+          <AdminMachinesTab
+            studios={studios}
+            authTrainer={authTrainer}
+            isAdmin={isAdmin}
           />
         )}
         {activeTab === "insights" && (

@@ -24,7 +24,7 @@ import {
   ANATOMICAL_REGION_ORDER,
   MachineAnatomyMap,
 } from "../data/machine-anatomy-map";
-import Body from "react-body-highlighter";
+import { BodyModel, legacyMuscleToRegion } from "./machines/BodyModel";
 import { machineMuscleMap } from "../data/machineMuscleMap";
 import { MACHINE_DATABASE } from "../data/machine-database";
 import { Button } from "@/components/ui/button";
@@ -230,31 +230,30 @@ export function MachineAnatomyCatalogView({
     }
   };
 
-  const highlightData = useMemo(() => {
-    const data: any[] = [];
-    if (!selectedMachineId) return data;
-
-    const mapping = machineMuscleMap[selectedMachineId];
-    if (!mapping) return data;
-
-    mapping.primary.forEach((muscle) => {
-      data.push({ name: muscle, muscles: [muscle] });
-    });
-
-    mapping.synergist.forEach((muscle) => {
-      data.push({ name: `syn-${muscle}`, muscles: [muscle] });
-    });
-
-    return data;
+  // Legacy machineMuscleMap slugs. BodyModel translates them to the body
+  // model's vocabulary; this goes away when machineMuscleMap is folded into
+  // the catalog docs and we pass MuscleId[] straight through.
+  const highlightMuscles = useMemo(() => {
+    const mapping = selectedMachineId
+      ? machineMuscleMap[selectedMachineId]
+      : undefined;
+    return {
+      primary: (mapping?.primary ?? []) as string[],
+      synergist: (mapping?.synergist ?? []) as string[],
+    };
   }, [selectedMachineId]);
 
-  const handleMuscleClick = (part: any) => {
-    if (!part.muscle) return;
-    const targetMachineId = Object.keys(machineMuscleMap).find(
-      (id) =>
-        machineMuscleMap[id].primary.includes(part.muscle as any) ||
-        machineMuscleMap[id].synergist.includes(part.muscle as any),
-    );
+  // The body model reports its own region slug (e.g. 'deltoids'), which may
+  // cover several of our muscle names — front and rear delts share one
+  // region. Match a machine if any of its muscles land on that region.
+  const handleMuscleClick = (slug: string) => {
+    if (!slug) return;
+    const targetMachineId = Object.keys(machineMuscleMap).find((id) => {
+      const m = machineMuscleMap[id];
+      return [...m.primary, ...m.synergist].some(
+        (muscle) => legacyMuscleToRegion(String(muscle)) === slug,
+      );
+    });
 
     if (targetMachineId) {
       handleSelectMachine(targetMachineId);
@@ -457,10 +456,12 @@ export function MachineAnatomyCatalogView({
       {/* ───── MODEL LAYER ───── */}
       <div className="relative shrink-0 lg:absolute lg:inset-0 flex items-center justify-center z-0 pointer-events-auto min-h-[50vh] max-h-[60vh] lg:h-full lg:min-h-0 lg:max-h-none mb-4 lg:mb-0">
         <div className="relative w-full max-w-150 h-full flex justify-center p-4 lg:p-12 lg:mt-0">
-          <Body
-            data={highlightData}
-            type={view === "front" ? "anterior" : "posterior"}
-            onClick={handleMuscleClick}
+          <BodyModel
+            legacyPrimary={highlightMuscles.primary}
+            legacySecondary={highlightMuscles.synergist}
+            gender={gender}
+            view={view}
+            onRegionClick={handleMuscleClick}
           />
         </div>
       </div>

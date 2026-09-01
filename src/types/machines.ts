@@ -16,6 +16,10 @@
  * it, a hundred locations' bespoke leg presses become a hundred incomparable
  * machines in any cross-studio roll-up.
  *
+ * The definition shape below mirrors the studio's own "Master Machine Setup &
+ * Biomechanics Template" section for section, so a coach filling out the paper
+ * template and an admin filling out the Machine Creator are doing the same job.
+ *
  * Nothing here is read directly by a component. Components consume
  * ResolvedMachine, produced by lib/resolve-machine.ts.
  */
@@ -28,9 +32,12 @@
 // ─────────────────────────────────────────────────────────────────────
 
 /**
- * Muscle groups the app reasons about. These are OUR names, not
- * react-body-highlighter's — use toBodyHighlighter() at the render boundary
- * and nowhere else.
+ * Muscle regions the BODY DIAGRAM can light up. Deliberately coarse — this is
+ * a rendering vocabulary, not an anatomy reference.
+ *
+ * Precise anatomy (Sartorius, Multifidus, Quadratus Lumborum, Pectineus...)
+ * lives in MachineDefinition.musculature as text, because the diagram has no
+ * region for it and a coach still needs to read it.
  */
 export type MuscleId =
   // Anterior
@@ -76,45 +83,63 @@ export const ANATOMICAL_REGION_ORDER = [
 export type AnatomicalRegion = (typeof ANATOMICAL_REGION_ORDER)[number];
 
 /**
- * react-body-highlighter speaks its own vocabulary, and it is lossy — the
- * model has no separate lats or rhomboids, only "upper-back". This is the
- * ONLY place that vocabulary is allowed to appear.
- *
- * Note the library's own naming quirk: its ABDUCTOR key carries the string
- * "adductor" and ABDUCTORS carries "abductors". The string values below are
- * the ones the SVG actually keys on.
+ * Compound (linear, multi-joint) movements take a seamless touch-and-go at both
+ * turnarounds. Rotary (single-joint) movements take a pause/squeeze at the
+ * contracted position. Driving this off a field rather than the coach's memory
+ * is what keeps cadence consistent across 100+ locations.
  */
-const BODY_HIGHLIGHTER_MAP: Record<MuscleId, string[]> = {
-  'pecs': ['chest'],
-  'delts-front': ['front-deltoids'],
-  'delts-rear': ['back-deltoids'],
-  'biceps': ['biceps'],
-  'triceps': ['triceps'],
-  'forearms': ['forearm'],
-  'traps': ['trapezius'],
-  'rhomboids': ['upper-back'],
-  'lats': ['upper-back'],
-  'lower-back': ['lower-back'],
-  'abs': ['abs'],
-  'obliques': ['obliques'],
-  'glutes': ['gluteal'],
-  'quads': ['quadriceps'],
-  'hamstrings': ['hamstring'],
-  'adductors': ['adductor'],
-  'abductors': ['abductors'],
-  'calves': ['calves'],
-  'neck': ['neck'],
+export type KinematicClass = 'compound-linear' | 'rotary-single-joint';
+
+/**
+ * react-muscle-highlighter's own vocabulary. This is the ONLY place it is
+ * allowed to appear.
+ *
+ * Two deliberate collapses, because the model has no region for them:
+ *
+ *   delts-front / delts-rear -> 'deltoids'
+ *       The figure has one shoulder region. The anterior/posterior
+ *       distinction survives in musculature.primary as text, which is where
+ *       a coach reads it anyway.
+ *
+ *   abductors -> 'gluteal'
+ *       There is no abductor region, and the Abduction machine's target is
+ *       Gluteus Medius — which IS gluteal. Arguably more anatomically
+ *       honest than a separate "abductors" blob.
+ *
+ * lats and rhomboids both collapse to 'upper-back', unchanged from before.
+ */
+const BODY_SLUG_MAP: Record<MuscleId, string> = {
+  'pecs': 'chest',
+  'delts-front': 'deltoids',
+  'delts-rear': 'deltoids',
+  'biceps': 'biceps',
+  'triceps': 'triceps',
+  'forearms': 'forearm',
+  'traps': 'trapezius',
+  'rhomboids': 'upper-back',
+  'lats': 'upper-back',
+  'lower-back': 'lower-back',
+  'abs': 'abs',
+  'obliques': 'obliques',
+  'glutes': 'gluteal',
+  'quads': 'quadriceps',
+  'hamstrings': 'hamstring',
+  'adductors': 'adductors',
+  'abductors': 'gluteal',
+  'calves': 'calves',
+  'neck': 'neck',
 };
 
 /**
- * Translate our muscle ids into react-body-highlighter's, de-duplicated —
- * lats and rhomboids both collapse to "upper-back", and highlighting the
- * same region twice makes it render at double intensity.
+ * Translate our muscle ids into the body model's slugs, de-duplicated —
+ * several of ours collapse onto one region, and highlighting the same
+ * region twice makes it render at double intensity.
  */
-export function toBodyHighlighter(ids: MuscleId[]): string[] {
+export function toBodySlugs(ids: MuscleId[]): string[] {
   const out = new Set<string>();
   for (const id of ids) {
-    for (const name of BODY_HIGHLIGHTER_MAP[id] ?? []) out.add(name);
+    const slug = BODY_SLUG_MAP[id];
+    if (slug) out.add(slug);
   }
   return [...out];
 }
@@ -151,6 +176,147 @@ export interface MachineSettingField {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// THE BIOMECHANICS TEMPLATE
+//
+// Sections below map 1:1 onto "Master Machine Setup & Biomechanics
+// Template" Part 2. Field names follow the template's own headings so an
+// evaluator moving between the doc and the Machine Creator sees the same
+// words in the same order.
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Precise anatomy as the coach reads it, with joint actions.
+ *
+ * Separate from the MuscleId arrays because the diagram is coarse: it can
+ * show "glutes", it cannot show "Gluteus Medius (hip horizontal abduction)".
+ * Both matter — the diagram for orientation, this for the actual coaching.
+ */
+export interface MusculatureDetail {
+  /** e.g. ['Gluteus Medius (hip horizontal abduction)'] */
+  primary: string[];
+  secondary: string[];
+  /** Stabilizers and assisting groups. */
+  synergists: string[];
+}
+
+/**
+ * Template §2 — the absolute starting point for an average-proportioned new
+ * client (roughly 5'9" male / 5'4" female).
+ */
+export interface UniversalBaseline {
+  /** "Set seat so the handles align with mid-chest", "Position 2 (P2)". */
+  seatHeightPosition: string;
+  /** How to align the client's joint axis with the machine's pivot. */
+  padAxisAlignment: string;
+  /** Belt tension, lap pads, foot stools, shoulder pads. */
+  restraintsAnchoring: string;
+  /** Grip, hand placement, handle width. Optional — not every machine has one. */
+  gripHandPosition?: string;
+  /**
+   * As written by the evaluator: "2", "1 or 2", "None (Gap 0)", "Custom —
+   * assisted back to a conservative stretch". Free text on purpose; a third
+   * of the lineup does not have a single numeric answer.
+   *
+   * The operational number a studio actually dials in lives in the roster's
+   * defaultSettings, keyed by the 'gap' setting field.
+   */
+  startingWeightStackGap: string;
+}
+
+/** Template §3 — one body-type column. */
+export interface BodyTypeAdjustment {
+  /** "Raise seat", "Recline seat back to P3". */
+  seatAdjustment?: string;
+  /** "Use narrow handle setting (N)", "lower shin pads". */
+  padHandlePlacement?: string;
+  /** "Use footstool for safe entry/exit", head-clearance warnings. */
+  specialNotes?: string;
+}
+
+/** Template §3 — the limited-mobility column, which asks different questions. */
+export interface MobilityAdjustment {
+  /** How to shorten the stretch: "Increase gap to 4 to protect the shoulder". */
+  romRestrictions?: string;
+  /**
+   * Static Hold (SH) / Timed Static Contraction (TSC) guidance where dynamic
+   * loading is contraindicated. Several machines in the lineup depend on this.
+   */
+  alternativeProtocols?: string;
+  specialNotes?: string;
+}
+
+export interface BodyTypeAdjustments {
+  shorterStature: BodyTypeAdjustment;
+  tallerStature: BodyTypeAdjustment;
+  limitedMobility: MobilityAdjustment;
+}
+
+/**
+ * Template §4 — a non-negotiable visual the coach verifies BEFORE the client
+ * moves. One or two per machine; more than that and none of them get checked.
+ *
+ * Treated as safety content: a studio may add checkpoints but can never
+ * remove one the catalog defines. See ADDITIVE_DEFINITION_FIELDS.
+ */
+export interface AlignmentCheckpoint {
+  /** "Knee-to-Axis Alignment" — also the dedupe key when merging. */
+  title: string;
+  /** What the coach must actually see. */
+  verify: string;
+}
+
+/** How a turnaround is executed. */
+export interface TurnaroundRule {
+  /**
+   * touch-and-go   — compound movements; seamless reversal, never dwell.
+   * pause-squeeze  — rotary movements; hold the contraction.
+   * hard-stop      — a selector pin or frame stop defines the limit.
+   */
+  style: 'touch-and-go' | 'pause-squeeze' | 'hard-stop';
+  /** pause-squeeze: seconds held on reps 1–2. Typically 1–2. */
+  pauseSecondsFirstReps?: number;
+  /** pause-squeeze: seconds squeezed from rep 3 on. Typically 2–3. */
+  squeezeSecondsFromRepThree?: number;
+  /** What happens here, in the evaluator's words. */
+  description: string;
+  /** Verbal cue: "Barely touch, barely start". */
+  cue?: string;
+}
+
+/** Template §5 — execution, cadence and the handoff. */
+export interface ExecutionProtocol {
+  /**
+   * True when leverage is poorest at the start, so the coach must place the
+   * client into the contracted position and transfer the load.
+   */
+  requiresHandoff: boolean;
+  /** Grip, stance and body positioning for the transfer. */
+  handoffProtocol?: string;
+  /** The transfer cue, usually "That is yours". */
+  handoffCue?: string;
+  /** Cracking the stack: the patient 3–5 second pressure build. */
+  loadUpProtocol: string;
+  /** Seconds. House standard is 6. */
+  concentricSeconds: number;
+  /** Seconds. House standard is 6. */
+  eccentricSeconds: number;
+  /** Anything cadence-related that isn't the two numbers, e.g. ankle toggling. */
+  cadenceNotes?: string;
+  upperTurnaround: TurnaroundRule;
+  lowerTurnaround: TurnaroundRule;
+  /** 2–3 high-impact coaching cues. */
+  keyCues: string[];
+  /**
+   * Hard stop on training to failure. True for Lumbar Extension and Cervical
+   * Extension, where the guides say NEVER. Structured rather than buried in
+   * prose so the session UI can enforce it, not just display it.
+   */
+  neverToFailure?: boolean;
+  /** Shown prominently when neverToFailure is set. */
+  safetyNotice?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // THE DEFINITION — the shape a machine has, wherever it was defined
 // ─────────────────────────────────────────────────────────────────────
 
@@ -158,50 +324,64 @@ export interface MachineSettingField {
  * Everything that describes a machine, independent of who defined it.
  *
  * The catalog stores a complete one. A studio may override any subset of it,
- * or supply a whole one for its own equipment. Absorbs DEFAULT_MACHINES,
- * data/machine-database.ts and data/machine-anatomy-map.ts.
+ * or supply a whole one for its own equipment.
  */
 export interface MachineDefinition {
   name: string;
   shortName?: string;
 
-  // Taxonomy — drives every grouped view
+  // ── Taxonomy — drives every grouped view ──────────────────────────
   anatomicalRegion: AnatomicalRegion;
   movementPattern: MovementPattern;
-  kinematicClassification: string;
+  /** Decides turnaround style; see KinematicClass. */
+  kinematicClass: KinematicClass;
+  /** Free-text refinement, e.g. "Compound Push". */
+  kinematicClassification?: string;
   executionPosture?: string;
 
-  // Anatomy — feeds the body model directly
+  // ── Anatomy ───────────────────────────────────────────────────────
+  /** Coarse regions the body diagram lights up. */
   primaryMuscles: MuscleId[];
   secondaryMuscles: MuscleId[];
+  /** Stabilizers, shown at lower intensity on the diagram. */
+  synergistMuscles: MuscleId[];
+  /** Precise anatomy with joint actions, for the coach to read. */
+  musculature: MusculatureDetail;
   preferredView: AnatomyView;
+  /** One clinical sentence for the catalog card. */
   clinicalNote: string;
 
-  // Coaching knowledge
-  setup: string;
-  execution: string;
-  setupCues: string[];
-  executionCues: string[];
-  /** Safety content. Studios may ADD to this; they can never remove a
-   *  catalog warning. See ADDITIVE_DEFINITION_FIELDS in lib/resolve-machine. */
+  // ── The biomechanics template ─────────────────────────────────────
+  universalBaseline: UniversalBaseline;
+  bodyTypeAdjustments: BodyTypeAdjustments;
+  /** 1–2 items. Additive on override — a studio can add, never remove. */
+  alignmentCheckpoints: AlignmentCheckpoint[];
+  execution: ExecutionProtocol;
+
+  // ── Safety ────────────────────────────────────────────────────────
+  /** Additive on override. */
   clinicalWarnings: string[];
-  /** Additive for the same reason as clinicalWarnings. */
+  /** Additive on override. Who must not use this machine. */
   contraindicatedFor: string[];
+  /** e.g. "Avoid pairing with Lumbar Extension in the same workout." */
   sequencingContraindications: string[];
   biomechanicalNotes?: string;
-  requiresHandoff: boolean;
-  baselineLoad?: { male?: number; female?: number };
 
-  // The adjustable dials
+  // ── The adjustable dials ──────────────────────────────────────────
   settingFields: MachineSettingField[];
   /** Keyed by MachineSettingField.key — never by label. */
   defaultSettings: Record<string, string>;
+  baselineLoad?: { male?: number; female?: number };
 
   imageUrl?: string;
+  formVideoUrl?: string;
 }
 
 /** Every key on MachineDefinition, for override bookkeeping. */
 export type MachineDefinitionField = keyof MachineDefinition;
+
+/** House cadence standard — prefilled for every new machine. */
+export const DEFAULT_CADENCE = { concentricSeconds: 6, eccentricSeconds: 6 };
 
 // ─────────────────────────────────────────────────────────────────────
 // LAYER 1 — the default set
@@ -258,6 +438,7 @@ interface RosterEntryBase {
   /** Optional physical unit tracking; enables maintenance reporting. */
   unit?: {
     serialNumber?: string;
+    manufacturer?: string;
     installedAt?: any;
     lastServicedAt?: any;
   };
@@ -317,6 +498,15 @@ export function studioMachineId(studioId: string, name: string): string {
     .replace(/^-+|-+$/g, '')
     .slice(0, 40);
   return `sm-${studioId}-${slug}`;
+}
+
+/** Slugify a setting field label into its immutable key. */
+export function settingFieldKey(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40);
 }
 
 // ─────────────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import {
+  AlignmentCheckpoint,
   MachineCatalogEntry,
   MachineDefinition,
   MachineDefinitionField,
@@ -26,26 +27,44 @@ import { resolveMachineOrder } from "../data/machine-display-order";
  */
 
 /**
- * Fields a studio may ADD to but never remove from.
+ * Safety content a studio may ADD to but never remove from.
  *
  * Everything else replaces cleanly on override, which is the simpler and
- * more predictable rule. These two are the deliberate exception: under plain
+ * more predictable rule. These are the deliberate exception: under plain
  * replacement, a studio editing the array to append a note of their own
  * could silently drop "use extremely light loads; stop immediately if any
  * cervical pain is felt" for every trainer at that location.
  *
- * Admins can still edit the catalog's warnings — those changes reach every
- * studio, because a studio can never override them away.
+ * Admins can still edit the catalog's entries — those changes reach every
+ * studio, precisely because a studio can never override them away.
  */
-export const ADDITIVE_DEFINITION_FIELDS = [
+const ADDITIVE_STRING_FIELDS = [
   "clinicalWarnings",
   "contraindicatedFor",
+  "sequencingContraindications",
 ] as const satisfies readonly (keyof MachineDefinition)[];
 
-type AdditiveField = (typeof ADDITIVE_DEFINITION_FIELDS)[number];
+/**
+ * Alignment checkpoints are additive for the same reason, but they are
+ * objects, so they dedupe on `title` rather than on the whole value.
+ */
+const ADDITIVE_CHECKPOINT_FIELDS = [
+  "alignmentCheckpoints",
+] as const satisfies readonly (keyof MachineDefinition)[];
 
-function isAdditiveField(key: string): key is AdditiveField {
-  return (ADDITIVE_DEFINITION_FIELDS as readonly string[]).includes(key);
+/** Everything a studio can extend but not delete. For docs and UI copy. */
+export const ADDITIVE_DEFINITION_FIELDS: readonly (keyof MachineDefinition)[] =
+  [...ADDITIVE_STRING_FIELDS, ...ADDITIVE_CHECKPOINT_FIELDS];
+
+type AdditiveStringField = (typeof ADDITIVE_STRING_FIELDS)[number];
+type AdditiveCheckpointField = (typeof ADDITIVE_CHECKPOINT_FIELDS)[number];
+
+function isAdditiveStringField(key: string): key is AdditiveStringField {
+  return (ADDITIVE_STRING_FIELDS as readonly string[]).includes(key);
+}
+
+function isAdditiveCheckpointField(key: string): key is AdditiveCheckpointField {
+  return (ADDITIVE_CHECKPOINT_FIELDS as readonly string[]).includes(key);
 }
 
 /** Union preserving catalog order first, then studio additions, deduped. */
@@ -57,6 +76,22 @@ function unionStrings(base: string[] = [], extra: string[] = []): string[] {
     if (!k || seen.has(k)) continue;
     seen.add(k);
     out.push(v);
+  }
+  return out;
+}
+
+/** Same union, keyed on checkpoint title so a studio can reword its own. */
+function unionCheckpoints(
+  base: AlignmentCheckpoint[] = [],
+  extra: AlignmentCheckpoint[] = [],
+): AlignmentCheckpoint[] {
+  const seen = new Set<string>();
+  const out: AlignmentCheckpoint[] = [];
+  for (const c of [...base, ...extra]) {
+    const k = (c?.title ?? "").trim().toLowerCase();
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(c);
   }
   return out;
 }
@@ -104,10 +139,18 @@ export function mergeMachineDefinition(
     const field = key as MachineDefinitionField;
     overriddenFields.push(field);
 
-    if (isAdditiveField(key)) {
+    if (isAdditiveStringField(key)) {
       merged[field] = unionStrings(
         base[field] as string[],
         value as string[],
+      ) as never;
+      continue;
+    }
+
+    if (isAdditiveCheckpointField(key)) {
+      merged[field] = unionCheckpoints(
+        base[field] as AlignmentCheckpoint[],
+        value as AlignmentCheckpoint[],
       ) as never;
       continue;
     }

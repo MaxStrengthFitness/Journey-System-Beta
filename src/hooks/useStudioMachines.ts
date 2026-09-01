@@ -7,6 +7,7 @@ import {
   StudioMachineRosterEntry,
 } from "../types/machines";
 import { resolveMachine, resolveUnrostered } from "../lib/resolve-machine";
+import { useMachineCatalog } from "./useMachineCatalog";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 
 /**
@@ -21,6 +22,11 @@ import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
  * Six components had a version of that line and they did not agree, which is
  * how a studio's override could win in one view and lose in another. The
  * merge policy now lives only in lib/resolve-machine.ts.
+ *
+ * IMPORTANT for session screens: pass the studio where training is HAPPENING
+ * (activeStudioId), never the client's home studio. A client cross-training
+ * at another location must see that location's equipment. useSessionMachines
+ * wraps this with that guarantee.
  *
  * NOTE: call sites are converted only after the roster backfill runs — until
  * then studios/{id}/roster is empty and this returns nothing.
@@ -46,6 +52,8 @@ export interface UseStudioMachinesResult {
   byId: Record<string, ResolvedMachine>;
   /** Catalog docs, unresolved. For the Admin Machine Creator only. */
   catalog: MachineCatalogEntry[];
+  /** Raw roster entries, for the roster manager's edit forms. */
+  rosterEntries: StudioMachineRosterEntry[];
   loading: boolean;
 }
 
@@ -55,33 +63,10 @@ export function useStudioMachines(
 ): UseStudioMachinesResult {
   const { includeInactive = false, includeUnrostered = false } = opts;
 
-  const [catalog, setCatalog] = useState<MachineCatalogEntry[]>([]);
+  const { catalog, byId: catalogById, loading: catalogLoading } = useMachineCatalog();
   const [roster, setRoster] = useState<StudioMachineRosterEntry[]>([]);
-  const [catalogLoaded, setCatalogLoaded] = useState(false);
   const [rosterLoaded, setRosterLoaded] = useState(false);
 
-  // Global catalog. Deliberately NOT ordered in the query: Firestore's
-  // orderBy silently drops documents missing the field, so a machine added
-  // without defaultOrder would vanish from the app rather than sort badly.
-  // Ordering happens below, through resolveMachineOrder.
-  useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, "machines"),
-      (snap) => {
-        setCatalog(
-          snap.docs.map((d) => ({ ...d.data(), id: d.id }) as MachineCatalogEntry),
-        );
-        setCatalogLoaded(true);
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.GET, "machines");
-        setCatalogLoaded(true);
-      },
-    );
-    return () => unsub();
-  }, []);
-
-  // This studio's roster.
   useEffect(() => {
     if (!studioId) {
       setRoster([]);
@@ -113,9 +98,6 @@ export function useStudioMachines(
   }, [studioId]);
 
   const { machines, byId } = useMemo(() => {
-    const catalogById: Record<string, MachineCatalogEntry> = {};
-    for (const c of catalog) catalogById[c.id] = c;
-
     const resolved: ResolvedMachine[] = [];
     const rostered = new Set<string>();
 
@@ -154,12 +136,13 @@ export function useStudioMachines(
     for (const m of resolved) map[m.machineId] = m;
 
     return { machines: resolved, byId: map };
-  }, [catalog, roster, includeInactive, includeUnrostered, studioId]);
+  }, [catalog, catalogById, roster, includeInactive, includeUnrostered, studioId]);
 
   return {
     machines,
     byId,
     catalog,
-    loading: !catalogLoaded || !rosterLoaded,
+    rosterEntries: roster,
+    loading: catalogLoading || !rosterLoaded,
   };
 }
