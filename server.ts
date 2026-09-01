@@ -651,7 +651,14 @@ async function startServer() {
       const limit = 500;
       let hasMore = true;
 
-      while (hasMore && offset < 2000) {
+      // Safety valve only -- `hasMore` (driven by Mindbody's own
+      // PaginationResponse.TotalResults) is the real stopping condition.
+      // This site alone runs ~3,800+ appointments per 30-day window across
+      // its shared studios, so the old cap of 2000 silently truncated the
+      // result before every studio's appointments were even fetched --
+      // whichever studio's data Mindbody happened to return last in the
+      // page order got cut off entirely, with no error to show for it.
+      while (hasMore && offset < 100000) {
         const params = new URLSearchParams({
           StartDate: `${start}T00:00:00`,
           EndDate: `${end}T23:59:59`,
