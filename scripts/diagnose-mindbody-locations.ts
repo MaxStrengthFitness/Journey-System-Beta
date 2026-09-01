@@ -5,8 +5,9 @@
  * This bypasses the app and Firestore entirely and calls Mindbody's API
  * directly, using the same token-issue + staffappointments flow as
  * getMindbodyToken() / the /api/mindbody/staff-appointments route in
- * server.ts. It also removes the app's own 2000-row pagination cap so it can
- * report the TRUE total, in case that cap is hiding data.
+ * server.ts. It walks the date range one month at a time -- a single
+ * multi-year request in one shot reliably gets a 500 TimeoutException back
+ * from Mindbody's own API, this is not specific to any one location.
  *
  * AUTH: reads MINDBODY_API_KEY / MINDBODY_SOURCE_NAME / MINDBODY_SOURCE_PASSWORD
  * straight from .env in this folder. Writes nothing, anywhere.
@@ -47,26 +48,78 @@ const apiKey = env.MINDBODY_API_KEY;
 const sourceName = env.MINDBODY_SOURCE_NAME;
 const sourcePassword = env.MINDBODY_SOURCE_PASSWORD;
 const siteId = flag("site") || "29068";
-const start = flag("start") || "2018-01-01";
-const end = flag("end") || "2026-10-01";
+const rangeStart = flag("start") || "2018-01-01";
+const rangeEnd = flag("end") || "2026-10-01";
 
 if (!apiKey || !sourceName || !sourcePassword) {
   console.error("Missing MINDBODY_API_KEY / MINDBODY_SOURCE_NAME / MINDBODY_SOURCE_PASSWORD in .env");
   process.exit(1);
 }
 
+function monthChunks(startStr: string, endStr: string): { start: string; end: string }[] {
+  const chunks: { start: string; end: string }[] = [];
+  let cur = new Date(startStr + "T00:00:00Z");
+  const end = new Date(endStr + "T00:00:00Z");
+  while (cur < end) {
+    const chunkStart = new Date(cur);
+    const chunkEnd = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 1));
+    const clampedEnd = chunkEnd < end ? chunkEnd : end;
+    chunks.push({
+      start: chunkStart.toISOString().split("T")[0],
+      end: clampedEnd.toISOString().split("T")[0],
+    });
+    cur = chunkEnd;
+  }
+  return chunks;
+}
+
+async function fetchWindow(accessToken: string, start: string, end: string): Promise<any[]> {
+  let offset = 0;
+  const limit = 500;
+  let totalResults: number | null = null;
+  const all: any[] = [];
+  while (true) {
+    const params = new URLSearchParams({
+      StartDate: `${start}T00:00:00`,
+      EndDate: `${end}T23:59:59`,
+      Limit: String(limit),
+      Offset: String(offset),
+    });
+    const res = await fetch(
+      `https://api.mindbodyonline.com/public/v6/appointment/staffappointments?${params.toString()}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Api-Key": apiKey!,
+          SiteId: String(siteId),
+          Authorization: accessToken,
+        },
+      },
+    );
+    if (!res.ok) {
+      throw new Error(`${res.status} ${await res.text()}`);
+    }
+    const data: any = await res.json();
+    const page = data.Appointments || data.appointments || [];
+    all.push(...page);
+    if (totalResults === null) totalResults = data.PaginationResponse?.TotalResults ?? page.length;
+    offset += limit;
+    if (page.length < limit || all.length >= (totalResults || 0)) break;
+  }
+  return all;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function main() {
   console.log("=".repeat(70));
-  console.log(`Mindbody raw location diagnostic - site ${siteId}, ${start}..${end}`);
+  console.log(`Mindbody raw location diagnostic - site ${siteId}, ${rangeStart}..${rangeEnd}`);
+  console.log("(walking one month at a time; a single giant request times out on Mindbody's side)");
   console.log("=".repeat(70));
 
   const tokenRes = await fetch("https://api.mindbodyonline.com/public/v6/usertoken/issue", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Api-Key": apiKey,
-      SiteId: String(siteId),
-    },
+    headers: { "Content-Type": "application/json", "Api-Key": apiKey!, SiteId: String(siteId) },
     body: JSON.stringify({ Username: `_${sourceName}`, Password: sourcePassword }),
   });
   if (!tokenRes.ok) {
@@ -81,54 +134,42 @@ async function main() {
   }
   console.log("Token issued OK\n");
 
-  let offset = 0;
-  const limit = 500;
-  let totalResults: number | null = null;
-  const all: any[] = [];
-
-  while (true) {
-    const params = new URLSearchParams({
-      StartDate: `${start}T00:00:00`,
-      EndDate: `${end}T23:59:59`,
-      Limit: String(limit),
-      Offset: String(offset),
-    });
-    const res = await fetch(
-      `https://api.mindbodyonline.com/public/v6/appointment/staffappointments?${params.toString()}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "Api-Key": apiKey,
-          SiteId: String(siteId),
-          Authorization: accessToken,
-        },
-      },
-    );
-    if (!res.ok) {
-      console.error("staffappointments failed:", res.status, await res.text());
-      break;
-    }
-    const data: any = await res.json();
-    const page = data.Appointments || data.appointments || [];
-    all.push(...page);
-    if (totalResults === null) {
-      totalResults = data.PaginationResponse?.TotalResults ?? page.length;
-      console.log(`Mindbody reports TotalResults = ${totalResults}`);
-    }
-    offset += limit;
-    if (page.length < limit || all.length >= (totalResults || 0) || offset > 12000) break;
-  }
-
-  console.log(`Fetched ${all.length} appointment records\n`);
-
   const counts = new Map<string, number>();
-  for (const a of all) {
-    const loc = a.Location?.Id ?? a.LocationId ?? null;
-    const key = loc === null ? "(none)" : String(loc);
-    counts.set(key, (counts.get(key) || 0) + 1);
+  const skipped: string[] = [];
+  let totalFetched = 0;
+  const chunks = monthChunks(rangeStart, rangeEnd);
+
+  for (const { start, end } of chunks) {
+    let appts: any[] | null = null;
+    for (let attempt = 1; attempt <= 2 && appts === null; attempt++) {
+      try {
+        appts = await fetchWindow(accessToken, start, end);
+      } catch (e: any) {
+        if (attempt === 2) {
+          console.warn(`  ${start}..${end}: FAILED after retry - ${e?.message || e}`);
+          skipped.push(`${start}..${end}`);
+        } else {
+          await sleep(1000);
+        }
+      }
+    }
+    if (appts) {
+      totalFetched += appts.length;
+      if (appts.length > 0) console.log(`  ${start}..${end}: ${appts.length} appointments`);
+      for (const a of appts) {
+        const loc = a.Location?.Id ?? a.LocationId ?? null;
+        const key = loc === null ? "(none)" : String(loc);
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+    }
   }
 
-  console.log("Appointments by raw Mindbody LocationId (whole site, this date range):");
+  console.log(`\nFetched ${totalFetched} appointment records total`);
+  if (skipped.length > 0) {
+    console.log(`Skipped ${skipped.length} window(s) after repeated failure: ${skipped.join(", ")}`);
+  }
+
+  console.log("\nAppointments by raw Mindbody LocationId (whole site, this date range):");
   for (const [loc, count] of [...counts.entries()].sort((a, b) => b[1] - a[1])) {
     console.log(`  LocationId=${loc}: ${count}`);
   }
