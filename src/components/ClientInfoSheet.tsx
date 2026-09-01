@@ -11,9 +11,40 @@ import {
   Image as ImageIcon,
   RefreshCw,
   Maximize,
+  Activity,
+  Settings2,
 } from "lucide-react";
+
+/**
+ * Sidebar structure for the profile sheet. Two groups: the intake flow a
+ * trainer walks top-to-bottom (General → Lifestyle → Medical → Goals), then
+ * the operational bits (Admin, Events). Tab values are unchanged so
+ * `defaultTab` callers keep working.
+ */
+const INFO_SHEET_TAB_GROUPS: {
+  label: string;
+  tabs: { value: string; label: string; icon: React.ReactNode }[];
+}[] = [
+  {
+    label: "Client Profile",
+    tabs: [
+      { value: "identity", label: "General", icon: <User className="w-4 h-4" /> },
+      { value: "lifestyle", label: "Lifestyle", icon: <Activity className="w-4 h-4" /> },
+      { value: "medical", label: "Medical", icon: <HeartPulse className="w-4 h-4" /> },
+      { value: "goals", label: "Goals", icon: <Target className="w-4 h-4" /> },
+    ],
+  },
+  {
+    label: "Studio & Timeline",
+    tabs: [
+      { value: "admin", label: "Admin", icon: <Settings2 className="w-4 h-4" /> },
+      { value: "events", label: "Events", icon: <Calendar className="w-4 h-4" /> },
+    ],
+  },
+];
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import { cn } from "@/lib/utils";
 import { Client, ClientEvent, Trainer } from "../types";
 import { useActiveStudio } from "../ActiveStudioContext";
 import { useToast } from "../contexts/ToastContext";
@@ -81,10 +112,13 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
         emergencyContactPhone: client.emergencyContactPhone || "",
         occupation: client.occupation || "",
         isRetired: client.isRetired || false,
-        activityLevel: client.activityLevel || "Sedentary",
-        recoveryMetric: client.recoveryMetric || "Average",
-        experienceLevel: client.experienceLevel || "Beginner",
-        trainingPedigree: client.trainingPedigree || "Novice",
+        // Dropdowns start EMPTY. Pre-filling "Sedentary"/"Novice" here made an
+        // unset field look assessed, and the first save wrote it to Firestore.
+        // Nothing is stored until a trainer explicitly picks an option.
+        activityLevel: client.activityLevel || "",
+        recoveryMetric: client.recoveryMetric || "",
+        experienceLevel: client.experienceLevel || "",
+        trainingPedigree: client.trainingPedigree || "",
         leadSource: client.leadSource || "",
         referredBy: client.referredBy || "",
         clinicalFlags: client.clinicalFlags || [],
@@ -95,7 +129,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
         discoveryNotes: client.discoveryNotes || "",
         globalNotes: client.globalNotes || "",
         smartGoal: (client as any).smartGoal || "",
-        packageTier: client.packageTier || "None",
+        packageTier: client.packageTier || "",
         approvedCrossTrainStudioIds: client.approvedCrossTrainStudioIds || [],
         events: client.events || [],
       });
@@ -275,44 +309,30 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
           onValueChange={setActiveTab}
           className="flex-1 min-h-0 flex flex-col! md:flex-row! overflow-hidden w-full m-0 p-0"
         >
-          <div className="px-4 py-3 md:px-6 md:py-8 md:w-64 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 shrink-0">
-            <TabsList className="bg-transparent border-none p-0 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto no-scrollbar gap-2 md:gap-3 items-stretch md:items-start justify-start w-full h-auto!">
-              <TabsTrigger
-                value="identity"
-                className="data-[state=active]:bg-[#38BDF8]/10 data-[state=active]:text-[#38BDF8] data-[state=active]:shadow-none rounded-xl text-slate-600 dark:text-slate-400 text-[11px] sm:text-xs font-bold uppercase tracking-widest h-10 px-4 transition-all border border-transparent data-[state=active]:border-[#38BDF8]/20 shrink-0 w-auto md:w-full justify-start cursor-pointer"
-              >
-                General
-              </TabsTrigger>
-              <TabsTrigger
-                value="lifestyle"
-                className="data-[state=active]:bg-[#38BDF8]/10 data-[state=active]:text-[#38BDF8] data-[state=active]:shadow-none rounded-xl text-slate-600 dark:text-slate-400 text-[11px] sm:text-xs font-bold uppercase tracking-widest h-10 px-4 transition-all border border-transparent data-[state=active]:border-[#38BDF8]/20 shrink-0 w-auto md:w-full justify-start cursor-pointer"
-              >
-                Lifestyle
-              </TabsTrigger>
-              <TabsTrigger
-                value="medical"
-                className="data-[state=active]:bg-[#38BDF8]/10 data-[state=active]:text-[#38BDF8] data-[state=active]:shadow-none rounded-xl text-slate-600 dark:text-slate-400 text-[11px] sm:text-xs font-bold uppercase tracking-widest h-10 px-4 transition-all border border-transparent data-[state=active]:border-[#38BDF8]/20 shrink-0 w-auto md:w-full justify-start cursor-pointer"
-              >
-                Medical
-              </TabsTrigger>
-              <TabsTrigger
-                value="goals"
-                className="data-[state=active]:bg-[#38BDF8]/10 data-[state=active]:text-[#38BDF8] data-[state=active]:shadow-none rounded-xl text-slate-600 dark:text-slate-400 text-[11px] sm:text-xs font-bold uppercase tracking-widest h-10 px-4 transition-all border border-transparent data-[state=active]:border-[#38BDF8]/20 shrink-0 w-auto md:w-full justify-start cursor-pointer"
-              >
-                Goals
-              </TabsTrigger>
-              <TabsTrigger
-                value="admin"
-                className="data-[state=active]:bg-[#38BDF8]/10 data-[state=active]:text-[#38BDF8] data-[state=active]:shadow-none rounded-xl text-slate-600 dark:text-slate-400 text-[11px] sm:text-xs font-bold uppercase tracking-widest h-10 px-4 transition-all border border-transparent data-[state=active]:border-[#38BDF8]/20 shrink-0 w-auto md:w-full justify-start cursor-pointer"
-              >
-                Admin
-              </TabsTrigger>
-              <TabsTrigger
-                value="events"
-                className="data-[state=active]:bg-[#38BDF8]/10 data-[state=active]:text-[#38BDF8] data-[state=active]:shadow-none rounded-xl text-slate-600 dark:text-slate-400 text-[11px] sm:text-xs font-bold uppercase tracking-widest h-10 px-4 transition-all border border-transparent data-[state=active]:border-[#38BDF8]/20 shrink-0 w-auto md:w-full justify-start cursor-pointer"
-              >
-                Events
-              </TabsTrigger>
+          <div className="px-3 py-2 md:px-4 md:py-6 md:w-56 lg:w-60 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 shrink-0">
+            <TabsList className="bg-transparent border-none p-0 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto no-scrollbar gap-1 md:gap-0 items-stretch justify-start w-full h-auto!">
+              {INFO_SHEET_TAB_GROUPS.map((group, gIdx) => (
+                <React.Fragment key={group.label}>
+                  <span
+                    className={cn(
+                      "hidden md:block text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-3 pb-1.5",
+                      gIdx > 0 && "mt-5",
+                    )}
+                  >
+                    {group.label}
+                  </span>
+                  {group.tabs.map((tab) => (
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      className="justify-start gap-2.5 rounded-lg md:rounded-none md:rounded-r-lg h-10 px-3 text-[11px] sm:text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 border border-transparent md:border-0 md:border-l-2 md:border-l-transparent data-[state=active]:bg-[#38BDF8]/10 data-[state=active]:text-[#38BDF8] data-[state=active]:shadow-none data-[state=active]:border-[#38BDF8]/20 md:data-[state=active]:border-l-[#38BDF8] transition-all shrink-0 w-auto md:w-full cursor-pointer"
+                    >
+                      <span className="opacity-70 shrink-0">{tab.icon}</span>
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </React.Fragment>
+              ))}
             </TabsList>
           </div>
 
@@ -390,7 +410,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
                         onValueChange={(v) => updateField("gender", v)}
                       >
                         <SelectTrigger className="h-12 border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 font-medium">
-                          <SelectValue placeholder="Select..." />
+                          <SelectValue placeholder="Select an option…" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Male">Male</SelectItem>
@@ -587,7 +607,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
                         onValueChange={(v) => updateField("activityLevel", v)}
                       >
                         <SelectTrigger className="h-12 border-div-l rounded-xl bg-surface-1 font-medium">
-                          <SelectValue placeholder="Select..." />
+                          <SelectValue placeholder="Select an option…" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Sedentary">Sedentary</SelectItem>
@@ -608,7 +628,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
                         onValueChange={(v) => updateField("recoveryMetric", v)}
                       >
                         <SelectTrigger className="h-12 border-div-l rounded-xl bg-surface-1 font-medium">
-                          <SelectValue placeholder="Select..." />
+                          <SelectValue placeholder="Select an option…" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Poor">Poor</SelectItem>
@@ -627,7 +647,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
                         onValueChange={(v) => updateField("experienceLevel", v)}
                       >
                         <SelectTrigger className="h-12 border-div-l rounded-xl bg-surface-1 font-medium">
-                          <SelectValue placeholder="Select..." />
+                          <SelectValue placeholder="Select an option…" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Beginner">Beginner</SelectItem>
@@ -648,7 +668,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
                         }
                       >
                         <SelectTrigger className="h-12 border-div-l rounded-xl bg-surface-1 font-medium">
-                          <SelectValue placeholder="Select..." />
+                          <SelectValue placeholder="Select an option…" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Novice">Novice</SelectItem>
@@ -806,7 +826,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
                       onValueChange={(v) => updateField("packageTier", v)}
                     >
                       <SelectTrigger className="h-12 border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 font-medium">
-                        <SelectValue placeholder="Select..." />
+                        <SelectValue placeholder="Select an option…" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="None">None</SelectItem>

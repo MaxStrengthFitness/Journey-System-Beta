@@ -109,6 +109,7 @@ import {
 import { ClientEquipmentPrescriptions } from "./ClientEquipmentPrescriptions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -634,7 +635,9 @@ export function ClientProfileView({
         lastName: client.lastName,
         email: client.email || "",
         phone: client.phone || "",
-        gender: client.gender || "Male",
+        // Selects start empty — see handleSaveInfo, which drops "" so an
+        // untouched dropdown never writes a default into the client record.
+        gender: client.gender || "",
         height: client.height || "",
         weight: client.weight || "",
         age: client.age ?? null,
@@ -643,9 +646,9 @@ export function ClientProfileView({
         clinicalProfile: client.clinicalProfile || [],
         clinicalFlags: client.clinicalFlags || [],
         clinicalNotes: client.clinicalNotes || "",
-        activityLevel: client.activityLevel || "Moderate",
-        trainingPedigree: client.trainingPedigree || "Novice",
-        recoveryMetric: client.recoveryMetric || "Average",
+        activityLevel: client.activityLevel || "",
+        trainingPedigree: client.trainingPedigree || "",
+        recoveryMetric: client.recoveryMetric || "",
         emergencyContactName: client.emergencyContactName || "",
         emergencyContactPhone: client.emergencyContactPhone || "",
         globalNotes: client.globalNotes || "",
@@ -653,7 +656,7 @@ export function ClientProfileView({
         isRoutineBActive: client.isRoutineBActive ?? false,
         consultationCompleted: client.consultationCompleted ?? false,
         discoveryNotes: client.discoveryNotes || "",
-        packageTier: client.packageTier || "None",
+        packageTier: client.packageTier || "",
         remainingSessions: client.remainingSessions ?? 0,
         firstSessionDate: client.firstSessionDate || null,
         firstSessionDateRaw: formatToMMDDYYYY(client.firstSessionDate),
@@ -708,6 +711,21 @@ export function ClientProfileView({
       // Cleanup other potentially empty strings to null or delete them if rules prefer
       Object.keys(sanitizedData).forEach((key) => {
         if ((sanitizedData as any)[key] === undefined) {
+          delete (sanitizedData as any)[key];
+        }
+      });
+
+      // Dropdowns that were never touched stay "" in the form. Never persist
+      // that — leave the field alone so the record keeps whatever it had.
+      const SELECT_FIELDS: (keyof typeof sanitizedData)[] = [
+        "gender",
+        "activityLevel",
+        "trainingPedigree",
+        "recoveryMetric",
+        "packageTier",
+      ];
+      SELECT_FIELDS.forEach((key) => {
+        if ((sanitizedData as any)[key] === "") {
           delete (sanitizedData as any)[key];
         }
       });
@@ -2661,10 +2679,14 @@ export function ClientProfileView({
         return null;
       })()}
 
-      {/* Redesigned Session Status Header */}
-      <div className="bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800/60 pb-6 mb-8 pt-2">
-        <div className="flex flex-col xl:flex-row xl:justify-between xl:items-start gap-6">
-          <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
+      {/* Session Status Header — one flex row on tablet: avatar + name, then
+          the four headline metrics, then the actions. Nothing floats. */}
+      <div className="bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800/60 pb-4 mb-6 pt-2">
+        {/* < lg (iPad portrait): identity + actions on row one, metrics on row two.
+            ≥ lg (iPad landscape): everything on one row. */}
+        <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-4 gap-y-3 lg:gap-x-6">
+          {/* Identity */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 lg:flex-initial lg:max-w-[34%]">
             <Button
               onClick={() => {
                 setSelectedClientId(null);
@@ -2672,164 +2694,178 @@ export function ClientProfileView({
               }}
               variant="ghost"
               size="icon"
-              className="shrink-0 text-slate-400 dark:text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full h-10 w-10 mt-1 sm:mt-1.5"
+              className="shrink-0 text-slate-400 dark:text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full h-10 w-10"
             >
               <ChevronLeft className="w-6 h-6" />
             </Button>
 
-            <div className="flex flex-col min-w-0 flex-1">
-              <div className="flex items-center gap-3 mb-2 flex-wrap">
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-none text-slate-900 dark:text-white truncate">
-                  {client.firstName} {client.lastName}
-                </h1>
-
-                {(client.notes ||
-                  (client.clinicalFlags &&
-                    client.clinicalFlags.length > 0)) && (
-                  <div className="bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/30 rounded px-2.5 py-1 flex items-center gap-1.5 animate-pulse shrink-0 mt-1 sm:mt-0">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">
-                      Clinical Notes Active
-                    </span>
-                  </div>
+            <Avatar
+              size="xl"
+              className="ring-2 ring-slate-200 dark:ring-slate-800 bg-slate-100 dark:bg-slate-800"
+            >
+              {client.photoUrl && (
+                <AvatarImage
+                  src={client.photoUrl}
+                  alt={`${client.firstName} ${client.lastName}`}
+                />
+              )}
+              <AvatarFallback className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-lg">
+                {`${(client.firstName || "").charAt(0)}${(client.lastName || "").charAt(0)}`.toUpperCase() || (
+                  <User className="w-7 h-7" />
                 )}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="flex flex-col min-w-0">
+              <h1 className="text-2xl md:text-[26px] lg:text-3xl font-black tracking-tight leading-none text-slate-900 dark:text-white truncate">
+                {client.firstName} {client.lastName}
+              </h1>
+              {(client.notes ||
+                (client.clinicalFlags && client.clinicalFlags.length > 0)) && (
+                <div className="mt-1.5 inline-flex w-fit bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/30 rounded px-2 py-0.5 items-center gap-1.5 animate-pulse">
+                  <AlertTriangle className="w-3 h-3" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">
+                    Clinical Notes Active
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Headline metrics */}
+          <div className="order-3 lg:order-none w-full lg:w-auto lg:flex-1 min-w-0 flex items-center gap-x-4 lg:gap-x-5 overflow-x-auto no-scrollbar pl-12 lg:pl-0">
+            {/* Top Trainer */}
+            <div className="flex flex-col shrink-0">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">
+                Top Trainer
+              </span>
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                <UserCheck className="w-4 h-4 text-[#F06C22]" />
+                {(() => {
+                  const trainerCount: Record<string, number> = {};
+                  sessions.forEach((s) => {
+                    if (s.trainerId)
+                      trainerCount[s.trainerId] =
+                        (trainerCount[s.trainerId] || 0) + 1;
+                    else if (s.trainerName) {
+                      const t = trainers.find(
+                        (tr) =>
+                          tr.fullName === s.trainerName ||
+                          tr.initials === s.trainerName,
+                      );
+                      if (t && t.id)
+                        trainerCount[t.id] = (trainerCount[t.id] || 0) + 1;
+                    }
+                  });
+                  let topTrainerId = null;
+                  let maxCount = 0;
+                  for (const [id, count] of Object.entries(trainerCount)) {
+                    if (count > maxCount) {
+                      maxCount = count;
+                      topTrainerId = id;
+                    }
+                  }
+                  if (topTrainerId) {
+                    const t = trainers.find((tr) => tr.id === topTrainerId);
+                    return t ? t.fullName : "N/A";
+                  }
+                  return "N/A";
+                })()}
               </div>
+            </div>
 
-              {/* Priority Information Row */}
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-4 mt-3 sm:mt-5">
-                {/* Top Trainer */}
-                <div className="flex flex-col">
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">
-                    Top Trainer
-                  </span>
-                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
-                    <UserCheck className="w-4 h-4 text-[#F06C22]" />
-                    {(() => {
-                      const trainerCount: Record<string, number> = {};
-                      sessions.forEach((s) => {
-                        if (s.trainerId)
-                          trainerCount[s.trainerId] =
-                            (trainerCount[s.trainerId] || 0) + 1;
-                        else if (s.trainerName) {
-                          const t = trainers.find(
-                            (tr) =>
-                              tr.fullName === s.trainerName ||
-                              tr.initials === s.trainerName,
+            <div className="w-px h-8 bg-slate-200 dark:bg-slate-800 shrink-0"></div>
+
+            {/* Last Session */}
+            <div className="flex flex-col shrink-0">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">
+                Last Session
+              </span>
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                <History className="w-4 h-4 text-[#68717A]" />
+                {sessions[0]?.date
+                  ? new Date(
+                      parseSessionDate(sessions[0].date),
+                    ).toLocaleDateString([], {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "N/A"}
+              </div>
+            </div>
+
+            <div className="w-px h-8 bg-slate-200 dark:bg-slate-800 shrink-0"></div>
+
+            {/* Next Session & Pre-booked */}
+            <div className="flex flex-col shrink-0">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">
+                Next Session
+              </span>
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                <CalendarDays className="w-4 h-4 text-[#68717A]" />
+                {scheduledSessions.length > 0 ? (
+                  <>
+                    <span>
+                      {(() => {
+                        const dateVal = scheduledSessions[0].startTime;
+                        if (!dateVal) return "N/A";
+                        let d: Date;
+                        if (typeof (dateVal as any).toDate === "function") {
+                          d = (dateVal as any).toDate();
+                        } else if (typeof dateVal === "string") {
+                          d = new Date(
+                            dateVal.includes("T")
+                              ? dateVal
+                              : dateVal + "T12:00:00",
                           );
-                          if (t && t.id)
-                            trainerCount[t.id] = (trainerCount[t.id] || 0) + 1;
+                        } else {
+                          d = new Date(dateVal);
                         }
-                      });
-                      let topTrainerId = null;
-                      let maxCount = 0;
-                      for (const [id, count] of Object.entries(trainerCount)) {
-                        if (count > maxCount) {
-                          maxCount = count;
-                          topTrainerId = id;
-                        }
-                      }
-                      if (topTrainerId) {
-                        const t = trainers.find((tr) => tr.id === topTrainerId);
-                        return t ? t.fullName : "N/A";
-                      }
-                      return "N/A";
-                    })()}
-                  </div>
-                </div>
-
-                <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-800"></div>
-
-                {/* Last Session */}
-                <div className="flex flex-col">
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">
-                    Last Session
-                  </span>
-                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
-                    <History className="w-4 h-4 text-[#68717A]" />
-                    {sessions[0]?.date
-                      ? new Date(
-                          parseSessionDate(sessions[0].date),
-                        ).toLocaleDateString([], {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })
-                      : "N/A"}
-                  </div>
-                </div>
-
-                <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-800"></div>
-
-                {/* Next Session & Pre-booked */}
-                <div className="flex flex-col">
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">
-                    Next Session
-                  </span>
-                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
-                    <CalendarDays className="w-4 h-4 text-[#68717A]" />
-                    {scheduledSessions.length > 0 ? (
-                      <>
-                        <span>
-                          {(() => {
-                            const dateVal = scheduledSessions[0].startTime;
-                            if (!dateVal) return "N/A";
-                            let d: Date;
-                            if (typeof (dateVal as any).toDate === "function") {
-                              d = (dateVal as any).toDate();
-                            } else if (typeof dateVal === "string") {
-                              d = new Date(
-                                dateVal.includes("T")
-                                  ? dateVal
-                                  : dateVal + "T12:00:00",
-                              );
-                            } else {
-                              d = new Date(dateVal);
-                            }
-                            return isNaN(d.getTime())
-                              ? "N/A"
-                              : d.toLocaleDateString([], {
-                                  month: "short",
-                                  day: "numeric",
-                                });
-                          })()}
-                        </span>
-                        {scheduledSessions.length > 1 && (
-                          <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-[#68717A] dark:text-slate-300 px-1.5 py-0.5 rounded ml-1">
-                            +{scheduledSessions.length - 1} booked
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-[#68717A] font-medium italic">
-                        Not Scheduled
+                        return isNaN(d.getTime())
+                          ? "N/A"
+                          : d.toLocaleDateString([], {
+                              month: "short",
+                              day: "numeric",
+                            });
+                      })()}
+                    </span>
+                    {scheduledSessions.length > 1 && (
+                      <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-[#68717A] dark:text-slate-300 px-1.5 py-0.5 rounded ml-1">
+                        +{scheduledSessions.length - 1} booked
                       </span>
                     )}
-                  </div>
-                </div>
-
-                <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-800"></div>
-
-                {/* Session Counter */}
-                <div className="flex flex-col">
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">
-                    Sessions Completed
+                  </>
+                ) : (
+                  <span className="text-[#68717A] font-medium italic">
+                    Not Scheduled
                   </span>
-                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100 leading-none mt-1">
-                    <span className="text-2xl font-black text-[#F06C22]">
-                      {calculatedSessionCount}
-                    </span>
-                    <span className="text-[#68717A] text-[11px] uppercase tracking-widest opacity-80 mt-1">
-                      /{" "}
-                      {calculatedSessionCount + (client.remainingSessions ?? 0)}{" "}
-                      total
-                    </span>
-                  </div>
-                </div>
+                )}
+              </div>
+            </div>
+
+            <div className="w-px h-8 bg-slate-200 dark:bg-slate-800 shrink-0"></div>
+
+            {/* Session Counter */}
+            <div className="flex flex-col shrink-0">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">
+                Sessions Completed
+              </span>
+              <div className="flex items-baseline gap-2 text-sm font-bold text-slate-900 dark:text-slate-100 leading-none whitespace-nowrap">
+                <span className="text-2xl font-black text-[#F06C22] leading-none">
+                  {calculatedSessionCount}
+                </span>
+                <span className="text-[#68717A] text-[11px] uppercase tracking-widest opacity-80">
+                  /{" "}
+                  {calculatedSessionCount + (client.remainingSessions ?? 0)}{" "}
+                  total
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0 self-start xl:pt-2 ml-14 xl:ml-0 mt-2 xl:mt-0">
+          {/* Actions */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto lg:ml-0">
             <Button
               onClick={() => {
                 setInfoSheetTab("identity");
@@ -3019,10 +3055,21 @@ export function ClientProfileView({
             </div>
           </div>
           <div className="w-full flex-1 overflow-x-auto overflow-y-auto bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 rounded-xl relative">
+            {/* Strict three-zone row: fixed LEFT (machine + settings), flexible
+                CENTER (session cells share what is left), fixed RIGHT (target).
+                The <colgroup> pins the outer widths so chips can never push the
+                progress cells around, whatever the machine name or settings. */}
             <table className="w-full text-left border-collapse table-fixed select-none min-w-175">
+              <colgroup>
+                <col className="w-[200px] lg:w-[240px]" />
+                {sessions.slice(0, 6).map((s) => (
+                  <col key={s.id} />
+                ))}
+                <col className="w-[72px]" />
+              </colgroup>
               <thead>
                 <tr className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 uppercase text-[11px] font-bold tracking-widest leading-none h-10 border-b border-slate-200 dark:border-slate-700">
-                  <th className="p-2 pl-4 w-[25%] border-r border-slate-200 dark:border-slate-700 truncate">
+                  <th className="p-2 pl-4 border-r border-slate-200 dark:border-slate-700 truncate">
                     Equipment & Settings
                   </th>
                   {sessions
@@ -3043,7 +3090,7 @@ export function ClientProfileView({
                       return (
                         <th
                           key={s.id}
-                          className="p-1 px-2 text-center border-r border-slate-200 dark:border-slate-700 truncate w-[10%] opacity-90"
+                          className="p-1 px-2 text-center border-r border-slate-200 dark:border-slate-700 truncate opacity-90"
                         >
                           <div className="flex flex-col items-center justify-center space-y-1 py-1">
                             <div className="bg-slate-200 dark:bg-white/10 rounded-md px-1.5 min-w-5 py-0.5 shadow-sm inline-flex items-center justify-center mb-1">
@@ -3083,7 +3130,7 @@ export function ClientProfileView({
                         </th>
                       );
                     })}
-                  <th className="p-2 text-center bg-slate-100 dark:bg-slate-800 truncate w-[5%] border-l border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
+                  <th className="p-2 text-center bg-slate-100 dark:bg-slate-800 truncate border-l border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
                     <Target className="w-5 h-5 mx-auto" />
                   </th>
                 </tr>
@@ -3177,7 +3224,7 @@ export function ClientProfileView({
                                 <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
                               )}
                             </div>
-                            <div className="flex items-center gap-2 text-[11px] tracking-widest truncate leading-none uppercase mt-0.5 flex-wrap">
+                            <div className="flex items-center gap-1.5 text-[11px] tracking-widest leading-none uppercase mt-0.5 flex-nowrap overflow-hidden min-w-0">
                               {(() => {
                                 const settings =
                                   clientSettings[machine.id!]?.settings || {};
@@ -3200,7 +3247,8 @@ export function ClientProfileView({
                                 return sortedEntries.map(([k, v], i) => (
                                   <span
                                     key={i}
-                                    className="inline-flex items-baseline bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded-lg"
+                                    title={`${k}: ${v}`}
+                                    className="inline-flex items-baseline bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded-lg shrink-0 whitespace-nowrap"
                                   >
                                     <span className="font-semibold text-slate-400 font-sans mr-0.5">
                                       {k}:
@@ -3352,10 +3400,10 @@ export function ClientProfileView({
                             </td>
                           );
                         })}
-                        <td className="p-0 text-center bg-[#F9FAFB] dark:bg-slate-900/40 align-middle border-l border-slate-200 dark:border-slate-800 h-full w-[5%] relative">
-                          <div className="flex flex-col items-center justify-center h-full w-full opacity-70 transition-opacity hover:opacity-100 py-1.5 border-l-[3px] border-l-transparent">
-                            <Target className="w-3.5 h-3.5 mb-1.5 text-slate-400" />
-                            <span className="font-bold text-[11px] text-slate-600 dark:text-slate-400">
+                        <td className="p-0 bg-[#F9FAFB] dark:bg-slate-900/40 align-middle border-l border-slate-200 dark:border-slate-800 h-full relative">
+                          <div className="flex items-center justify-end gap-1.5 h-full w-full opacity-70 transition-opacity hover:opacity-100 py-1.5 pr-3">
+                            <Target className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="font-bold text-[12px] tabular-nums text-right text-slate-600 dark:text-slate-400">
                               {clientSettings[machine.id!]?.targetWeight ||
                                 client?.currentMachineMetrics?.[machine.id!]
                                   ?.weight ||
@@ -5519,13 +5567,13 @@ export function ClientProfileView({
                     Daily Activity Level
                   </Label>
                   <Select
-                    value={infoForm.activityLevel || "Moderate"}
+                    value={infoForm.activityLevel || ""}
                     onValueChange={(v) =>
                       setInfoForm((f) => ({ ...f, activityLevel: v as any }))
                     }
                   >
                     <SelectTrigger className="w-full h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
-                      <SelectValue placeholder="Select Activity" />
+                      <SelectValue placeholder="Select an option…" />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl">
                       <SelectItem value="Sedentary">Sedentary</SelectItem>
@@ -5542,13 +5590,13 @@ export function ClientProfileView({
                     Systemic Recovery (Sleep/Stress)
                   </Label>
                   <Select
-                    value={infoForm.recoveryMetric || "Average"}
+                    value={infoForm.recoveryMetric || ""}
                     onValueChange={(v) =>
                       setInfoForm((f) => ({ ...f, recoveryMetric: v as any }))
                     }
                   >
                     <SelectTrigger className="w-full h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
-                      <SelectValue placeholder="Select Recovery" />
+                      <SelectValue placeholder="Select an option…" />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl">
                       <SelectItem value="Poor">Poor</SelectItem>
@@ -5563,13 +5611,13 @@ export function ClientProfileView({
                     Experience Level
                   </Label>
                   <Select
-                    value={infoForm.trainingPedigree || "Novice"}
+                    value={infoForm.trainingPedigree || ""}
                     onValueChange={(v) =>
                       setInfoForm((f) => ({ ...f, trainingPedigree: v as any }))
                     }
                   >
                     <SelectTrigger className="w-full h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
-                      <SelectValue placeholder="Select Experience" />
+                      <SelectValue placeholder="Select an option…" />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl">
                       <SelectItem value="Novice">
@@ -5833,13 +5881,13 @@ export function ClientProfileView({
                       Package Tier
                     </Label>
                     <Select
-                      value={infoForm.packageTier || "None"}
+                      value={infoForm.packageTier || ""}
                       onValueChange={(v: any) =>
                         setInfoForm((f) => ({ ...f, packageTier: v }))
                       }
                     >
                       <SelectTrigger className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-bold px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100 data-placeholder:text-slate-400">
-                        <SelectValue placeholder="Select Tier" />
+                        <SelectValue placeholder="Select an option…" />
                       </SelectTrigger>
                       <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold p-2">
                         <SelectItem
