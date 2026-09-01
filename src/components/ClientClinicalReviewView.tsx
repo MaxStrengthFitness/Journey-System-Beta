@@ -1,0 +1,968 @@
+import React, { useMemo, useState } from "react";
+import {
+  X,
+  ChevronRight,
+  Activity,
+  TrendingUp,
+  AlertTriangle,
+  Play,
+  Calendar,
+  Search,
+  ActivitySquare,
+  CheckCircle,
+  Clock,
+  Check,
+  RefreshCw,
+} from "lucide-react";
+import {
+  Client,
+  ExerciseLog,
+  WorkoutSession,
+  FocusRecord,
+  ClinicalIncident,
+  Machine,
+  ClinicalTagDefinition,
+} from "../types";
+import { AppHeader } from "./AppHeader";
+import { StickyCTA } from "./StickyCTA";
+import { BentoStatTile } from "./BentoStatTile";
+import { cn } from "@/lib/utils";
+import { computeClinicalMetrics } from "../lib/clinical-review-utils";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Legend,
+} from "recharts";
+
+export interface ClientClinicalReviewViewProps {
+  client: Client;
+  logs: ExerciseLog[];
+  sessions: WorkoutSession[];
+  focusRecords: FocusRecord[];
+  incidents: ClinicalIncident[];
+  machines: Machine[];
+  clinicalTags: ClinicalTagDefinition[];
+  onOpenBriefing: () => void;
+  onClose: () => void;
+}
+
+export function ClientClinicalReviewView({
+  client,
+  logs,
+  sessions,
+  focusRecords,
+  incidents,
+  machines,
+  clinicalTags,
+  onOpenBriefing,
+  onClose,
+}: ClientClinicalReviewViewProps) {
+  const [windowDays, setWindowDays] = useState<number>(30);
+
+  const metrics = useMemo(
+    () =>
+      computeClinicalMetrics(
+        client,
+        logs,
+        sessions,
+        focusRecords,
+        incidents,
+        clinicalTags,
+        machines,
+        windowDays,
+      ),
+    [
+      client,
+      logs,
+      sessions,
+      focusRecords,
+      incidents,
+      clinicalTags,
+      machines,
+      windowDays,
+    ],
+  );
+
+  const recoveryData = useMemo(() => {
+    const monthMap = new Map<
+      string,
+      {
+        label: string;
+        sortKey: string;
+        totalSleep: number;
+        countSleep: number;
+        totalStress: number;
+        countStress: number;
+      }
+    >();
+
+    const now = new Date();
+    const windowStart = new Date(
+      now.getTime() - windowDays * 24 * 60 * 60 * 1000,
+    );
+
+    sessions.forEach((s) => {
+      let dateRaw: any = s.startTime || s.createdAt || s.date;
+      let dt = new Date();
+      if (dateRaw?.toDate) {
+        dt = dateRaw.toDate();
+      } else if (typeof dateRaw === "string") {
+        dt = new Date(dateRaw);
+      } else if (typeof dateRaw === "number") {
+        dt = new Date(dateRaw);
+      } else {
+        return; // Unable to parse date
+      }
+
+      if (isNaN(dt.getTime())) return;
+
+      // Filter by timeframe window
+      if (dt < windowStart || dt > now) return;
+
+      if (!s.preSessionCheckIn) return;
+      const ci = s.preSessionCheckIn;
+
+      const monthKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+      const monthLabel = dt.toLocaleDateString("en-US", {
+        month: "short",
+        year: "2-digit",
+      });
+
+      if (!monthMap.has(monthKey)) {
+        monthMap.set(monthKey, {
+          label: monthLabel,
+          sortKey: monthKey,
+          totalSleep: 0,
+          countSleep: 0,
+          totalStress: 0,
+          countStress: 0,
+        });
+      }
+
+      const entry = monthMap.get(monthKey)!;
+
+      if (ci.sleepQuality) {
+        let val = 0;
+        if (ci.sleepQuality === "poor") val = 1;
+        else if (ci.sleepQuality === "average") val = 3;
+        else if (ci.sleepQuality === "optimal") val = 5;
+
+        entry.totalSleep += val;
+        entry.countSleep += 1;
+      }
+
+      if (ci.stressLevel) {
+        entry.totalStress += ci.stressLevel;
+        entry.countStress += 1;
+      }
+    });
+
+    const sorted = Array.from(monthMap.values()).sort((a, b) =>
+      a.sortKey.localeCompare(b.sortKey),
+    );
+
+    return sorted.map((s) => ({
+      name: s.label,
+      sleep:
+        s.countSleep > 0
+          ? parseFloat((s.totalSleep / s.countSleep).toFixed(1))
+          : null,
+      stress:
+        s.countStress > 0
+          ? parseFloat((s.totalStress / s.countStress).toFixed(1))
+          : null,
+    }));
+  }, [sessions, windowDays]);
+
+  const clientName = `${client.firstName} ${client.lastName}`;
+  const openIncidents = incidents.filter(
+    (i) => !i.resolvedAt && i.clientId === client.id,
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-50 dark:bg-bg-dark text-slate-900 dark:text-white flex flex-col font-sans overflow-hidden">
+      <AppHeader
+        variant="dark"
+        rightControls={
+          <button
+            onClick={onClose}
+            className="w-10 h-10 flex flex-col items-center justify-center border border-slate-200 dark:border-div-d rounded-xl hover:bg-slate-200 dark:hover:bg-surface-2 transition-colors"
+          >
+            <X className="w-5 h-5 text-slate-700 dark:text-white" />
+          </button>
+        }
+      />
+
+      <div className="flex-1 w-full max-w-205 mx-auto pt-20 md:pt-5 px-4 sm:px-6 pb-32 overflow-y-auto no-scrollbar scroll-smooth">
+        <div className="mb-6">
+          <h1 className="text-2xl sm:text-3xl font-display italic font-bold tracking-tighter text-slate-900 dark:text-white">
+            Clinical Review
+          </h1>
+          <p className="text-[13px] font-bold uppercase tracking-widest text-[#38BDF8] mt-1">
+            {clientName}
+          </p>
+        </div>
+
+        {/* Top Controls */}
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
+            {[7, 30, 90].map((days) => (
+              <button
+                key={days}
+                onClick={() => setWindowDays(days)}
+                className={cn(
+                  "px-4 min-h-11 rounded-full text-[13px] font-bold uppercase tracking-wide transition-all cursor-pointer",
+                  windowDays === days
+                    ? "bg-[#38BDF8] text-slate-950 font-extrabold shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
+                )}
+              >
+                {days}d
+              </button>
+            ))}
+            <button
+              onClick={() => setWindowDays(9999)}
+              className={cn(
+                "px-4 min-h-11 rounded-full text-[13px] font-bold uppercase tracking-wide transition-all cursor-pointer",
+                windowDays === 9999
+                  ? "bg-[#38BDF8] text-slate-950 font-extrabold shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
+              )}
+            >
+              All
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          {/* Dashboard Header grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <BentoStatTile
+              id="age"
+              label="Age"
+              value={client.age?.toString() || "--"}
+            />
+            <BentoStatTile
+              id="sessions"
+              label="Remaining"
+              value={metrics.sessionsRemaining.toString()}
+            />
+            <BentoStatTile
+              id="last-seen"
+              label="Last Seen"
+              value={
+                metrics.lastSeenDaysAgo !== null
+                  ? `${metrics.lastSeenDaysAgo}d ago`
+                  : "N/A"
+              }
+            />
+            <BentoStatTile
+              id="setup"
+              label="Setup Self-Sufficiency"
+              value={
+                metrics.setupCorrectPercentage === -1
+                  ? "--"
+                  : `${Math.round(metrics.setupCorrectPercentage)}%`
+              }
+              delta={{
+                tone:
+                  metrics.setupCorrectPercentage >= 80
+                    ? "up"
+                    : metrics.setupCorrectPercentage >= 60
+                      ? "flat"
+                      : "down",
+                text:
+                  metrics.setupCorrectPercentage === -1 ? "" : "correctly set",
+              }}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* SCOREBOARD */}
+            <div className="bg-surface-1 rounded-3xl p-6 border border-div-d flex flex-col gap-4">
+              <div>
+                <h3 className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">
+                  Volume & Quality
+                </h3>
+                <div className="font-display text-3xl italic tracking-tighter text-white mt-1">
+                  {metrics.totalTonnage.toLocaleString()}{" "}
+                  <span className="text-xl text-cyan">LBS</span>
+                </div>
+                <div className="text-[11px] font-bold uppercase tracking-widest text-ink-d3 mt-1">
+                  Across {metrics.totalReps} Reps
+                </div>
+              </div>
+
+              <div className="space-y-2 mt-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-green text-[13px] font-bold uppercase tracking-wider">
+                    Max Strength
+                  </span>
+                  <span className="text-white font-mono">
+                    {metrics.repQualityBreakdown.elite}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-cyan text-[13px] font-bold uppercase tracking-wider">
+                    Completed
+                  </span>
+                  <span className="text-white font-mono">
+                    {metrics.repQualityBreakdown.good}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-red-500 text-[13px] font-bold uppercase tracking-wider">
+                    Poor
+                  </span>
+                  <span className="text-white font-mono">
+                    {metrics.repQualityBreakdown.poor}
+                  </span>
+                </div>
+              </div>
+
+              {/* Muscle Group Tonnage Tracker */}
+              <div className="mt-2 pt-3 border-t border-div-l/50">
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-ink-d3 mb-2">
+                  Muscle Group Tonnage
+                </h4>
+                <div className="space-y-2.5 w-full">
+                  {metrics.broadMuscleGroupVolumes?.map((g) => {
+                    const pct =
+                      metrics.totalTonnage > 0
+                        ? (g.volume / metrics.totalTonnage) * 100
+                        : 0;
+
+                    const barColor =
+                      g.category === "Lower Body"
+                        ? "bg-emerald-500"
+                        : g.category === "Upper Body"
+                          ? "bg-cyan"
+                          : g.category === "Core & Spine"
+                            ? "bg-orange-500"
+                            : "bg-indigo-500";
+
+                    return (
+                      <div key={g.category} className="flex flex-col gap-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-white font-sans font-medium flex items-center gap-1.5">
+                            <span
+                              className={cn(
+                                "w-1.5 h-1.5 rounded-full inline-block",
+                                barColor,
+                              )}
+                            />
+                            {g.category}
+                          </span>
+                          <span className="font-mono text-ink-d1 font-semibold">
+                            {g.volume.toLocaleString()} lb{" "}
+                            <span className="text-ink-d3 font-sans text-[9px] font-normal ml-0.5">
+                              ({Math.round(pct)}%)
+                            </span>
+                          </span>
+                        </div>
+                        <div className="w-full bg-white/5 rounded-full h-1 overflow-hidden">
+                          <div
+                            className={cn(
+                              "h-full rounded-full transition-all duration-300",
+                              barColor,
+                            )}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {(!metrics.broadMuscleGroupVolumes ||
+                    metrics.broadMuscleGroupVolumes.length === 0) && (
+                    <span className="text-ink-d3 italic text-[11px]">
+                      No tonnage recorded in window.
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {metrics.meanRPEHistory.length > 0 && (
+                <div className="h-15 mt-auto">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={metrics.meanRPEHistory}>
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="var(--cyan)"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <div className="text-center text-[11px] uppercase font-bold text-ink-d3 tracking-widest mt-1">
+                    Avg RPE Trend
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* FORM BREAKDOWN HEATMAP */}
+            <div className="bg-surface-1 rounded-3xl p-6 border border-div-d md:col-span-2 flex flex-col overflow-x-auto">
+              <h3 className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2 whitespace-nowrap mb-4">
+                Form Breakdown Heatmap
+              </h3>
+              <div className="flex-1 min-w-125">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr>
+                      <th className="pb-2 w-1/3"></th>
+                      {metrics.formTagCountsByWeek.map((w) => (
+                        <th
+                          key={w.weekIndex}
+                          className="text-[11px] font-bold text-ink-d3 uppercase text-center pb-2 px-1"
+                        >
+                          {w._weekLabel}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {metrics.topFormTags.map((tagId) => {
+                      const def = clinicalTags.find((t) => t.id === tagId);
+                      return (
+                        <tr key={tagId} className="border-t border-div-d/50">
+                          <td className="py-2 text-[12px] font-bold text-white pr-4 truncate max-w-50">
+                            {def?.label || tagId}
+                          </td>
+                          {metrics.formTagCountsByWeek.map((w) => {
+                            const count = w.tags[tagId] || 0;
+                            const intensity = Math.min(count / 5, 1);
+                            return (
+                              <td
+                                key={w.weekIndex}
+                                className="p-1 text-center align-middle"
+                              >
+                                <button
+                                  onClick={() =>
+                                    console.log(
+                                      "Drill down tags for week",
+                                      w.weekIndex,
+                                      tagId,
+                                    )
+                                  }
+                                  className="w-full min-h-11 rounded bg-cyan/20 border border-cyan hover:bg-cyan/40 transition-colors flex items-center justify-center font-mono text-[11px] text-white"
+                                  style={{
+                                    backgroundColor:
+                                      count > 0
+                                        ? `rgba(56, 189, 248, ${intensity})`
+                                        : "transparent",
+                                    opacity: count > 0 ? 1 : 0.3,
+                                  }}
+                                  disabled={count === 0}
+                                >
+                                  {count > 0 ? count : "-"}
+                                </button>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {metrics.topFormTags.length === 0 && (
+                  <div className="h-25 flex items-center justify-center text-[12px] text-ink-d3 uppercase tracking-widest font-bold">
+                    No form data in window
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* SYMPTOM LOG */}
+            <div className="bg-surface-1 rounded-3xl p-6 border border-div-d flex flex-col gap-4">
+              <h3 className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">
+                Symptom Log
+              </h3>
+
+              {openIncidents.length > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl">
+                  <div className="flex justify-between items-start gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 text-amber-500">
+                        <AlertTriangle className="w-4 h-4" />
+                        <span className="text-[11px] font-bold uppercase tracking-widest">
+                          Active Incident
+                        </span>
+                      </div>
+                      <p className="text-white text-sm mt-2">
+                        {openIncidents[0].description}
+                      </p>
+                    </div>
+                    <button className="min-h-11 px-3 bg-white/5 border border-div-d hover:bg-white/10 rounded-xl text-[11px] font-bold uppercase text-white tracking-widest">
+                      Resolve
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-3 max-h-75 overflow-y-auto no-scrollbar pr-2">
+                {Object.entries(metrics.symptomsByRegion).map(
+                  ([region, syms]) => (
+                    <div
+                      key={region}
+                      className="bg-surface-2 rounded-xl p-3 border border-div-l"
+                    >
+                      <span className="text-[11px] text-amber-500/80 font-bold uppercase tracking-widest">
+                        {region}
+                      </span>
+                      {(syms as any[]).map((s, i) => (
+                        <div
+                          key={i}
+                          className="flex justify-between text-sm mt-1 border-t border-div-l/50 pt-1 first:border-0 first:pt-0"
+                        >
+                          <span className="text-white">
+                            {s.note || `Intensity ${s.intensity}`}
+                          </span>
+                          <span className="text-ink-d2 font-mono">
+                            L{s.intensity}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ),
+                )}
+                {Object.keys(metrics.symptomsByRegion).length === 0 && (
+                  <div className="text-center text-[12px] text-ink-d3 uppercase tracking-widest font-bold py-8">
+                    No reported symptoms
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* DAILY RECOVERY CHECK-IN */}
+            <div className="bg-surface-1 rounded-3xl p-6 border border-div-d flex flex-col gap-4">
+              <h3 className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">
+                Lifetime Recovery Tracker
+              </h3>
+
+              {recoveryData.length > 0 ? (
+                <div className="flex-1 min-h-62.5 flex flex-col">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={recoveryData}>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="var(--div-l)"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="name"
+                        tick={{
+                          fontSize: 11,
+                          fill: "var(--ink-d3)",
+                          fontWeight: "bold",
+                        }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        domain={[0, 5]}
+                        ticks={[1, 2, 3, 4, 5]}
+                        tick={{ fontSize: 11, fill: "var(--ink-d3)" }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "var(--bg-dark)",
+                          border: "1px solid var(--div-d)",
+                          borderRadius: "8px",
+                        }}
+                        itemStyle={{ fontSize: "12px", fontWeight: "bold" }}
+                        labelStyle={{
+                          color: "var(--cyan)",
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                        }}
+                      />
+                      <Legend
+                        iconType="circle"
+                        wrapperStyle={{
+                          fontSize: "11px",
+                          fontWeight: "bold",
+                          paddingTop: "10px",
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        name="Sleep (1=Poor, 5=Optimal)"
+                        dataKey="sleep"
+                        stroke="var(--cyan)"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                      <Line
+                        type="monotone"
+                        name="Stress (1=Low, 5=High)"
+                        dataKey="stress"
+                        stroke="#F59E0B"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-div-l rounded-2xl">
+                  <ActivitySquare className="w-8 h-8 text-ink-d3 mb-3" />
+                  <p className="text-[12px] font-bold text-ink-d2 uppercase tracking-widest">
+                    No Check-in Data
+                  </p>
+                  <p className="text-sm text-ink-d3 mt-2">
+                    Daily Recovery Check-in metrics (sleep, stress, body state)
+                    will appear here when collected before sessions.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ACTIVE 4P FOCI */}
+          {metrics.activeFociWithMatchCount.length > 0 && (
+            <div className="bg-surface-1 rounded-3xl p-6 border border-div-d flex flex-col gap-4">
+              <h3 className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">
+                Active Focus Areas
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {metrics.activeFociWithMatchCount.map((f, i) => (
+                  <div
+                    key={i}
+                    className="bg-surface-2 border border-div-l rounded-xl p-4 flex justify-between items-center"
+                  >
+                    <div>
+                      <span className="text-[11px] text-cyan font-bold uppercase tracking-widest">
+                        {f.focus.category}
+                      </span>
+                      <p className="text-white text-sm font-medium mt-1">
+                        {f.focus.notes}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-display italic text-white">
+                        {f.matchCount}
+                      </div>
+                      <div className="text-[11px] text-ink-d3 font-bold uppercase tracking-widest">
+                        Tags in window
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* MACHINE TRENDS */}
+          <div className="bg-surface-1 rounded-3xl p-6 border border-div-d flex flex-col gap-4">
+            <h3 className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">
+              Top Machine Trends
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {metrics.topMachines.map((tm) => {
+                const mDef = machines.find((m) => m.id === tm.id);
+                const chartData = tm.logs.slice(-6).map((log, index) => {
+                  const weight = parseInt(log.weight || "0", 10);
+                  const reps = parseInt(log.reps || "0", 10);
+                  return {
+                    index,
+                    volume: weight * reps,
+                    rpe: log.rpe || 0,
+                  };
+                });
+
+                // top form tag for this machine
+                const formTags: Record<string, number> = {};
+                tm.logs.forEach((l) => {
+                  if (l.clinicalTags)
+                    l.clinicalTags.forEach(
+                      (tid) => (formTags[tid] = (formTags[tid] || 0) + 1),
+                    );
+                });
+                const topTagId = Object.entries(formTags).sort(
+                  (a, b) => b[1] - a[1],
+                )[0]?.[0];
+                const topTagDef = topTagId
+                  ? clinicalTags.find((t) => t.id === topTagId)
+                  : null;
+
+                return (
+                  <div
+                    key={tm.id}
+                    className="bg-surface-2 border border-div-l rounded-xl p-4 flex flex-col group"
+                  >
+                    <span className="text-[12px] font-bold text-white uppercase tracking-wider">
+                      {mDef?.name || tm.id}
+                    </span>
+
+                    <div className="h-20 w-full mt-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData}>
+                          <Bar
+                            dataKey="volume"
+                            fill="var(--cyan)"
+                            opacity={0.6}
+                            radius={[2, 2, 0, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-div-l">
+                      <span className="text-[11px] text-ink-d3 font-bold uppercase tracking-widest block mb-1">
+                        Dominant Form
+                      </span>
+                      <div className="text-[11px] text-amber-500 font-medium truncate">
+                        {topTagDef ? topTagDef.label : "None recorded"}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {metrics.topMachines.length === 0 && (
+                <div className="col-span-1 md:col-span-4 h-25 flex items-center justify-center text-[12px] text-ink-d3 uppercase tracking-widest font-bold">
+                  No machine logs in window
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* STATS ABSORPTION (New clinical tiles) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Strength Trends */}
+            <div className="bg-surface-1 rounded-3xl p-6 border border-div-d flex flex-col gap-4">
+              <h3 className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">
+                Strength Trends
+              </h3>
+              <div className="h-50 w-full mt-auto">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={metrics.volumeByDate}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="var(--div-l)"
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="date"
+                      stroke="var(--ink-d3)"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      width={35}
+                      stroke="var(--ink-d3)"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(val) => `${val / 1000}k`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "var(--surface-2)",
+                        borderColor: "var(--div-l)",
+                        borderRadius: "8px",
+                        color: "var(--ink-d1)",
+                        fontSize: "11px",
+                      }}
+                      itemStyle={{ color: "var(--cyan)" }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="volume"
+                      stroke="var(--cyan)"
+                      strokeWidth={3}
+                      dot={{ fill: "var(--cyan)", r: 4, strokeWidth: 0 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Rep Quality & RPE Distribution */}
+            <div className="bg-surface-1 rounded-3xl p-6 border border-div-d flex flex-col gap-4">
+              <h3 className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">
+                Quality & RPE
+              </h3>
+              <div className="flex-1 flex flex-col gap-6">
+                <div className="h-30 w-full relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          {
+                            name: "Elite",
+                            value: metrics.repQualityBreakdown.elite,
+                            fill: "var(--green)",
+                          },
+                          {
+                            name: "Good",
+                            value: metrics.repQualityBreakdown.good,
+                            fill: "var(--amber)",
+                          },
+                          {
+                            name: "Poor",
+                            value: metrics.repQualityBreakdown.poor,
+                            fill: "var(--red)",
+                          },
+                        ].filter((d) => d.value > 0)}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={55}
+                        dataKey="value"
+                        stroke="none"
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "var(--surface-2)",
+                          borderColor: "var(--div-l)",
+                          borderRadius: "8px",
+                          color: "var(--ink-d1)",
+                          fontSize: "11px",
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col">
+                    <span className="text-xl font-black text-white leading-none">
+                      {metrics.repQualityBreakdown.elite +
+                        metrics.repQualityBreakdown.good +
+                        metrics.repQualityBreakdown.poor}
+                    </span>
+                    <span className="text-[11px] uppercase tracking-widest text-ink-d3 font-bold mt-1">
+                      Sets
+                    </span>
+                  </div>
+                </div>
+
+                {metrics.rpeDistribution.length > 0 && (
+                  <div className="h-20 w-full flex items-center gap-4">
+                    <div className="h-20 w-20 relative shrink-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={metrics.rpeDistribution}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={25}
+                            outerRadius={35}
+                            dataKey="value"
+                            stroke="none"
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "var(--surface-2)",
+                              borderColor: "var(--div-l)",
+                              borderRadius: "8px",
+                              color: "var(--ink-d1)",
+                              fontSize: "11px",
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="flex-1 flex flex-col justify-center gap-1.5">
+                      {metrics.rpeDistribution.map((rpe) => (
+                        <div key={rpe.name} className="flex items-center gap-2">
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: rpe.fill }}
+                          />
+                          <span className="text-[11px] uppercase font-bold text-ink-d2 tracking-widest">
+                            {rpe.name}
+                          </span>
+                          <span className="ml-auto text-[11px] font-bold text-white">
+                            {rpe.value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Muscle Focus Distribution */}
+            <div className="bg-surface-1 rounded-3xl p-6 border border-div-d flex flex-col gap-4">
+              <h3 className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-ink-d2">
+                Muscle Focus
+              </h3>
+              <div className="h-50 w-full mt-auto">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={metrics.volumeByRegion}
+                    layout="vertical"
+                    margin={{ top: 0, right: 0, bottom: 0, left: 30 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="var(--div-l)"
+                      horizontal={true}
+                      vertical={false}
+                    />
+                    <XAxis type="number" hide />
+                    <YAxis
+                      dataKey="region"
+                      type="category"
+                      stroke="var(--ink-d3)"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "var(--surface-2)",
+                        borderColor: "var(--div-l)",
+                        borderRadius: "8px",
+                        color: "var(--ink-d1)",
+                        fontSize: "11px",
+                      }}
+                      cursor={{ fill: "var(--surface-2)" }}
+                    />
+                    <Bar dataKey="volume" radius={[0, 4, 4, 0]}>
+                      {metrics.volumeByRegion.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={`var(--chart-${(index % 5) + 1})`}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <StickyCTA
+        label="Open Briefing"
+        icon={<ChevronRight className="w-6 h-6" />}
+        onClick={onOpenBriefing}
+      />
+    </div>
+  );
+}
