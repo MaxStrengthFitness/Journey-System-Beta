@@ -260,11 +260,6 @@ service cloud.firestore {
              isStudioOwnerOrHeadTrainer(get(/databases/$(database)/documents/trainers/$(trainerId)).data.primaryHomeStudioId));
       }
 
-      match /machineRoster/{machineId} {
-        allow read: if isAuthenticated() && (isSuperAdmin() || isTrainerOfStudio(get(/databases/$(database)/documents/trainers/$(trainerId)).data.primaryHomeStudioId));
-        allow write: if isAuthenticated() && (isSuperAdmin() || isStudioOwnerOrHeadTrainer(get(/databases/$(database)/documents/trainers/$(trainerId)).data.primaryHomeStudioId));
-      }
-  
     }
 
     // CLIENTS: All authenticated trainers can read clients (needed to start sessions)
@@ -287,11 +282,22 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || isFranchiseOwner() || isAuthenticated();
     }
 
-    // PHYSICAL MACHINES
+    // GLOBAL MACHINE CATALOG — the default set every studio picks from
+    // (round: Machine Creator & Studio Roster, Sep 2026).
+    //
+    // Writes are "admins and above" only. Franchise owners are deliberately
+    // NOT included: a studio inherits every catalog field it has not
+    // explicitly overridden, so an edit here still reaches most trainers at
+    // most locations. Studio-level customization belongs in the studio's own
+    // roster below, where it affects exactly one location.
+    //
+    // Deletes are denied outright. A retired machine keeps its document
+    // (status: 'retired') because studios may still physically own it and
+    // every exerciseLog ever written references its id.
     match /machines/{machineId} {
       allow read: if isAuthenticated();
-      allow create, update: if isSuperAdmin() || isFranchiseOwner();
-      allow delete: if isSuperAdmin();
+      allow create, update: if isSuperAdmin();
+      allow delete: if false;
 
       match /settingHistory/{historyId} {
         allow read, write: if isAuthenticated();
@@ -328,7 +334,12 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && isAnyAuthenticatedTrainer();
     }
 
-    // STUDIO MACHINE SETTINGS — per-studio overrides (which equipment a
+    // STUDIO MACHINE SETTINGS — SUPERSEDED by studios/{id}/roster/{machineId}
+    // above. Kept live until the backfill runs and call sites move over
+    // (phase 4, Machine Creator & Studio Roster). Do not build anything new
+    // on this collection.
+    //
+    // Original note: per-studio overrides (which equipment a
     // studio owns, its custom display order, its own setting-card options)
     // layered on top of the shared global machines/{id} catalog doc, which
     // stays untouched. Doc id convention: {studioId}_{machineId}. Same
@@ -431,6 +442,28 @@ service cloud.firestore {
                              // Allow any trainer to update their own studio's settings (notification toggles etc.)
                              (isAuthenticated() && isAnyAuthenticatedTrainer());
       allow delete: if isSuperAdmin();
+
+      // STUDIO MACHINE ROSTER — what THIS location actually has
+      // (round: Machine Creator & Studio Roster, Sep 2026).
+      //
+      // Tenancy is enforced by the path itself, so no get() lookup is spent
+      // on it — which matters at 100+ studios, where every get() in a rule
+      // counts against the per-request document budget.
+      //
+      // Writes: studio owners / leaders OF THIS STUDIO, or admins and above.
+      // isStudioOwnerOrHeadTrainer() already accepts StudioOwner, HeadTrainer
+      // and StudioLeader scoped by primaryHomeStudioId or ownedStudioIds.
+      // A trainer at studio A cannot touch studio B's roster.
+      //
+      // Reads stay open to any authenticated trainer, matching the posture of
+      // the surrounding collections and the multi-studio trainer case; narrow
+      // to isTrainerOfStudio(studioId) in the pre-launch hardening pass
+      // tracked in ROADMAP.md.
+      match /roster/{machineId} {
+        allow read: if isAuthenticated();
+        allow create, update, delete:
+          if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
+      }
     }
 
     // NETWORKS: Regional Franchise Groupings
