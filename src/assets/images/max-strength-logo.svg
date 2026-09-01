@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1357 425" role="img" aria-label="MAX Strength Fitness">
+  <rect width="425" height="425" fill="#0A548B"/>
+  <rect x="466" width="425" height="425" fill="#F36D21"/>
+  <rect x="932" width="425" height="425" fill="#5B6770"/>
+  <g fill="none" stroke="#fff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M140 284V139l72.5 145L285 139v145"/>
+    <path d="M606 284l72.5-145L751 284"/>
+    <path d="M1072 139l145 145m0-145l-145 145"/>
+  </g>
+</svg>
