@@ -755,6 +755,19 @@ export function TrainerControlHubView({
       toastError("Mindbody Site ID must be configured for this studio.");
       return;
     }
+    const sharesSite = studios.some(
+      (s) =>
+        s.id !== activeStudio.id &&
+        s.mindbodySiteId &&
+        String(s.mindbodySiteId).trim() ===
+          String(activeStudio.mindbodySiteId).trim(),
+    );
+    if (sharesSite && !activeStudio.mindbodyLocationId) {
+      toastError(
+        `${activeStudio.name} shares MindBody Site ${activeStudio.mindbodySiteId} with another studio but has no Location ID. Set it in Admin → Studios to keep schedules separate.`,
+      );
+      return;
+    }
     setIsSyncingAll(true);
     try {
       const { syncMindbodySchedules } =
@@ -765,6 +778,10 @@ export function TrainerControlHubView({
         clients,
         studios,
         null,
+        undefined,
+        undefined,
+        activeStudio.id,
+        activeStudio.mindbodyLocationId,
       );
       if (result.errors.length > 0) {
         toastError(`Sync completed with errors: ${result.errors[0]}`);
@@ -785,6 +802,19 @@ export function TrainerControlHubView({
       toastError("Mindbody Site ID must be configured for this studio.");
       return;
     }
+    const sharesSite = studios.some(
+      (s) =>
+        s.id !== activeStudio.id &&
+        s.mindbodySiteId &&
+        String(s.mindbodySiteId).trim() ===
+          String(activeStudio.mindbodySiteId).trim(),
+    );
+    if (sharesSite && !activeStudio.mindbodyLocationId) {
+      toastError(
+        `${activeStudio.name} shares MindBody Site ${activeStudio.mindbodySiteId} with another studio but has no Location ID. Set it in Admin → Studios to keep schedules separate.`,
+      );
+      return;
+    }
     setSyncingTrainerId(trainerId);
     try {
       const { syncMindbodySchedules } =
@@ -795,6 +825,10 @@ export function TrainerControlHubView({
         clients,
         studios,
         trainerId,
+        undefined,
+        undefined,
+        activeStudio.id,
+        activeStudio.mindbodyLocationId,
       );
       if (result.errors.length > 0) {
         toastError(`Sync completed with errors: ${result.errors[0]}`);
