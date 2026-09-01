@@ -373,7 +373,7 @@ export function BriefingScreen({
         <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 flex flex-col">
           <div className="px-3.5 sm:px-5 lg:px-6 py-4 sm:py-5 flex-1 flex flex-col gap-3.5 sm:gap-4 pb-4">
             {/* 2. Client hero card */}
-            <div className="rounded-2xl p-4 border border-cyan/30 shadow-sm relative overflow-hidden bg-white dark:bg-slate-900 dark:border-slate-800">
+            <div className="rounded-2xl p-4 border border-cyan/30 shadow-sm dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)] relative overflow-hidden bg-white dark:bg-slate-900 dark:border-slate-800">
               <div className="flex justify-between items-start relative z-10">
                 <div>
                   <h1 className="font-display italic text-slate-900 dark:text-white text-[24px] sm:text-[28px] font-black leading-[1.1] uppercase">
@@ -475,95 +475,6 @@ export function BriefingScreen({
                   ))}
                 </div>
               )}
-
-              {/* Pre-Session Check-in */}
-              <div className="mt-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 relative z-10 border border-slate-200 dark:border-slate-700/60">
-                <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-slate-500 dark:text-slate-400 uppercase mb-4">
-                  <Activity className="w-3.5 h-3.5 text-cyan" /> DAILY RECOVERY
-                  CHECK-IN (OPTIONAL)
-                </div>
-
-                {/* Sleep — qualitative pill group */}
-                <div className="space-y-2 mb-4">
-                  <label className="text-[11px] uppercase tracking-widest text-slate-600 dark:text-slate-300 font-extrabold ml-1 block">
-                    Sleep
-                  </label>
-                  <div className="flex w-full gap-2">
-                    {(
-                      [
-                        { value: "poor", label: "Poor" },
-                        { value: "average", label: "Average" },
-                        { value: "optimal", label: "Optimal" },
-                      ] as { value: SleepQuality; label: string }[]
-                    ).map((opt) => {
-                      const isActive = sleepQuality === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() =>
-                            setSleepQuality((prev) =>
-                              prev === opt.value ? undefined : opt.value,
-                            )
-                          }
-                          aria-pressed={isActive}
-                          className={`flex-1 h-12 rounded-xl text-[13px] font-extrabold uppercase tracking-wide transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan ${
-                            isActive
-                              ? "bg-[#38BDF8] text-slate-950 font-black shadow-md"
-                              : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Stress — 1-5 scale */}
-                <div className="space-y-2 mb-4">
-                  <label className="text-[11px] uppercase tracking-widest text-slate-600 dark:text-slate-300 font-extrabold ml-1 block">
-                    Stress Level (1-5)
-                  </label>
-                  <div className="flex w-full gap-2">
-                    {([1, 2, 3, 4, 5] as const).map((lvl) => {
-                      const isActive = stressLevel === lvl;
-                      return (
-                        <button
-                          key={lvl}
-                          type="button"
-                          onClick={() =>
-                            setStressLevel((prev) =>
-                              prev === lvl ? undefined : lvl,
-                            )
-                          }
-                          aria-pressed={isActive}
-                          className={`flex-1 h-12 rounded-xl text-[13px] font-extrabold uppercase tracking-wide transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan ${
-                            isActive
-                              ? "bg-[#38BDF8] text-slate-950 font-black shadow-md"
-                              : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
-                          }`}
-                        >
-                          {lvl}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Pre-Session Notes (UNCHANGED from existing implementation) */}
-                <div className="space-y-2">
-                  <label className="text-[11px] uppercase tracking-widest text-slate-600 dark:text-slate-300 font-extrabold ml-1">
-                    Pre-Session Notes (Optional)
-                  </label>
-                  <textarea
-                    value={adjustmentNote}
-                    onChange={(e) => setAdjustmentNote(e.target.value)}
-                    placeholder="How is the client feeling? Any adjustments to the routine?"
-                    className="w-full min-h-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan transition-all resize-y"
-                  />
-                </div>
-              </div>
             </div>
 
             {/* 3a. Routine selector — the alternation logic proposes one, the
@@ -600,7 +511,7 @@ export function BriefingScreen({
                         "min-h-14 rounded-xl border px-4 py-2 text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan",
                         active
                           ? "bg-cyan/10 border-cyan text-slate-900 dark:text-white shadow-[0_0_16px_rgba(6,182,212,0.25)]"
-                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700",
+                          : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/70 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 shadow-sm dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]",
                       )}
                     >
                       <span className="block font-display italic uppercase tracking-wide text-sm">
@@ -776,6 +687,95 @@ export function BriefingScreen({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* 5. Recovery / notes check-in — last stop before START. */}
+            <div className="mt-2 bg-white dark:bg-slate-800/70 rounded-2xl p-4 relative z-10 border border-slate-200 dark:border-slate-700/60 shadow-sm dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-slate-500 dark:text-slate-400 uppercase mb-4">
+                <Activity className="w-3.5 h-3.5 text-cyan" /> DAILY RECOVERY
+                CHECK-IN (OPTIONAL)
+              </div>
+
+              {/* Sleep — qualitative pill group */}
+              <div className="space-y-2 mb-4">
+                <label className="text-[11px] uppercase tracking-widest text-slate-600 dark:text-slate-300 font-extrabold ml-1 block">
+                  Sleep
+                </label>
+                <div className="flex w-full gap-2">
+                  {(
+                    [
+                      { value: "poor", label: "Poor" },
+                      { value: "average", label: "Average" },
+                      { value: "optimal", label: "Optimal" },
+                    ] as { value: SleepQuality; label: string }[]
+                  ).map((opt) => {
+                    const isActive = sleepQuality === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() =>
+                          setSleepQuality((prev) =>
+                            prev === opt.value ? undefined : opt.value,
+                          )
+                        }
+                        aria-pressed={isActive}
+                        className={`flex-1 h-12 rounded-xl text-[13px] font-extrabold uppercase tracking-wide transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan ${
+                          isActive
+                            ? "bg-[#38BDF8] text-slate-950 font-black shadow-md"
+                            : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Stress — 1-5 scale */}
+              <div className="space-y-2 mb-4">
+                <label className="text-[11px] uppercase tracking-widest text-slate-600 dark:text-slate-300 font-extrabold ml-1 block">
+                  Stress Level (1-5)
+                </label>
+                <div className="flex w-full gap-2">
+                  {([1, 2, 3, 4, 5] as const).map((lvl) => {
+                    const isActive = stressLevel === lvl;
+                    return (
+                      <button
+                        key={lvl}
+                        type="button"
+                        onClick={() =>
+                          setStressLevel((prev) =>
+                            prev === lvl ? undefined : lvl,
+                          )
+                        }
+                        aria-pressed={isActive}
+                        className={`flex-1 h-12 rounded-xl text-[13px] font-extrabold uppercase tracking-wide transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan ${
+                          isActive
+                            ? "bg-[#38BDF8] text-slate-950 font-black shadow-md"
+                            : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                        }`}
+                      >
+                        {lvl}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Pre-Session Notes (UNCHANGED from existing implementation) */}
+              <div className="space-y-2">
+                <label className="text-[11px] uppercase tracking-widest text-slate-600 dark:text-slate-300 font-extrabold ml-1">
+                  Pre-Session Notes (Optional)
+                </label>
+                <textarea
+                  value={adjustmentNote}
+                  onChange={(e) => setAdjustmentNote(e.target.value)}
+                  placeholder="How is the client feeling? Any adjustments to the routine?"
+                  className="w-full min-h-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan transition-all resize-y"
+                />
+              </div>
             </div>
           </div>
         </div>

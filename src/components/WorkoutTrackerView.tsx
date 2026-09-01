@@ -974,6 +974,33 @@ function toMillisOrNull(value: any): number | null {
   return isNaN(ms) ? null : ms;
 }
 
+/**
+ * Tracker grid column widths (iPad-first).
+ *
+ * Every column is a fixed width and the FILLER between the History grid and
+ * the input columns is the only flexible cell, so WEIGHT / REPS / QUALITY are
+ * always pinned to the right edge — under the trainer's right thumb — no
+ * matter how many history cells a machine has. The widths step up with the
+ * viewport so the whole row fits without sideways scrolling on iPad portrait
+ * (md), landscape (lg) and 12.9" landscape (xl).
+ */
+const TRACKER_COL = {
+  seq: "w-12 shrink-0",
+  notes: "w-10 shrink-0",
+  exercise: "w-40 md:w-44 lg:w-56 xl:w-64 shrink-0",
+  /** Starting Weight / Last Weight Performed — reference only, centered. */
+  reference: "w-14 lg:w-16 shrink-0 text-center",
+  spacer: "w-3 shrink-0",
+  history: "w-12 lg:w-15 shrink-0",
+  /** Absorbs ALL leftover width; never capped. */
+  filler: "flex-1 min-w-0",
+  /** WEIGHT / REPS / QUALITY — the thumb columns. */
+  input: "w-16 lg:w-20 xl:w-24 shrink-0",
+} as const;
+
+/** The two OLDEST history columns hide on iPad portrait to keep the row on-screen. */
+const historyVisibility = (i: number) => (i >= 3 ? "hidden lg:flex" : "flex");
+
 export function WorkoutTrackerView({
   clientId,
   clients,
@@ -3393,7 +3420,7 @@ export function WorkoutTrackerView({
           <table className="w-full text-left border-collapse table-fixed select-none min-w-150 h-full flex flex-col bg-white dark:bg-bg-dark border border-slate-200 dark:border-slate-800 shadow-sm">
             <thead className="flex w-full shrink-0">
               <tr className="bg-slate-50 dark:bg-surface-1 border-b border-slate-200 dark:border-slate-700 uppercase text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 leading-none h-9 w-full flex items-center">
-                <th className="p-0 flex items-center justify-center w-12 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full">
+                <th className={cn("p-0 flex items-center justify-center border-r border-slate-200 dark:border-slate-700 h-full", TRACKER_COL.seq)}>
                   {currentSession ? (
                     <button
                       onClick={() => setIsSessionRoutineManagerOpen(true)}
@@ -3409,7 +3436,7 @@ export function WorkoutTrackerView({
                 {/* Notes column — round: moved to be the 2nd column,
                     right next to the sequence/routine column, instead of
                     sitting off to the right past the History grid. */}
-                <th className="p-1 text-center w-10 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center text-[9px]">
+                <th className={cn("p-1 text-center border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center text-[9px]", TRACKER_COL.notes)}>
                   Notes
                 </th>
                 {/* Fixed width instead of flex-1 (round: shift weight
@@ -3417,7 +3444,7 @@ export function WorkoutTrackerView({
                     all the table's leftover width, which is what pushed
                     Starting Weight/Last Weight Performed far to the right
                     with a big dead gap in between. */}
-                <th className="p-1.5 pl-3 w-64 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center truncate">
+                <th className={cn("p-1.5 pl-3 border-r border-slate-200 dark:border-slate-700 h-full flex items-center truncate", TRACKER_COL.exercise)}>
                   Exercise & Settings
                 </th>
                 {/* Starting Weight / Last Weight Performed — dedicated
@@ -3425,11 +3452,11 @@ export function WorkoutTrackerView({
                     Exercise & Settings. Last Weight Performed intentionally
                     looks further back than the 5-session History window
                     when it needs to. */}
-                <th className="p-1 text-center w-16 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex flex-col items-center justify-center leading-tight text-[9px]">
+                <th className={cn("p-1 border-r border-slate-200 dark:border-slate-700 h-full flex flex-col items-center justify-center leading-tight text-[9px]", TRACKER_COL.reference)}>
                   <span>Starting</span>
                   <span>Weight</span>
                 </th>
-                <th className="p-1 text-center w-16 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex flex-col items-center justify-center leading-tight text-[9px]">
+                <th className={cn("p-1 border-r border-slate-200 dark:border-slate-700 h-full flex flex-col items-center justify-center leading-tight text-[9px]", TRACKER_COL.reference)}>
                   <span>Last Weight</span>
                   <span>Performed</span>
                 </th>
@@ -3438,7 +3465,7 @@ export function WorkoutTrackerView({
                     grid, so the two don't read as one continuous block. */}
                 <th
                   aria-hidden="true"
-                  className="w-3 shrink-0 h-full bg-slate-100 dark:bg-slate-950/70"
+                  className={cn("h-full bg-slate-100 dark:bg-slate-950/70", TRACKER_COL.spacer)}
                 />
                 {/* History grid — 5 date column headers (round: global date
                     headers), one per session in the shared recentSessions
@@ -3456,7 +3483,11 @@ export function WorkoutTrackerView({
                   return (
                     <th
                       key={s?.id || `history-header-${i}`}
-                      className="p-1 text-center w-15 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center text-[9px] leading-tight"
+                      className={cn(
+                        "p-1 text-center border-r border-slate-200 dark:border-slate-700 h-full items-center justify-center text-[9px] leading-tight",
+                        TRACKER_COL.history,
+                        historyVisibility(i),
+                      )}
                     >
                       {dateLabel}
                     </th>
@@ -3472,15 +3503,15 @@ export function WorkoutTrackerView({
                     glitch. */}
                 <th
                   aria-hidden="true"
-                  className="flex-1 max-w-16 h-full bg-slate-100 dark:bg-slate-950/70"
+                  className={cn("h-full bg-slate-100 dark:bg-slate-950/70", TRACKER_COL.filler)}
                 />
-                <th className="p-1.5 text-center w-15 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center">
+                <th className={cn("p-1.5 text-center border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center", TRACKER_COL.input)}>
                   Weight
                 </th>
-                <th className="p-1.5 text-center w-15 shrink-0 border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center">
+                <th className={cn("p-1.5 text-center border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center", TRACKER_COL.input)}>
                   Reps
                 </th>
-                <th className="p-1.5 text-center w-15 shrink-0 h-full flex items-center justify-center">
+                <th className={cn("p-1.5 text-center h-full flex items-center justify-center", TRACKER_COL.input)}>
                   Quality
                 </th>
               </tr>
@@ -3632,7 +3663,12 @@ export function WorkoutTrackerView({
                         // is blank when this machine wasn't performed that
                         // session rather than silently borrowing an older
                         // one.
-                        const historyEntries = recentSessions.map((s) => {
+                        // Always exactly 5 entries (padded with null) so a
+                        // brand-new client still gets 5 blank history cells
+                        // and the input columns never shift left.
+                        const historyEntries = Array.from({ length: 5 }, (_, i) => {
+                          const s = recentSessions[i];
+                          if (!s) return null;
                           const log = findLogForSession(s);
                           return log && log.weight ? { log, session: s } : null;
                         });
@@ -3713,7 +3749,7 @@ export function WorkoutTrackerView({
                               ${!isActive && !showAllMachines ? "opacity-30 grayscale hover:grayscale-0" : ""}
                               ${isFocusMachine ? "border-l-blue-500" : isCompleted && isActive ? "border-l-emerald-500" : "border-l-transparent"}`}
                           >
-                            <td className="w-12 shrink-0 flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
+                            <td className={cn("flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full", TRACKER_COL.seq)}>
                               {isActive ? (
                                 <div
                                   role="button"
@@ -3769,7 +3805,7 @@ export function WorkoutTrackerView({
                                 empty, blue once a note exists, red/alert
                                 when any note on this machine is flagged
                                 High Importance. */}
-                            <td className="w-10 shrink-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center">
+                            <td className={cn("border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center", TRACKER_COL.notes)}>
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -3812,7 +3848,7 @@ export function WorkoutTrackerView({
                               </button>
                             </td>
 
-                            <td className="w-64 shrink-0 p-1 pl-3 border-r border-slate-200 dark:border-slate-800/60 h-full flex flex-col justify-center min-w-0 truncate">
+                            <td className={cn("p-1 pl-3 border-r border-slate-200 dark:border-slate-800/60 h-full flex flex-col justify-center min-w-0 truncate", TRACKER_COL.exercise)}>
                               <div className="flex items-center">
                                 <span
                                   className={`font-semibold text-sm ${isFocusMachine ? "text-blue-600 dark:text-blue-400 font-bold" : "text-slate-900 dark:text-slate-50"} leading-none truncate`}
@@ -3853,13 +3889,13 @@ export function WorkoutTrackerView({
                                 unbounded by the 5-session History window so
                                 a trainer can still see the true last weight
                                 even when it falls outside that window. */}
-                            <td className="w-16 shrink-0 flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
-                              <span className="font-medium text-xs text-slate-500 dark:text-slate-400">
+                            <td className={cn("flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full", TRACKER_COL.reference)}>
+                              <span className="font-medium text-xs tabular-nums text-slate-500 dark:text-slate-400">
                                 {startingWeight || "--"}
                               </span>
                             </td>
-                            <td className="w-16 shrink-0 flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full">
-                              <span className="font-medium text-xs text-slate-500 dark:text-slate-400">
+                            <td className={cn("flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full", TRACKER_COL.reference)}>
+                              <span className="font-medium text-xs tabular-nums text-slate-500 dark:text-slate-400">
                                 {lastWeightPerformed || "--"}
                               </span>
                             </td>
@@ -3869,7 +3905,7 @@ export function WorkoutTrackerView({
                                 from the History grid below. */}
                             <td
                               aria-hidden="true"
-                              className="w-3 shrink-0 h-full bg-slate-50/50 dark:bg-slate-950/40 border-r-0"
+                              className={cn("h-full bg-slate-50/50 dark:bg-slate-950/40 border-r-0", TRACKER_COL.spacer)}
                             />
 
                             {/* History grid — one real <td> per session in
@@ -3886,7 +3922,11 @@ export function WorkoutTrackerView({
                                 return (
                                   <td
                                     key={i}
-                                    className="w-15 shrink-0 flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full"
+                                    className={cn(
+                                      "items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full",
+                                      TRACKER_COL.history,
+                                      historyVisibility(i),
+                                    )}
                                   >
                                     <span className="text-[10px] text-slate-300 dark:text-slate-700 font-medium">
                                       --
@@ -3927,7 +3967,9 @@ export function WorkoutTrackerView({
                                 <td
                                   key={entry?.session?.id || i}
                                   className={cn(
-                                    "w-15 shrink-0 flex flex-col p-0 border-r border-slate-200 dark:border-slate-800/60 h-full overflow-hidden",
+                                    "flex-col p-0 border-r border-slate-200 dark:border-slate-800/60 h-full overflow-hidden",
+                                    TRACKER_COL.history,
+                                    historyVisibility(i),
                                     qualityRingClass,
                                   )}
                                 >
@@ -3971,11 +4013,11 @@ export function WorkoutTrackerView({
 
                             <td
                               aria-hidden="true"
-                              className="flex-1 max-w-16 h-full bg-slate-100 dark:bg-slate-950/70"
+                              className={cn("h-full bg-slate-100 dark:bg-slate-950/70", TRACKER_COL.filler)}
                             />
 
                             <td
-                              className={`w-15 shrink-0 cursor-pointer group/weight p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50" : "bg-slate-50/50 dark:bg-surface-2 hover:bg-slate-100 dark:hover:bg-surface-1"}`}
+                              className={`${TRACKER_COL.input} cursor-pointer group/weight p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50" : "bg-slate-50/50 dark:bg-surface-2 hover:bg-slate-100 dark:hover:bg-surface-1"}`}
                             >
                               {isTorso ? (
                                 <div className="flex flex-col items-center justify-center gap-0.5 w-full h-full">
@@ -4032,7 +4074,7 @@ export function WorkoutTrackerView({
                             </td>
 
                             <td
-                              className={`w-15 shrink-0 cursor-pointer group/reps p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors relative ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50" : "bg-slate-50/50 dark:bg-surface-2 hover:bg-slate-100 dark:hover:bg-surface-1"}`}
+                              className={`${TRACKER_COL.input} cursor-pointer group/reps p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors relative ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50" : "bg-slate-50/50 dark:bg-surface-2 hover:bg-slate-100 dark:hover:bg-surface-1"}`}
                             >
                               {isTorso ? (
                                 <div className="flex flex-col items-center justify-center gap-0.5 w-full h-full">
@@ -4120,7 +4162,7 @@ export function WorkoutTrackerView({
                             </td>
 
                             <td
-                              className={`w-15 shrink-0 px-1 border-r border-slate-200 dark:border-slate-800/60 flex items-center justify-center h-full transition-colors ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" : "group-hover:bg-slate-50 dark:group-hover:bg-surface-1"}`}
+                              className={`${TRACKER_COL.input} px-1 border-r border-slate-200 dark:border-slate-800/60 flex items-center justify-center h-full transition-colors ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" : "group-hover:bg-slate-50 dark:group-hover:bg-surface-1"}`}
                             >
                               {isTorso ? (
                                 <div className="flex flex-col gap-1 items-center">
