@@ -30,6 +30,9 @@ import {
   Network,
   Building2,
   CreditCard,
+  Search,
+  RefreshCw,
+  X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -642,6 +645,14 @@ export default function AppContent({
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [isIntroSession, setIsIntroSession] = useState(false);
   const [isRefreshingSchedule, setIsRefreshingSchedule] = useState(false);
+  /**
+   * Global client search. The input lives in the app header, but the results
+   * render inside the Hub (ClientsView), so the term is owned here and handed
+   * down. Leaving the Hub clears it, which keeps the daily grid as the default
+   * view whenever a trainer comes back.
+   */
+  const [hubSearchTerm, setHubSearchTerm] = useState("");
+  const hubSearchInputRef = useRef<HTMLInputElement | null>(null);
 
   const {
     startUnassignedSession,
@@ -723,6 +734,10 @@ export default function AppContent({
     }
     setCurrentView(view);
   };
+
+  useEffect(() => {
+    if (currentView !== "clients") setHubSearchTerm("");
+  }, [currentView]);
 
   const newClientsThisMonth = useMemo(() => {
     return clients.filter((c) => {
@@ -1517,6 +1532,56 @@ export default function AppContent({
     );
   }
 
+  /**
+   * Header search + inline schedule refresh. Typing from any screen jumps to
+   * the Hub, where the results list renders. Hidden on phone widths; the app
+   * is tablet-first and the Client Directory keeps its own search there.
+   */
+  const headerSearchSlot = (
+    <div className="hidden sm:flex items-center gap-1 w-full justify-end">
+      <div className="relative w-full max-w-[14rem] md:max-w-[18rem] lg:max-w-[22rem] focus-within:max-w-[26rem] lg:focus-within:max-w-[30rem] transition-[max-width] duration-200">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+        <Input
+          ref={hubSearchInputRef}
+          value={hubSearchTerm}
+          onChange={(e) => {
+            setHubSearchTerm(e.target.value);
+            if (currentView !== "clients") setCurrentView("clients");
+          }}
+          placeholder="Search clients"
+          aria-label="Search clients"
+          className="h-10 pl-8 pr-8 rounded-lg bg-slate-100/80 dark:bg-slate-800/60 border border-transparent text-sm font-medium text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-cyan/60 focus-visible:border-cyan/40 focus-visible:bg-white dark:focus-visible:bg-slate-900"
+        />
+        {hubSearchTerm && (
+          <button
+            type="button"
+            aria-label="Clear search"
+            onClick={() => {
+              setHubSearchTerm("");
+              hubSearchInputRef.current?.focus();
+            }}
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-md text-slate-400 hover:text-foreground"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={handleRefreshSchedule}
+        disabled={isRefreshingSchedule}
+        title={isRefreshingSchedule ? "Syncing schedule…" : "Refresh schedule"}
+        aria-label="Refresh schedule"
+        className="h-10 w-10 rounded-lg shrink-0 text-slate-500 dark:text-slate-400 hover:text-orange-500 hover:bg-transparent"
+      >
+        <RefreshCw
+          className={`w-4 h-4 md:w-5 md:h-5 ${isRefreshingSchedule ? "animate-spin" : ""}`}
+        />
+      </Button>
+    </div>
+  );
+
   const headerRightControls = (
     <div className="flex items-center gap-1 sm:gap-2 shrink-0">
       <ThemeToggle />
@@ -1627,6 +1692,7 @@ export default function AppContent({
             onStudioClick={() => setIsChangingStudio(true)}
             rightControls={headerRightControls}
             trainerDropdown={headerTrainerDropdown}
+            searchSlot={headerSearchSlot}
           />
         )}
 
@@ -1726,8 +1792,8 @@ export default function AppContent({
                   setSelectedProfileTrainerId(id);
                   setView("trainer-profile");
                 }}
-                handleRefreshSchedule={handleRefreshSchedule}
-                isRefreshingSchedule={isRefreshingSchedule}
+                searchTerm={hubSearchTerm}
+                onSearchTermChange={setHubSearchTerm}
               />
             )}
             {currentView === "machine-anatomy" && (

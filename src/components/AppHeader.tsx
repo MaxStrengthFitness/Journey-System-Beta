@@ -11,6 +11,13 @@ interface AppHeaderProps {
   onSettingsClick?: () => void;
   rightControls?: React.ReactNode;
   trainerDropdown?: React.ReactNode;
+  /**
+   * Optional global search control. It sits in the flexible middle band of
+   * the header so it can widen on tablet widths without pushing the icon
+   * cluster around. Only the app shell passes this; nested headers (e.g. the
+   * workout tracker) leave it out so a live session never shows a search box.
+   */
+  searchSlot?: React.ReactNode;
 }
 
 export function AppHeader({
@@ -21,6 +28,7 @@ export function AppHeader({
   onSettingsClick,
   rightControls,
   trainerDropdown,
+  searchSlot,
 }: AppHeaderProps) {
   const isLight = variant === "light";
 
@@ -51,7 +59,15 @@ export function AppHeader({
           {studioName}
         </button>
       </div>
-      <div className="flex items-center gap-1 sm:gap-4">
+
+      {/* Flexible middle band: the search grows into whatever width is free. */}
+      {searchSlot && (
+        <div className="flex-1 min-w-0 flex items-center justify-end px-2 sm:px-4">
+          {searchSlot}
+        </div>
+      )}
+
+      <div className="flex items-center gap-1 sm:gap-4 shrink-0">
         {rightControls || (
           <>
             {!isLight && (
