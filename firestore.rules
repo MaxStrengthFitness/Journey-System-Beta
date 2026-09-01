@@ -536,6 +536,19 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
+    // Limbo queue: bookings/clients the webhook or pull-sync could not file
+    // against a studio. The webhook's writes come from the Admin SDK (bypasses
+    // rules entirely); the pull-sync's parkPullSyncBooking() runs client-side
+    // and needs create access, and the Admin UI's release/resolve path needs
+    // update access. No rule existed here before, so the global safety net
+    // denied read AND write to every user regardless of role.
+    match /mindbodyLimbo/{eventId} {
+      allow read: if isSuperAdmin();
+      allow create: if isAuthenticated();
+      allow update: if isSuperAdmin();
+      allow delete: if false;
+    }
+
     // Global integration health (server writes; all authenticated users read for UI)
     match /system/health {
       allow read: if isAuthenticated();
