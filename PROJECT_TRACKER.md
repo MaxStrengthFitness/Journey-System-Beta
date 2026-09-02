@@ -215,6 +215,7 @@ npx tsx scripts/diagnose-schedule-links.ts --project gen-lang-client-0731527386 
 Use this checklist to track pending features, bugs, and final polish items.
 
 ### High Priority
+- [ ] **iPad verification of the Sep 1 UI overhaul** (branch `ui-overhaul`, five commits — Hub/global layout, client profile + select-default fix, briefing/tracker, calendar/catalog, admin sidebar). Typechecks clean; rendered offline with mock data only. Walk every screen in portrait and landscape before merging — checklist in ROADMAP.md → Next.
 - [ ] **Data Persistence Check**: Ensure all newly added settings (Notifications, Auto-sync) correctly save to Firestore.
 - [ ] **OAuth / Webhook E2E Testing**: Verify real-time schedule syncing with Mindbody using actual webhook payloads.
 - [x] ~~**Webhook DLQ wiring**~~ — done Aug 30: `recordDeadLetter` was implemented and unit-tested but never invoked; `retryLedger.ts` now calls it once an event exhausts its retry budget. Not yet exercised against a real database.
