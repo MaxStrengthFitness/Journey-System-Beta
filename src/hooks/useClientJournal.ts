@@ -158,8 +158,9 @@ export async function createJournalEntry(
     const ref = await addDoc(collection(db, "journalEntries"), payload);
 
     // A check-in keeps its focus card's activity counters honest without a
-    // second query on read.
-    if (draft.focusId) {
+    // second query on read. Legacy focuses have no document to count on — the
+    // thread still renders, because it is filtered from the entries themselves.
+    if (draft.focusId && !isLegacyFocusId(draft.focusId)) {
       updateDoc(doc(db, "clientFocuses", draft.focusId), {
         checkInCount: increment(1),
         lastCheckInAt: Timestamp.fromDate(occurred),
@@ -278,11 +279,45 @@ export async function createClientFocus(
   }
 }
 
-/** Passed = the client has got it. Retired = abandoned without being met. */
+const LEGACY_FOCUS_PREFIX = "legacy:focusRecords:";
+
+/** True for a focus the board adapted out of the old focusRecords collection. */
+export function isLegacyFocusId(focusId: string): boolean {
+  return focusId.startsWith(LEGACY_FOCUS_PREFIX);
+}
+
+/**
+ * Passed = the client has got it. Retired = abandoned without being met.
+ *
+ * A focus adapted from the legacy focusRecords collection carries a synthetic
+ * id, so the write is routed back to the document it actually came from using
+ * that collection's own vocabulary (Active / Achieved / Deleted). Without this
+ * a coach would see an old active directive on the board and have no way to
+ * close it out.
+ */
 export async function setFocusStatus(
   focusId: string,
   status: "active" | "passed" | "retired",
 ): Promise<void> {
+  if (isLegacyFocusId(focusId)) {
+    const realId = focusId.slice(LEGACY_FOCUS_PREFIX.length);
+    try {
+      await updateDoc(doc(db, "focusRecords", realId), {
+        status:
+          status === "passed"
+            ? "Achieved"
+            : status === "retired"
+              ? "Deleted"
+              : "Active",
+        dateUpdated: serverTimestamp(),
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `focusRecords/${realId}`);
+      throw err;
+    }
+    return;
+  }
+
   try {
     await updateDoc(doc(db, "clientFocuses", focusId), {
       status,
@@ -300,6 +335,9 @@ export async function extendFocus(
   focusId: string,
   days = 21,
 ): Promise<void> {
+  // focusRecords has no review date to push, so extending one is a no-op
+  // rather than a write of a field that schema never had.
+  if (isLegacyFocusId(focusId)) return;
   const next = new Date();
   next.setDate(next.getDate() + days);
   try {
@@ -539,8 +577,14 @@ function adaptClientEvents(client: Client | null): JournalEntry[] {
 
 /**
  * Read-only profile fields, including Mindbody's imported account notes.
- * These are pinned to "now" so they never fall off the bottom of the stream,
- * and are flagged legacy so nobody tries to edit them here — Mindbody is the
+ *
+ * Dated to the client's record rather than to "now", because that is when they
+ * are true of: intake notes belong at the start of the client's history, not
+ * at the top of today's stream. So that they stay reachable rather than
+ * sinking to the bottom of a long timeline, the Journal also pins
+ * consultation-kind entries to a reference shelf in the sidebar.
+ *
+ * All flagged legacy, so nobody tries to edit them here — Mindbody is the
  * system of record for its own notes, and the rest are edited on the profile.
  */
 function adaptProfileFields(client: Client | null): JournalEntry[] {

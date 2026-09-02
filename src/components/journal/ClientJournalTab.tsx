@@ -14,6 +14,7 @@
 import React, { useMemo, useState } from "react";
 import {
   BookOpen,
+  ChevronDown,
   Clock,
   Filter,
   Loader2,
@@ -164,6 +165,18 @@ export function ClientJournalTab({
     });
     return buckets;
   }, [visible]);
+
+  /**
+   * Intake material — Mindbody's imported account notes, the consultation
+   * wizard's discovery notes. Chronologically these sit at the very start of
+   * the client's history, so the stream alone would bury them. They are pinned
+   * to a reference shelf as well, which is the difference between the Journal
+   * being a timeline and it being the hub the brief asks for.
+   */
+  const referenceEntries = useMemo(
+    () => entries.filter((e) => e.kind === "consultation"),
+    [entries],
+  );
 
   const filtersActive =
     kindFilter !== "all" || coachFilter !== "all" || windowFilter !== "all" || !!search.trim();
@@ -496,6 +509,7 @@ export function ClientJournalTab({
             <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70">
               {filterRail}
             </div>
+            <ReferenceShelf entries={referenceEntries} machines={machines} />
             <ProgressReportArchive
               reports={progressReports}
               onSelect={onSelectReport}
@@ -505,8 +519,9 @@ export function ClientJournalTab({
           </div>
         </aside>
 
-        {/* Reports move below the stream on narrower screens. */}
-        <div className="xl:hidden">
+        {/* Reference shelf and reports move below the stream on narrower screens. */}
+        <div className="space-y-4 xl:hidden">
+          <ReferenceShelf entries={referenceEntries} machines={machines} />
           <ProgressReportArchive
             reports={progressReports}
             onSelect={onSelectReport}
@@ -516,6 +531,55 @@ export function ClientJournalTab({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Always-available intake material. Collapsed by default: it is reference, not
+ * news, and a coach opens it when onboarding themselves to a client rather
+ * than before every session.
+ */
+function ReferenceShelf({
+  entries,
+  machines,
+}: {
+  entries: JournalEntry[];
+  machines: Machine[];
+}) {
+  const [open, setOpen] = useState(false);
+  if (entries.length === 0) return null;
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 text-left"
+      >
+        <span>
+          <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+            Intake &amp; imported
+          </span>
+          <span className="block text-[11px] text-slate-400">
+            {entries.length} read-only {entries.length === 1 ? "note" : "notes"}
+          </span>
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 shrink-0 text-slate-400 transition-transform",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-2">
+          {entries.map((e) => (
+            <JournalEntryCard key={e.id} entry={e} machines={machines} dense />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

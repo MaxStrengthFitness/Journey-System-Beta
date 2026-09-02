@@ -46,19 +46,12 @@ import {
   Star,
   Database,
   AlertTriangle,
-  Cake,
   UserCheck,
-  Award,
   Target,
   ChevronDown,
   ChevronUp,
   Check,
   Search,
-  Layout,
-  Timer,
-  Orbit,
-  MessageSquare,
-  CheckCircle2,
   Loader2,
 } from "lucide-react";
 import { generateMockClientWithHistory } from "../lib/mockDataGenerator";
@@ -135,11 +128,9 @@ import {
   Trainer,
   ScheduleEntry,
   ProgressReport,
-  FocusRecord,
   ClinicalSafetyFlag,
   Studio,
   SessionNote,
-  ClinicalIncident,
 } from "../types";
 import { StickyCTA } from "./StickyCTA";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
@@ -170,7 +161,6 @@ import { useActiveSessionCheck } from "../hooks/useActiveSessionCheck";
 import { useStudioMachineSettings } from "../hooks/useStudioMachineSettings";
 import { resolveMachineOrder } from "../data/machine-display-order";
 import { isOwner as checkIsOwner } from "../lib/permissions";
-import { FocusCategory } from "../types";
 import { EditRoutineDrawer } from "./EditRoutineDrawer";
 import { ClientJournalTab } from "./journal/ClientJournalTab";
 

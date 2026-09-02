@@ -182,7 +182,7 @@ export function FocusBoard({
             )}
           </div>
 
-          {focus.status === "active" && !focus.isLegacy && (
+          {focus.status === "active" && (
             <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-200 pt-3 dark:border-slate-800">
               <button
                 type="button"
@@ -200,6 +200,7 @@ export function FocusBoard({
                   >
                     <Check className="h-3 w-3" /> Pass
                   </button>
+                  {!focus.isLegacy && (
                   <button
                     type="button"
                     onClick={() => onExtend(focus)}
@@ -207,6 +208,7 @@ export function FocusBoard({
                   >
                     <RotateCw className="h-3 w-3" /> Extend
                   </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => onRetire(focus)}
