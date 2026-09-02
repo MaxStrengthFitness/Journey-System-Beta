@@ -414,6 +414,73 @@ export async function handleMindbodyWebhook(
         enrichment.mindbodyNotes = payloadData.notes.slice(0, 1000);
       }
 
+      // --- Mindbody-owned identity & compliance facts -------------------
+      //
+      // Same posture as the commercial fields above: these OVERWRITE, because
+      // nobody types them in this app and Mindbody is the system of record.
+      // Each is written only when the event actually carries it, so a partial
+      // payload never blanks a field that a previous event filled.
+      //
+      // Deliberately NOT mapped: creditCardLastFour, creditCardExpDate,
+      // directDebitLastFour. Mindbody sends them; nothing in a coaching app
+      // needs them, and persisting them puts PCI-adjacent data in a document
+      // every trainer at the studio can read.
+
+      if (typeof payloadData.isLiabilityReleased === "boolean") {
+        enrichment.isLiabilityReleased = payloadData.isLiabilityReleased;
+      }
+      const liabilityAt = toUtcTimestamp(payloadData.liabilityAgreementDateTime);
+      if (liabilityAt) enrichment.liabilityAgreementDate = liabilityAt;
+
+      // `status` is the membership status. Studios can define custom values on
+      // top of Mindbody's standard set, so it is stored as the free string it
+      // is rather than being narrowed to an enum that a studio could break.
+      if (typeof payloadData.status === "string" && payloadData.status.trim()) {
+        enrichment.mindbodyStatus = payloadData.status.trim();
+      }
+
+      // Client indexes arrive as [{indexName, indexValue}]. They are flattened
+      // to a map and written WHOLE rather than merged, so an index the studio
+      // removed in Mindbody disappears here too instead of lingering forever.
+      if (Array.isArray(payloadData.indexes)) {
+        const indexes: Record<string, string> = {};
+        for (const raw of payloadData.indexes) {
+          const name =
+            raw && typeof raw.indexName === "string" ? raw.indexName.trim() : "";
+          const value =
+            raw && typeof raw.indexValue === "string" ? raw.indexValue.trim() : "";
+          if (name && value) indexes[name] = value;
+        }
+        enrichment.mindbodyIndexes = indexes;
+      }
+
+      const mbCreatedAt = toUtcTimestamp(payloadData.creationDateTime);
+      if (mbCreatedAt) enrichment.mindbodyCreatedAt = mbCreatedAt;
+
+      const firstAppt = toUtcTimestamp(payloadData.firstAppointmentDateTime);
+      if (firstAppt) enrichment.firstAppointmentDate = firstAppt;
+
+      if (
+        typeof payloadData.homeLocation === "number" ||
+        typeof payloadData.homeLocation === "string"
+      ) {
+        enrichment.mindbodyHomeLocationId = payloadData.homeLocation;
+      }
+
+      if (typeof payloadData.isProspect === "boolean") {
+        enrichment.isProspect = payloadData.isProspect;
+      }
+
+      // Mindbody's own visit count. Kept distinct from this app's sessionCount
+      // — the two will not agree and neither is wrong.
+      if (
+        typeof payloadData.clientNumberOfVisitsAtSite === "number" &&
+        Number.isFinite(payloadData.clientNumberOfVisitsAtSite)
+      ) {
+        enrichment.clientsNumberOfVisitsAtSite =
+          payloadData.clientNumberOfVisitsAtSite;
+      }
+
       // A real client event supersedes any stub a booking created earlier.
       enrichment.isMindbodyStub = false;
 
@@ -445,6 +512,11 @@ export async function handleMindbodyWebhook(
           "emergencyContactInfoPhone",
           "emergencyContactPhone",
         ),
+        city: pickString("city"),
+        addressState: pickString("state"),
+        postalCode: pickString("postalCode"),
+        country: pickString("country"),
+        referredBy: pickString("referredBy"),
       };
 
       if (firstName || lastName) {

@@ -31,6 +31,14 @@ export type MindbodyClientProfile = {
   mindbody_name?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
+  /* Address parts. `address` stays the single line a trainer edits; these come
+   * from the webhook and, like every profile field, only ever fill blanks. */
+  city?: string;
+  addressState?: string;
+  postalCode?: string;
+  country?: string;
+  /** How the client found the business. Staff-typed in Mindbody, so fill-blanks. */
+  referredBy?: string;
 };
 
 export type EnsureClientResult = {
