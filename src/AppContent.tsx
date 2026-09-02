@@ -29,7 +29,6 @@ import {
   ChevronUp,
   Network,
   Building2,
-  CreditCard,
   Search,
   RefreshCw,
   X,
@@ -2111,12 +2110,6 @@ export default function AppContent({
               onClick={() => setCurrentView("calendar")}
               icon={<Calendar className="w-5 h-5 sm:w-6 sm:h-6" />}
               label="Calendar"
-            />
-            <NavButton
-              active={currentView === "purchases"}
-              onClick={() => setCurrentView("purchases")}
-              icon={<CreditCard className="w-5 h-5 sm:w-6 sm:h-6" />}
-              label="Purchases"
             />
           </nav>
         ) : (

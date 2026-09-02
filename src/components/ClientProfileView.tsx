@@ -2197,6 +2197,244 @@ export function ClientProfileView({
     }
   };
 
+  /* ------------------------------------------------------------------ *
+   * JOURNEY GRID (client profile -> Journey tab)
+   *
+   * Five fixed zones, left to right:
+   *   1. Equipment & settings   fixed width, never grows into empty space
+   *   2. Starting weight        first weight ever performed + the date
+   *   3. Lowest weight          lowest weight on record + the date
+   *   4. Recent sessions        exactly 5 by default, expanded INLINE
+   *   5. Next attempt           prescribed weight, manual control only
+   * ------------------------------------------------------------------ */
+  const JOURNEY_COL_EQUIPMENT = 232;
+  const JOURNEY_COL_MILESTONE = 84;
+  const JOURNEY_COL_SESSION = 96;
+  const JOURNEY_COL_NEXT = 96;
+  const JOURNEY_BASE_SESSIONS = 5;
+  const JOURNEY_PAGE_STEP = 5;
+
+  const [journeyVisibleCount, setJourneyVisibleCount] = useState(
+    JOURNEY_BASE_SESSIONS,
+  );
+
+  // Switching clients must never inherit the previous client's expansion.
+  useEffect(() => {
+    setJourneyVisibleCount(JOURNEY_BASE_SESSIONS);
+  }, [clientId]);
+
+  /** Newest-first slice actually rendered as session columns. */
+  const journeySessions = useMemo(
+    () => sessions.slice(0, journeyVisibleCount),
+    [sessions, journeyVisibleCount],
+  );
+
+  /** Same slice oldest-first, which is the reading order of the grid. */
+  const journeyDisplaySessions = useMemo(
+    () => [...journeySessions].reverse(),
+    [journeySessions],
+  );
+
+  const journeyIsExpanded = journeyVisibleCount > JOURNEY_BASE_SESSIONS;
+  const journeyCanExpand =
+    journeyVisibleCount < sessions.length || hasMoreSessions;
+
+  /**
+   * Inline expansion. Widens the grid in place - no modal, no route change -
+   * so the trainer keeps their context. When the local buffer runs dry we page
+   * the next block out of Firestore first.
+   */
+  const handleExpandJourneyInline = async () => {
+    const next = journeyVisibleCount + JOURNEY_PAGE_STEP;
+    if (next > sessions.length && hasMoreSessions) {
+      await handleLoadMoreHistory();
+    }
+    setJourneyVisibleCount(next);
+  };
+
+  const handleCollapseJourneyInline = () => {
+    setJourneyVisibleCount(JOURNEY_BASE_SESSIONS);
+  };
+
+  /** sessionId -> epoch ms, so a log can be dated without re-scanning. */
+  const journeySessionDateById = useMemo(() => {
+    const map: Record<string, number> = {};
+    sessions.forEach((sess) => {
+      if (sess.id) map[sess.id] = parseSessionDate(sess.date);
+    });
+    return map;
+  }, [sessions]);
+
+  const journeyLogTimeMs = useCallback(
+    (log: ExerciseLog) =>
+      getMillis(log.createdAt) ||
+      (log.sessionId ? journeySessionDateById[log.sessionId] : 0) ||
+      0,
+    [journeySessionDateById],
+  );
+
+  const formatJourneyStamp = (ms?: number | null) =>
+    ms
+      ? new Date(ms).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "2-digit",
+        })
+      : "--";
+
+  /**
+   * Box 2. The stored startingWeight is authoritative - sync-utils writes it
+   * once, on the first logged set, and never touches it again. Loaded history
+   * is only the fallback for rows imported before that field existed.
+   */
+  const getJourneyStartingWeight = useCallback(
+    (machineId: string, machineLogs: ExerciseLog[]) => {
+      const setting = clientSettings[machineId];
+      const earliest = machineLogs.reduce<ExerciseLog | null>(
+        (acc, log) =>
+          !acc || journeyLogTimeMs(log) < journeyLogTimeMs(acc) ? log : acc,
+        null,
+      );
+
+      if (
+        setting?.startingWeight !== undefined &&
+        setting?.startingWeight !== null
+      ) {
+        const stampSource = setting.startingWeightDate;
+        const stamp = stampSource
+          ? getMillis(stampSource) || new Date(stampSource).getTime()
+          : earliest
+            ? journeyLogTimeMs(earliest)
+            : null;
+        return {
+          weight: String(setting.startingWeight),
+          dateMs: Number.isFinite(stamp as number) ? (stamp as number) : null,
+        };
+      }
+
+      if (!earliest?.weight) return { weight: null, dateMs: null };
+      return {
+        weight: String(earliest.weight),
+        dateMs: journeyLogTimeMs(earliest),
+      };
+    },
+    [clientSettings, journeyLogTimeMs],
+  );
+
+  /**
+   * Box 3. Computed over the history currently loaded, so it sharpens as the
+   * trainer expands the grid. Ties resolve to the earliest occurrence.
+   */
+  const getJourneyLowestWeight = useCallback(
+    (machineLogs: ExerciseLog[]) => {
+      let best: { weight: number; dateMs: number } | null = null;
+      machineLogs.forEach((log) => {
+        const value = Number(log.weight);
+        if (!Number.isFinite(value) || value <= 0) return;
+        const dateMs = journeyLogTimeMs(log);
+        if (
+          !best ||
+          value < best.weight ||
+          (value === best.weight && dateMs < best.dateMs)
+        ) {
+          best = { weight: value, dateMs };
+        }
+      });
+      const found = best as { weight: number; dateMs: number } | null;
+      return found
+        ? { weight: String(found.weight), dateMs: found.dateMs }
+        : { weight: null, dateMs: null };
+    },
+    [journeyLogTimeMs],
+  );
+
+  /**
+   * Box 5. Prescribed weight for the NEXT session.
+   *
+   * The system never progresses a client on its own. `currentWeight` on
+   * clientMachineSettings is the single prescribed value - sync-utils rewrites
+   * it to whatever was actually performed when a session is saved, which is
+   * what makes "same as last time" the default, and a trainer editing it (here
+   * or on the Equipment tab) is the only other thing that changes it.
+   */
+  const getJourneyNextAttempt = useCallback(
+    (machineId: string) => {
+      const prescribed = clientSettings[machineId]?.currentWeight;
+      if (
+        prescribed !== undefined &&
+        prescribed !== null &&
+        String(prescribed) !== ""
+      ) {
+        return String(prescribed);
+      }
+      const lastPerformed = client?.currentMachineMetrics?.[machineId]?.weight;
+      if (
+        lastPerformed !== undefined &&
+        lastPerformed !== null &&
+        lastPerformed !== ""
+      ) {
+        return String(lastPerformed);
+      }
+      const starting = clientSettings[machineId]?.startingWeight;
+      return starting !== undefined && starting !== null ? String(starting) : "";
+    },
+    [clientSettings, client?.currentMachineMetrics],
+  );
+
+  const [editingNextAttempt, setEditingNextAttempt] = useState<{
+    machineId: string;
+    value: string;
+  } | null>(null);
+  const [savingNextAttempt, setSavingNextAttempt] = useState<string | null>(
+    null,
+  );
+
+  /**
+   * Writes the same field the Equipment tab's "prescribed weights" editor
+   * writes, so the two stay in step: clientSettings is a live onSnapshot, so a
+   * change made anywhere on the profile re-renders this column immediately.
+   */
+  const saveJourneyNextAttempt = async (machineId: string, raw: string) => {
+    if (!clientId) return;
+    const trimmed = raw.trim();
+    const parsed = trimmed === "" ? null : Number(trimmed);
+
+    if (parsed !== null && (!Number.isFinite(parsed) || parsed < 0)) {
+      toastError("Enter the next attempt weight as a number.");
+      setEditingNextAttempt(null);
+      return;
+    }
+    if (getJourneyNextAttempt(machineId) === trimmed) {
+      setEditingNextAttempt(null);
+      return;
+    }
+
+    setSavingNextAttempt(machineId);
+    try {
+      await setDoc(
+        doc(db, "clientMachineSettings", `${clientId}_${machineId}`),
+        {
+          clientId,
+          machineId,
+          currentWeight: parsed,
+          updatedBy: auth.currentUser?.email || "Unknown",
+          updatedAt: serverTimestamp(),
+          studioId: clients.find((c) => c.id === clientId)?.homeStudioId || "",
+        },
+        { merge: true },
+      );
+      setEditingNextAttempt(null);
+    } catch (error) {
+      handleFirestoreError(
+        error,
+        OperationType.UPDATE,
+        `clientMachineSettings/${machineId}`,
+      );
+    } finally {
+      setSavingNextAttempt(null);
+    }
+  };
+
   useEffect(() => {
     if (!clientId) return;
 
@@ -3044,14 +3282,36 @@ export function ClientProfileView({
                   Full
                 </button>
               </div>
-              <Button
-                onClick={() => setShowFullChart(true)}
-                size="sm"
-                variant="outline"
-                className="h-9 sm:h-10 px-3.5 sm:px-5 text-[10px] sm:text-[11px] uppercase font-bold tracking-widest text-slate-700 dark:text-slate-300 hover:text-[#115E8D] border-slate-300 shadow-sm transition-all hover:bg-slate-50 rounded-full"
-              >
-                <Maximize2 className="w-3.5 h-3.5 mr-1.5" /> Expanded Journey
-              </Button>
+              {/* Inline expansion. Deliberately NOT a modal or a route change:
+                  the trainer stays on the row they were reading. */}
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleExpandJourneyInline}
+                  disabled={!journeyCanExpand || isLoadingMore}
+                  size="sm"
+                  variant="outline"
+                  className="h-9 sm:h-10 px-3.5 sm:px-5 text-[10px] sm:text-[11px] uppercase font-bold tracking-widest text-slate-700 dark:text-slate-300 hover:text-[#115E8D] border-slate-300 shadow-sm transition-all hover:bg-slate-50 rounded-full disabled:opacity-40"
+                >
+                  {isLoadingMore ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Maximize2 className="w-3.5 h-3.5 mr-1.5" />
+                  )}
+                  {journeyCanExpand
+                    ? `Expand Journey (+${JOURNEY_PAGE_STEP})`
+                    : "All Sessions Shown"}
+                </Button>
+                {journeyIsExpanded && (
+                  <Button
+                    onClick={handleCollapseJourneyInline}
+                    size="sm"
+                    variant="ghost"
+                    className="h-9 sm:h-10 px-3 text-[10px] sm:text-[11px] uppercase font-bold tracking-widest text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-full"
+                  >
+                    <ChevronUp className="w-3.5 h-3.5 mr-1.5" /> Collapse
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
           <div className="w-full flex-1 overflow-x-auto overflow-y-auto bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 rounded-xl relative">
@@ -3059,24 +3319,42 @@ export function ClientProfileView({
                 CENTER (session cells share what is left), fixed RIGHT (target).
                 The <colgroup> pins the outer widths so chips can never push the
                 progress cells around, whatever the machine name or settings. */}
-            <table className="w-full text-left border-collapse table-fixed select-none min-w-175">
+            <table
+              className="w-full text-left border-collapse table-fixed select-none"
+              style={{
+                minWidth:
+                  JOURNEY_COL_EQUIPMENT +
+                  JOURNEY_COL_MILESTONE * 2 +
+                  JOURNEY_COL_SESSION * journeyDisplaySessions.length +
+                  JOURNEY_COL_NEXT,
+              }}
+            >
+              {/* Every real column is pinned. The trailing spacer soaks up any
+                  leftover width, which is what stops the equipment column from
+                  ballooning across the screen when a client has no sessions. */}
               <colgroup>
-                <col className="w-[200px] lg:w-[240px]" />
-                {sessions.slice(0, 6).map((s) => (
-                  <col key={s.id} />
+                <col style={{ width: JOURNEY_COL_EQUIPMENT }} />
+                <col style={{ width: JOURNEY_COL_MILESTONE }} />
+                <col style={{ width: JOURNEY_COL_MILESTONE }} />
+                {journeyDisplaySessions.map((s) => (
+                  <col key={s.id} style={{ width: JOURNEY_COL_SESSION }} />
                 ))}
-                <col className="w-[72px]" />
+                <col style={{ width: JOURNEY_COL_NEXT }} />
+                <col />
               </colgroup>
               <thead>
                 <tr className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 uppercase text-[11px] font-bold tracking-widest leading-none h-10 border-b border-slate-200 dark:border-slate-700">
                   <th className="p-2 pl-4 border-r border-slate-200 dark:border-slate-700 truncate">
                     Equipment & Settings
                   </th>
-                  {sessions
-                    .slice(0, 6)
-                    .reverse()
-                    .map((s, sIdx) => {
-                      const displaySessions = sessions.slice(0, 6).reverse();
+                  <th className="p-2 text-center border-r border-slate-200 dark:border-slate-700 truncate">
+                    Start
+                  </th>
+                  <th className="p-2 text-center border-r border-slate-200 dark:border-slate-700 truncate">
+                    Low
+                  </th>
+                  {journeyDisplaySessions
+                    .map((s) => {
                       const globalIndexIdx = sessions.findIndex(
                         (sess) => sess.id === s.id,
                       );
@@ -3131,8 +3409,10 @@ export function ClientProfileView({
                       );
                     })}
                   <th className="p-2 text-center bg-slate-100 dark:bg-slate-800 truncate border-l border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
-                    <Target className="w-5 h-5 mx-auto" />
+                    <Target className="w-4 h-4 mx-auto mb-0.5" />
+                    <span className="text-[9px] tracking-widest">Next</span>
                   </th>
+                  <th className="bg-slate-100 dark:bg-slate-800" />
                 </tr>
               </thead>
               <tbody className="text-foreground dark:text-slate-100 border-t border-slate-200 dark:border-slate-800">
@@ -3146,14 +3426,8 @@ export function ClientProfileView({
                     );
                     const hasPerformed = machineLogs.length > 0;
 
-                    const targetWeight =
-                      clientSettings[machine.id!]?.targetWeight ||
-                      client?.currentMachineMetrics?.[machine.id!]?.weight;
-                    const hasTarget =
-                      targetWeight !== undefined &&
-                      targetWeight !== null &&
-                      targetWeight !== "" &&
-                      targetWeight !== "-";
+                    const nextAttempt = getJourneyNextAttempt(machine.id!);
+                    const hasTarget = nextAttempt !== "" && nextAttempt !== "-";
 
                     const startingWeight =
                       clientSettings[machine.id!]?.startingWeight;
@@ -3188,7 +3462,18 @@ export function ClientProfileView({
                     );
                     const currentLog = sortedMachineLogs[0] || null;
                     const colors = getMachineStyle(machine.name);
-                    const displaySessions = sessions.slice(0, 6).reverse();
+                    const displaySessions = journeyDisplaySessions;
+                    const startingInfo = getJourneyStartingWeight(
+                      machine.id!,
+                      machineLogs,
+                    );
+                    const lowestInfo = getJourneyLowestWeight(machineLogs);
+                    const nextAttempt = getJourneyNextAttempt(machine.id!);
+                    const isEditingNext =
+                      editingNextAttempt?.machineId === machine.id;
+                    const isPrescribedOverride =
+                      clientSettings[machine.id!]?.currentWeight !== undefined &&
+                      clientSettings[machine.id!]?.currentWeight !== null;
 
                     return (
                       <tr
@@ -3260,6 +3545,32 @@ export function ClientProfileView({
                                 ));
                               })()}
                             </div>
+                          </div>
+                        </td>
+                        {/* Box 2 - starting weight, with the date it was set. */}
+                        <td className="p-1 border-r border-slate-200 dark:border-slate-800 align-middle text-center bg-slate-50/60 dark:bg-slate-900/30">
+                          <div className="flex flex-col items-center justify-center leading-none gap-0.5">
+                            <span className="font-bold font-sans text-[13px] tabular-nums text-slate-700 dark:text-slate-200">
+                              {startingInfo.weight ?? "--"}
+                            </span>
+                            <span className="text-[9px] font-semibold uppercase tracking-tight text-slate-400 dark:text-slate-500">
+                              {startingInfo.weight
+                                ? formatJourneyStamp(startingInfo.dateMs)
+                                : ""}
+                            </span>
+                          </div>
+                        </td>
+                        {/* Box 3 - lowest weight across the loaded history. */}
+                        <td className="p-1 border-r border-slate-200 dark:border-slate-800 align-middle text-center bg-slate-50/60 dark:bg-slate-900/30">
+                          <div className="flex flex-col items-center justify-center leading-none gap-0.5">
+                            <span className="font-bold font-sans text-[13px] tabular-nums text-slate-700 dark:text-slate-200">
+                              {lowestInfo.weight ?? "--"}
+                            </span>
+                            <span className="text-[9px] font-semibold uppercase tracking-tight text-slate-400 dark:text-slate-500">
+                              {lowestInfo.weight
+                                ? formatJourneyStamp(lowestInfo.dateMs)
+                                : ""}
+                            </span>
                           </div>
                         </td>
                         {displaySessions.map((s, sIdx) => {
@@ -3400,17 +3711,81 @@ export function ClientProfileView({
                             </td>
                           );
                         })}
-                        <td className="p-0 bg-[#F9FAFB] dark:bg-slate-900/40 align-middle border-l border-slate-200 dark:border-slate-800 h-full relative">
-                          <div className="flex items-center justify-end gap-1.5 h-full w-full opacity-70 transition-opacity hover:opacity-100 py-1.5 pr-3">
-                            <Target className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span className="font-bold text-[12px] tabular-nums text-right text-slate-600 dark:text-slate-400">
-                              {clientSettings[machine.id!]?.targetWeight ||
-                                client?.currentMachineMetrics?.[machine.id!]
-                                  ?.weight ||
-                                "-"}
-                            </span>
-                          </div>
+                        {/* Box 5 - next attempt. Editable in place; the row's
+                            settings dialog must not open behind it. */}
+                        <td
+                          className="p-0 bg-[#F9FAFB] dark:bg-slate-900/40 align-middle border-l border-slate-200 dark:border-slate-800 h-full relative"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isEditingNext) {
+                              setEditingNextAttempt({
+                                machineId: machine.id!,
+                                value: nextAttempt,
+                              });
+                            }
+                          }}
+                        >
+                          {isEditingNext ? (
+                            <input
+                              autoFocus
+                              type="number"
+                              inputMode="decimal"
+                              value={editingNextAttempt?.value ?? ""}
+                              onChange={(e) =>
+                                setEditingNextAttempt({
+                                  machineId: machine.id!,
+                                  value: e.target.value,
+                                })
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                              onBlur={(e) =>
+                                saveJourneyNextAttempt(
+                                  machine.id!,
+                                  e.target.value,
+                                )
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  (e.target as HTMLInputElement).blur();
+                                } else if (e.key === "Escape") {
+                                  e.preventDefault();
+                                  setEditingNextAttempt(null);
+                                }
+                              }}
+                              className="w-full h-9 bg-white dark:bg-slate-800 border border-[#115E8D] rounded-md px-1.5 text-[12px] font-bold tabular-nums text-right text-slate-800 dark:text-white focus:outline-none"
+                            />
+                          ) : (
+                            <div
+                              title="Prescribed weight for the next session. Trainer-set only - nothing here progresses automatically."
+                              className="flex items-center justify-end gap-1.5 h-full w-full opacity-70 transition-opacity hover:opacity-100 py-1.5 pr-3 cursor-text"
+                            >
+                              {savingNextAttempt === machine.id ? (
+                                <Loader2 className="w-3.5 h-3.5 text-slate-400 shrink-0 animate-spin" />
+                              ) : (
+                                <Target
+                                  className={cn(
+                                    "w-3.5 h-3.5 shrink-0",
+                                    isPrescribedOverride
+                                      ? "text-[#F06C22]"
+                                      : "text-slate-400",
+                                  )}
+                                />
+                              )}
+                              <span
+                                className={cn(
+                                  "font-bold text-[12px] tabular-nums text-right",
+                                  isPrescribedOverride
+                                    ? "text-slate-800 dark:text-slate-100"
+                                    : "text-slate-600 dark:text-slate-400",
+                                )}
+                              >
+                                {nextAttempt || "-"}
+                              </span>
+                            </div>
+                          )}
                         </td>
+                        <td className="bg-[#F9FAFB] dark:bg-slate-900/40" />
                       </tr>
                     );
                   })}

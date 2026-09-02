@@ -2035,6 +2035,32 @@ export function WorkoutTrackerView({
         );
       }
 
+      // The trainer's prescribed weight wins over the raw last-performed
+      // metric. sync-utils rewrites currentWeight to whatever was actually
+      // performed when a session is saved, so this is "same as last session"
+      // by default and a manual prescription whenever a trainer set one on the
+      // Journey grid or the Equipment tab. Nothing progresses automatically.
+      if (clientMachineSettings) {
+        Object.entries(clientMachineSettings).forEach(
+          ([mId, settingObjVal]) => {
+            const prescribed = (settingObjVal as any)?.currentWeight;
+            if (
+              prescribed === undefined ||
+              prescribed === null ||
+              String(prescribed).trim() === ""
+            ) {
+              return;
+            }
+            if (machineLastLogs[mId]) {
+              machineLastLogs[mId] = {
+                ...machineLastLogs[mId],
+                weight: String(prescribed),
+              };
+            }
+          },
+        );
+      }
+
       // 3. Auto-populate logs for routine machines
       let activeMachineIds = customMachines;
       if (!activeMachineIds) {

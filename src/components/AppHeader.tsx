@@ -55,7 +55,6 @@ export function AppHeader({
               : "cursor-default",
           )}
         >
-          <span className="hidden sm:inline">STRENGTH FITNESS / </span>
           {studioName}
         </button>
       </div>
