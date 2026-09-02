@@ -31,6 +31,35 @@ const projectId = config.projectId || "gen-lang-client-0731527386";
 const databaseId = config.firestoreDatabaseId || "ai-studio-32cbbdcc-6e08-4770-9665-867c68878efa";
 const baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents`;
 
+/**
+ * PRODUCTION GUARD (added Sep 2, 2026).
+ *
+ * This script permanently deletes clients, sessions, studios, exerciseLogs and
+ * auditLogs. It picks its target from firebase-applet-config.json, and its
+ * hardcoded fallback is production. Until now the only thing preventing an
+ * accidental live purge was that the local config named a database that did
+ * not exist under the configured project -- an accident, not a safeguard.
+ *
+ * Local .env now points at production deliberately (for UI work against real
+ * data), so that accident is gone. This makes the refusal explicit instead.
+ */
+const PRODUCTION_PROJECT_IDS = ["gen-lang-client-0731527386"];
+const PURGE_CONFIRM_FLAG = "--yes-destroy-production-data";
+
+console.log(`purge-database target: ${projectId} / ${databaseId}`);
+
+if (PRODUCTION_PROJECT_IDS.includes(projectId) && !process.argv.includes(PURGE_CONFIRM_FLAG)) {
+  console.error(
+    `\nREFUSING TO RUN.\n\n` +
+      `  Project : ${projectId}   <-- PRODUCTION (MaxStrengthFitness App)\n` +
+      `  Database: ${databaseId}\n\n` +
+      `This would permanently delete real client records. There is no undo.\n\n` +
+      `If that is genuinely what you want, re-run with:\n` +
+      `  npx tsx scripts/purge-database.ts ${PURGE_CONFIRM_FLAG}\n`,
+  );
+  process.exit(1);
+}
+
 const PRESERVED_EMAIL = "jurgensaj@gmail.com";
 
 const COLLECTIONS_TO_PURGE = [
