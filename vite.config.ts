@@ -27,6 +27,21 @@ export default defineConfig(() => {
               id.includes("node_modules/scheduler/")
             )
               return "vendor-react";
+            // Firestore is by far the largest part of the Firebase SDK and it
+            // ships new versions often. Keeping it apart from app/auth means a
+            // Firestore bump does not invalidate the auth chunk in every
+            // returning browser's cache, and vice versa.
+            //
+            // Note: this does NOT shrink first paint on its own. src/firebase.ts
+            // calls initializeFirestore at module scope, so both chunks still
+            // load before anything renders. Deferring that init behind a dynamic
+            // import is a separate change.
+            if (
+              id.includes("node_modules/firebase/firestore") ||
+              id.includes("node_modules/@firebase/firestore") ||
+              id.includes("node_modules/@firebase/webchannel-wrapper")
+            )
+              return "vendor-firebase-firestore";
             if (
               id.includes("node_modules/firebase/") ||
               id.includes("node_modules/@firebase/")
