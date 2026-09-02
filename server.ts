@@ -1143,8 +1143,28 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
+
+    // Vite stamps a content hash into every asset filename
+    // (index-BycyQ8Hk.js), so the bytes behind a given URL can never change.
+    // That makes them safe to cache for a year, which removes ~20 revalidation
+    // round-trips from every page load.
+    app.use(
+      "/assets",
+      express.static(path.join(distPath, "assets"), {
+        maxAge: "1y",
+        immutable: true,
+      }),
+    );
+
+    // Anything else in dist has no hash in its name, so keep it short-lived.
+    // index: false leaves "/" to the catch-all below.
+    app.use(express.static(distPath, { index: false, maxAge: "1h" }));
+
+    // index.html is the file that names the hashed assets above. A cached copy
+    // pins the browser to a previous deploy's filenames, so it must always be
+    // revalidated.
     app.get("*", (req, res) => {
+      res.set("Cache-Control", "no-cache");
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
