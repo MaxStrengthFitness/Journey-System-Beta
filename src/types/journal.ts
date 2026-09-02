@@ -172,103 +172,160 @@ export interface ClientFocus {
 /* PRESENTATION METADATA                                               */
 /* ------------------------------------------------------------------ */
 
-export interface KindStyle {
-  label: string;
-  /** Left edge bar — the single strongest "what kind is this" signal. */
+/**
+ * THE VISUAL CONTRACT
+ *
+ * Three independent channels, each carrying exactly one meaning, so a coach
+ * can read a card in peripheral vision without parsing text:
+ *
+ *   1. HUE + GLYPH  = what kind of thing this is.
+ *      One hue per concept, no collisions. Coaching entries take their own P's
+ *      hue rather than a generic "coaching" colour, because "which P" is the
+ *      distinction a coach actually scans for.
+ *
+ *   2. CHROME       = how loudly it should shout.
+ *      Importance is a ring + tint + pill. It NEVER changes the hue, so a
+ *      critical Pace note is still Pace-amber. "What is it" and "how urgent is
+ *      it" stay independently readable.
+ *
+ *   3. EDGE TEXTURE = whether this app owns the record.
+ *      Solid edge = written here and editable. Dashed edge = imported or
+ *      read-only (Mindbody account notes, profile fields, legacy rows).
+ *
+ * Worked example, the two the brief asks about:
+ *   "Rotator cuff surgery 3/14, no pressing until cleared"
+ *     -> violet edge, heart-pulse glyph, LIFE - SURGERY tag, rose ring +
+ *        CRITICAL pill, effective-until chip. Reads as a standing restriction.
+ *   "Pace: stop dumping the last two reps on compound row"
+ *     -> amber edge, timer glyph, PACE tag + COMPOUND ROW machine chip,
+ *        no ring. Reads as a coaching cue.
+ * Different hue family, different glyph, different chrome, different tag row.
+ */
+export interface EntryVisual {
+  /** Colour of the 4px left edge bar. */
   edge: string;
-  /** Icon + tag chip colours. */
+  /** Tag chip background + text. */
   chip: string;
+  /** lucide-react icon name. */
   icon: string;
-  accentText: string;
-  /** Tint used only when the entry is critical. */
-  criticalTint: string;
+  /** Text colour for the tag row. */
+  accent: string;
+  /** Faint background wash, used only when the entry is critical. */
+  tint: string;
+  /** Short uppercase label for the tag row. */
+  label: string;
 }
 
-/**
- * ONE hue family per kind. Importance is expressed through card chrome (ring,
- * tint, pill) and never through hue, so "what kind of note is this" and "how
- * urgent is it" stay independently readable at a glance.
- */
-export const KIND_STYLES: Record<JournalKind, KindStyle> = {
-  coaching: {
-    label: "Coaching",
-    edge: "before:bg-cyan-500",
-    chip: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-300 border-cyan-500/20",
-    icon: "Target",
-    accentText: "text-cyan-600 dark:text-cyan-300",
-    criticalTint: "bg-cyan-500/[0.06]",
-  },
-  life: {
-    label: "Life",
-    edge: "before:bg-violet-500",
-    chip: "bg-violet-500/10 text-violet-600 dark:text-violet-300 border-violet-500/20",
-    icon: "HeartPulse",
-    accentText: "text-violet-600 dark:text-violet-300",
-    criticalTint: "bg-violet-500/[0.06]",
-  },
-  equipment: {
-    label: "Equipment",
-    edge: "before:bg-amber-500",
-    chip: "bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/20",
-    icon: "Dumbbell",
-    accentText: "text-amber-600 dark:text-amber-300",
-    criticalTint: "bg-amber-500/[0.06]",
-  },
-  incident: {
-    label: "Incident",
-    edge: "before:bg-rose-500",
-    chip: "bg-rose-500/10 text-rose-600 dark:text-rose-300 border-rose-500/20",
-    icon: "AlertTriangle",
-    accentText: "text-rose-600 dark:text-rose-300",
-    criticalTint: "bg-rose-500/[0.07]",
-  },
-  consultation: {
-    label: "Consultation",
-    edge: "before:bg-emerald-500",
-    chip: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-500/20",
-    icon: "ClipboardList",
-    accentText: "text-emerald-600 dark:text-emerald-300",
-    criticalTint: "bg-emerald-500/[0.06]",
-  },
-  general: {
-    label: "Note",
-    edge: "before:bg-slate-400 dark:before:bg-slate-500",
-    chip: "bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20",
-    icon: "MessageSquare",
-    accentText: "text-slate-600 dark:text-slate-300",
-    criticalTint: "bg-slate-500/[0.06]",
-  },
-};
-
-/** Per-P colour + the plain-language definition coaches already use. */
-export const FOCUS_CATEGORY_META: Record<
-  FocusCategory,
-  { blurb: string; chip: string; dot: string; icon: string }
-> = {
+const VISUALS = {
   Posture: {
-    blurb: "Position and alignment before the rep starts.",
-    chip: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border-indigo-500/25",
-    dot: "bg-indigo-500",
+    edge: "bg-indigo-500",
+    chip: "bg-indigo-500/12 text-indigo-600 dark:text-indigo-300 border-indigo-500/25",
     icon: "PersonStanding",
+    accent: "text-indigo-600 dark:text-indigo-300",
+    tint: "bg-indigo-500/[0.05]",
+    label: "Posture",
   },
   Path: {
-    blurb: "The line the load travels. No drifting or shifting.",
-    chip: "bg-sky-500/10 text-sky-600 dark:text-sky-300 border-sky-500/25",
-    dot: "bg-sky-500",
+    edge: "bg-sky-500",
+    chip: "bg-sky-500/12 text-sky-600 dark:text-sky-300 border-sky-500/25",
     icon: "Route",
+    accent: "text-sky-600 dark:text-sky-300",
+    tint: "bg-sky-500/[0.05]",
+    label: "Path",
   },
   Pace: {
-    blurb: "Tempo and constant tension. No dumping at the ends.",
-    chip: "bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/25",
-    dot: "bg-amber-500",
+    edge: "bg-amber-500",
+    chip: "bg-amber-500/12 text-amber-600 dark:text-amber-300 border-amber-500/25",
     icon: "Timer",
+    accent: "text-amber-600 dark:text-amber-300",
+    tint: "bg-amber-500/[0.05]",
+    label: "Pace",
   },
   Purpose: {
-    blurb: "Intent and mind-muscle connection through the set.",
-    chip: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-500/25",
-    dot: "bg-emerald-500",
+    edge: "bg-emerald-500",
+    chip: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300 border-emerald-500/25",
     icon: "Brain",
+    accent: "text-emerald-600 dark:text-emerald-300",
+    tint: "bg-emerald-500/[0.05]",
+    label: "Purpose",
   },
+  life: {
+    edge: "bg-violet-500",
+    chip: "bg-violet-500/12 text-violet-600 dark:text-violet-300 border-violet-500/25",
+    icon: "HeartPulse",
+    accent: "text-violet-600 dark:text-violet-300",
+    tint: "bg-violet-500/[0.05]",
+    label: "Life",
+  },
+  equipment: {
+    edge: "bg-teal-500",
+    chip: "bg-teal-500/12 text-teal-600 dark:text-teal-300 border-teal-500/25",
+    icon: "Dumbbell",
+    accent: "text-teal-600 dark:text-teal-300",
+    tint: "bg-teal-500/[0.05]",
+    label: "Equipment",
+  },
+  incident: {
+    edge: "bg-rose-500",
+    chip: "bg-rose-500/12 text-rose-600 dark:text-rose-300 border-rose-500/25",
+    icon: "AlertTriangle",
+    accent: "text-rose-600 dark:text-rose-300",
+    tint: "bg-rose-500/[0.06]",
+    label: "Incident",
+  },
+  consultation: {
+    edge: "bg-slate-400 dark:bg-slate-500",
+    chip: "bg-slate-500/12 text-slate-600 dark:text-slate-300 border-slate-500/25",
+    icon: "ClipboardList",
+    accent: "text-slate-600 dark:text-slate-300",
+    tint: "bg-slate-500/[0.05]",
+    label: "Consultation",
+  },
+  general: {
+    edge: "bg-slate-400 dark:bg-slate-500",
+    chip: "bg-slate-500/12 text-slate-600 dark:text-slate-300 border-slate-500/25",
+    icon: "MessageSquare",
+    accent: "text-slate-600 dark:text-slate-300",
+    tint: "bg-slate-500/[0.05]",
+    label: "Note",
+  },
+  coaching: {
+    edge: "bg-cyan-500",
+    chip: "bg-cyan-500/12 text-cyan-600 dark:text-cyan-300 border-cyan-500/25",
+    icon: "Target",
+    accent: "text-cyan-600 dark:text-cyan-300",
+    tint: "bg-cyan-500/[0.05]",
+    label: "Coaching",
+  },
+} satisfies Record<string, EntryVisual>;
+
+/**
+ * Resolve a card's visual identity. Coaching entries fall through to their P's
+ * own colour; everything else uses its kind's.
+ */
+export function getEntryVisual(
+  kind: JournalKind,
+  category?: string | null,
+): EntryVisual {
+  if (kind === "coaching" && category && category in VISUALS) {
+    return VISUALS[category as keyof typeof VISUALS];
+  }
+  return VISUALS[kind as keyof typeof VISUALS] ?? VISUALS.general;
+}
+
+export const FOCUS_VISUALS: Record<FocusCategory, EntryVisual> = {
+  Posture: VISUALS.Posture,
+  Path: VISUALS.Path,
+  Pace: VISUALS.Pace,
+  Purpose: VISUALS.Purpose,
+};
+
+/** Plain-language definitions coaches already use for the 4 P's. */
+export const FOCUS_BLURBS: Record<FocusCategory, string> = {
+  Posture: "Position and alignment before the rep starts.",
+  Path: "The line the load travels. No drifting or shifting.",
+  Pace: "Tempo and constant tension. No dumping at the ends.",
+  Purpose: "Intent and mind-muscle connection through the set.",
 };
 
 export const LIFE_CATEGORIES: LifeCategory[] = [
@@ -290,32 +347,38 @@ export const FOCUS_CATEGORIES: FocusCategory[] = [
 
 export const IMPORTANCE_META: Record<
   JournalImportance,
-  { label: string; short: string; chip: string }
+  { label: string; short: string; chip: string; ring: string; hint: string }
 > = {
   standard: {
     label: "Standard",
-    short: "STD",
+    short: "Standard",
     chip: "bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/20",
+    ring: "",
+    hint: "Good to know",
   },
   elevated: {
-    label: "Worth knowing",
-    short: "HEADS UP",
+    label: "Heads up",
+    short: "Heads up",
     chip: "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30",
+    ring: "ring-1 ring-amber-500/30",
+    hint: "Surfaces higher in the stream",
   },
   critical: {
     label: "Critical",
-    short: "CRITICAL",
+    short: "Critical",
     chip: "bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/40",
+    ring: "ring-1 ring-rose-500/45",
+    hint: "Also shown in the pre-session briefing",
   },
 };
 
 /** Kinds offered in the quick-add strip, in the order coaches reach for them. */
-export const COMPOSER_KINDS: JournalKind[] = [
-  "coaching",
-  "equipment",
-  "life",
-  "incident",
-  "general",
+export const COMPOSER_KINDS: { kind: JournalKind; label: string }[] = [
+  { kind: "coaching", label: "Coaching" },
+  { kind: "equipment", label: "Equipment" },
+  { kind: "life", label: "Personal" },
+  { kind: "incident", label: "Incident" },
+  { kind: "general", label: "Note" },
 ];
 
 /** Safely turn a Firestore Timestamp | Date | string | number into a Date. */
@@ -335,4 +398,31 @@ export function toDate(value: any): Date | null {
     return isNaN(d.getTime()) ? null : d;
   }
   return null;
+}
+
+/** "3 days ago" / "in 2 weeks" — short, no library. */
+export function relativeDay(date: Date | null): string {
+  if (!date) return "—";
+  const days = Math.round((Date.now() - date.getTime()) / 86400000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days === -1) return "Tomorrow";
+  if (days < 0) return `in ${Math.abs(days)}d`;
+  if (days < 7) return `${days}d ago`;
+  if (days < 60) return `${Math.round(days / 7)}w ago`;
+  return `${Math.round(days / 30)}mo ago`;
+}
+
+/** Bucket used to group the stream into date headers. */
+export function dateBucket(date: Date | null): string {
+  if (!date) return "Undated";
+  const days = Math.floor((Date.now() - date.getTime()) / 86400000);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days <= 7) return "This week";
+  if (days <= 30) return "This month";
+  if (days <= 90) return "Last 3 months";
+  return date.getFullYear() === new Date().getFullYear()
+    ? "Earlier this year"
+    : String(date.getFullYear());
 }
