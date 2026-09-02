@@ -11,7 +11,8 @@ import { InsightsDashboardView } from "./InsightsDashboardView";
 // import { RetentionDashboardView } from "./RetentionDashboardView";
 import { MindbodyDashboard } from "./mindbody/MindbodyDashboard";
 import { AdminLimboQueue } from "./AdminLimboQueue";
-import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell } from "lucide-react";
+import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList } from "lucide-react";
+import { AdminRoutineTemplatesTab } from "./routines/AdminRoutineTemplatesTab";
 import { cn } from "@/lib/utils";
 
 import { AdminSystemClients } from "./AdminSystemClients";
@@ -58,6 +59,7 @@ export function AdminDashboardView({
     | "studios"
     | "clients"
     | "machines"
+    | "routines"
     | "announcements"
     | "bugs"
     | "insights"
@@ -76,6 +78,11 @@ export function AdminDashboardView({
     if (id === "bugs") return isAdmin;
     if (id === "announcements") return isFranchiseOwnerOrAdmin;
     if (id === "machines") return isFranchiseOwnerOrAdmin;
+    // Studio leaders author their own location's templates, so this is
+    // deliberately NOT gated to franchise-owner-or-admin the way machines
+    // is. The tab itself disables authoring for anyone who cannot write,
+    // and firestore.rules is the actual enforcement.
+    if (id === "routines") return true;
     return true;
   };
 
@@ -102,6 +109,7 @@ export function AdminDashboardView({
         { id: "users", label: "Staff & Roles", icon: <Users className="w-4 h-4" /> },
         { id: "clients", label: "System Clients", icon: <Users className="w-4 h-4" /> },
         { id: "machines", label: "Machines", icon: <Dumbbell className="w-4 h-4" /> },
+        { id: "routines", label: "Routine Templates", icon: <ClipboardList className="w-4 h-4" /> },
         { id: "insights", label: "Insights", icon: <TrendingUp className="w-4 h-4" /> },
       ],
     },
@@ -239,6 +247,13 @@ export function AdminDashboardView({
         )}
         {activeTab === "machines" && (
           <AdminMachinesTab
+            studios={studios}
+            authTrainer={authTrainer}
+            isAdmin={isAdmin}
+          />
+        )}
+        {activeTab === "routines" && (
+          <AdminRoutineTemplatesTab
             studios={studios}
             authTrainer={authTrainer}
             isAdmin={isAdmin}
