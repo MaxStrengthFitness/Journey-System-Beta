@@ -58,7 +58,6 @@ export function CalendarView({
   clients?: any[];
 }) {
   const [viewMode, setViewMode] = useState<"month" | "week" | "day">("month");
-  const [shiftMode, setShiftMode] = useState<"ALL" | "AM" | "PM">("ALL");
   const [filterMode, setFilterMode] = useState<"all" | "sessions" | "events">(
     "all",
   );
@@ -1106,101 +1105,35 @@ export function CalendarView({
   };
 
   const renderDay = () => {
-    const slots =
-      shiftMode === "AM"
-        ? amSlots
-        : shiftMode === "PM"
-          ? pmSlots
-          : dynamicSlots;
+    // Continuous timeline (inherits the Hub): no AM/PM break, one unbroken
+    // column from the first booking of the day to the last.
+    const slots = dynamicSlots;
     const filteredTrainers =
       selectedTrainerId === "all"
         ? visibleCalendarTrainers
         : visibleCalendarTrainers.filter((t) => t.id === selectedTrainerId);
 
-    // Calculate current time indicator position
+    // "NOW" marker: which 30-minute row holds the current studio time, and how
+    // far down that row (rows are a fixed 56px, so this is exact).
     const now = new Date();
     const isTodaySelected = isToday(selectedDate);
-    const timeToPosition = (date: Date) => {
-      if (!isTodaySelected) return null;
-
-      // The "now" indicator has to sit on the studio clock like everything else.
-      const hm = zonedHM(date);
-      const totalMins = hm ? hm.hour * 60 + hm.minute : 0;
-
-      const shiftStartMins = shiftMode === "PM" ? 14 * 60 : 6 * 60;
-      const shiftEndMins = shiftMode === "AM" ? 14 * 60 : 21 * 60;
-
-      if (totalMins < shiftStartMins || totalMins > shiftEndMins) return null;
-
-      const minsFromStart = totalMins - shiftStartMins;
-      const totalShiftMins = shiftEndMins - shiftStartMins;
-
-      // Return percentage from top for the time indicator
-      return (minsFromStart / totalShiftMins) * 100;
-    };
-    const currentTimePos = timeToPosition(now);
+    const nowHM = zonedHM(now);
+    const nowSlot = isTodaySelected && nowHM ? getSlotHeader(now) : null;
+    const nowOffsetPx = nowHM ? ((nowHM.minute % 30) / 30) * 56 : 0;
 
     return (
       <div className="flex flex-col h-[80vh]">
         {/* Schedule Grid */}
-        <div className="grow flex flex-col bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[24px] sm:rounded-[32px] overflow-hidden shadow-2xl relative">
-          <div className="flex items-center justify-center p-3 sm:p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
-            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm gap-1">
-              <button
-                onClick={() => setShiftMode("ALL")}
-                className={cn(
-                  "px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all cursor-pointer",
-                  shiftMode === "ALL"
-                    ? "bg-[#0284c7] text-white shadow-sm font-black"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
-                )}
-              >
-                All Day
-              </button>
-              <button
-                onClick={() => setShiftMode("AM")}
-                className={cn(
-                  "px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all cursor-pointer",
-                  shiftMode === "AM"
-                    ? "bg-[#0284c7] text-white shadow-sm font-black"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
-                )}
-              >
-                AM Shift
-              </button>
-              <button
-                onClick={() => setShiftMode("PM")}
-                className={cn(
-                  "px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all cursor-pointer",
-                  shiftMode === "PM"
-                    ? "bg-[#0284c7] text-white shadow-sm font-black"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
-                )}
-              >
-                PM Shift
-              </button>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto grow relative">
-            <div className="min-w-200 h-full relative">
-              {currentTimePos !== null && (
-                <div
-                  className="absolute left-14 sm:left-16 right-0 border-t-2 border-[#F06C22] z-20 pointer-events-none shadow-[0_0_15px_rgba(240,108,34,0.6)]"
-                  style={{
-                    top: `calc(80px + (100% - 80px) * ${currentTimePos} / 100)`,
-                  }}
-                >
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 bg-[#F06C22] text-slate-950 text-[9px] sm:text-[11px] font-black uppercase px-2 py-1 rounded-r-md tracking-widest flex items-center shadow-md">
-                    <span className="w-2 h-2 rounded-full bg-white mr-1.5 animate-pulse"></span>
-                    Current Time
-                  </div>
-                </div>
-              )}
-              <table className="w-full border-collapse table-fixed h-full">
+        <div className="grow flex flex-col min-h-0 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm relative">
+          {/* The AM/PM shift toggle is gone (continuous timeline, like the Hub).
+              This div is the ONLY scroller, which is what lets the trainer
+              header and the time axis stay pinned while the day scrolls. */}
+          <div className="overflow-auto grow min-h-0 relative">
+            <div className="min-w-200 relative">
+              <table className="w-full border-separate border-spacing-0 table-fixed">
                 <thead>
-                  <tr className="bg-slate-100/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 h-16 sm:h-20">
-                    <th className="p-3 sm:p-4 text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800 w-14 sm:w-16 sticky left-0 bg-slate-100 dark:bg-slate-900 z-30">
+                  <tr className="h-16">
+                    <th className="p-2 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-r border-slate-200 dark:border-slate-800 w-14 sm:w-16 sticky top-0 left-0 bg-slate-100 dark:bg-slate-900 z-40">
                       Time
                     </th>
                     {filteredTrainers.map((trainer) => {
@@ -1218,18 +1151,19 @@ export function CalendarView({
                       return (
                         <th
                           key={trainer.id}
-                          className="p-3 sm:p-4 border-r border-slate-200 dark:border-slate-800 last:border-r-0 text-center z-20 sticky top-0 bg-slate-100/90 dark:bg-slate-900/90 backdrop-blur-md"
+                          className="px-2 border-b border-r border-slate-200 dark:border-slate-800 last:border-r-0 text-left font-normal z-30 sticky top-0 bg-slate-100 dark:bg-slate-900"
                         >
-                          <div className="flex flex-col items-center gap-1">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-sky-500/10 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center text-[#0284c7] dark:text-[#38BDF8] font-black text-xs sm:text-sm shadow-xs">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-8 h-8 rounded-full shrink-0 bg-sky-500/10 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-[#0284c7] dark:text-[#38BDF8] font-black text-[11px] uppercase">
                               {trainer.initials}
                             </div>
-                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mt-1">
-                              {trainer.fullName}
-                            </span>
-                            <div className="bg-sky-500/10 text-[#0284c7] dark:text-[#38BDF8] px-2 py-0.5 rounded-full flex items-center gap-1 leading-none mt-0.5 border border-sky-500/20">
-                              <span className="text-[10px] font-extrabold tracking-widest whitespace-nowrap uppercase">
-                                {trainerSessionCount} Sess.
+                            <div className="min-w-0 leading-tight">
+                              <span className="block text-[13px] font-black uppercase tracking-wider text-slate-900 dark:text-white truncate">
+                                {trainer.fullName.split(" ")[0]}
+                              </span>
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 tabular-nums">
+                                {trainerSessionCount}{" "}
+                                {trainerSessionCount === 1 ? "session" : "sessions"}
                               </span>
                             </div>
                           </div>
@@ -1240,13 +1174,13 @@ export function CalendarView({
                 </thead>
                 <tbody className="relative">
                   {/* Events Row */}
-                  <tr className="border-b-2 border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/40">
-                    <td className="p-2 sm:p-3 text-center border-r border-slate-200 dark:border-slate-800 sticky left-0 bg-slate-50 dark:bg-slate-900 z-10 text-slate-500 dark:text-slate-400">
-                      <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest">
+                  <tr className="bg-slate-50/80 dark:bg-slate-900/40">
+                    <td className="p-2 text-center border-b-2 border-r border-slate-200 dark:border-slate-800 sticky left-0 bg-slate-50 dark:bg-slate-900 z-20 text-slate-500 dark:text-slate-400">
+                      <span className="text-[10px] font-black uppercase tracking-widest">
                         Events
                       </span>
                     </td>
-                    <td colSpan={filteredTrainers.length} className="p-1.5">
+                    <td colSpan={filteredTrainers.length} className="p-1.5 border-b-2 border-slate-200 dark:border-slate-800">
                       <div className="flex flex-wrap gap-1.5 sm:gap-2">
                         {(() => {
                           const dayEvents = filteredItems.filter((i) => {
@@ -1313,14 +1247,25 @@ export function CalendarView({
                     const skippedCells = new Set<string>();
                     return slots.map((slot, sIdx) => {
                       return (
-                        <tr
-                          key={slot}
-                          className="border-b border-slate-200 dark:border-slate-800/80 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors group relative"
-                        >
-                          <td className="p-3 text-center border-r border-slate-200 dark:border-slate-800 sticky left-0 bg-white dark:bg-slate-950 z-10 text-slate-500 dark:text-slate-400">
-                            <span className="text-[11px] font-black tracking-tight group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-                              {slot}
-                            </span>
+                        <tr key={slot} className="h-14 group relative">
+                          <td className="px-1 pt-1 text-right align-top border-b border-r border-slate-200 dark:border-slate-800 sticky left-0 bg-slate-100 dark:bg-slate-900 z-20 text-slate-600 dark:text-slate-300">
+                            {/* Label on the hour only; the :30 row stays quiet. */}
+                            {(slot.includes(":00") || sIdx === 0) && (
+                              <span className="text-[11px] font-bold tabular-nums whitespace-nowrap">
+                                {slot.replace(":00", "")}
+                              </span>
+                            )}
+                            {nowSlot === slot && (
+                              <div
+                                className="absolute left-0 h-px w-[200vw] bg-linear-to-r from-orange-500 via-orange-500/70 to-transparent pointer-events-none z-30"
+                                style={{ top: nowOffsetPx }}
+                              >
+                                <div className="absolute left-0 -top-2 bg-orange-500 text-white text-[10px] font-black uppercase px-1.5 py-0.5 rounded-r-full flex items-center gap-1 leading-none">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                  Now
+                                </div>
+                              </div>
+                            )}
                           </td>
                           {filteredTrainers.map((trainer) => {
                             const cellId = `${trainer.id}-${slot}`;
@@ -1406,13 +1351,13 @@ export function CalendarView({
                               <td
                                 key={`${trainer.id}-${slot}`}
                                 rowSpan={rowSpan}
-                                className={cn(
-                                  "p-1 border-r border-slate-200 dark:border-slate-800 last:border-r-0 align-top",
-                                  rowSpan > 1 ? "" : "h-15",
-                                )}
+                                className="p-0.5 border-b border-r border-slate-200 dark:border-slate-800 last:border-r-0 align-top"
                               >
-                                {cellSessions.length > 0 ? (
-                                  <div className="flex flex-col gap-1.5 h-full w-full">
+                                {cellSessions.length > 0 && (
+                                  <div
+                                    className="flex flex-col gap-0.5 w-full overflow-hidden"
+                                    style={{ height: rowSpan * 56 - 5 }}
+                                  >
                                     {cellSessions.map((session, csIdx) => {
                                       const isUnavail =
                                         session.isUnavailabilityEvent ||
@@ -1432,62 +1377,40 @@ export function CalendarView({
                                               handleClientClick(session);
                                           }}
                                           className={cn(
-                                            "p-3 rounded-xl flex flex-col gap-0.5 hover:scale-[1.02] transition-all cursor-pointer shadow-md flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800",
+                                            // Hub-style block: colored LEFT EDGE (trainer color here,
+                                            // to match the legend), quiet surface, tight name → time → type.
+                                            "px-1.5 py-1 rounded-md flex flex-col flex-1 min-h-0 overflow-hidden transition-colors cursor-pointer border-l-4",
                                             isUnavail
-                                              ? "bg-slate-200 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-700 text-slate-500 cursor-not-allowed opacity-90"
-                                              : cn("border-l-4", color.border),
+                                              ? "bg-[repeating-linear-gradient(45deg,#f8fafc,#f8fafc_8px,#eef2f7_8px,#eef2f7_16px)] dark:bg-[repeating-linear-gradient(45deg,#0f172a,#0f172a_8px,#1e293b_8px,#1e293b_16px)] border-l-slate-300 dark:border-l-slate-600 text-slate-500 cursor-not-allowed"
+                                              : cn(
+                                                  "bg-white dark:bg-slate-800/70 ring-1 ring-inset ring-slate-200/80 dark:ring-white/5 hover:bg-slate-50 dark:hover:bg-slate-800",
+                                                  color.border,
+                                                ),
                                           )}
                                         >
-                                          <div className="flex justify-between items-start mb-1">
-                                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 tabular-nums leading-none tracking-tight">
-                                              {slot} -{" "}
+                                          <span className="text-[13px] font-bold truncate text-slate-900 dark:text-slate-50 leading-tight">
+                                            {isUnavail
+                                              ? "Unavailable"
+                                              : session.clientName}
+                                          </span>
+                                          {!isUnavail && (
+                                            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 tabular-nums leading-tight truncate">
+                                              {slot.replace(" AM", "").replace(" PM", "")} –{" "}
                                               {session.endTime
                                                 ? getSlotHeader(
                                                     safeToDate(session.endTime),
                                                   )
                                                 : "30m"}
                                             </span>
-                                            {rowSpan > 1 && !isUnavail && (
-                                              <Badge
-                                                variant="outline"
-                                                className="text-[10px] h-4 bg-sky-500/10 border-sky-500/30 text-[#0284c7] dark:text-[#38BDF8] font-bold"
-                                              >
-                                                {Math.round(
-                                                  (safeToDate(
-                                                    session.endTime ||
-                                                      session.endDate,
-                                                  ).getTime() -
-                                                    safeToDate(
-                                                      session.startTime ||
-                                                        session.date,
-                                                    ).getTime()) /
-                                                    60000,
-                                                )}
-                                                m
-                                              </Badge>
-                                            )}
-                                          </div>
-                                          <span className="text-xs sm:text-sm font-black truncate text-slate-900 dark:text-white leading-tight">
-                                            {isUnavail
-                                              ? "Unavailable"
-                                              : session.clientName}
-                                          </span>
-                                          {rowSpan > 1 &&
-                                            session.serviceName &&
-                                            !isUnavail && (
-                                              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
-                                                {session.serviceName}
-                                              </span>
-                                            )}
+                                          )}
+                                          {!isUnavail && session.serviceName && (
+                                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-tight truncate">
+                                              {session.serviceName}
+                                            </span>
+                                          )}
                                         </div>
                                       );
                                     })}
-                                  </div>
-                                ) : (
-                                  <div className="h-full w-full opacity-0 hover:opacity-100 transition-all flex items-center justify-center p-2 bg-slate-100/90 dark:bg-slate-800/90 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer shadow-sm">
-                                    <span className="text-[11px] font-black uppercase tracking-widest text-[#0284c7] dark:text-[#38BDF8]">
-                                      OPEN
-                                    </span>
                                   </div>
                                 )}
                               </td>
