@@ -111,7 +111,8 @@ Built from AJ's five-phase blueprint (iPad Pro first, dense dark theme, Mindbody
 
 ## 🛡️ Before studio beta — safety & ops checklist
 
-- [ ] Deploy the 17 composite indexes to **live** (`npx firebase deploy --only firestore:indexes --project gen-lang-client-0731527386`) and confirm the previously blank profile panels fill in.
+- [x] ~~Deploy the 17 composite indexes to **live**~~ — verified Sep 2, 2026: all 17 are already live on `gen-lang-client-0731527386` / `ai-studio-32cbbdcc-…` and match `firestore.indexes.json` exactly (`npx tsx scripts/fetch-live-indexes.ts`). This item was stale.
+- [ ] **The blank profile panels are NOT an index problem** — that was the working theory behind the item above, and it is wrong, because the indexes were already there. Needs a fresh diagnosis: check the browser console for the actual Firestore error on a blank panel.
 - [ ] Check the **live** deployment for the contractor's hardcoded admin email (fixed in this copy only).
 - [ ] Confirm the MindBody developer account + API key are owned by Max Strength, not the contractor.
 - [ ] Contractor follow-up: webhook DLQ never wired + idempotency-before-processing (details in PROJECT_TRACKER.md, "contractor scope").

@@ -2,6 +2,14 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { confirmProduction } from './production-guard.js';
+
+confirmProduction({
+  script: 'deactivate-webhook.js',
+  target: 'Mindbody webhook subscription -> production cloud function',
+  action: 'STOPS all live Mindbody sync until someone re-registers it',
+});
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 

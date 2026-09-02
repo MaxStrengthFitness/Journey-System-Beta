@@ -51,3 +51,8 @@ yarn-error.log*
 
 # Local test run captures
 test-output.txt
+
+# Temp: production SDK config dump (never commit)
+prod-sdkconfig.json
+live-rules-*.rules
+.env.bak

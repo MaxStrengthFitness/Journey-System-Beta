@@ -1,6 +1,14 @@
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 
+import { confirmProduction } from './production-guard.js';
+
+confirmProduction({
+  script: 'reset-health.js',
+  target: 'production system/health document',
+  action: 'overwrites the live health status to HEALTHY, hiding any real outage',
+});
+
 initializeApp({
   projectId: 'gen-lang-client-0731527386'
 });
