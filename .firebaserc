@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "prod": "gen-lang-client-0731527386",
+    "staging": "msftesting-cda43",
+    "scratch": "testingmsf-870ef"
+  }
+}
