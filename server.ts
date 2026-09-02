@@ -91,7 +91,39 @@ async function startServer() {
   // Mounted first so it wraps every route and the static handler below.
   app.use(compression());
 
-  app.use(express.json({ limit: "50mb" }));
+  // Only the two Gemini image endpoints send big payloads. Applying their 50mb
+  // ceiling to every route meant any POST could allocate 50mb, and Render runs
+  // this as a single process (WEB_CONCURRENCY=1) on a small instance: a few
+  // concurrent large bodies were enough to exhaust its memory.
+  const IMAGE_UPLOAD_PATHS = new Set([
+    "/api/gemini/processChart",
+    "/api/gemini/extractSettings",
+  ]);
+  const largeJson = express.json({ limit: "50mb" });
+  const standardJson = express.json({ limit: "1mb" });
+
+  app.use((req, res, next) =>
+    IMAGE_UPLOAD_PATHS.has(req.path)
+      ? largeJson(req, res, next)
+      : standardJson(req, res, next),
+  );
+
+  // Without this, an over-limit body falls to Express's default handler and
+  // comes back as an HTML error page, which the client cannot parse.
+  app.use(
+    (
+      err: any,
+      req: express.Request,
+      res: express.Response,
+      next: express.NextFunction,
+    ) => {
+      if (err?.type === "entity.too.large") {
+        console.warn("Rejected oversized body on", req.path);
+        return res.status(413).json({ error: "Request body too large" });
+      }
+      return next(err);
+    },
+  );
 
   app.post("/api/gemini/executionGuide", async (req, res) => {
     try {
