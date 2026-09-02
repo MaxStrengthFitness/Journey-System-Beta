@@ -5454,6 +5454,16 @@ export function ClientProfileView({
           client={client}
           authTrainer={authTrainer}
           defaultTab={infoSheetTab}
+          machines={machines}
+          trainers={trainers}
+          onOpenJournal={() => {
+            setIsInfoSheetOpen(false);
+            setActiveTab("journal");
+          }}
+          onOpenReports={() => {
+            setIsInfoSheetOpen(false);
+            setActiveTab("journal");
+          }}
         />
       )}
 
