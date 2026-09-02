@@ -1134,6 +1134,14 @@ async function startServer() {
     }
   });
 
+  // Any /api path that reached this point matched no route above. Answer with
+  // JSON, not the SPA shell: the catch-all further down would hand back
+  // index.html, so a typo'd endpoint looks like a successful HTML response to
+  // fetch() and fails later with a confusing JSON parse error.
+  app.use("/api", (req, res) => {
+    res.status(404).json({ error: "Not found", path: req.originalUrl });
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -1159,6 +1167,13 @@ async function startServer() {
     // Anything else in dist has no hash in its name, so keep it short-lived.
     // index: false leaves "/" to the catch-all below.
     app.use(express.static(distPath, { index: false, maxAge: "1h" }));
+
+    // A missing chunk must 404. Falling through to index.html returns
+    // "200 OK" with HTML in it, and the browser then tries to parse that HTML
+    // as JavaScript: "Uncaught SyntaxError: Unexpected token '<'".
+    app.use("/assets", (req, res) => {
+      res.status(404).type("text/plain").send("Not found");
+    });
 
     // index.html is the file that names the hashed assets above. A cached copy
     // pins the browser to a previous deploy's filenames, so it must always be
