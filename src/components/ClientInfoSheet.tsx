@@ -1,30 +1,18 @@
 import React, { useState, useEffect } from "react";
-import {
-  X,
-  User,
-  HeartPulse,
-  Target,
-  Briefcase,
-  Calendar,
-  Key,
-  Shield,
-  Image as ImageIcon,
-  RefreshCw,
-  Maximize,
-  Activity,
-  Settings2,
-} from "lucide-react";
-
+import { X, Maximize } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
+
 import { db } from "../firebase";
-import { cn } from "@/lib/utils";
 import { Client, Machine, Trainer } from "../types";
-import { ClientDossier } from "./client-dossier/ClientDossier";
 import type { DossierSection } from "../types/journal";
+import { useActiveStudio } from "../ActiveStudioContext";
+import { useToast } from "../contexts/ToastContext";
+import { Button } from "@/components/ui/button";
+import { ClientDossier } from "./client-dossier/ClientDossier";
 
 /**
  * The old sidebar used "identity" for what is now the General section.
- * Callers still pass tab values, so they are translated rather than
+ * Callers still pass tab values, so they are translated here rather than
  * chased down and changed.
  */
 const LEGACY_TAB_TO_SECTION: Record<string, DossierSection> = {
@@ -36,27 +24,6 @@ const LEGACY_TAB_TO_SECTION: Record<string, DossierSection> = {
   admin: "admin",
   events: "events",
 };
-import { useActiveStudio } from "../ActiveStudioContext";
-import { useToast } from "../contexts/ToastContext";
-
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { OccupationSelect } from "./OccupationSelect";
-import { ClientMembershipsCard } from "./mindbody/ClientMembershipsCard";
-import { CLINICAL_FLAGS_MATRIX } from "../data/clinical-matrix";
 
 interface ClientInfoSheetProps {
   isOpen: boolean;
@@ -130,7 +97,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
         weight: client.weight || "",
         discoveryNotes: client.discoveryNotes || "",
         globalNotes: client.globalNotes || "",
-        smartGoal: (client as any).smartGoal || "",
+        smartGoal: client.smartGoal || "",
         packageTier: client.packageTier || "",
         approvedCrossTrainStudioIds: client.approvedCrossTrainStudioIds || [],
         events: client.events || [],
@@ -190,57 +157,57 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
    * site returns a different studio's client record.
    */
   const handleSyncMindbody = async () => {
-      const mbId = (formData as any).mindbodyClientId || (formData as any).mindbodyId;
-      const searchName = `${formData.firstName || ""} ${formData.lastName || ""}`.trim();
-      if (!mbId && !searchName) return;
-      // Only ever look a client up against their own home
-      // studio's site — falling back to another studio's
-      // site returns a different studio's client record.
-      const targetStudio = studios.find(
-        (s) => s.id === client.homeStudioId,
+    const mbId = (formData as any).mindbodyClientId || (formData as any).mindbodyId;
+    const searchName = `${formData.firstName || ""} ${formData.lastName || ""}`.trim();
+    if (!mbId && !searchName) return;
+    // Only ever look a client up against their own home
+    // studio's site — falling back to another studio's
+    // site returns a different studio's client record.
+    const targetStudio = studios.find(
+      (s) => s.id === client.homeStudioId,
+    );
+    if (!targetStudio?.mindbodySiteId) {
+      toastError(
+        `${targetStudio?.name || "This client's home studio"} has no MindBody Site ID configured.`,
       );
-      if (!targetStudio?.mindbodySiteId) {
-        toastError(
-          `${targetStudio?.name || "This client's home studio"} has no MindBody Site ID configured.`,
-        );
-        return;
-      }
-      setIsSyncingMb(true);
-      try {
-        const siteId = String(targetStudio.mindbodySiteId).trim();
+      return;
+    }
+    setIsSyncingMb(true);
+    try {
+      const siteId = String(targetStudio.mindbodySiteId).trim();
 
-        const res = await fetch("/api/mindbody/client-demographics", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            siteId,
-            mindbodyClientId: mbId || undefined,
-            clientName: searchName || undefined,
-          }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || "Client not found in MindBody");
-        }
-        const mbData = await res.json();
-        if (mbData.mindbodyClientId) {
-          updateField("mindbodyClientId" as any, mbData.mindbodyClientId);
-          updateField("mindbodyId" as any, mbData.mindbodyClientId);
-        }
-        if (mbData.phone) updateField("phone", mbData.phone);
-        if (mbData.email) updateField("email", mbData.email);
-        if (mbData.dateOfBirth) updateField("dateOfBirth", mbData.dateOfBirth);
-        if (mbData.gender) updateField("gender", mbData.gender);
-        if (mbData.address) updateField("address", mbData.address);
-        if (mbData.photoUrl) updateField("photoUrl", mbData.photoUrl);
-        // Mindbody's account notes -- never the app's
-        // trainer-authored `notes` field.
-        if (mbData.notes) updateField("mindbodyNotes", mbData.notes.slice(0, 1000));
-      } catch (e: any) {
-        alert(e.message || "Failed to sync MindBody demographics");
-      } finally {
-        setIsSyncingMb(false);
+      const res = await fetch("/api/mindbody/client-demographics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          siteId,
+          mindbodyClientId: mbId || undefined,
+          clientName: searchName || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Client not found in MindBody");
       }
+      const mbData = await res.json();
+      if (mbData.mindbodyClientId) {
+        updateField("mindbodyClientId" as any, mbData.mindbodyClientId);
+        updateField("mindbodyId" as any, mbData.mindbodyClientId);
+      }
+      if (mbData.phone) updateField("phone", mbData.phone);
+      if (mbData.email) updateField("email", mbData.email);
+      if (mbData.dateOfBirth) updateField("dateOfBirth", mbData.dateOfBirth);
+      if (mbData.gender) updateField("gender", mbData.gender);
+      if (mbData.address) updateField("address", mbData.address);
+      if (mbData.photoUrl) updateField("photoUrl", mbData.photoUrl);
+      // Mindbody's account notes -- never the app's
+      // trainer-authored `notes` field.
+      if (mbData.notes) updateField("mindbodyNotes", mbData.notes.slice(0, 1000));
+    } catch (e: any) {
+      alert(e.message || "Failed to sync MindBody demographics");
+    } finally {
+      setIsSyncingMb(false);
+    }
   };
 
   const handleSave = async () => {
@@ -265,15 +232,6 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
       setIsSaving(false);
     }
   };
-
-
-
-  // Label UI convenience
-  const FormLabel = ({ children }: { children: React.ReactNode }) => (
-    <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-700 dark:text-slate-300 opacity-70 ml-1">
-      {children}
-    </Label>
-  );
 
   if (!isOpen) return null;
 
