@@ -22,7 +22,11 @@ process.on("unhandledRejection", (reason, promise) => {
   console.error("Unhandled Rejection at:", promise, "reason:", reason);
 });
 process.on("uncaughtException", (err) => {
+  // After an uncaught exception the process is in an undefined state: keeping
+  // it alive leaves a half-broken server that still answers requests. Exit and
+  // let the host start a clean one. /healthz lets it notice a wedged process.
   console.error("Uncaught Exception:", err);
+  process.exit(1);
 });
 
 // Mindbody User Token Cache
@@ -124,6 +128,12 @@ async function startServer() {
       return next(err);
     },
   );
+
+  // Health check for the host's monitor. Deliberately does no I/O: it answers
+  // "is this process still able to serve requests", nothing more.
+  app.get("/healthz", (_req, res) => {
+    res.json({ ok: true, uptime: process.uptime() });
+  });
 
   app.post("/api/gemini/executionGuide", async (req, res) => {
     try {
