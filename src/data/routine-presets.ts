@@ -1,11 +1,20 @@
 import { RoutinePreset } from "../types";
 
 /**
- * Built-in routine templates available at every studio location.
- * These ship with the app (no Firestore doc, no rules to touch) — ask
- * Claude to add another one here whenever a new company-wide standard
- * program is agreed on. Machine IDs must match the anatomy map / seeded
- * `machines` collection doc IDs (see data/machine-anatomy-map.ts).
+ * FALLBACK ONLY as of Sep 2026 (round: Routine Template Builder).
+ *
+ * Company-wide templates now live in the `routinePresets` collection at
+ * tier "company", authored by admins in the Routine Templates tab of the
+ * admin hub. Do NOT add new standards here -- add them in the app, where
+ * they take effect without a deploy.
+ *
+ * This array is what EditRoutineDrawer falls back to when the collection
+ * holds no company template, so a fresh or empty database degrades to the
+ * old behavior instead of showing an empty menu. scripts/seed-routine-
+ * templates.ts migrated these three into Firestore.
+ *
+ * Machine IDs must match the anatomy map / seeded `machines` collection
+ * doc IDs (see data/machine-anatomy-map.ts).
  */
 export const GLOBAL_ROUTINE_PRESETS: RoutinePreset[] = [
   {
