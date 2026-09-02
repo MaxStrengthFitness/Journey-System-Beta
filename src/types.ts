@@ -402,6 +402,52 @@ export interface Client {
   mindbodyContracts?: Record<string, MindbodyContract>;
   /** Firestore Timestamp of the last Mindbody contract/membership pull. */
   mindbodyCommercialSyncedAt?: any;
+
+  /* ------------------------------------------------------------------ *
+   * MINDBODY-OWNED IDENTITY & COMPLIANCE (Sep 2026)
+   *
+   * Written by the client.created / client.updated webhook handler, which
+   * treats them the way it already treats the other Mindbody-owned facts:
+   * these OVERWRITE on every sync, because nobody types them in this app and
+   * Mindbody is the system of record. Person-facts (name, email, address...)
+   * keep the existing fill-blanks-only behaviour.
+   *
+   * Deliberately NOT stored: creditCardLastFour, creditCardExpDate,
+   * directDebitLastFour. The webhook sends them; nothing in a coaching app
+   * needs them, and persisting them drags PCI-adjacent exposure into a
+   * document every trainer can read.
+   * ------------------------------------------------------------------ */
+
+  /** Liability waiver signed at the business. Gates the pre-session start. */
+  isLiabilityReleased?: boolean;
+  /** Firestore Timestamp of when the waiver was agreed to. */
+  liabilityAgreementDate?: any;
+  /** Mindbody membership status: Active | Non-Member | Expired | Suspended | Terminated | Declined, or a studio's own custom value. */
+  mindbodyStatus?: string;
+  /**
+   * Mindbody client indexes, flattened from the payload's
+   * [{indexName, indexValue}] list to a map so a lookup is O(1) and a
+   * re-sync cannot leave stale entries behind. e.g. { LongtermGoal: "IncreasedFlexibility" }.
+   */
+  mindbodyIndexes?: Record<string, string>;
+  /** Firestore Timestamp — when the client was added to the business. */
+  mindbodyCreatedAt?: any;
+  /** Firestore Timestamp of the client's first visit to the site. */
+  firstAppointmentDate?: any;
+  /** Mindbody's home location id for this client. */
+  mindbodyHomeLocationId?: number | string;
+  /** True while Mindbody flags the record as a prospect rather than a client. */
+  isProspect?: boolean;
+
+  /* Address parts. `address` stays the single-line field trainers edit; these
+   * are filled from the webhook and only ever fill blanks. */
+  city?: string;
+  addressState?: string;
+  postalCode?: string;
+  country?: string;
+
+  /** Trainer-entered SMART goal. Was written via a cast; now typed. */
+  smartGoal?: string;
   completedSessions?: number;
   sessionCount?: number;
   /**

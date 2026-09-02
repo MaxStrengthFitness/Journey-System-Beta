@@ -104,6 +104,15 @@ export interface JournalEntry {
    */
   searchTags: string[];
 
+  /**
+   * Optional override for which client-dossier section this note belongs to.
+   * Normally left unset: `sectionForEntry()` derives it from kind + category,
+   * which needs no backfill, no index and no write-time denormalisation to
+   * keep in sync. Set it only when a coach deliberately files a note somewhere
+   * the derivation would not put it.
+   */
+  profileSection?: DossierSection | null;
+
   /** True for adapter-produced entries. Read-only in the UI — no edit/delete. */
   isLegacy?: boolean;
   /** Human label for where a legacy entry came from, e.g. "Mindbody account notes". */
@@ -426,3 +435,129 @@ export function dateBucket(date: Date | null): string {
     ? "Earlier this year"
     : String(date.getFullYear());
 }
+
+/* ------------------------------------------------------------------ */
+/* JOURNAL -> CLIENT DOSSIER LINKING                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The client dossier's sections. A journal note is surfaced in the section its
+ * subject belongs to, so a "Surgery" note logged mid-session shows up under
+ * Medical without anyone re-typing it into a profile field.
+ */
+export type DossierSection =
+  | "general"
+  | "lifestyle"
+  | "medical"
+  | "goals"
+  | "admin"
+  | "events";
+
+export const DOSSIER_SECTIONS: {
+  id: DossierSection;
+  label: string;
+  blurb: string;
+  icon: string;
+}[] = [
+  { id: "general", label: "General", blurb: "Who they are and how to reach them", icon: "User" },
+  { id: "lifestyle", label: "Lifestyle", blurb: "What their body does the other 165 hours", icon: "Activity" },
+  { id: "medical", label: "Medical", blurb: "What the load has to work around", icon: "HeartPulse" },
+  { id: "goals", label: "Goals", blurb: "The why, and how it has moved", icon: "Target" },
+  { id: "admin", label: "Admin", blurb: "Contract, billing and access", icon: "Settings2" },
+  { id: "events", label: "Events", blurb: "What is coming up on the calendar", icon: "Calendar" },
+];
+
+/**
+ * Which section a note belongs to.
+ *
+ * Derived rather than stored: the journal is already loaded in memory, the
+ * rules live in exactly one place, and changing the mapping later needs no
+ * migration. An explicit `profileSection` on the entry always wins.
+ *
+ * Returns null for notes with no profile home — coaching cues and equipment
+ * preferences are training material, and belong in the Journal and the
+ * Equipment tab rather than being forced into a dossier section.
+ */
+export function sectionForEntry(entry: JournalEntry): DossierSection | null {
+  if (entry.profileSection) return entry.profileSection;
+
+  switch (entry.kind) {
+    case "incident":
+      return "medical";
+    case "life":
+      return entry.category === "Surgery" || entry.category === "Injury"
+        ? "medical"
+        : "events";
+    case "consultation":
+      return "goals";
+    case "general":
+      return "general";
+    default:
+      // coaching, equipment
+      return null;
+  }
+}
+
+/**
+ * The notes a given section should show.
+ *
+ * Medical is the deliberate exception. The studio trains continuous-tension
+ * and high-intensity, so a limitation noticed mid-session is safety
+ * information wherever it was filed — a critical Pace note that says she
+ * cannot hold the end range is a physical limitation even though its kind is
+ * "coaching". So Medical also pulls any unresolved critical note, whatever
+ * its kind, and marks where it came from.
+ */
+export function entriesForSection(
+  entries: JournalEntry[],
+  section: DossierSection,
+): JournalEntry[] {
+  if (section === "medical") {
+    return entries.filter((e) => {
+      if (sectionForEntry(e) === "medical") return true;
+      return e.importance === "critical" && !e.resolvedAt;
+    });
+  }
+  return entries.filter((e) => sectionForEntry(e) === section);
+}
+
+/* ------------------------------------------------------------------ */
+/* PROVENANCE                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Where a value on the dossier came from. The single most important thing a
+ * coach needs to know about any field on this screen is whether they can
+ * change it and whether it will survive the next sync.
+ */
+export type FieldSource = "coach" | "mindbody" | "journal" | "derived";
+
+export const SOURCE_META: Record<
+  FieldSource,
+  { label: string; hint: string; chip: string; bar: string }
+> = {
+  coach: {
+    label: "Coach",
+    hint: "Typed here. Yours to edit.",
+    chip: "bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/25",
+    bar: "bg-slate-400 dark:bg-slate-600",
+  },
+  mindbody: {
+    label: "Mindbody",
+    hint: "Synced from Mindbody. Overwritten on the next sync — edit it there.",
+    chip: "bg-sky-500/12 text-sky-600 dark:text-sky-300 border-sky-500/25",
+    bar: "bg-sky-500",
+  },
+  journal: {
+    label: "Journal",
+    hint: "Surfaced from a coaching note. Edit it in the Journal.",
+    chip: "bg-violet-500/12 text-violet-600 dark:text-violet-300 border-violet-500/25",
+    bar: "bg-violet-500",
+  },
+  derived: {
+    label: "Calculated",
+    hint: "Worked out from other data. Not editable.",
+    chip: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300 border-emerald-500/25",
+    bar: "bg-emerald-500",
+  },
+};
