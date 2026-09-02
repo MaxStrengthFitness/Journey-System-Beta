@@ -1,6 +1,23 @@
 # Local Test Build — Setup Guide (Windows)
 
-This gets the Journey System running on your PC against a **throwaway test Firebase project**, so nothing you do touches live data. The only things that decide what this app talks to are `firebase-applet-config.json` and `.env` — as long as those point at a test project (or placeholders), you cannot affect production.
+This gets the Journey System running on your PC. The only two things that decide what the app talks to are `.env` and the `firebase-applet-config.json` generated from it.
+
+> ### ⚠️ Changed Sep 2, 2026 — this checkout points at PRODUCTION
+>
+> `.env` now targets the live project **`gen-lang-client-0731527386`** ("MaxStrengthFitness App"), database `ai-studio-32cbbdcc-…`, deliberately — so UI work can be checked against real studio and schedule data.
+>
+> **What that means in practice:** anything you do locally that writes, writes to real client records. Reading is safe. Clicking through screens is safe. Saving a routine, editing a studio, or running a script is not.
+>
+> Before Sep 2 this file promised local runs could not touch live data. That is no longer true, and the promise was only ever kept by a misconfiguration (`.env` named a test project paired with a production database id, a combination that resolves to nothing and simply failed).
+>
+> **To get isolation back**, point `.env` at a test project and regenerate:
+>
+> ```powershell
+> # edit .env, then:
+> node scripts/setup-firebase-config.cjs
+> ```
+>
+> `.firebaserc` defines aliases `prod`, `staging` and `scratch`. There is deliberately no `default`, so a bare `firebase deploy` refuses rather than silently shipping to production. A backup of the pre-change file is at `.env.bak`.
 
 > Verified in a clean environment on 2026-08-27: `npm ci` (~20s), `npm run build` passes, `npm run lint` (tsc) passes with 0 errors, and `npm run dev` boots and serves the app at http://localhost:3000 with no secrets configured at all.
 
@@ -91,6 +108,7 @@ Refresh the browser — you should be able to pick a studio and start creating t
 
 ## ⚠️ Warnings
 
-- **Do not run the root-level utility scripts** (`reset-health.js`, `register-webhook.js`, `deactivate-webhook.js`, `send-test-webhook.js`) or `scripts/purge-database.ts` from a machine that has Google Cloud credentials: several of them still hardcode the **live** project ID (`gen-lang-client-…`), and `purge-database.ts` is destructive.
+- **The root-level utility scripts act on PRODUCTION.** `reset-health.js`, `register-webhook.js`, `deactivate-webhook.js`, `send-test-webhook.js` and `scripts/purge-database.ts` all target the live project. As of Sep 2, 2026 each one prints what it is about to touch and then refuses unless you pass an explicit confirmation flag (`--yes-affect-production`, or `--yes-destroy-production-data` for the purge). Read the printed target before you type the flag — the flag is the whole safety mechanism.
+- `scripts/purge-database.ts` permanently deletes clients, sessions, studios and exerciseLogs. There is no undo and no backup.
 - `npm run clean` uses `rm -rf`, which fails on Windows — just delete the `dist` folder manually if you ever need to.
-- Never paste your **production** Firebase config into this copy. Test project only.
+- If you switch `.env` back to a test project, re-run `node scripts/setup-firebase-config.cjs` — the generated config is what the app actually reads, and a stale one silently keeps talking to the old project.
