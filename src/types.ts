@@ -479,6 +479,21 @@ export interface Routine {
   name: string;
   machineIds: string[];
   machineNotes?: Record<string, string>; // Machine ID -> Routine-specific Note
+  /**
+   * Template provenance (round: Routine Template Builder, Sep 2026).
+   * Templates are advisory: a trainer may change anything after applying one.
+   * These fields exist so the change is visible rather than silent.
+   */
+  templateId?: string;
+  templateName?: string;
+  /**
+   * The machine list AS THE TEMPLATE HAD IT when it was applied. Snapshotted
+   * deliberately: comparing against the live template would relabel old
+   * routines as "deviating" every time an admin edits the template, which
+   * would blame the trainer for someone else's edit.
+   */
+  templateMachineIds?: string[];
+  templateAppliedAt?: any;
   createdAt?: any;
   updatedAt?: any;
 }
@@ -491,16 +506,39 @@ export interface Routine {
  *  - scope: <studioId> -> a studio's own saved preset, stored in the
  *    routinePresets collection and only ever shown to that studio.
  */
+export type RoutinePresetTier = "company" | "studio" | "trainer";
+
 export interface RoutinePreset {
   id?: string;
   name: string;
   description?: string;
   machineIds: string[];
+  /**
+   * Machine ID -> coaching note the admin wrote for THIS template, e.g.
+   * "start conservative, this is most clients' first pulling movement".
+   * Copied onto the routine's own machineNotes when the template is applied.
+   */
+  machineNotes?: Record<string, string>;
   scope: "global" | string;
+  /**
+   * Who authored this and at what level (round: Routine Template Builder,
+   * Sep 2026):
+   *   company  admin-authored, every studio sees it
+   *   studio   authored by that location's owner/leader, only they see it
+   *   trainer  ad-hoc, saved from the Edit Routine drawer
+   *
+   * ABSENT on every document written before Sep 2026. Do not read it
+   * directly -- run documents through normalizeRoutinePreset(), which infers
+   * the tier from `scope` so old trainer-saved presets keep behaving exactly
+   * as they did.
+   */
+  tier?: RoutinePresetTier;
   studioId?: string;
   createdBy?: string;
   createdByName?: string;
   createdAt?: any;
+  updatedAt?: any;
+  updatedBy?: string;
 }
 
 /**

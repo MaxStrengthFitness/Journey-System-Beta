@@ -327,11 +327,44 @@ service cloud.firestore {
     // are docs with studioId == the trainer's studio. Same posture as the
     // routines/routineAdjustments blocks above (isolation is client-side
     // pending the pre-launch security hardening pass).
+    // ROUTINE TEMPLATES / PRESETS — three tiers sharing one collection
+    // (round: Routine Template Builder, Sep 2026).
+    //
+    //   company  admin-authored, every studio sees it -> isSuperAdmin()
+    //   studio   one location's own template          -> that studio's owner
+    //                                                    or leader, or admin
+    //   trainer  ad-hoc, saved from the routine drawer-> any trainer
+    //
+    // `tier` is ABSENT on every document written before Sep 2026, so it is
+    // always read through .get('tier', 'trainer'): those documents keep
+    // exactly the permissions they had, and nothing needs backfilling
+    // before this deploys.
+    //
+    // Update deliberately checks BOTH the stored document and the incoming
+    // one. Checking only the incoming would let a trainer relabel their own
+    // preset as a company standard; checking only the stored one would let
+    // an admin's template be downgraded and then edited by anyone. The write
+    // has to be legal at the tier it comes from AND the tier it lands on.
+    function presetTier(data) {
+      return data.get('tier', 'trainer');
+    }
+
+    function canWritePreset(data) {
+      return (presetTier(data) == 'company' && isSuperAdmin()) ||
+             (presetTier(data) == 'studio' && (
+                isSuperAdmin() ||
+                isStudioOwnerOrHeadTrainer(data.get('studioId', ''))
+             )) ||
+             (presetTier(data) == 'trainer' && isAnyAuthenticatedTrainer());
+    }
+
     match /routinePresets/{presetId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
-      allow update: if isAuthenticated() && isAnyAuthenticatedTrainer();
-      allow delete: if isAuthenticated() && isAnyAuthenticatedTrainer();
+      allow create: if isAuthenticated() && canWritePreset(request.resource.data);
+      allow update: if isAuthenticated() &&
+                       canWritePreset(resource.data) &&
+                       canWritePreset(request.resource.data);
+      allow delete: if isAuthenticated() && canWritePreset(resource.data);
     }
 
     // STUDIO MACHINE SETTINGS — SUPERSEDED by studios/{id}/roster/{machineId}
