@@ -466,6 +466,73 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
+    // ================================================================
+    // UNIFIED COACHING JOURNAL (Sep 2026)
+    //
+    // One collection for every note a coach writes about a client, whatever
+    // part of the app produced it. Replaces the hand-merge of focusRecords +
+    // sessionNotes + clinicalIncidents in the Journal tab.
+    //
+    // Write posture matches the surrounding clinical collections: any
+    // authenticated trainer may create and update. Two things are tightened:
+    //
+    //   1. An entry's author cannot be forged on create — authorId must be the
+    //      caller's own uid. Journal entries are the record of who said what
+    //      about a client, so authorship is the one field worth pinning.
+    //   2. Hard delete is reserved for admins. Trainers archive instead
+    //      (isArchived: true), so a note can never quietly vanish from a
+    //      client's history.
+    //
+    // Narrow reads to isTrainerOfClient(clientId) in the pre-launch hardening
+    // pass tracked in ROADMAP.md.
+    // ================================================================
+    match /journalEntries/{entryId} {
+      allow read: if isAuthenticated();
+
+      allow create: if isAuthenticated()
+                    && isAnyAuthenticatedTrainer()
+                    && request.resource.data.clientId is string
+                    && request.resource.data.body is string
+                    && request.resource.data.body.size() > 0
+                    && request.resource.data.body.size() <= 5000
+                    && request.resource.data.authorId == request.auth.uid;
+
+      // authorId and clientId are immutable after creation.
+      allow update: if isAuthenticated()
+                    && isAnyAuthenticatedTrainer()
+                    && request.resource.data.authorId == resource.data.authorId
+                    && request.resource.data.clientId == resource.data.clientId
+                    && request.resource.data.body.size() <= 5000;
+
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
+    }
+
+    // TRAINER FOCUSES — a trainer's standing intent for a client.
+    // Only the owning trainer (or a manager) may pass, extend or retire a
+    // focus; anyone can read them, because every coach in the room needs to
+    // know what their colleagues are working on with this client.
+    match /clientFocuses/{focusId} {
+      allow read: if isAuthenticated();
+
+      allow create: if isAuthenticated()
+                    && isAnyAuthenticatedTrainer()
+                    && request.resource.data.clientId is string
+                    && request.resource.data.trainerId == request.auth.uid
+                    && request.resource.data.category in ['Posture', 'Path', 'Pace', 'Purpose'];
+
+      allow update: if isAuthenticated()
+                    && isAnyAuthenticatedTrainer()
+                    && request.resource.data.trainerId == resource.data.trainerId
+                    && (
+                         resource.data.trainerId == request.auth.uid
+                         || isSuperAdmin()
+                         || isFranchiseOwner()
+                         || isAdmin()
+                       );
+
+      allow delete: if isSuperAdmin() || isFranchiseOwner();
+    }
+
     // STUDIOS: Territory configurations
     match /studios/{studioId} {
       allow read: if isAuthenticated();
