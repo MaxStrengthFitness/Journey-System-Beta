@@ -1,15 +1,16 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig, loadEnv} from 'vite';
+import {defineConfig} from 'vite';
 
-export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, '.', '');
+export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || ""),
-    },
+    // No `define` for GEMINI_API_KEY. `define` is a build-time text
+    // substitution into the CLIENT bundle: any component that referenced
+    // process.env.GEMINI_API_KEY would have shipped the real key to every
+    // browser in a public .js file. The key is server-only and server/gemini.ts
+    // reads it from the real environment at runtime.
     build: {
       outDir: "dist",
       emptyOutDir: false,

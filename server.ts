@@ -1,7 +1,6 @@
 import fs from "fs";
 import express from "express";
 import compression from "compression";
-import { createServer as createViteServer } from "vite";
 import ical from "node-ical";
 import axios from "axios";
 import path from "path";
@@ -1186,6 +1185,9 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    // Imported here rather than at the top of the file so production never
+    // pulls Vite (and its Rollup/esbuild dependency graph) into memory at boot.
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
