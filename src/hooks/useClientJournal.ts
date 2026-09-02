@@ -71,6 +71,7 @@ import {
 
 const STREAM_LIMIT = 300;
 const LEGACY_NOTE_LIMIT = 200;
+const SESSION_SUMMARY_LIMIT = 40;
 
 /* ------------------------------------------------------------------ */
 /* WRITES                                                              */
@@ -659,8 +660,6 @@ export interface UseClientJournalArgs {
   clientId: string | null;
   client: Client | null;
   trainers: Trainer[];
-  /** Session docs already loaded by the parent; their `notes` become entries. */
-  sessions?: WorkoutSession[];
   /** Pause every subscription (e.g. the app is in a quota-error state). */
   enabled?: boolean;
 }
@@ -678,7 +677,6 @@ export function useClientJournal({
   clientId,
   client,
   trainers,
-  sessions = [],
   enabled = true,
 }: UseClientJournalArgs): UseClientJournalResult {
   const [native, setNative] = useState<JournalEntry[]>([]);
@@ -687,6 +685,7 @@ export function useClientJournal({
   const [legacyNotes, setLegacyNotes] = useState<SessionNote[]>([]);
   const [legacyIncidents, setLegacyIncidents] = useState<ClinicalIncident[]>([]);
   const [legacyTrainerFocuses, setLegacyTrainerFocuses] = useState<TrainerFocus[]>([]);
+  const [legacySessions, setLegacySessions] = useState<WorkoutSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [needsIndex, setNeedsIndex] = useState(false);
 
@@ -778,6 +777,7 @@ export function useClientJournal({
       setLegacyNotes([]);
       setLegacyIncidents([]);
       setLegacyTrainerFocuses([]);
+      setLegacySessions([]);
       return;
     }
 
@@ -826,6 +826,24 @@ export function useClientJournal({
           ),
         (e) => handleFirestoreError(e, OperationType.GET, "trainerFocuses"),
       ),
+      // Session wrap-up text lives on the session document itself. The journal
+      // owns this subscription rather than taking `sessions` as a prop: the
+      // profile view only loads sessions on some tabs, which would make the
+      // timeline's contents depend on which tab you happened to open first.
+      // Session docs only — no exercise logs — so the read cost stays small.
+      onSnapshot(
+        query(
+          collection(db, "sessions"),
+          where("clientId", "==", clientId),
+          orderBy("date", "desc"),
+          limit(SESSION_SUMMARY_LIMIT),
+        ),
+        (s) =>
+          setLegacySessions(
+            s.docs.map((d) => ({ id: d.id, ...d.data() }) as WorkoutSession),
+          ),
+        (e) => handleFirestoreError(e, OperationType.GET, "sessions"),
+      ),
     ];
 
     return () => subs.forEach((u) => u());
@@ -840,7 +858,7 @@ export function useClientJournal({
       ...adaptIncidents(legacyIncidents, trainers),
       ...adaptClientEvents(client),
       ...adaptProfileFields(client),
-      ...adaptSessionSummaries(sessions, trainers),
+      ...adaptSessionSummaries(legacySessions, trainers),
     ];
 
     // A migrated entry carries the id of the legacy doc it came from; drop the
@@ -862,7 +880,15 @@ export function useClientJournal({
         const bt = toDate(b.occurredAt)?.getTime() ?? 0;
         return bt - at;
       });
-  }, [native, legacyFocusRecords, legacyNotes, legacyIncidents, client, sessions, trainers]);
+  }, [
+    native,
+    legacyFocusRecords,
+    legacyNotes,
+    legacyIncidents,
+    legacySessions,
+    client,
+    trainers,
+  ]);
 
   const focuses = useMemo(() => {
     const adaptedLegacy = adaptTrainerFocuses(legacyTrainerFocuses, trainers);

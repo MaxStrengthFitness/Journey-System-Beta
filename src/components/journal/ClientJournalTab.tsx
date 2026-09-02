@@ -47,7 +47,6 @@ import type {
   Machine,
   ProgressReport,
   Trainer,
-  WorkoutSession,
 } from "../../types";
 import { CriticalStrip } from "./CriticalStrip";
 import { FocusBoard } from "./FocusBoard";
@@ -70,7 +69,6 @@ export interface ClientJournalTabProps {
   machines: Machine[];
   trainers: Trainer[];
   authTrainer?: Trainer | null;
-  sessions?: WorkoutSession[];
   progressReports: ProgressReport[];
   onSelectReport: (id: string) => void;
   onDeleteReport: (report: ProgressReport) => void;
@@ -84,7 +82,6 @@ export function ClientJournalTab({
   machines,
   trainers,
   authTrainer,
-  sessions = [],
   progressReports,
   onSelectReport,
   onDeleteReport,
@@ -98,7 +95,6 @@ export function ClientJournalTab({
       clientId,
       client,
       trainers,
-      sessions,
       enabled: !hasQuotaError,
     });
 
