@@ -1,5 +1,6 @@
 import fs from "fs";
 import express from "express";
+import compression from "compression";
 import { createServer as createViteServer } from "vite";
 import ical from "node-ical";
 import axios from "axios";
@@ -84,6 +85,11 @@ async function getMindbodyToken(siteId: string): Promise<string> {
 async function startServer() {
   const app = express();
   const PORT = parseInt(process.env.PORT || "3000", 10);
+
+  // gzip every response big enough to be worth it. Without this, express.static
+  // ships raw bytes: the main JS chunk goes out at ~404 kB instead of ~124 kB.
+  // Mounted first so it wraps every route and the static handler below.
+  app.use(compression());
 
   app.use(express.json({ limit: "50mb" }));
 
