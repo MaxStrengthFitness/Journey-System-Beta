@@ -18,6 +18,9 @@
  *
  * USAGE (PowerShell, from the project folder)
  *   npx tsx scripts/fetch-live-rules.ts --project gen-lang-client-0731527386 --database ai-studio-32cbbdcc-6e08-4770-9665-867c68878efa
+ *
+ * Add --expect "<regex>" to check for a specific rule, e.g.
+ *   --expect "canWritePreset"
  */
 
 import dns from "dns";
@@ -119,8 +122,12 @@ async function main() {
   console.log(`Deployed at  : ${ruleset.createTime}`);
   console.log(`Saved to     : ${path.basename(outPath)}  (${content.length} chars)\n`);
 
-  const hasRoster = /match\s+\/roster\//.test(content);
-  console.log(`Contains a /roster rule? ${hasRoster ? "YES" : "NO  <-- this is the bug"}`);
+  // --expect takes any regex, so this doubles as the post-deploy check for
+  // whatever rule you just shipped, not only the roster one it was written
+  // for. Defaults to the roster rule.
+  const expect = flag("expect") ?? "match\\s+/roster/";
+  const found = new RegExp(expect).test(content);
+  console.log(`Contains /${expect}/ ? ${found ? "YES" : "NO  <-- not deployed"}`);
 }
 
 main().catch((err) => {
