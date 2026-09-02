@@ -40,12 +40,19 @@ import {
   Building2,
   Save,
   AlertTriangle,
+  ClipboardCheck,
   Lock,
 } from "lucide-react";
 import { db } from "../firebase";
 import { cn, safeToDate } from "../lib/utils";
 import { MACHINE_ANATOMY, MOVEMENT_PATTERN_ORDER } from "../data/machine-anatomy-map";
 import { GLOBAL_ROUTINE_PRESETS } from "../data/routine-presets";
+import {
+  describeDeviation,
+  deviationSummary,
+  normalizeRoutinePreset,
+  templateProvenance,
+} from "../lib/routine-templates";
 import { useToast } from "../contexts/ToastContext";
 import {
   Dialog,
@@ -127,7 +134,15 @@ export function EditRoutineDrawer({
   const [reason, setReason] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [pendingSlotSwitch, setPendingSlotSwitch] = useState<RoutineSlot | null>(null);
-  const [studioPresets, setStudioPresets] = useState<RoutinePreset[]>([]);
+  // Every preset, split by tier below. One listener rather than three
+  // queries: the collection is small, and separate queries would let the
+  // tiers arrive at different times and reorder under the trainer's thumb.
+  const [allPresets, setAllPresets] = useState<RoutinePreset[]>([]);
+  /**
+   * The template applied in THIS editing session, if any. Drives the
+   * deviation banner and the provenance written on save.
+   */
+  const [appliedTemplate, setAppliedTemplate] = useState<RoutinePreset | null>(null);
   const [pendingPreset, setPendingPreset] = useState<RoutinePreset | null>(null);
   const [presetNameDraft, setPresetNameDraft] = useState("");
   const [isSavingPreset, setIsSavingPreset] = useState(false);
@@ -240,25 +255,47 @@ export function EditRoutineDrawer({
     loadSlot(name);
   };
 
-  // Live studio presets for whichever studio this client is homed at.
+  // Live templates and presets, all tiers (round: Routine Template Builder,
+  // Sep 2026). Previously this queried only studioId == activeStudioId,
+  // because company templates lived in code rather than Firestore.
   useEffect(() => {
-    if (!isOpen || !activeStudioId) {
-      setStudioPresets([]);
+    if (!isOpen) {
+      setAllPresets([]);
       return;
     }
-    const q = query(
+    const unsub = onSnapshot(
       collection(db, "routinePresets"),
-      where("studioId", "==", activeStudioId),
+      (snap) =>
+        setAllPresets(
+          snap.docs.map((d) => normalizeRoutinePreset({ id: d.id, ...d.data() })),
+        ),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      const list = snap.docs.map(
-        (d) => ({ id: d.id, ...d.data() }) as RoutinePreset,
-      );
-      list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-      setStudioPresets(list);
-    });
     return () => unsub();
-  }, [isOpen, activeStudioId]);
+  }, [isOpen]);
+
+  /**
+   * Company standards. Falls back to the hardcoded set while the collection
+   * has none, so an empty database degrades to the previous behavior rather
+   * than to an empty menu.
+   */
+  const companyTemplates = useMemo(() => {
+    const fromDb = allPresets
+      .filter((p) => p.tier === "company")
+      .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    return fromDb.length > 0 ? fromDb : GLOBAL_ROUTINE_PRESETS;
+  }, [allPresets]);
+
+  /** This studio's own templates first, then trainer-saved presets. */
+  const studioPresets = useMemo(() => {
+    if (!activeStudioId) return [];
+    return allPresets
+      .filter((p) => p.studioId === activeStudioId)
+      .sort(
+        (a, b) =>
+          (a.tier === "studio" ? 0 : 1) - (b.tier === "studio" ? 0 : 1) ||
+          (a.name || "").localeCompare(b.name || ""),
+      );
+  }, [allPresets, activeStudioId]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -344,13 +381,37 @@ export function EditRoutineDrawer({
     return map;
   }, [sessions, allLogs]);
 
+  /**
+   * How far the trainer has moved from the template they applied.
+   * Advisory only -- nothing here blocks a save. The point is that a
+   * departure from the house standard is visible rather than silent.
+   */
+  const deviation = useMemo(
+    () => describeDeviation(machineIds, appliedTemplate?.machineIds),
+    [machineIds, appliedTemplate],
+  );
+  const deviationText = useMemo(
+    () =>
+      deviationSummary(
+        deviation,
+        (id) => machines.find((m) => m.id === id)?.name ?? id,
+      ),
+    [deviation, machines],
+  );
+
   const applyPreset = (preset: RoutinePreset) => {
+    // A template may name equipment this location does not have; the studio
+    // roster, not the template, decides what is actually available.
     const validIds = preset.machineIds.filter((id) =>
       machines.some((m) => m.id === id),
     );
     setMachineIds(validIds);
     setReason((prev) => (prev.trim() ? prev : `Applied "${preset.name}" preset.`));
     setPendingPreset(null);
+    // Provenance is recorded against what the template ASKED FOR, not the
+    // filtered list: a machine dropped because the studio lacks it is a real
+    // deviation from the standard and should show as one.
+    setAppliedTemplate(preset);
   };
 
   const handleUsePreset = (preset: RoutinePreset) => {
@@ -369,6 +430,9 @@ export function EditRoutineDrawer({
       await addDoc(collection(db, "routinePresets"), {
         name,
         machineIds,
+        // Explicit, so the admin hub can tell an ad-hoc preset from an
+        // official template without inferring it from scope.
+        tier: "trainer",
         scope: activeStudioId,
         studioId: activeStudioId,
         createdBy: authTrainer?.id || null,
@@ -388,6 +452,15 @@ export function EditRoutineDrawer({
 
   const handleDeleteStudioPreset = async (preset: RoutinePreset) => {
     if (!preset.id) return;
+    // Studio templates belong to the location's leader and company standards
+    // to an admin. The rules would reject the write anyway; refusing here
+    // means a clear sentence instead of a permission error.
+    if (preset.tier && preset.tier !== "trainer") {
+      toastError(
+        "That's an official template — a studio leader manages it from the admin hub.",
+      );
+      return;
+    }
     try {
       await deleteDoc(doc(db, "routinePresets", preset.id));
     } catch (err) {
@@ -399,6 +472,20 @@ export function EditRoutineDrawer({
   const handleSave = async () => {
     if (!clientId || reason.trim().length < 3) return;
     const current = routineFor(activeSlot);
+    /**
+     * Written only when a template was applied in this session. Otherwise
+     * absent, so editing an untemplated routine never invents provenance and
+     * re-saving a templated one does not wipe what it already had.
+     */
+    const provenance = appliedTemplate
+      ? {
+          ...templateProvenance(appliedTemplate),
+          templateAppliedAt: serverTimestamp(),
+          ...(Object.keys(appliedTemplate.machineNotes ?? {}).length
+            ? { machineNotes: appliedTemplate.machineNotes }
+            : {}),
+        }
+      : {};
     setIsSaving(true);
     try {
       let finalId = current.id!;
@@ -407,6 +494,7 @@ export function EditRoutineDrawer({
           clientId,
           name: activeSlot,
           machineIds,
+          ...provenance,
           createdAt: serverTimestamp(),
           studioId: client?.homeStudioId || activeStudioId || "",
         });
@@ -425,6 +513,7 @@ export function EditRoutineDrawer({
       } else {
         await updateDoc(doc(db, "routines", finalId), {
           machineIds,
+          ...provenance,
           updatedAt: serverTimestamp(),
         });
         await addDoc(collection(db, "routineAdjustments"), {
@@ -619,8 +708,8 @@ export function EditRoutineDrawer({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2.5">
                 <PresetPillRow
                   icon={<Sparkles className="w-3 h-3" />}
-                  label="Built-In"
-                  presets={GLOBAL_ROUTINE_PRESETS}
+                  label="Company Standard"
+                  presets={companyTemplates}
                   onUse={handleUsePreset}
                 />
                 <PresetPillRow
@@ -632,6 +721,26 @@ export function EditRoutineDrawer({
                   emptyText="None saved yet — build a routine and save it below."
                 />
               </div>
+
+              {appliedTemplate && (
+                <div
+                  className={`mt-2.5 flex items-start gap-2 rounded-xl border p-2.5 text-xs ${
+                    deviation.hasDeviation
+                      ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300"
+                  }`}
+                >
+                  <ClipboardCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span className="min-w-0">
+                    <span className="font-semibold">{appliedTemplate.name}</span>
+                    {deviation.hasDeviation ? (
+                      <> — changed: {deviationText}</>
+                    ) : (
+                      <> — following the template exactly.</>
+                    )}
+                  </span>
+                </div>
+              )}
 
               {pendingPreset && (
                 <div className="mt-2.5 flex items-center justify-between gap-3 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-xs">
