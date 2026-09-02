@@ -2696,6 +2696,7 @@ export function WorkoutTrackerView({
         trainerFocuses={trainerFocuses.filter((f) => f.clientId === clientId)}
         focusRecords={focusRecords}
         sessionNotes={sessionNotes}
+        trainers={trainers}
         logs={
           Object.values(logs).filter(
             (l: any) => !l.clientId || l.clientId === clientId,

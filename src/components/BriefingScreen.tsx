@@ -35,6 +35,9 @@ import {
   BodyStateTag,
 } from "../types";
 import { BodyStateTracker } from "./BodyStateTracker";
+import { useClientJournal } from "../hooks/useClientJournal";
+import { JournalEntryCard } from "./journal/JournalEntryCard";
+import { FOCUS_VISUALS, relativeDay, toDate } from "../types/journal";
 import { CLINICAL_FLAGS_MATRIX } from "../data/clinical-matrix";
 import { safeToDate } from "../lib/utils";
 import {
@@ -135,6 +138,8 @@ export interface BriefingScreenProps {
   trainerFocuses: TrainerFocus[];
   focusRecords?: FocusRecord[];
   sessionNotes: SessionNote[];
+  /** Used to resolve initials on legacy journal rows. */
+  trainers?: Trainer[];
   logs?: ExerciseLog[];
   isIntroSession?: boolean;
   rightControls?: React.ReactNode;
@@ -154,6 +159,7 @@ export function BriefingScreen({
   trainerFocuses,
   focusRecords = [],
   sessionNotes,
+  trainers = [],
   logs = [],
   isIntroSession = false,
   rightControls,
@@ -323,7 +329,23 @@ export function BriefingScreen({
     (a, b) => severityOrder[a.severity] - severityOrder[b.severity],
   );
 
-  const displayNotes = sessionNotes.filter((n) => n.priority === "High");
+  /**
+   * The briefing and the Journal read the SAME selection, from the same hook,
+   * so the two can never disagree about what a coach needs to know. Anything a
+   * coach marks critical in the Journal shows up here automatically — including
+   * unresolved incidents, post-op restrictions still inside their window, and
+   * Mindbody-imported consultation notes flagged critical.
+   *
+   * The old code filtered sessionNotes for priority === "High"; those rows are
+   * still covered, because the adapter maps High -> critical.
+   */
+  const { criticalEntries, focuses } = useClientJournal({
+    clientId: client.id || null,
+    client,
+    trainers,
+  });
+
+  const activeJournalFocuses = focuses.filter((f) => f.status === "active");
 
   const lastRoutineName = lastSession
     ? routines.find((r) => r.id === lastSession.routineId)?.name ||
@@ -347,9 +369,7 @@ export function BriefingScreen({
     ? routineB?.name || "Routine B"
     : routineA?.name || "Routine A";
 
-  const activeFocuses = focusRecords.filter(
-    (f) => f.status === "Active" && f.clientId === client.id,
-  );
+
 
   const selectedRoutineIds =
     isAdjusting ||
@@ -417,62 +437,65 @@ export function BriefingScreen({
                 </div>
               </div>
 
-              {/* Note displays below goal */}
-              {displayNotes.length > 0 && (
+              {/* Critical journal entries — the same set the Journal tab
+                  pins to its "Before you start" strip. */}
+              {criticalEntries.length > 0 && (
                 <div className="mt-2 space-y-1.5 relative z-10">
-                  {displayNotes.map((n) => (
-                    <div
-                      key={n.id}
-                      className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-200 dark:border-slate-700/60"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-bold tracking-wide text-amber-500 uppercase flex items-center gap-1.5">
-                          <Info className="w-3.5 h-3.5" /> HIGH PRIORITY
-                        </span>
-                        <span className="text-[11px] text-slate-400 font-bold uppercase">
-                          {n.trainerInitials}
-                        </span>
-                      </div>
-                      <div className="text-[14px] text-slate-800 dark:text-slate-100 font-medium">
-                        {n.content}
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-rose-500">
+                    <Info className="w-3.5 h-3.5" />
+                    Before you start · {criticalEntries.length}
+                  </div>
+                  {criticalEntries.map((entry) => (
+                    <JournalEntryCard
+                      key={entry.id}
+                      entry={entry}
+                      machines={machines}
+                      dense
+                    />
                   ))}
                 </div>
               )}
 
-              {/* Display active Focuses */}
-              {activeFocuses.length > 0 && (
+              {/* Active coaching focuses, whichever collection they came
+                  from — new clientFocuses, legacy focusRecords, or the old
+                  one-per-trainer trainerFocuses docs. */}
+              {activeJournalFocuses.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2 relative z-10">
-                  {activeFocuses.map((f) => (
-                    <div
-                      key={f.id}
-                      className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 flex flex-col w-full border border-slate-200 dark:border-slate-700/60"
-                    >
-                      <span className="text-[11px] font-bold tracking-wide text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1.5 mb-1">
-                        {f.category === "Posture"
-                          ? "🦴"
-                          : f.category === "Pace"
-                            ? "⏱️"
-                            : f.category === "Path"
-                              ? "🛤️"
-                              : f.category === "Purpose"
-                                ? "🧠"
-                                : "🎯"}
-                        ACTIVE FOCUS: {f.category}
-                      </span>
-                      <span className="text-[14px] text-slate-800 dark:text-slate-100 font-medium italic">
-                        "{f.clinicalNotes}"
-                      </span>
-                      {f.targetMachineId && (
-                        <span className="text-[11px] font-bold tracking-wide text-cyan mt-1.5 uppercase">
-                          TARGET:{" "}
-                          {machines.find((m) => m.id === f.targetMachineId)
-                            ?.name || "Unknown Machine"}
+                  {activeJournalFocuses.map((f) => {
+                    const visual =
+                      FOCUS_VISUALS[f.category] || FOCUS_VISUALS.Posture;
+                    return (
+                      <div
+                        key={f.id}
+                        className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 flex flex-col w-full border border-slate-200 dark:border-slate-700/60 relative overflow-hidden"
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "absolute left-0 top-0 h-full w-[4px]",
+                            visual.edge,
+                          )}
+                        />
+                        <span className="text-[11px] font-bold tracking-wide text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1.5 mb-1">
+                          <Target className="w-3.5 h-3.5" />
+                          {f.category} · {f.trainerInitials}
+                          <span className="font-normal normal-case tracking-normal text-slate-400">
+                            {relativeDay(toDate(f.startedAt))}
+                          </span>
                         </span>
-                      )}
-                    </div>
-                  ))}
+                        <span className="text-[14px] text-slate-800 dark:text-slate-100 font-medium italic">
+                          "{f.intent}"
+                        </span>
+                        {f.targetMachineId && (
+                          <span className="text-[11px] font-bold tracking-wide text-cyan mt-1.5 uppercase">
+                            TARGET:{" "}
+                            {machines.find((m) => m.id === f.targetMachineId)
+                              ?.name || "Unknown Machine"}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

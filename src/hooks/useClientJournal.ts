@@ -382,31 +382,45 @@ function resolveTrainer(
   };
 }
 
-/** Old focusRecords → coaching entries. */
+/**
+ * Old focusRecords -> focus board entries.
+ *
+ * A focusRecord already IS a standing directive: it has an owner, one of the
+ * 4 P's, an optional target machine and an Active/Achieved status. Mapping it
+ * to ClientFocus rather than to a timeline entry is what lets the old "Active
+ * Coach Directives" data land on the new focus board, where a coach can pass
+ * or extend it, instead of scrolling past as one more dated card.
+ */
 function adaptFocusRecords(
   records: FocusRecord[],
   trainers: Trainer[],
-): JournalEntry[] {
+): ClientFocus[] {
   return records
     .filter((f) => f.status !== "Deleted" && (f.clinicalNotes || "").trim())
     .map((f) => {
       const author = resolveTrainer(trainers, f.trainerId, f.assignedBy);
-      return legacyEntry({
+      return {
         id: `legacy:focusRecords:${f.id}`,
         clientId: f.clientId,
         studioId: f.studioId || "",
-        kind: "coaching",
+        trainerId: author.id,
+        trainerName: author.fullName,
+        trainerInitials: author.initials,
         category: f.category as FocusCategory,
-        body: f.clinicalNotes,
-        machineId: f.targetMachineId || null,
-        importance: f.status === "Active" ? "elevated" : "standard",
-        occurredAt: f.dateAssigned,
-        resolvedAt: f.status === "Achieved" ? f.dateUpdated || null : null,
-        authorId: author.id,
-        authorInitials: author.initials,
-        authorName: author.fullName,
-        legacySource: "Focus record",
-      });
+        intent: f.clinicalNotes,
+        targetMachineId: f.targetMachineId || null,
+        status: f.status === "Achieved" ? "passed" : "active",
+        startedAt: f.dateAssigned,
+        reviewDueAt: null,
+        passedAt: f.status === "Achieved" ? f.dateUpdated || null : null,
+        lastExtendedAt: null,
+        extensionCount: 0,
+        checkInCount: 0,
+        lastCheckInAt: null,
+        createdAt: f.dateAssigned,
+        updatedAt: f.dateUpdated || f.dateAssigned,
+        isLegacy: true,
+      } as ClientFocus;
     });
 }
 
@@ -853,7 +867,6 @@ export function useClientJournal({
   const entries = useMemo(() => {
     const merged: JournalEntry[] = [
       ...native.filter((e) => !e.isArchived),
-      ...adaptFocusRecords(legacyFocusRecords, trainers),
       ...adaptSessionNotes(legacyNotes, trainers),
       ...adaptIncidents(legacyIncidents, trainers),
       ...adaptClientEvents(client),
@@ -882,7 +895,6 @@ export function useClientJournal({
       });
   }, [
     native,
-    legacyFocusRecords,
     legacyNotes,
     legacyIncidents,
     legacySessions,
@@ -891,17 +903,38 @@ export function useClientJournal({
   ]);
 
   const focuses = useMemo(() => {
-    const adaptedLegacy = adaptTrainerFocuses(legacyTrainerFocuses, trainers);
-    // A trainer who has a real focus doc no longer needs their legacy one.
-    const covered = new Set(nativeFocuses.map((f) => f.trainerId));
-    return [...nativeFocuses, ...adaptedLegacy.filter((f) => !covered.has(f.trainerId))]
-      .sort((a, b) => {
-        if (a.status !== b.status) return a.status === "active" ? -1 : 1;
-        const at = toDate(a.startedAt)?.getTime() ?? 0;
-        const bt = toDate(b.startedAt)?.getTime() ?? 0;
-        return bt - at;
+    // Precedence: a real clientFocuses doc beats a legacy focusRecord, which
+    // beats the old one-per-trainer trainerFocuses doc. Deduped on
+    // trainer + category so a trainer who was migrated forward does not appear
+    // three times on the board saying the same thing.
+    const out: ClientFocus[] = [...nativeFocuses];
+    const claimed = new Set(
+      nativeFocuses
+        .filter((f) => f.status === "active")
+        .map((f) => `${f.trainerId}|${f.category}`),
+    );
+
+    const consider = (candidates: ClientFocus[]) => {
+      candidates.forEach((f) => {
+        const key = `${f.trainerId}|${f.category}`;
+        if (f.status === "active") {
+          if (claimed.has(key)) return;
+          claimed.add(key);
+        }
+        out.push(f);
       });
-  }, [nativeFocuses, legacyTrainerFocuses, trainers]);
+    };
+
+    consider(adaptFocusRecords(legacyFocusRecords, trainers));
+    consider(adaptTrainerFocuses(legacyTrainerFocuses, trainers));
+
+    return out.sort((a, b) => {
+      if (a.status !== b.status) return a.status === "active" ? -1 : 1;
+      const at = toDate(a.startedAt)?.getTime() ?? 0;
+      const bt = toDate(b.startedAt)?.getTime() ?? 0;
+      return bt - at;
+    });
+  }, [nativeFocuses, legacyFocusRecords, legacyTrainerFocuses, trainers]);
 
   /**
    * What the pre-session briefing shows: anything marked critical that hasn't
