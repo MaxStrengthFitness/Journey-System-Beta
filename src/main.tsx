@@ -5,6 +5,41 @@ import './index.css';
 import { ThemeProvider } from './components/ThemeProvider.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 
+declare global {
+  interface Window {
+    __appLoaded?: boolean;
+    __earlyErrors?: Record<string, unknown>[];
+  }
+}
+
+// Tell the buffering handlers in index.html to stand down. From here on this
+// module is the only thing that reports client errors.
+window.__appLoaded = true;
+
+// index.html used to register its own window.onerror and unhandledrejection
+// handlers posting to the same endpoint, so every client error was reported
+// twice. These listeners are now the only ones.
+//
+// The cap matters: the Firestore multi-tab assertion bug produced 3,664 errors
+// in a single session, and the server is one Node process. Unthrottled, an
+// error storm turns into an accidental self-DoS.
+const MAX_ERROR_REPORTS = 50;
+let errorReportCount = 0;
+
+function reportClientError(payload: Record<string, unknown>) {
+  if (errorReportCount >= MAX_ERROR_REPORTS) return;
+  errorReportCount += 1;
+  const body =
+    errorReportCount === MAX_ERROR_REPORTS
+      ? { ...payload, note: "report cap reached; further errors go to the console only" }
+      : payload;
+  fetch('/api/log-error', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).catch(() => {});
+}
+
 // Suppress benign ResizeObserver errors
 const suppressResizeObserverError = () => {
   const originalError = console.error;
@@ -24,11 +59,7 @@ window.addEventListener('error', (e) => {
     e.preventDefault();
     return;
   }
-  fetch('/api/log-error', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: e.message, type: 'window_error', stack: e.error?.stack })
-  }).catch(() => {});
+  reportClientError({ message: e.message, type: 'window_error', stack: e.error?.stack });
 });
 
 window.addEventListener('unhandledrejection', (e) => {
@@ -69,17 +100,17 @@ window.addEventListener('unhandledrejection', (e) => {
     fullReason = JSON.stringify(inspectObj);
   } catch(e) {}
 
-  fetch('/api/log-error', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-      message, 
-      type: 'unhandled_rejection', 
-      stack, 
-      fullReason 
-    })
-  }).catch(() => {});
+  reportClientError({
+    message,
+    type: 'unhandled_rejection',
+    stack,
+    fullReason,
+  });
 });
+
+// Flush anything that failed before this module ran.
+(window.__earlyErrors ?? []).forEach(reportClientError);
+window.__earlyErrors = [];
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

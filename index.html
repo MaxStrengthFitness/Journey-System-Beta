@@ -5,56 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Google AI Studio App</title>
     <script>
-      window.onerror = function(message, source, lineno, colno, error) {
-        console.error('GLOBAL ERROR:', message, error);
-        fetch('/api/log-error', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            type: 'error', 
-            message: message ? message.toString() : 'Unknown', 
-            source, 
-            lineno, 
-            colno, 
-            stack: error ? error.stack : undefined 
-          })
-        }).catch(err => console.warn('Failed to log error to server', err));
-      };
-      window.addEventListener('unhandledrejection', function(event) {
-        // Ignore benign Vite HMR errors and browser extension errors
-        const reasonStr = event.reason ? String(event.reason) : '';
-        const msgStr = (event.reason && event.reason.message) ? String(event.reason.message) : '';
-        if (reasonStr.includes('WebSocket') || reasonStr.includes('vite') || msgStr.includes('standardSelectors')) {
-          return;
-        }
-
-        console.error('UNHANDLED REJECTION:', event.reason);
-        const reason = event.reason;
-        let errorMessage = 'Unknown reason';
-        let stack = undefined;
-
-        if (reason instanceof Error) {
-          errorMessage = reason.message;
-          stack = reason.stack;
-        } else if (typeof reason === 'string') {
-          errorMessage = reason;
-        } else {
-          try {
-            errorMessage = JSON.stringify(reason);
-          } catch (e) {
-            errorMessage = String(reason);
-          }
-        }
-
-        fetch('/api/log-error', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            type: 'unhandledrejection', 
-            reason: errorMessage,
-            stack: stack
-          })
-        }).catch(err => console.warn('Failed to log rejection to server', err));
+      // Buffer only. Errors that happen before the app bundle finishes loading
+      // (a chunk that failed to download, a syntax error in the entry) would
+      // otherwise go unreported, because the real handlers live in
+      // src/main.tsx. This queue is drained there.
+      //
+      // It used to POST to /api/log-error directly, which meant every error
+      // after load was reported twice: once here, once from main.tsx. The
+      // __appLoaded flag makes these handlers stand down as soon as main.tsx
+      // takes over, so there is exactly one reporter at any moment.
+      window.__earlyErrors = [];
+      window.addEventListener('error', function (e) {
+        if (window.__appLoaded) return;
+        window.__earlyErrors.push({
+          type: 'early_error',
+          message: e.message,
+          stack: e.error && e.error.stack,
+        });
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        if (window.__appLoaded) return;
+        window.__earlyErrors.push({
+          type: 'early_unhandledrejection',
+          message: String((e.reason && e.reason.message) || e.reason),
+        });
       });
     </script>
   </head>
