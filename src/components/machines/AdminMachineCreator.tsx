@@ -20,7 +20,11 @@ import { useToast } from "../../contexts/ToastContext";
 import {
   MachineCatalogEntry, MachineDefinition,
 } from "../../types/machines";
-import { MachineDefinitionForm, emptyMachineDefinition } from "./MachineDefinitionForm";
+import {
+  MachineDefinitionForm,
+  emptyMachineDefinition,
+  normalizeMachineDefinition,
+} from "./MachineDefinitionForm";
 
 /**
  * ADMIN MACHINE CREATOR — the "Machines" tab.
@@ -77,7 +81,9 @@ export function AdminMachineCreator() {
     // Strip catalog-only bookkeeping so the form sees a plain definition.
     const { id, status, defaultOrder, inStandardSet, schemaVersion,
       createdAt, createdBy, updatedAt, updatedBy, ...definition } = m;
-    setDraft(definition as MachineDefinition);
+    // Normalize, do not cast: machines saved before a field existed are
+    // missing it entirely, and the form dereferences nested objects directly.
+    setDraft(normalizeMachineDefinition(definition));
   };
 
   const close = () => { setDraft(null); setEditing(null); setIsNew(false); };

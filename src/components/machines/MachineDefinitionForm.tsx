@@ -922,3 +922,83 @@ export function emptyMachineDefinition(): MachineDefinition {
     defaultSettings: {},
   };
 }
+
+
+/**
+ * Fill in whatever a stored machine document is missing.
+ *
+ * Firestore documents are untyped at runtime. `doc.data() as MachineDefinition`
+ * is an assertion, not a check -- it silences the compiler without validating
+ * anything. Machines saved before a field was introduced simply do not have
+ * that field, so the form read `value.musculature.primary` off undefined and
+ * took the whole view down with it (Sep 2, 2026).
+ *
+ * Every nested object is merged over its default rather than replaced, so a
+ * partially-populated legacy document keeps everything it does have and only
+ * gains what it lacks. Run stored data through this before handing it to
+ * MachineDefinitionForm.
+ */
+export function normalizeMachineDefinition(
+  raw: Partial<MachineDefinition> | null | undefined,
+): MachineDefinition {
+  const base = emptyMachineDefinition();
+  if (!raw) return base;
+
+  return {
+    ...base,
+    ...raw,
+
+    primaryMuscles: raw.primaryMuscles ?? base.primaryMuscles,
+    secondaryMuscles: raw.secondaryMuscles ?? base.secondaryMuscles,
+    synergistMuscles: raw.synergistMuscles ?? base.synergistMuscles,
+
+    musculature: {
+      primary: raw.musculature?.primary ?? base.musculature.primary,
+      secondary: raw.musculature?.secondary ?? base.musculature.secondary,
+      synergists: raw.musculature?.synergists ?? base.musculature.synergists,
+    },
+
+    universalBaseline: {
+      ...base.universalBaseline,
+      ...(raw.universalBaseline ?? {}),
+    },
+
+    bodyTypeAdjustments: {
+      shorterStature: {
+        ...base.bodyTypeAdjustments.shorterStature,
+        ...(raw.bodyTypeAdjustments?.shorterStature ?? {}),
+      },
+      tallerStature: {
+        ...base.bodyTypeAdjustments.tallerStature,
+        ...(raw.bodyTypeAdjustments?.tallerStature ?? {}),
+      },
+      limitedMobility: {
+        ...base.bodyTypeAdjustments.limitedMobility,
+        ...(raw.bodyTypeAdjustments?.limitedMobility ?? {}),
+      },
+    },
+
+    alignmentCheckpoints: raw.alignmentCheckpoints ?? base.alignmentCheckpoints,
+
+    execution: {
+      ...base.execution,
+      ...(raw.execution ?? {}),
+      upperTurnaround: {
+        ...base.execution.upperTurnaround,
+        ...(raw.execution?.upperTurnaround ?? {}),
+      },
+      lowerTurnaround: {
+        ...base.execution.lowerTurnaround,
+        ...(raw.execution?.lowerTurnaround ?? {}),
+      },
+      keyCues: raw.execution?.keyCues ?? base.execution.keyCues,
+    },
+
+    clinicalWarnings: raw.clinicalWarnings ?? base.clinicalWarnings,
+    contraindicatedFor: raw.contraindicatedFor ?? base.contraindicatedFor,
+    sequencingContraindications:
+      raw.sequencingContraindications ?? base.sequencingContraindications,
+    settingFields: raw.settingFields ?? base.settingFields,
+    defaultSettings: raw.defaultSettings ?? base.defaultSettings,
+  };
+}
