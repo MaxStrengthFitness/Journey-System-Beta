@@ -160,8 +160,9 @@ export function AdminMetricsDashboard({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        <Card className="bg-slate-900 dark:bg-slate-950 text-white rounded-2xl sm:rounded-[32px] border border-slate-800 shadow-md p-5 sm:p-6 overflow-hidden relative">
+      {/* Headline metrics stretch into the height the old tab row used to take. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch">
+        <Card className="bg-slate-900 dark:bg-slate-950 text-white rounded-2xl border border-slate-800 shadow-sm p-5 sm:p-6 overflow-hidden relative min-h-40 lg:min-h-44 flex flex-col justify-between">
           <CardHeader className="p-0 pb-2">
             <CardTitle className="text-[10px] sm:text-[11px] font-bold tracking-widest text-slate-400 uppercase leading-none">
               Total Network Sessions
@@ -174,7 +175,7 @@ export function AdminMetricsDashboard({
           </CardContent>
         </Card>
 
-        <Card className="bg-indigo-950 dark:bg-indigo-950/90 text-white rounded-2xl sm:rounded-[32px] border border-indigo-500/30 shadow-md p-5 sm:p-6 overflow-hidden relative">
+        <Card className="bg-indigo-950 dark:bg-indigo-950/90 text-white rounded-2xl border border-indigo-500/30 shadow-sm p-5 sm:p-6 overflow-hidden relative min-h-40 lg:min-h-44 flex flex-col justify-between">
           <CardHeader className="p-0 pb-2">
             <CardTitle className="text-[10px] sm:text-[11px] font-bold tracking-widest text-indigo-300 uppercase flex items-center gap-2 leading-none">
               <Activity className="w-4 h-4 text-indigo-400" />
