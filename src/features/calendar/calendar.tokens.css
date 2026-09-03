@@ -1,0 +1,147 @@
+/* ==========================================================================
+   Calendar — design tokens
+   --------------------------------------------------------------------------
+   Two layers, same as journey-grid and equipment: raw brand pigment, then
+   semantic names the components use.
+
+   The eight TRAINER TONES are the point of this file. They used to be a
+   five-entry array indexed by a trainer's position in whatever list a view had
+   just built, so a filter change repainted the whole roster. They are now
+   keyed by a hash of the trainer id (trainer-tone.ts) and defined once, here,
+   so one trainer is one colour in every view.
+
+   Each tone carries four values because they do four different jobs:
+     --t-solid  avatar fill, bar fill, session chip      (non-text, >= 3:1)
+     --t-text   small text in that trainer's colour      (>= 4.5:1)
+     --t-fill   soft background behind a chip            (surface tint)
+     --t-edge   1px border / left edge bar               (>= 3:1)
+   ========================================================================== */
+
+:root {
+  --cal-bg:            #f1f5f8;
+  --cal-surface:       #ffffff;
+  --cal-surface-2:     #e8eef2;
+  --cal-surface-3:     #dae1e6;
+  --cal-border:        #d3dadf;   /* 1.4:1 hairline                        */
+  --cal-border-strong: #a9b2b9;   /* 2.2:1 structural                      */
+
+  --cal-ink:           #121c23;   /* 17.3:1                                */
+  --cal-ink-2:         #3e4952;   /*  9.2:1                                */
+  --cal-ink-muted:     #5b6770;   /*  5.8:1 (brand slate)                  */
+  --cal-ink-faint:     #848e95;   /*  3.3:1 decorative only                */
+
+  --cal-hero:          #ef5302;
+  --cal-hero-text:     #bc2c00;   /* 6.0:1 — small orange text uses this   */
+  --cal-hero-fill:     #fde7dc;
+
+  --cal-live:          #0a548b;   /* 7.9:1 — today, selection, focus       */
+  --cal-live-text:     #034a84;
+  --cal-live-fill:     #e6eef3;
+  --cal-live-on:       #ffffff;
+
+  /* Heatmap ramp. Single hue, ascending lightness -> saturation, so it reads
+     as one scale rather than a rainbow. Step 0 is the empty surface. */
+  --cal-heat-0:        #eef2f5;
+  --cal-heat-1:        #cfe0ec;
+  --cal-heat-2:        #a3c7de;
+  --cal-heat-3:        #6ba5cb;
+  --cal-heat-4:        #2f7fb4;
+  --cal-heat-5:        #0a548b;
+  --cal-heat-ink-lo:   #23303a;   /* text on steps 0-2                     */
+  --cal-heat-ink-hi:   #ffffff;   /* text on steps 3-5                     */
+
+  --cal-radius:        14px;
+  --cal-shadow:        rgba(18, 28, 35, 0.10);
+  /* Day view: width of one 30-minute slot. */
+  --cal-slot-w:        38px;
+  --cal-lane-label:    148px;
+
+  --t0-solid: #ef5302; --t0-text: #bc2c00; --t0-fill: #fdeade; --t0-edge: #ef5302;
+  --t1-solid: #0a548b; --t1-text: #034a84; --t1-fill: #e4edf4; --t1-edge: #0a548b;
+  --t2-solid: #0f766e; --t2-text: #0b5f59; --t2-fill: #e0f0ee; --t2-edge: #0f766e;
+  --t3-solid: #7c3aed; --t3-text: #6d28d9; --t3-fill: #eee7fd; --t3-edge: #7c3aed;
+  --t4-solid: #a16207; --t4-text: #895306; --t4-fill: #f6ecd9; --t4-edge: #a16207;
+  --t5-solid: #a2457e; --t5-text: #8e336c; --t5-fill: #f6e9f1; --t5-edge: #a2457e;
+  --t6-solid: #15803d; --t6-text: #136c34; --t6-fill: #e2f1e7; --t6-edge: #15803d;
+  --t7-solid: #0e7490; --t7-text: #0b6079; --t7-fill: #e0f0f4; --t7-edge: #0e7490;
+}
+
+.dark,
+[data-theme="dark"] {
+  --cal-bg:            #070b0f;
+  --cal-surface:       #0e151c;
+  --cal-surface-2:     #151e27;
+  --cal-surface-3:     #1d2833;
+  --cal-border:        #1f2a35;
+  --cal-border-strong: #3a4855;
+
+  --cal-ink:           #eef3f7;   /* 15.8:1 on surface                     */
+  --cal-ink-2:         #b3c0cb;   /*  8.6:1                                */
+  --cal-ink-muted:     #8b98a4;   /*  5.4:1                                */
+  --cal-ink-faint:     #63707c;   /*  3.1:1                                */
+
+  --cal-hero:          #f36d21;
+  --cal-hero-text:     #ff9455;   /* 7.4:1 on surface                      */
+  --cal-hero-fill:     rgba(243, 109, 33, 0.15);
+
+  --cal-live:          #4a9fd8;
+  --cal-live-text:     #7cc0ee;
+  --cal-live-fill:     rgba(74, 159, 216, 0.15);
+  --cal-live-on:       #04121c;
+
+  /* Dark is not a flip: the ramp climbs INTO the surface rather than out of
+     white, or the low steps glow brighter than the page they sit on. */
+  --cal-heat-0:        #131c24;
+  --cal-heat-1:        #17303f;
+  --cal-heat-2:        #1b465c;
+  --cal-heat-3:        #215f7e;
+  --cal-heat-4:        #2c7ca3;
+  --cal-heat-5:        #4a9fd8;
+  --cal-heat-ink-lo:   #cfdae3;
+  --cal-heat-ink-hi:   #04121c;
+
+  --cal-shadow:        rgba(0, 0, 0, 0.5);
+
+  --t0-solid: #f36d21; --t0-text: #ff9455; --t0-fill: rgba(243,109,33,.16);  --t0-edge: #f36d21;
+  --t1-solid: #4a9fd8; --t1-text: #7cc0ee; --t1-fill: rgba(74,159,216,.16);  --t1-edge: #4a9fd8;
+  --t2-solid: #2dd4bf; --t2-text: #5eead4; --t2-fill: rgba(45,212,191,.15);  --t2-edge: #2dd4bf;
+  --t3-solid: #a78bfa; --t3-text: #c4b5fd; --t3-fill: rgba(167,139,250,.16); --t3-edge: #a78bfa;
+  --t4-solid: #f59e0b; --t4-text: #fbbf24; --t4-fill: rgba(245,158,11,.15);  --t4-edge: #f59e0b;
+  --t5-solid: #d98cbd; --t5-text: #edb8d8; --t5-fill: rgba(217,140,189,.16); --t5-edge: #d98cbd;
+  --t6-solid: #4ade80; --t6-text: #86efac; --t6-fill: rgba(74,222,128,.14);  --t6-edge: #4ade80;
+  --t7-solid: #22d3ee; --t7-text: #67e8f9; --t7-fill: rgba(34,211,238,.14);  --t7-edge: #22d3ee;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not([data-theme="light"]) {
+    --cal-bg: #070b0f; --cal-surface: #0e151c; --cal-surface-2: #151e27;
+    --cal-surface-3: #1d2833; --cal-border: #1f2a35; --cal-border-strong: #3a4855;
+    --cal-ink: #eef3f7; --cal-ink-2: #b3c0cb; --cal-ink-muted: #8b98a4; --cal-ink-faint: #63707c;
+    --cal-hero: #f36d21; --cal-hero-text: #ff9455; --cal-hero-fill: rgba(243,109,33,.15);
+    --cal-live: #4a9fd8; --cal-live-text: #7cc0ee; --cal-live-fill: rgba(74,159,216,.15);
+    --cal-live-on: #04121c;
+    --cal-heat-0: #131c24; --cal-heat-1: #17303f; --cal-heat-2: #1b465c;
+    --cal-heat-3: #215f7e; --cal-heat-4: #2c7ca3; --cal-heat-5: #4a9fd8;
+    --cal-heat-ink-lo: #cfdae3; --cal-heat-ink-hi: #04121c;
+    --cal-shadow: rgba(0,0,0,.5);
+    --t0-solid: #f36d21; --t0-text: #ff9455; --t0-fill: rgba(243,109,33,.16);  --t0-edge: #f36d21;
+    --t1-solid: #4a9fd8; --t1-text: #7cc0ee; --t1-fill: rgba(74,159,216,.16);  --t1-edge: #4a9fd8;
+    --t2-solid: #2dd4bf; --t2-text: #5eead4; --t2-fill: rgba(45,212,191,.15);  --t2-edge: #2dd4bf;
+    --t3-solid: #a78bfa; --t3-text: #c4b5fd; --t3-fill: rgba(167,139,250,.16); --t3-edge: #a78bfa;
+    --t4-solid: #f59e0b; --t4-text: #fbbf24; --t4-fill: rgba(245,158,11,.15);  --t4-edge: #f59e0b;
+    --t5-solid: #d98cbd; --t5-text: #edb8d8; --t5-fill: rgba(217,140,189,.16); --t5-edge: #d98cbd;
+    --t6-solid: #4ade80; --t6-text: #86efac; --t6-fill: rgba(74,222,128,.14);  --t6-edge: #4ade80;
+    --t7-solid: #22d3ee; --t7-text: #67e8f9; --t7-fill: rgba(34,211,238,.14);  --t7-edge: #22d3ee;
+  }
+}
+
+/* Each tone class republishes its four values under generic names, so every
+   component writes `var(--t-solid)` and never knows which tone it is in. */
+.cal-tone-0 { --t-solid: var(--t0-solid); --t-text: var(--t0-text); --t-fill: var(--t0-fill); --t-edge: var(--t0-edge); }
+.cal-tone-1 { --t-solid: var(--t1-solid); --t-text: var(--t1-text); --t-fill: var(--t1-fill); --t-edge: var(--t1-edge); }
+.cal-tone-2 { --t-solid: var(--t2-solid); --t-text: var(--t2-text); --t-fill: var(--t2-fill); --t-edge: var(--t2-edge); }
+.cal-tone-3 { --t-solid: var(--t3-solid); --t-text: var(--t3-text); --t-fill: var(--t3-fill); --t-edge: var(--t3-edge); }
+.cal-tone-4 { --t-solid: var(--t4-solid); --t-text: var(--t4-text); --t-fill: var(--t4-fill); --t-edge: var(--t4-edge); }
+.cal-tone-5 { --t-solid: var(--t5-solid); --t-text: var(--t5-text); --t-fill: var(--t5-fill); --t-edge: var(--t5-edge); }
+.cal-tone-6 { --t-solid: var(--t6-solid); --t-text: var(--t6-text); --t-fill: var(--t6-fill); --t-edge: var(--t6-edge); }
+.cal-tone-7 { --t-solid: var(--t7-solid); --t-text: var(--t7-text); --t-fill: var(--t7-fill); --t-edge: var(--t7-edge); }
