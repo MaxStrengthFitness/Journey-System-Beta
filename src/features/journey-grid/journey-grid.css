@@ -1,0 +1,864 @@
+/* ==========================================================================
+   Journey Grid — layout & states
+   --------------------------------------------------------------------------
+   One scroll container (.jg-scroller) scrolls BOTH axes. Everything sticky
+   is a plain grid item with `position: sticky`, so the browser's compositor
+   does the pinning — no scroll listeners, no transform syncing, no second
+   "fake" header table. That is what keeps it smooth on iPad Safari.
+
+   Layers (z-index)              top   left  right
+     .jg-corner        5          ✓     ✓
+     .jg-stat-head     5          ✓     ✓      (left = machine col width)
+     .jg-head--live    5          ✓            ✓
+     .jg-head          3          ✓
+     .jg-machine       2                ✓
+     .jg-stat          2                ✓      (left = machine col width)
+     .jg-live          2                       ✓
+     .jg-cell          0
+   ========================================================================== */
+
+@import "./journey-grid.tokens.css";
+
+.jg {
+  /* ---- density knobs (overridden per data-density below) ------------- */
+  --jg-col-machine: 184px;
+  --jg-col-stat:    108px;     /* Analytics column                          */
+  --jg-col-session: 92px;
+  --jg-col-live:    168px;
+  --jg-row-h:       64px;
+  --jg-row-h-live:  108px;     /* rows that carry a live input            */
+  --jg-head-h:      74px;
+  --jg-w-size:      17px;      /* weight                                   */
+  --jg-r-size:      12px;      /* reps / TUT                               */
+  --jg-show-reps:   block;
+
+  position: relative;
+  font-family: var(--jg-font);
+  color: var(--jg-ink);
+  background: var(--jg-bg);
+  border: 1px solid var(--jg-border);
+  border-radius: var(--jg-radius);
+  overflow: hidden;              /* clips the rounded corners only        */
+  -webkit-font-smoothing: antialiased;
+}
+
+.jg[data-density="comfortable"] {
+  --jg-col-machine: 176px;
+  --jg-col-stat:    100px;
+  --jg-col-session: 84px;
+  --jg-col-live:    160px;
+  --jg-row-h:       56px;
+  --jg-row-h-live:  100px;
+  --jg-head-h:      68px;
+  --jg-w-size:      16px;
+  --jg-r-size:      11px;
+}
+
+.jg[data-density="compact"] {
+  --jg-col-machine: 152px;
+  --jg-col-stat:    84px;
+  --jg-col-session: 70px;
+  --jg-col-live:    148px;
+  --jg-row-h:       44px;
+  --jg-row-h-live:  96px;
+  --jg-head-h:      58px;
+  --jg-w-size:      15px;
+  --jg-r-size:      10px;
+  --jg-show-reps:   none;       /* compact = weight only                  */
+}
+
+/* "fill" layout: the grid is a flex child that takes whatever height is left
+   under a static page header, and only the scroller scrolls. */
+.jg--fill { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.jg--fill .jg-scroller { flex: 1 1 auto; min-height: 0; max-height: none; }
+.jg-view { display: flex; flex-direction: column; gap: 0; min-height: 0; }
+.jg-view--fill { flex: 1 1 auto; height: 100%; }
+.jg-view__legend { padding: 10px 2px 0; flex: none; }
+
+/* ---- the scroller ---------------------------------------------------- */
+.jg-scroller {
+  overflow: auto;
+  max-height: var(--jg-max-h, 72dvh);
+  overscroll-behavior: contain;          /* no page bounce-through          */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--jg-border-strong) transparent;
+  touch-action: pan-x pan-y;
+  scroll-padding-left: var(--jg-col-machine);
+  scroll-padding-right: var(--jg-col-live);
+}
+.jg[data-stats="true"] .jg-scroller { scroll-padding-left: calc(var(--jg-col-machine) + var(--jg-col-stat)); }
+
+/* The grid itself. Column count comes from React via --jg-cols. The extra
+   optional first column is the "load older" affordance. */
+.jg-grid {
+  display: grid;
+  /* minmax(col, 1fr): when there are fewer columns than fit, they widen to
+     fill the row so the Today column still hugs the right edge; once the
+     timeline overflows, every column is exactly --jg-col-session wide. */
+  grid-template-columns:
+    var(--jg-col-machine)
+    repeat(var(--jg-cols), minmax(var(--jg-col-session), 1fr));
+  /* Tracks size to content; cells carry the min-height so the 30px group
+     divider rows are not stretched to a full data row. */
+  grid-auto-rows: auto;
+  width: max-content;
+  min-width: 100%;
+  isolation: isolate;
+}
+/* Optional tracks (Analytics, Today) exist ONLY when their cells are
+   rendered. Never leave a 0px placeholder track: auto-placement would flow
+   the next row's first cell into it. */
+.jg[data-stats="true"] .jg-grid {
+  grid-template-columns:
+    var(--jg-col-machine)
+    var(--jg-col-stat)
+    repeat(var(--jg-cols), minmax(var(--jg-col-session), 1fr));
+}
+.jg[data-live="true"] .jg-grid {
+  grid-template-columns:
+    var(--jg-col-machine)
+    repeat(var(--jg-cols), minmax(var(--jg-col-session), 1fr))
+    var(--jg-col-live);
+}
+.jg[data-stats="true"][data-live="true"] .jg-grid {
+  grid-template-columns:
+    var(--jg-col-machine)
+    var(--jg-col-stat)
+    repeat(var(--jg-cols), minmax(var(--jg-col-session), 1fr))
+    var(--jg-col-live);
+}
+
+/* Row wrappers are transparent to the grid; ARIA still sees a row. */
+.jg-row { display: contents; }
+
+/* ---- shared cell chrome --------------------------------------------- */
+.jg-cell,
+.jg-machine,
+.jg-stat,
+.jg-stat-head,
+.jg-head,
+.jg-corner,
+.jg-live {
+  box-sizing: border-box;
+  border-right: 1px solid var(--jg-border);
+  border-bottom: 1px solid var(--jg-border);
+  background: var(--jg-surface);
+  contain: layout style;                  /* cheap isolation, keeps paint     */
+}
+.jg-cell,
+.jg-machine,
+.jg-stat,
+.jg-live { min-height: var(--jg-row-h); }
+
+/* ---- header row ------------------------------------------------------ */
+.jg-corner,
+.jg-head {
+  position: sticky;
+  top: 0;
+  height: var(--jg-head-h);
+  background: var(--jg-surface-2);
+  border-bottom: 1px solid var(--jg-border-strong);
+}
+.jg-head { z-index: 3; padding: 0; }
+.jg-corner {
+  left: 0;
+  z-index: 5;
+  border-right: 1px solid var(--jg-border-strong);
+  box-shadow: 8px 0 12px -8px var(--jg-sticky-shadow);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 12px;
+  gap: 2px;
+}
+.jg-corner__title {
+  font-family: var(--jg-font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--jg-ink-muted);
+}
+.jg-corner__sub {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--jg-ink-faint);
+  letter-spacing: 0.02em;
+}
+
+/* ---- Analytics column header (sticky top + left, after the machine col) */
+.jg-stat-head {
+  position: sticky;
+  top: 0;
+  left: var(--jg-col-machine);
+  z-index: 5;
+  height: var(--jg-head-h);
+  background: var(--jg-surface-2);
+  border-right: 1px solid var(--jg-border-strong);
+  border-bottom: 1px solid var(--jg-border-strong);
+  box-shadow: 8px 0 12px -8px var(--jg-sticky-shadow);
+  padding: 0;
+}
+.jg-stat-head__btn {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-stat-head__btn:active { background: var(--jg-surface-3); }
+.jg-stat-head__title {
+  font-family: var(--jg-font-display);
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--jg-live-text);
+}
+.jg-stat-head__sub {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--jg-ink-muted);
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.jg-stat-head__dots { display: inline-flex; align-items: center; gap: 3px; margin-top: 3px; color: var(--jg-ink-faint); }
+.jg-stat-head__dots i { width: 5px; height: 5px; border-radius: 999px; background: var(--jg-border-strong); }
+.jg-stat-head__dots i.is-on { background: var(--jg-live); width: 12px; }
+.jg[data-density="compact"] .jg-stat-head__title { font-size: 13px; }
+.jg[data-density="compact"] .jg-stat-head__sub { display: none; }
+
+/* ---- Analytics column cells (sticky left, after the machine col) ----- */
+.jg-stat {
+  position: sticky;
+  left: var(--jg-col-machine);
+  z-index: 2;
+  background: var(--jg-surface-2);
+  border-right: 1px solid var(--jg-border-strong);
+  box-shadow: 8px 0 12px -8px var(--jg-sticky-shadow);
+  display: flex;
+  align-items: stretch;
+  padding: 0;
+}
+.jg-stat--empty { align-items: center; justify-content: center; }
+.jg-stat__btn {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  width: 100%;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 6px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  font-variant-numeric: tabular-nums;
+}
+div.jg-stat__btn { cursor: default; }
+button.jg-stat__btn:active { background: var(--jg-surface-3); }
+.jg-stat__value {
+  font-size: var(--jg-w-size);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--jg-ink);
+  letter-spacing: -0.01em;
+}
+.jg-stat__unit { font-size: 10px; font-weight: 600; color: var(--jg-ink-muted); margin-left: 3px; letter-spacing: 0.02em; }
+.jg-stat__meta { display: flex; flex-direction: column; align-items: center; gap: 1px; line-height: 1.1; }
+.jg-stat__date { font-size: 10.5px; font-weight: 700; color: var(--jg-live-text); }
+.jg-stat__ctx { font-size: 10.5px; font-weight: 600; color: var(--jg-ink-muted); white-space: nowrap; }
+.jg-stat__older { font-size: 9.5px; font-weight: 700; color: var(--jg-ink-faint); letter-spacing: 0.04em; }
+.jg[data-density="compact"] .jg-stat__ctx,
+.jg[data-density="compact"] .jg-stat__older { display: none; }
+/* when the Analytics column is on, the rail edge moves to it */
+.jg[data-stats="true"] .jg-machine,
+.jg[data-stats="true"] .jg-corner { box-shadow: none; border-right-color: var(--jg-border); }
+
+/* shared header tag ("LATEST · #45", "TODAY") */
+.jg-head__tag {
+  font-family: var(--jg-font-display);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--jg-live-text);
+  line-height: 1;
+}
+
+/* Date headers are buttons: tap = spotlight that session. */
+.jg-head__btn {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-bottom: 3px solid transparent;
+}
+.jg-head__btn:active { background: var(--jg-surface-3); }
+.jg-head__n {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--jg-ink-muted);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.jg-head__d {
+  font-family: var(--jg-font-display);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--jg-ink);
+}
+.jg-head__t {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--jg-surface-3);
+  color: var(--jg-ink-2);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+}
+.jg-head__d { white-space: nowrap; }
+.jg[data-density="compact"] .jg-head__d { font-size: 13px; }
+.jg[data-density="compact"] .jg-head__t { width: 18px; height: 18px; font-size: 8.5px; }
+.jg-head.is-spot .jg-head__btn { border-bottom-color: var(--jg-live); background: var(--jg-live-fill); }
+.jg-head.is-spot .jg-head__d,
+.jg-head.is-spot .jg-head__n { color: var(--jg-live-text); }
+.jg-head.is-spot .jg-head__t { background: var(--jg-live); color: var(--jg-live-on); }
+
+/* The most recent logged session — the baseline for today's prescription.
+   A blue frame (2px each side, 3px underline) plus the LATEST tag: it must
+   read from across the room, even next to a Today column. */
+.jg-head.is-latest { background: var(--jg-live-fill); }
+.jg-head.is-latest .jg-head__btn {
+  box-shadow: inset 2px 0 0 var(--jg-live), inset -2px 0 0 var(--jg-live);
+  border-bottom-color: var(--jg-live);
+}
+.jg-head.is-latest .jg-head__d { color: var(--jg-live-text); }
+.jg-head.is-latest .jg-head__t { background: var(--jg-live); color: var(--jg-live-on); }
+
+/* Today's header — sticky top AND right. */
+.jg-head--live {
+  right: 0;
+  z-index: 5;
+  background: var(--jg-live-fill);
+  border-left: 1px solid var(--jg-border-strong);
+  box-shadow: -8px 0 12px -8px var(--jg-sticky-shadow);
+}
+.jg-head--live .jg-head__btn { cursor: default; }
+.jg-head--live .jg-head__d,
+.jg-head--live .jg-head__n { color: var(--jg-live-text); }
+.jg-head--live .jg-head__t { background: var(--jg-live); color: var(--jg-live-on); }
+
+/* "Load older" column header, sits at the far left of the timeline. */
+.jg-head--older .jg-head__btn {
+  color: var(--jg-live-text);
+  font-size: 11px;
+  font-weight: 700;
+  gap: 2px;
+}
+.jg-cell--older { background: var(--jg-bg); }
+
+/* ---- group divider rows --------------------------------------------- */
+.jg-group {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  height: 30px;
+  background: var(--jg-bg);
+  border-bottom: 1px solid var(--jg-border);
+  z-index: 1;
+}
+.jg-group__label {
+  position: sticky;
+  left: 0;
+  padding: 0 12px;
+  font-family: var(--jg-font-display);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--jg-ink-muted);
+}
+.jg-group__count {
+  margin-left: 8px;
+  font-family: var(--jg-font);
+  font-weight: 600;
+  font-size: 10px;
+  color: var(--jg-ink-faint);
+  letter-spacing: 0.04em;
+}
+.jg-group--action { cursor: pointer; }
+.jg-group--action:active { background: var(--jg-surface-3); }
+
+/* ---- machine column (sticky left) ----------------------------------- */
+.jg-machine {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--jg-surface-2);
+  border-right: 1px solid var(--jg-border-strong);
+  box-shadow: 8px 0 12px -8px var(--jg-sticky-shadow);
+  display: flex;
+  align-items: stretch;
+  padding: 0;
+}
+.jg-machine__btn {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  width: 100%;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 10px 6px 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-left: 3px solid transparent;
+  min-width: 0;
+}
+.jg-machine__btn:active { background: var(--jg-surface-3); }
+.jg-machine__name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 650;
+  font-size: 13.5px;
+  line-height: 1.15;
+  color: var(--jg-ink);
+  letter-spacing: -0.005em;
+}
+.jg-machine__label {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;         /* long names wrap once instead of eliding */
+}
+.jg[data-density="compact"] .jg-machine__label { display: block; text-overflow: ellipsis; white-space: nowrap; }
+.jg-machine__star { color: var(--jg-hero); flex: none; }
+.jg-machine__order {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--jg-live);
+  color: var(--jg-live-on);
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+.jg-machine__meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.jg-chip {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: var(--jg-surface-3);
+  color: var(--jg-ink-2);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.jg-machine__readout {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--jg-ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jg[data-density="compact"] .jg-machine__meta { display: none; }
+.jg-row.is-selected .jg-machine__btn { border-left-color: var(--jg-live); background: var(--jg-live-fill); }
+.jg-row.is-focus .jg-machine__btn { border-left-color: var(--jg-hero); }
+
+/* ---- history cells --------------------------------------------------- */
+.jg-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 4px 6px;
+  border-left: 3px solid transparent;     /* quality edge lives here         */
+  font-variant-numeric: tabular-nums;
+  transition: opacity 140ms ease, box-shadow 140ms ease;
+}
+.jg-cell__w {
+  font-size: var(--jg-w-size);
+  font-weight: 650;
+  line-height: 1.1;
+  color: var(--jg-ink);
+  letter-spacing: -0.01em;
+}
+.jg-cell__r {
+  display: var(--jg-show-reps);
+  font-size: var(--jg-r-size);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--jg-ink-2);
+  white-space: nowrap;
+}
+.jg-cell__r .jg-tut { font-weight: 500; color: var(--jg-ink-muted); }
+.jg-cell__empty { color: var(--jg-ink-faint); font-size: 12px; font-weight: 500; }
+.jg-cell__q {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* quality 2 — completed: fill only. The 3px edge is reserved for the two
+   states that need to jump out (max / poor), so a normal week reads calm. */
+.jg-cell--q2 { background: var(--jg-q-done-fill); }
+/* quality 3 — max strength */
+.jg-cell--q3 { background: var(--jg-q-max-fill); border-left-color: var(--jg-q-max-edge); }
+.jg-cell--q3 .jg-cell__q { color: var(--jg-q-max-text); }
+/* quality 1 — poor: plum fill + hatch texture (readable without colour) */
+.jg-cell--q1 {
+  background-color: var(--jg-q-poor-fill);
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 5px,
+    var(--jg-q-poor-hatch) 5px 6px
+  );
+  border-left-color: var(--jg-q-poor);
+}
+.jg-cell--q1 .jg-cell__q { color: var(--jg-q-poor-text); }
+
+/* trend glyph next to reps */
+.jg-trend {
+  display: inline-block;
+  margin-left: 3px;
+  font-size: 9px;
+  vertical-align: 1px;
+  color: var(--jg-ink-muted);
+}
+/* Monochrome on purpose: colour means quality, the glyph means direction. */
+.jg-trend--up, .jg-trend--down { color: var(--jg-ink-2); }
+.jg-trend--reps-up, .jg-trend--reps-down { color: var(--jg-ink-muted); }
+.jg[data-density="compact"] .jg-trend { display: none; }
+
+/* row selection (tap a machine name to trace its row) */
+.jg-row.is-selected .jg-cell { box-shadow: inset 0 1px 0 var(--jg-live), inset 0 -1px 0 var(--jg-live); }
+.jg-row.is-selected .jg-cell:not([class*="--q"]) { background: var(--jg-surface-2); }
+
+/* the most recent session's column: framed left + right, tinted when empty,
+   weight a step larger. Quality fills stay — the frame sits outside them. */
+.jg-cell.is-latest { box-shadow: inset 2px 0 0 var(--jg-live), inset -2px 0 0 var(--jg-live); }
+.jg-cell.is-latest:not([class*="--q"]) { background: var(--jg-live-fill); }
+.jg-cell.is-latest .jg-cell__w { font-size: calc(var(--jg-w-size) + 1px); }
+.jg-row.is-selected .jg-cell.is-latest {
+  box-shadow: inset 2px 0 0 var(--jg-live), inset -2px 0 0 var(--jg-live),
+              inset 0 1px 0 var(--jg-live), inset 0 -1px 0 var(--jg-live);
+}
+
+/* column spotlight (tap a date header) */
+.jg-cell.is-spot { box-shadow: inset 0 0 0 1px var(--jg-live); }
+.jg-cell.is-spot:not([class*="--q"]) { background: var(--jg-live-fill); }
+.jg-cell.is-spot.is-latest { box-shadow: inset 0 0 0 2px var(--jg-live); }
+
+/* the set the Analytics column is currently pointing at — a quiet dashed
+   ring (outline, so it never fights the box-shadow frames above). Skipped in
+   the LATEST column: that frame already says "this one", and the Analytics
+   cell's date confirms it. */
+.jg-cell.is-stat-hit:not(.is-latest) { outline: 1.5px dashed var(--jg-ink-muted); outline-offset: -4px; }
+
+/* ---- live (today) column — sticky right ------------------------------ */
+.jg-live {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: var(--jg-live-fill);
+  border-left: 1px solid var(--jg-border-strong);
+  box-shadow: -8px 0 12px -8px var(--jg-sticky-shadow);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 8px;
+}
+/* Rows that carry a live input are taller. The row wrapper is
+   display:contents, so height comes from the cells' min-height and the
+   grid's minmax(…, auto) tracks stretch to match. */
+.jg-row.has-live > * { min-height: var(--jg-row-h-live); }
+.jg-row.is-focus .jg-live { background: var(--jg-live-fill-strong); box-shadow: inset 0 0 0 2px var(--jg-live), -8px 0 12px -8px var(--jg-sticky-shadow); }
+.jg-live--idle { align-items: center; color: var(--jg-ink-faint); font-size: 12px; }
+.jg-live__add {
+  appearance: none;
+  border: 1px dashed var(--jg-border-strong);
+  background: transparent;
+  color: var(--jg-live-text);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-radius: var(--jg-radius-sm);
+  cursor: pointer;
+  min-height: 36px;
+}
+
+/* weight stepper */
+.jg-stepper { display: flex; align-items: center; gap: 4px; }
+.jg-stepper__btn {
+  appearance: none;
+  border: 1px solid var(--jg-border-strong);
+  background: var(--jg-surface);
+  color: var(--jg-ink-2);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--jg-radius-sm);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-stepper__btn:active { background: var(--jg-surface-3); }
+.jg-stepper__val {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  border: 1px solid var(--jg-live);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+  color: var(--jg-ink);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  padding: 0;
+}
+.jg-stepper__val:focus,
+.jg-reps__input:focus { outline: 2px solid var(--jg-focus-ring); outline-offset: 1px; }
+.jg-stepper__unit { font-size: 10px; font-weight: 600; color: var(--jg-ink-muted); }
+
+/* reps / TUT */
+.jg-reps { display: flex; align-items: center; gap: 4px; }
+.jg-reps__input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+  color: var(--jg-ink);
+  font: inherit;
+  font-size: 16px;                        /* ≥16px stops iOS zooming on focus */
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  padding: 0;
+}
+.jg-reps__input::placeholder { color: var(--jg-ink-faint); font-weight: 500; }
+.jg-reps__mode {
+  appearance: none;
+  border: 1px solid var(--jg-border-strong);
+  background: var(--jg-surface);
+  color: var(--jg-ink-2);
+  height: 34px;
+  padding: 0 7px;
+  border-radius: var(--jg-radius-sm);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  flex: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.jg-reps__mode.is-on { background: var(--jg-live); border-color: var(--jg-live); color: var(--jg-live-on); }
+
+/* quality segmented control */
+.jg-quality { display: flex; gap: 3px; }
+.jg-quality__btn {
+  appearance: none;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  height: 32px;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+  color: var(--jg-ink-2);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-quality__btn[data-q="1"].is-on { background: var(--jg-q-poor-fill); border-color: var(--jg-q-poor); color: var(--jg-q-poor-text); }
+.jg-quality__btn[data-q="2"].is-on { background: var(--jg-surface-3); border-color: var(--jg-ink-muted); color: var(--jg-ink); }
+.jg-quality__btn[data-q="3"].is-on { background: var(--jg-q-max-fill); border-color: var(--jg-hero); color: var(--jg-hero-text); }
+
+/* ---- toolbar (section caption, density, actions) --------------------- */
+.jg-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 0 10px;
+  font-family: var(--jg-font);
+  color: var(--jg-ink);
+  flex: none;
+}
+.jg-toolbar__spacer { flex: 1; }
+.jg-toolbar__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--jg-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--jg-ink);
+}
+.jg-toolbar__bar { width: 3px; height: 18px; border-radius: 2px; background: var(--jg-hero); }
+
+.jg-seg {
+  display: inline-flex;
+  background: var(--jg-surface-2);
+  border: 1px solid var(--jg-border);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+.jg-seg__btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--jg-ink-muted);
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.jg-seg__btn.is-on { background: var(--jg-surface); color: var(--jg-ink); box-shadow: 0 1px 2px var(--jg-sticky-shadow); }
+
+.jg-btn {
+  appearance: none;
+  border: 1px solid var(--jg-border-strong);
+  background: var(--jg-surface);
+  color: var(--jg-ink);
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.jg-btn--hero { background: var(--jg-hero); border-color: var(--jg-hero); color: var(--jg-hero-on); font-weight: 700; }
+.jg-btn--ghost { background: transparent; }
+
+/* active-session strip above the grid */
+.jg-session-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 4px 0 2px;
+  font-family: var(--jg-font);
+  color: var(--jg-ink);
+}
+.jg-session-bar__who { display: flex; flex-direction: column; gap: 2px; min-width: 160px; }
+.jg-session-bar__name { font-family: var(--jg-font-display); font-weight: 800; font-size: 22px; line-height: 1; letter-spacing: 0.01em; }
+.jg-session-bar__meta { font-size: 12px; font-weight: 600; color: var(--jg-ink-muted); font-variant-numeric: tabular-nums; }
+.jg-session-bar__now { display: flex; align-items: center; gap: 10px; flex: 1; flex-wrap: wrap; }
+.jg-session-bar__label { font-family: var(--jg-font-display); font-size: 11px; font-weight: 800; letter-spacing: 0.14em; color: var(--jg-hero-text); }
+.jg-session-bar__machine { font-weight: 700; font-size: 15px; }
+.jg-session-bar__actions { display: flex; gap: 8px; margin-left: auto; }
+
+/* legend */
+.jg-legend { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font-size: 11.5px; color: var(--jg-ink-muted); font-weight: 600; }
+.jg-legend__item { display: inline-flex; align-items: center; gap: 6px; }
+.jg-legend__swatch { width: 18px; height: 14px; border-radius: 3px; border-left: 3px solid; box-sizing: border-box; }
+.jg-legend__swatch--q2 { background: var(--jg-q-done-fill); border-color: var(--jg-q-done-fill); }
+.jg-legend__swatch--q3 { background: var(--jg-q-max-fill); border-color: var(--jg-q-max-edge); }
+.jg-legend__swatch--latest { background: var(--jg-live-fill); border-color: var(--jg-live); box-shadow: inset -2px 0 0 var(--jg-live); }
+.jg-legend__swatch--q1 {
+  background-color: var(--jg-q-poor-fill);
+  background-image: repeating-linear-gradient(135deg, transparent 0 3px, var(--jg-q-poor-hatch) 3px 4px);
+  border-color: var(--jg-q-poor);
+}
+
+/* ---- motion & a11y --------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .jg-cell { transition: none; }
+  .jg-scroller { scroll-behavior: auto; }
+}
+.jg :focus-visible { outline: 2px solid var(--jg-focus-ring); outline-offset: -2px; }
+.jg-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

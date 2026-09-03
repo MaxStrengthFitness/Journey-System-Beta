@@ -1,0 +1,169 @@
+/* ==========================================================================
+   Journey Grid — design tokens
+   --------------------------------------------------------------------------
+   Two layers:
+     1. BRAND     the seven palette colours, verbatim. Never used directly by
+                  components — they are raw pigment.
+     2. SEMANTIC  what a colour *means* in the grid. Components only ever
+                  reference these. Light values live on :root, dark values on
+                  .dark (the class your ThemeProvider already toggles) and on
+                  [data-theme="dark"] / prefers-color-scheme as fallbacks.
+
+   Every text/fill pairing below was checked against WCAG 2.1 AA:
+     ink on every fill            ≥ 4.5 : 1   (small text)
+     accent text on its own fill  ≥ 4.5 : 1
+     accent edge/border on surface ≥ 3 : 1    (non-text UI)
+   Numbers are listed next to each value so a future edit can be re-checked.
+   ========================================================================== */
+
+:root {
+  /* ---- 1. BRAND (raw) ------------------------------------------------- */
+  --brand-primary-1: #ef5302;   /* hero orange       */
+  --brand-primary-2: #034a84;   /* deep blue         */
+  --brand-primary-3: #5b6770;   /* slate             */
+  --brand-accent-1:  #ea732f;
+  --brand-accent-2:  #f7ae82;   /* peach             */
+  --brand-accent-3:  #f36d21;
+  --brand-accent-4:  #0a548b;
+
+  /* ---- 2. SEMANTIC — LIGHT -------------------------------------------- */
+  /* Neutrals are derived at the slate hue (OKLCH h≈240) so greys feel like
+     the brand instead of a generic Tailwind slate. Chroma ≤ 0.012 keeps
+     them recessive; the data supplies the colour. */
+  --jg-bg:             #f1f5f8;   /* page behind the grid                  */
+  --jg-surface:        #ffffff;   /* cells                                 */
+  --jg-surface-2:      #e8eef2;   /* header band, sticky machine column    */
+  --jg-surface-3:      #dae1e6;   /* pressed / hover                       */
+  --jg-border:         #d3dadf;   /* hairlines between cells   1.4:1       */
+  --jg-border-strong:  #a9b2b9;   /* sticky-edge separators    2.2:1       */
+
+  --jg-ink:            #121c23;   /* weights, names            17.3:1      */
+  --jg-ink-2:          #3e4952;   /* reps / secondary          9.2:1       */
+  --jg-ink-muted:      #5b6770;   /* labels (= brand slate)    5.8:1       */
+  --jg-ink-faint:      #848e95;   /* "—" placeholders, 3.3:1 (decorative)  */
+
+  /* Hero: brand-primary-1. Solid orange is 3.55:1 on white — fine for bars,
+     borders and ≥18px bold, NOT for small text. Small orange text uses the
+     darkened --jg-hero-text (6.0:1 on white, 5.0:1 on the max fill). */
+  --jg-hero:           var(--brand-primary-1);
+  --jg-hero-text:      #bc2c00;
+  --jg-hero-fill:      #fde7dc;   /* 14% orange over white                 */
+  --jg-hero-on:        #ffffff;   /* text on a solid hero button (large)   */
+
+  /* Live / interactive: the blues. "Blue = something you can act on" — the
+     Today column, the selected lens chip, a spotlighted date, focus rings.  */
+  --jg-live:           var(--brand-accent-4);   /* 7.9:1 on white          */
+  --jg-live-text:      var(--brand-primary-2);  /* 9.1:1 on white          */
+  --jg-live-fill:      #e6eef3;
+  --jg-live-fill-strong: #d3e0ea;
+  --jg-live-on:        #ffffff;
+
+  /* Rep quality ------------------------------------------------------- */
+  /* 2 · Completed — the baseline. Neutral slate tint: "a set happened".   */
+  --jg-q-done-fill:    #edeeef;
+  --jg-q-done-edge:    #a5abb0;
+  /* 3 · Max strength — the hero. Fill + solid orange edge + ★ glyph.       */
+  --jg-q-max-fill:     var(--jg-hero-fill);
+  --jg-q-max-edge:     var(--jg-hero);
+  --jg-q-max-text:     var(--jg-hero-text);
+  /* 1 · Poor quality — plum, not red. Sits opposite orange on the wheel
+     (ΔE 18.6 under protanopia vs the hero) and carries a hatch texture so
+     it never relies on colour alone.                                       */
+  --jg-q-poor:         #a2457e;   /* 5.7:1 on white, 4.8:1 on its fill     */
+  --jg-q-poor-text:    #8e336c;   /* 7.4:1 on white, 6.3:1 on its fill     */
+  --jg-q-poor-fill:    #f4e9f0;
+  --jg-q-poor-hatch:   rgba(162, 69, 126, 0.16);
+
+  /* Misc ------------------------------------------------------------- */
+  --jg-focus-ring:     var(--jg-live);
+  --jg-sticky-shadow:  rgba(18, 28, 35, 0.10);
+  --jg-dim:            0.38;      /* opacity of cells outside the lens     */
+  --jg-radius:         10px;
+  --jg-radius-sm:      6px;
+  --jg-font:           "Geist Variable", "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --jg-font-display:   "Saira Condensed", var(--jg-font);
+
+  color-scheme: light;
+}
+
+/* ---- 2. SEMANTIC — DARK --------------------------------------------- */
+/* Not a flip. Fills are the brand colour mixed ~22–32% into the dark
+   surface, and accent *text* moves up the same hue (peach for orange,
+   sky for blue) so it clears 4.5:1 on the dark fills.                     */
+.dark,
+[data-theme="dark"] {
+  --jg-bg:             #0b1015;
+  --jg-surface:        #121920;
+  --jg-surface-2:      #182028;
+  --jg-surface-3:      #202a34;
+  --jg-border:         #28323d;
+  --jg-border-strong:  #3b4855;
+
+  --jg-ink:            #e6ecf2;   /* 14.9:1 on surface                     */
+  --jg-ink-2:          #c2cbd4;   /* 10.8:1                                */
+  --jg-ink-muted:      #94a2ae;   /* 6.8:1                                 */
+  --jg-ink-faint:      #6a7784;   /* 3.9:1                                 */
+
+  --jg-hero:           var(--brand-accent-3);   /* 5.9:1 on surface        */
+  --jg-hero-text:      var(--brand-accent-2);   /* 9.6:1, 7.4:1 on fill    */
+  --jg-hero-fill:      #432619;
+  --jg-hero-on:        #0b1015;
+
+  --jg-live:           #5198d8;   /* accent-4 lifted to L 0.66 → 5.8:1     */
+  --jg-live-text:      #8cc4f2;   /* 9.5:1                                 */
+  --jg-live-fill:      #0f2c42;
+  --jg-live-fill-strong: #0e3656;
+  --jg-live-on:        #0b1015;
+
+  --jg-q-done-fill:    #242c33;
+  --jg-q-done-edge:    #455058;
+  --jg-q-max-fill:     var(--jg-hero-fill);
+  --jg-q-max-edge:     var(--jg-hero);
+  --jg-q-max-text:     var(--jg-hero-text);
+  --jg-q-poor:         #e07db8;   /* 6.6:1 on surface, 5.3:1 on fill       */
+  --jg-q-poor-text:    #f8a7d4;   /* 9.7:1                                 */
+  --jg-q-poor-fill:    #372438;
+  --jg-q-poor-hatch:   rgba(224, 125, 184, 0.14);
+
+  --jg-sticky-shadow:  rgba(0, 0, 0, 0.45);
+  --jg-dim:            0.34;
+
+  color-scheme: dark;
+}
+
+/* System preference fallback for pages that never stamp a class/attribute. */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not([data-theme="light"]):not(.dark):not([data-theme="dark"]) {
+    --jg-bg:             #0b1015;
+    --jg-surface:        #121920;
+    --jg-surface-2:      #182028;
+    --jg-surface-3:      #202a34;
+    --jg-border:         #28323d;
+    --jg-border-strong:  #3b4855;
+    --jg-ink:            #e6ecf2;
+    --jg-ink-2:          #c2cbd4;
+    --jg-ink-muted:      #94a2ae;
+    --jg-ink-faint:      #6a7784;
+    --jg-hero:           var(--brand-accent-3);
+    --jg-hero-text:      var(--brand-accent-2);
+    --jg-hero-fill:      #432619;
+    --jg-hero-on:        #0b1015;
+    --jg-live:           #5198d8;
+    --jg-live-text:      #8cc4f2;
+    --jg-live-fill:      #0f2c42;
+    --jg-live-fill-strong: #0e3656;
+    --jg-live-on:        #0b1015;
+    --jg-q-done-fill:    #242c33;
+    --jg-q-done-edge:    #455058;
+    --jg-q-max-fill:     var(--jg-hero-fill);
+    --jg-q-max-edge:     var(--jg-hero);
+    --jg-q-max-text:     var(--jg-hero-text);
+    --jg-q-poor:         #e07db8;
+    --jg-q-poor-text:    #f8a7d4;
+    --jg-q-poor-fill:    #372438;
+    --jg-q-poor-hatch:   rgba(224, 125, 184, 0.14);
+    --jg-sticky-shadow:  rgba(0, 0, 0, 0.45);
+    --jg-dim:            0.34;
+    color-scheme: dark;
+  }
+}
