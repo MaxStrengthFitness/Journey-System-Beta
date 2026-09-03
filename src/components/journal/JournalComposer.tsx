@@ -32,6 +32,7 @@ import {
   type JournalDraft,
   type JournalImportance,
   type JournalKind,
+  type JournalOrigin,
 } from "../../types/journal";
 import type { Machine } from "../../types";
 
@@ -64,6 +65,10 @@ export interface JournalComposerProps {
   onClearFocusContext?: () => void;
   onSubmit: (draft: JournalDraft) => Promise<void>;
   disabled?: boolean;
+  /** Pre-select a machine (the one being performed in an Active Session). */
+  defaultMachineId?: string;
+  /** Provenance stamped on the entry. The Journal tab leaves it "manual". */
+  origin?: JournalOrigin;
 }
 
 export function JournalComposer({
@@ -73,12 +78,14 @@ export function JournalComposer({
   onClearFocusContext,
   onSubmit,
   disabled = false,
+  defaultMachineId,
+  origin = "manual",
 }: JournalComposerProps) {
   const [kind, setKind] = useState<JournalKind>("coaching");
   const [category, setCategory] = useState<string | null>("Posture");
   const [body, setBody] = useState("");
   const [importance, setImportance] = useState<JournalImportance>("standard");
-  const [machineId, setMachineId] = useState<string>("");
+  const [machineId, setMachineId] = useState<string>(defaultMachineId ?? "");
   const [showMore, setShowMore] = useState(false);
   const [occurredOn, setOccurredOn] = useState("");
   const [effectiveUntil, setEffectiveUntil] = useState("");
@@ -106,7 +113,7 @@ export function JournalComposer({
   const reset = () => {
     setBody("");
     setImportance("standard");
-    setMachineId("");
+    setMachineId(defaultMachineId ?? "");
     setOccurredOn("");
     setEffectiveUntil("");
     setShowMore(false);
@@ -123,7 +130,7 @@ export function JournalComposer({
         importance,
         machineId: showMachine && machineId ? machineId : null,
         focusId: focusContext?.id ?? null,
-        origin: "manual",
+        origin,
         occurredAt: occurredOn ? new Date(`${occurredOn}T12:00:00`) : null,
         effectiveUntil: effectiveUntil ? new Date(`${effectiveUntil}T23:59:59`) : null,
       });

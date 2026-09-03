@@ -111,7 +111,7 @@ import {
 } from "../lib/log-validation";
 import { ActiveSessionTimer } from "./ActiveSessionTimer";
 import { SessionRoutineManagerModal } from "./SessionRoutineManagerModal";
-import { SessionNotesSidebar } from "./SessionNotesSidebar";
+import { SessionJournalSidebar } from "./journal/SessionJournalSidebar";
 import { BriefingScreen } from "./BriefingScreen";
 import { VictoryHUDScreen } from "./VictoryHUDScreen";
 import { ConsultationSetupWizard } from "./ConsultationSetupWizard";
@@ -3732,12 +3732,20 @@ export function WorkoutTrackerView({
       </div>
 
       <AnimatePresence>
-        {isShowingSessionNotes && currentSession && (
-          <SessionNotesSidebar
+        {isShowingSessionNotes && currentSession && clientId && (
+          <SessionJournalSidebar
             session={currentSession}
-            userTrainers={trainers}
+            clientId={clientId}
+            clientFirstName={selectedClient?.firstName || ""}
+            studioId={selectedClient?.homeStudioId || contextActiveStudioId || ""}
+            author={{
+              id: authTrainer?.id || user?.uid || "unknown",
+              initials: (authTrainer?.initials || "TR").toUpperCase(),
+              fullName: authTrainer?.fullName || "Coach",
+            }}
+            machines={machines}
+            defaultMachineId={gridFocusMachineId}
             onClose={() => setIsShowingSessionNotes(false)}
-            user={user}
           />
         )}
       </AnimatePresence>
