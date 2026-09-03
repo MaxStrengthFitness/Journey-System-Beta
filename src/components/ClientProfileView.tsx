@@ -98,7 +98,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ClientEquipmentPrescriptions } from "./ClientEquipmentPrescriptions";
+import { EquipmentTab } from "../features/equipment";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -2485,8 +2485,11 @@ export function ClientProfileView({
             </TabsList>
           </div>
         </div>
-        <TabsContent value="equipment">
-          <ClientEquipmentPrescriptions
+        <TabsContent
+          value="equipment"
+          className="mt-0 flex-1 overflow-hidden min-h-0 flex flex-col rounded-xl relative"
+        >
+          <EquipmentTab
             client={client}
             clientId={clientId}
             machines={machines}

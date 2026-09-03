@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import './features/journey-grid/journey-grid.css';
+import './features/equipment/equipment.css';
 import { ThemeProvider } from './components/ThemeProvider.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 

@@ -87,6 +87,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { useActiveStudio } from "../ActiveStudioContext";
+import { SetupPromptDialog } from "../features/equipment";
 import { useStudioMachineSettings } from "../hooks/useStudioMachineSettings";
 import { resolveMachineOrder } from "../data/machine-display-order";
 import {
@@ -1115,6 +1116,42 @@ export function WorkoutTrackerView({
   const [editingWeightMachineId, setEditingWeightMachineId] = useState<
     string | null
   >(null);
+
+  // ── In-session setup prompt ──────────────────────────────────────────
+  // A machine this client has never performed needs a setup, not an empty
+  // weight field. When the trainer opens one, show the guide first.
+  //
+  // `setupPromptedRef` makes it fire ONCE per machine per mount: dismissing
+  // the prompt must not turn into a loop every time the HUD is reopened, and a
+  // trainer who chose "Skip for now" has already answered the question.
+  const [setupPromptMachineId, setSetupPromptMachineId] = useState<
+    string | null
+  >(null);
+  const setupPromptedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const machineId = editingWeightMachineId;
+    if (!machineId || setupPromptedRef.current.has(machineId)) return;
+
+    const preset = clientMachineSettings[machineId];
+    const hasSettings = Boolean(
+      preset?.settings && Object.keys(preset.settings).length > 0,
+    );
+    const hasWeights =
+      preset?.startingWeight != null || preset?.currentWeight != null;
+    // Log keys are `${sessionId}_${machineId}` with an optional `_Left`/`_Right`
+    // suffix, so match on the machine id as a whole segment rather than a
+    // substring — "leg_press" must not match "leg_press_unilateral".
+    const hasHistory = Object.keys(logs).some((k) => {
+      const rest = k.slice(k.indexOf("_") + 1);
+      return rest === machineId || rest.startsWith(`${machineId}_`);
+    });
+
+    if (hasSettings || hasWeights || hasHistory) return;
+
+    setupPromptedRef.current.add(machineId);
+    setSetupPromptMachineId(machineId);
+  }, [editingWeightMachineId, clientMachineSettings, logs]);
   const [isStaticHoldOverride, setIsStaticHoldOverride] = useState(false);
   const [historyMachineId, setHistoryMachineId] = useState<string | null>(null);
   // Machine-specific notes (Active Session "Notes" column) — a persistent,
@@ -3328,6 +3365,32 @@ export function WorkoutTrackerView({
             />
           );
         })()}
+
+      {/* First-time setup prompt — opens over the Entry HUD when the trainer
+          reaches a machine this client has never performed. Same SettingsCard
+          and SetupGuide the Equipment tab uses, so the ghosting rules and the
+          journal sync behave identically; only `origin` differs. */}
+      {setupPromptMachineId && (
+        <SetupPromptDialog
+          open
+          machine={machines.find((m) => m.id === setupPromptMachineId) || null}
+          clientId={clientId || ""}
+          clientSettings={clientMachineSettings}
+          author={
+            authTrainer
+              ? {
+                  id: authTrainer.id || "unknown",
+                  fullName:
+                    authTrainer.fullName || authTrainer.initials || "Unknown",
+                  initials: authTrainer.initials,
+                }
+              : null
+          }
+          sessionId={currentSession?.id || null}
+          onClose={() => setSetupPromptMachineId(null)}
+          onError={toastError}
+        />
+      )}
 
       {/* Machine Settings Dialog */}
       {editingSettingsMachineId && (
