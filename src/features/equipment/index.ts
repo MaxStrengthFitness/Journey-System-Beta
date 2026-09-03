@@ -5,3 +5,6 @@ export { EquipmentSummaryBar } from "./EquipmentSummaryBar";
 export { MachineRail } from "./MachineRail";
 export { MachineDetailPanel } from "./MachineDetailPanel";
 export { NoteIndicator } from "./NoteIndicator";
+export { SettingsCard } from "./SettingsCard";
+export { SetupGuide } from "./SetupGuide";
+export * from "./mutations";

@@ -1,7 +1,8 @@
-import { useMemo } from "react";
 import { ChevronLeft } from "lucide-react";
-import { orderMachineSettings } from "../../lib/utils";
 import { NoteIndicator } from "./NoteIndicator";
+import { SettingsCard } from "./SettingsCard";
+import { SetupGuide } from "./SetupGuide";
+import type { MutationAuthor, SaveSettingsResult } from "./mutations";
 import type { EquipmentMachine } from "./types";
 
 /**
@@ -14,8 +15,12 @@ import type { EquipmentMachine } from "./types";
 
 export interface MachineDetailPanelProps {
   machine: EquipmentMachine | null;
+  clientId: string;
+  author: MutationAuthor | null;
   /** Shown only in the drill-in layout. */
   onBack: () => void;
+  onSettingsSaved?: (result: SaveSettingsResult, machine: EquipmentMachine) => void;
+  onError?: (message: string) => void;
 }
 
 function PrescriptionCard({ machine }: { machine: EquipmentMachine }) {
@@ -64,37 +69,14 @@ function PrescriptionCard({ machine }: { machine: EquipmentMachine }) {
   );
 }
 
-function SettingsReadCard({ machine }: { machine: EquipmentMachine }) {
-  const rows = useMemo(() => orderMachineSettings(machine.settings), [machine.settings]);
-
-  return (
-    <section className="eq-card">
-      <header className="eq-card__head">
-        <h3 className="eq-card__title">Machine settings</h3>
-      </header>
-      <div className="eq-card__body">
-        {rows.length === 0 ? (
-          <p className="eq-field__help">
-            No settings saved for this client yet.
-          </p>
-        ) : (
-          <div className="eq-fields">
-            {rows.map(([key, value, originalKey]) => (
-              <div className="eq-field" key={originalKey || key}>
-                <span className="eq-field__label">{key}</span>
-                <div className="eq-field__read">
-                  <b>{value}</b>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-export function MachineDetailPanel({ machine, onBack }: MachineDetailPanelProps) {
+export function MachineDetailPanel({
+  machine,
+  clientId,
+  author,
+  onBack,
+  onSettingsSaved,
+  onError,
+}: MachineDetailPanelProps) {
   if (!machine) {
     return (
       <div className="eq-detail">
@@ -139,7 +121,20 @@ export function MachineDetailPanel({ machine, onBack }: MachineDetailPanelProps)
       </header>
 
       <PrescriptionCard machine={machine} />
-      <SettingsReadCard machine={machine} />
+
+      <SettingsCard
+        machine={machine}
+        clientId={clientId}
+        author={author}
+        onSaved={onSettingsSaved}
+        onError={onError}
+      />
+
+      {machine.guide && (
+        /* Open by default on a machine the client has never used — that is the
+           moment a trainer actually needs the cues. */
+        <SetupGuide guide={machine.guide} defaultOpen={!machine.inUse} />
+      )}
     </div>
   );
 }

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMachineCatalog } from "../../hooks/useMachineCatalog";
+import { useToast } from "../../contexts/ToastContext";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import type { Machine, ClientMachineSetting, ExerciseLog, Client, Trainer } from "../../types";
 import { summarise, toEquipmentMachines } from "./adapters";
 import { EquipmentSummaryBar } from "./EquipmentSummaryBar";
 import { MachineRail } from "./MachineRail";
 import { MachineDetailPanel } from "./MachineDetailPanel";
+import type { MutationAuthor, SaveSettingsResult } from "./mutations";
 import type { PaneMode } from "./types";
 
 /**
@@ -57,9 +59,19 @@ export function EquipmentTab({
   machines,
   clientSettings = {},
   allLogs = [],
+  authTrainer,
 }: EquipmentTabProps) {
   const { byId: catalogById } = useMachineCatalog();
   const { activeStudio } = useActiveStudio();
+  const { success: toastSuccess, error: toastError } = useToast();
+
+  const author: MutationAuthor | null = authTrainer
+    ? {
+        id: authTrainer.id || "unknown",
+        fullName: authTrainer.fullName || authTrainer.initials || "Unknown",
+        initials: authTrainer.initials,
+      }
+    : null;
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -122,6 +134,10 @@ export function EquipmentTab({
     [equipment, selectedId],
   );
 
+  const handleSettingsSaved = (result: SaveSettingsResult) => {
+    toastSuccess(`Settings saved — ${result.summary}`);
+  };
+
   const handleSelect = (id: string) => {
     setSelectedId(id);
     setPane("detail");
@@ -146,7 +162,11 @@ export function EquipmentTab({
         {showDetail && (
           <MachineDetailPanel
             machine={selected}
+            clientId={clientId}
+            author={author}
             onBack={() => setPane("list")}
+            onSettingsSaved={handleSettingsSaved}
+            onError={toastError}
           />
         )}
       </div>

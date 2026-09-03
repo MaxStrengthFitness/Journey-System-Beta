@@ -611,6 +611,35 @@
   margin-bottom: 10px;
 }
 
+/* A collapsible card header is a button; strip the UA styling but keep the
+   header's own layout. */
+.eq-card__head--button {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--eq-border);
+  background: var(--eq-surface);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.eq-card__head--button:hover { background: var(--eq-surface-2); }
+.eq-card__head--button:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: -2px; }
+.eq-card__chev {
+  color: var(--eq-ink-muted);
+  transition: transform 160ms ease;
+  flex: 0 0 auto;
+}
+.eq-card__chev--open { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .eq-card__chev { transition: none; } }
+
+.eq-guide__heading {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.eq-guide__list--warn { color: var(--eq-warn); }
+
 /* ---------- Notes ---------------------------------------------------- */
 
 .eq-note {
