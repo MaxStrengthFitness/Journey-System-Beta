@@ -2,9 +2,20 @@
 
 A living document. We update it every working session — newest decisions at the top of each list. (Contractor-scope backend items live in PROJECT_TRACKER.md.)
 
-_Last updated: Sep 1, 2026_
+_Last updated: Sep 3, 2026_
 
 ---
+
+## 🎨 Now — Journey grid (Sep 3) — LIVE on branch `journey-grid`, one commit per phase
+
+One sticky grid for both the client profile Journey tab and the Active Session tracker: `src/features/journey-grid/` (spec in its README.md; the "Journey Grid" artifact in Claude is the same code with sample data). Type-checks clean (`npx tsc --noEmit`, 0 errors). Each phase is its own commit so any one can be reverted alone.
+
+- [x] ~~Phase 1 — feature folder~~ — components, tokens (the seven brand hexes + derived neutrals, light on `:root`, dark on `.dark`), adapters; `main.tsx` loads the stylesheet.
+- [x] ~~Phase 2 — Journey tab~~ — `ClientProfileView` swaps the five-zone table for `RecentJourneyView` (~700 lines gone). Sessions numbered from history length as before; rows in studio order with ordered settings chips, ★ core lifts, alert glyph for important machine notes; tap a machine → settings editor. Start/Low are the Analytics column (tap its header: First → Lowest → Highest → Most reps → Fewest reps); the Next/Target box is gone. Grid sizes to the viewport under the client header (`layout="viewport"`), so the grid scrolls, not the page.
+- [x] ~~Phase 3 — Active Session~~ — `WorkoutTrackerView` swaps the table for the grid with a live Today column pinned right, LATEST framed beside it. Persistence untouched: inputs go through `updateLogMultiple` / `setQualityWithGuard` into the local `logs` map; `finalizeEndSession` writes it as before. Today pre-fills the prescription (currentWeight → last performed → starting) and stamps it on a set logged without touching the weight. Torso Rotation keeps Left/Right logs (two outcome rows). Stopwatch Log-as-TSC writes into the focused machine's Today cell. Focus button = collapse/expand "Not in today's routine"; Add-to-session reuses the quick-add confirmation; note button per row opens the machine-notes dialog.
+- [x] ~~Phase 4 — in-session notes → journal~~ — Notes button opens `SessionJournalSidebar`: the Journal tab's `JournalComposer` (kind / 4 P's / importance / machine / dates) with the current machine pre-selected, entries written to `journalEntries` with `origin: in_session` + `sessionId`, plus a live list of this session's entries. `JournalComposer` gained `defaultMachineId` / `origin` props. Legacy `sessionNotes` sidebar no longer mounted in the tracker (still used by ClientHistoryView; old notes read through the journal adapter).
+- [ ] **Verify on the iPad after deploy** — Journey tab (both themes, portrait + landscape, Older, Analytics cycle, tap-a-value jump), a real session end-to-end (weights/reps/quality, a Torso Rotation L/R set, Log-as-TSC, Add-to-session, a note from the Notes button showing up on the Journal tab), Finish session.
+- [ ] Follow-ups: the old Machine Performance Entry dialog (`editingWeightMachineId`) and `TRACKER_COL` are now unreachable/unused in the tracker — delete on the next pass. The End-Session dialog's "Session Notes" textarea and the post-session note still write legacy `sessionNotes` via `completeWorkoutSession` (journal reads them through the adapter) — move to `journalEntries` (`origin: post_session`) when touching that flow. Decide whether the Analytics column stays on in the tracker in portrait (`showStats={false}` turns it off).
 
 ## 🔨 Now — iPad UI overhaul (Sep 1) — branch `ui-overhaul`, one commit per phase
 

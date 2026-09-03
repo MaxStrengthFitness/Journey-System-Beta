@@ -1,0 +1,236 @@
+# Journey Grid
+
+Design spec for `src/features/journey-grid/` — the sticky client-tracking grid used by the client profile Journey tab (`RecentJourneyView`) and the Active Session tracker (`WorkoutTrackerView` → `JourneyGrid` with a live column). Integrated Sep 3, 2026 on branch `journey-grid`.
+
+
+Files: `src/features/journey-grid/`. Live prototype: the "Journey Grid" artifact (same code, compiled with Judy Daus's data).
+
+**v2 (Sep 3):** grid lives under the static client header and scrolls in the space below it; the Recent Journey / Active Session toggle is gone (the global bottom action bar owns that transition); lens chips replaced by a sticky **Analytics** column right of the machine names; the most recent logged session is framed as the baseline.
+
+---
+
+## 1. UX rationale & visual hierarchy
+
+### 1.1 The color budget
+
+The old screens spent color on the wrong thing. Every machine row had its own hue (emerald / amber / purple / blue per movement group), every trainer avatar had a hue, and then set quality added a third layer of emerald / amber / rose on top. Three unrelated color systems fought on the same surface, and the eye had nothing to lock on to.
+
+The redesign runs on a **color budget**: color is spent only where it carries a decision.
+
+| Meaning | Color | Why |
+|---|---|---|
+| **Max strength set** (quality 3) | Brand hero orange `--brand-primary-1` | The one thing a trainer should spot from across the table. It is the brand's most energetic pigment and it appears nowhere else in the grid, so it always means "protocol followed perfectly". |
+| **Completed set** (quality 2) | Slate tint derived from `--brand-primary-3` | The baseline. A normal week of training should read *calm*. No yellow anywhere — amber reads as a warning, and "you did the work" is not a warning. |
+| **Poor quality set** (quality 1) | Plum `#a2457e` (light) / `#e07db8` (dark) + a diagonal hatch | Clearly "not right" without shouting. Plum sits opposite orange on the wheel, so the two states that matter never blur: ΔE 18.6 apart under protanopia, ~17 for full-color vision. The hatch means the state is readable in greyscale, print, or by a color-blind trainer. |
+| **Baseline / interactive** | Brand blue `--brand-accent-4` / `--brand-primary-2` | Everything a trainer *acts on* is blue: the LATEST column, the Today column, the Analytics header, a spotlighted date, focus rings, the row trace. Blue never encodes a result. |
+| Everything else | Slate neutrals at OKLCH hue 240 | Greys were generated at the brand slate's hue, so they belong to the palette instead of looking like a stock Tailwind grey. |
+
+Movement groups (Neck / Lower body / Push / Pull / Core) are available as **section divider rows** ("By group"), not as paint. The default order is the studio sequence (`DEFAULT_MACHINE_DISPLAY_ORDER`), unchanged.
+
+### 1.2 Cell anatomy
+
+Every historical cell shows the same two numbers in the same two places, so the eye can scan a row like a sentence:
+
+```
+┌──────────────┐
+│     116      │  weight — 17px semibold, tabular figures
+│    12 ↓      │  reps (or ⏱ 1:30 for a timed static contraction) + trend glyph
+└──────────────┘
+   ▲ 3px quality edge on the left (only for max / poor)
+   ★ / ◐ glyph top-right (only for max / poor)
+```
+
+- **Trend glyphs are monochrome on purpose.** `▲▼` = load changed vs the previous logged set, `↑↓` = same load, reps changed. Color says *quality*, the glyph says *direction* — one channel per meaning.
+- **Empty cells** show a faint `—`, never a fill, so a sparse machine doesn't look busy.
+- **Timed static contractions** show `⏱ 1:30` in the reps slot. Same slot, different unit.
+
+### 1.3 The LATEST column
+
+The most recent logged session is the baseline for today's prescription, so it gets the strongest treatment in the timeline: a 2px blue frame down both sides of the column, a 3px blue underline on its header, the header inverted (`LATEST · #45`, blue date, filled avatar), empty cells tinted blue, and the weight one step larger. Quality fills stay inside the frame, so "max effort last time" and "poor quality last time" are both still readable at a glance. In the Active Session the LATEST column sits directly beside the Today column: **baseline → today**, no scrolling.
+
+### 1.4 Light and dark are two designs, not a flip
+
+Dark mode is derived from the same tokens but re-tuned, because a 14% orange tint that looks warm on white turns to mud on navy:
+
+- Fills mix the brand color into the dark **surface** (22–32%), not into black.
+- Accent **text** climbs the same hue: peach `--brand-accent-2` stands in for orange, sky `#8cc4f2` for blue, `#f8a7d4` for plum — so small text on a tinted fill still clears 4.5:1.
+
+Every text/fill pairing was checked against WCAG 2.1 AA. Worst cases:
+
+| Pairing | Light | Dark |
+|---|---|---|
+| Weight text on any cell fill | 14.5 : 1 | 11.5 : 1 |
+| Reps text on any cell fill | 7.7 : 1 | 8.4 : 1 |
+| Muted labels on header band | 5.0 : 1 | 6.3 : 1 |
+| Orange text on max fill | 5.0 : 1 | 7.4 : 1 |
+| Plum text on poor fill | 6.3 : 1 | 7.8 : 1 |
+| Blue text on LATEST / Today fill | 7.7 : 1 | 7.7 : 1 |
+| Quality edge (non-text) on surface | ≥ 3.5 : 1 | ≥ 5.9 : 1 |
+
+The only pairing that does *not* clear 4.5:1 is white text on solid `#ef5302` in light mode (3.55:1). That is why the hero orange is used for **bars, edges and ≥18px bold buttons only** — small orange text always uses `--jg-hero-text` (`#bc2c00`, 6.0:1).
+
+### 1.5 Typography
+
+- **Saira Condensed** (your display face) for dates, the Analytics header, section labels and the LATEST / TODAY tags — condensed type is what lets an 84px column hold "AUG 24" at 15px without wrapping.
+- **Geist** (your app face) for everything else, with `font-variant-numeric: tabular-nums` on every number so columns of weights line up digit-for-digit.
+
+---
+
+## 2. Layout strategy & interaction model
+
+### 2.1 Where the grid lives
+
+The grid is a component *inside* the client profile. Above it, unchanged and static: the app bar, the client header (name, Profile details / Start session), the stats row (top trainer, last / next session, sessions completed) and the section tabs. Below it, the global action bar. `RecentJourneyView` renders as a flex column (`layout="fill"`) that takes whatever height is left between those, and **only the grid's scroller scrolls** — the page never does. The same `layout="fill"` prop drives the Active Session under its own session bar.
+
+There is no view toggle on the grid. Starting a session is the bottom bar's job, exactly as it is today.
+
+### 2.2 One scroller, four sticky rails
+
+The grid is a single element that scrolls on **both** axes. Inside it:
+
+- the **machine column** is `position: sticky; left: 0`
+- the **Analytics column** is `position: sticky; left: <machine column width>` — it rides directly behind the machine column and the two form one rail
+- the **date header** row is `position: sticky; top: 0`
+- the **Today column** (Active Session only) is `position: sticky; right: 0`
+- the corner, the Analytics header and the Today header pin on two axes at once
+
+Because every pinned piece is a grid cell with `position: sticky`, the browser's compositor does the pinning. No JavaScript listens to scroll, there is no cloned header table to keep in sync, and nothing janks on an iPad. Vertical scrolling never hides the dates; horizontal scrolling never hides the machines or their numbers.
+
+### 2.3 Chronological flow
+
+Columns run **oldest → newest, left → right**; Today is the last column. The grid opens scrolled to the far right, so the first thing on screen is the LATEST column beside today's input. A `ResizeObserver` keeps it parked there through any resize that happens before the trainer touches the grid (fonts loading, orientation change, a panel opening) — the v1 prototype could open on the wrong end because of this.
+
+History loads backwards: **Older +5** in the section toolbar, and the same control at the far left of the timeline. Prepending five columns compensates the scroll offset in the same frame, so the columns under your thumb don't move.
+
+### 2.4 The Target Weight box is gone
+
+The prescribed weight (`clientMachineSettings.currentWeight`) shows up in exactly one place: **pre-filled in Today's weight input**. The machine cell's readout shows the journey instead: `40 → 66 lb (+65%)`.
+
+### 2.5 The Analytics column
+
+A fixed, sticky column immediately right of the machine names. **Every row shows the same metric**, and the column header is the control:
+
+| Tap the header… | Column shows, per machine | Tie-break |
+|---|---|---|
+| **First** weight | earliest set on record | — |
+| **Lowest** weight | lowest load ever | earliest — when the floor was set |
+| **Highest** weight | heaviest load ever | latest — is the ceiling still current? |
+| **Most** reps | best rep count in a set | latest, at whatever load it happened |
+| **Fewest** reps | lowest rep count in a set | latest — the most recent struggle is the useful one |
+
+Each cell is three lines: the number with its unit (`116 lb` / `12 reps`), the date it happened, and the *other half* of that set as context — reps for a weight metric, `@ 116 lb` for a rep metric — so "Highest 116" and "Most reps 15 @ 116" answer the follow-up question before it is asked. Timed static contractions count for the three weight metrics and are skipped by the two rep metrics.
+
+Interaction rules that make it work on a gym floor:
+
+- **One tap cycles.** The header is one 74px-tall button; five dots under the label show where you are in the cycle. No menu to open, no chips to scan, and the trainer's thumb never leaves the rail.
+- **The numbers search the whole loaded history**, not just the visible columns — "Lowest" is the real floor. If the set behind a number lives in a column that isn't loaded yet, the cell says `‹ older`.
+- **Tap a value to see it in context.** The timeline scrolls that session's column into view and spotlights it. The source cell also carries a quiet dashed ring (dropped inside the LATEST column, which is already framed).
+- All five metrics are computed for every row in a single pass (`computeRowStats`), memoised on the data — cycling the metric only re-renders the 20 Analytics cells.
+
+Two more header taps, both blue because both are interactive:
+
+- **Tap a date header → spotlight** that column (blue ring, inverted header). Tap again to clear.
+- **Tap a machine name → trace** its row (blue rules top and bottom). Tap again to clear.
+
+### 2.6 The Today column (Active Session)
+
+The input cell reads in the order the set happens:
+
+1. **Load** — pre-filled, `−`/`+` steppers in 2 lb increments, tap the number for the numeric keypad.
+2. **Outcome** — a large reps field (16px so iOS never zooms), with a `TSC` toggle that turns it into seconds under tension.
+3. **Quality** — Poor / Done / Max ★, using the same tokens the historical cell will use once saved.
+
+Rows for today's routine are numbered and sit first; every other machine is folded under "Not in today's routine" with an *Add to session* button. The current machine (focus) gets an orange edge on its name and a blue ring on its input; `Next: …` in the session bar advances it.
+
+### 2.7 Density
+
+Three densities, one CSS attribute. **Full** (64px rows, weight + reps + trend, three-line Analytics cells), **Comfortable** (56px), **Compact** (44px, weight only, two-line Analytics). The choice persists in `localStorage`, mirroring the existing density preference.
+
+---
+
+## 3. React & CSS architecture
+
+### 3.1 Files
+
+```
+src/features/journey-grid/
+  journey-grid.tokens.css   brand + semantic tokens, light / dark / system
+  journey-grid.css          grid layout, sticky rails, cell states, controls
+  types.ts                  view models (JourneySession, JourneyRow, LiveSet, StatMetric…)
+  stats.ts                  pure functions: computeRowStats, trend, summary, date formatting
+  adapters.ts               WorkoutSession / ExerciseLog / Machine → view models
+  JourneyCell.tsx           memoised historical cell
+  StatCell.tsx              memoised Analytics cell
+  LiveInputCell.tsx         Today's input cell
+  GridToolbar.tsx           section caption + density + legend
+  JourneyGrid.tsx           the sticky grid (header, sections, rows, scroll logic)
+  RecentJourneyView.tsx     profile → Journey tab
+  ActiveSessionView.tsx     live tracker + useLiveSession() state hook
+  index.ts
+```
+
+### 3.2 Why CSS Grid, not `<table>`
+
+- A table can't pin a column on the **right** while also pinning two on the left without wrapper hacks; a grid cell can be sticky to any edge, at any offset (`left: var(--jg-col-machine)` is what stacks the Analytics column behind the machine column).
+- Grid tracks are declared once (`grid-template-columns`) — machine, Analytics, N sessions, Today — so widths never drift between header and body.
+- Rows are `display: contents` wrappers carrying `role="row"`, so the DOM still reads as a table to VoiceOver (`role="grid"` / `columnheader` / `rowheader` / `gridcell` with full `aria-label`s), while the browser lays out one flat grid.
+
+Two rules that bit during the build and are worth knowing: **never leave an empty track in the template** (a 0px placeholder made auto-placement flow the next row's first cell into it — optional tracks exist only when their cells render, via `data-stats` / `data-live`), and **size session tracks as `minmax(col, 1fr)`** so a short timeline still pushes Today to the right edge.
+
+### 3.3 Performance on mobile Safari
+
+- **Sticky is compositor-driven.** No scroll listeners, no transforms, no `will-change` sprinkled everywhere. Avoid `transform` or `overflow: hidden` on any ancestor of `.jg-scroller` — either one breaks sticky.
+- **Two more sticky cells per row cost nothing measurable.** The Analytics column is 20 more composited items (one per row) with `contain: layout style`; the only scroll listener in the component is the passive "has the user touched this yet" flag.
+- **Cells are `React.memo`.** Cycling the Analytics metric re-renders 20 `StatCell`s and the cells whose dashed ring changes; typing a rep count re-renders exactly one row, because `useLiveSession` replaces only that machine's `LiveSet` object.
+- **Aggregates run once per data change** (`useMemo` over rows × history), never per cell, never per tap.
+- **No per-cell inline styles.** Widths, row heights and font sizes are CSS custom properties on the container; density is one attribute flip.
+- `overscroll-behavior: contain` on the scroller (no page bounce-through), `touch-action: pan-x pan-y`, `-webkit-tap-highlight-color: transparent`.
+- Ceiling before you need virtualisation: ~20 rows × ~60 columns ≈ 1,200 cells renders comfortably. Past ~150 columns, window the `sessions` array by `scrollLeft` (the "Older" paging already keeps you far below this).
+
+### 3.4 Data flow
+
+```
+Firestore ──► adapters.ts ──► JourneyRow[] + JourneySession[] ──► JourneyGrid
+                                   │
+   ExerciseLog { weight:"116", reps:"12", isTSC, repQuality:1|2|3 }
+   WorkoutSession { sessionNumber, date, trainerInitials }
+   ClientMachineSetting { settings, startingWeight, currentWeight }
+```
+
+`repQuality` keeps its existing meaning — **1 = poor, 2 = completed, 3 = max strength** — so nothing in Firestore changes. `toIsoDate()` normalises the mixed date strings without going through `new Date(string)`, so a set logged on Sep 2 never shows as Sep 1 on a device in another timezone.
+
+### 3.5 Integration steps
+
+1. Copy `src/features/journey-grid/` into the app. Import `journey-grid.css` once (e.g. in `main.tsx`); it imports the tokens file itself.
+2. In `ClientProfileView.tsx`, make the Journey tab's content area a flex column that fills the height under the tabs (`display:flex; flex-direction:column; min-height:0; flex:1`), then replace the table with:
+   ```tsx
+   const journeySessions = useMemo(() => toJourneySessions(sessions), [sessions]);
+   const journeyRows = useMemo(
+     () => toJourneyRows(orderedMachines, allLogs, clientSettings, starredIds),
+     [orderedMachines, allLogs, clientSettings, starredIds],
+   );
+   <RecentJourneyView
+     sessions={journeySessions}
+     rows={journeyRows}
+     hasMoreOnServer={hasMoreSessions}
+     onLoadMore={handleLoadMoreHistory}
+     loadingMore={isLoadingMore}
+     layout="fill"
+   />
+   ```
+   `orderedMachines` is the list already sorted by `resolveMachineOrder`. If the profile page must keep scrolling as a whole, pass `layout="auto" maxHeight="…"` instead.
+3. In `WorkoutTrackerView.tsx`, feed `ActiveSessionView` the same rows plus `useLiveSession(routineMachineIds, existingLogsAsLiveSets)`, and write `live.values` back through your existing `updateLog` on change (debounced) or on Finish.
+4. Delete `lib/machine-colors.ts` once nothing else imports it. Movement groups now come from `movementGroupFor()` in `adapters.ts` (same rules, no colours).
+5. Optional: expose the semantic tokens to Tailwind by adding to `@theme inline` in `index.css`:
+   ```css
+   --color-jg-hero: var(--jg-hero);
+   --color-jg-live: var(--jg-live);
+   --color-jg-poor: var(--jg-q-poor);
+   ```
+
+### 3.6 Things deliberately left for you to decide
+
+- Unilateral machines (Torso Rotation L/R): the adapter keeps one set per cell (Left wins). If you want both, give each side its own row — the grid doesn't care.
+- The per-studio custom machine order overrides the default; the "Sequence / By group" toggle respects whatever order the rows arrive in.
+- Saving cadence for the live column (debounce vs. on-blur vs. on-Finish) — the hook is agnostic.
+- Whether the Analytics column stays on in the Active Session (`showStats={false}` turns it off there if the rail feels too wide in portrait).
