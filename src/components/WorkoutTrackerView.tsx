@@ -89,6 +89,19 @@ import {
 import { useActiveStudio } from "../ActiveStudioContext";
 import { useStudioMachineSettings } from "../hooks/useStudioMachineSettings";
 import { resolveMachineOrder } from "../data/machine-display-order";
+import {
+  JourneyGrid,
+  QualityLegend,
+  toIsoDate,
+  toJourneyRows,
+  toJourneySessions,
+  type Density as GridDensity,
+  type GridSection,
+  type LiveColumn,
+  type LiveSet,
+} from "../features/journey-grid";
+import { isBig5Machine } from "../lib/utils";
+import type { RepQuality } from "../types";
 import { Stopwatch } from "./Stopwatch";
 import { useToast } from "../contexts/ToastContext";
 import {
@@ -1448,42 +1461,18 @@ export function WorkoutTrackerView({
 
   const handleLogTSC = async (seconds: number) => {
     if (!currentSession || activeMachineIds.length === 0) return;
-
-    let activeFocusMachineId: string | null = null;
-    for (const mId of activeMachineIds) {
-      const log = logs[`${currentSession.id}_${mId}`];
-      if (
-        !log ||
-        !log.weight ||
-        (!log.reps && !log.seconds) ||
-        !log.repQuality
-      ) {
-        activeFocusMachineId = mId;
-        break;
-      }
+    // The stopwatch logs into the machine being performed: the Today cell of
+    // the focused row (first incomplete machine unless the trainer tapped one).
+    const targetId = gridFocusMachineId;
+    if (!targetId) return;
+    if (seconds > 0) {
+      handleGridLiveChange(targetId, {
+        isTSC: true,
+        seconds: Math.round(seconds),
+        reps: 0,
+      });
     }
-
-    if (activeFocusMachineId) {
-      // Order matters. The dialog reads its starting value once, when it mounts,
-      // so the seconds have to be in `logs` before it opens. Previously the
-      // dialog was opened first and the writes followed behind four `await`s —
-      // each of which yields to the microtask queue — so the dialog mounted on
-      // the pre-write state and showed nothing.
-      //
-      // One combined write rather than four: updateLogMultiple also stamps a
-      // session heartbeat, so the old version fired four Firestore writes per
-      // logged hold.
-      if (seconds > 0) {
-        updateLogMultiple(currentSession.id, activeFocusMachineId, {
-          seconds: seconds.toString(),
-          reps: "0",
-          isTSC: true,
-          isStaticHold: true,
-        });
-      }
-      setIsStaticHoldOverride(true);
-      setEditingWeightMachineId(activeFocusMachineId);
-    }
+    setFocusMachineOverride(targetId);
   };
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -2605,6 +2594,268 @@ export function WorkoutTrackerView({
     return "0";
   };
 
+  /* ------------------------------------------------------------------ *
+   * JOURNEY GRID (Active Session)
+   *
+   * The session log is the shared Journey Grid with a live Today column.
+   * Nothing about persistence changes: every input still goes through
+   * updateLogMultiple / setQualityWithGuard into the local `logs` map, and
+   * finalizeEndSession writes that map exactly as before. Torso Rotation
+   * keeps its Left/Right logs — the Today cell shows two outcome rows.
+   * ------------------------------------------------------------------ */
+  const isSidesMachine = (m: Machine) =>
+    (m.name || "").toLowerCase().includes("torso rotation");
+
+  /** Past sessions, oldest → newest. Capped at the 30 the logs listener covers. */
+  const gridHistory = useMemo(
+    () =>
+      toJourneySessions(
+        sessions
+          .filter((s) => (currentSession ? s.id !== currentSession.id : true))
+          .slice(0, 30),
+      ),
+    [sessions, currentSession],
+  );
+
+  const [gridVisible, setGridVisible] = useState(6);
+  const gridVisibleHistory = useMemo(
+    () => gridHistory.slice(Math.max(0, gridHistory.length - gridVisible)),
+    [gridHistory, gridVisible],
+  );
+
+  const [gridDensity, setGridDensity] = useState<GridDensity>(() => {
+    try {
+      const v = localStorage.getItem("journey-grid-density-session");
+      if (v === "compact" || v === "comfortable" || v === "full") return v;
+    } catch {
+      /* ignore */
+    }
+    return "comfortable";
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("journey-grid-density-session", gridDensity);
+    } catch {
+      /* ignore */
+    }
+  }, [gridDensity]);
+
+  const gridRows = useMemo(() => {
+    const ordered = [...machines].sort(
+      (a, b) =>
+        resolveMachineOrder(
+          a.id,
+          a.order,
+          a.id ? studioMachineSettingsById[a.id]?.order : undefined,
+        ) -
+        resolveMachineOrder(
+          b.id,
+          b.order,
+          b.id ? studioMachineSettingsById[b.id]?.order : undefined,
+        ),
+    );
+    const historyLogs = (Object.values(logs) as ExerciseLog[]).filter(
+      (l) => !currentSession || l.sessionId !== currentSession.id,
+    );
+    const starred = new Set(
+      ordered.filter((m) => isBig5Machine(m.name)).map((m) => m.id!),
+    );
+    const orderIndex = new Map<string, number>(
+      gridHistory.map((s, i) => [s.id, i] as const),
+    );
+    return toJourneyRows(ordered, historyLogs, clientMachineSettings, starred).map(
+      (row) => {
+        const machine = ordered.find((m) => m.id === row.machine.id);
+        if (!machine) return row;
+        const setting = clientMachineSettings[machine.id!];
+        const entries = orderMachineSettings(
+          setting?.settings || {},
+          machine.standardSettings || {},
+          machine.settingOptions || [],
+        );
+        // "Last weight performed" — the newest set on record.
+        let lastWeight: number | undefined;
+        let lastIdx = -1;
+        for (const set of Object.values(row.sets)) {
+          const i = orderIndex.get(set.sessionId) ?? -1;
+          if (i > lastIdx) {
+            lastIdx = i;
+            lastWeight = set.weight;
+          }
+        }
+        const notes = setting?.machineNotes || [];
+        return {
+          ...row,
+          prescribedWeight:
+            setting?.currentWeight ?? lastWeight ?? setting?.startingWeight,
+          machine: {
+            ...row.machine,
+            settings: entries.length
+              ? Object.fromEntries(entries.map(([k, v]) => [k, v]))
+              : undefined,
+            alert: notes.some((n) => n.isImportant),
+            noteCount: notes.length,
+            sides: isSidesMachine(machine),
+          },
+        };
+      },
+    );
+  }, [
+    machines,
+    logs,
+    clientMachineSettings,
+    studioMachineSettingsById,
+    currentSession,
+    gridHistory,
+  ]);
+
+  const gridSections = useMemo<GridSection[]>(() => {
+    const byId = new Map(gridRows.map((r) => [r.machine.id, r] as const));
+    const routineRows = activeMachineIds
+      .map((id) => byId.get(id))
+      .filter(Boolean) as typeof gridRows;
+    const inRoutine = new Set(activeMachineIds);
+    const others = gridRows.filter((r) => !inRoutine.has(r.machine.id));
+    return [
+      { id: "routine", label: "Today's routine", rows: routineRows, numbered: true },
+      {
+        id: "others",
+        label: "Not in today's routine",
+        rows: others,
+        collapsed: !showAllMachines,
+        onToggle: () => setShowAllMachines(!showAllMachines),
+        inactive: true,
+      },
+    ];
+  }, [gridRows, activeMachineIds, showAllMachines]);
+
+  const toNum = (v: unknown): number | null => {
+    if (v === undefined || v === null || v === "") return null;
+    const n = typeof v === "number" ? v : parseFloat(String(v));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  /** Today's values, read straight out of the local `logs` map. */
+  const gridLiveValues = useMemo(() => {
+    const out: Record<string, LiveSet> = {};
+    const sid = currentSession?.id;
+    if (!sid) return out;
+    for (const row of gridRows) {
+      const id = row.machine.id;
+      if (row.machine.sides) {
+        const L = logs[`${sid}_${id}_Left`];
+        const R = logs[`${sid}_${id}_Right`];
+        if (!L && !R) continue;
+        out[id] = {
+          weight: toNum(L?.weight ?? R?.weight),
+          reps: toNum(L?.reps),
+          seconds: toNum(L?.seconds),
+          isTSC: !!(L?.isTSC || L?.isStaticHold || R?.isTSC || R?.isStaticHold),
+          quality: (L?.repQuality as RepQuality | undefined) ?? null,
+          repsR: toNum(R?.reps),
+          secondsR: toNum(R?.seconds),
+          qualityR: (R?.repQuality as RepQuality | undefined) ?? null,
+        };
+      } else {
+        const log = logs[`${sid}_${id}`];
+        if (!log) continue;
+        out[id] = {
+          weight: toNum(log.weight),
+          reps: toNum(log.reps),
+          seconds: toNum(log.seconds),
+          isTSC: !!(log.isTSC || log.isStaticHold),
+          quality: (log.repQuality as RepQuality | undefined) ?? null,
+        };
+      }
+    }
+    return out;
+  }, [logs, gridRows, currentSession?.id]);
+
+  /** The machine being performed: the first one without a full set, unless the trainer tapped another. */
+  const firstIncompleteMachineId = useMemo(() => {
+    if (!currentSession?.id) return null;
+    for (const id of activeMachineIds) {
+      const v = gridLiveValues[id];
+      const done = !!v && !!(v.isTSC ? v.seconds : v.reps) && !!v.quality;
+      if (!done) return id;
+    }
+    return activeMachineIds[0] ?? null;
+  }, [activeMachineIds, gridLiveValues, currentSession?.id]);
+  const [focusMachineOverride, setFocusMachineOverride] = useState<string | null>(null);
+  const gridFocusMachineId =
+    focusMachineOverride && activeMachineIds.includes(focusMachineOverride)
+      ? focusMachineOverride
+      : firstIncompleteMachineId;
+
+  /** Grid → logs. Mirrors what the old entry dialog wrote, field by field. */
+  const handleGridLiveChange = (machineId: string, patch: Partial<LiveSet>) => {
+    const sessionId = currentSession?.id;
+    if (!sessionId) return;
+    const row = gridRows.find((r) => r.machine.id === machineId);
+    const sides = !!row?.machine.sides;
+    const current = gridLiveValues[machineId];
+    const shownWeight = current?.weight ?? row?.prescribedWeight ?? null;
+    const str = (v: number | null | undefined) =>
+      v === null || v === undefined ? "" : String(v);
+    // A set logged without ever touching the weight keeps the weight that
+    // was on screen (the prescription) — the old dialog did the same.
+    const withWeight = (
+      u: Partial<ExerciseLog>,
+      side?: "Left" | "Right",
+    ): Partial<ExerciseLog> => {
+      const existing = logs[`${sessionId}_${machineId}${side ? "_" + side : ""}`];
+      if ((!existing || !existing.weight) && shownWeight !== null && u.weight === undefined) {
+        return { ...u, weight: String(shownWeight) };
+      }
+      return u;
+    };
+    const sideL = sides ? "Left" : undefined;
+
+    if (patch.weight !== undefined) {
+      updateLogMultiple(sessionId, machineId, { weight: str(patch.weight) }, sideL);
+      if (sides) updateLogMultiple(sessionId, machineId, { weight: str(patch.weight) }, "Right");
+    }
+    if (patch.isTSC !== undefined) {
+      const u = { isTSC: patch.isTSC, isStaticHold: patch.isTSC };
+      updateLogMultiple(sessionId, machineId, withWeight(u, sideL), sideL);
+      if (sides) updateLogMultiple(sessionId, machineId, withWeight(u, "Right"), "Right");
+    }
+    if (patch.reps !== undefined)
+      updateLogMultiple(sessionId, machineId, withWeight({ reps: str(patch.reps) }, sideL), sideL);
+    if (patch.seconds !== undefined)
+      updateLogMultiple(sessionId, machineId, withWeight({ seconds: str(patch.seconds) }, sideL), sideL);
+    if (patch.repsR !== undefined)
+      updateLogMultiple(sessionId, machineId, withWeight({ reps: str(patch.repsR) }, "Right"), "Right");
+    if (patch.secondsR !== undefined)
+      updateLogMultiple(sessionId, machineId, withWeight({ seconds: str(patch.secondsR) }, "Right"), "Right");
+    if (patch.quality !== undefined && patch.quality !== null)
+      setQualityWithGuard(sessionId, machineId, patch.quality, sideL);
+    if (patch.qualityR !== undefined && patch.qualityR !== null)
+      setQualityWithGuard(sessionId, machineId, patch.qualityR, "Right");
+  };
+
+  const gridLive: LiveColumn | undefined = currentSession?.id
+    ? {
+        session: {
+          id: currentSession.id,
+          sessionNumber: currentSession.sessionNumber || sessions.length,
+          date: toIsoDate(currentSession.date || new Date().toISOString().slice(0, 10)),
+          trainerInitials: (
+            currentSession.trainerInitials ||
+            authTrainer?.initials ||
+            ""
+          ).toUpperCase(),
+        },
+        routineMachineIds: activeMachineIds,
+        values: gridLiveValues,
+        onChange: handleGridLiveChange,
+        onAddMachine: (id: string) => setQuickAddMachineId(id),
+        focusMachineId: gridFocusMachineId,
+        onFocusMachine: setFocusMachineOverride,
+        weightStep: 2,
+      }
+    : undefined;
+
   if (!selectedClient && !currentSession) {
     return null; // The app routing will ensure this is never reached by redirecting to ClientDirectoryView instead
   }
@@ -3441,874 +3692,42 @@ export function WorkoutTrackerView({
           </div>
         </DialogContent>
       </Dialog>
-      {/* Workout Table Scroll Area */}
-      <div className="flex-1 overflow-hidden border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-bg-dark shadow-sm flex flex-col">
-        <div className="w-full h-full overflow-x-auto custom-scrollbar bg-slate-50 dark:bg-slate-950">
-          <table className="w-full text-left border-collapse table-fixed select-none min-w-150 h-full flex flex-col bg-white dark:bg-bg-dark border border-slate-200 dark:border-slate-800 shadow-sm">
-            <thead className="flex w-full shrink-0">
-              <tr className="bg-slate-50 dark:bg-surface-1 border-b border-slate-200 dark:border-slate-700 uppercase text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 leading-none h-9 w-full flex items-center">
-                <th className={cn("p-0 flex items-center justify-center border-r border-slate-200 dark:border-slate-700 h-full", TRACKER_COL.seq)}>
-                  {currentSession ? (
-                    <button
-                      onClick={() => setIsSessionRoutineManagerOpen(true)}
-                      className="w-full h-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
-                      title="Edit Routine"
-                    >
-                      <Settings2 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                    </button>
-                  ) : (
-                    "#"
-                  )}
-                </th>
-                {/* Notes column — round: moved to be the 2nd column,
-                    right next to the sequence/routine column, instead of
-                    sitting off to the right past the History grid. */}
-                <th className={cn("p-1 text-center border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center text-[9px]", TRACKER_COL.notes)}>
-                  Notes
-                </th>
-                {/* Fixed width instead of flex-1 (round: shift weight
-                    columns left) — flex-1 was letting this column swallow
-                    all the table's leftover width, which is what pushed
-                    Starting Weight/Last Weight Performed far to the right
-                    with a big dead gap in between. */}
-                <th className={cn("p-1.5 pl-3 border-r border-slate-200 dark:border-slate-700 h-full flex items-center truncate", TRACKER_COL.exercise)}>
-                  Exercise & Settings
-                </th>
-                {/* Starting Weight / Last Weight Performed — dedicated
-                    solo-value columns, now sitting directly against
-                    Exercise & Settings. Last Weight Performed intentionally
-                    looks further back than the 5-session History window
-                    when it needs to. */}
-                <th className={cn("p-1 border-r border-slate-200 dark:border-slate-700 h-full flex flex-col items-center justify-center leading-tight text-[9px]", TRACKER_COL.reference)}>
-                  <span>Starting</span>
-                  <span>Weight</span>
-                </th>
-                <th className={cn("p-1 border-r border-slate-200 dark:border-slate-700 h-full flex flex-col items-center justify-center leading-tight text-[9px]", TRACKER_COL.reference)}>
-                  <span>Last Weight</span>
-                  <span>Performed</span>
-                </th>
-                {/* Visual spacer — a small physical gap separating the
-                    Starting/Last Weight columns from the dated History
-                    grid, so the two don't read as one continuous block. */}
-                <th
-                  aria-hidden="true"
-                  className={cn("h-full bg-slate-100 dark:bg-slate-950/70", TRACKER_COL.spacer)}
-                />
-                {/* History grid — 5 date column headers (round: global date
-                    headers), one per session in the shared recentSessions
-                    window, instead of repeating each date inside every
-                    cell below. A machine not performed in one of these 5
-                    sessions just shows blank under that date. */}
-                {Array.from({ length: 5 }).map((_, i) => {
-                  const s = recentSessions[i];
-                  const dateLabel = s?.date
-                    ? new Date(parseSessionDate(s.date)).toLocaleDateString(
-                        "en-US",
-                        { month: "short", day: "numeric" },
-                      )
-                    : "--";
-                  return (
-                    <th
-                      key={s?.id || `history-header-${i}`}
-                      className={cn(
-                        "p-1 text-center border-r border-slate-200 dark:border-slate-700 h-full items-center justify-center text-[9px] leading-tight",
-                        TRACKER_COL.history,
-                        historyVisibility(i),
-                      )}
-                    >
-                      {dateLabel}
-                    </th>
-                  );
-                })}
-                {/* Filler (round: right-align the active input columns) —
-                    every other visible column is a fixed shrink-0 width,
-                    so on a screen wider than their sum this cell absorbs
-                    the leftover width here, between the History grid and
-                    Weight/Reps/Quality, instead of trailing after Quality.
-                    Capped with max-w and shaded so it reads as an
-                    intentional gap between column groups, not a rendering
-                    glitch. */}
-                <th
-                  aria-hidden="true"
-                  className={cn("h-full bg-slate-100 dark:bg-slate-950/70", TRACKER_COL.filler)}
-                />
-                <th className={cn("p-1.5 text-center border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center", TRACKER_COL.input)}>
-                  Weight
-                </th>
-                <th className={cn("p-1.5 text-center border-r border-slate-200 dark:border-slate-700 h-full flex items-center justify-center", TRACKER_COL.input)}>
-                  Reps
-                </th>
-                <th className={cn("p-1.5 text-center h-full flex items-center justify-center", TRACKER_COL.input)}>
-                  Quality
-                </th>
-              </tr>
-            </thead>
-
-            <tbody className="flex-1 overflow-y-auto block w-full text-slate-900 dark:text-slate-50">
-              {(() => {
-                let activeFocusMachineId: string | null = null;
-                if (currentSession) {
-                  for (const mId of activeMachineIds) {
-                    const mac = machines.find((m) => m.id === mId);
-                    const isTorsoMac = mac?.name
-                      .toLowerCase()
-                      .includes("torso rotation");
-
-                    if (isTorsoMac) {
-                      const logL = logs[`${currentSession.id}_${mId}_Left`];
-                      const logR = logs[`${currentSession.id}_${mId}_Right`];
-                      const lComp =
-                        logL &&
-                        logL.weight &&
-                        (logL.reps || logL.seconds) &&
-                        logL.repQuality;
-                      const rComp =
-                        logR &&
-                        logR.weight &&
-                        (logR.reps || logR.seconds) &&
-                        logR.repQuality;
-
-                      if (!lComp || !rComp) {
-                        activeFocusMachineId = mId;
-                        break;
-                      }
-                    } else {
-                      const log = logs[`${currentSession.id}_${mId}`];
-                      if (
-                        !log ||
-                        !log.weight ||
-                        (!log.reps && !log.seconds) ||
-                        !log.repQuality
-                      ) {
-                        activeFocusMachineId = mId;
-                        break;
-                      }
-                    }
-                  }
-                }
-
-                // recentSessions (the shared 5-session window) now lives
-                // above the main return, so both this tbody and the thead's
-                // date-column headers read the exact same 5 sessions.
-
-                return (
-                  <>
-                    {currentSession?.routineId &&
-                      activeMachineIds.length === 0 && (
-                        <tr className="flex">
-                          <td colSpan={5} className="p-4 text-center w-full">
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase">
-                              Routine blank. Start selecting machines.
-                            </p>
-                          </td>
-                        </tr>
-                      )}
-                    {machines
-                      .sort((a, b) => {
-                        if (!showAllMachines) {
-                          const routine = routines.find(
-                            (r) => r.id === currentSession?.routineId,
-                          );
-                          if (routine) {
-                            const idxA = activeMachineIds.indexOf(a.id!);
-                            const idxB = activeMachineIds.indexOf(b.id!);
-                            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                            if (idxA !== -1) return -1;
-                            if (idxB !== -1) return 1;
-                          }
-                        }
-                        return (
-                          resolveMachineOrder(
-                            a.id,
-                            a.order,
-                            a.id ? studioMachineSettingsById[a.id]?.order : undefined,
-                          ) -
-                          resolveMachineOrder(
-                            b.id,
-                            b.order,
-                            b.id ? studioMachineSettingsById[b.id]?.order : undefined,
-                          )
-                        );
-                      })
-                      .map((machine) => {
-                        const isTorso = machine.name
-                          .toLowerCase()
-                          .includes("torso rotation");
-
-                        const logL = currentSession
-                          ? logs[`${currentSession.id}_${machine.id}_Left`] ||
-                            {}
-                          : {};
-                        const logR = currentSession
-                          ? logs[`${currentSession.id}_${machine.id}_Right`] ||
-                            {}
-                          : {};
-                        const logStd = currentSession
-                          ? logs[`${currentSession.id}_${machine.id}`] || {}
-                          : {};
-
-                        // Decide which log to show as "primary" or show both
-                        const currentLog = isTorso
-                          ? logL.weight
-                            ? logL
-                            : logR
-                          : logStd;
-
-                        const isActive = activeMachineIds.includes(machine.id!);
-                        const isCompleted = isTorso
-                          ? logL.weight &&
-                            (logL.reps || logL.seconds) &&
-                            logL.repQuality &&
-                            logR.weight &&
-                            (logR.reps || logR.seconds) &&
-                            logR.repQuality
-                          : currentLog?.weight &&
-                            (currentLog?.reps || currentLog?.seconds) &&
-                            currentLog?.repQuality;
-
-                        const seqPosition = isActive
-                          ? activeMachineIds.indexOf(machine.id!) + 1
-                          : null;
-
-                        const machineNotesForRow =
-                          clientMachineSettings[machine.id!]?.machineNotes ||
-                          [];
-                        const hasMachineNotes = machineNotesForRow.length > 0;
-                        const hasImportantNote = machineNotesForRow.some(
-                          (n) => n.isImportant,
-                        );
-
-                        const findLogForSession = (s: WorkoutSession) =>
-                          isTorso
-                            ? logs[`${s.id}_${machine.id}_Left`] ||
-                              logs[`${s.id}_${machine.id}_Right`] ||
-                              logs[`${s.id}_${machine.id}`]
-                            : logs[`${s.id}_${machine.id}`];
-
-                        // History grid entries (Box 1) — aligned 1:1 with
-                        // the shared recentSessions window above, so a slot
-                        // is blank when this machine wasn't performed that
-                        // session rather than silently borrowing an older
-                        // one.
-                        // Always exactly 5 entries (padded with null) so a
-                        // brand-new client still gets 5 blank history cells
-                        // and the input columns never shift left.
-                        const historyEntries = Array.from({ length: 5 }, (_, i) => {
-                          const s = recentSessions[i];
-                          if (!s) return null;
-                          const log = findLogForSession(s);
-                          return log && log.weight ? { log, session: s } : null;
-                        });
-
-                        // Full, UNBOUNDED history for this machine — Starting
-                        // Weight and Last Weight Performed (Box 2) are
-                        // deliberately not limited to the 5-session window,
-                        // so a trainer can still see the last weight used
-                        // even if it falls outside the recent grid.
-                        const allMachineLogs = sessions
-                          .filter((s) =>
-                            currentSession ? s.id !== currentSession.id : true,
-                          )
-                          .map((s) => {
-                            const log = findLogForSession(s);
-                            return log && log.weight
-                              ? { log, session: s }
-                              : null;
-                          })
-                          .filter(
-                            (
-                              x,
-                            ): x is {
-                              log: ExerciseLog;
-                              session: WorkoutSession;
-                            } => Boolean(x),
-                          );
-                        const lastWeightPerformed =
-                          allMachineLogs[0]?.log.weight || null;
-                        const startingWeight =
-                          allMachineLogs[allMachineLogs.length - 1]?.log
-                            .weight || null;
-
-                        const isFocusMachine =
-                          activeFocusMachineId === machine.id;
-
-                        // Parse Settings
-                        const settingsStr =
-                          clientMachineSettings[machine.id!]?.settings || {};
-                        const stdSettings =
-                          activeStudio?.machineSettings?.[machine.id!] ||
-                          machine.standardSettings ||
-                          {};
-                        const options = machine.settingOptions || [];
-                        const sortedEntries = orderMachineSettings(
-                          settingsStr,
-                          stdSettings,
-                          options,
-                        );
-
-                        const settingsDisplay = (
-                          <div className="flex gap-1.5 items-center flex-wrap">
-                            {sortedEntries.map(([k, v, originalKey], i) => (
-                              <span
-                                key={originalKey || i}
-                                className="flex gap-0.5 items-baseline"
-                              >
-                                <span className="text-slate-400 dark:text-slate-500 text-[10px] font-semibold uppercase tracking-wider">
-                                  {k}:
-                                </span>
-                                <span className="font-semibold text-slate-600 dark:text-slate-400 text-[10px] uppercase tracking-wide">
-                                  {v}
-                                </span>
-                                {i < sortedEntries.length - 1 && (
-                                  <span className="text-slate-300 dark:text-slate-600 ml-0.5 text-[10px]">
-                                    •
-                                  </span>
-                                )}
-                              </span>
-                            ))}
-                          </div>
-                        );
-
-                        return (
-                          <tr
-                            key={machine.id}
-                            className={`flex w-full group transition-colors h-16 sm:h-17 items-center border-b border-slate-200/70 dark:border-slate-600/70 last:border-b-0 border-l-4 bg-white dark:bg-bg-dark hover:bg-slate-50 dark:hover:bg-surface-2
-                              ${!isActive && !showAllMachines ? "opacity-30 grayscale hover:grayscale-0" : ""}
-                              ${isFocusMachine ? "border-l-blue-500" : isCompleted && isActive ? "border-l-emerald-500" : "border-l-transparent"}`}
-                          >
-                            <td className={cn("flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full", TRACKER_COL.seq)}>
-                              {isActive ? (
-                                <div
-                                  role="button"
-                                  tabIndex={0}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingWeightMachineId(machine.id!);
-                                    if (isTorso) {
-                                      setEditingWeightSide(
-                                        logL.weight ? "Right" : "Left",
-                                      );
-                                    }
-                                  }}
-                                  className={`flex items-center justify-center rounded-lg px-2 h-8 min-w-8 shadow-sm cursor-pointer hover:opacity-80 transition-opacity ${isFocusMachine ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold" : isCompleted ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" : "bg-slate-100 dark:bg-surface-1 text-slate-500 font-medium"}`}
-                                  title="Log weight & reps for this machine"
-                                >
-                                  {isCompleted ? (
-                                    <Check className="w-4.5 h-4.5" />
-                                  ) : (
-                                    <span className="font-extrabold text-base leading-none">
-                                      {seqPosition}
-                                    </span>
-                                  )}
-                                </div>
-                              ) : !currentSession ? (
-                                <button
-                                  className="flex items-center justify-center transition-all rounded-full w-4 h-4 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-blue-500 hover:border-blue-500"
-                                  onClick={() => toggleMachine(machine.id!)}
-                                >
-                                  <Plus className="w-2.5 h-2.5" />
-                                </button>
-                              ) : (
-                                // Quick-add: this machine isn't part of
-                                // today's routine, but a session is already
-                                // running — clicking prompts to add it
-                                // instead of silently toggling it in.
-                                <button
-                                  type="button"
-                                  title="Add this machine to today's routine"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setQuickAddMachineId(machine.id!);
-                                  }}
-                                  className="group/dot flex items-center justify-center w-5 h-5 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                                >
-                                  <div className="w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-700 group-hover/dot:w-1.5 group-hover/dot:h-1.5 group-hover/dot:bg-blue-500 transition-all"></div>
-                                </button>
-                              )}
-                            </td>
-
-                            {/* Notes — persistent, per-machine trainer
-                                notes (not tied to this session). Gray when
-                                empty, blue once a note exists, red/alert
-                                when any note on this machine is flagged
-                                High Importance. */}
-                            <td className={cn("border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center", TRACKER_COL.notes)}>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setNotesDialogMachineId(machine.id!);
-                                }}
-                                title={
-                                  hasImportantNote
-                                    ? "High-importance note on file"
-                                    : hasMachineNotes
-                                      ? "View/add notes"
-                                      : "Add a note"
-                                }
-                                className={cn(
-                                  "relative h-8 w-8 rounded-full flex items-center justify-center transition-colors hover:bg-slate-100 dark:hover:bg-slate-800",
-                                  hasImportantNote
-                                    ? "text-rose-500 hover:text-rose-600"
-                                    : hasMachineNotes
-                                      ? "text-blue-500 hover:text-blue-600"
-                                      : "text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400",
-                                )}
-                              >
-                                {hasImportantNote ? (
-                                  <TriangleAlert className="w-4 h-4" />
-                                ) : hasMachineNotes ? (
-                                  <Wrench className="w-4 h-4" />
-                                ) : (
-                                  <ClipboardPenLine className="w-4 h-4" />
-                                )}
-                                {hasMachineNotes && (
-                                  <span
-                                    className={cn(
-                                      "absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full ring-2 ring-white dark:ring-bg-dark",
-                                      hasImportantNote
-                                        ? "bg-rose-500"
-                                        : "bg-blue-500",
-                                    )}
-                                  />
-                                )}
-                              </button>
-                            </td>
-
-                            <td className={cn("p-1 pl-3 border-r border-slate-200 dark:border-slate-800/60 h-full flex flex-col justify-center min-w-0 truncate", TRACKER_COL.exercise)}>
-                              <div className="flex items-center">
-                                <span
-                                  className={`font-semibold text-sm ${isFocusMachine ? "text-blue-600 dark:text-blue-400 font-bold" : "text-slate-900 dark:text-slate-50"} leading-none truncate`}
-                                >
-                                  {machine.name}
-                                </span>
-                              </div>
-                              <div
-                                onClick={() =>
-                                  setEditingSettingsMachineId(machine.id!)
-                                }
-                                className="leading-none mt-1 cursor-pointer hover:opacity-80 pb-1"
-                              >
-                                {isTorso ? (
-                                  settingsDisplay
-                                ) : isCompleted ? (
-                                  <span className="font-semibold text-[10px] text-slate-500 dark:text-slate-400 tracking-wide">
-                                    {currentLog.weight} lbs |{" "}
-                                    {currentLog.repsLeft !== undefined &&
-                                    currentLog.repsRight !== undefined ? (
-                                      `${currentLog.repsLeft}L | ${currentLog.repsRight}R`
-                                    ) : currentLog.isStaticHold ? (
-                                      <>{currentLog.seconds}s</>
-                                    ) : (
-                                      `${currentLog.reps} reps`
-                                    )}{" "}
-                                    | Q: {currentLog.repQuality}
-                                  </span>
-                                ) : (
-                                  settingsDisplay
-                                )}
-                              </div>
-                            </td>
-
-                            {/* Starting Weight / Last Weight Performed
-                                (Box 2, round: dedicated weight columns) —
-                                strictly solo weight values, deliberately
-                                unbounded by the 5-session History window so
-                                a trainer can still see the true last weight
-                                even when it falls outside that window. */}
-                            <td className={cn("flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full", TRACKER_COL.reference)}>
-                              <span className="font-medium text-xs tabular-nums text-slate-500 dark:text-slate-400">
-                                {startingWeight || "--"}
-                              </span>
-                            </td>
-                            <td className={cn("flex items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full", TRACKER_COL.reference)}>
-                              <span className="font-medium text-xs tabular-nums text-slate-500 dark:text-slate-400">
-                                {lastWeightPerformed || "--"}
-                              </span>
-                            </td>
-
-                            {/* Visual spacer, matching the header's —
-                                keeps Starting/Last Weight visually separate
-                                from the History grid below. */}
-                            <td
-                              aria-hidden="true"
-                              className={cn("h-full bg-slate-50/50 dark:bg-slate-950/40 border-r-0", TRACKER_COL.spacer)}
-                            />
-
-                            {/* History grid — one real <td> per session in
-                                the shared 5-session window (round: declutter
-                                data cells), aligned under its date header in
-                                the thead above. Dates now live only in that
-                                header row, so each cell here shows just the
-                                raw weight/reps — a blank cell means this
-                                machine genuinely wasn't performed that
-                                session. */}
-                            {historyEntries.map((entry, i) => {
-                              const log = entry?.log;
-                              if (!log || !log.weight) {
-                                return (
-                                  <td
-                                    key={i}
-                                    className={cn(
-                                      "items-center justify-center p-0 border-r border-slate-200 dark:border-slate-800/60 h-full",
-                                      TRACKER_COL.history,
-                                      historyVisibility(i),
-                                    )}
-                                  >
-                                    <span className="text-[10px] text-slate-300 dark:text-slate-700 font-medium">
-                                      --
-                                    </span>
-                                  </td>
-                                );
-                              }
-                              // Quality reads as a thick inset ring
-                              // around the cell rather than a solid
-                              // background wash — a full-cell color fill
-                              // was competing with the weight/reps numbers
-                              // for attention. Using an inset ring (a
-                              // box-shadow, not a border) means it doesn't
-                              // fight the cell's existing border-r divider
-                              // or add to the cell's layout width.
-                              const qualityRingClass =
-                                log.repQuality === 3
-                                  ? "ring-2 ring-inset ring-emerald-500"
-                                  : log.repQuality === 2
-                                    ? "ring-2 ring-inset ring-amber-500"
-                                    : log.repQuality === 1
-                                      ? "ring-2 ring-inset ring-rose-500"
-                                      : "";
-                              // Split-cell redesign (Aug 2026): weight
-                              // on top with its unit, a hairline divider,
-                              // then a labeled TIME-or-REPS bottom half so
-                              // the two never run together on one line.
-                              const isDoubleSided =
-                                log.repsLeft !== undefined &&
-                                log.repsRight !== undefined;
-                              const formattedHoldTime = (() => {
-                                const totalSeconds = log.seconds || 0;
-                                const mins = Math.floor(totalSeconds / 60);
-                                const secs = Math.floor(totalSeconds % 60);
-                                return `${mins}:${secs.toString().padStart(2, "0")}`;
-                              })();
-                              return (
-                                <td
-                                  key={entry?.session?.id || i}
-                                  className={cn(
-                                    "flex-col p-0 border-r border-slate-200 dark:border-slate-800/60 h-full overflow-hidden",
-                                    TRACKER_COL.history,
-                                    historyVisibility(i),
-                                    qualityRingClass,
-                                  )}
-                                >
-                                  {/* Top half: weight + unit */}
-                                  <div className="flex-1 min-h-0 w-full flex items-center justify-center leading-none">
-                                    <span className="font-bold text-[13px] text-slate-700 dark:text-slate-200">
-                                      {log.weight}
-                                    </span>
-                                  </div>
-
-                                  <div className="w-full h-px shrink-0 bg-slate-200/70 dark:bg-slate-700/40" />
-
-                                  {/* Bottom half: TIME for static holds, REPS otherwise */}
-                                  <div className="flex-1 min-h-0 w-full flex flex-col items-center justify-center leading-none gap-0.5">
-                                    {!isDoubleSided && log.isStaticHold ? (
-                                      <>
-                                        <span className="text-[7px] font-medium text-slate-400/60 dark:text-slate-500/50 uppercase tracking-wide">
-                                          Time
-                                        </span>
-                                        <span className="flex items-center gap-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
-                                          <Timer className="w-2 h-2" />
-                                          {formattedHoldTime}
-                                        </span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <span className="text-[7px] font-medium text-slate-400/60 dark:text-slate-500/50 uppercase tracking-wide">
-                                          Reps
-                                        </span>
-                                        <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">
-                                          {isDoubleSided
-                                            ? `${log.repsLeft}L|${log.repsRight}R`
-                                            : log.reps}
-                                        </span>
-                                      </>
-                                    )}
-                                  </div>
-                                </td>
-                              );
-                            })}
-
-                            <td
-                              aria-hidden="true"
-                              className={cn("h-full bg-slate-100 dark:bg-slate-950/70", TRACKER_COL.filler)}
-                            />
-
-                            <td
-                              className={`${TRACKER_COL.input} cursor-pointer group/weight p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50" : "bg-slate-50/50 dark:bg-surface-2 hover:bg-slate-100 dark:hover:bg-surface-1"}`}
-                            >
-                              {isTorso ? (
-                                <div className="flex flex-col items-center justify-center gap-0.5 w-full h-full">
-                                  <div
-                                    className="flex-1 w-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingWeightMachineId(machine.id!);
-                                      setEditingWeightSide("Left");
-                                    }}
-                                  >
-                                    <span
-                                      className={`font-black text-[11px] ${logL.weight ? "text-slate-900 dark:text-slate-50" : "text-slate-400 dark:text-slate-500"}`}
-                                    >
-                                      {logL.weight || "--"}
-                                    </span>
-                                  </div>
-                                  <div className="w-4 h-px bg-slate-200 dark:bg-slate-700" />
-                                  <div
-                                    className="flex-1 w-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingWeightMachineId(machine.id!);
-                                      setEditingWeightSide("Right");
-                                    }}
-                                  >
-                                    <span
-                                      className={`font-black text-[11px] ${logR.weight ? "text-slate-900 dark:text-slate-50" : "text-slate-400 dark:text-slate-500"}`}
-                                    >
-                                      {logR.weight || "--"}
-                                    </span>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div
-                                  className="w-full h-full flex items-center justify-center"
-                                  onClick={() =>
-                                    setEditingWeightMachineId(machine.id!)
-                                  }
-                                >
-                                  {currentLog.weight ? (
-                                    <span className="font-bold text-[13px] text-slate-900 dark:text-slate-50">
-                                      {currentLog.weight}
-                                    </span>
-                                  ) : (
-                                    <span
-                                      className={`font-black text-[11px] ${isFocusMachine ? "text-slate-400 dark:text-slate-500" : "text-slate-300 dark:text-slate-600 group-hover/weight:text-slate-500"}`}
-                                    >
-                                      --
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </td>
-
-                            <td
-                              className={`${TRACKER_COL.input} cursor-pointer group/reps p-0 border-r border-slate-200 dark:border-slate-800/60 h-full flex items-center justify-center transition-colors relative ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50" : "bg-slate-50/50 dark:bg-surface-2 hover:bg-slate-100 dark:hover:bg-surface-1"}`}
-                            >
-                              {isTorso ? (
-                                <div className="flex flex-col items-center justify-center gap-0.5 w-full h-full">
-                                  <div
-                                    className="flex-1 w-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingWeightMachineId(machine.id!);
-                                      setEditingWeightSide("Left");
-                                    }}
-                                  >
-                                    <span
-                                      className={`font-black text-[11px] ${logL.reps || logL.seconds ? "text-slate-900 dark:text-slate-50" : "text-slate-400 dark:text-slate-500"}`}
-                                    >
-                                      {logL.isStaticHold ? (
-                                        <>
-                                          {logL.seconds}
-                                          <span className="text-[7px] ml-0.5 lowercase opacity-70">
-                                            s
-                                          </span>
-                                        </>
-                                      ) : (
-                                        logL.reps || "--"
-                                      )}
-                                    </span>
-                                  </div>
-                                  <div className="w-4 h-px bg-slate-200 dark:bg-slate-700" />
-                                  <div
-                                    className="flex-1 w-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingWeightMachineId(machine.id!);
-                                      setEditingWeightSide("Right");
-                                    }}
-                                  >
-                                    <span
-                                      className={`font-black text-[11px] ${logR.reps || logR.seconds ? "text-slate-900 dark:text-slate-50" : "text-slate-400 dark:text-slate-500"}`}
-                                    >
-                                      {logR.isStaticHold ? (
-                                        <>
-                                          {logR.seconds}
-                                          <span className="text-[7px] ml-0.5 lowercase opacity-70">
-                                            s
-                                          </span>
-                                        </>
-                                      ) : (
-                                        logR.reps || "--"
-                                      )}
-                                    </span>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div
-                                  className="w-full h-full flex items-center justify-center"
-                                  onClick={() =>
-                                    setEditingWeightMachineId(machine.id!)
-                                  }
-                                >
-                                  {currentLog.isStaticHold ||
-                                  currentLog.reps ? (
-                                    <span className="font-bold text-[13px] text-slate-900 dark:text-slate-50">
-                                      {currentLog.repsLeft !== undefined &&
-                                      currentLog.repsRight !== undefined ? (
-                                        `${currentLog.repsLeft}L | ${currentLog.repsRight}R`
-                                      ) : currentLog.isStaticHold ? (
-                                        <>
-                                          {currentLog.seconds}
-                                          <span className="text-[11px] ml-0.5 lowercase opacity-70">
-                                            s
-                                          </span>
-                                        </>
-                                      ) : (
-                                        currentLog.reps
-                                      )}
-                                    </span>
-                                  ) : (
-                                    <span
-                                      className={`font-black text-[11px] ${isFocusMachine ? "text-slate-400 dark:text-slate-500" : "text-slate-300 dark:text-slate-600 group-hover/reps:text-slate-500"}`}
-                                    >
-                                      --
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </td>
-
-                            <td
-                              className={`${TRACKER_COL.input} px-1 border-r border-slate-200 dark:border-slate-800/60 flex items-center justify-center h-full transition-colors ${isFocusMachine ? "bg-white dark:bg-surface-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" : "group-hover:bg-slate-50 dark:group-hover:bg-surface-1"}`}
-                            >
-                              {isTorso ? (
-                                <div className="flex flex-col gap-1 items-center">
-                                  <div
-                                    className={`flex rounded-full p-px gap-px ${isFocusMachine ? "bg-slate-100/80 border border-slate-200 dark:border-slate-700" : "bg-slate-100 dark:bg-surface-1"}`}
-                                  >
-                                    {[1, 2, 3].map((v) => {
-                                      const isSelected = logL.repQuality === v;
-                                      let bgClass = isFocusMachine
-                                        ? "bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500"
-                                        : "bg-slate-300/50 hover:bg-slate-400";
-                                      if (isSelected) {
-                                        if (v === 1)
-                                          bgClass = "bg-red-500 shadow-sm";
-                                        else if (v === 2)
-                                          bgClass = "bg-amber-500 shadow-sm";
-                                        else if (v === 3)
-                                          bgClass = "bg-emerald-500 shadow-sm";
-                                      }
-                                      return (
-                                        <button
-                                          key={v}
-                                          onClick={() =>
-                                            currentSession?.id &&
-                                            setQualityWithGuard(
-                                              currentSession.id,
-                                              machine.id!,
-                                              v,
-                                              "Left",
-                                            )
-                                          }
-                                          className={`w-2.5 h-2.5 rounded-full transition-all ${bgClass}`}
-                                        />
-                                      );
-                                    })}
-                                  </div>
-                                  <div
-                                    className={`flex rounded-full p-px gap-px ${isFocusMachine ? "bg-slate-100/80 border border-slate-200 dark:border-slate-700" : "bg-slate-100 dark:bg-surface-1"}`}
-                                  >
-                                    {[1, 2, 3].map((v) => {
-                                      const isSelected = logR.repQuality === v;
-                                      let bgClass = isFocusMachine
-                                        ? "bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500"
-                                        : "bg-slate-300/50 hover:bg-slate-400";
-                                      if (isSelected) {
-                                        if (v === 1)
-                                          bgClass = "bg-red-500 shadow-sm";
-                                        else if (v === 2)
-                                          bgClass = "bg-amber-500 shadow-sm";
-                                        else if (v === 3)
-                                          bgClass = "bg-emerald-500 shadow-sm";
-                                      }
-                                      return (
-                                        <button
-                                          key={v}
-                                          onClick={() =>
-                                            currentSession?.id &&
-                                            setQualityWithGuard(
-                                              currentSession.id,
-                                              machine.id!,
-                                              v,
-                                              "Right",
-                                            )
-                                          }
-                                          className={`w-2.5 h-2.5 rounded-full transition-all ${bgClass}`}
-                                        />
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              ) : (
-                                <div
-                                  className={`flex rounded-full p-0.5 gap-0.5 ${isFocusMachine ? "bg-slate-100/80 border border-slate-200 dark:border-slate-700" : "bg-slate-100 dark:bg-surface-1"}`}
-                                >
-                                  {[1, 2, 3].map((v) => {
-                                    const isSelected =
-                                      currentLog.repQuality === v;
-                                    let bgClass = isFocusMachine
-                                      ? "bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500"
-                                      : "bg-slate-300/50 hover:bg-slate-400";
-                                    if (isSelected) {
-                                      if (v === 1)
-                                        bgClass = "bg-red-500 shadow-sm";
-                                      else if (v === 2)
-                                        bgClass = "bg-amber-500 shadow-sm";
-                                      else if (v === 3)
-                                        bgClass = "bg-emerald-500 shadow-sm";
-                                    }
-                                    return (
-                                      <button
-                                        key={v}
-                                        onClick={() => {
-                                          if (currentSession?.id) {
-                                            setQualityWithGuard(
-                                              currentSession.id,
-                                              machine.id!,
-                                              v,
-                                            );
-                                          }
-                                        }}
-                                        className={`w-3.5 h-3.5 rounded-full transition-all ${bgClass}`}
-                                      />
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    {/* Spacer row to allow scrolling past the floating Stopwatch */}
-                    {currentSession && (
-                      <tr className="h-20 w-full shrink-0 flex items-center bg-transparent pointer-events-none" />
-                    )}
-                  </>
-                );
-              })()}
-            </tbody>
-          </table>
+      {/* Session log — the Journey Grid with a live Today column. The stopwatch
+          bar is fixed over the bottom edge, so the legend row keeps clearance. */}
+      <div className="flex-1 min-h-0 flex flex-col gap-1">
+        {gridLive && (
+          <JourneyGrid
+            sessions={gridVisibleHistory}
+            historySessions={gridHistory}
+            sections={gridSections}
+            density={gridDensity}
+            live={gridLive}
+            onLoadOlder={() => setGridVisible((v) => v + 5)}
+            canLoadOlder={gridVisible < gridHistory.length}
+            onSelectMachine={(id) => {
+              if (id) setEditingSettingsMachineId(id);
+            }}
+            onMachineNote={(id) => setNotesDialogMachineId(id)}
+            layout="fill"
+            title="Routine"
+          />
+        )}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-1 pb-14 flex-none">
+          <QualityLegend />
+          <div className="jg-seg" role="radiogroup" aria-label="Density">
+            {(["compact", "comfortable", "full"] as GridDensity[]).map((d) => (
+              <button
+                key={d}
+                type="button"
+                role="radio"
+                aria-checked={gridDensity === d}
+                className={`jg-seg__btn ${gridDensity === d ? "is-on" : ""}`}
+                onClick={() => setGridDensity(d)}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

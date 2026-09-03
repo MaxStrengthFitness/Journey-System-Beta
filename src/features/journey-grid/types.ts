@@ -48,6 +48,10 @@ export interface JourneyMachine {
   starred?: boolean;
   /** True when the client has an important machine note — shows an alert glyph. */
   alert?: boolean;
+  /** Number of machine notes on file — shows the note button when > 0 (or when onMachineNote is wired). */
+  noteCount?: number;
+  /** Unilateral machine (Torso Rotation): today's input logs Left and Right separately. */
+  sides?: boolean;
 }
 
 export interface JourneyRow {
@@ -76,6 +80,10 @@ export interface LiveSet {
   seconds: number | null;
   isTSC: boolean;
   quality: RepQuality | null;
+  /** Right side, only for machines with `sides` (the fields above are then the Left side). */
+  repsR?: number | null;
+  secondsR?: number | null;
+  qualityR?: RepQuality | null;
 }
 
 export interface LiveColumn {

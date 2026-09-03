@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { AlertCircle, ChevronLeft, ChevronsRight, Star, Plus } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronsRight, NotebookPen, Star, Plus } from "lucide-react";
 import type { Density, JourneyRow, JourneySession, JourneySet, LiveColumn, LiveSet, StatMetric } from "./types";
 import {
   computeRowStats,
@@ -60,6 +60,8 @@ export interface JourneyGridProps {
   /** Controlled row trace (tap a machine name). Uncontrolled if omitted. */
   selectedMachineId?: string | null;
   onSelectMachine?: (machineId: string | null) => void;
+  /** When set, every machine cell gets a note button at its right edge. */
+  onMachineNote?: (machineId: string) => void;
   /** Present only inside an Active Session — adds the sticky-right Today column. */
   live?: LiveColumn;
   /** "Older" affordance at the far left of the timeline. */
@@ -100,6 +102,7 @@ interface RowProps {
   isSelected: boolean;
   onSelect: (machineId: string) => void;
   onJump: (sessionId: string) => void;
+  onNote?: (machineId: string) => void;
   hasOlderColumn: boolean;
   orderNumber?: number;
   live?: LiveColumn;
@@ -121,6 +124,7 @@ function RowImpl({
   isSelected,
   onSelect,
   onJump,
+  onNote,
   hasOlderColumn,
   orderNumber,
   live,
@@ -191,6 +195,16 @@ function RowImpl({
           )}
           <span className="jg-machine__readout">{readout}</span>
         </button>
+        {onNote && (
+          <button
+            type="button"
+            className={`jg-machine__note ${machine.alert ? "is-alert" : machine.noteCount ? "has-notes" : ""}`}
+            aria-label={`${machine.name} notes${machine.noteCount ? ` (${machine.noteCount})` : ""}`}
+            onClick={() => onNote(machine.id)}
+          >
+            <NotebookPen size={15} strokeWidth={2.25} />
+          </button>
+        )}
       </div>
 
       {showStats && (
@@ -212,6 +226,7 @@ function RowImpl({
           <LiveInputCell
             machineId={machine.id}
             machineName={machine.name}
+            sides={!!machine.sides}
             value={liveValue ?? EMPTY_LIVE}
             prescribedWeight={row.prescribedWeight}
             step={live.weightStep ?? 2}
@@ -253,6 +268,7 @@ export function JourneyGrid({
   onSpotlight,
   selectedMachineId,
   onSelectMachine,
+  onMachineNote,
   live,
   onLoadOlder,
   canLoadOlder = false,
@@ -534,6 +550,7 @@ export function JourneyGrid({
               selected={selected}
               onSelect={toggleSelect}
               onJump={jumpTo}
+              onNote={onMachineNote}
               hasOlderColumn={hasOlderColumn}
               live={live}
             />
@@ -556,6 +573,7 @@ interface SectionBlockProps {
   selected: string | null;
   onSelect: (id: string) => void;
   onJump: (sessionId: string) => void;
+  onNote?: (machineId: string) => void;
   hasOlderColumn: boolean;
   live?: LiveColumn;
 }
@@ -572,6 +590,7 @@ const SectionBlock = memo(function SectionBlock({
   selected,
   onSelect,
   onJump,
+  onNote,
   hasOlderColumn,
   live,
 }: SectionBlockProps) {
@@ -605,6 +624,7 @@ const SectionBlock = memo(function SectionBlock({
             isSelected={selected === row.machine.id}
             onSelect={onSelect}
             onJump={onJump}
+            onNote={onNote}
             hasOlderColumn={hasOlderColumn}
             orderNumber={section.numbered ? i + 1 : undefined}
             live={live}

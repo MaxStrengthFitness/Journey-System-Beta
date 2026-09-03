@@ -436,6 +436,24 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   align-items: stretch;
   padding: 0;
 }
+/* optional note button at the right edge of the machine cell */
+.jg-machine__note {
+  appearance: none;
+  border: 0;
+  border-left: 1px solid var(--jg-border);
+  margin: 0;
+  flex: none;
+  width: 36px;
+  background: transparent;
+  color: var(--jg-ink-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.jg-machine__note:active { background: var(--jg-surface-3); }
+.jg-machine__note.has-notes { color: var(--jg-live-text); }
+.jg-machine__note.is-alert { color: var(--jg-q-poor); }
 .jg-machine__btn {
   appearance: none;
   border: 0;
@@ -687,6 +705,15 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 
 /* reps / TUT */
 .jg-reps { display: flex; align-items: center; gap: 4px; }
+.jg-reps__side {
+  flex: none;
+  width: 16px;
+  font-family: var(--jg-font-display);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--jg-ink-muted);
+  text-align: center;
+}
 .jg-reps__input {
   flex: 1;
   min-width: 0;
