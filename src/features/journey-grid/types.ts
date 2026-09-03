@@ -42,8 +42,13 @@ export interface JourneyMachine {
   id: string;
   name: string;
   group: MovementGroup;
-  /** e.g. { G: "9", S: "8" } — rendered as small chips under the name. */
+  /** e.g. { G: "9", S: "8" } — rendered as the settings rail under the name.
+   *  Keys are the short forms orderMachineSettings() produces, already in
+   *  the app's canonical order (Gap first, then the machine's own order). */
   settings?: Record<string, string>;
+  /** Short key → full name, e.g. { G: "Gap", B: "Back Pad" }. The rail shows
+   *  the short key and speaks the full one, so "B 6" is never a guess. */
+  settingLabels?: Record<string, string>;
   /** The ★ "core lift" flag in the current UI. */
   starred?: boolean;
   /** True when the client has an important machine note — shows an alert glyph. */

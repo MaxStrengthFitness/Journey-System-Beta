@@ -2693,6 +2693,12 @@ export function WorkoutTrackerView({
             settings: entries.length
               ? Object.fromEntries(entries.map(([k, v]) => [k, v]))
               : undefined,
+            // orderMachineSettings returns [shortKey, value, fullName]; the
+            // full name used to be dropped here, which left the rail with
+            // unexplained letters and nothing for a screen reader to say.
+            settingLabels: entries.length
+              ? Object.fromEntries(entries.map(([k, , full]) => [k, full]))
+              : undefined,
             alert: notes.some((n) => n.isImportant),
             noteCount: notes.length,
             sides: isSidesMachine(machine),

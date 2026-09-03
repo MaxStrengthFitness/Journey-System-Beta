@@ -159,7 +159,15 @@ function RowImpl({
     return cell;
   });
 
+  // Already canonically ordered by orderMachineSettings upstream — position
+  // is the thing a trainer reads, so the grid must never re-sort.
   const settingEntries = machine.settings ? Object.entries(machine.settings) : [];
+  const settingLabel = (k: string) => machine.settingLabels?.[k] ?? k;
+  const shownSettings = settingEntries.slice(0, 5);
+  const hiddenSettings = settingEntries.length - shownSettings.length;
+  const spokenSettings = settingEntries.length
+    ? ` Settings: ${settingEntries.map(([k, v]) => `${settingLabel(k)} ${v}`).join(", ")}.`
+    : "";
 
   return (
     <div
@@ -173,7 +181,7 @@ function RowImpl({
           type="button"
           className="jg-machine__btn"
           aria-pressed={isSelected}
-          aria-label={`${machine.name}. ${readout}. Tap to trace this row.`}
+          aria-label={`${machine.name}.${spokenSettings} ${readout}. Tap to trace this row.`}
           onClick={() => onSelect(machine.id)}
         >
           <span className="jg-machine__name">
@@ -188,11 +196,15 @@ function RowImpl({
           </span>
           {settingEntries.length > 0 && (
             <span className="jg-machine__meta">
-              {settingEntries.map(([k, v]) => (
-                <span key={k} className="jg-chip">
-                  {k} {v}
+              {shownSettings.map(([k, v]) => (
+                <span key={k} className="jg-setting" title={`${settingLabel(k)} ${v}`}>
+                  <span className="jg-setting__k">{k}</span>
+                  <span className="jg-setting__v">{v}</span>
                 </span>
               ))}
+              {hiddenSettings > 0 && (
+                <span className="jg-setting jg-setting--more">+{hiddenSettings}</span>
+              )}
             </span>
           )}
           <span className="jg-machine__readout">{readout}</span>

@@ -1707,6 +1707,9 @@ export function ClientProfileView({
           settings: entries.length
             ? Object.fromEntries(entries.map(([k, v]) => [k, v]))
             : undefined,
+          settingLabels: entries.length
+            ? Object.fromEntries(entries.map(([k, , full]) => [k, full]))
+            : undefined,
           alert: !!clientSettings[machine.id!]?.machineNotes?.some(
             (n) => n.isImportant,
           ),
