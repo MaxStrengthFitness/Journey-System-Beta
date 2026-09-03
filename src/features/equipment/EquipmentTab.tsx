@@ -7,7 +7,12 @@ import { summarise, toEquipmentMachines } from "./adapters";
 import { EquipmentSummaryBar } from "./EquipmentSummaryBar";
 import { MachineRail } from "./MachineRail";
 import { MachineDetailPanel } from "./MachineDetailPanel";
-import type { MutationAuthor, SaveSettingsResult, SaveWeightsResult } from "./mutations";
+import type {
+  JournalContext,
+  MutationAuthor,
+  SaveSettingsResult,
+  SaveWeightsResult,
+} from "./mutations";
 import type { PaneMode } from "./types";
 
 /**
@@ -60,6 +65,7 @@ export function EquipmentTab({
   clientSettings = {},
   allLogs = [],
   authTrainer,
+  activeStudioId,
 }: EquipmentTabProps) {
   const { byId: catalogById } = useMachineCatalog();
   const { activeStudio } = useActiveStudio();
@@ -91,6 +97,13 @@ export function EquipmentTab({
   );
 
   const summary = useMemo(() => summarise(equipment), [equipment]);
+
+  // Everything written from this tab is journalled with origin "profile", so
+  // the Journal can say where a note came from without the trainer saying it.
+  const journal: JournalContext = useMemo(
+    () => ({ studioId: activeStudioId || activeStudio?.id || "", origin: "profile" }),
+    [activeStudioId, activeStudio],
+  );
 
   // Search filters the RAIL only. The summary sentence keeps describing the
   // whole roster, because "6 of 6 matching" is not a fact about the client.
@@ -175,6 +188,8 @@ export function EquipmentTab({
             experienceLevel={client?.experienceLevel}
             gender={client?.gender}
             studioMachineSettings={activeStudio?.machineSettings}
+            journal={journal}
+            onNoteSaved={toastSuccess}
           />
         )}
       </div>

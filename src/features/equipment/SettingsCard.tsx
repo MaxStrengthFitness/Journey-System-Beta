@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Settings2 } from "lucide-react";
 import type { EquipmentMachine, SettingFieldSpec } from "./types";
-import type { MutationAuthor, SaveSettingsResult } from "./mutations";
+import type { JournalContext, MutationAuthor, SaveSettingsResult } from "./mutations";
 import { saveSettings } from "./mutations";
 
 /**
@@ -93,6 +93,7 @@ export interface SettingsCardProps {
   onError?: (message: string) => void;
   /** Open in edit mode straight away (the in-session setup prompt does this). */
   startEditing?: boolean;
+  journal?: JournalContext;
 }
 
 export function SettingsCard({
@@ -102,6 +103,7 @@ export function SettingsCard({
   onSaved,
   onError,
   startEditing = false,
+  journal,
 }: SettingsCardProps) {
   const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState<Record<string, string>>(() => seedDraft(machine));
@@ -144,6 +146,8 @@ export function SettingsCard({
         reason,
         author,
         isInitialSetup,
+        machineName: machine.name,
+        journal,
       });
       if (result) onSaved?.(result, machine);
       setEditing(false);

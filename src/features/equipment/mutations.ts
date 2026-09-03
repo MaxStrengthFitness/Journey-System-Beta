@@ -16,12 +16,66 @@
 
 import { addDoc, collection, doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase";
+import { createJournalEntry } from "../../hooks/useClientJournal";
+import type { JournalOrigin } from "../../types/journal";
+import type { MachineNote } from "../../types";
 import type { SettingFieldSpec } from "./types";
 
 export interface MutationAuthor {
   id: string;
   fullName: string;
   initials?: string;
+}
+
+/**
+ * Context every write needs to reach the Journal.
+ *
+ * `origin` is what lets the Journal say where a note was written without the
+ * trainer having to: "profile" from the Equipment tab, "in_session" from the
+ * setup prompt during a live session.
+ */
+export interface JournalContext {
+  studioId: string;
+  origin: JournalOrigin;
+  sessionId?: string | null;
+}
+
+/**
+ * File an equipment change into the client's Journal.
+ *
+ * Never throws into the caller: a journal entry is a record OF the change, not
+ * part of it. If the Journal write fails the setting is still saved and the
+ * audit trail still has it, and the trainer should not be told their setup
+ * did not stick when it did.
+ */
+async function fileToJournal(
+  clientId: string,
+  author: MutationAuthor,
+  ctx: JournalContext | undefined,
+  body: string,
+  machineId: string,
+  importance: "standard" | "elevated" | "critical",
+): Promise<void> {
+  if (!ctx || !body.trim()) return;
+  try {
+    await createJournalEntry(
+      clientId,
+      ctx.studioId,
+      { id: author.id, initials: author.initials || "??", fullName: author.fullName },
+      {
+        kind: "equipment",
+        category: null,
+        body: body.trim(),
+        importance,
+        machineId,
+        focusId: null,
+        sessionId: ctx.sessionId ?? null,
+        origin: ctx.origin,
+      },
+    );
+  } catch (err) {
+    console.error("[equipment] journal sync failed", err);
+  }
 }
 
 export interface SettingsChange {
@@ -88,6 +142,9 @@ export interface SaveSettingsArgs {
   author: MutationAuthor;
   /** First time this machine has ever been set up for this client. */
   isInitialSetup: boolean;
+  /** Machine name, for a journal entry that reads on its own. */
+  machineName: string;
+  journal?: JournalContext;
 }
 
 export interface SaveSettingsResult {
@@ -112,6 +169,8 @@ export async function saveSettings({
   reason,
   author,
   isInitialSetup,
+  machineName,
+  journal,
 }: SaveSettingsArgs): Promise<SaveSettingsResult | null> {
   const changes = diffSettings(fields, saved, draft);
   if (changes.length === 0) return null;
@@ -141,6 +200,18 @@ export async function saveSettings({
     newValue: changes.map((c) => `${c.label}: ${c.to || "—"}`).join(", "),
     reason: actualReason,
   });
+
+  // Box 10: the audit reason a trainer just typed is coaching knowledge, not
+  // just compliance. It belongs in the one place anyone looks for this
+  // client's history.
+  await fileToJournal(
+    clientId,
+    author,
+    journal,
+    `${machineName} — ${summary}. ${actualReason}`,
+    machineId,
+    "standard",
+  );
 
   return { changes, summary, reason: actualReason };
 }
@@ -229,4 +300,112 @@ export async function saveWeights({
       : `${machineName} weights updated`;
 
   return { starting, current, summary };
+}
+
+/* ------------------------------------------------------------------ *
+ * Machine notes
+ * ------------------------------------------------------------------ */
+
+export interface AddNoteArgs {
+  clientId: string;
+  machineId: string;
+  machineName: string;
+  existingNotes: MachineNote[];
+  content: string;
+  isMaintenance: boolean;
+  author: MutationAuthor;
+  journal?: JournalContext;
+}
+
+/**
+ * Add a machine-specific note (box 11).
+ *
+ * Written twice, on purpose:
+ *   clientMachineSettings.machineNotes   the machine-scoped list the Equipment
+ *                                        tab, the Entry HUD and the Journey
+ *                                        Grid's alert icon all already read
+ *   journalEntries                       the client-scoped timeline
+ *
+ * A maintenance flag files as `critical`, which is what puts it in the
+ * PRE-SESSION BRIEFING — so "seat sticks on the compound row" reaches the next
+ * trainer before they walk the client up to it, rather than after.
+ */
+export async function addMachineNote({
+  clientId,
+  machineId,
+  machineName,
+  existingNotes,
+  content,
+  isMaintenance,
+  author,
+  journal,
+}: AddNoteArgs): Promise<MachineNote | null> {
+  const body = content.trim();
+  if (!body) return null;
+
+  const note: MachineNote = {
+    id: Date.now().toString(),
+    content: body,
+    authorId: author.id,
+    authorName: author.fullName,
+    timestamp: new Date().toISOString(),
+    isImportant: isMaintenance,
+  };
+
+  await setDoc(
+    doc(db, "clientMachineSettings", `${clientId}_${machineId}`),
+    {
+      clientId,
+      machineId,
+      machineNotes: [...existingNotes, note],
+      updatedAt: new Date(),
+      updatedBy: author.id,
+    },
+    { merge: true },
+  );
+
+  await fileToJournal(
+    clientId,
+    author,
+    journal,
+    isMaintenance ? `${machineName} — maintenance: ${body}` : `${machineName} — ${body}`,
+    machineId,
+    isMaintenance ? "critical" : "standard",
+  );
+
+  return note;
+}
+
+export interface DeleteNoteArgs {
+  clientId: string;
+  machineId: string;
+  existingNotes: MachineNote[];
+  noteId: string;
+  author: MutationAuthor;
+}
+
+/**
+ * Remove a machine note.
+ *
+ * Deliberately does NOT delete the matching journal entry. The Journal is a
+ * timeline: "the seat was sticking in September" stays true even after the
+ * seat is fixed and the reminder is cleared off the machine. Archive it from
+ * the Journal if it should go.
+ */
+export async function deleteMachineNote({
+  clientId,
+  machineId,
+  existingNotes,
+  noteId,
+  author,
+}: DeleteNoteArgs): Promise<void> {
+  await setDoc(
+    doc(db, "clientMachineSettings", `${clientId}_${machineId}`),
+    {
+      machineNotes: existingNotes.filter((n) => n.id !== noteId),
+      updatedAt: new Date(),
+      updatedBy: author.id,
+    },
+    { merge: true },
+  );
 }

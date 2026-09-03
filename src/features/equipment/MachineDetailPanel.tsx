@@ -1,9 +1,16 @@
 import { ChevronLeft } from "lucide-react";
 import { NoteIndicator } from "./NoteIndicator";
+import { ChangeHistory } from "./ChangeHistory";
+import { MachineNotes } from "./MachineNotes";
 import { PrescriptionCard } from "./PrescriptionCard";
 import { SettingsCard } from "./SettingsCard";
 import { SetupGuide } from "./SetupGuide";
-import type { MutationAuthor, SaveSettingsResult, SaveWeightsResult } from "./mutations";
+import type {
+  JournalContext,
+  MutationAuthor,
+  SaveSettingsResult,
+  SaveWeightsResult,
+} from "./mutations";
 import type { EquipmentMachine } from "./types";
 
 /**
@@ -26,6 +33,8 @@ export interface MachineDetailPanelProps {
   experienceLevel?: string;
   gender?: string;
   studioMachineSettings?: Record<string, Record<string, string>>;
+  journal?: JournalContext;
+  onNoteSaved?: (message: string) => void;
 }
 
 export function MachineDetailPanel({
@@ -39,6 +48,8 @@ export function MachineDetailPanel({
   experienceLevel,
   gender,
   studioMachineSettings,
+  journal,
+  onNoteSaved,
 }: MachineDetailPanelProps) {
   if (!machine) {
     return (
@@ -100,6 +111,16 @@ export function MachineDetailPanel({
         author={author}
         onSaved={onSettingsSaved}
         onError={onError}
+        journal={journal}
+      />
+
+      <MachineNotes
+        machine={machine}
+        clientId={clientId}
+        author={author}
+        journal={journal}
+        onSaved={onNoteSaved}
+        onError={onError}
       />
 
       {machine.guide && (
@@ -107,6 +128,8 @@ export function MachineDetailPanel({
            moment a trainer actually needs the cues. */
         <SetupGuide guide={machine.guide} defaultOpen={!machine.inUse} />
       )}
+
+      <ChangeHistory machineId={machine.id} clientId={clientId} />
     </div>
   );
 }

@@ -8,4 +8,6 @@ export { NoteIndicator } from "./NoteIndicator";
 export { PrescriptionCard } from "./PrescriptionCard";
 export { SettingsCard } from "./SettingsCard";
 export { SetupGuide } from "./SetupGuide";
+export { MachineNotes } from "./MachineNotes";
+export { ChangeHistory } from "./ChangeHistory";
 export * from "./mutations";
