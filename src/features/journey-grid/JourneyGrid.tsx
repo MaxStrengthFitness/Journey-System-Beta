@@ -163,7 +163,9 @@ function RowImpl({
 
   return (
     <div
-      className={`jg-row ${isSelected ? "is-selected" : ""} ${hasLive ? "has-live" : ""} ${isFocus ? "is-focus" : ""}`}
+      className={`jg-row ${isSelected ? "is-selected" : ""} ${hasLive ? "has-live" : ""} ${isFocus ? "is-focus" : ""} ${
+        machine.sides ? "has-sides" : ""
+      }`}
       role="row"
     >
       <div className="jg-machine" role="rowheader">

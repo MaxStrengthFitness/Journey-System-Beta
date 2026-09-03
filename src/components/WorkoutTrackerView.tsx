@@ -3702,6 +3702,10 @@ export function WorkoutTrackerView({
             sections={gridSections}
             density={gridDensity}
             live={gridLive}
+            /* Analytics is a review tool: "highest weight, Sep 2" is what you
+               read on the client profile, not what you need while a set is
+               running. Off here, it hands its 100px to the Today column. */
+            showStats={false}
             onLoadOlder={() => setGridVisible((v) => v + 5)}
             canLoadOlder={gridVisible < gridHistory.length}
             onSelectMachine={(id) => {

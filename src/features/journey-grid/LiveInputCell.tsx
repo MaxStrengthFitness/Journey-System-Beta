@@ -20,7 +20,7 @@ interface LiveInputCellProps {
  * Today's input cell — the far-right column of the Active Session grid.
  *
  * Reading order mirrors the set itself: confirm the load, perform, record the
- * outcome (reps or TUT), then rate the quality. Every control is ≥ 34px tall
+ * outcome (reps or TUT), then rate the quality. Every control is ≥ 44px tall
  * and the inputs are 16px+ so iOS never zooms the page on focus.
  */
 function LiveInputCellImpl({
@@ -61,7 +61,7 @@ function LiveInputCellImpl({
     const secs = side === "R" ? value.secondsR : value.seconds;
     const q = side === "R" ? value.qualityR : value.quality;
     return (
-      <>
+      <div className="jg-outcome-group">
         <div className="jg-reps">
           {sides && (
             <span className="jg-reps__side" aria-hidden="true">
@@ -90,25 +90,25 @@ function LiveInputCellImpl({
               aria-label="Log as timed static contraction"
               onClick={() => onChange(machineId, { isTSC: !value.isTSC })}
             >
-              <Timer size={13} strokeWidth={2.5} />
-              TSC
+              <Timer size={15} strokeWidth={2.5} />
             </button>
           )}
         </div>
         <div className="jg-quality" role="radiogroup" aria-label={`${sides ? (side === "R" ? "Right " : "Left ") : ""}rep quality`}>
           <button type="button" className={`jg-quality__btn ${q === 1 ? "is-on" : ""}`} data-q="1" role="radio" aria-checked={q === 1} onClick={() => setQuality(1, side)}>
-            Poor
+            <span className="jg-quality__ico" aria-hidden="true">◐</span>
+            <span className="jg-sr">Poor quality</span>
           </button>
           <button type="button" className={`jg-quality__btn ${q === 2 ? "is-on" : ""}`} data-q="2" role="radio" aria-checked={q === 2} onClick={() => setQuality(2, side)}>
-            <Check size={12} strokeWidth={3} />
-            Done
+            <Check size={17} strokeWidth={3} aria-hidden="true" />
+            <span className="jg-sr">Completed</span>
           </button>
           <button type="button" className={`jg-quality__btn ${q === 3 ? "is-on" : ""}`} data-q="3" role="radio" aria-checked={q === 3} onClick={() => setQuality(3, side)}>
-            <Star size={12} strokeWidth={2.5} fill="currentColor" />
-            Max
+            <Star size={16} strokeWidth={2.5} fill="currentColor" aria-hidden="true" />
+            <span className="jg-sr">Max strength</span>
           </button>
         </div>
-      </>
+      </div>
     );
   };
 

@@ -21,13 +21,13 @@
 
 .jg {
   /* ---- density knobs (overridden per data-density below) ------------- */
-  --jg-col-machine: 184px;
+  --jg-col-machine: 216px;
   --jg-col-stat:    108px;     /* Analytics column                          */
   --jg-col-session: 92px;
-  --jg-col-live:    168px;
+  --jg-col-live:    400px;     /* one line of controls, laid side by side  */
   --jg-row-h:       64px;
-  --jg-row-h-live:  108px;     /* rows that carry a live input            */
-  --jg-head-h:      74px;
+  --jg-row-h-live:  60px;      /* rows that carry a live input            */
+  --jg-head-h:      56px;
   --jg-w-size:      17px;      /* weight                                   */
   --jg-r-size:      12px;      /* reps / TUT                               */
   --jg-show-reps:   block;
@@ -43,25 +43,25 @@
 }
 
 .jg[data-density="comfortable"] {
-  --jg-col-machine: 176px;
+  --jg-col-machine: 208px;
   --jg-col-stat:    100px;
   --jg-col-session: 84px;
-  --jg-col-live:    160px;
+  --jg-col-live:    384px;
   --jg-row-h:       56px;
-  --jg-row-h-live:  100px;
-  --jg-head-h:      68px;
+  --jg-row-h-live:  56px;
+  --jg-head-h:      50px;
   --jg-w-size:      16px;
   --jg-r-size:      11px;
 }
 
 .jg[data-density="compact"] {
-  --jg-col-machine: 152px;
+  --jg-col-machine: 184px;
   --jg-col-stat:    84px;
   --jg-col-session: 70px;
-  --jg-col-live:    148px;
+  --jg-col-live:    344px;
   --jg-row-h:       44px;
-  --jg-row-h-live:  96px;
-  --jg-head-h:      58px;
+  --jg-row-h-live:  52px;
+  --jg-head-h:      44px;
   --jg-w-size:      15px;
   --jg-r-size:      10px;
   --jg-show-reps:   none;       /* compact = weight only                  */
@@ -641,10 +641,33 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   border-left: 1px solid var(--jg-border-strong);
   box-shadow: -8px 0 12px -8px var(--jg-sticky-shadow);
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 8px;
+  /* One line, not three. In CSS Grid a row track is as tall as its tallest
+     item, and this cell is always the tallest — stacking three control groups
+     here forced every history cell in the row to 128px. Laid on its side the
+     same controls need 44px, and the trade is horizontal: the Today column
+     grows, the timeline gives up a couple of columns. */
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+}
+.jg-stepper { flex: 1 1 auto; min-width: 120px; }
+.jg-outcome-group { display: flex; align-items: center; gap: 8px; flex: none; }
+
+/* Unilateral machines log Left and Right separately — two outcome groups
+   cannot share one line, so those rows keep the stacked layout. */
+.jg-row.has-sides .jg-live { flex-wrap: wrap; }
+.jg-row.has-sides .jg-stepper,
+.jg-row.has-sides .jg-outcome-group { flex: 1 0 100%; }
+.jg-row.has-sides.has-live > * { min-height: 160px; }
+
+/* Below iPad-landscape width the single line stops fitting. Wrap rather than
+   squeeze: 92px is still a third off the old 128px row. */
+@media (max-width: 1024px) {
+  .jg[data-live="true"] { --jg-col-live: 252px; --jg-row-h-live: 96px; }
+  .jg[data-live="true"] .jg-live { flex-wrap: wrap; }
+  .jg[data-live="true"] .jg-stepper { flex: 1 0 100%; }
 }
 /* Rows that carry a live input are taller. The row wrapper is
    display:contents, so height comes from the cells' min-height and the
@@ -673,8 +696,8 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   border: 1px solid var(--jg-border-strong);
   background: var(--jg-surface);
   color: var(--jg-ink-2);
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 44px;
   border-radius: var(--jg-radius-sm);
   display: grid;
   place-items: center;
@@ -687,7 +710,7 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-stepper__val {
   flex: 1;
   min-width: 0;
-  height: 34px;
+  height: 44px;
   border: 1px solid var(--jg-live);
   border-radius: var(--jg-radius-sm);
   background: var(--jg-surface);
@@ -717,7 +740,8 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-reps__input {
   flex: 1;
   min-width: 0;
-  height: 34px;
+  height: 44px;
+  width: 56px;
   border: 1px solid var(--jg-border-strong);
   border-radius: var(--jg-radius-sm);
   background: var(--jg-surface);
@@ -735,8 +759,10 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   border: 1px solid var(--jg-border-strong);
   background: var(--jg-surface);
   color: var(--jg-ink-2);
-  height: 34px;
-  padding: 0 7px;
+  height: 44px;
+  width: 38px;
+  padding: 0;
+  justify-content: center;
   border-radius: var(--jg-radius-sm);
   font: inherit;
   font-size: 10px;
@@ -752,15 +778,20 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-reps__mode.is-on { background: var(--jg-live); border-color: var(--jg-live); color: var(--jg-live-on); }
 
 /* quality segmented control */
-.jg-quality { display: flex; gap: 3px; }
+.jg-quality { display: flex; gap: 2px; flex: none; }
+/* The glyphs match the ones a recorded cell shows (★ / ◐), so the control and
+   the record speak the same language and the words are free to go. */
+.jg-quality__ico { font-size: 15px; line-height: 1; }
 .jg-quality__btn {
   appearance: none;
   flex: 1 1 0;
   min-width: 0;
-  padding: 0 2px;
+  padding: 0;
   overflow: hidden;
   white-space: nowrap;
-  height: 32px;
+  flex: none;
+  width: 40px;
+  height: 44px;
   border: 1px solid var(--jg-border-strong);
   border-radius: var(--jg-radius-sm);
   background: var(--jg-surface);
