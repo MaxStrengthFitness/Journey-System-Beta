@@ -3,6 +3,7 @@ import { useMachineCatalog } from "../../hooks/useMachineCatalog";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import type { Machine, ClientMachineSetting, ExerciseLog, Client, Trainer } from "../../types";
 import { summarise, toEquipmentMachines } from "./adapters";
+import { EquipmentSummaryBar } from "./EquipmentSummaryBar";
 import { MachineRail } from "./MachineRail";
 import { MachineDetailPanel } from "./MachineDetailPanel";
 import type { PaneMode } from "./types";
@@ -61,6 +62,7 @@ export function EquipmentTab({
   const { activeStudio } = useActiveStudio();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [pane, setPane] = useState<PaneMode>("list");
   const isSplit = useIsSplit();
 
@@ -78,6 +80,19 @@ export function EquipmentTab({
 
   const summary = useMemo(() => summarise(equipment), [equipment]);
 
+  // Search filters the RAIL only. The summary sentence keeps describing the
+  // whole roster, because "6 of 6 matching" is not a fact about the client.
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return equipment;
+    return equipment.filter(
+      (m) =>
+        m.name.toLowerCase().includes(q) ||
+        (m.kinematic || "").toLowerCase().includes(q) ||
+        (m.category || "").toLowerCase().includes(q),
+    );
+  }, [equipment, search]);
+
   // In the split layout something is always selected; the empty right pane is
   // dead space on a 13" screen. In drill-in, nothing is selected until a tap.
   useEffect(() => {
@@ -86,9 +101,19 @@ export function EquipmentTab({
     setSelectedId(equipment[0]?.id ?? null);
   }, [isSplit, equipment, selectedId]);
 
+  // Searching should not strand the detail pane on a machine the rail no
+  // longer lists — but only in the split layout, where the panes are meant to
+  // agree. Mid drill-in the trainer is reading, not browsing; leave them be.
+  useEffect(() => {
+    if (!isSplit || !search.trim()) return;
+    if (selectedId && visible.some((m) => m.id === selectedId)) return;
+    setSelectedId(visible[0]?.id ?? null);
+  }, [isSplit, search, visible, selectedId]);
+
   // A different client is a different prescription — never keep the selection.
   useEffect(() => {
     setSelectedId(null);
+    setSearch("");
     setPane("list");
   }, [clientId]);
 
@@ -107,27 +132,16 @@ export function EquipmentTab({
 
   return (
     <div className="eq">
-      <div className="eq-summary">
-        <span className="eq-summary__count">
-          <b>
-            {summary.inUse} of {summary.total}
-          </b>{" "}
-          machines in use
-        </span>
-        {summary.byRegion.length > 0 && (
-          <span className="eq-summary__regions">
-            {summary.byRegion.map((r) => (
-              <span key={r.region} className="eq-summary__region">
-                <b>{r.count}</b> {r.label}
-              </span>
-            ))}
-          </span>
-        )}
-      </div>
+      <EquipmentSummaryBar
+        summary={summary}
+        search={search}
+        onSearch={setSearch}
+        matchCount={search.trim() ? visible.length : null}
+      />
 
       <div className="eq-body">
         {showRail && (
-          <MachineRail machines={equipment} selectedId={selectedId} onSelect={handleSelect} />
+          <MachineRail machines={visible} selectedId={selectedId} onSelect={handleSelect} />
         )}
         {showDetail && (
           <MachineDetailPanel

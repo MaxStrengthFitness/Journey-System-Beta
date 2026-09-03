@@ -100,6 +100,31 @@
   border-color: transparent;
 }
 
+.eq-summary__clear {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--eq-ink-muted);
+  cursor: pointer;
+}
+.eq-summary__clear:hover { background: var(--eq-surface-3); color: var(--eq-ink); }
+
+/* The native search affordance duplicates our clear button. */
+.eq-summary__search input::-webkit-search-cancel-button { display: none; }
+
+.eq-summary__region {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* ---------- The split ------------------------------------------------ */
 
 .eq-body {
