@@ -507,14 +507,10 @@ export function JourneyGrid({
                     }. Tap to spotlight this column.`}
                     onClick={() => toggleSpot(s.id)}
                   >
-                    {isLatest ? (
-                      <span className="jg-head__tag">Latest · #{s.sessionNumber}</span>
-                    ) : (
-                      <span className="jg-head__n">#{s.sessionNumber}</span>
-                    )}
+                    {isLatest && <span className="jg-head__tag">Latest</span>}
                     <span className="jg-head__d">{formatShortDate(s.date)}</span>
-                    <span className="jg-head__t" aria-hidden="true">
-                      {s.trainerInitials}
+                    <span className="jg-head__n">
+                      #{s.sessionNumber} · {s.trainerInitials}
                     </span>
                   </button>
                 </div>

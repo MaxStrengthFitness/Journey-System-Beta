@@ -86,6 +86,19 @@
   touch-action: pan-x pan-y;
   scroll-padding-left: var(--jg-col-machine);
   scroll-padding-right: var(--jg-col-live);
+  /* scroll-padding alone only applies to programmatic scrolls and snap
+     points. Without snap points a free-scrolling column comes to rest
+     half-hidden behind the sticky rail, which is what was clipping the
+     date headers. Proximity, not mandatory, so a deliberate half-scroll
+     still feels free. */
+  scroll-snap-type: x proximity;
+}
+.jg-head:not(.is-latest):not(.jg-head--live):not(.jg-head--older) {
+  scroll-snap-align: start;
+}
+/* Today and the pinned Latest both sit over the right edge. */
+.jg[data-live="true"] .jg-scroller {
+  scroll-padding-right: calc(var(--jg-col-live) + var(--jg-col-session));
 }
 .jg[data-stats="true"] .jg-scroller { scroll-padding-left: calc(var(--jg-col-machine) + var(--jg-col-stat)); }
 
@@ -317,12 +330,15 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   border-bottom: 3px solid transparent;
 }
 .jg-head__btn:active { background: var(--jg-surface-3); }
+/* Three stacked lines (number, date, avatar circle) cost 68px of every
+   screen. The trainer's initials read just as well as text on the number
+   line, and the header drops to 50px. */
 .jg-head__n {
   font-size: 10px;
   font-weight: 600;
@@ -339,25 +355,11 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   text-transform: uppercase;
   color: var(--jg-ink);
 }
-.jg-head__t {
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background: var(--jg-surface-3);
-  color: var(--jg-ink-2);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  display: grid;
-  place-items: center;
-}
 .jg-head__d { white-space: nowrap; }
 .jg[data-density="compact"] .jg-head__d { font-size: 13px; }
-.jg[data-density="compact"] .jg-head__t { width: 18px; height: 18px; font-size: 8.5px; }
 .jg-head.is-spot .jg-head__btn { border-bottom-color: var(--jg-live); background: var(--jg-live-fill); }
 .jg-head.is-spot .jg-head__d,
 .jg-head.is-spot .jg-head__n { color: var(--jg-live-text); }
-.jg-head.is-spot .jg-head__t { background: var(--jg-live); color: var(--jg-live-on); }
 
 /* The most recent logged session — the baseline for today's prescription.
    A blue frame (2px each side, 3px underline) plus the LATEST tag: it must
@@ -368,7 +370,6 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   border-bottom-color: var(--jg-live);
 }
 .jg-head.is-latest .jg-head__d { color: var(--jg-live-text); }
-.jg-head.is-latest .jg-head__t { background: var(--jg-live); color: var(--jg-live-on); }
 
 /* Today's header — sticky top AND right. */
 .jg-head--live {
@@ -381,7 +382,6 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-head--live .jg-head__btn { cursor: default; }
 .jg-head--live .jg-head__d,
 .jg-head--live .jg-head__n { color: var(--jg-live-text); }
-.jg-head--live .jg-head__t { background: var(--jg-live); color: var(--jg-live-on); }
 
 /* "Load older" column header, sits at the far left of the timeline. */
 .jg-head--older .jg-head__btn {
@@ -619,6 +619,36 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-row.is-selected .jg-cell.is-latest {
   box-shadow: inset 2px 0 0 var(--jg-live), inset -2px 0 0 var(--jg-live),
               inset 0 1px 0 var(--jg-live), inset 0 -1px 0 var(--jg-live);
+}
+
+/* ---- live session: Latest parks itself beside Today ------------------ *
+   During a set the only past column that matters is the last one — it is
+   the baseline for today's prescription. Pinned to the right edge, offset
+   by the width of Today, it never scrolls away, which is what lets
+   everything older recede without costing the trainer anything.
+   Both .jg-head.is-latest and .jg-cell.is-latest already paint an opaque
+   background (live-fill, or a quality fill that wins the cascade), so the
+   timeline never shows through the pinned column. */
+.jg[data-live="true"] .jg-head.is-latest {
+  position: sticky;
+  right: var(--jg-col-live);
+  z-index: 4;                    /* over .jg-head (3), under the corner (5) */
+}
+.jg[data-live="true"] .jg-cell.is-latest {
+  position: sticky;
+  right: var(--jg-col-live);
+  z-index: 2;
+}
+/* Fifteen equally-weighted columns is what read as clutter. Dimming the
+   older ones turns the timeline into one comparison plus context. The fill
+   carries quality, so the whole cell dims — but --jg-ink-muted would fall
+   below 4.5:1 at this opacity, so the reps line steps up a token first. */
+.jg[data-live="true"] .jg-cell:not(.is-latest):not(.is-spot):not(.jg-cell--older) {
+  opacity: 0.68;
+}
+.jg[data-live="true"] .jg-cell:not(.is-latest):not(.is-spot) .jg-cell__r,
+.jg[data-live="true"] .jg-cell:not(.is-latest):not(.is-spot) .jg-cell__r .jg-tut {
+  color: var(--jg-ink);
 }
 
 /* column spotlight (tap a date header) */
