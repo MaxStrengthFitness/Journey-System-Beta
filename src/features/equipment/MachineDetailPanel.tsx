@@ -1,8 +1,9 @@
 import { ChevronLeft } from "lucide-react";
 import { NoteIndicator } from "./NoteIndicator";
+import { PrescriptionCard } from "./PrescriptionCard";
 import { SettingsCard } from "./SettingsCard";
 import { SetupGuide } from "./SetupGuide";
-import type { MutationAuthor, SaveSettingsResult } from "./mutations";
+import type { MutationAuthor, SaveSettingsResult, SaveWeightsResult } from "./mutations";
 import type { EquipmentMachine } from "./types";
 
 /**
@@ -20,53 +21,11 @@ export interface MachineDetailPanelProps {
   /** Shown only in the drill-in layout. */
   onBack: () => void;
   onSettingsSaved?: (result: SaveSettingsResult, machine: EquipmentMachine) => void;
+  onWeightsSaved?: (result: SaveWeightsResult, machine: EquipmentMachine) => void;
   onError?: (message: string) => void;
-}
-
-function PrescriptionCard({ machine }: { machine: EquipmentMachine }) {
-  const start = machine.startingWeight;
-  const current = machine.currentWeight;
-  const delta = start !== null && current !== null ? current - start : null;
-  const pct = delta !== null && start ? Math.round((delta / start) * 100) : null;
-
-  return (
-    <section className="eq-card">
-      <header className="eq-card__head">
-        <h3 className="eq-card__title">Prescription</h3>
-      </header>
-      <div className="eq-card__body">
-        <div className="eq-rx">
-          <div className="eq-rx__stat">
-            <span className="eq-rx__label">Starting</span>
-            <span className={`eq-rx__value ${start === null ? "eq-rx__value--empty" : ""}`}>
-              {start ?? "—"}
-              {start !== null && <small>lbs</small>}
-            </span>
-          </div>
-          <div className="eq-rx__stat eq-rx__stat--current">
-            <span className="eq-rx__label">Current</span>
-            <span className={`eq-rx__value ${current === null ? "eq-rx__value--empty" : ""}`}>
-              {current ?? "—"}
-              {current !== null && <small>lbs</small>}
-            </span>
-          </div>
-          <div className="eq-rx__stat">
-            <span className="eq-rx__label">Change</span>
-            <span className="eq-rx__value">
-              {delta === null ? (
-                <span className="eq-rx__value--empty">—</span>
-              ) : (
-                <span className={`eq-rx__delta ${delta < 0 ? "eq-rx__delta--down" : ""}`}>
-                  {delta > 0 ? "+" : ""}
-                  {delta} {pct !== null && <>({pct > 0 ? "+" : ""}{pct}%)</>}
-                </span>
-              )}
-            </span>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+  experienceLevel?: string;
+  gender?: string;
+  studioMachineSettings?: Record<string, Record<string, string>>;
 }
 
 export function MachineDetailPanel({
@@ -75,7 +34,11 @@ export function MachineDetailPanel({
   author,
   onBack,
   onSettingsSaved,
+  onWeightsSaved,
   onError,
+  experienceLevel,
+  gender,
+  studioMachineSettings,
 }: MachineDetailPanelProps) {
   if (!machine) {
     return (
@@ -120,7 +83,16 @@ export function MachineDetailPanel({
         />
       </header>
 
-      <PrescriptionCard machine={machine} />
+      <PrescriptionCard
+        machine={machine}
+        clientId={clientId}
+        author={author}
+        experienceLevel={experienceLevel}
+        gender={gender}
+        studioMachineSettings={studioMachineSettings}
+        onSaved={onWeightsSaved}
+        onError={onError}
+      />
 
       <SettingsCard
         machine={machine}

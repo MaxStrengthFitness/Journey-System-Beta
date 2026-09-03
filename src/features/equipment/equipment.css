@@ -473,6 +473,54 @@
 }
 .eq-rx__std b { color: var(--eq-ink-2); font-weight: 800; }
 
+/* ---------- Weight steppers ------------------------------------------ */
+
+.eq-step {
+  flex: 1 1 170px;
+  min-width: 160px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  background: var(--eq-bg);
+  border: 1px solid var(--eq-border);
+}
+.eq-step--current { border-color: var(--eq-hero); background: var(--eq-hero-fill); }
+.eq-step__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.eq-step__btn {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface);
+  color: var(--eq-ink-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.eq-step__btn:hover { background: var(--eq-surface-3); color: var(--eq-ink); }
+.eq-step__btn:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
+.eq-step__input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-surface);
+  color: var(--eq-ink);
+  font-size: 22px;
+  font-weight: 900;
+  text-align: center;
+  letter-spacing: -0.02em;
+}
+.eq-step__input:focus { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; border-color: transparent; }
+.eq-actions__spacer { flex: 1; }
+
 /* ---------- Fields --------------------------------------------------- */
 
 .eq-fields {

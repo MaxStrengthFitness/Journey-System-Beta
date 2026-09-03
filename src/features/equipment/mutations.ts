@@ -144,3 +144,89 @@ export async function saveSettings({
 
   return { changes, summary, reason: actualReason };
 }
+
+/* ------------------------------------------------------------------ *
+ * Weights
+ * ------------------------------------------------------------------ */
+
+export interface SaveWeightsArgs {
+  clientId: string;
+  machineId: string;
+  machineName: string;
+  savedStarting: number | null;
+  savedCurrent: number | null;
+  draftStarting: string;
+  draftCurrent: string;
+  author: MutationAuthor;
+}
+
+export interface SaveWeightsResult {
+  starting: number | null;
+  current: number | null;
+  summary: string;
+}
+
+const toWeight = (v: string): number | null => {
+  const t = (v ?? "").toString().trim();
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+};
+
+/**
+ * Save prescribed weights.
+ *
+ * No journal entry — see README section 3.4. Weights move most sessions, and
+ * journaling every one would bury coaching notes under progression noise that
+ * the Journey Grid already tells better. The audit trail stays in
+ * settingHistory.
+ */
+export async function saveWeights({
+  clientId,
+  machineId,
+  machineName,
+  savedStarting,
+  savedCurrent,
+  draftStarting,
+  draftCurrent,
+  author,
+}: SaveWeightsArgs): Promise<SaveWeightsResult | null> {
+  const starting = toWeight(draftStarting);
+  const current = toWeight(draftCurrent);
+
+  if (starting === savedStarting && current === savedCurrent) return null;
+
+  await setDoc(
+    doc(db, "clientMachineSettings", `${clientId}_${machineId}`),
+    {
+      clientId,
+      machineId,
+      startingWeight: starting,
+      currentWeight: current,
+      // First time a starting weight is recorded, stamp when — the Journey
+      // Grid reads this to anchor a client's baseline.
+      ...(savedStarting === null && starting !== null ? { startingWeightDate: new Date() } : {}),
+      updatedAt: new Date(),
+      updatedBy: author.id,
+    },
+    { merge: true },
+  );
+
+  await writeHistory(machineId, {
+    clientId,
+    timestamp: new Date().toISOString(),
+    trainerId: author.id,
+    trainerName: author.fullName,
+    changeType: "WEIGHT",
+    oldValue: `Start: ${savedStarting ?? "None"}, Current: ${savedCurrent ?? "None"}`,
+    newValue: `Start: ${starting ?? "None"}, Current: ${current ?? "None"}`,
+    reason: "Weight update",
+  });
+
+  const summary =
+    savedCurrent !== null && current !== null && savedCurrent !== current
+      ? `${machineName} ${savedCurrent} → ${current} lbs`
+      : `${machineName} weights updated`;
+
+  return { starting, current, summary };
+}

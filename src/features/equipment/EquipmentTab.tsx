@@ -7,7 +7,7 @@ import { summarise, toEquipmentMachines } from "./adapters";
 import { EquipmentSummaryBar } from "./EquipmentSummaryBar";
 import { MachineRail } from "./MachineRail";
 import { MachineDetailPanel } from "./MachineDetailPanel";
-import type { MutationAuthor, SaveSettingsResult } from "./mutations";
+import type { MutationAuthor, SaveSettingsResult, SaveWeightsResult } from "./mutations";
 import type { PaneMode } from "./types";
 
 /**
@@ -138,6 +138,10 @@ export function EquipmentTab({
     toastSuccess(`Settings saved — ${result.summary}`);
   };
 
+  const handleWeightsSaved = (result: SaveWeightsResult) => {
+    toastSuccess(result.summary);
+  };
+
   const handleSelect = (id: string) => {
     setSelectedId(id);
     setPane("detail");
@@ -166,7 +170,11 @@ export function EquipmentTab({
             author={author}
             onBack={() => setPane("list")}
             onSettingsSaved={handleSettingsSaved}
+            onWeightsSaved={handleWeightsSaved}
             onError={toastError}
+            experienceLevel={client?.experienceLevel}
+            gender={client?.gender}
+            studioMachineSettings={activeStudio?.machineSettings}
           />
         )}
       </div>
