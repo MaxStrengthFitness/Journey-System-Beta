@@ -1,0 +1,844 @@
+/* ==========================================================================
+   Calendar — layout
+   --------------------------------------------------------------------------
+   Three views, one shell. Each view is a plain block; only the DAY view uses a
+   scroller, and only on one axis.
+   ========================================================================== */
+
+@import "./calendar.tokens.css";
+
+.cal { color: var(--cal-ink); font-feature-settings: "tnum" 1; }
+
+/* ---------- Date navigator ------------------------------------------ *
+   The bug: the title sat between the two arrows, so "September" and "May"
+   pushed them to different places and the arrow you were tapping moved out
+   from under your thumb on every step.
+
+   The fix is a fixed-width label track. The arrows are flex items with a
+   fixed basis at each end; the label is the only flexible child and it
+   centres its text inside a min-width. Month names cannot move anything.   */
+
+.cal-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--cal-border);
+  background: var(--cal-surface);
+}
+.cal-nav__btn {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--cal-ink-2);
+  cursor: pointer;
+}
+.cal-nav__btn:hover { background: var(--cal-surface-3); color: var(--cal-ink); }
+.cal-nav__btn:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; }
+
+.cal-nav__label {
+  flex: 1 1 auto;
+  /* The whole point: a fixed track, so the arrows never move. */
+  min-width: 190px;
+  padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+.cal-nav__label:hover .cal-nav__primary { color: var(--cal-live-text); }
+.cal-nav__label:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; border-radius: 999px; }
+.cal-nav__primary {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cal-ink);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.cal-nav__secondary {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+  line-height: 1;
+  white-space: nowrap;
+}
+@media (max-width: 640px) { .cal-nav__label { min-width: 140px; } }
+
+/* ---------- Shared bits ---------------------------------------------- */
+
+.cal-card {
+  background: var(--cal-surface);
+  border: 1px solid var(--cal-border);
+  border-radius: var(--cal-radius);
+  overflow: hidden;
+}
+.cal-card__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--cal-border);
+}
+.cal-card__title {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+}
+.cal-card__note {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cal-ink-faint);
+}
+.cal-card__body { padding: 14px; }
+
+.cal-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--t-solid);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  flex: 0 0 auto;
+}
+.dark .cal-avatar, [data-theme="dark"] .cal-avatar { color: #06101a; }
+.cal-avatar--sm { width: 22px; height: 22px; font-size: 9px; }
+
+/* Count badge rides the avatar rather than sitting beside it, so a row of
+   trainers costs one chip of width each instead of two. */
+.cal-who {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.cal-who__badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--cal-surface);
+  border: 1px solid var(--cal-border-strong);
+  color: var(--cal-ink);
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 14px;
+  text-align: center;
+}
+
+.cal-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 28px 20px;
+  text-align: center;
+  color: var(--cal-ink-faint);
+}
+.cal-empty__title {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--cal-ink-muted);
+}
+.cal-empty__hint { font-size: 12px; max-width: 320px; line-height: 1.5; }
+
+/* ---------- MONTH ----------------------------------------------------- *
+   The old cells spelled out full trainer names, which wrapped mid-week and
+   made every row a different height. A day now reads as one big number plus
+   a row of avatars — no text that can wrap, so the grid stays square.        */
+
+.cal-month {
+  border: 1px solid var(--cal-border);
+  border-radius: var(--cal-radius);
+  overflow: hidden;
+  background: var(--cal-border);
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+}
+.cal-month__dow {
+  background: var(--cal-surface-2);
+  padding: 7px 4px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+}
+
+.cal-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 96px;
+  padding: 7px 7px 8px;
+  border: 0;
+  text-align: left;
+  background: var(--cal-surface);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.cal-day:hover { background: var(--cal-surface-2); }
+.cal-day:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; }
+.cal-day--outside { background: var(--cal-bg); }
+.cal-day--outside .cal-day__num { color: var(--cal-ink-faint); }
+.cal-day--today { box-shadow: inset 0 0 0 2px var(--cal-live); }
+.cal-day--selected { background: var(--cal-live-fill); }
+
+.cal-day__top {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.cal-day__num {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--cal-ink-2);
+  line-height: 1;
+}
+.cal-day--today .cal-day__num { color: var(--cal-live-text); }
+.cal-day__total {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  line-height: 1;
+}
+.cal-day__total b {
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--cal-ink);
+}
+.cal-day__total span {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cal-ink-faint);
+}
+.cal-day--quiet .cal-day__total b { color: var(--cal-ink-faint); font-size: 15px; }
+
+.cal-day__who {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 9px;
+  margin-top: auto;
+}
+.cal-day__more {
+  align-self: center;
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--cal-ink-muted);
+}
+.cal-day__events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cal-day__event {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--cal-ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cal-day__event i {
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--cal-ink-faint);
+}
+.cal-day__event--high i { background: var(--cal-hero); }
+.cal-day__event--high { color: var(--cal-hero-text); }
+
+@media (max-width: 767px) {
+  .cal-day { min-height: 74px; padding: 5px; }
+  .cal-day__total b { font-size: 16px; }
+}
+
+/* ---------- WEEK ------------------------------------------------------ *
+   Not a grid of bookings. A studio manager opening the week asks three
+   questions — how many, who, and when is it busy — so the view answers
+   exactly those three and nothing else.                                    */
+
+.cal-week { display: flex; flex-direction: column; gap: 12px; }
+
+.cal-week__top {
+  display: grid;
+  grid-template-columns: minmax(190px, 260px) 1fr;
+  gap: 12px;
+}
+@media (max-width: 899px) { .cal-week__top { grid-template-columns: 1fr; } }
+
+.cal-total {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 16px;
+}
+.cal-total__value {
+  font-size: 46px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  color: var(--cal-ink);
+}
+.cal-total__label {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+}
+.cal-total__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--cal-ink-muted);
+}
+.cal-total__delta b { font-weight: 900; }
+.cal-total__delta--up b { color: var(--cal-hero-text); }
+.cal-total__delta--down b { color: var(--cal-live-text); }
+
+/* Day bars: a 7-column strip. Bars grow from the baseline so the week's
+   shape is one glance, and the number sits above the bar so a short bar is
+   still readable. */
+.cal-bars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  align-items: end;
+  padding: 12px 14px 10px;
+  min-height: 150px;
+}
+.cal-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+.cal-bar:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 2px; border-radius: 8px; }
+.cal-bar__count {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--cal-ink);
+  line-height: 1;
+}
+.cal-bar__count--zero { color: var(--cal-ink-faint); }
+.cal-bar__track {
+  width: 100%;
+  height: 78px;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 6px;
+  background: var(--cal-surface-2);
+  overflow: hidden;
+}
+.cal-bar__fill {
+  width: 100%;
+  border-radius: 6px 6px 0 0;
+  background: var(--cal-live);
+  min-height: 3px;
+}
+.cal-bar--today .cal-bar__fill { background: var(--cal-hero); }
+.cal-bar--peak .cal-bar__fill { background: var(--cal-live); }
+.cal-bar__day {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+  line-height: 1;
+}
+.cal-bar__date { font-size: 11px; font-weight: 800; color: var(--cal-ink-faint); line-height: 1; }
+.cal-bar--today .cal-bar__day,
+.cal-bar--today .cal-bar__date { color: var(--cal-hero-text); }
+
+.cal-week__lower {
+  display: grid;
+  grid-template-columns: minmax(240px, 340px) 1fr;
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 1099px) { .cal-week__lower { grid-template-columns: 1fr; } }
+
+/* Trainer leaderboard */
+.cal-board { display: flex; flex-direction: column; }
+.cal-board__row {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--cal-border);
+}
+.cal-board__row:last-child { border-bottom: 0; }
+.cal-board__who { min-width: 0; }
+.cal-board__name {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--cal-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.cal-board__track {
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: var(--cal-surface-2);
+  overflow: hidden;
+}
+.cal-board__fill { height: 100%; border-radius: 999px; background: var(--t-solid); min-width: 3px; }
+.cal-board__count {
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--cal-ink);
+  font-variant-numeric: tabular-nums;
+}
+.cal-board__share { font-size: 10px; font-weight: 800; color: var(--cal-ink-faint); }
+
+/* Capacity heatmap */
+.cal-heat {
+  display: grid;
+  grid-template-columns: 66px repeat(7, minmax(0, 1fr));
+  gap: 3px;
+  padding: 12px 14px 14px;
+}
+.cal-heat__corner { }
+.cal-heat__dow {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+  padding-bottom: 2px;
+}
+.cal-heat__dow--today { color: var(--cal-hero-text); }
+.cal-heat__band {
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+  padding-right: 6px;
+}
+.cal-heat__cell {
+  height: 38px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  background: var(--cal-heat-0);
+  color: var(--cal-heat-ink-lo);
+  border: 0;
+  cursor: default;
+}
+.cal-heat__cell[data-step="0"] { color: var(--cal-ink-faint); }
+.cal-heat__cell[data-step="1"] { background: var(--cal-heat-1); }
+.cal-heat__cell[data-step="2"] { background: var(--cal-heat-2); }
+.cal-heat__cell[data-step="3"] { background: var(--cal-heat-3); color: var(--cal-heat-ink-hi); }
+.cal-heat__cell[data-step="4"] { background: var(--cal-heat-4); color: var(--cal-heat-ink-hi); }
+.cal-heat__cell[data-step="5"] { background: var(--cal-heat-5); color: var(--cal-heat-ink-hi); }
+
+.cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cal-ink-faint);
+}
+.cal-legend__swatch { width: 14px; height: 14px; border-radius: 4px; }
+
+/* ---------- DAY ------------------------------------------------------- *
+   One row per trainer against a shared horizontal time axis. The Hub already
+   owns the vertical "what is happening now" read; this one exists to show the
+   whole day's shape — who is loaded, where the gaps are — in one screen.     */
+
+.cal-dayview { display: flex; flex-direction: column; gap: 12px; }
+
+.cal-lanes__scroller {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.cal-lanes {
+  min-width: min-content;
+  display: flex;
+  flex-direction: column;
+}
+
+.cal-lane__axis,
+.cal-lane {
+  display: grid;
+  /* One track per 30-minute slot, plus the sticky label column. */
+  grid-template-columns: var(--cal-lane-label) repeat(var(--cal-slots), var(--cal-slot-w));
+  align-items: stretch;
+}
+
+.cal-lane__axis {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--cal-surface-2);
+  border-bottom: 1px solid var(--cal-border-strong);
+}
+.cal-axis__corner {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: var(--cal-surface-2);
+  border-right: 1px solid var(--cal-border-strong);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+}
+.cal-axis__tick {
+  /* Each hour label spans its two half-hour slots. */
+  grid-column: span 2;
+  padding: 6px 0 5px 6px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: var(--cal-ink-muted);
+  border-left: 1px solid var(--cal-border);
+  white-space: nowrap;
+}
+
+.cal-lane { background: var(--cal-surface); }
+.cal-lane-group { border-bottom: 1px solid var(--cal-border); }
+.cal-lane-group:last-child { border-bottom: 0; }
+.cal-lane__label {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 10px;
+  background: var(--cal-surface);
+  border-right: 1px solid var(--cal-border-strong);
+  border-left: 3px solid var(--t-edge);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.cal-lane__label:hover { background: var(--cal-surface-2); }
+.cal-lane__label:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; }
+.cal-lane__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--cal-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cal-lane__count {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--cal-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Blocks are placed straight into the lane's own columns — no nested grid, no
+   subgrid (Safari support is too recent to lean on), no absolute positioning
+   and no pixel math. A session starting at slot 4 is `grid-column: 6`, because
+   column 1 is the label.
+   The hour rules are one background element behind the blocks rather than a
+   border on each, so they line up whether or not a slot is occupied. */
+.cal-lane__grid {
+  grid-column: 2 / -1;
+  grid-row: 1;
+  min-height: 46px;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--cal-border) 0 1px,
+    transparent 1px calc(var(--cal-slot-w) * 2)
+  );
+}
+
+.cal-block {
+  grid-row: 1;
+  z-index: 1;
+  margin: 4px 2px;
+  min-height: 30px;
+  border-radius: 7px;
+  background: var(--t-fill);
+  border: 1px solid var(--t-edge);
+  border-left: 3px solid var(--t-solid);
+  padding: 3px 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.cal-block:hover { filter: brightness(1.06); }
+.cal-block:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 1px; }
+.cal-block__name {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--cal-ink);
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cal-block__time {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--cal-ink-muted);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.cal-block--unavail {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--cal-surface-3) 0 5px,
+    var(--cal-surface-2) 5px 10px
+  );
+  border-color: var(--cal-border-strong);
+  border-left-color: var(--cal-border-strong);
+  cursor: default;
+}
+
+/* Expanded lane: the names the blocks are too narrow to show. */
+.cal-lane__detail {
+  border-top: 1px dashed var(--cal-border);
+  background: var(--cal-bg);
+  padding: 8px 10px 10px calc(var(--cal-lane-label) + 4px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  position: sticky;
+  left: 0;
+}
+.cal-lane__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--cal-surface);
+  border: 1px solid var(--cal-border);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.cal-lane__item:hover { border-color: var(--t-edge); }
+.cal-lane__item:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 1px; }
+.cal-lane__item b { font-size: 11px; font-weight: 900; color: var(--cal-ink); }
+.cal-lane__item span { font-size: 10px; font-weight: 700; color: var(--cal-ink-muted); }
+
+.cal-daystat {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+}
+.cal-daystat__big {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.cal-daystat__big b {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--cal-ink);
+  line-height: 1;
+}
+.cal-daystat__big span {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+}
+.cal-daystat__sep { width: 1px; height: 24px; background: var(--cal-border); }
+
+/* ---------- Toolbar ---------------------------------------------------- *
+   One segmented-control style for all three toolbars (filter, view, and the
+   trainer picker's trigger), so the header stops mixing #0284c7 with the brand
+   blue and a Tailwind slate with the token slate.                            */
+
+.cal-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 22px;
+  border: 1px solid var(--cal-border);
+  background: var(--cal-bg);
+  min-height: 100%;
+}
+@media (min-width: 768px) { .cal-shell { padding: 20px; gap: 16px; } }
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cal-header__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+}
+.cal-header__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cal-surface);
+  border: 1px solid var(--cal-border);
+  color: var(--cal-live-text);
+  flex: 0 0 auto;
+}
+.cal-header__name {
+  font-size: 19px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--cal-ink);
+}
+.cal-header__sub {
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+}
+
+.cal-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  border: 1px solid var(--cal-border);
+  background: var(--cal-surface);
+  flex: 0 0 auto;
+}
+.cal-seg__btn {
+  height: 32px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--cal-ink-muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cal-seg__btn:hover { color: var(--cal-ink); background: var(--cal-surface-3); }
+.cal-seg__btn:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; }
+.cal-seg__btn[aria-pressed="true"] {
+  background: var(--cal-live);
+  color: var(--cal-live-on);
+}
+
+.cal-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 11px;
+  border-radius: 12px;
+  border: 1px solid var(--cal-border);
+  background: var(--cal-surface);
+  color: var(--cal-ink);
+  flex: 0 0 auto;
+}
+.cal-picker svg { color: var(--cal-live-text); flex: 0 0 auto; }
+.cal-picker select {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  max-width: 170px;
+  cursor: pointer;
+}
+.cal-picker select:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 2px; border-radius: 6px; }

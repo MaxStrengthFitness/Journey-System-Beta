@@ -6,6 +6,18 @@ _Last updated: Sep 3, 2026_
 
 ---
 
+## 📅 Now — Calendar redesign (Sep 3) — branch `calendar-redesign`, one commit per phase
+
+Month / Week / Day rebuilt in `src/features/calendar/` (spec in its README.md). `CalendarView.tsx` 1,630 → 403 lines. `npx tsc --noEmit` clean, `npx vite build` green. **Not yet looked at on a real iPad.**
+
+- [x] ~~Phase 1 — foundation~~ — feature folder, pure selectors, scoped light/dark tokens. Two real bugs fixed rather than styled around: (1) trainer colour was POSITIONAL (`TRAINER_COLORS[trainerIdx % 5]` where the index was the trainer's place in whatever list a view had just built, so filtering repainted the roster and Christian could be orange in Month and blue in Day) — a tone is now an FNV-1a hash of the trainer id, stable in every view forever; (2) the nav arrows moved because the title sat between them — the label is now a fixed-width track and the arrows are pinned. Tapping the label jumps to today.
+- [x] ~~Phase 2 — Month~~ — day cells stop spelling out trainer names (which wrapped mid-week and blew row heights out). One big count + up to four initial-avatars with count badges, `+n` past that. Empty days show a muted em-dash, not a zero.
+- [x] ~~Phase 3 — Week~~ — pivoted from a sparse seven-column grid to a dashboard: week total with an honest delta vs last week (reads "No prior week loaded" instead of −100% when history isn't fetched), per-day bars scaled to the week's own busiest day, a trainer leaderboard with share %, and a 7-day × 4-band capacity heatmap. Four bands not 28 rows — a 40-session week over 28 rows is all 0s and 1s.
+- [x] ~~Phase 4 — Day~~ — rotated 90°: horizontal trainer swimlanes on a shared time axis, so the whole day fits one screen and gaps are obvious. Axis derived from the day's real bookings. Tapping a lane expands that trainer's sessions with names (a 30-min block is one slot wide — no name fits, so don't truncate, disclose). Bookings whose trainer didn't resolve get an "Unassigned" block instead of vanishing.
+- [x] ~~Phase 5 — wire-in + spec~~ — `CalendarView` keeps only resolve + filter; the Mindbody trainer-matching heuristic is unchanged but now lives in one place instead of three drifted copies. Dead `axios` / `updateDoc` / `getDocs` imports removed.
+- [ ] **Verify on the iPad** — both themes; Month with a heavy Thursday; Week's delta on a week with no prior history loaded; the heatmap in dark mode; Day swimlanes in portrait (they scroll horizontally) and a lane expand; the nav arrows staying put stepping Aug → Sep → Oct.
+- [ ] Follow-ups: events only render in Month (they were never meaningful in the old week/day grids). `ClientHistoryCalendar.tsx` (1,643 lines) is a separate component still on the old patterns — fold it onto these tokens on a later pass. Decide whether the Day view should show a NOW line when viewing today.
+
 ## 🧰 Now — Equipment tab dual-pane (Sep 3) — branch `equipment-dual-pane`, one commit per phase
 
 Replaces the twenty-card Equipment grid with a master-detail split: `src/features/equipment/` (spec in its README.md). `npx tsc --noEmit` clean and `npx vite build` green. Each phase is its own commit so any one can be reverted alone. **Not yet looked at on a real iPad** — checklist at the bottom.
