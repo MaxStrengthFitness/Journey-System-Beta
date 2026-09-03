@@ -776,12 +776,14 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   font-variant-numeric: tabular-nums;
   padding: 0;
 }
-.jg-stepper__val:focus,
-.jg-reps__input:focus { outline: 2px solid var(--jg-focus-ring); outline-offset: 1px; }
+.jg-stepper__val:focus { outline: 2px solid var(--jg-focus-ring); outline-offset: 1px; }
+/* The shell owns the focus ring — a ring around just the number would cut
+   the unit off the control it belongs to. */
+.jg-outcome:focus-within { outline: 2px solid var(--jg-focus-ring); outline-offset: 1px; }
+.jg-outcome__input:focus { outline: none; }
 .jg-stepper__unit { font-size: 10px; font-weight: 600; color: var(--jg-ink-muted); }
 
 /* reps / TUT */
-.jg-reps { display: flex; align-items: center; gap: 4px; }
 .jg-reps__side {
   flex: none;
   width: 16px;
@@ -791,45 +793,66 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   color: var(--jg-ink-muted);
   text-align: center;
 }
-.jg-reps__input {
+/* ---- outcome: a number and its unit, in one control ------------------ *
+   TSC is not really a mode — it is the unit of the number beside it. As a
+   separate pill it cost ~58px of a column where width is the scarce thing,
+   and read as an unrelated toggle. Wrapped into one bordered shell it reads
+   as "12 reps": the field right-aligns against the unit, and tapping the
+   unit swaps REPS <-> SEC. 96px for what used to take 118px in two borders.
+   The stopwatch's "Log as TSC" already sets isTSC on the focused machine,
+   so this is an override for manual entry, not a required step. */
+.jg-outcome {
+  flex: none;
+  width: 96px;
+  height: 44px;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+}
+.jg-row.has-sides .jg-outcome { width: 112px; }
+.jg-outcome__input {
   flex: 1;
   min-width: 0;
-  height: 44px;
-  width: 56px;
-  border: 1px solid var(--jg-border-strong);
-  border-radius: var(--jg-radius-sm);
-  background: var(--jg-surface);
+  border: 0;
+  background: transparent;
   color: var(--jg-ink);
   font: inherit;
-  font-size: 16px;                        /* ≥16px stops iOS zooming on focus */
+  font-size: 17px;                        /* >=16px stops iOS zooming on focus */
   font-weight: 700;
-  text-align: center;
+  text-align: right;
   font-variant-numeric: tabular-nums;
-  padding: 0;
+  padding: 0 6px 0 8px;
 }
-.jg-reps__input::placeholder { color: var(--jg-ink-faint); font-weight: 500; }
-.jg-reps__mode {
+.jg-outcome__input::placeholder { color: var(--jg-ink-faint); font-weight: 500; }
+.jg-outcome__unit {
   appearance: none;
-  border: 1px solid var(--jg-border-strong);
-  background: var(--jg-surface);
-  color: var(--jg-ink-2);
-  height: 44px;
-  width: 38px;
-  padding: 0;
-  justify-content: center;
-  border-radius: var(--jg-radius-sm);
-  font: inherit;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  cursor: pointer;
   flex: none;
+  width: 34px;
+  border: 0;
+  border-left: 1px solid var(--jg-border);
+  background: transparent;
+  color: var(--jg-ink-muted);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
-.jg-reps__mode.is-on { background: var(--jg-live); border-color: var(--jg-live); color: var(--jg-live-on); }
+.jg-outcome__unit.is-static { cursor: default; }
+.jg-outcome__unit[aria-pressed="true"] {
+  background: var(--jg-live-fill-strong);
+  color: var(--jg-live-text);
+}
 
 /* quality segmented control */
 .jg-quality { display: flex; gap: 2px; flex: none; }

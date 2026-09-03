@@ -62,18 +62,18 @@ function LiveInputCellImpl({
     const q = side === "R" ? value.qualityR : value.quality;
     return (
       <div className="jg-outcome-group">
-        <div className="jg-reps">
+        <div className="jg-outcome">
           {sides && (
             <span className="jg-reps__side" aria-hidden="true">
               {side}
             </span>
           )}
           <input
-            className="jg-reps__input"
+            className="jg-outcome__input"
             type="text"
             inputMode="numeric"
             aria-label={`${sides ? (side === "R" ? "Right side " : "Left side ") : ""}${value.isTSC ? "seconds under tension" : "reps to failure"}`}
-            placeholder={value.isTSC ? "sec" : "reps"}
+            placeholder="0"
             value={value.isTSC ? (secs ?? "") : (reps ?? "")}
             onChange={(e) => {
               const n = parseNum(e.target.value);
@@ -82,16 +82,25 @@ function LiveInputCellImpl({
             }}
             onFocus={(e) => e.currentTarget.select()}
           />
-          {side === "L" && (
+          {side === "L" ? (
             <button
               type="button"
-              className={`jg-reps__mode ${value.isTSC ? "is-on" : ""}`}
+              className="jg-outcome__unit"
               aria-pressed={value.isTSC}
-              aria-label="Log as timed static contraction"
+              aria-label={
+                value.isTSC
+                  ? "Logging seconds under tension. Switch to reps."
+                  : "Logging reps to failure. Switch to seconds under tension."
+              }
               onClick={() => onChange(machineId, { isTSC: !value.isTSC })}
             >
-              <Timer size={15} strokeWidth={2.5} />
+              <Timer size={12} strokeWidth={2.5} aria-hidden="true" />
+              {value.isTSC ? "SEC" : "REPS"}
             </button>
+          ) : (
+            <span className="jg-outcome__unit is-static" aria-hidden="true">
+              {value.isTSC ? "SEC" : "REPS"}
+            </span>
           )}
         </div>
         <div className="jg-quality" role="radiogroup" aria-label={`${sides ? (side === "R" ? "Right " : "Left ") : ""}rep quality`}>
