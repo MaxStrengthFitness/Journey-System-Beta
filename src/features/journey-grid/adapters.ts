@@ -135,7 +135,7 @@ export function toJourneyRows(
       }
       const machine: JourneyMachine = {
         id,
-        name: m.fullName || m.name,
+        name: m.name,
         group: movementGroupFor(m.name),
         settings: setting?.settings && Object.keys(setting.settings).length ? setting.settings : undefined,
         starred: starredMachineIds.has(id),

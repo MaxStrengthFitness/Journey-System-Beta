@@ -66,9 +66,10 @@ export interface ActiveSessionViewProps {
   elapsedSeconds?: number;
   onFinish?: () => void;
   onDiscard?: () => void;
-  /** "fill" (default) stretches under a static header; "auto" caps at maxHeight. */
-  layout?: "fill" | "auto";
+  /** "fill" (default) stretches under a bounded parent; "auto" caps at maxHeight; "viewport" sizes to the screen. */
+  layout?: "fill" | "auto" | "viewport";
   maxHeight?: string;
+  viewportReserve?: number;
   weightStep?: number;
 }
 
@@ -84,6 +85,7 @@ export function ActiveSessionView({
   onDiscard,
   layout = "fill",
   maxHeight,
+  viewportReserve,
   weightStep = 2,
 }: ActiveSessionViewProps) {
   const [density, setDensity] = useState<Density>("comfortable");
@@ -182,6 +184,7 @@ export function ActiveSessionView({
         canLoadOlder={visible < history.length}
         layout={layout}
         maxHeight={maxHeight}
+        viewportReserve={viewportReserve}
         title="Routine"
       />
 

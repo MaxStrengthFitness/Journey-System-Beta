@@ -46,6 +46,8 @@ export interface JourneyMachine {
   settings?: Record<string, string>;
   /** The ★ "core lift" flag in the current UI. */
   starred?: boolean;
+  /** True when the client has an important machine note — shows an alert glyph. */
+  alert?: boolean;
 }
 
 export interface JourneyRow {

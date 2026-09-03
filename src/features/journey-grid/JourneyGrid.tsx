@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ChevronLeft, ChevronsRight, Star, Plus } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronsRight, Star, Plus } from "lucide-react";
 import type { Density, JourneyRow, JourneySession, JourneySet, LiveColumn, LiveSet, StatMetric } from "./types";
 import {
   computeRowStats,
@@ -68,13 +68,18 @@ export interface JourneyGridProps {
   loadingOlder?: boolean;
   /**
    * "auto": the scroller caps at `maxHeight` (default 72dvh).
-   * "fill": the grid stretches to fill its flex-column parent — use this when
-   * the grid lives under a static page header and must scroll in the space
-   * that is left.
+   * "fill": the grid stretches to fill its flex-column parent — for a parent
+   * whose height is already bounded.
+   * "viewport": the grid measures its own offset from the top of the page and
+   * sizes itself to the viewport that is left (minus `viewportReserve` for a
+   * bottom bar / legend). Use this under a static page header on a page that
+   * is NOT itself height-bounded — the grid, not the page, scrolls.
    */
-  layout?: "auto" | "fill";
+  layout?: "auto" | "fill" | "viewport";
   /** CSS length for the scroll container when layout="auto". */
   maxHeight?: string;
+  /** Pixels kept free under the grid in "viewport" layout (bottom bar, legend). */
+  viewportReserve?: number;
   /** Column caption in the sticky corner. */
   title?: string;
 }
@@ -171,6 +176,9 @@ function RowImpl({
             {machine.starred && (
               <Star className="jg-machine__star" size={12} fill="currentColor" strokeWidth={0} aria-label="core lift" />
             )}
+            {machine.alert && (
+              <AlertCircle className="jg-machine__alert" size={13} strokeWidth={2.5} aria-label="important machine note" />
+            )}
           </span>
           {settingEntries.length > 0 && (
             <span className="jg-machine__meta">
@@ -251,6 +259,7 @@ export function JourneyGrid({
   loadingOlder = false,
   layout = "auto",
   maxHeight,
+  viewportReserve = 112,
   title = "Equipment",
 }: JourneyGridProps) {
   const history = historySessions ?? sessions;
@@ -367,12 +376,33 @@ export function JourneyGrid({
     [setSpot],
   );
 
+  /* --- "viewport" layout: size to what is left under the page header --- */
+  const [viewportMaxH, setViewportMaxH] = useState<string | null>(null);
+  useLayoutEffect(() => {
+    if (layout !== "viewport") return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    const measure = () => {
+      const top = Math.round(el.getBoundingClientRect().top + window.scrollY);
+      setViewportMaxH(`max(240px, calc(100dvh - ${top}px - ${viewportReserve}px))`);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    ro?.observe(document.body);
+    return () => {
+      window.removeEventListener("resize", measure);
+      ro?.disconnect();
+    };
+  }, [layout, viewportReserve]);
+
   const hasOlderColumn = !!onLoadOlder;
   const cols = sessions.length + (hasOlderColumn ? 1 : 0);
 
+  const effectiveMaxH = layout === "viewport" ? viewportMaxH : maxHeight;
   const style = {
     "--jg-cols": cols,
-    ...(maxHeight ? { "--jg-max-h": maxHeight } : null),
+    ...(effectiveMaxH ? { "--jg-max-h": effectiveMaxH } : null),
   } as CSSProperties;
 
   const metricLabel = STAT_LABEL[metric];

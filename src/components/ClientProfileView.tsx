@@ -72,7 +72,6 @@ import {
   Legend,
 } from "recharts";
 import { MachineSettingsDashboardModal } from "./MachineSettingsDashboardModal";
-import { getMachineStyle } from "../lib/machine-colors";
 import {
   Card,
   CardContent,
@@ -160,6 +159,11 @@ import {
 import { useActiveSessionCheck } from "../hooks/useActiveSessionCheck";
 import { useStudioMachineSettings } from "../hooks/useStudioMachineSettings";
 import { resolveMachineOrder } from "../data/machine-display-order";
+import {
+  RecentJourneyView,
+  toJourneyRows,
+  toJourneySessions,
+} from "../features/journey-grid";
 import { isOwner as checkIsOwner } from "../lib/permissions";
 import { EditRoutineDrawer } from "./EditRoutineDrawer";
 import { ClientJournalTab } from "./journal/ClientJournalTab";
@@ -421,23 +425,6 @@ export function ClientProfileView({
   const [activeTab, setActiveTab] = useState("journey");
   const [isInfoSheetOpen, setIsInfoSheetOpen] = useState(false);
   const [infoSheetTab, setInfoSheetTab] = useState("identity");
-  const [journeyDensity, setJourneyDensity] = useState<
-    "Compact" | "Comfortable" | "Full"
-  >(() => {
-    if (typeof window !== "undefined" && clientId) {
-      return (
-        (localStorage.getItem(`journeyDensity_${clientId}`) as any) ||
-        "Comfortable"
-      );
-    }
-    return "Comfortable";
-  });
-
-  useEffect(() => {
-    if (clientId) {
-      localStorage.setItem(`journeyDensity_${clientId}`, journeyDensity);
-    }
-  }, [journeyDensity, clientId]);
 
   function getTrainerChipStyles(initials: string) {
     if (!initials) return "bg-ink-l2 text-white";
@@ -1663,240 +1650,87 @@ export function ClientProfileView({
   /* ------------------------------------------------------------------ *
    * JOURNEY GRID (client profile -> Journey tab)
    *
-   * Five fixed zones, left to right:
-   *   1. Equipment & settings   fixed width, never grows into empty space
-   *   2. Starting weight        first weight ever performed + the date
-   *   3. Lowest weight          lowest weight on record + the date
-   *   4. Recent sessions        exactly 5 by default, expanded INLINE
-   *   5. Next attempt           prescribed weight, manual control only
+   * The grid itself lives in src/features/journey-grid. This block only
+   * adapts the profile's Firestore state into the grid's view models:
+   *   - sessions are numbered from the history length (not the stored
+   *     sessionNumber), exactly as the old header did, so deleted or
+   *     imported logs never leave gaps in the numbering;
+   *   - rows follow the studio's display order and carry the ordered
+   *     settings chips, the ★ core-lift flag and an alert flag when the
+   *     client has an important machine note.
+   * Start / Low / Next are gone as columns: Start and Low live in the
+   * grid's Analytics column, and the prescribed weight now only ever shows
+   * as the pre-filled value in the Active Session's Today column.
    * ------------------------------------------------------------------ */
-  const JOURNEY_COL_EQUIPMENT = 232;
-  const JOURNEY_COL_MILESTONE = 84;
-  const JOURNEY_COL_SESSION = 96;
-  const JOURNEY_COL_NEXT = 96;
-  const JOURNEY_BASE_SESSIONS = 5;
-  const JOURNEY_PAGE_STEP = 5;
+  const journeyGridSessions = useMemo(() => {
+    const totalRecords = Math.max(calculatedSessionCount, sessions.length);
+    return toJourneySessions(
+      sessions.map((s, idx) => ({ ...s, sessionNumber: totalRecords - idx })),
+    );
+  }, [sessions, calculatedSessionCount]);
 
-  const [journeyVisibleCount, setJourneyVisibleCount] = useState(
-    JOURNEY_BASE_SESSIONS,
-  );
-
-  // Switching clients must never inherit the previous client's expansion.
-  useEffect(() => {
-    setJourneyVisibleCount(JOURNEY_BASE_SESSIONS);
-  }, [clientId]);
-
-  /** Newest-first slice actually rendered as session columns. */
-  const journeySessions = useMemo(
-    () => sessions.slice(0, journeyVisibleCount),
-    [sessions, journeyVisibleCount],
-  );
-
-  /** Same slice oldest-first, which is the reading order of the grid. */
-  const journeyDisplaySessions = useMemo(
-    () => [...journeySessions].reverse(),
-    [journeySessions],
-  );
-
-  const journeyIsExpanded = journeyVisibleCount > JOURNEY_BASE_SESSIONS;
-  const journeyCanExpand =
-    journeyVisibleCount < sessions.length || hasMoreSessions;
-
-  /**
-   * Inline expansion. Widens the grid in place - no modal, no route change -
-   * so the trainer keeps their context. When the local buffer runs dry we page
-   * the next block out of Firestore first.
-   */
-  const handleExpandJourneyInline = async () => {
-    const next = journeyVisibleCount + JOURNEY_PAGE_STEP;
-    if (next > sessions.length && hasMoreSessions) {
-      await handleLoadMoreHistory();
-    }
-    setJourneyVisibleCount(next);
-  };
-
-  const handleCollapseJourneyInline = () => {
-    setJourneyVisibleCount(JOURNEY_BASE_SESSIONS);
-  };
-
-  /** sessionId -> epoch ms, so a log can be dated without re-scanning. */
-  const journeySessionDateById = useMemo(() => {
-    const map: Record<string, number> = {};
-    sessions.forEach((sess) => {
-      if (sess.id) map[sess.id] = parseSessionDate(sess.date);
-    });
-    return map;
-  }, [sessions]);
-
-  const journeyLogTimeMs = useCallback(
-    (log: ExerciseLog) =>
-      getMillis(log.createdAt) ||
-      (log.sessionId ? journeySessionDateById[log.sessionId] : 0) ||
-      0,
-    [journeySessionDateById],
-  );
-
-  const formatJourneyStamp = (ms?: number | null) =>
-    ms
-      ? new Date(ms).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "2-digit",
-        })
-      : "--";
-
-  /**
-   * Box 2. The stored startingWeight is authoritative - sync-utils writes it
-   * once, on the first logged set, and never touches it again. Loaded history
-   * is only the fallback for rows imported before that field existed.
-   */
-  const getJourneyStartingWeight = useCallback(
-    (machineId: string, machineLogs: ExerciseLog[]) => {
-      const setting = clientSettings[machineId];
-      const earliest = machineLogs.reduce<ExerciseLog | null>(
-        (acc, log) =>
-          !acc || journeyLogTimeMs(log) < journeyLogTimeMs(acc) ? log : acc,
-        null,
+  const journeyGridRows = useMemo(() => {
+    const ordered = [...machines].sort(
+      (a, b) =>
+        resolveMachineOrder(
+          a.id,
+          a.order,
+          a.id ? studioMachineSettingsById[a.id]?.order : undefined,
+        ) -
+        resolveMachineOrder(
+          b.id,
+          b.order,
+          b.id ? studioMachineSettingsById[b.id]?.order : undefined,
+        ),
+    );
+    const currentStudio = studios?.find((st) => st.id === activeStudioId);
+    const starred = new Set(
+      ordered.filter((m) => isBig5Machine(m.name)).map((m) => m.id!),
+    );
+    return toJourneyRows(ordered, allLogs, clientSettings, starred).map((row) => {
+      const machine = ordered.find((m) => m.id === row.machine.id);
+      if (!machine) return row;
+      const settings = clientSettings[machine.id!]?.settings || {};
+      const stdSettings =
+        currentStudio?.machineSettings?.[machine.id!] ||
+        machine.standardSettings ||
+        {};
+      const entries = orderMachineSettings(
+        settings,
+        stdSettings,
+        machine.settingOptions || [],
       );
-
-      if (
-        setting?.startingWeight !== undefined &&
-        setting?.startingWeight !== null
-      ) {
-        const stampSource = setting.startingWeightDate;
-        const stamp = stampSource
-          ? getMillis(stampSource) || new Date(stampSource).getTime()
-          : earliest
-            ? journeyLogTimeMs(earliest)
-            : null;
-        return {
-          weight: String(setting.startingWeight),
-          dateMs: Number.isFinite(stamp as number) ? (stamp as number) : null,
-        };
-      }
-
-      if (!earliest?.weight) return { weight: null, dateMs: null };
       return {
-        weight: String(earliest.weight),
-        dateMs: journeyLogTimeMs(earliest),
-      };
-    },
-    [clientSettings, journeyLogTimeMs],
-  );
-
-  /**
-   * Box 3. Computed over the history currently loaded, so it sharpens as the
-   * trainer expands the grid. Ties resolve to the earliest occurrence.
-   */
-  const getJourneyLowestWeight = useCallback(
-    (machineLogs: ExerciseLog[]) => {
-      let best: { weight: number; dateMs: number } | null = null;
-      machineLogs.forEach((log) => {
-        const value = Number(log.weight);
-        if (!Number.isFinite(value) || value <= 0) return;
-        const dateMs = journeyLogTimeMs(log);
-        if (
-          !best ||
-          value < best.weight ||
-          (value === best.weight && dateMs < best.dateMs)
-        ) {
-          best = { weight: value, dateMs };
-        }
-      });
-      const found = best as { weight: number; dateMs: number } | null;
-      return found
-        ? { weight: String(found.weight), dateMs: found.dateMs }
-        : { weight: null, dateMs: null };
-    },
-    [journeyLogTimeMs],
-  );
-
-  /**
-   * Box 5. Prescribed weight for the NEXT session.
-   *
-   * The system never progresses a client on its own. `currentWeight` on
-   * clientMachineSettings is the single prescribed value - sync-utils rewrites
-   * it to whatever was actually performed when a session is saved, which is
-   * what makes "same as last time" the default, and a trainer editing it (here
-   * or on the Equipment tab) is the only other thing that changes it.
-   */
-  const getJourneyNextAttempt = useCallback(
-    (machineId: string) => {
-      const prescribed = clientSettings[machineId]?.currentWeight;
-      if (
-        prescribed !== undefined &&
-        prescribed !== null &&
-        String(prescribed) !== ""
-      ) {
-        return String(prescribed);
-      }
-      const lastPerformed = client?.currentMachineMetrics?.[machineId]?.weight;
-      if (
-        lastPerformed !== undefined &&
-        lastPerformed !== null &&
-        lastPerformed !== ""
-      ) {
-        return String(lastPerformed);
-      }
-      const starting = clientSettings[machineId]?.startingWeight;
-      return starting !== undefined && starting !== null ? String(starting) : "";
-    },
-    [clientSettings, client?.currentMachineMetrics],
-  );
-
-  const [editingNextAttempt, setEditingNextAttempt] = useState<{
-    machineId: string;
-    value: string;
-  } | null>(null);
-  const [savingNextAttempt, setSavingNextAttempt] = useState<string | null>(
-    null,
-  );
-
-  /**
-   * Writes the same field the Equipment tab's "prescribed weights" editor
-   * writes, so the two stay in step: clientSettings is a live onSnapshot, so a
-   * change made anywhere on the profile re-renders this column immediately.
-   */
-  const saveJourneyNextAttempt = async (machineId: string, raw: string) => {
-    if (!clientId) return;
-    const trimmed = raw.trim();
-    const parsed = trimmed === "" ? null : Number(trimmed);
-
-    if (parsed !== null && (!Number.isFinite(parsed) || parsed < 0)) {
-      toastError("Enter the next attempt weight as a number.");
-      setEditingNextAttempt(null);
-      return;
-    }
-    if (getJourneyNextAttempt(machineId) === trimmed) {
-      setEditingNextAttempt(null);
-      return;
-    }
-
-    setSavingNextAttempt(machineId);
-    try {
-      await setDoc(
-        doc(db, "clientMachineSettings", `${clientId}_${machineId}`),
-        {
-          clientId,
-          machineId,
-          currentWeight: parsed,
-          updatedBy: auth.currentUser?.email || "Unknown",
-          updatedAt: serverTimestamp(),
-          studioId: clients.find((c) => c.id === clientId)?.homeStudioId || "",
+        ...row,
+        machine: {
+          ...row.machine,
+          settings: entries.length
+            ? Object.fromEntries(entries.map(([k, v]) => [k, v]))
+            : undefined,
+          alert: !!clientSettings[machine.id!]?.machineNotes?.some(
+            (n) => n.isImportant,
+          ),
         },
-        { merge: true },
-      );
-      setEditingNextAttempt(null);
-    } catch (error) {
-      handleFirestoreError(
-        error,
-        OperationType.UPDATE,
-        `clientMachineSettings/${machineId}`,
-      );
-    } finally {
-      setSavingNextAttempt(null);
-    }
-  };
+      };
+    });
+  }, [
+    machines,
+    allLogs,
+    clientSettings,
+    studioMachineSettingsById,
+    studios,
+    activeStudioId,
+  ]);
+
+  /** Tapping a machine name in the grid opens its settings editor, as the old row did. */
+  const openJourneyMachineSettings = useCallback(
+    (machineId: string | null) => {
+      if (!machineId) return;
+      const currentSettings = clientSettings[machineId]?.settings || {};
+      setEditingSettings({ machineId, settings: { ...currentSettings } });
+    },
+    [clientSettings],
+  );
 
   useEffect(() => {
     if (!clientId) return;
@@ -2664,556 +2498,15 @@ export function ClientProfileView({
           value="journey"
           className="mt-0 flex-1 overflow-hidden min-h-0 flex flex-col rounded-xl relative"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 px-2 flex-none gap-3">
-            <h3 className="text-[13px] font-bold uppercase text-slate-800 dark:text-slate-200 tracking-widest pl-1 border-l-4 border-[#F06C22]">
-              Recent Journey
-            </h3>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <div className="flex p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                <button
-                  onClick={() => setJourneyDensity("Compact")}
-                  className={cn(
-                    "px-2.5 sm:px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors",
-                    journeyDensity === "Compact"
-                      ? "bg-white dark:bg-slate-700 text-foreground dark:text-white shadow-sm"
-                      : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
-                  )}
-                >
-                  Compact
-                </button>
-                <button
-                  onClick={() => setJourneyDensity("Comfortable")}
-                  className={cn(
-                    "px-2.5 sm:px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors",
-                    journeyDensity === "Comfortable"
-                      ? "bg-white dark:bg-slate-700 text-foreground dark:text-white shadow-sm"
-                      : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
-                  )}
-                >
-                  Comfortable
-                </button>
-                <button
-                  onClick={() => setJourneyDensity("Full")}
-                  className={cn(
-                    "px-2.5 sm:px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors",
-                    journeyDensity === "Full"
-                      ? "bg-white dark:bg-slate-700 text-foreground dark:text-white shadow-sm"
-                      : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
-                  )}
-                >
-                  Full
-                </button>
-              </div>
-              {/* Inline expansion. Deliberately NOT a modal or a route change:
-                  the trainer stays on the row they were reading. */}
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={handleExpandJourneyInline}
-                  disabled={!journeyCanExpand || isLoadingMore}
-                  size="sm"
-                  variant="outline"
-                  className="h-9 sm:h-10 px-3.5 sm:px-5 text-[10px] sm:text-[11px] uppercase font-bold tracking-widest text-slate-700 dark:text-slate-300 hover:text-[#115E8D] border-slate-300 shadow-sm transition-all hover:bg-slate-50 rounded-full disabled:opacity-40"
-                >
-                  {isLoadingMore ? (
-                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                  ) : (
-                    <Maximize2 className="w-3.5 h-3.5 mr-1.5" />
-                  )}
-                  {journeyCanExpand
-                    ? `Expand Journey (+${JOURNEY_PAGE_STEP})`
-                    : "All Sessions Shown"}
-                </Button>
-                {journeyIsExpanded && (
-                  <Button
-                    onClick={handleCollapseJourneyInline}
-                    size="sm"
-                    variant="ghost"
-                    className="h-9 sm:h-10 px-3 text-[10px] sm:text-[11px] uppercase font-bold tracking-widest text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-full"
-                  >
-                    <ChevronUp className="w-3.5 h-3.5 mr-1.5" /> Collapse
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="w-full flex-1 overflow-x-auto overflow-y-auto bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 rounded-xl relative">
-            {/* Strict three-zone row: fixed LEFT (machine + settings), flexible
-                CENTER (session cells share what is left), fixed RIGHT (target).
-                The <colgroup> pins the outer widths so chips can never push the
-                progress cells around, whatever the machine name or settings. */}
-            <table
-              className="w-full text-left border-collapse table-fixed select-none"
-              style={{
-                minWidth:
-                  JOURNEY_COL_EQUIPMENT +
-                  JOURNEY_COL_MILESTONE * 2 +
-                  JOURNEY_COL_SESSION * journeyDisplaySessions.length +
-                  JOURNEY_COL_NEXT,
-              }}
-            >
-              {/* Every real column is pinned. The trailing spacer soaks up any
-                  leftover width, which is what stops the equipment column from
-                  ballooning across the screen when a client has no sessions. */}
-              <colgroup>
-                <col style={{ width: JOURNEY_COL_EQUIPMENT }} />
-                <col style={{ width: JOURNEY_COL_MILESTONE }} />
-                <col style={{ width: JOURNEY_COL_MILESTONE }} />
-                {journeyDisplaySessions.map((s) => (
-                  <col key={s.id} style={{ width: JOURNEY_COL_SESSION }} />
-                ))}
-                <col style={{ width: JOURNEY_COL_NEXT }} />
-                <col />
-              </colgroup>
-              <thead>
-                <tr className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 uppercase text-[11px] font-bold tracking-widest leading-none h-10 border-b border-slate-200 dark:border-slate-700">
-                  <th className="p-2 pl-4 border-r border-slate-200 dark:border-slate-700 truncate">
-                    Equipment & Settings
-                  </th>
-                  <th className="p-2 text-center border-r border-slate-200 dark:border-slate-700 truncate">
-                    Start
-                  </th>
-                  <th className="p-2 text-center border-r border-slate-200 dark:border-slate-700 truncate">
-                    Low
-                  </th>
-                  {journeyDisplaySessions
-                    .map((s) => {
-                      const globalIndexIdx = sessions.findIndex(
-                        (sess) => sess.id === s.id,
-                      );
-                      // Calculate purely based on history length to fix inconsistencies from deleted/imported logs
-                      const totalRecords = Math.max(
-                        calculatedSessionCount,
-                        sessions.length,
-                      );
-                      const sNum = totalRecords - globalIndexIdx;
-
-                      return (
-                        <th
-                          key={s.id}
-                          className="p-1 px-2 text-center border-r border-slate-200 dark:border-slate-700 truncate opacity-90"
-                        >
-                          <div className="flex flex-col items-center justify-center space-y-1 py-1">
-                            <div className="bg-slate-200 dark:bg-white/10 rounded-md px-1.5 min-w-5 py-0.5 shadow-sm inline-flex items-center justify-center mb-1">
-                              <span className="font-bold tabular-nums text-[11px] leading-none text-slate-800 dark:text-white">
-                                {sNum.toString().padStart(2, "0")}
-                              </span>
-                            </div>
-                            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tight">
-                              {s.date
-                                ? new Date(
-                                    parseSessionDate(s.date),
-                                  ).toLocaleDateString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                  })
-                                : "--"}
-                            </span>
-                            <span className="text-[11px] text-[#38BDF8] dark:text-[#38BDF8] font-bold uppercase tracking-widest">
-                              {s.legacy_filemaker_id ||
-                              s.trainerId === "legacy-trainer" ||
-                              s.trainerInitials === "Legacy" ||
-                              s.trainerInitials === "Chart"
-                                ? "Imported"
-                                : formatStudioTime(s.startTime, undefined, "")}
-                            </span>
-                            {s.trainerInitials && (
-                              <div
-                                className={cn(
-                                  "w-6 h-6 mt-1 rounded-full flex items-center justify-center text-[11px] font-extrabold uppercase shrink-0",
-                                  getTrainerChipStyles(s.trainerInitials),
-                                )}
-                              >
-                                {s.trainerInitials.substring(0, 2)}
-                              </div>
-                            )}
-                          </div>
-                        </th>
-                      );
-                    })}
-                  <th className="p-2 text-center bg-slate-100 dark:bg-slate-800 truncate border-l border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
-                    <Target className="w-4 h-4 mx-auto mb-0.5" />
-                    <span className="text-[9px] tracking-widest">Next</span>
-                  </th>
-                  <th className="bg-slate-100 dark:bg-slate-800" />
-                </tr>
-              </thead>
-              <tbody className="text-foreground dark:text-slate-100 border-t border-slate-200 dark:border-slate-800">
-                {machines
-                  .filter((machine) => {
-                    if (journeyDensity !== "Compact") return true;
-
-                    // "compact should only show machines they have preformed or have target and or starting weights for"
-                    const machineLogs = allLogs.filter(
-                      (l) => l.machineId === machine.id,
-                    );
-                    const hasPerformed = machineLogs.length > 0;
-
-                    const nextAttempt = getJourneyNextAttempt(machine.id!);
-                    const hasTarget = nextAttempt !== "" && nextAttempt !== "-";
-
-                    const startingWeight =
-                      clientSettings[machine.id!]?.startingWeight;
-                    const hasStarting =
-                      startingWeight !== undefined &&
-                      startingWeight !== null &&
-                      startingWeight !== "";
-
-                    return hasPerformed || hasTarget || hasStarting;
-                  })
-                  .sort(
-                    (a, b) =>
-                      resolveMachineOrder(
-                        a.id,
-                        a.order,
-                        a.id ? studioMachineSettingsById[a.id]?.order : undefined,
-                      ) -
-                      resolveMachineOrder(
-                        b.id,
-                        b.order,
-                        b.id ? studioMachineSettingsById[b.id]?.order : undefined,
-                      ),
-                  )
-                  .map((machine, idx) => {
-                    const machineLogs = allLogs.filter(
-                      (l) => l.machineId === machine.id,
-                    );
-                    const sortedMachineLogs = [...machineLogs].sort(
-                      (a, b) =>
-                        (b.createdAt?.toMillis?.() || 0) -
-                        (a.createdAt?.toMillis?.() || 0),
-                    );
-                    const currentLog = sortedMachineLogs[0] || null;
-                    const colors = getMachineStyle(machine.name);
-                    const displaySessions = journeyDisplaySessions;
-                    const startingInfo = getJourneyStartingWeight(
-                      machine.id!,
-                      machineLogs,
-                    );
-                    const lowestInfo = getJourneyLowestWeight(machineLogs);
-                    const nextAttempt = getJourneyNextAttempt(machine.id!);
-                    const isEditingNext =
-                      editingNextAttempt?.machineId === machine.id;
-                    const isPrescribedOverride =
-                      clientSettings[machine.id!]?.currentWeight !== undefined &&
-                      clientSettings[machine.id!]?.currentWeight !== null;
-
-                    return (
-                      <tr
-                        key={machine.id}
-                        onClick={() => {
-                          const currentSettings =
-                            clientSettings[machine.id!]?.settings || {};
-                          setEditingSettings({
-                            machineId: machine.id!,
-                            settings: { ...currentSettings },
-                          });
-                        }}
-                        className="even:bg-[#F9FAFB] odd:bg-white dark:even:bg-slate-900/40 dark:odd:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer h-12 transition-all group border-b border-slate-200 dark:border-slate-800 last:border-b-0"
-                      >
-                        <td
-                          className={cn(
-                            "p-2 pl-4 border-r border-slate-200 dark:border-slate-800 truncate align-middle relative overflow-hidden h-full",
-                            getMuscleGroupColor(machine.name),
-                          )}
-                        >
-                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#115E8D]/0 group-hover:bg-[#115E8D] transition-colors" />
-                          <div className="flex flex-col justify-center h-full">
-                            <div className="flex items-center gap-2 mb-1 max-w-full">
-                              <span className="font-bold uppercase tracking-tighter text-[14px] leading-none truncate shrink-0 max-w-full inline-flex items-center">
-                                <span>{machine.name}</span>
-                                {isBig5Machine(machine.name) && (
-                                  <Star className="w-3 h-3 ml-1.5 fill-amber-400 text-amber-500 inline shrink-0" />
-                                )}
-                              </span>
-                              {clientSettings[machine.id!]?.machineNotes?.some(
-                                (n) => n.isImportant,
-                              ) && (
-                                <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1.5 text-[11px] tracking-widest leading-none uppercase mt-0.5 flex-nowrap overflow-hidden min-w-0">
-                              {(() => {
-                                const settings =
-                                  clientSettings[machine.id!]?.settings || {};
-                                const currentStudio = studios?.find(
-                                  (s) => s.id === activeStudioId,
-                                );
-                                const stdSettings =
-                                  currentStudio?.machineSettings?.[
-                                    machine.id!
-                                  ] ||
-                                  machine.standardSettings ||
-                                  {};
-                                const options = machine.settingOptions || [];
-                                const sortedEntries = orderMachineSettings(
-                                  settings,
-                                  stdSettings,
-                                  options,
-                                );
-
-                                return sortedEntries.map(([k, v], i) => (
-                                  <span
-                                    key={i}
-                                    title={`${k}: ${v}`}
-                                    className="inline-flex items-baseline bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded-lg shrink-0 whitespace-nowrap"
-                                  >
-                                    <span className="font-semibold text-slate-400 font-sans mr-0.5">
-                                      {k}:
-                                    </span>
-                                    <span className="font-bold text-slate-800 dark:text-slate-200">
-                                      {v}
-                                    </span>
-                                  </span>
-                                ));
-                              })()}
-                            </div>
-                          </div>
-                        </td>
-                        {/* Box 2 - starting weight, with the date it was set. */}
-                        <td className="p-1 border-r border-slate-200 dark:border-slate-800 align-middle text-center bg-slate-50/60 dark:bg-slate-900/30">
-                          <div className="flex flex-col items-center justify-center leading-none gap-0.5">
-                            <span className="font-bold font-sans text-[13px] tabular-nums text-slate-700 dark:text-slate-200">
-                              {startingInfo.weight ?? "--"}
-                            </span>
-                            <span className="text-[9px] font-semibold uppercase tracking-tight text-slate-400 dark:text-slate-500">
-                              {startingInfo.weight
-                                ? formatJourneyStamp(startingInfo.dateMs)
-                                : ""}
-                            </span>
-                          </div>
-                        </td>
-                        {/* Box 3 - lowest weight across the loaded history. */}
-                        <td className="p-1 border-r border-slate-200 dark:border-slate-800 align-middle text-center bg-slate-50/60 dark:bg-slate-900/30">
-                          <div className="flex flex-col items-center justify-center leading-none gap-0.5">
-                            <span className="font-bold font-sans text-[13px] tabular-nums text-slate-700 dark:text-slate-200">
-                              {lowestInfo.weight ?? "--"}
-                            </span>
-                            <span className="text-[9px] font-semibold uppercase tracking-tight text-slate-400 dark:text-slate-500">
-                              {lowestInfo.weight
-                                ? formatJourneyStamp(lowestInfo.dateMs)
-                                : ""}
-                            </span>
-                          </div>
-                        </td>
-                        {displaySessions.map((s, sIdx) => {
-                          const log = machineLogs.find(
-                            (l) => l.sessionId === s.id,
-                          );
-                          const isLast = sIdx === displaySessions.length - 1;
-
-                          let bgClass = "bg-transparent";
-                          let labelColor = "text-slate-800 dark:text-slate-200";
-                          let repsColor = "text-slate-600 dark:text-slate-400";
-                          let borderColor =
-                            "border-slate-200/50 dark:border-slate-700/50";
-
-                          if (log) {
-                            labelColor = isLast
-                              ? "text-foreground dark:text-white"
-                              : "text-slate-700 dark:text-slate-300";
-                            repsColor = isLast
-                              ? "text-slate-600 dark:text-slate-400"
-                              : "text-slate-500 dark:text-slate-500";
-
-                            if (
-                              journeyDensity === "Full" ||
-                              journeyDensity === "Compact"
-                            ) {
-                              if (log.repQuality === 3) {
-                                bgClass =
-                                  "bg-emerald-200 dark:bg-emerald-500/20";
-                                borderColor =
-                                  "border-emerald-400 dark:border-emerald-500/30";
-                                if (isLast) {
-                                  labelColor =
-                                    "text-emerald-900 dark:text-emerald-100";
-                                  repsColor =
-                                    "text-emerald-800 dark:text-emerald-300";
-                                }
-                              } else if (log.repQuality === 2) {
-                                bgClass = "bg-amber-200 dark:bg-amber-500/20";
-                                borderColor =
-                                  "border-amber-400 dark:border-amber-500/30";
-                                if (isLast) {
-                                  labelColor =
-                                    "text-amber-900 dark:text-amber-100";
-                                  repsColor =
-                                    "text-amber-800 dark:text-amber-300";
-                                }
-                              } else if (log.repQuality === 1) {
-                                bgClass = "bg-rose-200 dark:bg-rose-500/20";
-                                borderColor =
-                                  "border-rose-400 dark:border-rose-500/30";
-                                if (isLast) {
-                                  labelColor =
-                                    "text-rose-900 dark:text-rose-100";
-                                  repsColor =
-                                    "text-rose-800 dark:text-rose-300";
-                                }
-                              }
-                            }
-                          }
-
-                          if (journeyDensity === "Compact") {
-                            if (bgClass === "bg-transparent") {
-                              borderColor = "border-transparent";
-                            }
-                          }
-
-                          return (
-                            <td
-                              key={s.id}
-                              className={cn(
-                                "p-0 border-r border-slate-200 dark:border-slate-800 align-middle h-full transition-colors",
-                                bgClass,
-                              )}
-                            >
-                              {log ? (
-                                <div className="flex flex-col w-full h-full text-center">
-                                  <div
-                                    className={cn(
-                                      "flex-1 flex flex-col items-center justify-center p-1",
-                                      journeyDensity !== "Compact"
-                                        ? "border-b min-h-5.5"
-                                        : "h-full",
-                                      borderColor,
-                                    )}
-                                  >
-                                    <div className="flex items-center flex-col justify-center gap-0.5">
-                                      <span
-                                        className={cn(
-                                          "font-bold font-sans tracking-tight leading-none",
-                                          journeyDensity === "Compact"
-                                            ? "text-[14px]"
-                                            : "text-[12px] sm:text-[13px]",
-                                          labelColor,
-                                        )}
-                                      >
-                                        {log.weight}
-                                      </span>
-                                      {journeyDensity === "Full" && log.rpe && (
-                                        <span className="text-[9px] bg-black/5 dark:bg-white/5 px-1 rounded-[3px] text-slate-500 font-semibold tracking-widest leading-none mt-0.5 py-0.5 uppercase">
-                                          RPE {log.rpe}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  {journeyDensity !== "Compact" && (
-                                    <div className="flex-1 flex items-center justify-center p-1 min-h-5">
-                                      <span
-                                        className={cn(
-                                          "font-extrabold text-[11px] leading-none",
-                                          repsColor,
-                                        )}
-                                      >
-                                        {log.repsLeft !== undefined &&
-                                        log.repsRight !== undefined ? (
-                                          `${log.repsLeft}L|${log.repsRight}R`
-                                        ) : log.isStaticHold ? (
-                                          <>
-                                            {log.seconds}
-                                            <span className="text-[11px] ml-0.5 lowercase font-medium opacity-80">
-                                              s
-                                            </span>
-                                          </>
-                                        ) : (
-                                          log.reps
-                                        )}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="h-full w-full flex items-center justify-center">
-                                  <span className="text-[12px] text-slate-300 dark:text-slate-600 font-medium">
-                                    --
-                                  </span>
-                                </div>
-                              )}
-                            </td>
-                          );
-                        })}
-                        {/* Box 5 - next attempt. Editable in place; the row's
-                            settings dialog must not open behind it. */}
-                        <td
-                          className="p-0 bg-[#F9FAFB] dark:bg-slate-900/40 align-middle border-l border-slate-200 dark:border-slate-800 h-full relative"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!isEditingNext) {
-                              setEditingNextAttempt({
-                                machineId: machine.id!,
-                                value: nextAttempt,
-                              });
-                            }
-                          }}
-                        >
-                          {isEditingNext ? (
-                            <input
-                              autoFocus
-                              type="number"
-                              inputMode="decimal"
-                              value={editingNextAttempt?.value ?? ""}
-                              onChange={(e) =>
-                                setEditingNextAttempt({
-                                  machineId: machine.id!,
-                                  value: e.target.value,
-                                })
-                              }
-                              onClick={(e) => e.stopPropagation()}
-                              onBlur={(e) =>
-                                saveJourneyNextAttempt(
-                                  machine.id!,
-                                  e.target.value,
-                                )
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  (e.target as HTMLInputElement).blur();
-                                } else if (e.key === "Escape") {
-                                  e.preventDefault();
-                                  setEditingNextAttempt(null);
-                                }
-                              }}
-                              className="w-full h-9 bg-white dark:bg-slate-800 border border-[#115E8D] rounded-md px-1.5 text-[12px] font-bold tabular-nums text-right text-slate-800 dark:text-white focus:outline-none"
-                            />
-                          ) : (
-                            <div
-                              title="Prescribed weight for the next session. Trainer-set only - nothing here progresses automatically."
-                              className="flex items-center justify-end gap-1.5 h-full w-full opacity-70 transition-opacity hover:opacity-100 py-1.5 pr-3 cursor-text"
-                            >
-                              {savingNextAttempt === machine.id ? (
-                                <Loader2 className="w-3.5 h-3.5 text-slate-400 shrink-0 animate-spin" />
-                              ) : (
-                                <Target
-                                  className={cn(
-                                    "w-3.5 h-3.5 shrink-0",
-                                    isPrescribedOverride
-                                      ? "text-[#F06C22]"
-                                      : "text-slate-400",
-                                  )}
-                                />
-                              )}
-                              <span
-                                className={cn(
-                                  "font-bold text-[12px] tabular-nums text-right",
-                                  isPrescribedOverride
-                                    ? "text-slate-800 dark:text-slate-100"
-                                    : "text-slate-600 dark:text-slate-400",
-                                )}
-                              >
-                                {nextAttempt || "-"}
-                              </span>
-                            </div>
-                          )}
-                        </td>
-                        <td className="bg-[#F9FAFB] dark:bg-slate-900/40" />
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
+          <RecentJourneyView
+            sessions={journeyGridSessions}
+            rows={journeyGridRows}
+            hasMoreOnServer={hasMoreSessions}
+            onLoadMore={handleLoadMoreHistory}
+            loadingMore={isLoadingMore}
+            layout="viewport"
+            onSelectMachine={openJourneyMachineSettings}
+          />
         </TabsContent>
         <TabsContent
           value="routines"

@@ -475,6 +475,7 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 }
 .jg[data-density="compact"] .jg-machine__label { display: block; text-overflow: ellipsis; white-space: nowrap; }
 .jg-machine__star { color: var(--jg-hero); flex: none; }
+.jg-machine__alert { color: var(--jg-q-poor); flex: none; }
 .jg-machine__order {
   flex: none;
   width: 20px;

@@ -24,12 +24,16 @@ export interface RecentJourneyViewProps {
    * grid scrolls in the space under the client header. "auto": the grid caps
    * at `maxHeight` and the page scrolls.
    */
-  layout?: "fill" | "auto";
+  layout?: "fill" | "auto" | "viewport";
   maxHeight?: string;
+  /** Pixels kept free under the grid in "viewport" layout. */
+  viewportReserve?: number;
   /** localStorage key for the density preference (already a user pref in the app). */
   densityStorageKey?: string;
   /** Initial Analytics metric. */
   initialMetric?: StatMetric;
+  /** Tap on a machine name (the row also traces). The app opens the settings editor here. */
+  onSelectMachine?: (machineId: string | null) => void;
 }
 
 const GROUP_LABEL: Record<MovementGroup, string> = {
@@ -67,8 +71,10 @@ export function RecentJourneyView({
   pageStep = 5,
   layout = "fill",
   maxHeight,
+  viewportReserve,
   densityStorageKey = "journey-grid-density",
   initialMetric = "high",
+  onSelectMachine,
 }: RecentJourneyViewProps) {
   const [density, setDensityState] = useState<Density>(() => readDensity(densityStorageKey));
   const [order, setOrder] = useState<RowOrder>("sequence");
@@ -99,14 +105,27 @@ export function RecentJourneyView({
     setVisible(next);
   }, [visible, pageStep, sessions.length, hasMoreOnServer, onLoadMore]);
 
+  // Compact keeps the existing rule: only machines the client has performed,
+  // or that carry a prescribed / starting weight.
+  const gridRows = useMemo(
+    () =>
+      density === "compact"
+        ? rows.filter(
+            (r) =>
+              Object.keys(r.sets).length > 0 || r.prescribedWeight != null || r.startingWeight != null,
+          )
+        : rows,
+    [rows, density],
+  );
+
   const sections = useMemo<GridSection[]>(() => {
-    if (order === "sequence") return [{ id: "all", label: "All equipment", rows }];
+    if (order === "sequence") return [{ id: "all", label: "All equipment", rows: gridRows }];
     return GROUP_ORDER.map((g) => ({
       id: g,
       label: GROUP_LABEL[g],
-      rows: rows.filter((r) => r.machine.group === g),
+      rows: gridRows.filter((r) => r.machine.group === g),
     })).filter((s) => s.rows.length > 0);
-  }, [rows, order]);
+  }, [gridRows, order]);
 
   return (
     <section className={`jg-view ${layout === "fill" ? "jg-view--fill" : ""}`} aria-label="Recent journey">
@@ -138,11 +157,13 @@ export function RecentJourneyView({
         density={density}
         metric={metric}
         onMetricChange={setMetric}
+        onSelectMachine={onSelectMachine}
         onLoadOlder={loadOlder}
         canLoadOlder={canLoadOlder}
         loadingOlder={loadingMore}
         layout={layout}
         maxHeight={maxHeight}
+        viewportReserve={viewportReserve}
         title="Equipment"
       />
 
