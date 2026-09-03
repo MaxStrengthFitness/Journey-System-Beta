@@ -1,0 +1,116 @@
+/* ==========================================================================
+   Equipment Tab — design tokens
+   --------------------------------------------------------------------------
+   Same two-layer scheme as the Journey Grid: raw brand pigment, then semantic
+   names that components actually use. Light on :root, dark on .dark (the class
+   the ThemeProvider toggles) with [data-theme] and prefers-color-scheme as
+   fallbacks so a page rendered before hydration is never the wrong theme.
+
+   Contrast checked to WCAG 2.1 AA: body text >= 4.5:1, borders and non-text
+   UI >= 3:1. Ratios noted beside each value so a future edit can be re-checked.
+   ========================================================================== */
+
+:root {
+  --eq-bg:              #f1f5f8;   /* page behind both panes                */
+  --eq-surface:         #ffffff;   /* rail items, cards                     */
+  --eq-surface-2:       #e8eef2;   /* section headers, read-only chips      */
+  --eq-surface-3:       #dae1e6;   /* hover / pressed                       */
+  --eq-border:          #d3dadf;   /* hairlines                     1.4:1   */
+  --eq-border-strong:   #a9b2b9;   /* pane divider, focused input   2.2:1   */
+
+  --eq-ink:             #121c23;   /* names, values                17.3:1   */
+  --eq-ink-2:           #3e4952;   /* secondary                     9.2:1   */
+  --eq-ink-muted:       #5b6770;   /* labels (brand slate)          5.8:1   */
+  --eq-ink-faint:       #848e95;   /* ghosts, em-dashes             3.3:1   */
+
+  /* Hero orange: selection, the current prescription, maintenance flags.
+     Solid orange is 3.55:1 on white — fine for bars and >=18px bold, not for
+     small text, which uses --eq-hero-text instead. */
+  --eq-hero:            #ef5302;
+  --eq-hero-text:       #bc2c00;   /* 6.0:1 on white                        */
+  --eq-hero-fill:       #fde7dc;
+  --eq-hero-on:         #ffffff;
+
+  /* Blue: anything you can act on — edit affordances, notes, focus rings. */
+  --eq-live:            #0a548b;   /* 7.9:1 on white                        */
+  --eq-live-text:       #034a84;   /* 9.1:1 on white                        */
+  --eq-live-fill:       #e6eef3;
+  --eq-live-on:         #ffffff;
+
+  /* Green: a machine that is set up and in use. */
+  --eq-ok:              #1c7a52;   /* 4.9:1 on white                        */
+  --eq-ok-fill:         #e3f1ea;
+
+  /* Amber/plum: warnings and maintenance. Plum rather than red so it does not
+     collide with the hero orange for a protanope. */
+  --eq-warn:            #a2457e;   /* 5.7:1 on white                        */
+  --eq-warn-fill:       #f4e9f0;
+
+  --eq-focus-ring:      var(--eq-live);
+  --eq-shadow:          rgba(18, 28, 35, 0.10);
+  --eq-radius:          14px;
+  --eq-rail-w:          320px;
+}
+
+.dark,
+[data-theme="dark"] {
+  --eq-bg:              #070b0f;
+  --eq-surface:         #0e151c;
+  --eq-surface-2:       #151e27;
+  --eq-surface-3:       #1d2833;
+  --eq-border:          #1f2a35;   /* 1.5:1 on surface                      */
+  --eq-border-strong:   #3a4855;   /* 2.9:1                                 */
+
+  --eq-ink:             #eef3f7;   /* 15.8:1 on surface                     */
+  --eq-ink-2:           #b3c0cb;   /* 8.6:1                                 */
+  --eq-ink-muted:       #8b98a4;   /* 5.4:1                                 */
+  --eq-ink-faint:       #63707c;   /* 3.1:1 — decorative only               */
+
+  /* Dark is not a flip: saturated orange vibrates on near-black, so the fills
+     go to low-alpha washes and the text tones lift instead of darken. */
+  --eq-hero:            #f36d21;
+  --eq-hero-text:       #ff9455;   /* 7.4:1 on surface                      */
+  --eq-hero-fill:       rgba(243, 109, 33, 0.14);
+  --eq-hero-on:         #1a0c04;
+
+  --eq-live:            #4a9fd8;
+  --eq-live-text:       #7cc0ee;   /* 8.1:1 on surface                      */
+  --eq-live-fill:       rgba(74, 159, 216, 0.14);
+  --eq-live-on:         #04121c;
+
+  --eq-ok:              #4ec08c;
+  --eq-ok-fill:         rgba(78, 192, 140, 0.13);
+
+  --eq-warn:            #d98cbd;
+  --eq-warn-fill:       rgba(217, 140, 189, 0.14);
+
+  --eq-shadow:          rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not([data-theme="light"]) {
+    --eq-bg:              #070b0f;
+    --eq-surface:         #0e151c;
+    --eq-surface-2:       #151e27;
+    --eq-surface-3:       #1d2833;
+    --eq-border:          #1f2a35;
+    --eq-border-strong:   #3a4855;
+    --eq-ink:             #eef3f7;
+    --eq-ink-2:           #b3c0cb;
+    --eq-ink-muted:       #8b98a4;
+    --eq-ink-faint:       #63707c;
+    --eq-hero:            #f36d21;
+    --eq-hero-text:       #ff9455;
+    --eq-hero-fill:       rgba(243, 109, 33, 0.14);
+    --eq-hero-on:         #1a0c04;
+    --eq-live:            #4a9fd8;
+    --eq-live-text:       #7cc0ee;
+    --eq-live-fill:       rgba(74, 159, 216, 0.14);
+    --eq-live-on:         #04121c;
+    --eq-ok:              #4ec08c;
+    --eq-ok-fill:         rgba(78, 192, 140, 0.13);
+    --eq-warn:            #d98cbd;
+    --eq-warn-fill:       rgba(217, 140, 189, 0.14);
+    --eq-shadow:          rgba(0, 0, 0, 0.5);
+  }
+}
