@@ -32,7 +32,14 @@ export function useLiveSession(initialRoutine: string[], initial: Record<string,
   const [focusMachineId, setFocus] = useState<string | null>(initialRoutine[0] ?? null);
 
   const change = useCallback((machineId: string, patch: Partial<LiveSet>) => {
-    setValues((prev) => ({ ...prev, [machineId]: { ...(prev[machineId] ?? EMPTY), ...patch } }));
+    setValues((prev) => {
+      const next = { ...(prev[machineId] ?? EMPTY), ...patch };
+      // Quality is exception-only: an effort on record means the set is done
+      // unless the trainer flagged it Poor or Max.
+      if (next.quality == null && (next.reps != null || next.seconds != null)) next.quality = 2;
+      if (next.qualityR == null && (next.repsR != null || next.secondsR != null)) next.qualityR = 2;
+      return { ...prev, [machineId]: next };
+    });
   }, []);
 
   const addMachine = useCallback((machineId: string) => {

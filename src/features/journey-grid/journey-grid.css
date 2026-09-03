@@ -24,7 +24,7 @@
   --jg-col-machine: 216px;
   --jg-col-stat:    108px;     /* Analytics column                          */
   --jg-col-session: 92px;
-  --jg-col-live:    400px;     /* one line of controls, laid side by side  */
+  --jg-col-live:    360px;     /* one line of controls, laid side by side  */
   --jg-row-h:       64px;
   --jg-row-h-live:  60px;      /* rows that carry a live input            */
   --jg-head-h:      56px;
@@ -46,7 +46,7 @@
   --jg-col-machine: 208px;
   --jg-col-stat:    100px;
   --jg-col-session: 84px;
-  --jg-col-live:    384px;
+  --jg-col-live:    344px;
   --jg-row-h:       56px;
   --jg-row-h-live:  56px;
   --jg-head-h:      50px;
@@ -58,7 +58,7 @@
   --jg-col-machine: 184px;
   --jg-col-stat:    84px;
   --jg-col-session: 70px;
-  --jg-col-live:    344px;
+  --jg-col-live:    304px;
   --jg-row-h:       44px;
   --jg-row-h-live:  52px;
   --jg-head-h:      44px;
@@ -849,6 +849,12 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   touch-action: manipulation;
 }
 .jg-outcome__unit.is-static { cursor: default; }
+/* A set with an effort on it is complete: "Done" is no longer a tap, so the
+   control itself has to say so. */
+.jg-outcome.is-logged {
+  background: var(--jg-q-done-fill);
+  border-color: var(--jg-q-done-edge);
+}
 .jg-outcome__unit[aria-pressed="true"] {
   background: var(--jg-live-fill-strong);
   color: var(--jg-live-text);

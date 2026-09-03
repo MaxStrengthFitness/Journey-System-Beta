@@ -2834,6 +2834,27 @@ export function WorkoutTrackerView({
       updateLogMultiple(sessionId, machineId, withWeight({ reps: str(patch.repsR) }, "Right"), "Right");
     if (patch.secondsR !== undefined)
       updateLogMultiple(sessionId, machineId, withWeight({ seconds: str(patch.secondsR) }, "Right"), "Right");
+    // "Done" stopped being a button: recording an effort completes the set,
+    // and the two remaining buttons flag the sets that were not ordinary.
+    // updateLog directly rather than setQualityWithGuard — that guard reads
+    // `logs` from state, which has not yet seen the reps being written in
+    // this same handler, so it would fire its "enter reps first" toast.
+    const recorded = (v: number | null | undefined) =>
+      v !== undefined && v !== null && Number(v) > 0;
+    if (
+      patch.quality === undefined &&
+      (recorded(patch.reps) || recorded(patch.seconds)) &&
+      !current?.quality
+    ) {
+      updateLog(sessionId, machineId, "repQuality", 2, sideL);
+    }
+    if (
+      patch.qualityR === undefined &&
+      (recorded(patch.repsR) || recorded(patch.secondsR)) &&
+      !current?.qualityR
+    ) {
+      updateLog(sessionId, machineId, "repQuality", 2, "Right");
+    }
     if (patch.quality !== undefined && patch.quality !== null)
       setQualityWithGuard(sessionId, machineId, patch.quality, sideL);
     if (patch.qualityR !== undefined && patch.qualityR !== null)
