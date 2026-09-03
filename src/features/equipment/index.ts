@@ -10,4 +10,5 @@ export { SettingsCard } from "./SettingsCard";
 export { SetupGuide } from "./SetupGuide";
 export { MachineNotes } from "./MachineNotes";
 export { ChangeHistory } from "./ChangeHistory";
+export { SetupPromptDialog, type SetupPromptDialogProps } from "./SetupPromptDialog";
 export * from "./mutations";

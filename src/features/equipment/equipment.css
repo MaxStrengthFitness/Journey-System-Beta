@@ -799,3 +799,39 @@
   color: var(--eq-ink-muted);
 }
 .eq-empty__hint { font-size: 13px; max-width: 340px; line-height: 1.5; }
+
+/* ---------- In-session setup prompt ---------------------------------- */
+
+.eq-prompt {
+  border-radius: 18px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-bg);
+  overflow: hidden;
+  height: auto;
+}
+.eq-prompt__head {
+  padding: 16px 16px 12px;
+  background: var(--eq-surface);
+  border-bottom: 1px solid var(--eq-border);
+}
+.eq-prompt__kicker {
+  display: block;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--eq-hero-text);
+  margin-bottom: 4px;
+}
+.eq-prompt__sub {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--eq-ink-muted);
+}
+.eq-prompt__body { padding: 12px 12px 0; }
+.eq-prompt__foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 14px 14px;
+}
