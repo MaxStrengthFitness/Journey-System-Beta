@@ -13,6 +13,8 @@ import {
   Machine,
 } from "../types";
 import { safeToDate } from "../lib/utils";
+import { QuickCheckInDialog } from "../features/subjective-report";
+import { HeartPulse } from "lucide-react";
 import { getBroadMuscleGroup } from "../lib/clinical-review-utils";
 
 export interface VictoryHUDScreenProps {
@@ -53,6 +55,8 @@ export function VictoryHUDScreen({
   >("good");
   const [notes, setNotes] = useState("");
   const [priority, setPriority] = useState<"High" | "Medium" | "Low">("Medium");
+  const [showCheckIn, setShowCheckIn] = useState(false);
+  const [checkInSavedId, setCheckInSavedId] = useState<string | null>(null);
   const [particles, setParticles] = useState<
     {
       id: number;
@@ -375,6 +379,17 @@ export function VictoryHUDScreen({
               onChange={(e) => setNotes(e.target.value)}
             />
 
+            {/* The 90-day check-in, while the client is still in the chair.
+                Saves on its own; finalizing the session is unaffected. */}
+            <button
+              type="button"
+              onClick={() => setShowCheckIn(true)}
+              className="mt-2 w-full min-h-11 rounded-xl border border-white/10 bg-white/5 px-4 font-display italic text-[12px] uppercase tracking-wider text-white hover:bg-white/10 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+            >
+              <HeartPulse className="w-4 h-4 text-cyan" />
+              {checkInSavedId ? "90-day check-in saved ✓" : "Run the 90-day check-in"}
+            </button>
+
             <div className="flex items-center justify-between mt-1">
               <span className="font-display italic text-[11px] text-ink-d3 uppercase tracking-wider">
                 PRIORITY FOR NEXT TIME
@@ -426,6 +441,17 @@ export function VictoryHUDScreen({
           />
         </motion.div>
       </div>
+
+      <QuickCheckInDialog
+        open={showCheckIn}
+        onClose={() => setShowCheckIn(false)}
+        client={client}
+        trainer={authTrainer}
+        machines={machines}
+        origin="post_session"
+        sessionId={session.id}
+        onSaved={setCheckInSavedId}
+      />
     </div>
   );
 }

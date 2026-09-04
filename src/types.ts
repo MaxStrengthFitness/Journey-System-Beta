@@ -1006,6 +1006,17 @@ export interface ProgressReport {
   /** The finalized report this one is compared against (deltas, goal carry-over). */
   previousReportId?: string | null;
 
+  /**
+   * True when the report holds ONLY a 90-day check-in, run from the
+   * pre-session briefing or the post-session screen. Opened later, the view
+   * offers "Build the full report", which clears this flag and continues in
+   * the six-step editor with the check-in already done.
+   */
+  isCheckInOnly?: boolean;
+  checkInOrigin?: "pre_session" | "post_session" | "report";
+  /** The session the quick check-in was run around, when there was one. */
+  checkInSessionId?: string | null;
+
   /** Step 3 — machine progression: start → current per machine over the report window. */
   machineProgression?: MachineProgression;
 

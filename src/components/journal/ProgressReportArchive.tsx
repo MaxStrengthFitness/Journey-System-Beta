@@ -75,7 +75,9 @@ export function ProgressReportArchive({
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-xs font-bold text-slate-700 dark:text-slate-200">
-                    Session #{r.sessionNumber || "—"}
+                    {r.isCheckInOnly
+                      ? `Check-in${r.checkInOrigin === "pre_session" ? " · pre-session" : r.checkInOrigin === "post_session" ? " · post-session" : ""}`
+                      : `Session #${r.sessionNumber || "—"}`}
                     <span
                       className={cn(
                         "ml-1.5 rounded px-1 py-0.5 text-[9px] font-black uppercase tracking-wider",

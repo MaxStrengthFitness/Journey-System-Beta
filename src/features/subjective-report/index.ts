@@ -4,3 +4,5 @@ export * from "./scoring";
 export { SubjectiveStep } from "./SubjectiveStep";
 export * from "./ui";
 export { SubjectiveDashboard, SubjectiveClientCopy, type HistoryPoint } from "./SubjectiveDashboard";
+export { QuickCheckInDialog } from "./QuickCheckInDialog";
+export * from "./checkin-write";

@@ -328,6 +328,9 @@ export function ClientProgressReportView({
   const [showCoachView, setShowCoachView] = useState(false);
   /** Which of the six steps the editor is showing. */
   const [activeStep, setActiveStep] = useState<ReportStepId>("celebrate");
+  /** Set when a check-in-only report is promoted to a full one, so the
+   *  auto-populate runs even though the report already has an id. */
+  const [promotedFromCheckIn, setPromotedFromCheckIn] = useState(false);
   const goToStep = (id: ReportStepId) => {
     setActiveStep(id);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
@@ -445,7 +448,8 @@ export function ClientProgressReportView({
   // Load auto data
   useEffect(() => {
     async function loadData() {
-      if (mode !== "editing" || report.isManual || existingReportId) return;
+      if (mode !== "editing" || report.isManual) return;
+      if (existingReportId && !promotedFromCheckIn) return;
       setLoading(true);
       try {
         const initialStats = await calculateComprehensiveAttendanceStats(
@@ -528,7 +532,7 @@ export function ClientProgressReportView({
     if (mode === "editing" && !report.isManual) {
       loadData();
     }
-  }, [client, machines, mode, report.isManual, existingReportId]);
+  }, [client, machines, mode, report.isManual, existingReportId, promotedFromCheckIn]);
 
   const handleRecalculateAttendance = async (customStartDate?: string) => {
     try {
@@ -873,13 +877,30 @@ export function ClientProgressReportView({
               <ArrowLeft className="w-5 h-5" /> Back
             </Button>
             <div className="flex gap-3">
-              <Button
-                onClick={() => setMode("editing")}
-                variant="outline"
-                className="text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
-              >
-                Edit Data
-              </Button>
+              {report.isCheckInOnly ? (
+                <Button
+                  onClick={() => {
+                    // A quick check-in becomes step 5 of a full report: clear
+                    // the flag, drop into the editor at the start of the
+                    // conversation, and let the auto-populate fill the rest.
+                    setReport((r) => ({ ...r, isCheckInOnly: false, status: "Draft", isManual: false }));
+                    setPromotedFromCheckIn(true);
+                    setActiveStep("celebrate");
+                    setMode("editing");
+                  }}
+                  className="bg-white text-[#0A2E46] hover:bg-white/90 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
+                >
+                  <Flag className="w-5 h-5" /> Build the full report
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => setMode("editing")}
+                  variant="outline"
+                  className="text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
+                >
+                  Edit Data
+                </Button>
+              )}
               <Button
                 onClick={() => {
                   // Opens the trainer's own mail app with the subject and a
@@ -957,8 +978,17 @@ export function ClientProgressReportView({
               <div className="flex flex-col md:flex-row md:items-end justify-between border-b-2 border-[#F06C22] pb-4 gap-4">
                 <div>
                   <h1 className="text-4xl font-bold uppercase italic tracking-tighter leading-none mb-3 print:text-[#0A2E46]">
-                    Performance <br />
-                    <span className="text-[#F06C22]">Report Card</span>
+                    {report.isCheckInOnly ? (
+                      <>
+                        90-Day <br />
+                        <span className="text-[#F06C22]">Check-In</span>
+                      </>
+                    ) : (
+                      <>
+                        Performance <br />
+                        <span className="text-[#F06C22]">Report Card</span>
+                      </>
+                    )}
                   </h1>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-[11px] font-bold uppercase tracking-[0.25em] text-[#68717A]">
                     <div className="flex items-center gap-1.5">
@@ -1028,6 +1058,7 @@ export function ClientProgressReportView({
                 </div>
               </div>
 
+            {!report.isCheckInOnly && (
               <div className="flex flex-col gap-4 mt-6">
                 {/* Highlighted Primary Stats & Narrative */}
                 <div className="flex flex-col md:flex-row gap-4">
@@ -1134,9 +1165,11 @@ export function ClientProgressReportView({
                   )}
                 </div>
               </div>
+            )}
             </header>
 
             {/* 2. THE TROPHIES: HIGHLIGHTED MOVEMENTS */}
+            {!report.isCheckInOnly && (
             <section className="space-y-3 break-inside-avoid">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
@@ -1219,6 +1252,7 @@ export function ClientProgressReportView({
                 })}
               </div>
             </section>
+            )}
 
             {/* 2b. MACHINE PROGRESSION */}
             {report.machineProgression && (
@@ -1226,6 +1260,7 @@ export function ClientProgressReportView({
             )}
 
             {/* 3. REINSTATED 4 P'S MATRIX - THE CENTERPIECE */}
+            {!report.isCheckInOnly && (
             <section className="space-y-4 break-inside-avoid">
               <div className="flex items-center gap-2">
                 <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
@@ -1321,6 +1356,7 @@ export function ClientProgressReportView({
                 </div>
               )}
             </section>
+            )}
 
             {/* 3b. THE 90-DAY CHECK-IN (client copy) — only once something was answered */}
             {report.subjective && answeredCount(report.subjective) > 0 && (
@@ -1347,6 +1383,7 @@ export function ClientProgressReportView({
             {report.goals && <GoalsCard value={report.goals} clientFirstName={client.firstName} />}
 
             {/* 4b. TRAINING PLAN (roadmap track) */}
+            {!report.isCheckInOnly && (
             <section className="break-inside-avoid space-y-4">
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4 text-[#F06C22]" />
@@ -1534,8 +1571,10 @@ export function ClientProgressReportView({
                 </>
               )}
             </section>
+            )}
 
             {/* 5. NOTES & FOOTER */}
+            {!report.isCheckInOnly && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch break-inside-avoid">
               <div className="col-span-2 bg-[#FAF9F6] p-3 rounded-[20px] border border-slate-100 dark:border-slate-800 relative">
                 <div className="flex items-center gap-2 mb-1">
@@ -1565,6 +1604,7 @@ export function ClientProgressReportView({
                 </div>
               </div>
             </div>
+            )}
           </motion.div>
         </div>
       </div>
