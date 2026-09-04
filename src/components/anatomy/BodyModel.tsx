@@ -6,6 +6,8 @@ import { MuscleId, toBodySlugs } from "../../types/machines";
  * BODY MODEL — the single render boundary for the anatomy figure.
  *
  * Round: Machine Creator & Studio Roster, Sep 2026.
+ *        Moved to components/anatomy/ in the Catalog Redesign, Sep 2026 —
+ *        the Catalog is no longer its only consumer.
  *
  * Replaces react-body-highlighter, which had no female figure at all — its
  * IModelProps exposed only { bodyColor, data, highlightedColors, onClick,

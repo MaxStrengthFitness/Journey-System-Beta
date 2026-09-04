@@ -1,6 +1,6 @@
 import { ChevronUp } from "lucide-react";
 import type { CSSProperties } from "react";
-import { BodyModel } from "../../components/machines/BodyModel";
+import { BodyModel } from "../../components/anatomy";
 import { accentVar } from "./accents";
 import type { CatalogMachine } from "./types";
 

@@ -1,4 +1,4 @@
-import { BodyModel } from "../../components/machines/BodyModel";
+import { BodyModel } from "../../components/anatomy";
 import type { MachineAnatomy } from "./anatomy";
 
 /**

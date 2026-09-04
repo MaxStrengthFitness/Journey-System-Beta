@@ -260,4 +260,54 @@ describe("Firestore Security Rules", () => {
     });
     await assertFails(p);
   });
+  // ── STUDIO MACHINE NOTES (Catalog Redesign, Sep 2026) ─────────────────
+  //
+  // These exist because the Catalog wrote its "Studio Notes" box to
+  // machines/{machineId} — the GLOBAL catalog document every studio reads —
+  // with no studioId in the write at all. The tests that matter are that a
+  // trainer CAN write their own studio's notes (or the feature is useless)
+  // and that the global catalog stays closed to them (or the leak is back).
+
+  it("allows a trainer to write their own studio's machine notes", async () => {
+    const ctx = testEnv.authenticatedContext("trainerA", {
+      email: "trainera@test.com",
+    });
+    const db = ctx.firestore();
+    await assertSucceeds(
+      setDoc(doc(db, "studios", "studioA", "machineNotes", "m-hip-abd"), {
+        studioId: "studioA",
+        machineId: "m-hip-abd",
+        notes: "Left thigh pad sticks — pull it apart before the client sits.",
+      }),
+    );
+  });
+
+  it("keeps one studio's machine notes out of the global catalog doc", async () => {
+    // The exact write the old handleSaveTip made.
+    const ctx = testEnv.authenticatedContext("trainerA", {
+      email: "trainera@test.com",
+    });
+    const db = ctx.firestore();
+    await assertFails(
+      setDoc(doc(db, "machines", "m-hip-abd"), {
+        trainerTips: "Left thigh pad sticks",
+      }),
+    );
+  });
+
+  it("denies a trainer overriding the roster, which carries safety content", async () => {
+    // Why machine notes are a sibling collection rather than a field on the
+    // roster entry: a roster entry's `overrides` can rewrite clinicalWarnings.
+    const ctx = testEnv.authenticatedContext("trainerA", {
+      email: "trainera@test.com",
+    });
+    const db = ctx.firestore();
+    await assertFails(
+      setDoc(doc(db, "studios", "studioA", "roster", "m-hip-abd"), {
+        source: "catalog",
+        basedOn: "m-hip-abd",
+        overrides: { clinicalWarnings: [] },
+      }),
+    );
+  });
 });
