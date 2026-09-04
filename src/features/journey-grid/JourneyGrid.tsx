@@ -13,7 +13,7 @@ import {
 } from "./stats";
 import { JourneyCell } from "./JourneyCell";
 import { StatCell } from "./StatCell";
-import { LiveInputCell } from "./LiveInputCell";
+import { TodayCell } from "./TodayCell";
 
 /* ------------------------------------------------------------------ *
  * Public props
@@ -108,8 +108,6 @@ interface RowProps {
   liveValue?: LiveSet;
   liveInactive: boolean;
 }
-
-const EMPTY_LIVE: LiveSet = { weight: null, reps: null, seconds: null, isTSC: false, quality: null };
 
 function RowImpl({
   row,
@@ -240,22 +238,25 @@ function RowImpl({
 
       {live &&
         (hasLive ? (
-          <LiveInputCell
+          <TodayCell
             machineId={machine.id}
             machineName={machine.name}
             sides={!!machine.sides}
-            value={liveValue ?? EMPTY_LIVE}
+            value={liveValue}
             prescribedWeight={row.prescribedWeight}
-            step={live.weightStep ?? 2}
             isFocus={isFocus}
-            onChange={live.onChange}
             onFocus={live.onFocusMachine}
           />
         ) : (
-          <div className="jg-live jg-live--idle" role="gridcell" aria-label={`${machine.name}: not in today's routine`}>
+          <div className="jg-today jg-today--idle" role="gridcell" aria-label={`${machine.name}: not in today's routine`}>
             {live.onAddMachine ? (
-              <button type="button" className="jg-live__add" onClick={() => live.onAddMachine?.(machine.id)}>
-                <Plus size={13} strokeWidth={2.5} style={{ verticalAlign: "-2px" }} /> Add to session
+              <button
+                type="button"
+                className="jg-today__add"
+                aria-label={`Add ${machine.name} to today's session`}
+                onClick={() => live.onAddMachine?.(machine.id)}
+              >
+                <Plus size={14} strokeWidth={2.5} />
               </button>
             ) : (
               <span aria-hidden="true">—</span>

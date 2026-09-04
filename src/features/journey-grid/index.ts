@@ -4,7 +4,7 @@ export * from "./adapters";
 export { JourneyGrid, type JourneyGridProps, type GridSection } from "./JourneyGrid";
 export { JourneyCell } from "./JourneyCell";
 export { StatCell } from "./StatCell";
-export { LiveInputCell } from "./LiveInputCell";
+export { TodayCell } from "./TodayCell";
 export { GridToolbar, QualityLegend } from "./GridToolbar";
 export { RecentJourneyView, type RecentJourneyViewProps, type RowOrder } from "./RecentJourneyView";
 export { ActiveSessionView, useLiveSession, type ActiveSessionViewProps, type LiveSessionState } from "./ActiveSessionView";
