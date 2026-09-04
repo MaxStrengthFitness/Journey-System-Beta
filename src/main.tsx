@@ -8,6 +8,7 @@ import './features/calendar/calendar.css';
 import './features/subjective-report/subjective-report.css';
 import './features/catalog/catalog.tokens.css';
 import './features/catalog/catalog.css';
+import './features/studio-tasks/studio-tasks.css';
 import { ThemeProvider } from './components/ThemeProvider.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 

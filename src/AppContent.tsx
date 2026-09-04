@@ -32,6 +32,7 @@ import {
   Search,
   RefreshCw,
   X,
+  ListChecks,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -144,6 +145,11 @@ const ClientClinicalReviewPreloader = lazy(() =>
   import("./components/ClientClinicalReviewPreloader").then((m) => ({ default: m.ClientClinicalReviewPreloader })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
+const StudioTasksView = lazy(() =>
+  import("./features/studio-tasks").then((m) => ({
+    default: m.StudioTasksView,
+  })),
+);
 const CatalogView = lazy(() =>
   import("./features/catalog").then((m) => ({ default: m.CatalogView })),
 );
@@ -1697,7 +1703,7 @@ export default function AppContent({
 
         {/* Main Content */}
         <main
-          className={`w-full max-w-full mx-auto relative ${currentView === "workouts" ? "flex-1 min-h-0 p-2 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950 flex flex-col" : currentView === "clients" || currentView === "client-directory" || currentView === "dashboard" || currentView === "machine-anatomy" ? "flex-1 min-h-0 overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col" : "flex-1 min-h-0 p-6 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950"}`}
+          className={`w-full max-w-full mx-auto relative ${currentView === "workouts" ? "flex-1 min-h-0 p-2 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950 flex flex-col" : currentView === "clients" || currentView === "client-directory" || currentView === "dashboard" || currentView === "machine-anatomy" || currentView === "studio-tasks" ? "flex-1 min-h-0 overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col" : "flex-1 min-h-0 p-6 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950"}`}
           style={
             currentView === "clients" ||
             currentView === "client-directory" ||
@@ -1797,6 +1803,9 @@ export default function AppContent({
             )}
             {currentView === "machine-anatomy" && (
               <CatalogView machines={machines} authTrainer={authTrainer} />
+            )}
+            {currentView === "studio-tasks" && (
+              <StudioTasksView authTrainer={authTrainer} />
             )}
             {currentView === "leaderboard" && (
               <MachineLeaderboardDashboard
@@ -2104,6 +2113,12 @@ export default function AppContent({
               onClick={() => setCurrentView("machine-anatomy")}
               icon={<Dumbbell className="w-5 h-5 sm:w-6 sm:h-6" />}
               label="Catalog"
+            />
+            <NavButton
+              active={currentView === "studio-tasks"}
+              onClick={() => setCurrentView("studio-tasks")}
+              icon={<ListChecks className="w-5 h-5 sm:w-6 sm:h-6" />}
+              label="To-Do"
             />
             <NavButton
               active={currentView === "calendar"}
