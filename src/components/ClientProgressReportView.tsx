@@ -78,12 +78,14 @@ import { cn, parseSessionDate } from "../lib/utils";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { MaxStrengthLogo } from "./MaxStrengthLogo";
 import {
+  SubjectiveStep,
   emptyAssessment,
   parseWeightLbs,
   snapshotForClient,
   summarize,
   type PreviousAssessmentRef,
 } from "../features/subjective-report";
+import { HeartPulse } from "lucide-react";
 
 /** ISO date `days` after `iso` (YYYY-MM-DD in, YYYY-MM-DD out). */
 const addDays = (iso: string, days: number): string => {
@@ -1968,6 +1970,31 @@ export function ClientProgressReportView({
                 </ul>
               </div>
             )}
+          </section>
+
+          {/* Section 3b: the 90-day check-in */}
+          <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-2 h-full bg-[#0A548B]" />
+            <div className="flex items-center gap-3 mb-2">
+              <HeartPulse className="w-6 h-6 text-[#0A548B]" />
+              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46] dark:text-white">
+                90-Day Check-In
+              </h2>
+            </div>
+            <p className="text-sm text-[#68717A] mb-6">
+              How {client.firstName} feels life is going — sleep, energy, pain, habits, food — scored the
+              same way every 90 days so the trend is real. This is a conversation, not a form: ask, listen,
+              then tap.
+            </p>
+            <SubjectiveStep
+              value={report.subjective ?? emptyAssessment({ bodyWeightLbs: parseWeightLbs(client.weight) })}
+              onChange={(subjective) => setReport((r) => ({ ...r, subjective }))}
+              previous={previousReport}
+              machines={machines}
+              clientId={client.id}
+              clientFirstName={client.firstName}
+              bodyWeightLbs={parseWeightLbs(client.weight)}
+            />
           </section>
 
           {/* Section 4: Roadmap (MSF Evolution) */}
