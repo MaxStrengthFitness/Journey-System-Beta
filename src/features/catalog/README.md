@@ -1,6 +1,8 @@
 # Catalog — anatomy-first redesign
 
 Round: **Catalog Redesign, Sep 2026.** Branch `catalog-redesign`, one commit per phase.
+**Built.** Sections 1–9 below are the spec as written before the work; §11 records
+where the build deliberately departed from it, and what it found on the way.
 
 Replaces `src/components/MachineAnatomyCatalogView.tsx` (956 lines, one file, two
 near-duplicate render trees for portrait and landscape, three competing scroll
@@ -714,3 +716,86 @@ part of the UI.
   "Stored Successfully".
 - A long studio name in the header at every breakpoint.
 - VoiceOver through the picker sheet.
+
+
+---
+
+## 11. As built — where this departed from the spec
+
+Four changes, each because the code said something the spec had assumed.
+
+### 11.1 Studio notes are a sibling collection, not a roster field
+
+The spec sent notes to `studios/{id}/roster/{machineId}.studioNotes`, following the
+comment in `types/machines.ts`. The rules say otherwise:
+
+```
+match /roster/{machineId} {
+  allow create, update, delete:
+    if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
+}
+```
+
+Manager-write only — and correctly so, because a roster entry carries `overrides`,
+which can rewrite `clinicalWarnings`, `contraindicatedFor` and `settingFields`.
+Widening that rule so a floor trainer can jot "the left thigh pad sticks" would
+also hand them edit rights over safety content.
+
+Different authority, different document:
+`studios/{studioId}/machineNotes/{machineId}`. Tenancy is still enforced by the
+path, so no `get()` is spent on the rule check. `RosterEntryBase.studioNotes`
+keeps its manager-authored meaning and its comment now says so.
+
+### 11.2 No sticky mini model; the picker bar is the mini model
+
+The spec had an `IntersectionObserver` swapping a separate `AnatomyMini` in once
+the figure scrolled away. Two elements doing one job, and an element that appears
+mid-scroll shoves the content down by its own height.
+
+The picker bar carries the small figure instead, and sits directly BELOW the full
+one. At rest the model is full size; the moment it scrolls away the bar pins to
+the top still showing it. `position: sticky` does all of it — no observer, no
+scroll listener, no jump, and one fewer component.
+
+### 11.3 No bottom-nav padding at all
+
+The spec prescribed `padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom))`.
+Unnecessary: AppContent's `<main>` for this view is already
+`flex-1 min-h-0 overflow-hidden`, and the bottom nav is a `flex-none` **sibling
+after `</main>`** in normal flow. The shell had already subtracted it. The old
+`pb-28 sm:pb-32` was clearing a bar that never overlapped it — 112–128px of dead
+space with nothing behind it, which is exactly what circles 5 and 6 were pointing
+at. Measuring the viewport again here would have double-counted.
+
+### 11.4 Two more machines had the reported bug
+
+The audit page (§6.3) was built to review mappings by eye. It found two more
+instances of the Hip Abduction failure on the first render:
+
+| machine | primary | authored view | rendered |
+|---|---|---|---|
+| `m-dip` | triceps | `side` → front | synergists only (pecs, delts) |
+| `m-pullover` | lats | `side` → front | synergists only (pecs, triceps) |
+
+`'side'` is a valid `AnatomyView` for authoring, but the model has two figures,
+so it has to resolve to one — and it was resolving to `'front'`, where neither
+triceps nor lats is drawn. A triceps machine that appeared to work the chest.
+
+Fixed generally rather than per machine: an unrenderable view now picks the side
+that shows the most primary muscles. `MUSCLE_VISIBLE_ON` in `types/machines.ts`
+records which side each muscle is drawn on — the missing piece that made this
+checkable at all — and `anatomy.test.ts` asserts every machine's preferred view
+renders at least one primary muscle. `MuscleSelector` runs the same check while
+the mapping is being authored.
+
+### 11.5 Two bugs the tests and the renderer caught, not the reading
+
+- **Dedupe had to be by region, not by muscle.** `rhomboids` and `lats` both paint
+  the model's single `upper-back` region, so Simple Row was listing its own
+  primary region again as a secondary. Filtering by muscle id was not enough.
+- **The stage was being flex-shrunk 256px below its content.** `flex-shrink`
+  defaults to `1`, so a column flex container compresses its children to fit
+  BEFORE it lets itself scroll: the stage box got shorter, the figure inside it
+  did not, and the overflow painted underneath the sticky bar. `flex: none` on the
+  stack children. This one was invisible in the source and obvious in a
+  screenshot.
