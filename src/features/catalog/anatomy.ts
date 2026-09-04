@@ -31,6 +31,7 @@
 
 import {
   isMuscleId,
+  isMuscleVisibleOn,
   musclesForBodySlug,
   toBodySlug,
   type MuscleId,
@@ -120,12 +121,33 @@ export function resolveMachineAnatomy(
   const rawView =
     (typeof source?.preferredView === "string" ? source.preferredView : null) ??
     fallback?.preferredView ??
-    "front";
-  // The model has two sides. 'side' is a valid AnatomyView for authoring notes
-  // but there is nothing to render it on, so it reads as anterior.
-  const preferredView = rawView === "back" ? "back" : "front";
+    null;
+
+  // 'side' is a valid AnatomyView for authoring, but the model has only two
+  // figures — so it has to resolve to one of them. Defaulting to 'front' is
+  // what it used to do, and it was wrong for exactly the machines that need
+  // the choice made for them: Seated Dip (primary triceps) and Pullover
+  // (primary lats) are both authored 'side', and both have primaries the model
+  // draws ONLY on the posterior figure. They rendered lit by their synergists
+  // alone — a triceps machine that appeared to work the chest.
+  //
+  // So when the view is unrenderable, pick the side that actually shows the
+  // most primary muscles rather than a fixed default. Any future 'side' entry
+  // is then right by construction.
+  const preferredView: "front" | "back" =
+    rawView === "back" || rawView === "front"
+      ? rawView
+      : pickViewShowing(primary);
 
   return { primary: [...primarySet], secondary, preferredView };
+}
+
+/** The side of the figure that renders the most of these muscles. */
+function pickViewShowing(primary: MuscleId[]): "front" | "back" {
+  if (primary.length === 0) return "front";
+  const front = primary.filter((m) => isMuscleVisibleOn(m, "front")).length;
+  const back = primary.filter((m) => isMuscleVisibleOn(m, "back")).length;
+  return back > front ? "back" : "front";
 }
 
 /**

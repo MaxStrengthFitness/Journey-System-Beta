@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { machinesForBodySlug, resolveMachineAnatomy } from "./anatomy";
 import { MACHINE_ANATOMY } from "../../data/machine-anatomy-map";
-import { toBodySlug } from "../../types/machines";
+import { isMuscleVisibleOn, toBodySlug } from "../../types/machines";
 
 describe("resolveMachineAnatomy", () => {
   it("puts Hip Abduction on the posterior view targeting the abductors", () => {
@@ -80,5 +80,25 @@ describe("machinesForBodySlug", () => {
   it("returns nothing for a region no machine maps to", () => {
     expect(machinesForBodySlug("hair")).toEqual([]);
     expect(machinesForBodySlug("")).toEqual([]);
+  });
+});
+
+describe("preferredView actually shows the target", () => {
+  it("every machine's preferred view renders at least one PRIMARY muscle", () => {
+    // The generalised form of the Hip Abduction bug. A machine whose primary
+    // muscles are all on the other side of the body renders a figure lit only
+    // by its synergists — which reads to a trainer as "this machine works the
+    // core" when it works the glutes.
+    const wrong: string[] = [];
+    for (const id of Object.keys(MACHINE_ANATOMY)) {
+      const { primary, preferredView } = resolveMachineAnatomy(id);
+      if (primary.length === 0) continue;
+      if (!primary.some((m) => isMuscleVisibleOn(m, preferredView))) {
+        wrong.push(
+          `${id}: primary [${primary.join(", ")}] is invisible on the ${preferredView} view`,
+        );
+      }
+    }
+    expect(wrong).toEqual([]);
   });
 });

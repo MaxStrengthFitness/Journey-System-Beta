@@ -130,6 +130,43 @@ const BODY_SLUG_MAP: Record<MuscleId, string> = {
   'neck': 'neck',
 };
 
+/**
+ * Which side of the figure each muscle is actually drawn on.
+ *
+ * The model has one 'deltoids' region and one 'trapezius' region that appear on
+ * both sides, and 'forearm'/'neck' likewise. Everything else belongs to exactly
+ * one view — which is the whole reason preferredView exists, and the thing that
+ * has to be checked when a mapping is authored: a machine whose PRIMARY muscle
+ * is invisible on its preferred view renders a figure lit only by its
+ * synergists, which is what the Hip Abduction report turned out to be.
+ */
+export const MUSCLE_VISIBLE_ON: Record<MuscleId, ('front' | 'back')[]> = {
+  pecs: ['front'],
+  'delts-front': ['front', 'back'],
+  'delts-rear': ['front', 'back'],
+  biceps: ['front'],
+  forearms: ['front', 'back'],
+  abs: ['front'],
+  obliques: ['front'],
+  adductors: ['front'],
+  abductors: ['back'],
+  quads: ['front'],
+  traps: ['front', 'back'],
+  rhomboids: ['back'],
+  lats: ['back'],
+  triceps: ['back'],
+  'lower-back': ['back'],
+  glutes: ['back'],
+  hamstrings: ['back'],
+  calves: ['back'],
+  neck: ['front', 'back'],
+};
+
+/** True when this muscle is drawn on this side of the figure. */
+export function isMuscleVisibleOn(id: MuscleId, view: 'front' | 'back'): boolean {
+  return MUSCLE_VISIBLE_ON[id]?.includes(view) ?? false;
+}
+
 /** Every muscle id the diagram knows, for runtime validation of loose data. */
 export const ALL_MUSCLE_IDS = Object.keys(BODY_SLUG_MAP) as MuscleId[];
 
