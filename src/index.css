@@ -302,6 +302,44 @@
   #root { height: 100%; }
 }
 
+/* ---------------------------------------------------------------------
+   Printing a client-facing document from inside the app shell.
+
+   The shell is a bounded 100dvh column with its own scroll pane, and a
+   scroll pane prints as exactly one page. While a view is printing it adds
+   `printing-report` to <body> (see ClientProgressReportView); everything
+   between <body> and the element marked data-print-root loses its height
+   cap and overflow, the rest of the app is hidden, and the report flows
+   across as many pages as it needs.
+   --------------------------------------------------------------------- */
+@media print {
+  html, body, #root {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  body.printing-report * {
+    visibility: hidden;
+  }
+  body.printing-report [data-print-root],
+  body.printing-report [data-print-root] * {
+    visibility: visible;
+  }
+  body.printing-report .h-\[100dvh\],
+  body.printing-report .overflow-hidden,
+  body.printing-report .overflow-y-auto,
+  body.printing-report .min-h-0 {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  body.printing-report [data-print-root] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
+
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;

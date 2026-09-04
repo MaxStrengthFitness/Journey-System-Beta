@@ -87,7 +87,29 @@ import {
   summarize,
   type PreviousAssessmentRef,
 } from "../features/subjective-report";
-import { HeartPulse } from "lucide-react";
+import { HeartPulse, Flag } from "lucide-react";
+import {
+  ReportStepper,
+  ReportStepNav,
+  MachineProgressionStep,
+  GoalsBlock,
+  MachineProgressionCard,
+  GoalsCard,
+  type ReportStepId,
+} from "../features/progress-report";
+import { SubjectiveClientCopy, answeredCount } from "../features/subjective-report";
+
+/** Firestore Timestamp | Date | ISO string → "Jan 15, 2026", or null. */
+const shortDate = (v: any): string | null => {
+  if (!v) return null;
+  try {
+    const d = v?.toDate ? v.toDate() : new Date(typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T12:00:00` : v);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  } catch {
+    return null;
+  }
+};
 
 /** ISO date `days` after `iso` (YYYY-MM-DD in, YYYY-MM-DD out). */
 const addDays = (iso: string, days: number): string => {
@@ -304,6 +326,26 @@ export function ClientProgressReportView({
   /** Every older finalized check-in, oldest first — the dashboard's trend line. */
   const [checkInHistory, setCheckInHistory] = useState<HistoryPoint[]>([]);
   const [showCoachView, setShowCoachView] = useState(false);
+  /** Which of the six steps the editor is showing. */
+  const [activeStep, setActiveStep] = useState<ReportStepId>("celebrate");
+  const goToStep = (id: ReportStepId) => {
+    setActiveStep(id);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Printing from inside the app shell: flag <body> for the duration so the
+  // global print rules in index.css can un-cap the shell (see there).
+  useEffect(() => {
+    const on = () => document.body.classList.add("printing-report");
+    const off = () => document.body.classList.remove("printing-report");
+    window.addEventListener("beforeprint", on);
+    window.addEventListener("afterprint", off);
+    return () => {
+      off();
+      window.removeEventListener("beforeprint", on);
+      window.removeEventListener("afterprint", off);
+    };
+  }, []);
 
   const [selectingHighlightIdx, setSelectingHighlightIdx] = useState<
     number | null
@@ -771,19 +813,47 @@ export function ClientProgressReportView({
 
   if (mode === "view") {
     return (
-      <div className="min-h-screen bg-[#0A2E46] text-[#FAF9F6] selection:bg-[#F06C22]/30 selection:text-white">
+      <div
+        data-print-root
+        className="min-h-screen bg-[#0A2E46] text-[#FAF9F6] selection:bg-[#F06C22]/30 selection:text-white print:bg-white print:text-[#0A2E46]"
+      >
         <style>{`
           @media print {
             @page { size: letter; margin: 0.4in; }
-            body, html { 
-               background-color: #0A2E46 !important; 
-               -webkit-print-color-adjust: exact !important; 
-               print-color-adjust: exact !important; 
+            /* White paper, navy ink. Cards that carry their own dark
+               background keep it (translucent white surfaces become solid
+               navy so the white text inside them stays readable). */
+            body, html {
+               background-color: #ffffff !important;
+               -webkit-print-color-adjust: exact !important;
+               print-color-adjust: exact !important;
             }
-            .print-area { 
-               width: 100% !important; 
+            .print-area {
+               width: 100% !important;
                max-width: none !important;
+               color: #0A2E46;
             }
+            /* translucent-white surfaces become pale paper cards… */
+            .print-area .bg-white\\/5,
+            .print-area .bg-white\\/10 {
+               background-color: #F1F5F8 !important;
+               border-color: #D3DADF !important;
+               backdrop-filter: none !important;
+            }
+            /* …and white ink on them becomes navy… */
+            .print-area :is(.text-white, .text-white\\/60, .text-white\\/70, .text-white\\/80,
+                            .text-white\\/85, .text-white\\/90, .text-\\[\\#FAF9F6\\]) {
+               color: #0A2E46 !important;
+            }
+            /* …except inside cards that keep a solid dark or orange fill. */
+            .print-area :is(.bg-\\[\\#F06C22\\], .bg-slate-800\\/50, .bg-\\[\\#0A2E46\\])
+              :is(.text-white, .text-white\\/60, .text-white\\/70, .text-white\\/80, .text-white\\/85, .text-white\\/90) {
+               color: #ffffff !important;
+            }
+            .print-area .bg-slate-800\\/50 { background-color: #0A2E46 !important; }
+            .print-area .border-white\\/10, .print-area .border-white\\/20 { border-color: #D3DADF !important; }
+            .print-area .translate-y-full { display: none !important; } /* hover overlays */
+            .print-area .no-print { display: none !important; }
             .no-print { display: none !important; }
             header, section, .break-inside-avoid {
                break-inside: avoid !important;
@@ -811,6 +881,29 @@ export function ClientProgressReportView({
                 Edit Data
               </Button>
               <Button
+                onClick={() => {
+                  // Opens the trainer's own mail app with the subject and a
+                  // short body filled in; they attach the printed PDF. The
+                  // app itself never emails clients (no provider is wired,
+                  // and client-contact features are switched off for now).
+                  const subject = encodeURIComponent(
+                    `${client.firstName}, your 90-day progress report from Max Strength`,
+                  );
+                  const body = encodeURIComponent(
+                    `Hi ${client.firstName},\n\nYour progress report from ${shortDate(report.date) || report.date} is attached.` +
+                      (report.goals?.nextGoal ? `\n\nYour goal for the next 90 days: ${report.goals.nextGoal}` : "") +
+                      (report.goals?.followUpDate ? `\nWe check in again on ${shortDate(report.goals.followUpDate)}.` : "") +
+                      `\n\n— ${trainer.fullName}`,
+                  );
+                  window.location.href = `mailto:${client.email || ""}?subject=${subject}&body=${body}`;
+                }}
+                variant="outline"
+                className="text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
+                title="Opens your mail app with the subject filled in — print to PDF first and attach it"
+              >
+                <Mail className="w-5 h-5" /> Email
+              </Button>
+              <Button
                 onClick={() => window.print()}
                 className="bg-[#F06C22] hover:bg-[#D95B16] text-white rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-8 shadow-lg shadow-[#F06C22]/20"
               >
@@ -818,6 +911,41 @@ export function ClientProgressReportView({
               </Button>
             </div>
           </div>
+
+          {/* Coach-only: the check-in dashboard. On screen, never on paper. */}
+          {report.subjective && (
+            <div className="no-print rounded-3xl border border-white/10 bg-white/5 p-4">
+              <button
+                type="button"
+                onClick={() => setShowCoachView((v) => !v)}
+                aria-expanded={showCoachView}
+                className="flex w-full items-center justify-between gap-3 text-left"
+              >
+                <span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-white">
+                  <HeartPulse className="h-4 w-4 text-[#F06C22]" /> Coach view · 90-day check-in
+                  {(report.subjective.summary?.flags.length ?? 0) > 0 && (
+                    <span className="rounded-md bg-rose-500 px-1.5 py-0.5 text-[10px] text-white">
+                      {report.subjective.summary!.flags.filter((f) => f.severity === "red").length} red ·{" "}
+                      {report.subjective.summary!.flags.filter((f) => f.severity === "watch").length} watch
+                    </span>
+                  )}
+                </span>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-white/60">
+                  {showCoachView ? "Hide" : "Show"} — not printed
+                </span>
+              </button>
+              {showCoachView && (
+                <div className="mt-4 rounded-2xl bg-white p-4 dark:bg-slate-900">
+                  <SubjectiveDashboard
+                    assessment={report.subjective}
+                    previous={previousReport}
+                    history={checkInHistory}
+                    machines={machines}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -855,12 +983,19 @@ export function ClientProgressReportView({
                     <div className="flex items-center gap-1.5 opacity-80">
                       <CheckCircle2 className="w-3 h-3 text-[#F06C22]/60" />
                       Joined:{" "}
-                      <span className="text-white/60">Jan 15, 2026</span>
+                      <span className="text-white/60">
+                        {shortDate(client.firstAppointmentDate) ||
+                          shortDate(report.attendance.firstSessionDate) ||
+                          shortDate(client.mindbodyCreatedAt) ||
+                          "—"}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5 opacity-80">
                       <CheckCircle2 className="w-3 h-3 text-[#F06C22]/60" />
                       Prev Report:{" "}
-                      <span className="text-white/60">Mar 01, 2026</span>
+                      <span className="text-white/60">
+                        {shortDate(previousReport?.date) || "First report"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1085,6 +1220,11 @@ export function ClientProgressReportView({
               </div>
             </section>
 
+            {/* 2b. MACHINE PROGRESSION */}
+            {report.machineProgression && (
+              <MachineProgressionCard value={report.machineProgression} />
+            )}
+
             {/* 3. REINSTATED 4 P'S MATRIX - THE CENTERPIECE */}
             <section className="space-y-4 break-inside-avoid">
               <div className="flex items-center gap-2">
@@ -1182,12 +1322,36 @@ export function ClientProgressReportView({
               )}
             </section>
 
-            {/* 4. STRATEGIC ROADMAP */}
+            {/* 3b. THE 90-DAY CHECK-IN (client copy) — only once something was answered */}
+            {report.subjective && answeredCount(report.subjective) > 0 && (
+              <section className="space-y-3 break-inside-avoid">
+                <div className="flex items-center gap-2">
+                  <HeartPulse className="w-4 h-4 text-[#F06C22]" />
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
+                    Your 90-Day Check-In
+                  </h3>
+                  <div className="h-px bg-[#F06C22]/20 flex-1"></div>
+                </div>
+                <div className="rounded-[24px] bg-[#FAF9F6] p-4 text-[#0A2E46] dark:bg-slate-900 dark:text-white">
+                  <SubjectiveClientCopy
+                    assessment={report.subjective}
+                    previous={previousReport}
+                    clientFirstName={client.firstName}
+                    machines={machines}
+                  />
+                </div>
+              </section>
+            )}
+
+            {/* 4. GOALS */}
+            {report.goals && <GoalsCard value={report.goals} clientFirstName={client.firstName} />}
+
+            {/* 4b. TRAINING PLAN (roadmap track) */}
             <section className="break-inside-avoid space-y-4">
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4 text-[#F06C22]" />
                 <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
-                  Strategic Road Map
+                  Your Training Plan
                 </h3>
                 <div className="h-px bg-[#F06C22]/20 flex-1"></div>
               </div>
@@ -1425,10 +1589,10 @@ export function ClientProgressReportView({
             </Button>
             <div>
               <h1 className="text-xl font-bold uppercase italic tracking-tighter text-white">
-                Refining Report
+                Progress Report
               </h1>
               <p className="text-[11px] font-bold text-[#68717A] uppercase tracking-widest mt-0.5">
-                {client.firstName}'s Performance Data
+                {client.firstName} {client.lastName} · {report.date}
               </p>
             </div>
           </div>
@@ -1451,8 +1615,25 @@ export function ClientProgressReportView({
           </div>
         </header>
 
+        <ReportStepper
+          active={activeStep}
+          onChange={goToStep}
+          done={{
+            celebrate: report.attendance.totalSessions > 0 || !!report.attendance.narrative,
+            highlights: report.highlights.some((h) => h.machineId && h.machineId !== "none"),
+            machines: (report.machineProgression?.includedMachineIds.length ?? 0) > 0,
+            fourps: (report.performanceMatrix.includedNotes?.length ?? 0) > 0 ||
+              (["posture", "pace", "path", "purpose"] as const).some(
+                (k) => !!report.performanceMatrix[k]?.note,
+              ),
+            checkin: report.subjective ? answeredCount(report.subjective) === 24 : false,
+            goals: !!report.goals?.nextGoal,
+          }}
+        />
+
         <div className="space-y-8">
           {/* Section 1: Attendance */}
+          {activeStep === "celebrate" && (
           <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-[#F06C22]" />
             <div className="flex items-center gap-3 mb-8">
@@ -1635,8 +1816,10 @@ export function ClientProgressReportView({
               </div>
             </div>
           </section>
+          )}
 
           {/* Section 2: Highlights */}
+          {activeStep === "highlights" && (
           <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-[#0A2E46]" />
             <div className="flex items-center gap-3 mb-8">
@@ -1795,8 +1978,29 @@ export function ClientProgressReportView({
               ))}
             </div>
           </section>
+          )}
+
+          {/* Section 2b: Machine progression */}
+          {activeStep === "machines" && (
+          <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-2 h-full bg-[#0A548B]" />
+            <div className="flex items-center gap-3 mb-8">
+              <Dumbbell className="w-6 h-6 text-[#0A548B]" />
+              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46] dark:text-white">
+                Machine Progression
+              </h2>
+            </div>
+            <MachineProgressionStep
+              machines={machines}
+              history={machineHistory}
+              value={report.machineProgression ?? { includedMachineIds: [], rows: [] }}
+              onChange={(machineProgression) => setReport((r) => ({ ...r, machineProgression }))}
+            />
+          </section>
+          )}
 
           {/* Section 3: Performance Matrix */}
+          {activeStep === "fourps" && (
           <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-[#68717A]" />
             <div className="flex items-center gap-3 mb-8">
@@ -1982,8 +2186,10 @@ export function ClientProgressReportView({
               </div>
             )}
           </section>
+          )}
 
           {/* Section 3b: the 90-day check-in */}
+          {activeStep === "checkin" && (
           <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-[#0A548B]" />
             <div className="flex items-center gap-3 mb-2">
@@ -2030,14 +2236,42 @@ export function ClientProgressReportView({
               bodyWeightLbs={parseWeightLbs(client.weight)}
             />
           </section>
+          )}
 
-          {/* Section 4: Roadmap (MSF Evolution) */}
+          {/* Section 4: Goals + Roadmap */}
+          {activeStep === "goals" && (
           <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-[#F06C22]" />
             <div className="flex items-center gap-3 mb-8">
+              <Flag className="w-6 h-6 text-[#F06C22]" />
+              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46] dark:text-white">
+                Goals · The Next 90 Days
+              </h2>
+            </div>
+            <div className="mb-10">
+              <GoalsBlock
+                value={
+                  report.goals ?? {
+                    originalWhy: client.globalNotes || "",
+                    previousGoal: client.smartGoal || "",
+                    previousGoalOutcome: null,
+                    previousGoalNote: "",
+                    nextGoal: "",
+                    nextGoalTargetDate: addDays(report.date, 90),
+                    followUpDate: addDays(report.date, 90),
+                    checkpoints: [],
+                  }
+                }
+                onChange={(goals) => setReport((r) => ({ ...r, goals }))}
+                clientFirstName={client.firstName}
+                previousReportDate={previousReport?.date ?? null}
+              />
+            </div>
+
+            <div className="flex items-center gap-3 mb-8">
               <MapIcon className="w-6 h-6 text-[#F06C22]" />
-              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46]">
-                Strategic Roadmap
+              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46] dark:text-white">
+                Training Plan
               </h2>
             </div>
 
@@ -2440,8 +2674,10 @@ export function ClientProgressReportView({
               )}
             </div>
           </section>
+          )}
 
           {/* Section 5: Trainer Notes */}
+          {activeStep === "goals" && (
           <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-[#0A2E46]" />
             <div className="flex items-center gap-3 mb-8">
@@ -2464,6 +2700,14 @@ export function ClientProgressReportView({
               />
             </div>
           </section>
+          )}
+
+          <ReportStepNav
+            active={activeStep}
+            onChange={goToStep}
+            onFinalize={() => handleSave("Finalized")}
+            saving={saving}
+          />
         </div>
       </div>
     </div>
