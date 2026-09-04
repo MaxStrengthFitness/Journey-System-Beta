@@ -582,6 +582,36 @@ service cloud.firestore {
         allow create, update: if isAuthenticated() && isAnyAuthenticatedTrainer();
         allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
+
+      // STUDIO TASKS — cleaning, maintenance and floor operations
+      // (round: Studio To-Do, Sep 2026).
+      //
+      // Split by AUTHORITY, the same way machineNotes is split from roster.
+      //
+      // taskTemplates say what should happen and how often. That is a
+      // management decision — it sets the standard the floor is held to — so
+      // only studio leaders and above may write them.
+      //
+      // taskInstances are one day's occurrences. Checking one off is the whole
+      // job of a trainer on the floor, so any authenticated trainer may create
+      // and update them. Create is open because materialization is CLIENT-SIDE:
+      // the first trainer to open the list writes the day. The ids are derived
+      // deterministically from (template, date, shift, machine), so this cannot
+      // be used to invent unbounded documents that the day's plan would render.
+      //
+      // Deleting history stays with management. A trainer who ticked the wrong
+      // box re-opens it, which keeps the audit trail rather than erasing it.
+      match /taskTemplates/{templateId} {
+        allow read: if isAuthenticated();
+        allow create, update, delete:
+          if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
+      }
+
+      match /taskInstances/{instanceId} {
+        allow read: if isAuthenticated();
+        allow create, update: if isAuthenticated() && isAnyAuthenticatedTrainer();
+        allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
+      }
     }
 
     // NETWORKS: Regional Franchise Groupings
