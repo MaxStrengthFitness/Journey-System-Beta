@@ -21,62 +21,11 @@ import { MuscleId, toBodySlugs } from "../../types/machines";
  * component should know the library's slug names.
  */
 
-/**
- * Legacy slugs from data/machineMuscleMap.ts, which was written against
- * react-body-highlighter. Kept so the Catalog keeps working before that file
- * is folded into the catalog docs (phase 3); delete this map with the file.
- */
-const LEGACY_SLUG_MAP: Record<string, Slug> = {
-  "chest": "chest",
-  "front-deltoids": "deltoids",
-  "back-deltoids": "deltoids",
-  "biceps": "biceps",
-  "triceps": "triceps",
-  "forearm": "forearm",
-  "trapezius": "trapezius",
-  "upper-back": "upper-back",
-  "lower-back": "lower-back",
-  "abs": "abs",
-  "obliques": "obliques",
-  "gluteal": "gluteal",
-  "quadriceps": "quadriceps",
-  "hamstring": "hamstring",
-  "calves": "calves",
-  "adductor": "adductors",
-  "adductors": "adductors",
-  // No abductor region exists; Gluteus Medius is gluteal.
-  "abductors": "gluteal",
-  "neck": "neck",
-  "head": "head",
-  "knees": "knees",
-};
-
-/**
- * Which body-model region a legacy machineMuscleMap slug lands on.
- *
- * Needed by the Catalog's click-to-find-a-machine feature: the figure reports
- * a region ('deltoids'), which can cover several of our muscle names, so a
- * reverse lookup has to go through this same mapping.
- */
-export function legacyMuscleToRegion(muscle: string): string | undefined {
-  return LEGACY_SLUG_MAP[muscle];
-}
-
 export interface BodyModelProps {
-  /**
-   * Muscles worked hardest — rendered at full intensity.
-   * Optional only so legacy callers can pass `legacyPrimary` instead;
-   * one of the two is always required in practice.
-   */
+  /** Muscles worked hardest — rendered at full intensity. */
   primary?: MuscleId[];
   /** Assisting and stabilizing muscles — rendered at lower intensity. */
   secondary?: MuscleId[];
-  /**
-   * Legacy escape hatch for callers still holding machineMuscleMap slugs.
-   * Prefer `primary`/`secondary`. Remove when machineMuscleMap goes.
-   */
-  legacyPrimary?: string[];
-  legacySecondary?: string[];
 
   gender: "male" | "female";
   view: "front" | "back";
@@ -110,8 +59,6 @@ const ALL_SLUGS: Slug[] = [
 export function BodyModel({
   primary = [],
   secondary = [],
-  legacyPrimary,
-  legacySecondary,
   gender,
   view,
   scale = 1,
@@ -121,23 +68,11 @@ export function BodyModel({
   border = "none",
 }: BodyModelProps) {
   const data = useMemo<ExtendedBodyPart[]>(() => {
-    const toSlugs = (ids?: MuscleId[], legacy?: string[]): string[] => {
-      if (legacy && legacy.length > 0) {
-        const out = new Set<string>();
-        for (const l of legacy) {
-          const mapped = LEGACY_SLUG_MAP[l];
-          if (mapped) out.add(mapped);
-        }
-        return [...out];
-      }
-      return toBodySlugs(ids ?? []);
-    };
-
-    const primarySlugs = new Set(toSlugs(primary, legacyPrimary));
+    const primarySlugs = new Set(toBodySlugs(primary));
     // A region that is primary must not also render as secondary — the
     // library paints in order and the lighter pass would win.
     const secondarySlugs = new Set(
-      toSlugs(secondary, legacySecondary).filter((s) => !primarySlugs.has(s)),
+      toBodySlugs(secondary).filter((s) => !primarySlugs.has(s)),
     );
 
     return ALL_SLUGS.map((slug) => ({
@@ -150,7 +85,7 @@ export function BodyModel({
             : baseFill,
       },
     }));
-  }, [primary, secondary, legacyPrimary, legacySecondary, colors, baseFill]);
+  }, [primary, secondary, colors, baseFill]);
 
   return (
     <Body

@@ -24,8 +24,11 @@ import {
   ANATOMICAL_REGION_ORDER,
   MachineAnatomyMap,
 } from "../data/machine-anatomy-map";
-import { BodyModel, legacyMuscleToRegion } from "./machines/BodyModel";
-import { machineMuscleMap } from "../data/machineMuscleMap";
+import { BodyModel } from "./machines/BodyModel";
+import {
+  machinesForBodySlug,
+  resolveMachineAnatomy,
+} from "../features/catalog/anatomy";
 import { MACHINE_DATABASE } from "../data/machine-database";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -281,34 +284,36 @@ export function MachineAnatomyCatalogView({
           ? "Retry Save"
           : "Save Notes";
 
-  // Legacy machineMuscleMap slugs. BodyModel translates them to the body
-  // model's vocabulary; this goes away when machineMuscleMap is folded into
-  // the catalog docs and we pass MuscleId[] straight through.
-  const highlightMuscles = useMemo(() => {
-    const mapping = selectedMachineId
-      ? machineMuscleMap[selectedMachineId]
-      : undefined;
-    return {
-      primary: (mapping?.primary ?? []) as string[],
-      synergist: (mapping?.synergist ?? []) as string[],
-    };
-  }, [selectedMachineId]);
+  // One source of truth for the figure: the machine document's own MuscleId
+  // fields when they exist, otherwise MACHINE_ANATOMY. See features/catalog/
+  // anatomy.ts for why machineMuscleMap is gone.
+  const anatomy = useMemo(
+    () => resolveMachineAnatomy(selectedMachineId, selectedMachine ?? undefined),
+    [selectedMachineId, selectedMachine],
+  );
+
+  // Turn the figure to the side that actually shows the activation.
+  //
+  // This lives in an effect rather than inside handleSelectMachine because a
+  // machine can become selected three ways — the rail, tapping the figure, and
+  // the carousel's scroll spy — and the spy called setSelectedMachineId
+  // directly, so swiping to Hip Abduction left the figure on the anterior view
+  // where none of its target muscles are even visible.
+  useEffect(() => {
+    if (!selectedMachineId) return;
+    setView(anatomy.preferredView);
+  }, [selectedMachineId, anatomy.preferredView]);
 
   // The body model reports its own region slug (e.g. 'deltoids'), which may
   // cover several of our muscle names — front and rear delts share one
   // region. Match a machine if any of its muscles land on that region.
   const handleMuscleClick = (slug: string) => {
     if (!slug) return;
-    const targetMachineId = Object.keys(machineMuscleMap).find((id) => {
-      const m = machineMuscleMap[id];
-      return [...m.primary, ...m.synergist].some(
-        (muscle) => legacyMuscleToRegion(String(muscle)) === slug,
-      );
-    });
-
-    if (targetMachineId) {
-      handleSelectMachine(targetMachineId);
-    }
+    // Prefer a machine that TARGETS this region over one that merely assists
+    // through it, and only offer machines this studio actually has.
+    const owned = new Set(machines.map((m) => m.id));
+    const target = machinesForBodySlug(slug).find((id) => owned.has(id));
+    if (target) handleSelectMachine(target);
   };
 
   const handleSelectMachine = (machineId: string) => {
@@ -323,13 +328,7 @@ export function MachineAnatomyCatalogView({
       setCenterIndex(machines.length + originalIndex);
     }
 
-    const map = MACHINE_ANATOMY[machineId];
-    if (
-      map &&
-      (map.preferredView === "front" || map.preferredView === "back")
-    ) {
-      setView(map.preferredView);
-    }
+    // The view is set by the effect above, which covers every selection path.
   };
 
   const groupedMachines = useMemo(() => {
@@ -508,8 +507,8 @@ export function MachineAnatomyCatalogView({
             padding is kept small so it never forces the row to grow. */}
         <div className="relative w-full max-w-150 h-full flex justify-center p-4 lg:p-6 lg:mt-0">
           <BodyModel
-            legacyPrimary={highlightMuscles.primary}
-            legacySecondary={highlightMuscles.synergist}
+            primary={anatomy.primary}
+            secondary={anatomy.secondary}
             gender={gender}
             view={view}
             onRegionClick={handleMuscleClick}

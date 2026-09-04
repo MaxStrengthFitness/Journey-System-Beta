@@ -130,6 +130,32 @@ const BODY_SLUG_MAP: Record<MuscleId, string> = {
   'neck': 'neck',
 };
 
+/** Every muscle id the diagram knows, for runtime validation of loose data. */
+export const ALL_MUSCLE_IDS = Object.keys(BODY_SLUG_MAP) as MuscleId[];
+
+/** True when an arbitrary string is a MuscleId the diagram can paint. */
+export function isMuscleId(value: string): value is MuscleId {
+  return Object.prototype.hasOwnProperty.call(BODY_SLUG_MAP, value);
+}
+
+/** The body model's region slug for one muscle id. */
+export function toBodySlug(id: MuscleId): string | undefined {
+  return BODY_SLUG_MAP[id];
+}
+
+/**
+ * Every muscle id that paints onto one of the body model's regions.
+ *
+ * The reverse of toBodySlug, and deliberately many-to-one: tapping the figure's
+ * single 'deltoids' region has to match both delts-front and delts-rear, and
+ * 'gluteal' has to match both glutes and abductors. Anything that needs to go
+ * from a region the user touched back to our vocabulary goes through here, so
+ * BODY_SLUG_MAP stays the only place the library's names are written down.
+ */
+export function musclesForBodySlug(slug: string): MuscleId[] {
+  return ALL_MUSCLE_IDS.filter((id) => BODY_SLUG_MAP[id] === slug);
+}
+
 /**
  * Translate our muscle ids into the body model's slugs, de-duplicated —
  * several of ours collapse onto one region, and highlighting the same
