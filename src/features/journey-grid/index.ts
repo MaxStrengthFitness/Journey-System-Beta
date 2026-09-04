@@ -5,6 +5,7 @@ export { JourneyGrid, type JourneyGridProps, type GridSection } from "./JourneyG
 export { JourneyCell } from "./JourneyCell";
 export { StatCell } from "./StatCell";
 export { TodayCell } from "./TodayCell";
+export { QualityMark, QUALITY_MARK_LABEL } from "./QualityMark";
 export { GridToolbar, QualityLegend } from "./GridToolbar";
 export { SessionNowBar, type SessionNowBarProps } from "./SessionNowBar";
 export { RecentJourneyView, type RecentJourneyViewProps, type RowOrder } from "./RecentJourneyView";

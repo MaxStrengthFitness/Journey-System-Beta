@@ -25,8 +25,13 @@ const TREND_GLYPH: Record<NonNullable<Trend>, string> = {
 };
 
 /**
- * One historical cell. Pure and memoised: it re-renders only when its own
- * set or flags change. With ~20 rows × ~15 columns that is the difference
+ * One historical cell. Quality is carried entirely by the cell's skin -- a
+ * solid left edge for a full inroad, a snapped one for a set where tension
+ * broke, nothing for an ordinary set -- so nothing competes with the two
+ * numbers. A corner glyph in every cell of every column was clutter at the
+ * exact density this grid exists to reach.
+ *
+ * Pure and memoised: it re-renders only when its own set or flags change. With ~20 rows × ~15 columns that is the difference
  * between 300 renders and 1 when the trainer taps something.
  */
 function JourneyCellImpl({ session, machineName, set, previous, isLatest, isSpot, isStatHit }: JourneyCellProps) {
@@ -66,16 +71,6 @@ function JourneyCellImpl({ session, machineName, set, previous, isLatest, isSpot
         {set.isTSC ? <span className="jg-tut">⏱ {formatSeconds(set.seconds ?? 0)}</span> : <>{set.reps}</>}
         {trend && trend !== "flat" && <span className={`jg-trend jg-trend--${trend}`}>{TREND_GLYPH[trend]}</span>}
       </span>
-      {set.quality === 3 && (
-        <span className="jg-cell__q" aria-hidden="true">
-          ★
-        </span>
-      )}
-      {set.quality === 1 && (
-        <span className="jg-cell__q" aria-hidden="true">
-          ◐
-        </span>
-      )}
     </div>
   );
 }

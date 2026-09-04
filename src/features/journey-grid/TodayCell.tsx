@@ -1,6 +1,7 @@
 import { memo } from "react";
 import type { LiveSet } from "./types";
 import { formatSeconds } from "./stats";
+import { QualityMark } from "./QualityMark";
 
 interface TodayCellProps {
   machineId: string;
@@ -89,14 +90,9 @@ function TodayCellImpl({
           <span className="jg-today__dot">{"·"}</span>
         )}
       </span>
-      {logged && quality === 3 && (
+      {logged && (quality === 1 || quality === 3) && (
         <span className="jg-today__q" aria-hidden="true">
-          {"★"}
-        </span>
-      )}
-      {logged && quality === 1 && (
-        <span className="jg-today__q" aria-hidden="true">
-          {"◐"}
+          <QualityMark quality={quality} size={10} />
         </span>
       )}
     </button>

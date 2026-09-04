@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronRight, Minus, Pause, Play, Plus, RotateCcw, Star, Timer } from "lucide-react";
 import type { JourneyRow, JourneySession, LiveSet, RepQuality } from "./types";
 import { computeRowStats, formatSeconds, journeySummary, orderedSets } from "./stats";
+import { QualityMark, QUALITY_MARK_LABEL } from "./QualityMark";
 
 /* ------------------------------------------------------------------ *
  * Timer
@@ -238,8 +239,11 @@ function SessionNowBarImpl({
                   {expect.last.weight} &times;{" "}
                   {expect.last.isTSC ? formatSeconds(expect.last.seconds ?? 0) : expect.last.reps}
                 </em>
-                {expect.last.quality === 3 && <span className="jg-nb__mark jg-nb__mark--max"> &#9733;</span>}
-                {expect.last.quality === 1 && <span className="jg-nb__mark jg-nb__mark--poor"> &#9680;</span>}
+                {(expect.last.quality === 1 || expect.last.quality === 3) && (
+                  <span className={`jg-nb__mark jg-nb__mark--q${expect.last.quality}`}>
+                    <QualityMark quality={expect.last.quality} size={11} />
+                  </span>
+                )}
               </>
             )}
             {expect.best && !expect.best.isTSC && (
@@ -293,20 +297,20 @@ function SessionNowBarImpl({
             className={`jg-nb__qbtn ${v.quality === 1 ? "is-on" : ""}`}
             data-q="1"
             aria-pressed={v.quality === 1}
-            aria-label="Poor quality: tension broke"
+            aria-label={`${QUALITY_MARK_LABEL[1].name}: ${QUALITY_MARK_LABEL[1].gloss}`}
             onClick={() => setQuality(1)}
           >
-            <span aria-hidden="true">&#9680;</span>
+            <QualityMark quality={1} size={19} />
           </button>
           <button
             type="button"
             className={`jg-nb__qbtn ${v.quality === 3 ? "is-on" : ""}`}
             data-q="3"
             aria-pressed={v.quality === 3}
-            aria-label="Max strength: protocol followed perfectly"
+            aria-label={`${QUALITY_MARK_LABEL[3].name}: ${QUALITY_MARK_LABEL[3].gloss}`}
             onClick={() => setQuality(3)}
           >
-            <span aria-hidden="true">&#9733;</span>
+            <QualityMark quality={3} size={19} />
           </button>
         </div>
 

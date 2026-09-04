@@ -605,21 +605,24 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 }
 .jg-cell__r .jg-tut { font-weight: 500; color: var(--jg-ink-muted); }
 .jg-cell__empty { color: var(--jg-ink-faint); font-size: 12px; font-weight: 500; }
-.jg-cell__q {
-  position: absolute;
-  top: 3px;
-  right: 4px;
-  font-size: 10px;
-  line-height: 1;
-}
 
-/* quality 2 — completed: fill only. The 3px edge is reserved for the two
-   states that need to jump out (max / poor), so a normal week reads calm. */
+/* ---- quality: the inroad, carried by the edge ------------------------ *
+   The history grid used to hang a ★ or a ◐ in the corner of every rated
+   cell. At four columns that read as an annotation; at eight it is eight
+   glyphs per row competing with the numbers the row exists to show. So the
+   mark is the cell's own left edge instead, and it says the same thing the
+   glyph does — whether the line held:
+
+     q3  max strength   a SOLID 3px edge. Tension held the whole way.
+     q1  poor quality   the same edge, BROKEN into segments, plus the hatch.
+     q2  completed      no edge at all. A normal set should read calm.
+
+   Continuity, not colour, is the carrier — so it survives greyscale, print
+   and a colour-blind trainer, and the numbers keep the cell to themselves. */
 .jg-cell--q2 { background: var(--jg-q-done-fill); }
-/* quality 3 — max strength */
+
 .jg-cell--q3 { background: var(--jg-q-max-fill); border-left-color: var(--jg-q-max-edge); }
-.jg-cell--q3 .jg-cell__q { color: var(--jg-q-max-text); }
-/* quality 1 — poor: plum fill + hatch texture (readable without colour) */
+
 .jg-cell--q1 {
   background-color: var(--jg-q-poor-fill);
   background-image: repeating-linear-gradient(
@@ -627,9 +630,26 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
     transparent 0 5px,
     var(--jg-q-poor-hatch) 5px 6px
   );
-  border-left-color: var(--jg-q-poor);
+  border-left-color: transparent;
 }
-.jg-cell--q1 .jg-cell__q { color: var(--jg-q-poor-text); }
+/* The snapped edge. A border cannot be segmented, so it is drawn in the
+   3px the transparent border already reserves — no layout change, and it
+   sits under the is-latest / is-spot box-shadow frames rather than fighting
+   them. */
+.jg-cell--q1::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 3px;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--jg-q-poor) 0 5px,
+    transparent 5px 9px
+  );
+  pointer-events: none;
+}
 
 /* trend glyph next to reps */
 .jg-trend {
@@ -741,7 +761,13 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 }
 .jg-today__side { color: var(--jg-ink-muted); font-weight: 500; }
 .jg-today__dot { color: var(--jg-ink-faint); }
-.jg-today__q { position: absolute; top: 2px; right: 3px; font-size: 9px; line-height: 1; }
+.jg-today__q {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  line-height: 0;
+  display: block;
+}
 
 /* Nothing logged yet: the prescription, shown as a suggestion rather than
    a record. */
@@ -915,8 +941,9 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 }
 .jg-nb__expect em { font-style: normal; font-weight: 750; color: var(--jg-ink); }
 .jg-nb__readout { display: block; color: var(--jg-ink-faint); font-weight: 600; }
-.jg-nb__mark--max { color: var(--jg-q-max-text); }
-.jg-nb__mark--poor { color: var(--jg-q-poor-text); }
+.jg-nb__mark { display: inline-flex; vertical-align: -1px; margin-left: 3px; line-height: 0; }
+.jg-nb__mark--q3 { color: var(--jg-q-max-text); }
+.jg-nb__mark--q1 { color: var(--jg-q-poor-text); }
 
 /* Portrait: settings drop to their own scrolling line under the name. */
 @media (max-width: 899px) {
@@ -1236,11 +1263,28 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-legend__swatch { width: 18px; height: 14px; border-radius: 3px; border-left: 3px solid; box-sizing: border-box; }
 .jg-legend__swatch--q2 { background: var(--jg-q-done-fill); border-color: var(--jg-q-done-fill); }
 .jg-legend__swatch--q3 { background: var(--jg-q-max-fill); border-color: var(--jg-q-max-edge); }
+.jg-legend__mark { display: inline-flex; line-height: 0; }
+.jg-legend__mark--q3 { color: var(--jg-q-max-text); }
+.jg-legend__mark--q1 { color: var(--jg-q-poor-text); }
+.jg-legend__gloss {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--jg-ink-faint);
+  letter-spacing: 0.02em;
+}
+.jg-legend__item--quiet { opacity: 0.8; }
 .jg-legend__swatch--latest { background: var(--jg-live-fill); border-color: var(--jg-live); box-shadow: inset -2px 0 0 var(--jg-live); }
+/* Segmented, exactly like the cell edge it stands for. */
 .jg-legend__swatch--q1 {
   background-color: var(--jg-q-poor-fill);
-  background-image: repeating-linear-gradient(135deg, transparent 0 3px, var(--jg-q-poor-hatch) 3px 4px);
-  border-color: var(--jg-q-poor);
+  background-image:
+    repeating-linear-gradient(to bottom, var(--jg-q-poor) 0 4px, transparent 4px 7px),
+    repeating-linear-gradient(135deg, transparent 0 3px, var(--jg-q-poor-hatch) 3px 4px);
+  background-size: 3px 100%, auto;
+  background-repeat: no-repeat, repeat;
+  background-origin: border-box, padding-box;
+  border-color: transparent;
 }
 
 /* ---- motion & a11y --------------------------------------------------- */
