@@ -79,6 +79,8 @@ import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { MaxStrengthLogo } from "./MaxStrengthLogo";
 import {
   SubjectiveStep,
+  SubjectiveDashboard,
+  type HistoryPoint,
   emptyAssessment,
   parseWeightLbs,
   snapshotForClient,
@@ -299,6 +301,9 @@ export function ClientProgressReportView({
   const [previousReport, setPreviousReport] = useState<
     (PreviousAssessmentRef & { goals?: ProgressReport["goals"] }) | null
   >(null);
+  /** Every older finalized check-in, oldest first — the dashboard's trend line. */
+  const [checkInHistory, setCheckInHistory] = useState<HistoryPoint[]>([]);
+  const [showCoachView, setShowCoachView] = useState(false);
 
   const [selectingHighlightIdx, setSelectingHighlightIdx] = useState<
     number | null
@@ -344,15 +349,21 @@ export function ClientProgressReportView({
             limit(10),
           ),
         );
-        const prev = snap.docs
+        const finalized = snap.docs
           .map((d) => ({ id: d.id, ...(d.data() as ProgressReport) }))
-          .find(
+          .filter(
             (r) =>
               r.id !== existingReportId &&
               r.status === "Finalized" &&
               !!r.subjective,
           );
+        const prev = finalized[0];
         if (cancelled) return;
+        setCheckInHistory(
+          [...finalized]
+            .reverse()
+            .map((r) => ({ date: r.date, assessment: r.subjective! })),
+        );
         if (prev && prev.subjective) {
           setPreviousReport({
             reportId: prev.id!,
@@ -1981,11 +1992,34 @@ export function ClientProgressReportView({
                 90-Day Check-In
               </h2>
             </div>
-            <p className="text-sm text-[#68717A] mb-6">
+            <p className="text-sm text-[#68717A] mb-4">
               How {client.firstName} feels life is going — sleep, energy, pain, habits, food — scored the
               same way every 90 days so the trend is real. This is a conversation, not a form: ask, listen,
               then tap.
             </p>
+            <div className="mb-6">
+              <button
+                type="button"
+                onClick={() => setShowCoachView((v) => !v)}
+                className="sr-btn"
+                aria-expanded={showCoachView}
+              >
+                {showCoachView ? "Hide coach view" : "Show coach view (live scores, flags, trend)"}
+              </button>
+              {showCoachView && (
+                <div className="mt-4">
+                  <SubjectiveDashboard
+                    assessment={
+                      report.subjective ??
+                      emptyAssessment({ bodyWeightLbs: parseWeightLbs(client.weight) })
+                    }
+                    previous={previousReport}
+                    history={checkInHistory}
+                    machines={machines}
+                  />
+                </div>
+              )}
+            </div>
             <SubjectiveStep
               value={report.subjective ?? emptyAssessment({ bodyWeightLbs: parseWeightLbs(client.weight) })}
               onChange={(subjective) => setReport((r) => ({ ...r, subjective }))}

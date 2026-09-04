@@ -34,10 +34,22 @@ export function RagPill({
   );
 }
 
-/** "+12", "−8", "±0" — change since last time, coloured. */
-export function Delta({ value, suffix = "" }: { value: number | null; suffix?: string }) {
+/**
+ * "+12", "−8", "±0" — change since last time, coloured. `invert` flips the
+ * colours for numbers where up is bad (pain severity).
+ */
+export function Delta({
+  value,
+  suffix = "",
+  invert = false,
+}: {
+  value: number | null;
+  suffix?: string;
+  invert?: boolean;
+}) {
   if (value === null) return <span className="sr-delta sr-delta--flat">—</span>;
-  const dir = value > 0 ? "up" : value < 0 ? "down" : "flat";
+  const good = invert ? value < 0 : value > 0;
+  const dir = value === 0 ? "flat" : good ? "up" : "down";
   const sign = value > 0 ? "+" : value < 0 ? "−" : "±";
   return (
     <span className={`sr-delta sr-delta--${dir}`}>

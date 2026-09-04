@@ -80,6 +80,10 @@
 
 /* ---------- Layout --------------------------------------------------- */
 
+.sr *,
+.sr *::before,
+.sr *::after { box-sizing: border-box; }
+
 .sr {
   color: var(--sr-ink);
   font-feature-settings: "tnum" 1;
@@ -390,7 +394,7 @@
 
 /* ---------- Stepper (numbers on a tablet) --------------------------- */
 
-.sr-stepper { display: inline-flex; align-items: stretch; height: var(--sr-tap); border: 1.5px solid var(--sr-border); border-radius: var(--sr-radius-sm); overflow: hidden; background: var(--sr-surface); }
+.sr-stepper { display: inline-flex; align-self: flex-start; align-items: stretch; height: var(--sr-tap); border: 1.5px solid var(--sr-border); border-radius: var(--sr-radius-sm); overflow: hidden; background: var(--sr-surface); }
 .sr-stepper button {
   width: 44px; border: 0; background: var(--sr-surface-2); color: var(--sr-ink-2);
   font-size: 20px; font-weight: 800; cursor: pointer;
@@ -552,7 +556,8 @@
 .sr-flag__label { font-size: 14px; font-weight: 900; margin: 0; }
 .sr-flag__detail { font-size: 12.5px; color: var(--sr-ink-2); margin: 2px 0 0; }
 
-.sr-spark { display: block; width: 100%; height: 56px; }
+.sr-spark { display: block; width: 100%; height: 132px; }
+.sr-spark text { font-size: 11px; font-weight: 800; fill: var(--sr-ink-2); }
 
 .sr-empty {
   padding: 16px; text-align: center; font-size: 13px; color: var(--sr-ink-faint);
