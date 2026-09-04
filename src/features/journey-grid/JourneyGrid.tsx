@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { AlertCircle, ChevronLeft, ChevronsRight, NotebookPen, Star, Plus } from "lucide-react";
+import { AlertCircle, ChevronsRight, NotebookPen, Star, Plus } from "lucide-react";
 import type { JourneyRow, JourneySession, JourneySet, LiveColumn, LiveSet, StatMetric } from "./types";
 import {
   computeRowStats,
@@ -230,7 +230,11 @@ function RowImpl({
         />
       )}
 
-      {hasOlderColumn && <div className="jg-cell jg-cell--older" role="gridcell" aria-hidden="true" />}
+      {hasOlderColumn && (
+        <div className="jg-cell jg-cell--older" role="gridcell" aria-hidden="true">
+          <span className="jg-cell--older__mark">‹</span>
+        </div>
+      )}
 
       {cells}
 
@@ -425,7 +429,9 @@ export function JourneyGrid({
   }, [layout, viewportReserve]);
 
   const hasOlderColumn = !!onLoadOlder;
-  const cols = sessions.length + (hasOlderColumn ? 1 : 0);
+  // The Older rail is its own fixed 26px track (see --jg-track-older), so it
+  // is no longer counted among the session columns.
+  const cols = sessions.length;
 
   const effectiveMaxH = layout === "viewport" ? viewportMaxH : maxHeight;
   const style = {
@@ -441,6 +447,7 @@ export function JourneyGrid({
       className={`jg ${layout === "fill" ? "jg--fill" : ""}`}
       data-live={live ? "true" : "false"}
       data-stats={showStats ? "true" : "false"}
+      data-older={hasOlderColumn ? "true" : "false"}
       style={style}
     >
       <div
@@ -449,7 +456,7 @@ export function JourneyGrid({
         role="grid"
         aria-label="Client journey"
         aria-rowcount={sections.reduce((n, s) => n + 1 + (s.collapsed ? 0 : s.rows.length), 1)}
-        aria-colcount={cols + 1 + (showStats ? 1 : 0) + (live ? 1 : 0)}
+        aria-colcount={cols + 1 + (showStats ? 1 : 0) + (hasOlderColumn ? 1 : 0) + (live ? 1 : 0)}
       >
         <div className="jg-grid">
           {/* ---------- header row ---------- */}
@@ -491,8 +498,7 @@ export function JourneyGrid({
                   aria-label="Load older sessions"
                   style={{ opacity: canLoadOlder ? 1 : 0.4 }}
                 >
-                  <ChevronLeft size={16} strokeWidth={2.5} />
-                  <span>{loadingOlder ? "…" : canLoadOlder ? "Older" : "Start"}</span>
+                  <span>{loadingOlder ? "…" : canLoadOlder ? "‹ Older" : "Start"}</span>
                 </button>
               </div>
             )}

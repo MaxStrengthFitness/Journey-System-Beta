@@ -33,6 +33,12 @@
   --jg-w-size:      17px;      /* weight                                   */
   --jg-r-size:      12px;      /* reps / TUT                               */
   --jg-show-reps:   block;
+  --jg-col-older:   26px;      /* the sticky "load older" rail             */
+
+  /* Optional tracks. Empty by default -- see .jg-grid below. */
+  --jg-track-stat:  ;
+  --jg-track-older: ;
+  --jg-track-live:  ;
 
   position: relative;
   font-family: var(--jg-font);
@@ -79,45 +85,33 @@
   scroll-padding-right: calc(var(--jg-col-live) + var(--jg-col-session));
 }
 .jg[data-stats="true"] .jg-scroller { scroll-padding-left: calc(var(--jg-col-machine) + var(--jg-col-stat)); }
+.jg[data-older="true"] .jg-scroller { scroll-padding-left: calc(var(--jg-col-machine) + var(--jg-col-older)); }
+.jg[data-stats="true"][data-older="true"] .jg-scroller {
+  scroll-padding-left: calc(var(--jg-col-machine) + var(--jg-col-stat) + var(--jg-col-older));
+}
 
 /* The grid itself. Column count comes from React via --jg-cols. The extra
    optional first column is the "load older" affordance. */
 .jg-grid {
   display: grid;
-  /* minmax(col, 1fr): when there are fewer columns than fit, they widen to
-     fill the row so the Today column still hugs the right edge; once the
-     timeline overflows, every column is exactly --jg-col-session wide. */
+  /* One template, four optional tracks. Each --jg-track-* is an EMPTY custom
+     property by default: an empty token stream contributes nothing to the
+     value, so the track simply is not there. That is the only safe way to
+     make a track optional -- a 0px placeholder makes auto-placement flow the
+     next row's first cell into it, which is the bug that bit during v1.
+     minmax(col, 1fr) on the session tracks: with fewer columns than fit they
+     widen so Today still hugs the right edge; once the timeline overflows
+     every column is exactly --jg-col-session. */
   grid-template-columns:
     var(--jg-col-machine)
-    repeat(var(--jg-cols), minmax(var(--jg-col-session), 1fr));
-  /* Tracks size to content; cells carry the min-height so the 30px group
-     divider rows are not stretched to a full data row. */
+    var(--jg-track-stat)
+    var(--jg-track-older)
+    repeat(var(--jg-cols), minmax(var(--jg-col-session), 1fr))
+    var(--jg-track-live);
   grid-auto-rows: auto;
   width: max-content;
   min-width: 100%;
   isolation: isolate;
-}
-/* Optional tracks (Analytics, Today) exist ONLY when their cells are
-   rendered. Never leave a 0px placeholder track: auto-placement would flow
-   the next row's first cell into it. */
-.jg[data-stats="true"] .jg-grid {
-  grid-template-columns:
-    var(--jg-col-machine)
-    var(--jg-col-stat)
-    repeat(var(--jg-cols), minmax(var(--jg-col-session), 1fr));
-}
-.jg[data-live="true"] .jg-grid {
-  grid-template-columns:
-    var(--jg-col-machine)
-    repeat(var(--jg-cols), minmax(var(--jg-col-session), 1fr))
-    var(--jg-col-live);
-}
-.jg[data-stats="true"][data-live="true"] .jg-grid {
-  grid-template-columns:
-    var(--jg-col-machine)
-    var(--jg-col-stat)
-    repeat(var(--jg-cols), minmax(var(--jg-col-session), 1fr))
-    var(--jg-col-live);
 }
 
 /* Row wrappers are transparent to the grid; ARIA still sees a row. */
@@ -356,14 +350,51 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-head--live .jg-head__d,
 .jg-head--live .jg-head__n { color: var(--jg-live-text); }
 
-/* "Load older" column header, sits at the far left of the timeline. */
-.jg-head--older .jg-head__btn {
-  color: var(--jg-live-text);
-  font-size: 11px;
-  font-weight: 700;
-  gap: 2px;
+/* ---- the Older rail -------------------------------------------------- *
+   It used to be the first column of the timeline, which meant swiping left
+   to reach recent data pushed it off screen -- the one control you need
+   when you are already looking at the far end of the history. It is a
+   sticky 26px rail now, riding directly behind the machine column, so it
+   is on screen at every scroll offset. Opaque background is not optional:
+   without it the scrolling cells show through. */
+.jg-head--older,
+.jg-cell--older {
+  position: sticky;
+  left: var(--jg-col-machine);
+  background: var(--jg-surface-2);
+  border-right: 1px solid var(--jg-border-strong);
+  box-shadow: 8px 0 12px -8px var(--jg-sticky-shadow);
+  padding: 0;
 }
-.jg-cell--older { background: var(--jg-bg); }
+.jg[data-stats="true"] .jg-head--older,
+.jg[data-stats="true"] .jg-cell--older {
+  left: calc(var(--jg-col-machine) + var(--jg-col-stat));
+}
+.jg-head--older { z-index: 5; }
+.jg-cell--older { z-index: 2; border-left: 0; }
+/* With the rail present, the machine column hands its edge treatment over. */
+.jg[data-older="true"] .jg-machine,
+.jg[data-older="true"] .jg-corner { box-shadow: none; border-right-color: var(--jg-border); }
+.jg-head--older .jg-head__btn {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  color: var(--jg-live-text);
+  font-family: var(--jg-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  gap: 3px;
+  padding: 4px 0;
+}
+.jg-cell--older__mark {
+  color: var(--jg-live-text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.5;
+}
+.jg-cell--older { display: grid; place-items: center; }
 
 /* ---- group divider rows --------------------------------------------- */
 .jg-group {
