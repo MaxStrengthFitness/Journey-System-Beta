@@ -144,8 +144,8 @@ const ClientClinicalReviewPreloader = lazy(() =>
   import("./components/ClientClinicalReviewPreloader").then((m) => ({ default: m.ClientClinicalReviewPreloader })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
-const MachineAnatomyCatalogView = lazy(() =>
-  import("./components/MachineAnatomyCatalogView").then((m) => ({ default: m.MachineAnatomyCatalogView })),
+const CatalogView = lazy(() =>
+  import("./features/catalog").then((m) => ({ default: m.CatalogView })),
 );
 import { MaxStrengthLogo } from "./components/MaxStrengthLogo";
 import { ThemeToggle } from "./components/ThemeToggle";
@@ -1796,10 +1796,7 @@ export default function AppContent({
               />
             )}
             {currentView === "machine-anatomy" && (
-              <MachineAnatomyCatalogView
-                machines={machines}
-                authTrainer={authTrainer}
-              />
+              <CatalogView machines={machines} authTrainer={authTrainer} />
             )}
             {currentView === "leaderboard" && (
               <MachineLeaderboardDashboard

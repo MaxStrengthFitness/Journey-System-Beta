@@ -1,0 +1,122 @@
+/* ==========================================================================
+   Catalog — design tokens
+   --------------------------------------------------------------------------
+   Same two-layer scheme as the Journey Grid and the Equipment tab: raw brand
+   pigment, then semantic names components use. Light on :root, dark on .dark
+   (the class ThemeProvider toggles), with [data-theme] as a fallback so a page
+   rendered before hydration is never the wrong theme.
+
+   Contrast checked to WCAG 2.1 AA: body text >= 4.5:1, borders and non-text UI
+   >= 3:1. Ratios noted beside each value so a future edit can be re-checked.
+
+   No component in this feature writes a hex value. The view it replaces had
+   #F06C22 and #38BDF8 hardcoded in the portrait tree while the landscape tree
+   used bg-cta / bg-cyan for the same thing, so the two drifted apart.
+   ========================================================================== */
+
+:root {
+  /* ── geometry ─────────────────────────────────────────────────────── */
+  --cat-rail-w: 17.5rem;      /* 280 */
+  --cat-detail-w: 23.75rem;   /* 380 */
+  --cat-radius: 14px;
+  --cat-radius-lg: 20px;
+  --cat-mini-h: 4.5rem;       /* 72 — the condensed figure bar in stack mode */
+
+  /* ── surfaces ─────────────────────────────────────────────────────── */
+  --cat-bg:            #f1f5f8;
+  --cat-surface:       #ffffff;
+  --cat-surface-2:     #e8eef2;
+  --cat-surface-3:     #dae1e6;
+  --cat-border:        #d3dadf;   /* 1.4:1 hairline                       */
+  --cat-border-strong: #a9b2b9;   /* 2.2:1 pane divider                   */
+
+  /* ── ink ──────────────────────────────────────────────────────────── */
+  --cat-ink:       #121c23;   /* 17.3:1 */
+  --cat-ink-2:     #3e4952;   /*  9.2:1 */
+  --cat-ink-muted: #5b6770;   /*  5.8:1 */
+  --cat-ink-faint: #848e95;   /*  3.3:1 — decorative only */
+
+  /* ── hero orange: the selected machine ────────────────────────────── */
+  --cat-hero:      #ef5302;
+  --cat-hero-text: #bc2c00;   /* 6.0:1 on white — small text uses this */
+  --cat-hero-fill: #fde7dc;
+  --cat-hero-on:   #ffffff;
+
+  /* ── blue: anything you can act on ────────────────────────────────── */
+  --cat-live:      #0a548b;   /* 7.9:1 */
+  --cat-live-text: #034a84;   /* 9.1:1 */
+  --cat-live-fill: #e6eef3;
+
+  /* ── green: execution ─────────────────────────────────────────────── */
+  --cat-ok:      #1c7a52;     /* 4.9:1 */
+  --cat-ok-fill: #e3f1ea;
+
+  /* ── amber: clinical warnings. Never collapsed, so it must read at a
+        glance without being shouty enough to be tuned out. ───────────── */
+  --cat-warn:        #8a5300;   /* 5.1:1 on white */
+  --cat-warn-strong: #b26a00;
+  --cat-warn-fill:   #fdf3e3;
+  --cat-warn-border: #e5c48f;   /* 3.0:1 */
+
+  /* ── the figure ───────────────────────────────────────────────────── */
+  --cat-muscle-primary:   #0a548b;
+  --cat-muscle-secondary: #6fb4e4;
+  --cat-muscle-base:      #9aa6ae;
+
+  --cat-focus-ring: var(--cat-live);
+  --cat-shadow: rgba(18, 28, 35, 0.10);
+
+  /* ── movement-pattern accents, for the picker's left edge ─────────── */
+  --cat-accent-push:      #ef5302;
+  --cat-accent-pull:      #0a548b;
+  --cat-accent-quad:      #1c7a52;
+  --cat-accent-posterior: #b26a00;
+  --cat-accent-core:      #8a4f9e;
+  --cat-accent-other:     #5b6770;
+}
+
+.dark,
+[data-theme="dark"] {
+  --cat-bg:            #070b0f;
+  --cat-surface:       #0e151c;
+  --cat-surface-2:     #151e27;
+  --cat-surface-3:     #1d2833;
+  --cat-border:        #1f2a35;   /* 1.5:1 on surface */
+  --cat-border-strong: #3a4855;   /* 2.9:1 */
+
+  --cat-ink:       #eef3f7;   /* 15.8:1 on surface */
+  --cat-ink-2:     #b3c0cb;   /*  8.6:1 */
+  --cat-ink-muted: #8b98a4;   /*  5.4:1 */
+  --cat-ink-faint: #63707c;   /*  3.1:1 */
+
+  /* Dark is not a flip. Saturated orange vibrates on near-black, so fills
+     become low-alpha washes and text tones lift instead of darken. */
+  --cat-hero:      #ff6a1f;
+  --cat-hero-text: #ff8c4d;   /* 7.2:1 on surface */
+  --cat-hero-fill: rgba(255, 106, 31, 0.14);
+
+  --cat-live:      #38bdf8;
+  --cat-live-text: #7dd3fc;   /* 9.4:1 */
+  --cat-live-fill: rgba(56, 189, 248, 0.12);
+
+  --cat-ok:      #34d399;
+  --cat-ok-fill: rgba(52, 211, 153, 0.12);
+
+  --cat-warn:        #fbbf24;   /* 10.4:1 on surface */
+  --cat-warn-strong: #fcd34d;
+  --cat-warn-fill:   rgba(251, 191, 36, 0.10);
+  --cat-warn-border: rgba(251, 191, 36, 0.32);
+
+  --cat-muscle-primary:   #0a548b;
+  --cat-muscle-secondary: #6fb4e4;
+  --cat-muscle-base:      #4b555c;
+
+  --cat-shadow: rgba(0, 0, 0, 0.5);
+
+  --cat-accent-push:      #ff6a1f;
+  --cat-accent-pull:      #38bdf8;
+  --cat-accent-quad:      #34d399;
+  --cat-accent-posterior: #fbbf24;
+  --cat-accent-core:      #c084fc;
+  --cat-accent-other:     #8b98a4;
+}

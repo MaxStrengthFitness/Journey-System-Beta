@@ -1,0 +1,998 @@
+/* ==========================================================================
+   Catalog — layout
+   --------------------------------------------------------------------------
+   Round: Catalog Redesign, Sep 2026.
+
+   THE ONE RULE THIS FILE EXISTS TO ENFORCE
+   ----------------------------------------
+   stack  (portrait) : the catalog root scrolls. NOTHING inside it scrolls.
+   split  (landscape): the rail and the detail pane scroll. The root does not,
+                       and the figure column therefore never moves.
+
+   The view this replaces had three scroll containers nested inside each other —
+   h-[calc(100vh-5rem)] overflow-y-auto on the root, max-h-[50vh] overflow-y-auto
+   on the mobile detail card, and the sections' own overflow. That is what put
+   Clinical Warnings inside a half-screen box on a screen that already scrolled.
+
+   min-height: 0 appears on every element that contains a scroller. A grid or
+   flex item defaults to min-height:auto, which refuses to shrink below its
+   content, so the child's overflow-y:auto never receives a bounded height and
+   the overflow escapes to the page instead. Every nested scrollbar in the old
+   file traced back to a missing min-height:0.
+
+   No 100vh/100dvh anywhere. AppContent's <main> for this view is already
+   `flex-1 min-h-0 overflow-hidden flex flex-col`, and the bottom nav is a
+   flex-none SIBLING after </main> in normal flow — so the shell has already
+   subtracted the header and the nav. The old pb-28 sm:pb-32 was clearing a bar
+   that was never overlapping it: 112-128px of dead space with nothing behind
+   it. Measuring the viewport again here would double-count.
+   ========================================================================== */
+
+.cat {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--cat-bg);
+  color: var(--cat-ink);
+  position: relative;
+}
+
+.cat *,
+.cat *::before,
+.cat *::after {
+  box-sizing: border-box;
+}
+
+/* ── STACK (portrait): the root is the one and only scroller ─────────── */
+.cat--stack {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── SPLIT (landscape): three columns, two of them scroll ────────────── */
+@media (min-width: 1024px) {
+  .cat--split {
+    display: grid;
+    grid-template-columns: var(--cat-rail-w) minmax(0, 1fr) var(--cat-detail-w);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 1rem;
+    padding: 1rem;
+    overflow: hidden;
+  }
+}
+
+@media (min-width: 1280px) {
+  .cat--split {
+    --cat-detail-w: 26.25rem;
+    --cat-rail-w: 19rem;
+  }
+}
+
+/* Panes that scroll. Everything else in the feature must not. */
+.cat__scroller {
+  min-height: 0;
+  overflow-y: auto;
+  /* Without this, reaching the end of the detail pane starts dragging the
+     column behind it, which on iPad reads as the layout coming apart. */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cat__pane {
+  background: var(--cat-surface);
+  border: 1px solid var(--cat-border);
+  border-radius: var(--cat-radius-lg);
+  box-shadow: 0 1px 2px var(--cat-shadow);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   FIGURE
+   ========================================================================== */
+
+.cat__stage {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cat--stack .cat__stage {
+  padding: 0.75rem 1rem 0;
+}
+
+.cat--split .cat__stage {
+  padding: 0.5rem 0;
+  justify-content: center;
+}
+
+.cat__figure {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cat__figure > * {
+  max-height: 100%;
+}
+
+/* In stack the stage has no column height to fill, so flex:1 has nothing to
+   divide and aspect-ratio would resolve against a width the figure does not
+   control. Give it an explicit height: tall enough to read across the room,
+   never so tall it pushes the detail off the first screen.
+
+   dvh, not vh — iPad Safari's toolbar collapses, and vh assumes it already
+   has, which is what pushes content under the bottom nav. */
+.cat--stack .cat__figure {
+  flex: none;
+  height: 40dvh;
+  min-height: 240px;
+  max-height: 420px;
+}
+
+.cat--stack .cat__figure svg {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+}
+
+/* ── segmented view / gender control ─────────────────────────────────── */
+.cat__segmented {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  gap: 2px;
+  background: var(--cat-surface-2);
+  border: 1px solid var(--cat-border);
+  border-radius: 12px;
+}
+
+.cat__seg {
+  min-height: 40px;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--cat-ink-muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.cat__seg:hover { color: var(--cat-ink); }
+
+.cat__seg[aria-pressed="true"] {
+  background: var(--cat-surface);
+  color: var(--cat-ink);
+  box-shadow: 0 1px 2px var(--cat-shadow);
+}
+
+.cat__seg-divider {
+  width: 1px;
+  align-self: stretch;
+  margin: 6px 4px;
+  background: var(--cat-border);
+}
+
+/* ── condensed sticky figure (stack only) ────────────────────────────── */
+.cat__mini {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: var(--cat-mini-h);
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-bottom: 1px solid var(--cat-border);
+  background: color-mix(in srgb, var(--cat-surface) 92%, transparent);
+  backdrop-filter: blur(12px);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.cat__mini-figure {
+  width: 2.75rem;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cat__mini-text { min-width: 0; flex: 1; }
+
+.cat__mini-name {
+  display: block;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--cat-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat__mini-muscles {
+  display: block;
+  font-size: 11px;
+  color: var(--cat-ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat__mini-hint {
+  flex: none;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cat-ink-faint);
+}
+
+/* ==========================================================================
+   PICKER — the rail in split, the sheet body in stack
+   ========================================================================== */
+
+.cat__picker {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.cat__picker-head {
+  flex: none;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--cat-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cat__search {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--cat-border);
+  border-radius: 10px;
+  background: var(--cat-surface-2);
+  color: var(--cat-ink);
+  font: inherit;
+  font-size: 13px;
+}
+
+.cat__search::placeholder { color: var(--cat-ink-faint); }
+
+.cat__search:focus-visible {
+  outline: 2px solid var(--cat-focus-ring);
+  outline-offset: 1px;
+}
+
+.cat__picker-list { padding: 0.5rem; }
+
+.cat__group + .cat__group { margin-top: 0.75rem; }
+
+.cat__group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0.25rem 0.375rem;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--cat-ink-muted);
+}
+
+.cat__group-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--cat-ink-faint);
+}
+
+.cat__group-items {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.375rem;
+}
+
+/* The sheet is full-width, so it gets two across. The rail is 280px and
+   does not. */
+.cat__picker--sheet .cat__group-items {
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+}
+
+.cat__item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 44px;               /* touch target */
+  padding: 0.5rem 0.625rem 0.5rem 0.875rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--cat-surface-2);
+  color: var(--cat-ink-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.cat__item::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--cat-item-accent, var(--cat-accent-other));
+}
+
+.cat__item:hover { background: var(--cat-surface-3); }
+
+.cat__item[aria-current="true"] {
+  background: var(--cat-hero-fill);
+  border-color: var(--cat-hero);
+  color: var(--cat-ink);
+}
+
+.cat__item:focus-visible {
+  outline: 2px solid var(--cat-focus-ring);
+  outline-offset: 1px;
+}
+
+.cat__item-name {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat__item[aria-current="true"] .cat__item-name { color: var(--cat-ink); }
+
+.cat__item-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cat-ink-faint);
+}
+
+.cat__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cat__badge--custom {
+  background: var(--cat-live-fill);
+  color: var(--cat-live-text);
+}
+
+.cat__badge--maintenance {
+  background: var(--cat-warn-fill);
+  color: var(--cat-warn);
+}
+
+.cat__empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 12px;
+  color: var(--cat-ink-muted);
+}
+
+/* ── picker bar (stack): always-legible current selection ────────────── */
+.cat__picker-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 56px;
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 1rem 0.5rem 1.125rem;
+  border: 1px solid var(--cat-border);
+  border-radius: var(--cat-radius);
+  background: var(--cat-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.cat__picker-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--cat-item-accent, var(--cat-accent-other));
+}
+
+.cat__picker-bar-text { flex: 1; min-width: 0; }
+
+.cat__picker-bar-pattern {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--cat-ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat__picker-bar-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  color: var(--cat-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat__picker-bar-cta {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cat-live-text);
+}
+
+/* ==========================================================================
+   DETAIL
+   ========================================================================== */
+
+.cat__detail {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cat--stack .cat__detail { padding: 0.75rem 1rem 1.5rem; }
+
+.cat__detail-head {
+  flex: none;
+  padding: 1rem 1.125rem;
+  border-bottom: 1px solid var(--cat-border);
+}
+
+.cat--stack .cat__detail-head {
+  border: 1px solid var(--cat-border);
+  border-radius: var(--cat-radius-lg) var(--cat-radius-lg) 0 0;
+  background: var(--cat-surface);
+}
+
+.cat__eyebrow {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cat-live-text);
+}
+
+.cat__title {
+  margin: 0 0 0.625rem;
+  font-size: clamp(1.25rem, 1rem + 1.2vw, 1.75rem);
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--cat-ink);
+  /* Long machine names wrap instead of clipping. */
+  overflow-wrap: anywhere;
+}
+
+.cat__note {
+  margin: 0;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--cat-border);
+  border-radius: var(--cat-radius);
+  background: var(--cat-surface-2);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--cat-ink-2);
+}
+
+.cat__detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.875rem 1.125rem 1.25rem;
+}
+
+.cat--stack .cat__detail-body {
+  border: 1px solid var(--cat-border);
+  border-top: 0;
+  border-radius: 0 0 var(--cat-radius-lg) var(--cat-radius-lg);
+  background: var(--cat-surface);
+}
+
+/* ── spec tiles ──────────────────────────────────────────────────────── */
+.cat__specs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.cat__spec {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--cat-border);
+  border-radius: var(--cat-radius);
+  background: var(--cat-surface-2);
+  min-width: 0;
+}
+
+.cat__spec-label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 0.25rem;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cat-ink-muted);
+}
+
+.cat__spec-value {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--cat-ink);
+  /* Values like "Chest Up / Anterior Pelvic Tilt" wrap; the old tile
+     truncated them behind a title attribute nobody can hover on a tablet. */
+  overflow-wrap: anywhere;
+}
+
+/* ── clinical warnings: never an accordion ───────────────────────────── */
+.cat__warnings {
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--cat-warn-border);
+  border-radius: var(--cat-radius);
+  background: var(--cat-warn-fill);
+}
+
+.cat__warnings-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cat-warn);
+}
+
+.cat__warnings-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.cat__warnings-list li {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--cat-warn);
+}
+
+.cat__warnings-list li::before {
+  content: "•";
+  flex: none;
+  color: var(--cat-warn-strong);
+}
+
+.cat__warnings-more {
+  margin-top: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cat-warn);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ── accordion sections ──────────────────────────────────────────────── */
+.cat__section {
+  border: 1px solid var(--cat-border);
+  border-radius: var(--cat-radius);
+  background: var(--cat-surface-2);
+  overflow: hidden;
+}
+
+.cat__section-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.5rem 0.875rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cat-ink);
+  user-select: none;
+}
+
+/* Safari still paints its own triangle without this. */
+.cat__section-summary::-webkit-details-marker { display: none; }
+
+.cat__section-summary:focus-visible {
+  outline: 2px solid var(--cat-focus-ring);
+  outline-offset: -2px;
+}
+
+.cat__section-chevron {
+  margin-left: auto;
+  flex: none;
+  color: var(--cat-ink-muted);
+  transition: transform 140ms ease;
+}
+
+.cat__section[open] > .cat__section-summary .cat__section-chevron {
+  transform: rotate(180deg);
+}
+
+.cat__section-count {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--cat-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.cat__section-body {
+  padding: 0 0.875rem 0.875rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cat__section-chevron { transition: none; }
+}
+
+/* ── prose blocks ────────────────────────────────────────────────────── */
+.cat__prose {
+  margin: 0;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--cat-border);
+  border-radius: 10px;
+  background: var(--cat-surface);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.55;
+  color: var(--cat-ink);
+}
+
+.cat__cues {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.cat__cues li {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--cat-ink-2);
+}
+
+.cat__cues li::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  margin-top: 0.5em;
+  border-radius: 999px;
+  background: var(--cat-live);
+}
+
+/* ── musculature ─────────────────────────────────────────────────────── */
+.cat__muscles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.cat__muscle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--cat-border);
+  border-radius: 10px;
+  background: var(--cat-surface);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.cat__muscle-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--cat-muscle-secondary);
+}
+
+.cat__muscle--primary { color: var(--cat-ink); font-weight: 700; }
+.cat__muscle--primary .cat__muscle-dot { background: var(--cat-hero); }
+.cat__muscle--synergist { color: var(--cat-ink-2); }
+
+.cat__muscle-role {
+  margin-left: auto;
+  flex: none;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cat-ink-faint);
+}
+
+/* ── studio notes ────────────────────────────────────────────────────── */
+.cat__notes-scope {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--cat-ink-muted);
+}
+
+.cat__textarea {
+  width: 100%;
+  min-height: 6rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--cat-border);
+  border-radius: 10px;
+  background: var(--cat-surface);
+  color: var(--cat-ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.cat__textarea::placeholder { color: var(--cat-ink-faint); }
+
+.cat__textarea:focus-visible {
+  outline: 2px solid var(--cat-focus-ring);
+  outline-offset: 1px;
+}
+
+.cat__btn {
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 1px solid var(--cat-border-strong);
+  border-radius: 10px;
+  background: var(--cat-surface);
+  color: var(--cat-ink);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.cat__btn:disabled { opacity: 0.6; cursor: default; }
+
+.cat__btn--primary {
+  border-color: transparent;
+  background: var(--cat-live);
+  color: #fff;
+}
+
+.cat__btn--ok {
+  border-color: transparent;
+  background: var(--cat-ok-fill);
+  color: var(--cat-ok);
+}
+
+.cat__btn--error {
+  border-color: var(--cat-warn-border);
+  background: var(--cat-warn-fill);
+  color: var(--cat-warn);
+}
+
+.cat__btn:focus-visible {
+  outline: 2px solid var(--cat-focus-ring);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   SHEET (stack picker)
+   ========================================================================== */
+
+.cat__sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(3, 7, 12, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.cat__sheet {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  max-height: 85dvh;
+  border-radius: var(--cat-radius-lg) var(--cat-radius-lg) 0 0;
+  border: 1px solid var(--cat-border);
+  border-bottom: 0;
+  background: var(--cat-surface);
+  color: var(--cat-ink);
+  box-shadow: 0 -8px 40px var(--cat-shadow);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.cat__sheet-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem 0.5rem;
+}
+
+.cat__sheet-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--cat-ink-muted);
+}
+
+.cat__sheet-close {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--cat-surface-2);
+  color: var(--cat-ink);
+  cursor: pointer;
+}
+
+.cat__sheet-grip {
+  width: 2.25rem;
+  height: 4px;
+  margin: 0.5rem auto 0;
+  border-radius: 999px;
+  background: var(--cat-border-strong);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cat__sheet { animation: cat-sheet-in 180ms ease-out; }
+  @keyframes cat-sheet-in {
+    from { transform: translateY(8%); opacity: 0; }
+    to   { transform: translateY(0);  opacity: 1; }
+  }
+}
+
+/* ==========================================================================
+   EMPTY / AWAITING SELECTION
+   ========================================================================== */
+
+.cat__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 100%;
+  min-height: 12rem;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  color: var(--cat-ink-muted);
+}
+
+.cat__placeholder-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.cat__placeholder-body {
+  font-size: 12px;
+  color: var(--cat-ink-faint);
+  max-width: 22rem;
+}
+
+.cat__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── split: the figure column is a plain grid cell, not an overlay ────── */
+.cat__stage-col {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* ── stack: the inline picker, replaced by the sheet in phase 4 ───────── */
+.cat--stack .cat__stack-picker {
+  margin: 0.75rem 1rem 0;
+  border: 1px solid var(--cat-border);
+  border-radius: var(--cat-radius-lg);
+  background: var(--cat-surface);
+  overflow: hidden;
+}
+
+/* In stack nothing inside the root may scroll, so the picker's own scroller
+   is released and the list flows into the page. */
+.cat--stack .cat__picker-list {
+  overflow: visible;
+  min-height: 0;
+}
