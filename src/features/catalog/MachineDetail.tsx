@@ -9,6 +9,7 @@ import {
 import { ClinicalWarnings } from "./ClinicalWarnings";
 import { Section } from "./Section";
 import { StudioNotesCard } from "./StudioNotesCard";
+import { useSectionState } from "./useSectionState";
 import type { CatalogMachine } from "./types";
 
 /**
@@ -60,6 +61,16 @@ export function MachineDetail({
     },
   ];
 
+  const { isOpen, setOpen } = useSectionState();
+
+  /** Open unless the trainer has closed it before. Defaults chosen for a
+   *  fast-paced set: the two things read mid-machine are open, reference
+   *  material is not. */
+  const section = (id: string, fallback: boolean) => ({
+    open: isOpen(id, fallback),
+    onToggle: (next: boolean) => setOpen(id, next),
+  });
+
   const hasMusculature =
     machine.targetMuscles.length > 0 || machine.synergists.length > 0;
 
@@ -93,9 +104,9 @@ export function MachineDetail({
           <Section
             id="setup"
             title="Setup notes"
+            {...section("setup", true)}
             icon={<Wrench size={14} aria-hidden />}
             count={machine.setupCues.length}
-            defaultOpen
           >
             {machine.setup && <p className="cat__prose">{machine.setup}</p>}
             {machine.setupCues.length > 0 && (
@@ -112,9 +123,9 @@ export function MachineDetail({
           <Section
             id="execution"
             title="Execution"
+            {...section("execution", true)}
             icon={<Activity size={14} aria-hidden />}
             count={machine.executionCues.length}
-            defaultOpen
           >
             {machine.execution && (
               <p className="cat__prose">{machine.execution}</p>
@@ -133,6 +144,7 @@ export function MachineDetail({
           <Section
             id="musculature"
             title="Musculature"
+            {...section("musculature", false)}
             icon={<Target size={14} aria-hidden />}
             count={machine.targetMuscles.length + machine.synergists.length}
           >
@@ -162,6 +174,7 @@ export function MachineDetail({
           <Section
             id="contraindications"
             title="Contraindicated for"
+            {...section("contraindications", false)}
             icon={<Users size={14} aria-hidden />}
             count={machine.contraindicatedFor.length}
           >
@@ -177,7 +190,7 @@ export function MachineDetail({
           id="studio-notes"
           title="Studio notes"
           icon={<UserCog size={14} aria-hidden />}
-          defaultOpen={Boolean(machine.studioNotes)}
+          {...section("studio-notes", Boolean(machine.studioNotes))}
         >
           <StudioNotesCard
             machineId={machine.id}

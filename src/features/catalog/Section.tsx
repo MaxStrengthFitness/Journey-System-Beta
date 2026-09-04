@@ -32,13 +32,18 @@ export function Section({
   onToggle,
   children,
 }: SectionProps) {
-  const controlled = open !== undefined;
+  const isOpen = open ?? defaultOpen;
 
   return (
     <details
       className="cat__section"
-      {...(controlled ? { open } : { open: defaultOpen })}
-      onToggle={(e) => onToggle?.((e.currentTarget as HTMLDetailsElement).open)}
+      open={isOpen}
+      onToggle={(e) => {
+        const next = (e.currentTarget as HTMLDetailsElement).open;
+        // <details> fires toggle on mount in some engines; only report a real
+        // change, or every render would write a preference nobody set.
+        if (next !== isOpen) onToggle?.(next);
+      }}
     >
       <summary className="cat__section-summary" id={`${id}-summary`}>
         {icon}
