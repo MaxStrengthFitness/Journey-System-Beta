@@ -23,7 +23,7 @@
   /* ---- one tuned density. There is no switch any more: three row
      heights was a choice the trainer had to make about a screen they are
      using one-handed mid-set, and the answer was always "fit more". ---- */
-  --jg-col-machine: 168px;     /* name + up to five settings              */
+  --jg-col-machine: 184px;     /* name + up to five settings              */
   --jg-col-stat:    100px;     /* Analytics column (Recent Journey only)  */
   --jg-col-session: 84px;
   --jg-col-today:   84px;      /* Today reads; the Now bar writes         */
@@ -61,6 +61,7 @@
 }
 @media (max-height: 720px) {
   .jg { --jg-row-h: 34px; --jg-head-h: 32px; --jg-w-size: 13px; --jg-show-reps: none; }
+  .jg-head.is-latest .jg-head__n, .jg-head--live .jg-head__n { display: none; }
 }
 
 
@@ -126,6 +127,11 @@
   min-width: 100%;
   isolation: isolate;
 }
+
+/* Turn an optional track on by giving its variable a width. */
+.jg[data-stats="true"] { --jg-track-stat:  var(--jg-col-stat); }
+.jg[data-older="true"] { --jg-track-older: var(--jg-col-older); }
+.jg[data-live="true"]  { --jg-track-live:  var(--jg-col-today); }
 
 /* Row wrappers are transparent to the grid; ARIA still sees a row. */
 .jg-row { display: contents; }
@@ -289,7 +295,7 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 /* shared header tag ("LATEST · #45", "TODAY") */
 .jg-head__tag {
   font-family: var(--jg-font-display);
-  font-size: 10.5px;
+  font-size: 8.5px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -311,7 +317,10 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  /* Latest and Today carry a third line (the tag). At gap:2px that stack
+     overflowed a 40px header and clipped the tag against the top edge. */
+  gap: 0;
+  line-height: 1.15;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   border-bottom: 3px solid transparent;
@@ -371,7 +380,11 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
    is on screen at every scroll offset. Opaque background is not optional:
    without it the scrolling cells show through. */
 .jg-head--older,
-.jg-cell--older {
+.jg-cell.jg-cell--older {
+  /* .jg-cell declares position:relative later in this file at the same
+     specificity, so the rail has to out-specify it -- otherwise it wins,
+     and `left` becomes a relative offset that pushes the rail into the
+     middle of the timeline. */
   position: sticky;
   left: var(--jg-col-machine);
   background: var(--jg-surface-2);
@@ -380,11 +393,11 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   padding: 0;
 }
 .jg[data-stats="true"] .jg-head--older,
-.jg[data-stats="true"] .jg-cell--older {
+.jg[data-stats="true"] .jg-cell.jg-cell--older {
   left: calc(var(--jg-col-machine) + var(--jg-col-stat));
 }
 .jg-head--older { z-index: 5; }
-.jg-cell--older { z-index: 2; border-left: 0; }
+.jg-cell.jg-cell--older { z-index: 2; border-left: 0; }
 /* With the rail present, the machine column hands its edge treatment over. */
 .jg[data-older="true"] .jg-machine,
 .jg[data-older="true"] .jg-corner { box-shadow: none; border-right-color: var(--jg-border); }
@@ -398,7 +411,8 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   letter-spacing: 0.14em;
   text-transform: uppercase;
   gap: 3px;
-  padding: 4px 0;
+  padding: 0;
+  white-space: nowrap;
 }
 .jg-cell--older__mark {
   color: var(--jg-live-text);
@@ -407,7 +421,7 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   line-height: 1;
   opacity: 0.5;
 }
-.jg-cell--older { display: grid; place-items: center; }
+.jg-cell.jg-cell--older { display: grid; place-items: center; }
 
 /* ---- group divider rows --------------------------------------------- */
 .jg-group {
@@ -513,8 +527,9 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 }
 .jg-machine__star { color: var(--jg-hero); flex: none; }
 /* The note glyph is absolutely positioned in the cell's top-right corner,
-   so the name reserves room for it rather than running underneath. */
-.jg-row .jg-machine__btn { padding-right: 22px; }
+   so the NAME row reserves room for it. The settings row underneath runs
+   the full width -- five settings need every pixel of it. */
+.jg-row .jg-machine__name { padding-right: 20px; }
 .jg-machine__alert { color: var(--jg-q-poor); flex: none; }
 .jg-machine__order {
   flex: none;
@@ -1164,8 +1179,147 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   text-overflow: ellipsis;
 }
 @media (max-width: 899px) {
+  /* The spacer would push the timer onto a line of its own. */
+  .jg-nb__controls .jg-nb__sp { display: none; }
+  .jg-nb__controls { gap: 6px; }
   /* Full width, and the loudest thing on the bar. */
   .jg-nb__next { width: 100%; height: 48px; background: var(--jg-live); color: var(--jg-live-on); border-color: var(--jg-live); }
+}
+
+/* ---- zone 2 · the grid rail ------------------------------------------ *
+   Every control here acts on the list immediately below it. Focus used to
+   live in the global app header, two zones away from the rows it filters;
+   the legend used to sit under the grid, past the fold. Both are here now,
+   in a 32px strip that costs one row of height for the whole screen.
+   nowrap + overflow:hidden on purpose: this strip must never become two
+   strips, because its whole justification is that it costs one row. */
+.jg-rail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  flex-wrap: nowrap;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--jg-surface-2);
+  border: 1px solid var(--jg-border);
+  border-bottom: 0;
+  border-radius: var(--jg-radius) var(--jg-radius) 0 0;
+  font-family: var(--jg-font);
+  color: var(--jg-ink);
+  overflow: hidden;
+}
+/* the Key popover has to escape the rail's overflow */
+.jg-rail { overflow: visible; }
+.jg-rail__title {
+  font-family: var(--jg-font-display);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--jg-ink-muted);
+  flex: none;
+  white-space: nowrap;
+}
+.jg-rail__count {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--jg-ink-faint);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+  white-space: nowrap;
+}
+.jg-rail__sp { flex: 1; min-width: 4px; }
+
+/* Focus, renamed to what it does: which machines the list shows. */
+.jg-seg2 {
+  display: inline-flex;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  overflow: hidden;
+  flex: none;
+}
+.jg-seg2__btn {
+  appearance: none;
+  border: 0;
+  border-right: 1px solid var(--jg-border);
+  background: var(--jg-surface);
+  color: var(--jg-ink-muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-seg2__btn:last-child { border-right: 0; }
+.jg-seg2__btn.is-on { background: var(--jg-live); color: var(--jg-live-on); }
+
+/* The text twin of the sticky Older rail inside the grid. */
+.jg-rail__older {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+  color: var(--jg-live-text);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  cursor: pointer;
+  flex: none;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.jg-rail__older:disabled { opacity: 0.4; cursor: default; }
+
+/* The legend lays out inline when the viewport can carry it and collapses
+   to a Key popover when it cannot. Either way it never owns a row of its
+   own below the fold, which is where it used to be. */
+.jg-rail__legend { display: none; flex: none; min-width: 0; overflow: hidden; }
+.jg-keywrap { position: relative; flex: none; }
+.jg-key {
+  appearance: none;
+  border: 1px solid var(--jg-live);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+  color: var(--jg-live-text);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.jg-key.is-on { background: var(--jg-live); color: var(--jg-live-on); }
+.jg-keypop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  background: var(--jg-surface);
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius);
+  box-shadow: 0 8px 24px var(--jg-sticky-shadow);
+  padding: 12px 14px;
+  min-width: 236px;
+}
+.jg-keypop .jg-legend { flex-direction: column; align-items: flex-start; gap: 9px; }
+@media (min-width: 1180px) {
+  .jg-rail__legend { display: block; }
+  .jg-keywrap { display: none; }
 }
 
 /* ---- toolbar (section caption, actions) ------------------------------ */

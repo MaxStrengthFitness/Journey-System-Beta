@@ -48,8 +48,8 @@ function QualityMarkImpl({ quality, size = 13, className }: QualityMarkProps) {
         <path d="M1.6 1h8.8L6 15Z" />
       ) : (
         <>
-          <path d="M1.6 1h8.8L9.1 6.1H2.9Z" />
-          <path d="M3.5 9.4h5L6 15Z" />
+          <path d="M1.6 1h8.8L9.3 5.6H2.7Z" />
+          <path d="M3.75 10h4.5L6 15Z" />
         </>
       )}
     </svg>
