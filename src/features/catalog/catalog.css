@@ -51,6 +51,16 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* Nothing in a scrolling column flex container may be allowed to shrink.
+   flex-shrink defaults to 1, so the browser compresses the children to fit
+   the container BEFORE it lets the container scroll — the box gets shorter
+   while its contents keep their size, and the overflow paints underneath
+   whatever follows. That is what put the figure's legs behind the sticky
+   bar: the stage box had been squeezed, the figure inside it had not. */
+.cat--stack > * {
+  flex: none;
+}
+
 /* ── SPLIT (landscape): three columns, two of them scroll ────────────── */
 @media (min-width: 1024px) {
   .cat--split {
@@ -104,6 +114,7 @@
 }
 
 .cat--stack .cat__stage {
+  flex: none;
   padding: 0.75rem 1rem 0;
 }
 
@@ -141,6 +152,7 @@
 
 .cat--stack .cat__figure svg {
   height: 100%;
+  max-height: 100%;
   width: auto;
   max-width: 100%;
 }
@@ -412,19 +424,29 @@
   color: var(--cat-ink-muted);
 }
 
-/* ── picker bar (stack): always-legible current selection ────────────── */
+/* ── picker bar (stack) ──────────────────────────────────────────────────
+   Sticky, and placed AFTER the figure in the DOM. At rest the model sits
+   full size above it; the moment the model scrolls away this pins to the top
+   still carrying a small one. No IntersectionObserver, no scroll listener,
+   and — because a sticky element keeps its normal-flow slot — no second
+   element appearing and shoving the content down by its own height. */
 .cat__picker-bar {
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  width: 100%;
-  min-height: 56px;
-  margin: 0.75rem 0 0;
-  padding: 0.5rem 1rem 0.5rem 1.125rem;
+  width: calc(100% - 2rem);
+  min-height: var(--cat-mini-h);
+  margin: 0.75rem 1rem 0;
+  padding: 0.5rem 0.875rem 0.5rem 1.125rem;
   border: 1px solid var(--cat-border);
   border-radius: var(--cat-radius);
+  /* Opaque, not translucent. This bar sticks OVER the figure, and at 94%
+     the figure showed straight through the machine name. */
   background: var(--cat-surface);
+  box-shadow: 0 2px 10px var(--cat-shadow);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -438,6 +460,22 @@
   inset: 0 auto 0 0;
   width: 4px;
   background: var(--cat-item-accent, var(--cat-accent-other));
+}
+
+.cat__picker-bar-figure {
+  flex: none;
+  width: 2.25rem;
+  height: calc(var(--cat-mini-h) - 1rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.cat__picker-bar-figure svg {
+  height: 100%;
+  max-height: 100%;
+  width: auto;
 }
 
 .cat__picker-bar-text { flex: 1; min-width: 0; }
@@ -471,11 +509,14 @@
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 9px;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: var(--cat-live-fill);
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.1em;
   color: var(--cat-live-text);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ==========================================================================
@@ -857,38 +898,34 @@
 
 /* ==========================================================================
    SHEET (stack picker)
+   --------------------------------------------------------------------------
+   components/ui/sheet.tsx (Base UI dialog) already owns position, the
+   backdrop, the focus trap, Escape, scroll lock and the enter/exit
+   transitions. Everything here is skin: our tokens, our radius, our height
+   cap. Re-declaring position or animation would fight it.
    ========================================================================== */
 
-.cat__sheet-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  background: rgba(3, 7, 12, 0.55);
-  backdrop-filter: blur(2px);
-}
-
 .cat__sheet {
-  position: fixed;
-  inset: auto 0 0 0;
-  z-index: 61;
   display: flex;
   flex-direction: column;
+  gap: 0;
   max-height: 85dvh;
+  padding: 0;
   border-radius: var(--cat-radius-lg) var(--cat-radius-lg) 0 0;
-  border: 1px solid var(--cat-border);
-  border-bottom: 0;
+  border-top: 1px solid var(--cat-border);
   background: var(--cat-surface);
   color: var(--cat-ink);
-  box-shadow: 0 -8px 40px var(--cat-shadow);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+.cat__sheet .cat__picker { min-height: 0; }
 
 .cat__sheet-head {
   flex: none;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.875rem 1rem 0.5rem;
+  padding: 0.875rem 1rem 0.25rem;
 }
 
 .cat__sheet-title {
@@ -914,20 +951,9 @@
   cursor: pointer;
 }
 
-.cat__sheet-grip {
-  width: 2.25rem;
-  height: 4px;
-  margin: 0.5rem auto 0;
-  border-radius: 999px;
-  background: var(--cat-border-strong);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .cat__sheet { animation: cat-sheet-in 180ms ease-out; }
-  @keyframes cat-sheet-in {
-    from { transform: translateY(8%); opacity: 0; }
-    to   { transform: translateY(0);  opacity: 1; }
-  }
+.cat__sheet-close:focus-visible {
+  outline: 2px solid var(--cat-focus-ring);
+  outline-offset: 2px;
 }
 
 /* ==========================================================================
@@ -981,18 +1007,6 @@
   justify-content: center;
 }
 
-/* ── stack: the inline picker, replaced by the sheet in phase 4 ───────── */
-.cat--stack .cat__stack-picker {
-  margin: 0.75rem 1rem 0;
-  border: 1px solid var(--cat-border);
-  border-radius: var(--cat-radius-lg);
-  background: var(--cat-surface);
-  overflow: hidden;
-}
-
-/* In stack nothing inside the root may scroll, so the picker's own scroller
-   is released and the list flows into the page. */
-.cat--stack .cat__picker-list {
-  overflow: visible;
-  min-height: 0;
-}
+/* The picker now only ever renders inside the sheet in stack mode, and the
+   sheet is portalled outside .cat — so its list keeps its own scroller and the
+   "nothing inside the root scrolls" rule is not broken by it. */

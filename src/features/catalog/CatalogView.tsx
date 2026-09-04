@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import type { Machine, Trainer } from "../../types";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import { AnatomyStage } from "./AnatomyStage";
+import { MachinePickerBar } from "./MachinePickerBar";
 import { MachineDetail } from "./MachineDetail";
 import { MachinePicker } from "./MachinePicker";
+import { X } from "lucide-react";
 import { machinesForBodySlug } from "./anatomy";
 import { useCatalogMachines } from "./useCatalogMachines";
 import { useLayoutMode } from "./useLayoutMode";
@@ -55,6 +62,7 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
   const [view, setView] = useState<"front" | "back">("front");
   const [gender, setGender] = useState<"male" | "female">("male");
   const [grouping, setGrouping] = useState<GroupingMode>("movement");
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const selected = useMemo(
     () => catalogMachines.find((m) => m.id === selectedId) ?? null,
@@ -153,7 +161,16 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
     <div className="cat cat--stack" data-source={source}>
       {stage}
 
-      <div className="cat__stack-picker">{picker}</div>
+      {/* Sticky, and deliberately placed AFTER the figure: at rest the model is
+          full size above it, and the moment the model scrolls away this pins to
+          the top still carrying it. */}
+      <MachinePickerBar
+        machine={selected}
+        count={catalogMachines.length}
+        view={view}
+        gender={gender}
+        onOpen={() => setSheetOpen(true)}
+      />
 
       {selected && (
         <MachineDetail
@@ -163,6 +180,42 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
           author={author}
         />
       )}
+
+      {/* The app's own Sheet (Base UI dialog): focus trap, Escape, scroll lock
+          and the enter/exit transitions all come with it. */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent
+          side="bottom"
+          showCloseButton={false}
+          className="cat__sheet"
+        >
+          <div className="cat__sheet-head">
+            <SheetTitle className="cat__sheet-title">
+              Select machine
+            </SheetTitle>
+            <button
+              type="button"
+              className="cat__sheet-close"
+              onClick={() => setSheetOpen(false)}
+              aria-label="Close"
+            >
+              <X size={18} aria-hidden />
+            </button>
+          </div>
+          <MachinePicker
+            machines={catalogMachines}
+            selectedId={selectedId}
+            onSelect={(id) => {
+              setSelectedId(id);
+              setSheetOpen(false);
+            }}
+            grouping={grouping}
+            onGroupingChange={setGrouping}
+            variant="sheet"
+            autoFocusSearch
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
