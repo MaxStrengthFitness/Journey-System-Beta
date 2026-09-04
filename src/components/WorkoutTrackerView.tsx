@@ -93,6 +93,7 @@ import { resolveMachineOrder } from "../data/machine-display-order";
 import {
   JourneyGrid,
   QualityLegend,
+  SessionNowBar,
   toIsoDate,
   toJourneyRows,
   toJourneySessions,
@@ -102,7 +103,6 @@ import {
 } from "../features/journey-grid";
 import { isBig5Machine } from "../lib/utils";
 import type { RepQuality } from "../types";
-import { Stopwatch } from "./Stopwatch";
 import { useToast } from "../contexts/ToastContext";
 import {
   hasCount,
@@ -2813,6 +2813,30 @@ export function WorkoutTrackerView({
       ? focusMachineOverride
       : firstIncompleteMachineId;
 
+  /* --- what the Now bar reads. All derived from state that already
+     existed for the grid; the bar adds no source of truth of its own. --- */
+  const gridFocusRow = useMemo(
+    () => (gridFocusMachineId ? gridRows.find((r) => r.machine.id === gridFocusMachineId) : undefined),
+    [gridRows, gridFocusMachineId],
+  );
+  const gridFocusOrder = useMemo(() => {
+    const i = gridFocusMachineId ? activeMachineIds.indexOf(gridFocusMachineId) : -1;
+    return i >= 0 ? i + 1 : undefined;
+  }, [activeMachineIds, gridFocusMachineId]);
+  const gridNextRow = useMemo(() => {
+    const i = gridFocusMachineId ? activeMachineIds.indexOf(gridFocusMachineId) : -1;
+    const nextId = activeMachineIds[i + 1];
+    return nextId ? gridRows.find((r) => r.machine.id === nextId) : undefined;
+  }, [activeMachineIds, gridFocusMachineId, gridRows]);
+  const gridDoneCount = useMemo(
+    () =>
+      activeMachineIds.filter((id) => {
+        const v = gridLiveValues[id];
+        return !!v && (v.isTSC ? v.seconds != null : v.reps != null);
+      }).length,
+    [activeMachineIds, gridLiveValues],
+  );
+
   /** Grid → logs. Mirrors what the old entry dialog wrote, field by field. */
   const handleGridLiveChange = (machineId: string, patch: Partial<LiveSet>) => {
     const sessionId = currentSession?.id;
@@ -3804,6 +3828,24 @@ export function WorkoutTrackerView({
         )}
       </div>
 
+      {/* Zone 4 — "The Now". Everything between walking up to a machine and
+          logging the set, in one place that never moves. */}
+      {gridLive && (
+        <SessionNowBar
+          row={gridFocusRow}
+          orderNumber={gridFocusOrder}
+          value={gridFocusMachineId ? gridLiveValues[gridFocusMachineId] : undefined}
+          history={gridHistory}
+          onChange={handleGridLiveChange}
+          step={2}
+          nextName={gridNextRow?.machine.name}
+          onNext={() => gridNextRow && setFocusMachineOverride(gridNextRow.machine.id)}
+          onLogTSC={handleLogTSC}
+          doneCount={gridDoneCount}
+          totalCount={activeMachineIds.length}
+        />
+      )}
+
       <AnimatePresence>
         {isShowingSessionNotes && currentSession && clientId && (
           <SessionJournalSidebar
@@ -3832,16 +3874,6 @@ export function WorkoutTrackerView({
           onSave={handleSaveSessionMachineIds}
         />
       )}
-
-      {currentSession &&
-        !isSessionRoutineManagerOpen &&
-        !editingWeightMachineId &&
-        !editingSettingsMachineId &&
-        !isShowingSessionNotes && (
-          <div className="fixed bottom-16 sm:bottom-20 left-0 right-0 z-110">
-            <Stopwatch onLogTSC={handleLogTSC} />
-          </div>
-        )}
 
       {currentSession && activeMachineIds.length > 0 && (
         <div className="fixed bottom-0 left-2 p-1 pointer-events-none opacity-20 z-110">

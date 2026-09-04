@@ -798,6 +798,351 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ==========================================================================
+   Zone 4 — the Now bar
+   --------------------------------------------------------------------------
+   Two layouts, one component. Landscape has width to spare, so the set and
+   the Next handoff share a line under the machine header. Portrait does
+   not, so the three jobs stack: what machine and how it is set up / the set
+   / what is next. Next gets the full width there rather than being squeezed
+   to a chip — it is the control the trainer hits most, and it must stay the
+   most obvious thing on the bar in both orientations.
+   ========================================================================== */
+.jg-nb {
+  flex: none;
+  display: grid;
+  gap: 6px 10px;
+  padding: 7px 10px 8px;
+  background: var(--jg-surface-2);
+  border-top: 2px solid var(--jg-hero);
+  font-family: var(--jg-font);
+  color: var(--jg-ink);
+  grid-template-columns: 1fr;
+  grid-template-areas: "head" "controls" "next";
+}
+@media (min-width: 900px) {
+  .jg-nb {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "head head"
+      "controls next";
+    align-items: center;
+  }
+}
+.jg-nb--empty { grid-template-areas: "head"; grid-template-columns: 1fr; }
+.jg-nb__idle { font-size: 12.5px; color: var(--jg-ink-muted); padding: 12px 2px; }
+.jg-nb__sp { flex: 1; min-width: 4px; }
+
+/* ---- line 1 · which machine, how it is set up, what to expect -------- */
+.jg-nb__head {
+  grid-area: head;
+  display: flex;
+  align-items: center;
+  gap: 6px 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.jg-nb__id { display: inline-flex; align-items: center; gap: 7px; flex: none; min-width: 0; }
+.jg-nb__ord {
+  flex: none;
+  width: 21px;
+  height: 21px;
+  border-radius: 5px;
+  background: var(--jg-hero);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-style: normal;
+  display: grid;
+  place-items: center;
+  font-variant-numeric: tabular-nums;
+}
+.jg-nb__name {
+  font-family: var(--jg-font-display);
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jg-nb__star { color: var(--jg-hero); flex: none; }
+
+/* Spelled out, not abbreviated. The grid rail says "SH 4" because it has
+   168px; this is what a trainer actually presets the machine from. */
+.jg-nb__settings {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 1px;
+}
+.jg-nb__settings::-webkit-scrollbar { display: none; }
+.jg-nb__chip {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--jg-ink);
+  background: var(--jg-surface);
+  border: 1px solid var(--jg-border);
+  border-radius: var(--jg-radius-sm);
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+.jg-nb__chip b {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--jg-ink-faint);
+}
+
+.jg-nb__expect {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--jg-ink-muted);
+  text-align: right;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.jg-nb__expect em { font-style: normal; font-weight: 750; color: var(--jg-ink); }
+.jg-nb__readout { display: block; color: var(--jg-ink-faint); font-weight: 600; }
+.jg-nb__mark--max { color: var(--jg-q-max-text); }
+.jg-nb__mark--poor { color: var(--jg-q-poor-text); }
+
+/* Portrait: settings drop to their own scrolling line under the name. */
+@media (max-width: 899px) {
+  .jg-nb__id { order: 1; flex: 1 1 auto; }
+  .jg-nb__expect { order: 2; }
+  .jg-nb__sp { display: none; }
+  .jg-nb__settings { order: 3; flex: 1 0 100%; }
+  .jg-nb__expect { font-size: 10.5px; }
+}
+
+/* ---- line 2 · the set ------------------------------------------------ */
+.jg-nb__controls {
+  grid-area: controls;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.jg-nb__step { display: flex; align-items: center; gap: 4px; flex: none; }
+.jg-nb__sbtn {
+  appearance: none;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+  color: var(--jg-ink-2);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-nb__sbtn:active { background: var(--jg-surface-3); }
+.jg-nb__wwrap {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  height: 44px;
+  min-width: 92px;
+  padding: 0 8px;
+  border: 1.5px solid var(--jg-live);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+}
+.jg-nb__wwrap:focus-within { outline: 2px solid var(--jg-focus-ring); outline-offset: 1px; }
+.jg-nb__weight {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--jg-ink);
+  font: inherit;
+  font-size: 22px;                       /* >=16px stops iOS zooming on focus */
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding: 0;
+  line-height: 44px;
+}
+.jg-nb__weight:focus { outline: none; }
+.jg-nb__lb { font-size: 10px; font-weight: 600; color: var(--jg-ink-muted); flex: none; }
+
+/* the number and its unit as one control — TSC is a unit, not a mode */
+.jg-nb__out {
+  flex: none;
+  height: 44px;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+}
+.jg-nb__out:focus-within { outline: 2px solid var(--jg-focus-ring); outline-offset: 1px; }
+.jg-nb__out.is-logged { background: var(--jg-q-done-fill); border-color: var(--jg-q-done-edge); }
+.jg-nb__side {
+  flex: none;
+  width: 17px;
+  display: grid;
+  place-items: center;
+  font-family: var(--jg-font-display);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--jg-ink-muted);
+  border-right: 1px solid var(--jg-border);
+}
+.jg-nb__outin {
+  width: 58px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--jg-ink);
+  font: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding: 0 5px 0 8px;
+}
+.jg-nb__outin:focus { outline: none; }
+.jg-nb__outin::placeholder { color: var(--jg-ink-faint); font-weight: 500; }
+.jg-nb__unit {
+  appearance: none;
+  flex: none;
+  width: 38px;
+  border: 0;
+  border-left: 1px solid var(--jg-border);
+  background: transparent;
+  color: var(--jg-ink-muted);
+  font: inherit;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-nb__unit.is-static { cursor: default; }
+.jg-nb__unit[aria-pressed="true"] { background: var(--jg-live-fill-strong); color: var(--jg-live-text); }
+
+/* Quality stays exception-only: recording an effort completes the set, and
+   these two flag the sets that were not ordinary. 44px each — down here
+   width is free, so they are bigger than they were in the grid, not smaller. */
+.jg-nb__quality { display: flex; gap: 3px; flex: none; }
+.jg-nb__qbtn {
+  appearance: none;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+  color: var(--jg-ink-faint);
+  font-size: 17px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-nb__qbtn[data-q="1"].is-on { background: var(--jg-q-poor-fill); border-color: var(--jg-q-poor); color: var(--jg-q-poor-text); }
+.jg-nb__qbtn[data-q="3"].is-on { background: var(--jg-q-max-fill); border-color: var(--jg-q-max-edge); color: var(--jg-q-max-text); }
+
+/* timer */
+.jg-nb__timer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 8px;
+  flex: none;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+}
+.jg-nb__tbtn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--jg-hero);
+  width: 28px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.jg-nb__tbtn--quiet { color: var(--jg-ink-muted); width: 24px; }
+.jg-nb__time {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--jg-ink);
+  min-width: 40px;
+  text-align: center;
+}
+
+/* ---- line 3 · what is next ------------------------------------------ */
+.jg-nb__next {
+  grid-area: next;
+  appearance: none;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 16px;
+  border: 1px solid var(--jg-live);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-live-fill-strong);
+  color: var(--jg-live-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-nb__next:disabled { opacity: 0.45; cursor: default; }
+.jg-nb__nextlbl { flex: none; opacity: 0.85; }
+.jg-nb__nextname {
+  font-family: var(--jg-font-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 899px) {
+  /* Full width, and the loudest thing on the bar. */
+  .jg-nb__next { width: 100%; height: 48px; background: var(--jg-live); color: var(--jg-live-on); border-color: var(--jg-live); }
+}
+
 /* ---- toolbar (section caption, actions) ------------------------------ */
 .jg-toolbar {
   display: flex;

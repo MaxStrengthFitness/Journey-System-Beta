@@ -6,5 +6,6 @@ export { JourneyCell } from "./JourneyCell";
 export { StatCell } from "./StatCell";
 export { TodayCell } from "./TodayCell";
 export { GridToolbar, QualityLegend } from "./GridToolbar";
+export { SessionNowBar, type SessionNowBarProps } from "./SessionNowBar";
 export { RecentJourneyView, type RecentJourneyViewProps, type RowOrder } from "./RecentJourneyView";
 export { ActiveSessionView, useLiveSession, type ActiveSessionViewProps, type LiveSessionState } from "./ActiveSessionView";
