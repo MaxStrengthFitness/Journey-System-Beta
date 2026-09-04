@@ -10,7 +10,7 @@ import {
   Sparkles,
   MessageSquare,
   Zap,
-  LayoutList,
+  ChevronLeft,
   Settings2,
   ClipboardList,
   PlusCircle,
@@ -93,17 +93,16 @@ import { resolveMachineOrder } from "../data/machine-display-order";
 import {
   JourneyGrid,
   QualityLegend,
+  SessionNowBar,
   toIsoDate,
   toJourneyRows,
   toJourneySessions,
-  type Density as GridDensity,
   type GridSection,
   type LiveColumn,
   type LiveSet,
 } from "../features/journey-grid";
 import { isBig5Machine } from "../lib/utils";
 import type { RepQuality } from "../types";
-import { Stopwatch } from "./Stopwatch";
 import { useToast } from "../contexts/ToastContext";
 import {
   hasCount,
@@ -1173,6 +1172,7 @@ export function WorkoutTrackerView({
   );
   const [isSettingUpRoutine, setIsSettingUpRoutine] = useState(false);
   const [showAllMachines, setShowAllMachines] = useState(false);
+  const [isLegendOpen, setIsLegendOpen] = useState(false);
   const [routineMachines, setRoutineMachines] = useState<string[]>([]);
   const [lastRoutineLogs, setLastRoutineLogs] = useState<
     Record<string, ExerciseLog>
@@ -2660,23 +2660,6 @@ export function WorkoutTrackerView({
     [gridHistory, gridVisible],
   );
 
-  const [gridDensity, setGridDensity] = useState<GridDensity>(() => {
-    try {
-      const v = localStorage.getItem("journey-grid-density-session");
-      if (v === "compact" || v === "comfortable" || v === "full") return v;
-    } catch {
-      /* ignore */
-    }
-    return "comfortable";
-  });
-  useEffect(() => {
-    try {
-      localStorage.setItem("journey-grid-density-session", gridDensity);
-    } catch {
-      /* ignore */
-    }
-  }, [gridDensity]);
-
   const gridRows = useMemo(() => {
     const ordered = [...machines].sort(
       (a, b) =>
@@ -2829,6 +2812,30 @@ export function WorkoutTrackerView({
     focusMachineOverride && activeMachineIds.includes(focusMachineOverride)
       ? focusMachineOverride
       : firstIncompleteMachineId;
+
+  /* --- what the Now bar reads. All derived from state that already
+     existed for the grid; the bar adds no source of truth of its own. --- */
+  const gridFocusRow = useMemo(
+    () => (gridFocusMachineId ? gridRows.find((r) => r.machine.id === gridFocusMachineId) : undefined),
+    [gridRows, gridFocusMachineId],
+  );
+  const gridFocusOrder = useMemo(() => {
+    const i = gridFocusMachineId ? activeMachineIds.indexOf(gridFocusMachineId) : -1;
+    return i >= 0 ? i + 1 : undefined;
+  }, [activeMachineIds, gridFocusMachineId]);
+  const gridNextRow = useMemo(() => {
+    const i = gridFocusMachineId ? activeMachineIds.indexOf(gridFocusMachineId) : -1;
+    const nextId = activeMachineIds[i + 1];
+    return nextId ? gridRows.find((r) => r.machine.id === nextId) : undefined;
+  }, [activeMachineIds, gridFocusMachineId, gridRows]);
+  const gridDoneCount = useMemo(
+    () =>
+      activeMachineIds.filter((id) => {
+        const v = gridLiveValues[id];
+        return !!v && (v.isTSC ? v.seconds != null : v.reps != null);
+      }).length,
+    [activeMachineIds, gridLiveValues],
+  );
 
   /** Grid → logs. Mirrors what the old entry dialog wrote, field by field. */
   const handleGridLiveChange = (machineId: string, patch: Partial<LiveSet>) => {
@@ -3095,8 +3102,7 @@ export function WorkoutTrackerView({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className={cn(
-        "h-[calc(100vh-80px)] flex flex-col gap-1 overflow-hidden relative",
-        hasActiveHeader ? "pt-30 sm:pt-32 lg:pt-24" : "",
+        "h-full min-h-0 flex flex-col overflow-hidden relative",
       )}
     >
       {isIntroSession && (
@@ -3108,116 +3114,73 @@ export function WorkoutTrackerView({
           <Sparkles className="w-5 h-5 text-slate-900 dark:text-white" />
         </div>
       )}
-      {/* Persistent Active Header - Refactored as Sticky Fixed */}
+      {/* Zone 1 — session bar. In flow, one row, 48px. It used to be a
+          position:fixed two-row overlay (min-h-25) that the grid had to pad
+          around; the shell is a real flex column now, so it just sits here.
+          Focus moved out of here entirely — it filters the routine list, so
+          it belongs on the grid rail beside the list it filters. */}
       {(selectedClient || currentSession) && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-bg-dark/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 flex flex-col lg:flex-row lg:items-center justify-between min-h-25 lg:h-19 shadow-md transition-all gap-2 lg:gap-0">
-          {/* Mobile & Tablet: Row 1 (Identity & Timer), Desktop: Left Column */}
-          <div className="flex items-center justify-between lg:justify-start w-full lg:w-auto gap-2 sm:gap-3 shrink-0">
-            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-              {/* Left: Client & Trainer Identity */}
-              <div className="flex flex-col min-w-0 max-w-32.5 sm:max-w-50 lg:max-w-55">
-                <h3 className="text-xs sm:text-sm lg:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate">
-                  {selectedClient
-                    ? `${selectedClient.firstName} ${selectedClient.lastName}`
-                    : currentSession?.isUnassigned
-                      ? "Unassigned Tracking"
-                      : "Initializing..."}
-                </h3>
-                <div className="flex items-center gap-1 mt-0.5 text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400">
-                  <div className="w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full bg-white dark:bg-bg-dark flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
-                    <span className="text-[9px] sm:text-[10px] font-bold">
-                      {authTrainer?.initials ||
-                        currentSession?.trainerInitials ||
-                        "??"}
-                    </span>
-                  </div>
-                  <span className="truncate">Trainer</span>
-                </div>
-              </div>
-
-              {/* Notes Action Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsShowingSessionNotes(true)}
-                className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-7 sm:h-8 px-2 sm:px-2.5 rounded-lg text-[10px] sm:text-[11px] flex items-center gap-1 transition-colors cursor-pointer shrink-0"
-              >
-                <MessageSquare className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-cta shrink-0 fill-current" />
-                Notes
-              </Button>
-            </div>
-
-            {/* Mobile & Tablet Timer on right side of Row 1 */}
-            <div className="flex lg:hidden items-center shrink-0">
-              {currentSession && (
-                <ActiveSessionTimer
-                  startTime={currentSession.startTime}
-                  fallbackStartTime={(currentSession as any).clientStartTime}
-                  pausedAt={(currentSession as any).pausedAt}
-                  totalPausedMs={(currentSession as any).totalPausedMs}
-                  onTogglePause={toggleSessionPause}
-                  isMobile
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Desktop Center Timer: Non-colliding flex child */}
-          <div className="hidden lg:flex items-center justify-center shrink-0 mx-2">
-            {currentSession && (
+        <div className="flex-none flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 h-12 bg-white dark:bg-bg-dark border-b border-slate-200 dark:border-slate-800">
+          <h3 className="text-sm sm:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate max-w-30 sm:max-w-none">
+            {selectedClient
+              ? `${selectedClient.firstName} ${selectedClient.lastName}`
+              : currentSession?.isUnassigned
+                ? "Unassigned Tracking"
+                : "Initializing..."}
+          </h3>
+          <span className="hidden sm:inline font-mono text-[10px] text-slate-500 dark:text-slate-400 tabular-nums shrink-0">
+            #{currentSession?.sessionNumber || sessions.length} ·{" "}
+            {authTrainer?.initials || currentSession?.trainerInitials || "??"}
+          </span>
+          {currentSession && (
+            <div className="flex items-center shrink-0">
               <ActiveSessionTimer
                 startTime={currentSession.startTime}
                 fallbackStartTime={(currentSession as any).clientStartTime}
                 pausedAt={(currentSession as any).pausedAt}
                 totalPausedMs={(currentSession as any).totalPausedMs}
                 onTogglePause={toggleSessionPause}
+                isMobile
               />
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Action Buttons: Row 2 on mobile, Right side on desktop */}
-          <div className="flex items-center justify-end gap-1 sm:gap-2 w-full lg:w-auto shrink-0">
-            <Button
-              variant="outline"
-              className={cn(
-                "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-7 sm:h-8.5 lg:h-9 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold transition-colors flex-1 lg:flex-initial",
-                !showAllMachines
-                  ? "bg-cta text-white hover:opacity-90 dark:text-white border-transparent"
-                  : "",
-              )}
-              onClick={() => setShowAllMachines(!showAllMachines)}
-            >
-              <LayoutList className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
-              <span>Focus</span>
-            </Button>
+          <span className="flex-1" />
 
-            <Button
-              variant="outline"
-              className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-7 sm:h-8.5 lg:h-9 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold transition-colors flex-1 lg:flex-initial"
-              onClick={() => setIsSessionRoutineManagerOpen(true)}
-            >
-              <Settings2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
-              <span>Edit Routine</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              className="border-red-500/30 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 h-7 sm:h-8.5 lg:h-9 px-2 sm:px-3 text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-colors flex-1 lg:flex-initial"
-              onClick={() => setShowCancelConfirmation(true)}
-              title="Discard active session without saving"
-            >
-              <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
-              <span>Discard</span>
-            </Button>
-
-            <Button
-              className="bg-cta hover:opacity-90 text-white font-bold shadow-sm transition-all h-7 sm:h-8.5 lg:h-9 px-2.5 sm:px-4 lg:px-5 rounded-lg text-[10px] sm:text-xs flex-1 lg:flex-initial cursor-pointer whitespace-nowrap"
-              onClick={handleEndSessionPress}
-            >
-              <span>Finish</span>
-              <span className="hidden sm:inline">&nbsp;Session</span>
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsShowingSessionNotes(true)}
+            className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-8 px-2 sm:px-2.5 rounded-lg text-[11px] flex items-center gap-1 shrink-0"
+          >
+            <MessageSquare className="w-3 h-3 text-cta shrink-0 fill-current" />
+            <span className="hidden sm:inline">Notes</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsSessionRoutineManagerOpen(true)}
+            className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-surface-1 h-8 px-2 sm:px-2.5 rounded-lg text-[11px] flex items-center gap-1 shrink-0"
+          >
+            <Settings2 className="w-3 h-3 shrink-0" />
+            <span className="hidden sm:inline">Routine</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCancelConfirmation(true)}
+            title="Discard active session without saving"
+            className="border-red-500/30 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 h-8 px-2 sm:px-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider shrink-0"
+          >
+            <Trash2 className="w-3 h-3 shrink-0" />
+            <span className="hidden sm:inline ml-1">Discard</span>
+          </Button>
+          <Button
+            onClick={handleEndSessionPress}
+            className="bg-cta hover:opacity-90 text-white font-bold shadow-sm h-8 px-3 sm:px-4 rounded-lg text-[11px] uppercase tracking-wider cursor-pointer whitespace-nowrap shrink-0"
+          >
+            Finish
+          </Button>
         </div>
       )}
       {/* Machine Performance Entry Dialog */}
@@ -3782,19 +3745,76 @@ export function WorkoutTrackerView({
           </div>
         </DialogContent>
       </Dialog>
-      {/* Session log — the Journey Grid with a live Today column. The stopwatch
-          bar is fixed over the bottom edge, so the legend row keeps clearance. */}
-      <div className="flex-1 min-h-0 flex flex-col gap-1">
+      {/* Zones 2 + 3 — the grid rail, then the grid. The rail carries the
+          controls that act on the list directly below it: Focus (Routine /
+          All), Older, and the legend. The legend lays out inline when there
+          is width for it and collapses to a Key popover when there is not,
+          so it costs no permanent vertical space either way. */}
+      <div className="flex-1 min-h-0 flex flex-col">
+        <div className="jg-rail">
+          <span className="jg-rail__title">Routine</span>
+          <span className="jg-rail__count">
+            {activeMachineIds.length} of {gridRows.length}
+          </span>
+          <div className="jg-seg2" role="radiogroup" aria-label="Which machines to list">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!showAllMachines}
+              className={`jg-seg2__btn ${!showAllMachines ? "is-on" : ""}`}
+              onClick={() => setShowAllMachines(false)}
+            >
+              Routine
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={showAllMachines}
+              className={`jg-seg2__btn ${showAllMachines ? "is-on" : ""}`}
+              onClick={() => setShowAllMachines(true)}
+            >
+              All
+            </button>
+          </div>
+          <button
+            type="button"
+            className="jg-rail__older"
+            onClick={() => setGridVisible((v) => v + 5)}
+            disabled={gridVisible >= gridHistory.length}
+          >
+            <ChevronLeft className="w-3 h-3" strokeWidth={2.5} />
+            Older
+          </button>
+          <span className="jg-rail__sp" />
+          <div className="jg-rail__legend">
+            <QualityLegend />
+          </div>
+          <div className="jg-keywrap">
+            <button
+              type="button"
+              className={`jg-key ${isLegendOpen ? "is-on" : ""}`}
+              aria-expanded={isLegendOpen}
+              onClick={() => setIsLegendOpen((o) => !o)}
+            >
+              Key
+            </button>
+            {isLegendOpen && (
+              <div className="jg-keypop" role="dialog" aria-label="Rep quality key">
+                <QualityLegend />
+              </div>
+            )}
+          </div>
+        </div>
+
         {gridLive && (
           <JourneyGrid
             sessions={gridVisibleHistory}
             historySessions={gridHistory}
             sections={gridSections}
-            density={gridDensity}
             live={gridLive}
             /* Analytics is a review tool: "highest weight, Sep 2" is what you
                read on the client profile, not what you need while a set is
-               running. Off here, it hands its 100px to the Today column. */
+               running. Off here, it hands its 100px to the timeline. */
             showStats={false}
             onLoadOlder={() => setGridVisible((v) => v + 5)}
             canLoadOlder={gridVisible < gridHistory.length}
@@ -3803,27 +3823,28 @@ export function WorkoutTrackerView({
             }}
             onMachineNote={(id) => setNotesDialogMachineId(id)}
             layout="fill"
-            title="Routine"
+            title="Machine"
           />
         )}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-1 pb-14 flex-none">
-          <QualityLegend />
-          <div className="jg-seg" role="radiogroup" aria-label="Density">
-            {(["compact", "comfortable", "full"] as GridDensity[]).map((d) => (
-              <button
-                key={d}
-                type="button"
-                role="radio"
-                aria-checked={gridDensity === d}
-                className={`jg-seg__btn ${gridDensity === d ? "is-on" : ""}`}
-                onClick={() => setGridDensity(d)}
-              >
-                {d}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
+
+      {/* Zone 4 — "The Now". Everything between walking up to a machine and
+          logging the set, in one place that never moves. */}
+      {gridLive && (
+        <SessionNowBar
+          row={gridFocusRow}
+          orderNumber={gridFocusOrder}
+          value={gridFocusMachineId ? gridLiveValues[gridFocusMachineId] : undefined}
+          history={gridHistory}
+          onChange={handleGridLiveChange}
+          step={2}
+          nextName={gridNextRow?.machine.name}
+          onNext={() => gridNextRow && setFocusMachineOverride(gridNextRow.machine.id)}
+          onLogTSC={handleLogTSC}
+          doneCount={gridDoneCount}
+          totalCount={activeMachineIds.length}
+        />
+      )}
 
       <AnimatePresence>
         {isShowingSessionNotes && currentSession && clientId && (
@@ -3853,16 +3874,6 @@ export function WorkoutTrackerView({
           onSave={handleSaveSessionMachineIds}
         />
       )}
-
-      {currentSession &&
-        !isSessionRoutineManagerOpen &&
-        !editingWeightMachineId &&
-        !editingSettingsMachineId &&
-        !isShowingSessionNotes && (
-          <div className="fixed bottom-16 sm:bottom-20 left-0 right-0 z-110">
-            <Stopwatch onLogTSC={handleLogTSC} />
-          </div>
-        )}
 
       {currentSession && activeMachineIds.length > 0 && (
         <div className="fixed bottom-0 left-2 p-1 pointer-events-none opacity-20 z-110">

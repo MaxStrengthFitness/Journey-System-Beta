@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { AlertCircle, ChevronLeft, ChevronsRight, NotebookPen, Star, Plus } from "lucide-react";
-import type { Density, JourneyRow, JourneySession, JourneySet, LiveColumn, LiveSet, StatMetric } from "./types";
+import { AlertCircle, ChevronsRight, NotebookPen, Star, Plus } from "lucide-react";
+import type { JourneyRow, JourneySession, JourneySet, LiveColumn, LiveSet, StatMetric } from "./types";
 import {
   computeRowStats,
   formatLongDate,
@@ -13,7 +13,7 @@ import {
 } from "./stats";
 import { JourneyCell } from "./JourneyCell";
 import { StatCell } from "./StatCell";
-import { LiveInputCell } from "./LiveInputCell";
+import { TodayCell } from "./TodayCell";
 
 /* ------------------------------------------------------------------ *
  * Public props
@@ -43,7 +43,6 @@ export interface JourneyGridProps {
    */
   historySessions?: JourneySession[];
   sections: GridSection[];
-  density?: Density;
   /** Show the sticky Analytics column (default true). */
   showStats?: boolean;
   /** Controlled metric for the Analytics column. Uncontrolled if omitted. */
@@ -110,8 +109,6 @@ interface RowProps {
   liveInactive: boolean;
 }
 
-const EMPTY_LIVE: LiveSet = { weight: null, reps: null, seconds: null, isTSC: false, quality: null };
-
 function RowImpl({
   row,
   sessions,
@@ -132,7 +129,6 @@ function RowImpl({
   liveInactive,
 }: RowProps) {
   const { machine } = row;
-  const readout = journeySummary(row, history);
   const hasLive = !!live && !liveInactive;
   const isFocus = hasLive && live?.focusMachineId === machine.id;
   const hit = stats ? stats[metric] : null;
@@ -181,7 +177,7 @@ function RowImpl({
           type="button"
           className="jg-machine__btn"
           aria-pressed={isSelected}
-          aria-label={`${machine.name}.${spokenSettings} ${readout}. Tap to trace this row.`}
+          aria-label={`${machine.name}.${spokenSettings} ${journeySummary(row, history)}. Tap to trace this row.`}
           onClick={() => onSelect(machine.id)}
         >
           <span className="jg-machine__name">
@@ -207,7 +203,6 @@ function RowImpl({
               )}
             </span>
           )}
-          <span className="jg-machine__readout">{readout}</span>
         </button>
         {onNote && (
           <button
@@ -216,7 +211,7 @@ function RowImpl({
             aria-label={`${machine.name} notes${machine.noteCount ? ` (${machine.noteCount})` : ""}`}
             onClick={() => onNote(machine.id)}
           >
-            <NotebookPen size={15} strokeWidth={2.25} />
+            <NotebookPen size={13} strokeWidth={2.25} />
           </button>
         )}
       </div>
@@ -231,28 +226,35 @@ function RowImpl({
         />
       )}
 
-      {hasOlderColumn && <div className="jg-cell jg-cell--older" role="gridcell" aria-hidden="true" />}
+      {hasOlderColumn && (
+        <div className="jg-cell jg-cell--older" role="gridcell" aria-hidden="true">
+          <span className="jg-cell--older__mark">‹</span>
+        </div>
+      )}
 
       {cells}
 
       {live &&
         (hasLive ? (
-          <LiveInputCell
+          <TodayCell
             machineId={machine.id}
             machineName={machine.name}
             sides={!!machine.sides}
-            value={liveValue ?? EMPTY_LIVE}
+            value={liveValue}
             prescribedWeight={row.prescribedWeight}
-            step={live.weightStep ?? 2}
             isFocus={isFocus}
-            onChange={live.onChange}
             onFocus={live.onFocusMachine}
           />
         ) : (
-          <div className="jg-live jg-live--idle" role="gridcell" aria-label={`${machine.name}: not in today's routine`}>
+          <div className="jg-today jg-today--idle" role="gridcell" aria-label={`${machine.name}: not in today's routine`}>
             {live.onAddMachine ? (
-              <button type="button" className="jg-live__add" onClick={() => live.onAddMachine?.(machine.id)}>
-                <Plus size={13} strokeWidth={2.5} style={{ verticalAlign: "-2px" }} /> Add to session
+              <button
+                type="button"
+                className="jg-today__add"
+                aria-label={`Add ${machine.name} to today's session`}
+                onClick={() => live.onAddMachine?.(machine.id)}
+              >
+                <Plus size={14} strokeWidth={2.5} />
               </button>
             ) : (
               <span aria-hidden="true">—</span>
@@ -273,7 +275,6 @@ export function JourneyGrid({
   sessions,
   historySessions,
   sections,
-  density = "full",
   showStats = true,
   metric: metricProp,
   onMetricChange,
@@ -427,7 +428,9 @@ export function JourneyGrid({
   }, [layout, viewportReserve]);
 
   const hasOlderColumn = !!onLoadOlder;
-  const cols = sessions.length + (hasOlderColumn ? 1 : 0);
+  // The Older rail is its own fixed 26px track (see --jg-track-older), so it
+  // is no longer counted among the session columns.
+  const cols = sessions.length;
 
   const effectiveMaxH = layout === "viewport" ? viewportMaxH : maxHeight;
   const style = {
@@ -441,9 +444,9 @@ export function JourneyGrid({
   return (
     <div
       className={`jg ${layout === "fill" ? "jg--fill" : ""}`}
-      data-density={density}
       data-live={live ? "true" : "false"}
       data-stats={showStats ? "true" : "false"}
+      data-older={hasOlderColumn ? "true" : "false"}
       style={style}
     >
       <div
@@ -452,7 +455,7 @@ export function JourneyGrid({
         role="grid"
         aria-label="Client journey"
         aria-rowcount={sections.reduce((n, s) => n + 1 + (s.collapsed ? 0 : s.rows.length), 1)}
-        aria-colcount={cols + 1 + (showStats ? 1 : 0) + (live ? 1 : 0)}
+        aria-colcount={cols + 1 + (showStats ? 1 : 0) + (hasOlderColumn ? 1 : 0) + (live ? 1 : 0)}
       >
         <div className="jg-grid">
           {/* ---------- header row ---------- */}
@@ -494,8 +497,7 @@ export function JourneyGrid({
                   aria-label="Load older sessions"
                   style={{ opacity: canLoadOlder ? 1 : 0.4 }}
                 >
-                  <ChevronLeft size={16} strokeWidth={2.5} />
-                  <span>{loadingOlder ? "…" : canLoadOlder ? "Older" : "Start"}</span>
+                  <span>{loadingOlder ? "…" : canLoadOlder ? "‹ Older" : "Start"}</span>
                 </button>
               </div>
             )}

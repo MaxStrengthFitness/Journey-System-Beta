@@ -291,6 +291,15 @@
   html {
     @apply font-sans;
     }
+  /* The app shell is a bounded 100dvh flex column, so the document itself
+     must never scroll or rubber-band. Without this, iPadOS Safari still
+     bounces the whole page and exposes background under the bottom nav. */
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    }
+  #root { height: 100%; }
 }
 
 @layer utilities {

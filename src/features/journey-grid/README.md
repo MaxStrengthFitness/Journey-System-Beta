@@ -5,6 +5,25 @@ Design spec for `src/features/journey-grid/` — the sticky client-tracking grid
 
 Files: `src/features/journey-grid/`. Live prototype: the "Journey Grid" artifact (same code, compiled with Judy Daus's data).
 
+**v4 (Sep 4) — the Now bar.** Today's column stopped being the input. It is a
+read-only 84px cell the same width and shape as a history cell; all entry
+moved to `SessionNowBar`, a fixed bar above the nav. The reason is mechanical:
+a CSS Grid row track is as tall as its tallest item, so a 252px input cell was
+also setting a 96px row height for every history cell beside it — it cost
+width and height at once. With it gone, portrait fits 8 history columns (was
+4) and 8 machines with no vertical scroll (was 6).
+
+Also in v4: the density switch is gone (one tuned density — rows 44px, columns
+84px, machine rail 184px, with `max-height` steps that protect the 8-machine
+rule on shorter screens); Focus and the legend moved from the app header and
+the page footer onto a 32px grid rail directly above the list they act on;
+Older is a sticky 26px rail rather than the first timeline column; and the
+star / half-moon quality glyphs became the **inroad mark** — one wedge, drawn
+unbroken for a full inroad and snapped for a set where tension broke, with the
+history grid carrying it as edge continuity rather than a glyph per cell. The
+app shell is a bounded `100dvh` flex column with the nav as an in-flow last
+child, so nothing renders beneath it on any view.
+
 **v2 (Sep 3):** grid lives under the static client header and scrolls in the space below it; the Recent Journey / Active Session toggle is gone (the global bottom action bar owns that transition); lens chips replaced by a sticky **Analytics** column right of the machine names; the most recent logged session is framed as the baseline.
 
 ---
