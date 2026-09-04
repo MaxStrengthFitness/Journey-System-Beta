@@ -564,6 +564,24 @@ service cloud.firestore {
         allow create, update, delete:
           if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
+
+      // STUDIO MACHINE NOTES — the floor's own notes about its equipment
+      // (round: Catalog Redesign, Sep 2026).
+      //
+      // Separate from roster/{machineId} on purpose. A roster entry carries
+      // `overrides`, which can rewrite clinicalWarnings, contraindicatedFor
+      // and settingFields — so it is deliberately manager-write only. These
+      // notes carry no safety content and no override power ("the left thigh
+      // pad sticks", "use the footstool on this one"), and the trainer on the
+      // floor is exactly who should be writing them.
+      //
+      // Tenancy is enforced by the path, same as the roster, so no get() is
+      // spent on the check. A trainer at studio A cannot write studio B.
+      match /machineNotes/{machineId} {
+        allow read: if isAuthenticated();
+        allow create, update: if isAuthenticated() && isAnyAuthenticatedTrainer();
+        allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
+      }
     }
 
     // NETWORKS: Regional Franchise Groupings

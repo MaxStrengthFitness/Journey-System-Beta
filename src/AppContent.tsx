@@ -1796,7 +1796,10 @@ export default function AppContent({
               />
             )}
             {currentView === "machine-anatomy" && (
-              <MachineAnatomyCatalogView machines={machines} />
+              <MachineAnatomyCatalogView
+                machines={machines}
+                authTrainer={authTrainer}
+              />
             )}
             {currentView === "leaderboard" && (
               <MachineLeaderboardDashboard

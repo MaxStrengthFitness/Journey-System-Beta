@@ -30,20 +30,25 @@ import { MACHINE_DATABASE } from "../data/machine-database";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { db } from "../firebase";
-import { doc, updateDoc } from "firebase/firestore";
 import { useToast } from "../contexts/ToastContext";
+import { useActiveStudio } from "../ActiveStudioContext";
+import { Trainer } from "../types";
+import { saveStudioMachineNotes } from "../features/catalog/mutations";
+import { useStudioMachineNotes } from "../features/catalog/useStudioMachineNotes";
 
 type GroupingMode = "movement" | "region";
 
 interface MachineAnatomyCatalogViewProps {
   machines: Machine[];
   onViewMachineDetails?: (machineId: string) => void;
+  /** For attributing studio notes. Optional so existing call sites compile. */
+  authTrainer?: Trainer | null;
 }
 
 export function MachineAnatomyCatalogView({
   machines,
   onViewMachineDetails,
+  authTrainer,
 }: MachineAnatomyCatalogViewProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   const [selectedMachineId, setSelectedMachineId] = useState<string | null>(
@@ -53,9 +58,20 @@ export function MachineAnatomyCatalogView({
   const [gender, setGender] = useState<"male" | "female">("male");
   const [groupingMode, setGroupingMode] = useState<GroupingMode>("movement");
 
-  // Trainer Tips State
-  const [trainerTips, setTrainerTips] = useState<string>("");
-  const [isSavingTip, setIsSavingTip] = useState(false);
+  // ── STUDIO NOTES ──────────────────────────────────────────────────────
+  // Scoped to the ACTIVE STUDIO. The previous version wrote these to
+  // machines/{id} — the global catalog document every studio reads — which
+  // both leaked one location's notes to all of them and silently failed under
+  // the isSuperAdmin() rule on that path. See features/catalog/mutations.ts.
+  const { activeStudioId, activeStudio } = useActiveStudio();
+  const { notesByMachineId } = useStudioMachineNotes(activeStudioId);
+  const [studioNotes, setStudioNotes] = useState<string>("");
+  const [notesDirty, setNotesDirty] = useState(false);
+  const [saveState, setSaveState] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
+  const seededForRef = useRef<string | null>(null);
+  const studioLabel = activeStudio?.name ? ` \u00b7 ${activeStudio.name}` : "";
 
   // Carousel Refs & Syncing
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -205,30 +221,65 @@ export function MachineAnatomyCatalogView({
     return null;
   }, [selectedMachineId, machines]);
 
+  // Seed the box when the machine changes, and again if this studio's note
+  // arrives from Firestore after the machine was already selected. Never while
+  // the trainer is mid-edit — an onSnapshot echo must not eat their typing.
   useEffect(() => {
-    if (selectedMachineId) {
-      const m = machines.find((m) => m.id === selectedMachineId);
-      setTrainerTips(m?.trainerTips || m?.settings || "");
-    }
-  }, [selectedMachineId, machines]);
+    if (!selectedMachineId) return;
+    const isNewMachine = seededForRef.current !== selectedMachineId;
+    if (!isNewMachine && notesDirty) return;
 
-  const handleSaveTip = async () => {
-    if (selectedMachineId) {
-      setIsSavingTip(true);
-      try {
-        const docRef = doc(db, "machines", selectedMachineId);
-        await updateDoc(docRef, {
-          trainerTips: trainerTips,
-        });
-        toastSuccess("Trainer notes saved to cloud database.");
-      } catch (err) {
-        console.error("Failed to save trainer tips:", err);
-        toastError("Failed to save trainer notes to the cloud.");
-      } finally {
-        setIsSavingTip(false);
-      }
+    seededForRef.current = selectedMachineId;
+    const studioNote = notesByMachineId[selectedMachineId]?.notes;
+    // Legacy fallback: machines.trainerTips is where the old global write put
+    // things. Show it until it is re-saved to the studio-scoped document.
+    const legacy = machines.find((m) => m.id === selectedMachineId)?.trainerTips;
+    setStudioNotes(studioNote ?? legacy ?? "");
+
+    if (isNewMachine) {
+      setNotesDirty(false);
+      setSaveState("idle");
+    }
+  }, [selectedMachineId, notesByMachineId, machines, notesDirty]);
+
+  const handleSaveStudioNotes = async () => {
+    if (!selectedMachineId) return;
+
+    if (!activeStudioId) {
+      setSaveState("error");
+      toastError("No active studio selected — pick a studio before saving.");
+      return;
+    }
+
+    setSaveState("saving");
+    try {
+      await saveStudioMachineNotes({
+        studioId: activeStudioId,
+        machineId: selectedMachineId,
+        notes: studioNotes,
+        author: authTrainer?.id
+          ? { id: authTrainer.id, name: authTrainer.fullName ?? "" }
+          : null,
+      });
+      setNotesDirty(false);
+      setSaveState("saved");
+      toastSuccess(`Notes saved for ${activeStudio?.name ?? "this studio"}.`);
+    } catch (err) {
+      // Never report success on a failed write. The previous version did.
+      console.error("Failed to save studio machine notes:", err);
+      setSaveState("error");
+      toastError("Could not save studio notes. Check your connection.");
     }
   };
+
+  const saveLabel =
+    saveState === "saving"
+      ? "Saving\u2026"
+      : saveState === "saved"
+        ? "Saved"
+        : saveState === "error"
+          ? "Retry Save"
+          : "Save Notes";
 
   // Legacy machineMuscleMap slugs. BodyModel translates them to the body
   // model's vocabulary; this goes away when machineMuscleMap is folded into
@@ -634,25 +685,31 @@ export function MachineAnatomyCatalogView({
                 <div className="flex items-center gap-2 mb-4">
                   <UserCog className="w-4 h-4 text-brand" />
                   <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground dark:text-white">
-                    Studio Notes
+                    Studio Notes{studioLabel}
                   </h3>
                 </div>
                 <Textarea
-                  placeholder="Record custom setup params or cues for this specific machine..."
-                  value={trainerTips}
-                  onChange={(e) => setTrainerTips(e.target.value)}
+                  placeholder={`Quirks and workarounds for this machine at ${activeStudio?.name ?? "this studio"} \u2014 visible only here.`}
+                  value={studioNotes}
+                  onChange={(e) => {
+                    setStudioNotes(e.target.value);
+                    setNotesDirty(true);
+                    if (saveState !== "idle") setSaveState("idle");
+                  }}
                   className="min-h-25 bg-slate-50 dark:bg-black/60 border border-slate-200 dark:border-white/10 focus-visible:ring-brand text-foreground dark:text-white placeholder:text-muted-foreground/50 mb-3 resize-none text-[13px] rounded-xl p-4"
                 />
                 <Button
-                  onClick={handleSaveTip}
-                  disabled={isSavingTip}
+                  onClick={handleSaveStudioNotes}
+                  disabled={saveState === "saving"}
                   className={`w-full font-black tracking-[0.2em] uppercase transition-all rounded-xl h-12 ${
-                    isSavingTip
+                    saveState === "saved"
                       ? "bg-green/20 text-green border border-green/30"
-                      : "bg-brand/20 hover:bg-brand/40 text-brand border border-brand/30 shadow-[0_0_15px_rgba(var(--color-brand),0.15)]"
+                      : saveState === "error"
+                        ? "bg-amber/20 text-amber border border-amber/40"
+                        : "bg-brand/20 hover:bg-brand/40 text-brand border border-brand/30 shadow-[0_0_15px_rgba(var(--color-brand),0.15)]"
                   }`}
                 >
-                  {isSavingTip ? "Stored Successfully" : "Save Notes"}
+                  {saveLabel}
                 </Button>
               </div>
             </div>
@@ -895,25 +952,31 @@ export function MachineAnatomyCatalogView({
                 <div className="flex items-center gap-2 mb-3">
                   <UserCog className="w-4 h-4 text-[#F06C22]" />
                   <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white">
-                    Studio Notes
+                    Studio Notes{studioLabel}
                   </h3>
                 </div>
                 <Textarea
-                  placeholder="Record custom setup params or cues for this specific machine..."
-                  value={trainerTips}
-                  onChange={(e) => setTrainerTips(e.target.value)}
+                  placeholder={`Quirks and workarounds for this machine at ${activeStudio?.name ?? "this studio"} \u2014 visible only here.`}
+                  value={studioNotes}
+                  onChange={(e) => {
+                    setStudioNotes(e.target.value);
+                    setNotesDirty(true);
+                    if (saveState !== "idle") setSaveState("idle");
+                  }}
                   className="min-h-20 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus-visible:ring-[#F06C22] text-slate-900 dark:text-white placeholder:text-slate-400 mb-3 resize-none text-[12px] rounded-xl p-3"
                 />
                 <Button
-                  onClick={handleSaveTip}
-                  disabled={isSavingTip}
+                  onClick={handleSaveStudioNotes}
+                  disabled={saveState === "saving"}
                   className={`w-full font-black tracking-[0.2em] uppercase transition-all rounded-xl h-10 text-[10px] ${
-                    isSavingTip
+                    saveState === "saved"
                       ? "bg-green/20 text-green border border-green/30"
-                      : "bg-brand/20 hover:bg-brand/40 text-brand border border-brand/30 shadow-[0_0_15px_var(--color-brand)]/15"
+                      : saveState === "error"
+                        ? "bg-amber/20 text-amber border border-amber/40"
+                        : "bg-brand/20 hover:bg-brand/40 text-brand border border-brand/30 shadow-[0_0_15px_var(--color-brand)]/15"
                   }`}
                 >
-                  {isSavingTip ? "Stored Successfully" : "Save Notes"}
+                  {saveLabel}
                 </Button>
               </div>
             </div>

@@ -431,8 +431,16 @@ interface RosterEntryBase {
   /** Falls back to the catalog's defaultOrder, then machine-display-order.ts. */
   order?: number;
 
-  /** The Catalog view's "Studio Notes" box writes HERE, not to the global
-   *  catalog doc — that write was leaking one studio's notes to all of them. */
+  /**
+   * MANAGER-authored note on this studio's copy of the machine.
+   *
+   * NOT where the Catalog's "Studio Notes" box writes. That box is used by
+   * floor trainers, and this document is manager-write only in firestore.rules
+   * (isStudioOwnerOrHeadTrainer) precisely because `overrides` below can
+   * rewrite safety content. Trainer notes live in the sibling collection
+   * studios/{studioId}/machineNotes/{machineId} — see
+   * features/catalog/mutations.ts for the full reasoning.
+   */
   studioNotes?: string;
 
   /** Optional physical unit tracking; enables maintenance reporting. */
