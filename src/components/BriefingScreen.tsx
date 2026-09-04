@@ -10,6 +10,7 @@ import {
   Info,
   Lightbulb,
   Target,
+  HeartPulse,
 } from "lucide-react";
 import { MaxStrengthLogo } from "./MaxStrengthLogo";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ import {
   BodyStateTag,
 } from "../types";
 import { BodyStateTracker } from "./BodyStateTracker";
+import { QuickCheckInDialog } from "../features/subjective-report";
 import { useClientJournal } from "../hooks/useClientJournal";
 import { JournalEntryCard } from "./journal/JournalEntryCard";
 import { FOCUS_VISUALS, relativeDay, toDate } from "../types/journal";
@@ -173,6 +175,8 @@ export function BriefingScreen({
   const [adjustmentNote, setAdjustmentNote] = useState("");
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [showAddMachine, setShowAddMachine] = useState(false);
+  /** The 90-day check-in, run here instead of inside a full progress report. */
+  const [showCheckIn, setShowCheckIn] = useState(false);
   const [sleepQuality, setSleepQuality] = useState<SleepQuality | undefined>(
     undefined,
   );
@@ -714,9 +718,21 @@ export function BriefingScreen({
 
             {/* 5. Recovery / notes check-in — last stop before START. */}
             <div className="mt-2 bg-white dark:bg-slate-800/70 rounded-2xl p-4 relative z-10 border border-slate-200 dark:border-slate-700/60 shadow-sm dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
-              <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-slate-500 dark:text-slate-400 uppercase mb-4">
-                <Activity className="w-3.5 h-3.5 text-cyan" /> DAILY RECOVERY
-                CHECK-IN (OPTIONAL)
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-slate-500 dark:text-slate-400 uppercase">
+                  <Activity className="w-3.5 h-3.5 text-cyan" /> DAILY RECOVERY
+                  CHECK-IN (OPTIONAL)
+                </div>
+                {/* The 90-day one — sleep, energy, pain, habits, food — saved
+                    to the journal as a check-in; the full report can be built
+                    from it later. */}
+                <button
+                  type="button"
+                  onClick={() => setShowCheckIn(true)}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#0A548B]/30 bg-[#0A548B]/10 px-3 text-[11px] font-black uppercase tracking-wider text-[#0A548B] hover:bg-[#0A548B]/20 dark:border-[#6fb1e6]/30 dark:bg-[#6fb1e6]/10 dark:text-[#6fb1e6]"
+                >
+                  <HeartPulse className="w-3.5 h-3.5" /> 90-day check-in
+                </button>
               </div>
 
               {/* Sleep — qualitative pill group */}
@@ -818,6 +834,15 @@ export function BriefingScreen({
           </button>
         </div>
       </div>
+
+      <QuickCheckInDialog
+        open={showCheckIn}
+        onClose={() => setShowCheckIn(false)}
+        client={client}
+        trainer={authTrainer}
+        machines={machines}
+        origin="pre_session"
+      />
     </div>
   );
 }

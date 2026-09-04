@@ -5,7 +5,7 @@
  * was previously competing for vertical space with the timeline.
  */
 import React from "react";
-import { FileText, Plus, Trash2 } from "lucide-react";
+import { FileText, HeartPulse, Plus, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { ProgressReport } from "../../types";
 
@@ -48,7 +48,19 @@ export function ProgressReportArchive({
         </p>
       ) : (
         <ul className="space-y-1.5">
-          {reports.map((r) => (
+          {reports.map((r) => {
+            const summary = r.subjective?.summary;
+            const overall = summary?.overall.status ?? null;
+            const redFlags = summary?.flags.filter((f) => f.severity === "red").length ?? 0;
+            const dot =
+              overall === "green"
+                ? "bg-emerald-500"
+                : overall === "yellow"
+                  ? "bg-amber-500"
+                  : overall === "red"
+                    ? "bg-rose-500"
+                    : null;
+            return (
             <li
               key={r.id}
               className="group flex items-center gap-2.5 rounded-xl border border-slate-200 p-2.5 transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/50"
@@ -63,7 +75,9 @@ export function ProgressReportArchive({
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-xs font-bold text-slate-700 dark:text-slate-200">
-                    Session #{r.sessionNumber || "—"}
+                    {r.isCheckInOnly
+                      ? `Check-in${r.checkInOrigin === "pre_session" ? " · pre-session" : r.checkInOrigin === "post_session" ? " · post-session" : ""}`
+                      : `Session #${r.sessionNumber || "—"}`}
                     <span
                       className={cn(
                         "ml-1.5 rounded px-1 py-0.5 text-[9px] font-black uppercase tracking-wider",
@@ -75,8 +89,20 @@ export function ProgressReportArchive({
                       {r.status || "Finalized"}
                     </span>
                   </span>
-                  <span className="block font-mono text-[10px] uppercase tracking-wider text-slate-400">
+                  <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-slate-400">
                     {r.date} · {r.trainerInitials || r.trainerName || "Team"}
+                    {/* 90-day check-in: overall colour + red-flag count, from the cached summary. */}
+                    {summary && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded px-1 py-0.5 bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                        title={`Check-in ${summary.overall.legacyScore ?? "—"} / 96${redFlags ? ` · ${redFlags} red flag${redFlags > 1 ? "s" : ""}` : ""}`}
+                      >
+                        <HeartPulse className="h-2.5 w-2.5" />
+                        {dot && <span className={cn("h-1.5 w-1.5 rounded-full", dot)} />}
+                        {summary.overall.legacyScore ?? "—"}
+                        {redFlags > 0 && <span className="font-black text-rose-500">!{redFlags}</span>}
+                      </span>
+                    )}
                   </span>
                 </span>
               </button>
@@ -89,7 +115,8 @@ export function ProgressReportArchive({
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </section>

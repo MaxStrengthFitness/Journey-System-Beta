@@ -1,6 +1,11 @@
 /**
  * Roles defining system access levels across the organization.
  */
+import type {
+  ClientSubjectiveSnapshot,
+  SubjectiveAssessment,
+} from "./features/subjective-report/types";
+
 export type UserRole =
   | "Admin"
   | "Founder"
@@ -388,6 +393,12 @@ export interface Client {
   priorityNote?: string;
   /** Denormalized: true while the client has an outstanding High-priority session note. */
   hasPriorityNote?: boolean;
+  /**
+   * Written when a progress report with a 90-day check-in is finalized, so the
+   * hub and client list can show a Red flag without opening the report.
+   * See src/features/subjective-report/README.md.
+   */
+  subjectiveSnapshot?: ClientSubjectiveSnapshot | null;
   events?: ClientEvent[];
   isRoutineBActive?: boolean;
   preferredTodayRoutineId?: string;
@@ -987,9 +998,82 @@ export interface ProgressReport {
     };
   };
 
+  /* ------------------------------------------------------------------ *
+   * Sep 2026 additions. All optional so every report already on file still
+   * type-checks and renders.
+   * ------------------------------------------------------------------ */
+
+  /** The finalized report this one is compared against (deltas, goal carry-over). */
+  previousReportId?: string | null;
+
+  /**
+   * True when the report holds ONLY a 90-day check-in, run from the
+   * pre-session briefing or the post-session screen. Opened later, the view
+   * offers "Build the full report", which clears this flag and continues in
+   * the six-step editor with the check-in already done.
+   */
+  isCheckInOnly?: boolean;
+  checkInOrigin?: "pre_session" | "post_session" | "report";
+  /** The session the quick check-in was run around, when there was one. */
+  checkInSessionId?: string | null;
+
+  /** Step 3 — machine progression: start → current per machine over the report window. */
+  machineProgression?: MachineProgression;
+
+  /** Step 5 — the 90-day check-in. Spec: src/features/subjective-report/README.md */
+  subjective?: SubjectiveAssessment;
+
+  /** Step 6 — goal continuity: how the last goal went, and the next 90 days. */
+  goals?: ReportGoals;
+
   trainerNotes?: string;
 
   createdAt: any;
+}
+
+export interface MachineProgressionRow {
+  machineId: string;
+  label: string;
+  startWeight: number;
+  currentWeight: number;
+  percentageIncrease: number;
+  totalVolume?: number;
+  perfectSets?: number;
+  timeUnderTension?: number;
+}
+
+export interface MachineProgression {
+  /** Machines the trainer chose to show the client. Order = display order. */
+  includedMachineIds: string[];
+  /** Every machine with history in the window, captured at save so the printed copy is stable. */
+  rows: MachineProgressionRow[];
+  narrative?: string;
+}
+
+export type GoalOutcome = "achieved" | "on_track" | "stalled" | "revised";
+
+export interface GoalCheckpoint {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+export interface ReportGoals {
+  /** The emotional anchor — why they started. Carried forward report to report. */
+  originalWhy: string;
+  /** The goal set at the previous report (or the client's SMART goal on file). */
+  previousGoal: string;
+  previousGoalOutcome: GoalOutcome | null;
+  /** How it went, in plain words for the client. */
+  previousGoalNote: string;
+  /** The goal for the next 90 days. */
+  nextGoal: string;
+  /** ISO date. Defaults to report date + 90 days. */
+  nextGoalTargetDate: string;
+  /** ISO date the next report is due — what the trainer follows up on. */
+  followUpDate: string;
+  /** Two or three concrete steps toward the next goal. */
+  checkpoints: GoalCheckpoint[];
 }
 
 export type FocusCategory = "Posture" | "Pace" | "Path" | "Purpose";

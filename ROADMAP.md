@@ -2,9 +2,24 @@
 
 A living document. We update it every working session — newest decisions at the top of each list. (Contractor-scope backend items live in PROJECT_TRACKER.md.)
 
-_Last updated: Sep 3, 2026_
+_Last updated: Sep 4, 2026_
 
 ---
+
+## 📝 Now — Progress report + 90-day Subjective check-in (Sep 4) — branch `subjective-report`, one commit per phase
+
+The reference "Subjective Reports" document folded INTO the progress report as step 5, plus the three additions (hydration, pain map, stress anchors), a coach dashboard, and the report editor re-sequenced into the six-beat conversation. Specs: `src/features/subjective-report/README.md` (carries the original document verbatim) and `src/features/progress-report/README.md`. `npx tsc --noEmit` clean, `npx vite build` green, 21 scoring tests green (`npx vitest run src/features/subjective-report`). Rendered at iPad sizes in both themes plus a print-to-PDF pass via a throwaway harness. **Not yet looked at on a real iPad.**
+
+- [x] ~~Phase 1 — schema + scoring~~ — eight categories × three statements verbatim; the 0–4 scale replaced by 0–10 with statement-specific anchors. The document's Green/Yellow/Red cut-offs are exactly 75 % and 50 % of the maximum on both the 0–12 and 0–96 scales, so they apply as fractions and survive the scale change untouched (the tests walk every 0–4 combination to prove it). Protein keeps the days/week rule and adds real intake vs the 0.75–1.0 g/lb target — worse wins.
+- [x] ~~Phase 2 — wiring~~ — `ProgressReport.subjective / machineProgression / goals / previousReportId`, `Client.subjectiveSnapshot`. Previous check-in found with the archive's existing query (no new index). Finalize writes the Red flags onto the client doc; the hub schedule block shows a pulse glyph (coaching signal, not the warning triangle).
+- [x] ~~Phase 3 — the form~~ — coach-entered, 44 px targets. Pain map links points to open `incident` / `life/Injury` journal entries and carries last time's points forward for re-rating. Stress anchor categories chosen for a 40–95 client base; "could stop training" raises a flag. Stress anchors are OFF the client copy by default.
+- [x] ~~Phase 4 — dashboard~~ — everything the document's "Coach Dashboard Recommendations" lists, plus hydration, pain trend (matched by region + side), stress, and an overall-score trend across every finalized check-in.
+- [x] ~~Phase 5 — the six steps~~ — Celebrate → Highlights → Machine progression (new; the table the page already computed but never showed) → 4 P's → 90-day check-in → Goals (new continuity block: why → how last time's goal went → next goal + date + checkpoints + follow-up date; previous goal auto-pulled from the last report). Guide text above every step. Fixed the hardcoded "Joined: Jan 15, 2026 / Prev Report: Mar 01, 2026" header.
+- [x] ~~Phase 5 — printing~~ — two real bugs: the 100dvh shell printed exactly ONE page (every report was cut off), and the print stylesheet forced a navy page under navy headings. Now white paper / navy ink across as many pages as needed. Email button opens the trainer's mail app pre-filled; the app still never contacts clients.
+- [x] ~~Phase 6 — wire-in~~ — Journal archive rows show the check-in score, colour and red-flag count; READMEs; this entry.
+- [x] ~~Phase 7 — quick check-in~~ — the 90-day check-in can be run on its own from the pre-session briefing (button in the Daily Recovery card) or the post-session screen (under the notes). Saves as a `progressReports` doc with `isCheckInOnly: true` — one collection, one archive, one "previous" query — and stamps the client snapshot so the hub flag updates. Opening it later shows a check-in-only view with **Build the full report**, which drops into the six-step editor with step 5 already done and auto-populates the rest.
+- [ ] **Verify on the iPad** — the quick check-in from the briefing and from the post-session screen (save → archive row says "Check-in · pre-session" → open → Build the full report); both themes; the step rail in portrait (3×2) and landscape (6×1); tapping the 0–10 scale one-handed; the pain map body picker; Finalize → the client copy; Print → PDF from Safari (page count, nothing clipped, white paper); the hub pulse glyph after finalizing a report with a Red in Sleep, Consistency or Protein; the archive badge.
+- [ ] Follow-ups: client self-serve mode for the check-in (`enteredBy: "client"` is already in the schema); a studio-level setting for the protein g/lb default and the hydration oz/lb default; a real email provider when client-contact features are switched on; consider a 90-day "check-in due" reminder from `goals.followUpDate` once the reminder cron is enabled; the roadmap "track" UI under Goals is unchanged and could shrink now that the goal block carries most of it.
 
 ## 📅 Now — Calendar redesign (Sep 3) — branch `calendar-redesign`, one commit per phase
 

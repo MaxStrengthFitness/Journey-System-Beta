@@ -1,5 +1,5 @@
 import React from "react";
-import { AlertTriangle, CloudOff } from "lucide-react";
+import { AlertTriangle, CloudOff, HeartPulse } from "lucide-react";
 import { Client, WorkoutSession } from "../../types";
 import { getClientAlertState } from "../../lib/client-alerts";
 import { safeToDate, getMillis } from "../../lib/utils";
@@ -69,11 +69,17 @@ export function ScheduleBlock({
   const isMilestone =
     sessionNumber !== null && (sessionNumber === 1 || sessionNumber % 25 === 0);
 
-  const { hasPriorityNote, priorityLabel, hasClinicalHistory } =
-    getClientAlertState(client);
+  const {
+    hasPriorityNote,
+    priorityLabel,
+    hasClinicalHistory,
+    hasCheckInRedFlag,
+    checkInFlagLabel,
+  } = getClientAlertState(client);
   const showFlags = !isCompleted && !isUnavailable;
   const flagPriority = hasPriorityNote && showFlags;
   const flagClinical = hasClinicalHistory && showFlags;
+  const flagCheckIn = hasCheckInRedFlag && showFlags;
 
   const startDate = safeToDate(
     session.startTime || session.StartDateTime || session.date,
@@ -179,6 +185,18 @@ export function ScheduleBlock({
               className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-[4px] bg-red-500 text-white"
             >
               <AlertTriangle className="w-2.5 h-2.5" strokeWidth={3} />
+            </span>
+          )}
+          {/* COACHING: the last 90-day check-in scored Red somewhere the
+              reference document says to auto-flag. A conversation, not an
+              emergency — so a pulse glyph, not the warning triangle. */}
+          {flagCheckIn && (
+            <span
+              aria-label={checkInFlagLabel || "90-day check-in flag"}
+              title={checkInFlagLabel || undefined}
+              className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-[4px] bg-rose-500/15 text-rose-600 ring-1 ring-rose-500/40 dark:text-rose-300"
+            >
+              <HeartPulse className="w-2.5 h-2.5" strokeWidth={3} />
             </span>
           )}
           {/* SUBTLE: standing clinical history, background awareness only. */}
