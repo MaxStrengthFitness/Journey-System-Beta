@@ -6,6 +6,9 @@ import { Client, ClientEvent } from "../types";
  *
  *  - PRIORITY NOTE  -> loud. Something a trainer must read before this session.
  *  - CLINICAL       -> subtle. Standing medical/clinical history worth knowing.
+ *  - CHECK-IN FLAG  -> coaching. The last 90-day check-in scored Red in
+ *                      Protein, Sleep & Recovery or Consistency & Habits
+ *                      (the three the reference document says to auto-flag).
  */
 export interface ClientAlertState {
   /** Loud signal: an explicit high-priority note is outstanding. */
@@ -14,12 +17,21 @@ export interface ClientAlertState {
   priorityLabel: string | null;
   /** Subtle signal: the client has clinical history on file. */
   hasClinicalHistory: boolean;
+  /** Coaching signal: the latest 90-day check-in raised a Red flag. */
+  hasCheckInRedFlag: boolean;
+  /** e.g. "Sleep & Recovery is Red · Protein compliance is Red". */
+  checkInFlagLabel: string | null;
+  /** How many "watch" (softer) flags the latest check-in raised. */
+  checkInWatchCount: number;
 }
 
 const EMPTY: ClientAlertState = {
   hasPriorityNote: false,
   priorityLabel: null,
   hasClinicalHistory: false,
+  hasCheckInRedFlag: false,
+  checkInFlagLabel: null,
+  checkInWatchCount: 0,
 };
 
 /** Standing alert types never expire — they flag until a trainer clears them. */
@@ -71,5 +83,20 @@ export function getClientAlertState(client?: Client | null): ClientAlertState {
       client.medicalHistory,
   );
 
-  return { hasPriorityNote, priorityLabel, hasClinicalHistory };
+  const snapshotFlags = client.subjectiveSnapshot?.flags || [];
+  const redFlags = snapshotFlags.filter((f) => f.severity === "red");
+  const hasCheckInRedFlag = redFlags.length > 0;
+  const checkInFlagLabel = hasCheckInRedFlag
+    ? redFlags.map((f) => f.label).join(" · ")
+    : null;
+  const checkInWatchCount = snapshotFlags.filter((f) => f.severity === "watch").length;
+
+  return {
+    hasPriorityNote,
+    priorityLabel,
+    hasClinicalHistory,
+    hasCheckInRedFlag,
+    checkInFlagLabel,
+    checkInWatchCount,
+  };
 }

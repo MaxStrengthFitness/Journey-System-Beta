@@ -32,7 +32,12 @@ import {
   serverTimestamp,
   doc,
   getDoc,
+  getDocs,
   updateDoc,
+  query,
+  where,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useToast } from "../contexts/ToastContext";
@@ -72,6 +77,21 @@ import {
 import { cn, parseSessionDate } from "../lib/utils";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { MaxStrengthLogo } from "./MaxStrengthLogo";
+import {
+  emptyAssessment,
+  parseWeightLbs,
+  snapshotForClient,
+  summarize,
+  type PreviousAssessmentRef,
+} from "../features/subjective-report";
+
+/** ISO date `days` after `iso` (YYYY-MM-DD in, YYYY-MM-DD out). */
+const addDays = (iso: string, days: number): string => {
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split("T")[0];
+};
 
 interface ClientProgressReportViewProps {
   client: Client;
@@ -251,9 +271,32 @@ export function ClientProgressReportView({
         timeframe: "Next 12 Weeks",
       },
     },
+    machineProgression: { includedMachineIds: [], rows: [] },
+    subjective: emptyAssessment({ bodyWeightLbs: parseWeightLbs(client.weight) }),
+    goals: {
+      originalWhy: client.globalNotes || "",
+      previousGoal: client.smartGoal || "",
+      previousGoalOutcome: null,
+      previousGoalNote: "",
+      nextGoal: "",
+      nextGoalTargetDate: addDays(new Date().toISOString().split("T")[0], 90),
+      followUpDate: addDays(new Date().toISOString().split("T")[0], 90),
+      checkpoints: [],
+    },
     trainerNotes: "",
     createdAt: null,
   });
+
+  /**
+   * The most recent FINALIZED report for this client that carries a 90-day
+   * check-in. Everything "since last time" (category deltas, pain trends,
+   * goal carry-over) is measured against it. Found with the same
+   * clientId + createdAt query the archive uses, filtered in memory, so no
+   * new composite index is needed.
+   */
+  const [previousReport, setPreviousReport] = useState<
+    (PreviousAssessmentRef & { goals?: ProgressReport["goals"] }) | null
+  >(null);
 
   const [selectingHighlightIdx, setSelectingHighlightIdx] = useState<
     number | null
@@ -284,6 +327,65 @@ export function ClientProgressReportView({
     }
     fetchExisting();
   }, [existingReportId]);
+
+  // Load the previous finalized check-in for deltas + goal carry-over
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchPrevious() {
+      if (!client.id) return;
+      try {
+        const snap = await getDocs(
+          query(
+            collection(db, "progressReports"),
+            where("clientId", "==", client.id),
+            orderBy("createdAt", "desc"),
+            limit(10),
+          ),
+        );
+        const prev = snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as ProgressReport) }))
+          .find(
+            (r) =>
+              r.id !== existingReportId &&
+              r.status === "Finalized" &&
+              !!r.subjective,
+          );
+        if (cancelled) return;
+        if (prev && prev.subjective) {
+          setPreviousReport({
+            reportId: prev.id!,
+            date: prev.date,
+            assessment: prev.subjective,
+            goals: prev.goals,
+          });
+          // A brand-new report inherits the goal set last time as the goal
+          // to review now. An existing report keeps whatever it saved.
+          if (!existingReportId) {
+            setReport((r) => ({
+              ...r,
+              previousReportId: prev.id ?? null,
+              goals: r.goals
+                ? {
+                    ...r.goals,
+                    originalWhy: r.goals.originalWhy || prev.goals?.originalWhy || "",
+                    previousGoal:
+                      r.goals.previousGoal || prev.goals?.nextGoal || "",
+                  }
+                : r.goals,
+            }));
+          }
+        } else {
+          setPreviousReport(null);
+        }
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, "progressReports");
+      }
+    }
+    fetchPrevious();
+    return () => {
+      cancelled = true;
+    };
+  }, [client.id, existingReportId]);
 
   // Load auto data
   useEffect(() => {
@@ -472,8 +574,22 @@ export function ClientProgressReportView({
         return res;
       };
 
+      // Score the check-in against the previous one and cache the result on
+      // the report. The UI recomputes from the answers when it renders; the
+      // cached copy is for lists, the hub and anything that never mounts the
+      // scoring code.
+      const subjective = report.subjective
+        ? {
+            ...report.subjective,
+            completedAt: report.subjective.completedAt || report.date,
+            summary: summarize(report.subjective, previousReport),
+          }
+        : undefined;
+
       const sanitizedReport = removeUndefined({
         ...report,
+        subjective,
+        previousReportId: previousReport?.reportId ?? report.previousReportId ?? null,
         sessionNumber: report.sessionNumber || client.sessionCount || 0,
         trainerInitials: trainer.initials,
         trainerName: trainer.fullName,
@@ -500,6 +616,23 @@ export function ClientProgressReportView({
       }
 
       if (status === "Finalized") {
+        // Denormalise the Red flags onto the client so the hub schedule can
+        // show them without reading the report. Best-effort: a failure here
+        // must not un-finalize a report that already saved.
+        if (subjective?.summary && client.id && reportId) {
+          try {
+            await updateDoc(doc(db, "clients", client.id), {
+              subjectiveSnapshot: snapshotForClient(
+                reportId,
+                report.date,
+                subjective.summary,
+              ),
+            });
+          } catch (err) {
+            handleFirestoreError(err, OperationType.UPDATE, "clients");
+          }
+        }
+        setReport((prev) => (subjective ? { ...prev, subjective } : prev));
         setShowExportOptions(true);
         setMode("view");
       } else {
