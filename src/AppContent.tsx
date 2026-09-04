@@ -1682,7 +1682,7 @@ export default function AppContent({
 
   return (
     <ErrorBoundary>
-      <div className="flex flex-col min-h-screen bg-background text-foreground font-sans overflow-x-hidden w-full max-w-full">
+      <div className="flex flex-col h-[100dvh] overflow-hidden bg-background text-foreground font-sans overflow-x-hidden w-full max-w-full">
         {/* Header */}
         {currentView !== "workouts" && (
           <AppHeader
@@ -1697,13 +1697,13 @@ export default function AppContent({
 
         {/* Main Content */}
         <main
-          className={`w-full max-w-full mx-auto relative ${currentView === "workouts" ? "flex-1 p-2 pb-24 overflow-y-auto bg-slate-50 dark:bg-slate-950" : currentView === "clients" || currentView === "client-directory" || currentView === "dashboard" || currentView === "machine-anatomy" ? "flex-none overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col" : "flex-1 p-6 pb-24 overflow-y-auto bg-slate-50 dark:bg-slate-950"}`}
+          className={`w-full max-w-full mx-auto relative ${currentView === "workouts" ? "flex-1 min-h-0 p-2 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950 flex flex-col" : currentView === "clients" || currentView === "client-directory" || currentView === "dashboard" || currentView === "machine-anatomy" ? "flex-1 min-h-0 overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col" : "flex-1 min-h-0 p-6 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950"}`}
           style={
             currentView === "clients" ||
             currentView === "client-directory" ||
             currentView === "dashboard" ||
             currentView === "machine-anatomy"
-              ? { height: "calc(100dvh - 136px)" }
+              ? undefined
               : undefined
           }
         >
@@ -2054,7 +2054,7 @@ export default function AppContent({
 
         {/* Navigation Bar */}
         {appMode === "trainer" ? (
-          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 h-14 sm:h-20 flex items-center justify-around z-30">
+          <nav className="flex-none bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around z-30">
             <NavButton
               active={currentView === "clients"}
               onClick={() => setCurrentView("clients")}
@@ -2113,7 +2113,7 @@ export default function AppContent({
             />
           </nav>
         ) : (
-          <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-bg-dark border-t border-orange-500/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 h-14 sm:h-20 flex items-center justify-around z-30">
+          <nav className="flex-none bg-white dark:bg-bg-dark border-t border-orange-500/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around z-30">
             <NavButton
               active={currentView === "admin-dashboard"}
               onClick={() => setCurrentView("admin-dashboard" as any)}
