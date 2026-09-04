@@ -129,7 +129,6 @@ function RowImpl({
   liveInactive,
 }: RowProps) {
   const { machine } = row;
-  const readout = journeySummary(row, history);
   const hasLive = !!live && !liveInactive;
   const isFocus = hasLive && live?.focusMachineId === machine.id;
   const hit = stats ? stats[metric] : null;
@@ -178,7 +177,7 @@ function RowImpl({
           type="button"
           className="jg-machine__btn"
           aria-pressed={isSelected}
-          aria-label={`${machine.name}.${spokenSettings} ${readout}. Tap to trace this row.`}
+          aria-label={`${machine.name}.${spokenSettings} ${journeySummary(row, history)}. Tap to trace this row.`}
           onClick={() => onSelect(machine.id)}
         >
           <span className="jg-machine__name">
@@ -204,7 +203,6 @@ function RowImpl({
               )}
             </span>
           )}
-          <span className="jg-machine__readout">{readout}</span>
         </button>
         {onNote && (
           <button
@@ -213,7 +211,7 @@ function RowImpl({
             aria-label={`${machine.name} notes${machine.noteCount ? ` (${machine.noteCount})` : ""}`}
             onClick={() => onNote(machine.id)}
           >
-            <NotebookPen size={15} strokeWidth={2.25} />
+            <NotebookPen size={13} strokeWidth={2.25} />
           </button>
         )}
       </div>

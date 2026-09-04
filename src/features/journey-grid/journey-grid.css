@@ -457,10 +457,14 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-machine__note {
   appearance: none;
   border: 0;
-  border-left: 1px solid var(--jg-border);
   margin: 0;
   flex: none;
-  width: 36px;
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
   background: transparent;
   color: var(--jg-ink-muted);
   display: grid;
@@ -483,8 +487,8 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 3px;
-  padding: 6px 10px 6px 12px;
+  gap: 2px;
+  padding: 4px 8px 4px 10px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   border-left: 3px solid transparent;
@@ -494,9 +498,9 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-machine__name {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   font-weight: 650;
-  font-size: 13.5px;
+  font-size: 12.5px;
   line-height: 1.15;
   color: var(--jg-ink);
   letter-spacing: -0.005em;
@@ -504,23 +508,26 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-machine__label {
   min-width: 0;
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;         /* long names wrap once instead of eliding */
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .jg-machine__star { color: var(--jg-hero); flex: none; }
+/* The note glyph is absolutely positioned in the cell's top-right corner,
+   so the name reserves room for it rather than running underneath. */
+.jg-row .jg-machine__btn { padding-right: 22px; }
 .jg-machine__alert { color: var(--jg-q-poor); flex: none; }
 .jg-machine__order {
   flex: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
+  width: 17px;
+  height: 17px;
+  border-radius: 4px;
   background: var(--jg-live);
   color: var(--jg-live-on);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   display: grid;
   place-items: center;
+  font-variant-numeric: tabular-nums;
 }
 /* ---- machine settings rail ------------------------------------------ *
    Trainers read this to preset a machine as they walk up to it, so nothing
@@ -544,36 +551,27 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-setting {
   display: inline-flex;
   align-items: baseline;
-  gap: 2px;
+  gap: 1.5px;
   flex: none;
-  padding-right: 6px;
-  margin-right: 6px;
+  padding-right: 4px;
+  margin-right: 4px;
   border-right: 1px solid var(--jg-border);
 }
 .jg-setting:last-child { padding-right: 0; margin-right: 0; border-right: 0; }
 .jg-setting__k {
-  font-size: 9.5px;
+  font-size: 8.5px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--jg-ink-faint);
 }
-.jg-setting__v { font-size: 12px; font-weight: 750; color: var(--jg-ink); }
+.jg-setting__v { font-size: 11px; font-weight: 750; color: var(--jg-ink); }
 .jg-setting--more { font-size: 10px; font-weight: 700; color: var(--jg-ink-faint); }
 
 /* The machine being walked up to gets the loud version — same rail, one
    size up, so the setup read works from further away. */
-.jg-row.is-focus .jg-setting__v { font-size: 14px; }
+.jg-row.is-focus .jg-setting__v { font-size: 12.5px; }
 .jg-row.is-focus .jg-setting__k { color: var(--jg-hero-text); }
-.jg-machine__readout {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--jg-ink-muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .jg-row.is-selected .jg-machine__btn { border-left-color: var(--jg-live); background: var(--jg-live-fill); }
 .jg-row.is-focus .jg-machine__btn { border-left-color: var(--jg-hero); }
 
