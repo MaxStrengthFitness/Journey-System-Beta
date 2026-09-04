@@ -20,7 +20,9 @@
 @import "./journey-grid.tokens.css";
 
 .jg {
-  /* ---- density knobs (overridden per data-density below) ------------- */
+  /* ---- one tuned density. There is no switch any more: three row
+     heights was a choice the trainer had to make about a screen they are
+     using one-handed mid-set, and the answer was always "fit more". ---- */
   --jg-col-machine: 216px;
   --jg-col-stat:    108px;     /* Analytics column                          */
   --jg-col-session: 92px;
@@ -42,30 +44,6 @@
   -webkit-font-smoothing: antialiased;
 }
 
-.jg[data-density="comfortable"] {
-  --jg-col-machine: 208px;
-  --jg-col-stat:    100px;
-  --jg-col-session: 84px;
-  --jg-col-live:    344px;
-  --jg-row-h:       56px;
-  --jg-row-h-live:  56px;
-  --jg-head-h:      50px;
-  --jg-w-size:      16px;
-  --jg-r-size:      11px;
-}
-
-.jg[data-density="compact"] {
-  --jg-col-machine: 184px;
-  --jg-col-stat:    84px;
-  --jg-col-session: 70px;
-  --jg-col-live:    304px;
-  --jg-row-h:       44px;
-  --jg-row-h-live:  52px;
-  --jg-head-h:      44px;
-  --jg-w-size:      15px;
-  --jg-r-size:      10px;
-  --jg-show-reps:   none;       /* compact = weight only                  */
-}
 
 /* "fill" layout: the grid is a flex child that takes whatever height is left
    under a static page header, and only the scroller scrolls. */
@@ -251,8 +229,6 @@
 .jg-stat-head__dots { display: inline-flex; align-items: center; gap: 3px; margin-top: 3px; color: var(--jg-ink-faint); }
 .jg-stat-head__dots i { width: 5px; height: 5px; border-radius: 999px; background: var(--jg-border-strong); }
 .jg-stat-head__dots i.is-on { background: var(--jg-live); width: 12px; }
-.jg[data-density="compact"] .jg-stat-head__title { font-size: 13px; }
-.jg[data-density="compact"] .jg-stat-head__sub { display: none; }
 
 /* ---- Analytics column cells (sticky left, after the machine col) ----- */
 .jg-stat {
@@ -299,8 +275,6 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-stat__date { font-size: 10.5px; font-weight: 700; color: var(--jg-live-text); }
 .jg-stat__ctx { font-size: 10.5px; font-weight: 600; color: var(--jg-ink-muted); white-space: nowrap; }
 .jg-stat__older { font-size: 9.5px; font-weight: 700; color: var(--jg-ink-faint); letter-spacing: 0.04em; }
-.jg[data-density="compact"] .jg-stat__ctx,
-.jg[data-density="compact"] .jg-stat__older { display: none; }
 /* when the Analytics column is on, the rail edge moves to it */
 .jg[data-stats="true"] .jg-machine,
 .jg[data-stats="true"] .jg-corner { box-shadow: none; border-right-color: var(--jg-border); }
@@ -356,7 +330,6 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   color: var(--jg-ink);
 }
 .jg-head__d { white-space: nowrap; }
-.jg[data-density="compact"] .jg-head__d { font-size: 13px; }
 .jg-head.is-spot .jg-head__btn { border-bottom-color: var(--jg-live); background: var(--jg-live-fill); }
 .jg-head.is-spot .jg-head__d,
 .jg-head.is-spot .jg-head__n { color: var(--jg-live-text); }
@@ -491,7 +464,6 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;         /* long names wrap once instead of eliding */
 }
-.jg[data-density="compact"] .jg-machine__label { display: block; text-overflow: ellipsis; white-space: nowrap; }
 .jg-machine__star { color: var(--jg-hero); flex: none; }
 .jg-machine__alert { color: var(--jg-q-poor); flex: none; }
 .jg-machine__order {
@@ -558,7 +530,6 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.jg[data-density="compact"] .jg-machine__meta { display: none; }
 .jg-row.is-selected .jg-machine__btn { border-left-color: var(--jg-live); background: var(--jg-live-fill); }
 .jg-row.is-focus .jg-machine__btn { border-left-color: var(--jg-hero); }
 
@@ -629,7 +600,6 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 /* Monochrome on purpose: colour means quality, the glyph means direction. */
 .jg-trend--up, .jg-trend--down { color: var(--jg-ink-2); }
 .jg-trend--reps-up, .jg-trend--reps-down { color: var(--jg-ink-muted); }
-.jg[data-density="compact"] .jg-trend { display: none; }
 
 /* row selection (tap a machine name to trace its row) */
 .jg-row.is-selected .jg-cell { box-shadow: inset 0 1px 0 var(--jg-live), inset 0 -1px 0 var(--jg-live); }
@@ -895,7 +865,133 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-quality__btn[data-q="2"].is-on { background: var(--jg-surface-3); border-color: var(--jg-ink-muted); color: var(--jg-ink); }
 .jg-quality__btn[data-q="3"].is-on { background: var(--jg-q-max-fill); border-color: var(--jg-hero); color: var(--jg-hero-text); }
 
-/* ---- toolbar (section caption, density, actions) --------------------- */
+/* ---- zone 2 · the grid rail ------------------------------------------ *
+   Every control here acts on the list immediately below it. Focus used to
+   live in the global app header, two zones away from the rows it filters;
+   the legend used to sit under the grid, past the fold. Both are here now,
+   in a 32px strip that costs one row of height for the whole screen. */
+.jg-rail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--jg-surface-2);
+  border: 1px solid var(--jg-border);
+  border-bottom: 0;
+  border-radius: var(--jg-radius) var(--jg-radius) 0 0;
+  font-family: var(--jg-font);
+  color: var(--jg-ink);
+  overflow: visible;
+}
+.jg-rail__title {
+  font-family: var(--jg-font-display);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--jg-ink-muted);
+  flex: none;
+}
+.jg-rail__count {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--jg-ink-faint);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.jg-rail__sp { flex: 1; min-width: 4px; }
+
+/* Focus, renamed to what it does: which machines the list shows. */
+.jg-seg2 {
+  display: inline-flex;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  overflow: hidden;
+  flex: none;
+}
+.jg-seg2__btn {
+  appearance: none;
+  border: 0;
+  border-right: 1px solid var(--jg-border);
+  background: var(--jg-surface);
+  color: var(--jg-ink-muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-seg2__btn:last-child { border-right: 0; }
+.jg-seg2__btn.is-on { background: var(--jg-live); color: var(--jg-live-on); }
+
+/* The text twin of the sticky Older rail in the grid. */
+.jg-rail__older {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+  color: var(--jg-live-text);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  cursor: pointer;
+  flex: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.jg-rail__older:disabled { opacity: 0.4; cursor: default; }
+
+/* The legend lays out inline when the viewport can carry it, and collapses
+   to a Key popover when it cannot. Either way it never owns a row of its
+   own below the fold, which is where it used to be. */
+.jg-rail__legend { display: none; flex: none; }
+.jg-keywrap { position: relative; flex: none; }
+.jg-key {
+  appearance: none;
+  border: 1px solid var(--jg-live);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+  color: var(--jg-live-text);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.jg-key.is-on { background: var(--jg-live); color: var(--jg-live-on); }
+.jg-keypop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  background: var(--jg-surface);
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius);
+  box-shadow: 0 8px 24px var(--jg-sticky-shadow);
+  padding: 12px 14px;
+  min-width: 232px;
+}
+.jg-keypop .jg-legend { flex-direction: column; align-items: flex-start; gap: 9px; }
+@media (min-width: 1180px) {
+  .jg-rail__legend { display: block; }
+  .jg-keywrap { display: none; }
+}
+
+/* ---- toolbar (section caption, actions) ------------------------------ */
 .jg-toolbar {
   display: flex;
   align-items: center;

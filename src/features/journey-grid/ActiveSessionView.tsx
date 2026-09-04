@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { ChevronRight, Flag } from "lucide-react";
-import type { Density, JourneyRow, JourneySession, LiveColumn, LiveSet } from "./types";
+import type { JourneyRow, JourneySession, LiveColumn, LiveSet } from "./types";
 import { JourneyGrid, type GridSection } from "./JourneyGrid";
 import { GridToolbar, QualityLegend } from "./GridToolbar";
 import { formatSeconds } from "./stats";
@@ -95,7 +95,6 @@ export function ActiveSessionView({
   viewportReserve,
   weightStep = 2,
 }: ActiveSessionViewProps) {
-  const [density, setDensity] = useState<Density>("comfortable");
   const [othersOpen, setOthersOpen] = useState(false);
   const [visible, setVisible] = useState(historyWindow);
 
@@ -179,13 +178,12 @@ export function ActiveSessionView({
         </div>
       </div>
 
-      <GridToolbar title="Session log" density={density} onDensity={setDensity} />
+      <GridToolbar title="Session log" />
 
       <JourneyGrid
         sessions={visibleHistory}
         historySessions={history}
         sections={sections}
-        density={density}
         live={liveColumn}
         onLoadOlder={() => setVisible((v) => v + 5)}
         canLoadOlder={visible < history.length}

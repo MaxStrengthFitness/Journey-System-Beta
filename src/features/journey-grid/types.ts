@@ -76,8 +76,6 @@ export interface JourneyRow {
  */
 export type StatMetric = "first" | "low" | "high" | "mostReps" | "fewestReps";
 
-export type Density = "compact" | "comfortable" | "full";
-
 /** Live (today) values for one machine while a session is running. */
 export interface LiveSet {
   weight: number | null;

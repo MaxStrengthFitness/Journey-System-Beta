@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { AlertCircle, ChevronLeft, ChevronsRight, NotebookPen, Star, Plus } from "lucide-react";
-import type { Density, JourneyRow, JourneySession, JourneySet, LiveColumn, LiveSet, StatMetric } from "./types";
+import type { JourneyRow, JourneySession, JourneySet, LiveColumn, LiveSet, StatMetric } from "./types";
 import {
   computeRowStats,
   formatLongDate,
@@ -43,7 +43,6 @@ export interface JourneyGridProps {
    */
   historySessions?: JourneySession[];
   sections: GridSection[];
-  density?: Density;
   /** Show the sticky Analytics column (default true). */
   showStats?: boolean;
   /** Controlled metric for the Analytics column. Uncontrolled if omitted. */
@@ -273,7 +272,6 @@ export function JourneyGrid({
   sessions,
   historySessions,
   sections,
-  density = "full",
   showStats = true,
   metric: metricProp,
   onMetricChange,
@@ -441,7 +439,6 @@ export function JourneyGrid({
   return (
     <div
       className={`jg ${layout === "fill" ? "jg--fill" : ""}`}
-      data-density={density}
       data-live={live ? "true" : "false"}
       data-stats={showStats ? "true" : "false"}
       style={style}

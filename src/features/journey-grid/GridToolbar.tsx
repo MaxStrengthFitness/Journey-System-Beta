@@ -1,21 +1,18 @@
 import type { ReactNode } from "react";
-import type { Density } from "./types";
 
 interface GridToolbarProps {
   /** Section caption, e.g. "Recent journey". */
   title?: string;
-  density?: Density;
-  onDensity?: (d: Density) => void;
-  /** Extra controls rendered after the density switch. */
+  /** Controls rendered at the right end of the rail. */
   children?: ReactNode;
 }
 
 /**
- * The slim row between the client header and the grid: a section caption
- * on the left, the density switch and any extra controls on the right.
- * Deliberately quiet — the grid is the content.
+ * The slim row between the client header and the grid: a section caption on
+ * the left, controls on the right. The density switch used to live here; the
+ * grid now ships one tuned density, so there is nothing to choose.
  */
-export function GridToolbar({ title, density, onDensity, children }: GridToolbarProps) {
+export function GridToolbar({ title, children }: GridToolbarProps) {
   return (
     <div className="jg-toolbar">
       {title && (
@@ -25,22 +22,6 @@ export function GridToolbar({ title, density, onDensity, children }: GridToolbar
         </span>
       )}
       <span className="jg-toolbar__spacer" />
-      {density && onDensity && (
-        <div className="jg-seg" role="radiogroup" aria-label="Density">
-          {(["compact", "comfortable", "full"] as Density[]).map((d) => (
-            <button
-              key={d}
-              type="button"
-              role="radio"
-              aria-checked={density === d}
-              className={`jg-seg__btn ${density === d ? "is-on" : ""}`}
-              onClick={() => onDensity(d)}
-            >
-              {d}
-            </button>
-          ))}
-        </div>
-      )}
       {children}
     </div>
   );
