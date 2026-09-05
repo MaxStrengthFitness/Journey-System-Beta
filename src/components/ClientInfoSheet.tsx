@@ -28,6 +28,15 @@ const LEGACY_TAB_TO_SECTION: Record<string, DossierSection> = {
 interface ClientInfoSheetProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * "overlay" (default) is the original full-screen sheet. "inline" renders
+   * the same dossier + save bar as ordinary tab content — the profile's
+   * Details tab (Sep 2026). In inline mode `isOpen` is ignored and
+   * `onOpenChange` is only called by the Migration Hub shortcut.
+   */
+  variant?: "overlay" | "inline";
+  /** Inline only: classes for the bounded container (its height comes from here). */
+  className?: string;
   client: Client;
   authTrainer: Trainer | null;
   /** Legacy tab id; translated to a dossier section. */
@@ -44,6 +53,8 @@ interface ClientInfoSheetProps {
 export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
   isOpen,
   onOpenChange,
+  variant = "overlay",
+  className,
   client,
   authTrainer,
   defaultTab,
@@ -52,6 +63,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
   onOpenJournal,
   onOpenReports,
 }) => {
+  const inline = variant === "inline";
   const { success: toastSuccess, error: toastError } = useToast();
   const { availableStudios: studios } = useActiveStudio();
   const [formData, setFormData] = useState<Partial<Client>>({});
@@ -60,9 +72,16 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
   const [isSyncingMb, setIsSyncingMb] = useState(false);
   const [activeTab, setActiveTab] = useState("identity");
 
-  // Initialize form state
+  // Initialize form state. Inline, the sheet stays mounted for as long as the
+  // Details tab is open, and the `client` object is rebuilt on every
+  // Firestore snapshot — so a re-init on every client change would wipe a
+  // half-typed edit whenever anything about the client saved elsewhere. The
+  // form re-syncs from the document only while it has NO unsaved edits.
+  const dirtyRef = React.useRef(dirtyFields);
+  dirtyRef.current = dirtyFields;
   useEffect(() => {
-    if (isOpen && client) {
+    if ((isOpen || inline) && client) {
+      if (inline && dirtyRef.current.size > 0) return;
       setActiveTab(defaultTab || "identity");
       setFormData({
         firstName: client.firstName || "",
@@ -233,10 +252,44 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
     }
   };
 
-  if (!isOpen) return null;
+  if (!inline && !isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-100 flex flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-none overflow-hidden m-0 animate-in fade-in zoom-in-[0.98] duration-200">
+    <div
+      className={
+        inline
+          ? `flex flex-col min-h-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white overflow-hidden ${className || ""}`
+          : "fixed inset-0 z-100 flex flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-none overflow-hidden m-0 animate-in fade-in zoom-in-[0.98] duration-200"
+      }
+    >
+      {inline ? (
+        /* Slim inline bar: the tab already says "Details", so no title here. */
+        <div className="px-4 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900/60">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2 min-w-0">
+            <span className="text-[#0a548b] dark:text-[#8cc4f2] truncate">
+              {client.firstName} {client.lastName}
+            </span>
+            {client.mindbodyId && (
+              <>
+                <span className="text-slate-300 dark:text-slate-600">•</span>
+                <span className="truncate">MBO ID {client.mindbodyId}</span>
+              </>
+            )}
+          </p>
+          <Button
+            type="button"
+            onClick={() => {
+              onOpenChange(false);
+              window.dispatchEvent(new CustomEvent("open-bulk-import"));
+            }}
+            variant="outline"
+            className="h-9 rounded-xl border-slate-200 dark:border-slate-700 text-[10px] font-bold uppercase tracking-widest px-3 flex items-center gap-2 shrink-0"
+          >
+            <Maximize className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Migration Hub (OCR)</span>
+          </Button>
+        </div>
+      ) : (
       <div className="p-6 md:px-10 md:py-8 border-b border-slate-200 dark:border-slate-800 flex flex-row items-start justify-between gap-2 shadow-sm bg-slate-50 dark:bg-slate-900">
         <div>
           <h2 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white">
@@ -276,6 +329,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
           </Button>
         </div>
       </div>
+      )}
 
       <ClientDossier
         client={client}
@@ -292,8 +346,34 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
       />
 
       {/* Sticky Footer */}
-      <div className="p-4 md:px-10 md:py-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 mt-auto flex-none flex justify-end shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
+      <div
+        className={
+          inline
+            ? "px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 mt-auto flex-none flex justify-end"
+            : "p-4 md:px-10 md:py-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 mt-auto flex-none flex justify-end shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]"
+        }
+      >
         <div className="flex items-center gap-4 w-full md:w-auto">
+          {inline ? (
+            dirtyFields.size > 0 && (
+              <Button
+                variant="ghost"
+                className="h-12 rounded-xl font-bold uppercase tracking-widest text-[11px] text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                onClick={() => {
+                  setDirtyFields(new Set());
+                  setFormData((prev) => {
+                    const reset: Partial<Client> = { ...prev };
+                    dirtyFields.forEach((k) => {
+                      (reset as Record<string, unknown>)[k as string] = (client as Record<string, unknown>)[k as string] ?? "";
+                    });
+                    return reset;
+                  });
+                }}
+              >
+                Discard edits
+              </Button>
+            )
+          ) : (
           <Button
             variant="outline"
             className="h-12 rounded-xl font-bold uppercase tracking-widest text-[11px] w-full md:w-32 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
@@ -301,6 +381,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
           >
             Close
           </Button>
+          )}
           <Button
             disabled={dirtyFields.size === 0 || isSaving}
             onClick={handleSave}

@@ -12,6 +12,7 @@ import {
   getDocs,
   limit,
   increment,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import {
@@ -58,6 +59,7 @@ import {
 } from "../types";
 import { cn, parseSessionDate, calculateExerciseVolume } from "../lib/utils";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
+import { deletedSessionRollup } from "../lib/client-rollups";
 import { useActiveStudio } from "../ActiveStudioContext";
 
 function getTrainerChipStyles(initials: string) {
@@ -250,11 +252,17 @@ export function ClientHistoryCalendar({
         batch.delete(doc(db, "exerciseLogs", log.id!));
       });
 
-      // decrement client's session count if completed
+      // decrement client's session count if completed — and take the
+      // session's Top Trainer vote and machine counts back with it.
       if (selectedSession.status === "Completed" && clientId) {
         batch.update(doc(db, "clients", clientId), {
           completedSessions: increment(-1),
           sessionCount: increment(-1),
+          ...deletedSessionRollup(
+            selectedSession,
+            selectedSessionLogs,
+            { increment, serverTimestamp },
+          ),
         });
       }
 
