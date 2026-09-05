@@ -41,16 +41,18 @@ The tablet walkthrough is a separate file, `TESTING-CHECKLIST.md`, because it is
 
 Eight phases. The ordering is not preference — each one removes an obstacle that would otherwise invalidate the next.
 
-### Phase 0 — Unblock production · *one sitting, mostly one command*
+### Phase 0 — Unblock production · ✅ **done Sep 5**
 
-Nothing below this line is worth testing until this is done, because you would be testing an app whose writes fail.
+Rules deployed to production (`prod` / `gen-lang-client-0731527386`), verified by writing a journal entry, a focus intent, a studio machine note and a studio task — all four saved. The multi-tenant note test passed too: a note saved at one studio was correctly absent at another.
 
-- [ ] **`firebase deploy --only firestore:rules`** — verified additive: 115 lines added, 0 removed. Unblocks `journalEntries`, `clientFocuses`, `machineNotes`, `taskTemplates`, `taskInstances`.
+**Two corrections to what this page said before the deploy.** The CLI reported `latest version of firestore.rules already up to date, skipping upload` — the repo ruleset was already in the project and only the release was outstanding, so the "five collections failing in production" headline was partly stale. The `live-rules-ai-studio-*.rules` snapshot it was measured against was three days old; **refresh that snapshot whenever you deploy**, or the next diff will be wrong in the same way. And the real type-check baseline came in at **48 errors, not the ~1,400 estimated** — `strict` is still off, so what surfaced is only what the missing React types were hiding.
+
+- [x] ~~**`firebase deploy --only firestore:rules`**~~ — verified additive: 115 lines added, 0 removed. Unblocks `journalEntries`, `clientFocuses`, `machineNotes`, `taskTemplates`, `taskInstances`.
 - [ ] **Copy the live rules text back into `firestore.staging.rules`** — it is missing all five new blocks *and* the seven blocks that were console-edited back in August (`hub_announcements`, `notificationQueue`, `crossTrainAccess`, `crossTrainRequests`, `mindbodyEventLog`, `mindbodyDLQ`, `system/health`). The repo is not currently the source of truth for staging.
-- [ ] **`AppContent.tsx:1015` — remove `"notes"` from the database-wipe collection list.** No `notes` rule exists and no other code references that collection, so `getDocs` throws `permission-denied` and **aborts the wipe loop part-way through**, leaving the database in a half-erased state. One-line fix, real consequence.
-- [ ] **Add `@types/react` and `@types/react-dom` to devDependencies.** Then run `npx tsc --noEmit` and record the new baseline. Until this lands, "typechecks clean" in every round above means nothing about the UI layer.
-- [ ] **Add `"test": "vitest run"` to `package.json` scripts** and run it once. Twenty-five suites already exist. Whatever it reports, that is your real starting position.
-- [ ] **Delete `_to_delete/`** — 65 MB, and it contains `prod-sdkconfig.json` (real production service config) plus two repo snapshots. It is gitignored so nothing leaked, but a folder named "to delete" is exactly where a credential gets forgotten and then swept into a backup. Also delete `.env.bak`, a byte-for-byte second copy of every live secret. *(`env.txt` in there is 0 bytes — harmless.)*
+- [x] ~~**`AppContent.tsx:1015` — remove `"notes"`~~ from the database-wipe collection list.** No `notes` rule exists and no other code references that collection, so `getDocs` throws `permission-denied` and **aborts the wipe loop part-way through**, leaving the database in a half-erased state. One-line fix, real consequence.
+- [x] ~~**Add `@types/react` and `@types/react-dom`.**~~ Baseline: **48 errors**, from a reported 0. Then run `npx tsc --noEmit` and record the new baseline. Until this lands, "typechecks clean" in every round above means nothing about the UI layer.
+- [x] ~~**Add a `test` script**~~ (`vitest run src`). Baseline: **320 passed, 0 failed**. The `functions/` suite (~130 tests) cannot run from the root config — root is ESM, `functions/` is CommonJS, and Vitest 4 is ESM-only. Its own runner is an open item. and run it once. Twenty-five suites already exist. Whatever it reports, that is your real starting position.
+- [x] ~~**Delete `_to_delete/` and `.env.bak`**~~ — 65 MB, and it contains `prod-sdkconfig.json` (real production service config) plus two repo snapshots. It is gitignored so nothing leaked, but a folder named "to delete" is exactly where a credential gets forgotten and then swept into a backup. Also delete `.env.bak`, a byte-for-byte second copy of every live secret. *(`env.txt` in there is 0 bytes — harmless.)*
 
 ### Phase 1 — See it on the hardware · *one morning*
 
@@ -94,6 +96,27 @@ Nothing below this line is worth testing until this is done, because you would b
 ### Phase 7 — Demo mode + tutorials · *driven by the FileMaker cutover date*
 
 **Why last:** it is four different projects wearing one name and it needs a business decision, not a technical one. The decision list is in "Open — reported Sep 5" below.
+
+---
+
+## 🧾 Now — Studio roster & two-tier To-Do (Sep 5) — branch `studio-roster-and-todos`, one commit per phase
+
+From the first real iPad pass. Five commits, `npx tsc --noEmit` at 48 errors throughout — unchanged from the Phase 0 baseline, none in the files touched. **Tests not run:** vitest cannot run against Windows-installed `node_modules` from the container, so `npm test` is yours. **Not yet looked at on the iPad.**
+
+**The two bugs reported were one bug.** `studios/{id}/roster` has never been backfilled, so it is empty for every studio, and `useStudioMachines` read it with no fallback — its own header said so. Studio To-Do called that hook twice: the day plan expanded an all-machines template over an empty array and rendered "Nothing scheduled today" (which reads as *my task did not save*), and the machine picker mapped the same empty array inside a bordered box (which reads as *the button is broken*). The Catalog was unaffected because `useCatalogMachines` has a private roster-or-global fallback, and that differential is what found it.
+
+**The per-studio roster feature already exists.** `StudioInventoryManager`, at Admin → Machines, adds and removes machines per location and is the only thing that has ever written the roster. It was never used, which is why every roster is empty.
+
+- [x] ~~Phase 1 — the roster bridge~~ — opt-in `bridgeWhenRosterEmpty` on `useStudioMachines`, sourced from the global catalog when a studio has no roster docs at all, plus a `source` field. Deliberately **not** the default: every existing call site keeps its behaviour, and `useCatalogMachines` keeps its own fallback, so the screen you just verified does not change. `expandTemplate` now warns instead of silently returning `[]`; `StudioTasksView` tells three silences apart (no studio / saved-but-not-due / saved-but-no-equipment) where they used to read identically; the picker has an empty state. Regression test added — every existing test passed a non-empty roster, which is exactly why this shipped.
+- [x] ~~Phase 2 — stop dropping machines silently~~ — `SessionRoutineManagerModal` and `RoutineBuilderView` dropped a routine machine with a bare `return null` when it had no match in the list they render from: the row vanished, the id stayed in state, and it was written back on save. The mid-session one is the serious half. `RoutineBuilderView` renders from the static `MACHINE_LIST`, so a **custom** studio machine disappears today, not later. Both now name the ids and say they stay in the routine. `EditRoutineDrawer.applyPreset` was reviewed and left alone — its filter is deliberate and already records the drop as a real deviation.
+- [x] ~~Phase 3 — `scripts/backfill-studio-rosters.ts`~~ — dry run by default, skips any studio that already has roster docs (a curated roster is a set of decisions; `--fill-gaps` opts into topping up), every write carries `currentDocument.exists=false` so nothing is overwritten and a crashed run is safe to re-run, and it honours the deprecated `studioMachineSettings` possession flag so existing per-studio decisions survive the move. Refuses to run against an empty catalog rather than inventing one.
+- [x] ~~Phase 4 — the studio note says what it is~~ — one shared text block per machine per location, and nothing said so. Now states all three facts before the field is touched: shared clipboard, deletions are studio-wide, does not travel.
+- [x] ~~Phase 5 — two-tier To-Do~~ — studio tasks stay at `studios/{id}/task*`; personal tasks live at `trainers/{uid}/task*`. **The tier is a path, not a field**: Firestore cannot enforce "only your own rows" on a list query unless every query carries a matching constraint, so a `scope` field would make privacy depend on every future query being written correctly. `ownerId` is the Firebase **Auth uid**, not the trainer doc id. Ownership is by trainer, visibility is by location. Spec in `src/features/studio-tasks/README.md`.
+- [ ] **⚠️ Deploy the rules again.** Two new blocks under `trainers/{trainerId}`. Personal tasks will fail to save until `firebase deploy --only firestore:rules` runs. Refresh the live-rules snapshot at the same time.
+- [ ] **Run `npm test`** — the container cannot. Expect the new `recurrence` cases to pass.
+- [ ] **Populate one studio's roster** at Admin → Machines and confirm both original bugs disappear. Populate it *completely* in one sitting: the moment a roster has one entry it becomes the source of truth for the Catalog, so a half-filled roster shows a half-filled Catalog.
+- [ ] **Verify on the iPad** — a daily all-machines task appearing in the day list; the task picker listing machines; creating a personal task as a plain trainer and confirming a second trainer cannot see it; a manager seeing both tiers; the "Mine" chip; a mixed multi-select marked done in one action (it spans two collections); the machine-note warning copy in both themes.
+- [ ] Follow-ups: no Studio/Mine **filter** on the day list yet — personal rows carry a chip and that is all. A task cannot be moved between tiers (a copy-and-delete across two collections; wants a deliberate design). Once the backfill has run everywhere, delete `bridgeWhenRosterEmpty` and fold `useCatalogMachines`'s private fallback into the hook so one place decides.
 
 ---
 
