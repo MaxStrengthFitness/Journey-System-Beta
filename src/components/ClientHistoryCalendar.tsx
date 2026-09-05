@@ -520,10 +520,20 @@ export function ClientHistoryCalendar({
 
       {viewType === "calendar" ? (
         <>
+          {/* Marker 10: same language as the Hub strip — narrow uppercase
+              weekday over a black numeral, cyan for the day you are on,
+              a cyan hairline ring for today, Sundays recessive. */}
           <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2 shrink-0">
-            {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((d) => (
+            {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((d, i) => (
               <div key={d} className="text-center pb-1 sm:pb-2">
-                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest text-slate-500 dark:text-slate-400">
+                <span
+                  className={cn(
+                    "text-[10px] font-bold uppercase tracking-[0.14em]",
+                    i === 0
+                      ? "text-slate-400 dark:text-slate-600"
+                      : "text-slate-500 dark:text-slate-400",
+                  )}
+                >
                   {d}
                 </span>
               </div>
@@ -566,10 +576,8 @@ export function ClientHistoryCalendar({
                   <div
                     key={`week-${wIdx}`}
                     className={cn(
-                      "grid grid-cols-7 gap-1 sm:gap-2 p-1 rounded-2xl sm:rounded-3xl transition-all duration-200",
-                      isWeekActive
-                        ? "bg-slate-50/50 dark:bg-slate-800/30 border border-slate-200/60 dark:border-slate-800/60 shadow-sm"
-                        : "",
+                      "grid grid-cols-7 gap-1 sm:gap-2 rounded-xl transition-colors duration-200",
+                      isWeekActive ? "bg-slate-100/60 dark:bg-slate-800/30" : "",
                     )}
                   >
                     {week.map((date, idx) => {
@@ -602,14 +610,16 @@ export function ClientHistoryCalendar({
                             }
                           }}
                           className={cn(
-                            "min-h-12.5 sm:min-h-21.25 p-2 sm:p-3.5 rounded-xl sm:rounded-2xl border transition-all relative group flex flex-col justify-between select-none",
+                            "min-h-12.5 sm:min-h-19 p-2 sm:p-2.5 rounded-lg border transition-colors relative group flex flex-col justify-between select-none",
                             daySessions.length > 0
-                              ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                              ? "cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/60"
                               : "cursor-default",
                             isSelected
-                              ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 shadow-md"
-                              : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700",
-                            today ? "ring-2 ring-emerald-500" : "",
+                              ? "bg-cyan border-cyan text-slate-900 shadow-[0_0_12px_rgba(56,189,248,0.35)]"
+                              : today
+                                ? "bg-slate-200/70 dark:bg-slate-800/70 border-transparent ring-1 ring-cyan/50"
+                                : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700",
+                            date.getDay() === 0 && !isSelected && !today ? "opacity-70" : "",
                             dayEvents.some(
                               (e) =>
                                 e.type === "Vacation" ||
@@ -622,9 +632,9 @@ export function ClientHistoryCalendar({
                         >
                           <span
                             className={cn(
-                              "text-xs sm:text-base font-black leading-none font-sans absolute top-2 left-2 sm:top-3 sm:left-3 z-10",
+                              "text-xs sm:text-base font-black leading-none font-sans tabular-nums absolute top-2 left-2 sm:top-2.5 sm:left-2.5 z-10",
                               isSelected
-                                ? "text-slate-900 dark:text-slate-100"
+                                ? "text-slate-900"
                                 : "text-slate-800 dark:text-slate-200",
                               dayEvents.some(
                                 (e) =>
@@ -802,13 +812,45 @@ export function ClientHistoryCalendar({
                         ? "bg-cyan text-white"
                         : "bg-slate-400 dark:bg-slate-500 text-white";
                     const initials = session.trainerInitials || "--";
-                    const timeLabel = isLegacy
-                      ? null
-                      : session.startTime && timestamp > 0
-                        ? new Date(session.startTime?.toMillis?.() || session.startTime).toLocaleTimeString([], {
+                    /**
+                     * `startTime` arrives as a Timestamp, a number, an ISO
+                     * string or a Date depending on which write produced the
+                     * session. The old code fed all four straight to
+                     * `new Date()`, and the shapes it could not parse rendered
+                     * the literal string "Invalid Date" down the whole list.
+                     * Parse defensively and fall back to the date we already
+                     * have.
+                     */
+                    const startMs = (() => {
+                      const raw: any = session.startTime;
+                      if (!raw) return 0;
+                      if (typeof raw?.toMillis === "function") return raw.toMillis();
+                      if (typeof raw?.seconds === "number") return raw.seconds * 1000;
+                      if (raw instanceof Date) return raw.getTime();
+                      const t = new Date(raw).getTime();
+                      return Number.isNaN(t) ? 0 : t;
+                    })();
+                    const timeLabel =
+                      isLegacy || startMs <= 0
+                        ? null
+                        : new Date(startMs).toLocaleTimeString([], {
                             hour: "numeric",
                             minute: "2-digit",
-                          })
+                          });
+
+                    // Volume against the previous session — the column the eye
+                    // runs down when it wants "is this client progressing?".
+                    const prevSession = index >= 0 ? sessions[index + 1] : undefined;
+                    const prevVolume = prevSession
+                      ? Math.round(
+                          (allLogs || localAllLogs)
+                            .filter((l) => l.sessionId === prevSession.id)
+                            .reduce((acc, log) => acc + calculateExerciseVolume(log), 0),
+                        )
+                      : 0;
+                    const volumeDelta =
+                      prevVolume > 0 && totalVolume > 0
+                        ? Math.round(((totalVolume - prevVolume) / prevVolume) * 100)
                         : null;
 
                     return (
@@ -891,15 +933,32 @@ export function ClientHistoryCalendar({
                               </Badge>
                             )}
                           </div>
-                          <p className="text-[11px] sm:text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider truncate">
-                            {session.routineName ? `Routine ${session.routineName}` : isLegacy ? "Imported session" : ""}
-                            {(session.routineName || isLegacy) && shorthandMachines ? " • " : ""}
-                            {shorthandMachines || (!session.routineName && !isLegacy ? "No machines logged" : "")}
+                          {/* Marker 11: the machine names used to run the
+                              width of the row and truncate mid-word, so every
+                              row looked the same and none of them was
+                              readable. The COUNT is the scannable fact; the
+                              names stay on the hover title for when the
+                              trainer actually wants them. */}
+                          <p
+                            className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate"
+                            title={shorthandMachines || undefined}
+                          >
+                            {machineNames.length > 0 ? (
+                              <span className="text-slate-700 dark:text-slate-300">
+                                {machineNames.length} machine{machineNames.length === 1 ? "" : "s"}
+                              </span>
+                            ) : (
+                              <span className="italic text-slate-400">No machines logged</span>
+                            )}
+                            {machineNames.length > 0 && (
+                              <span className="hidden sm:inline"> · {shorthandMachines}</span>
+                            )}
                           </p>
                         </div>
 
-                        {/* Volume */}
-                        <div className="flex flex-col items-end justify-center shrink-0 pr-1 sm:pr-2">
+                        {/* Volume — a fixed-width, right-aligned, tabular
+                            column so the eye can run straight down it. */}
+                        <div className="flex w-24 sm:w-28 flex-col items-end justify-center shrink-0 pr-1 sm:pr-2">
                           <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-sans">
                             Volume
                           </span>
@@ -909,6 +968,19 @@ export function ClientHistoryCalendar({
                             </span>
                             <span className="text-[10px] font-bold text-slate-500 uppercase">lbs</span>
                           </div>
+                          {volumeDelta !== null && volumeDelta !== 0 && (
+                            <span
+                              className={cn(
+                                "text-[10px] font-black tabular-nums leading-none",
+                                volumeDelta > 0
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-slate-400 dark:text-slate-500",
+                              )}
+                              title={`vs ${prevVolume.toLocaleString()} lbs last session`}
+                            >
+                              {volumeDelta > 0 ? `+${volumeDelta}%` : `${volumeDelta}%`}
+                            </span>
+                          )}
                         </div>
                       </div>
                     );
