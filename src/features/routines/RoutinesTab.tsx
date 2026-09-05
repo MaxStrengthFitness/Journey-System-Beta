@@ -57,8 +57,6 @@ export interface RoutinesTabProps {
   onToggleB: (checked: boolean) => void;
   /** Tapping a machine row — the profile opens its settings sheet. */
   onSelectMachine?: (machineId: string) => void;
-  /** Jump to the live session screen with today's routine loaded. */
-  onOpenSession?: () => void;
   disabled?: boolean;
 }
 
@@ -285,7 +283,6 @@ export function RoutinesTab({
   onUseToday,
   onToggleB,
   onSelectMachine,
-  onOpenSession,
   disabled = false,
 }: RoutinesTabProps) {
   const studioId = client?.homeStudioId || "";
@@ -335,11 +332,6 @@ export function RoutinesTab({
                 <PlayCircle size={14} strokeWidth={2.6} aria-hidden="true" />
                 {todayName} today
               </span>
-              {onOpenSession && (
-                <button type="button" className="rt-btn rt-btn--hero" onClick={onOpenSession} disabled={disabled}>
-                  Open live session
-                </button>
-              )}
             </>
           ) : (
             <span className="rt-summary__none">No routine chosen for today</span>

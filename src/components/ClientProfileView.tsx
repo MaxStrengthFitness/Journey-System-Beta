@@ -1868,7 +1868,6 @@ export function ClientProfileView({
             onUseToday={handleUseToday}
             onToggleB={handlePromptToggleB}
             onSelectMachine={openJourneyMachineSettings}
-            onOpenSession={() => setView("workouts")}
             disabled={!!hasQuotaError}
           />
 
