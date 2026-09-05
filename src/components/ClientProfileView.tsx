@@ -37,7 +37,6 @@ import {
   TrendingUp,
   AlertCircle,
   Play,
-  History,
   Maximize,
   Calendar,
   Maximize2,
@@ -48,8 +47,6 @@ import {
   AlertTriangle,
   UserCheck,
   Target,
-  ChevronDown,
-  ChevronUp,
   Check,
   Search,
   Loader2,
@@ -113,6 +110,7 @@ import { ROUTINE_TEMPLATES, RoutineTemplateType } from "../constants";
 import { ClientFocusDashboard } from "./ClientFocusDashboard";
 import { getCompletedSessionCount } from "../lib/session-count-cache";
 import { ClinicalReviewTab } from "../features/clinical-review";
+import { RoutinesTab } from "../features/routines";
 import { ClientInfoSheet } from "./ClientInfoSheet";
 import {
   Client,
@@ -131,7 +129,6 @@ import {
   Studio,
   SessionNote,
 } from "../types";
-import { StickyCTA } from "./StickyCTA";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { WorkoutChartGrid } from "./WorkoutChartGrid";
 import { useToast } from "../contexts/ToastContext";
@@ -1034,483 +1031,6 @@ export function ClientProfileView({
     }
   };
 
-  const calculateChangesThisMonth = useCallback(
-    (adjustments: RoutineAdjustment[]) => {
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-
-      return adjustments.filter((adj) => {
-        if (!adj.createdAt) return false;
-        const time =
-          adj.createdAt.toMillis?.() ||
-          (typeof adj.createdAt === "number" ? adj.createdAt : 0);
-        if (!time) return false;
-        const d = new Date(time);
-        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-      }).length;
-    },
-    [],
-  );
-
-  const getAdjustmentDiff = useCallback(
-    (adj: RoutineAdjustment) => {
-      const addedIds = adj.newMachineIds.filter(
-        (id) => !adj.previousMachineIds.includes(id),
-      );
-      const removedIds = adj.previousMachineIds.filter(
-        (id) => !adj.newMachineIds.includes(id),
-      );
-
-      const addedNames = addedIds
-        .map((id) => machines.find((m) => m.id === id)?.name || "Unknown")
-        .filter(Boolean);
-      const removedNames = removedIds
-        .map((id) => machines.find((m) => m.id === id)?.name || "Unknown")
-        .filter(Boolean);
-
-      return { addedNames, removedNames };
-    },
-    [machines],
-  );
-
-  const getSelectedRoutineLabel = () => {
-    if (!selectedRoutineTodayId) return "";
-    const found = routines.find((r) => r.id === selectedRoutineTodayId);
-    if (found) return found.name.toUpperCase();
-    if (
-      selectedRoutineTodayId.includes("-a") ||
-      selectedRoutineTodayId.includes("A")
-    )
-      return "ROUTINE A";
-    if (
-      selectedRoutineTodayId.includes("-b") ||
-      selectedRoutineTodayId.includes("B")
-    )
-      return "ROUTINE B";
-    return "ROUTINE";
-  };
-
-  const renderRoutineCard = (routineName: "Routine A" | "Routine B") => {
-    const raw = routines.find((r) => r.name === routineName);
-    const routine: Routine = raw || {
-      id: routineName === "Routine A" ? "temp-a" : "temp-b",
-      name: routineName,
-      clientId: clientId || "",
-      machineIds: [],
-      studioId: client?.homeStudioId || "",
-    };
-
-    const isB = routineName === "Routine B";
-    const isBActive = !isB || !!client?.isRoutineBActive;
-
-    const getLastChangedText = () => {
-      const adjs = routineAdjustments.filter((a) => a.routineId === routine.id);
-      if (adjs.length === 0) {
-        if (routine.updatedAt) {
-          return `last changed long ago`;
-        }
-        return `no changes logged yet`;
-      }
-      const latest = adjs[0];
-      const trainer = trainers.find((t) => t.id === latest.trainerId);
-      const trainerInitials =
-        trainer?.initials ||
-        latest.trainerId?.substring(0, 2).toUpperCase() ||
-        "TR";
-
-      let diffDays = 0;
-      if (latest.createdAt) {
-        const time =
-          latest.createdAt.toMillis?.() ||
-          (typeof latest.createdAt === "number" ? latest.createdAt : 0);
-        if (time) {
-          const diffMs = Date.now() - time;
-          diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        }
-      }
-
-      if (diffDays <= 0) {
-        return `last changed today by ${trainerInitials}`;
-      } else if (diffDays === 1) {
-        return `last changed 1 day ago by ${trainerInitials}`;
-      } else {
-        return `last changed ${diffDays} days ago by ${trainerInitials}`;
-      }
-    };
-
-    const isTodaySelected = selectedRoutineTodayId === routine.id;
-
-    return (
-      <Card
-        key={routineName}
-        className={cn(
-          "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-all overflow-hidden flex flex-col relative",
-          isTodaySelected &&
-            "ring-2 ring-cyan shadow-[0_0_20px_rgba(6,182,212,0.3)] border-cyan/40",
-          !isBActive && "opacity-60 grayscale-15",
-        )}
-      >
-        {isTodaySelected && (
-          <div className="absolute top-0 left-0 right-0 h-1 bg-cyan" />
-        )}
-
-        <CardHeader className="p-5 lg:p-6 pb-4 border-b border-slate-100 dark:border-slate-800/40 bg-slate-50/50 dark:bg-slate-900/40">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                className={cn(
-                  "w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold font-sans italic shadow-sm text-white shrink-0",
-                  isB ? "bg-cta shadow-cta/20" : "bg-cyan shadow-cyan/20",
-                )}
-              >
-                {routineName.split(" ")[1]}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <CardTitle className="text-lg lg:text-xl font-bold uppercase tracking-tight text-slate-800 dark:text-neutral-100">
-                    {routineName}
-                  </CardTitle>
-                  {isB && (
-                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 select-none">
-                      <span
-                        className={cn(
-                          "inline-block w-1.5 h-1.5 rounded-full",
-                          client?.isRoutineBActive
-                            ? "bg-emerald-500 animate-pulse"
-                            : "bg-slate-400",
-                        )}
-                      />
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                        {client?.isRoutineBActive
-                          ? "Protocol B Active"
-                          : "B Inactive"}
-                      </span>
-                      <Switch
-                        checked={!!client?.isRoutineBActive}
-                        onCheckedChange={(checked) =>
-                          handlePromptToggleB(checked)
-                        }
-                        className="scale-75 touch-none pointer-events-auto"
-                      />
-                    </div>
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-400 font-mono tracking-wide mt-0.5">
-                  {routine.machineIds.length}{" "}
-                  {routine.machineIds.length === 1 ? "unit" : "units"}{" "}
-                  assignment · {getLastChangedText()}
-                </p>
-              </div>
-            </div>
-
-            {isBActive && (
-              <div className="flex items-center gap-2 ml-auto shrink-0 animate-fade-in animate-duration-150">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 rounded-xl font-bold uppercase text-[11px] tracking-wider border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all px-4"
-                  onClick={() => setEditRoutineTarget(routineName)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant={isTodaySelected ? "default" : "outline"}
-                  size="sm"
-                  className={cn(
-                    "h-9 rounded-xl font-bold uppercase text-[11px] tracking-wider transition-all px-4",
-                    isTodaySelected
-                      ? "bg-cyan hover:bg-cyan/90 border-transparent text-white"
-                      : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800",
-                  )}
-                  onClick={() => handleUseToday(routine)}
-                >
-                  {isTodaySelected ? "Active Today" : "Use Today"}
-                </Button>
-              </div>
-            )}
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-5 lg:p-6 flex-1">
-          {routine.machineIds.length === 0 ? (
-            <div className="py-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800/40 rounded-xl bg-slate-50/40 dark:bg-slate-900/10 flex flex-col items-center justify-center p-4">
-              <p className="text-xs text-slate-400 font-medium font-sans uppercase tracking-widest mb-3">
-                No Machines Assigned
-              </p>
-              {isBActive && (
-                <Button
-                  onClick={() => setEditRoutineTarget(routineName)}
-                  variant="outline"
-                  size="sm"
-                  className="text-xs font-bold uppercase tracking-wider rounded-xl border-slate-200 dark:border-slate-800"
-                >
-                  Configure Routine
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {routine.machineIds.map((machineId, idx) => {
-                const machine = machines.find((m) => m.id === machineId);
-                if (!machine) return null;
-
-                const metric = client?.currentMachineMetrics?.[machineId];
-                const latestSessionWithLog = sessions.find((s) =>
-                  allLogs?.some(
-                    (l) => l.sessionId === s.id && l.machineId === machineId,
-                  ),
-                );
-                const latestLog = latestSessionWithLog
-                  ? allLogs.find(
-                      (l) =>
-                        l.sessionId === latestSessionWithLog.id &&
-                        l.machineId === machineId,
-                    )
-                  : allLogs
-                      ?.filter((l) => l.machineId === machineId)
-                      ?.sort((a, b) => {
-                        const sessA = sessions.find((s) => s.id === a.sessionId);
-                        const sessB = sessions.find((s) => s.id === b.sessionId);
-                        const numA =
-                          sessA?.sessionNumber ??
-                          parseSessionDate(sessA?.date || "");
-                        const numB =
-                          sessB?.sessionNumber ??
-                          parseSessionDate(sessB?.date || "");
-                        return numB - numA;
-                      })[0];
-
-                const weightVal =
-                  metric?.weight ||
-                  latestLog?.weight ||
-                  latestLog?.loadLb ||
-                  clientSettings[machineId]?.currentWeight ||
-                  clientSettings[machineId]?.startingWeight ||
-                  "--";
-                const repsVal =
-                  metric?.reps ||
-                  metric?.seconds ||
-                  latestLog?.reps ||
-                  latestLog?.seconds ||
-                  latestLog?.outcomeTut ||
-                  "--";
-                const isHold =
-                  metric?.isStaticHold ??
-                  latestLog?.isStaticHold ??
-                  latestLog?.isTSC;
-
-                return (
-                  <div
-                    key={`${machineId}-${idx}`}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-mono font-bold text-slate-500 dark:text-slate-400 shrink-0">
-                        {idx + 1}
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-xs font-bold uppercase tracking-tight text-slate-800 dark:text-neutral-200 block">
-                          {machine.name}
-                        </span>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium uppercase tracking-wider">
-                          {machine.anatomicalRegion || "Other Region"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <span className="text-xs font-mono font-bold text-slate-700 dark:text-neutral-300">
-                        {weightVal !== "--" ? `${weightVal} lb` : "--"}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-mono block">
-                        {repsVal !== "--"
-                          ? `${repsVal}${isHold ? "s Hold" : " reps"}`
-                          : "--"}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  };
-
-  const [isJournalExpanded, setIsJournalExpanded] = useState(false);
-
-  const renderRoutineJournalList = () => {
-    const changesThisMonth = calculateChangesThisMonth(routineAdjustments);
-
-    // Most recent adjustment across BOTH routines (routineAdjustments is
-    // already sorted newest-first) — drives the "last modified" timestamp
-    // shown above the changes-this-month badge.
-    const mostRecentAdj = routineAdjustments[0];
-    let lastModifiedText = "No changes logged yet";
-    if (mostRecentAdj?.createdAt) {
-      const time =
-        mostRecentAdj.createdAt.toMillis?.() ||
-        (typeof mostRecentAdj.createdAt === "number"
-          ? mostRecentAdj.createdAt
-          : 0);
-      if (time) {
-        const modifiedDate = new Date(time);
-        lastModifiedText = `Last modified ${modifiedDate.toLocaleDateString(
-          undefined,
-          { month: "short", day: "numeric", year: "numeric" },
-        )} at ${modifiedDate.toLocaleTimeString(undefined, {
-          hour: "numeric",
-          minute: "2-digit",
-        })}`;
-      }
-    }
-
-    return (
-      <Card className="col-span-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm mt-4 p-5 lg:p-6">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <History className="w-5 h-5 text-slate-500" />
-            <h3 className="text-sm font-bold uppercase tracking-tight text-slate-800 dark:text-neutral-200">
-              Routine Adjustment Journal
-            </h3>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <span className="text-[10px] text-slate-400 font-medium tracking-wide">
-              {lastModifiedText}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsJournalExpanded(!isJournalExpanded)}
-              className="rounded-xl font-bold uppercase text-[11px] tracking-wider border-slate-200 dark:border-slate-800"
-            >
-              {isJournalExpanded ? "Collapse Journal" : "Open Journal"}
-              <span className="ml-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full text-[10px]">
-                {changesThisMonth} {changesThisMonth === 1 ? "change" : "changes"}{" "}
-                this month
-              </span>
-              {isJournalExpanded ? (
-                <ChevronUp className="w-3.5 h-3.5 ml-1.5" />
-              ) : (
-                <ChevronDown className="w-3.5 h-3.5 ml-1.5" />
-              )}
-            </Button>
-          </div>
-        </div>
-
-        {isJournalExpanded && (
-          <div className="mt-5 space-y-4 max-h-87.5 overflow-y-auto pr-1">
-            {routineAdjustments.length === 0 ? (
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wide text-center py-6">
-                No adjustments recorded in clinical logs
-              </p>
-            ) : (
-              routineAdjustments.map((adj) => {
-                const { addedNames, removedNames } = getAdjustmentDiff(adj);
-
-                let dateText = "Date unknown";
-                if (adj.createdAt) {
-                  const time =
-                    adj.createdAt.toMillis?.() ||
-                    (typeof adj.createdAt === "number" ? adj.createdAt : 0);
-                  if (time) {
-                    dateText = new Date(time).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    });
-                  }
-                }
-
-                const trainerObj = trainers.find((t) => t.id === adj.trainerId);
-                const initials =
-                  trainerObj?.initials ||
-                  adj.trainerId?.substring(0, 2).toUpperCase() ||
-                  "TR";
-                const isToggle =
-                  adj.changeType === "enabled" || adj.changeType === "disabled";
-
-                return (
-                  <div
-                    key={adj.id}
-                    className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-2 text-xs"
-                  >
-                    <div className="flex items-center justify-between gap-2 border-b border-slate-200/40 dark:border-slate-800/40 pb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center justify-center w-7 h-7 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold font-mono text-slate-700 dark:text-slate-300 rounded-[#10px]">
-                          {initials}
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-700 dark:text-neutral-200">
-                            {trainerObj?.fullName || adj.trainerId}
-                          </p>
-                          <p className="text-[10px] text-slate-400 font-medium">
-                            {dateText}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="font-mono text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-550 dark:text-slate-400 px-2 py-0.5 rounded uppercase">
-                        {adj.changeType || "machines"}
-                      </span>
-                    </div>
-
-                    {!isToggle &&
-                      (addedNames.length > 0 || removedNames.length > 0) && (
-                        <div className="space-y-1 py-1">
-                          {addedNames.length > 0 && (
-                            <p className="text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight flex items-center gap-1">
-                              <span className="text-emerald-500 font-extrabold">
-                                + ADDED:
-                              </span>
-                              <span className="font-medium text-slate-700 dark:text-slate-300">
-                                {addedNames.join(", ")}
-                              </span>
-                            </p>
-                          )}
-                          {removedNames.length > 0 && (
-                            <p className="text-red-500 dark:text-red-400 font-bold uppercase tracking-tight flex items-center gap-1">
-                              <span className="text-red-400 font-extrabold">
-                                - REMOVED:
-                              </span>
-                              <span className="font-medium text-slate-700 dark:text-slate-300">
-                                {removedNames.join(", ")}
-                              </span>
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                    {isToggle && (
-                      <p
-                        className={cn(
-                          "font-bold uppercase tracking-wide",
-                          adj.changeType === "enabled"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-red-500 dark:text-red-450",
-                        )}
-                      >
-                        Protocol Routine B{" "}
-                        {adj.changeType === "enabled" ? "Enabled" : "Disabled"}
-                      </p>
-                    )}
-
-                    {adj.notes && (
-                      <p className="italic text-slate-600 dark:text-neutral-305 bg-white/40 dark:bg-slate-900/40 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                        "{adj.notes}"
-                      </p>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        )}
-      </Card>
-    );
-  };
-
   const fetchLogsForSessions = async (sessionIds: string[]) => {
     if (sessionIds.length === 0) return [];
     const chunks = [];
@@ -2309,28 +1829,27 @@ export function ClientProfileView({
           value="routines"
           className="mt-0 flex-1 min-h-0 focus-visible:outline-none"
         >
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-stretch">
-            {/* Render Routine A Card */}
-            {renderRoutineCard("Routine A")}
-
-            {/* Render Routine B Card */}
-            {renderRoutineCard("Routine B")}
-
-            {/* Collapsible Routine Audit Journal */}
-            {renderRoutineJournalList()}
-          </div>
-
-          {/* Sticky Selected Routine Indicator */}
-          {selectedRoutineTodayId && (
-            <div className="mt-6 flex justify-center">
-              <StickyCTA
-                label={`${getSelectedRoutineLabel()} SELECTED`}
-                onClick={() => {
-                  setView("workouts");
-                }}
-              />
-            </div>
-          )}
+          {/* Both prescriptions as dense lists (features/routines). The
+              mutations stay here: the tab only reports taps. */}
+          <RoutinesTab
+            client={client}
+            clientId={clientId || ""}
+            routines={routines}
+            machines={machines}
+            clientSettings={clientSettings}
+            allLogs={allLogs}
+            sessions={sessions}
+            adjustments={routineAdjustments}
+            trainers={trainers}
+            selectedRoutineTodayId={selectedRoutineTodayId}
+            isBActive={!!client?.isRoutineBActive}
+            onEdit={(name) => setEditRoutineTarget(name)}
+            onUseToday={handleUseToday}
+            onToggleB={handlePromptToggleB}
+            onSelectMachine={openJourneyMachineSettings}
+            onOpenSession={() => setView("workouts")}
+            disabled={!!hasQuotaError}
+          />
 
           {/* Dialog/Modal for Routine B Toggle Reason */}
           <Dialog
