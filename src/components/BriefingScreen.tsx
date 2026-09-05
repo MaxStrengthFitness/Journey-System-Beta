@@ -184,6 +184,10 @@ export function BriefingScreen({
     undefined,
   );
   const [bodyStates, setBodyStates] = useState<BodyStateTag[]>([]);
+  // Energy + mood (Sep 2026): one tap each, optional, so the Clinical Review
+  // can cross-reference how the client arrived with how the session went.
+  const [energyLevel, setEnergyLevel] = useState<"low" | "normal" | "high" | undefined>(undefined);
+  const [mood, setMood] = useState<"low" | "neutral" | "good" | undefined>(undefined);
 
   const routineA = findRoutineByLetter(routines, "A");
   const routineB = findRoutineByLetter(routines, "B");
@@ -300,6 +304,8 @@ export function BriefingScreen({
     const checkIn: PreSessionCheckIn = {};
     if (sleepQuality) checkIn.sleepQuality = sleepQuality;
     if (stressLevel) checkIn.stressLevel = stressLevel;
+    if (energyLevel) checkIn.energyLevel = energyLevel;
+    if (mood) checkIn.mood = mood;
     if (bodyStates.length > 0) checkIn.bodyStates = bodyStates;
 
     onStart(
@@ -800,6 +806,79 @@ export function BriefingScreen({
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Energy + Mood — the same pill pattern as Sleep, side by side
+                  on tablet so the check-in stays four rows tall. */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div className="space-y-2">
+                  <label className="text-[11px] uppercase tracking-widest text-slate-600 dark:text-slate-300 font-extrabold ml-1 block">
+                    Energy
+                  </label>
+                  <div className="flex w-full gap-2">
+                    {(
+                      [
+                        { value: "low", label: "Low" },
+                        { value: "normal", label: "Normal" },
+                        { value: "high", label: "High" },
+                      ] as { value: "low" | "normal" | "high"; label: string }[]
+                    ).map((opt) => {
+                      const isActive = energyLevel === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() =>
+                            setEnergyLevel((prev) =>
+                              prev === opt.value ? undefined : opt.value,
+                            )
+                          }
+                          aria-pressed={isActive}
+                          className={`flex-1 h-12 rounded-xl text-[13px] font-extrabold uppercase tracking-wide transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan ${
+                            isActive
+                              ? "bg-[#38BDF8] text-slate-950 font-black shadow-md"
+                              : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[11px] uppercase tracking-widest text-slate-600 dark:text-slate-300 font-extrabold ml-1 block">
+                    Mood
+                  </label>
+                  <div className="flex w-full gap-2">
+                    {(
+                      [
+                        { value: "low", label: "Low" },
+                        { value: "neutral", label: "Neutral" },
+                        { value: "good", label: "Good" },
+                      ] as { value: "low" | "neutral" | "good"; label: string }[]
+                    ).map((opt) => {
+                      const isActive = mood === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() =>
+                            setMood((prev) => (prev === opt.value ? undefined : opt.value))
+                          }
+                          aria-pressed={isActive}
+                          className={`flex-1 h-12 rounded-xl text-[13px] font-extrabold uppercase tracking-wide transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan ${
+                            isActive
+                              ? "bg-[#38BDF8] text-slate-950 font-black shadow-md"
+                              : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 

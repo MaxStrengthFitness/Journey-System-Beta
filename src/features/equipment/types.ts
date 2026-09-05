@@ -75,6 +75,33 @@ export interface MachineGuide {
   imageUrl?: string;
 }
 
+/**
+ * What the client has actually done on a machine, as opposed to what is
+ * prescribed. Comes from `client.machineStats` (rolled up on every session
+ * save and by the one-time history backfill); until that exists it is
+ * reconstructed from whatever sessions the profile has loaded and flagged
+ * `partial` so the UI can say so.
+ */
+export interface MachineUsage {
+  /** ISO day of the first logged set, or null if never performed. */
+  firstPerformed: string | null;
+  lastPerformed: string | null;
+  /** Sessions in which the machine was performed (not sets). */
+  timesPerformed: number;
+  /** Load of the very first set, in lb. */
+  firstWeight: number | null;
+  /** Most recent load performed, in lb. */
+  lastWeight: number | null;
+  /**
+   * Current load vs the first one ever performed, as a percentage. Null when
+   * either end is unknown or the first weight was zero. "Current" is the
+   * prescribed current weight when there is one, else the last performed.
+   */
+  progressionPct: number | null;
+  /** True when built from loaded sessions only, not the lifetime rollup. */
+  partial: boolean;
+}
+
 /** A machine, plus this client's prescription for it. */
 export interface EquipmentMachine {
   id: string;
@@ -98,6 +125,8 @@ export interface EquipmentMachine {
   /** A note someone ticked "Flag for Maintenance" on. */
   hasMaintenanceFlag: boolean;
   loggedSetCount: number;
+  /** First performed · times performed · progression. */
+  usage: MachineUsage;
   /**
    * The client trains on this machine: a weight, a setting, or a logged set.
    * Drives both the rail's sections and the summary sentence.

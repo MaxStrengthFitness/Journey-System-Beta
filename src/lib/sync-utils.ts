@@ -103,6 +103,7 @@ export function mapMindbodySessions(sessions: any[], trainers: Trainer[]): Parti
 
 import { Firestore, writeBatch, doc, collection, serverTimestamp, increment } from 'firebase/firestore';
 import { invalidateSessionCount } from './session-count-cache';
+import { completedSessionRollup } from './client-rollups';
 
 /**
  * Atomic Session Completion Engine
@@ -310,6 +311,25 @@ export async function completeWorkoutSession(
     if (!selectedClient.consultationCompleted) {
       clientUpdates.consultationCompleted = true;
     }
+
+    // Top Trainer tally + per-machine lifetime stats (Sep 2026). Increments,
+    // so two iPads finishing at once cannot lose a vote. The trainers list is
+    // not in scope here, so only the finishing trainer's name can resolve —
+    // the profile header re-derives the winner from the tally regardless.
+    Object.assign(
+      clientUpdates,
+      completedSessionRollup(
+        selectedClient,
+        {
+          date: currentSession.date || new Date(),
+          trainerId: authTrainer?.id || currentSession.trainerId,
+          trainerInitials: authTrainer?.initials || currentSession.trainerInitials,
+        },
+        sessionLogs as any[],
+        authTrainer ? [authTrainer as Trainer] : [],
+        { increment, serverTimestamp },
+      ),
+    );
 
     batch.update(clientRef, clientUpdates);
   }

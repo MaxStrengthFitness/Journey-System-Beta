@@ -37,7 +37,6 @@ import {
   TrendingUp,
   AlertCircle,
   Play,
-  History,
   Maximize,
   Calendar,
   Maximize2,
@@ -48,8 +47,6 @@ import {
   AlertTriangle,
   UserCheck,
   Target,
-  ChevronDown,
-  ChevronUp,
   Check,
   Search,
   Loader2,
@@ -112,7 +109,8 @@ import {
 import { ROUTINE_TEMPLATES, RoutineTemplateType } from "../constants";
 import { ClientFocusDashboard } from "./ClientFocusDashboard";
 import { getCompletedSessionCount } from "../lib/session-count-cache";
-import { ClientClinicalReviewPreloader } from "./ClientClinicalReviewPreloader";
+import { ClinicalReviewTab } from "../features/clinical-review";
+import { RoutinesTab } from "../features/routines";
 import { ClientInfoSheet } from "./ClientInfoSheet";
 import {
   Client,
@@ -131,7 +129,6 @@ import {
   Studio,
   SessionNote,
 } from "../types";
-import { StickyCTA } from "./StickyCTA";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { WorkoutChartGrid } from "./WorkoutChartGrid";
 import { useToast } from "../contexts/ToastContext";
@@ -167,7 +164,15 @@ import {
 import { isOwner as checkIsOwner } from "../lib/permissions";
 import { EditRoutineDrawer } from "./EditRoutineDrawer";
 import { ClientJournalTab } from "./journal/ClientJournalTab";
+import {
+  ProfileHeader,
+  resolvePackage,
+  useTopTrainer,
+} from "../features/client-profile";
 
+
+/** Sessions per Firestore page for the profile's history (see the Journey tab). */
+const SESSION_PAGE = 15;
 
 export function ClientProfileView({
   clientId,
@@ -423,8 +428,25 @@ export function ClientProfileView({
   }, []);
 
   const [activeTab, setActiveTab] = useState("journey");
-  const [isInfoSheetOpen, setIsInfoSheetOpen] = useState(false);
-  const [infoSheetTab, setInfoSheetTab] = useState("identity");
+
+  /* ------------------------------------------------------------------ *
+   * HEADER FACTS (Sep 2026 redesign)
+   *
+   * Top Trainer reads the persisted tally on the client document instead of
+   * counting whoever coached the ten sessions this view happens to have
+   * loaded — which was wrong for every client with more than ten sessions.
+   * The package/remaining figure trusts Mindbody first (membership pull vs
+   * booking pass snapshot, whichever is fresher) and falls back to the
+   * app's own `remainingSessions`. Both are pure functions with tests in
+   * src/features/client-profile/.
+   * ------------------------------------------------------------------ */
+  const topTrainer = useTopTrainer(client, trainers, sessions, {
+    enabled: !hasQuotaError,
+  });
+  const clientPackage = useMemo(
+    () => resolvePackage(client, scheduledSessions),
+    [client, scheduledSessions],
+  );
 
   function getTrainerChipStyles(initials: string) {
     if (!initials) return "bg-ink-l2 text-white";
@@ -443,16 +465,6 @@ export function ClientProfileView({
     return colors[index];
   }
 
-  useEffect(() => {
-    setIsInfoSheetOpen(false);
-  }, [clientId]);
-
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) =>
-      e.key === "Escape" && setIsInfoSheetOpen(false);
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, []);
   const [clientNotesInput, setClientNotesInput] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [sessionNotes, setSessionNotes] = useState<SessionNote[]>([]);
@@ -1019,483 +1031,6 @@ export function ClientProfileView({
     }
   };
 
-  const calculateChangesThisMonth = useCallback(
-    (adjustments: RoutineAdjustment[]) => {
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-
-      return adjustments.filter((adj) => {
-        if (!adj.createdAt) return false;
-        const time =
-          adj.createdAt.toMillis?.() ||
-          (typeof adj.createdAt === "number" ? adj.createdAt : 0);
-        if (!time) return false;
-        const d = new Date(time);
-        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-      }).length;
-    },
-    [],
-  );
-
-  const getAdjustmentDiff = useCallback(
-    (adj: RoutineAdjustment) => {
-      const addedIds = adj.newMachineIds.filter(
-        (id) => !adj.previousMachineIds.includes(id),
-      );
-      const removedIds = adj.previousMachineIds.filter(
-        (id) => !adj.newMachineIds.includes(id),
-      );
-
-      const addedNames = addedIds
-        .map((id) => machines.find((m) => m.id === id)?.name || "Unknown")
-        .filter(Boolean);
-      const removedNames = removedIds
-        .map((id) => machines.find((m) => m.id === id)?.name || "Unknown")
-        .filter(Boolean);
-
-      return { addedNames, removedNames };
-    },
-    [machines],
-  );
-
-  const getSelectedRoutineLabel = () => {
-    if (!selectedRoutineTodayId) return "";
-    const found = routines.find((r) => r.id === selectedRoutineTodayId);
-    if (found) return found.name.toUpperCase();
-    if (
-      selectedRoutineTodayId.includes("-a") ||
-      selectedRoutineTodayId.includes("A")
-    )
-      return "ROUTINE A";
-    if (
-      selectedRoutineTodayId.includes("-b") ||
-      selectedRoutineTodayId.includes("B")
-    )
-      return "ROUTINE B";
-    return "ROUTINE";
-  };
-
-  const renderRoutineCard = (routineName: "Routine A" | "Routine B") => {
-    const raw = routines.find((r) => r.name === routineName);
-    const routine: Routine = raw || {
-      id: routineName === "Routine A" ? "temp-a" : "temp-b",
-      name: routineName,
-      clientId: clientId || "",
-      machineIds: [],
-      studioId: client?.homeStudioId || "",
-    };
-
-    const isB = routineName === "Routine B";
-    const isBActive = !isB || !!client?.isRoutineBActive;
-
-    const getLastChangedText = () => {
-      const adjs = routineAdjustments.filter((a) => a.routineId === routine.id);
-      if (adjs.length === 0) {
-        if (routine.updatedAt) {
-          return `last changed long ago`;
-        }
-        return `no changes logged yet`;
-      }
-      const latest = adjs[0];
-      const trainer = trainers.find((t) => t.id === latest.trainerId);
-      const trainerInitials =
-        trainer?.initials ||
-        latest.trainerId?.substring(0, 2).toUpperCase() ||
-        "TR";
-
-      let diffDays = 0;
-      if (latest.createdAt) {
-        const time =
-          latest.createdAt.toMillis?.() ||
-          (typeof latest.createdAt === "number" ? latest.createdAt : 0);
-        if (time) {
-          const diffMs = Date.now() - time;
-          diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        }
-      }
-
-      if (diffDays <= 0) {
-        return `last changed today by ${trainerInitials}`;
-      } else if (diffDays === 1) {
-        return `last changed 1 day ago by ${trainerInitials}`;
-      } else {
-        return `last changed ${diffDays} days ago by ${trainerInitials}`;
-      }
-    };
-
-    const isTodaySelected = selectedRoutineTodayId === routine.id;
-
-    return (
-      <Card
-        key={routineName}
-        className={cn(
-          "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-all overflow-hidden flex flex-col relative",
-          isTodaySelected &&
-            "ring-2 ring-cyan shadow-[0_0_20px_rgba(6,182,212,0.3)] border-cyan/40",
-          !isBActive && "opacity-60 grayscale-15",
-        )}
-      >
-        {isTodaySelected && (
-          <div className="absolute top-0 left-0 right-0 h-1 bg-cyan" />
-        )}
-
-        <CardHeader className="p-5 lg:p-6 pb-4 border-b border-slate-100 dark:border-slate-800/40 bg-slate-50/50 dark:bg-slate-900/40">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                className={cn(
-                  "w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold font-sans italic shadow-sm text-white shrink-0",
-                  isB ? "bg-cta shadow-cta/20" : "bg-cyan shadow-cyan/20",
-                )}
-              >
-                {routineName.split(" ")[1]}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <CardTitle className="text-lg lg:text-xl font-bold uppercase tracking-tight text-slate-800 dark:text-neutral-100">
-                    {routineName}
-                  </CardTitle>
-                  {isB && (
-                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 select-none">
-                      <span
-                        className={cn(
-                          "inline-block w-1.5 h-1.5 rounded-full",
-                          client?.isRoutineBActive
-                            ? "bg-emerald-500 animate-pulse"
-                            : "bg-slate-400",
-                        )}
-                      />
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                        {client?.isRoutineBActive
-                          ? "Protocol B Active"
-                          : "B Inactive"}
-                      </span>
-                      <Switch
-                        checked={!!client?.isRoutineBActive}
-                        onCheckedChange={(checked) =>
-                          handlePromptToggleB(checked)
-                        }
-                        className="scale-75 touch-none pointer-events-auto"
-                      />
-                    </div>
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-400 font-mono tracking-wide mt-0.5">
-                  {routine.machineIds.length}{" "}
-                  {routine.machineIds.length === 1 ? "unit" : "units"}{" "}
-                  assignment · {getLastChangedText()}
-                </p>
-              </div>
-            </div>
-
-            {isBActive && (
-              <div className="flex items-center gap-2 ml-auto shrink-0 animate-fade-in animate-duration-150">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 rounded-xl font-bold uppercase text-[11px] tracking-wider border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all px-4"
-                  onClick={() => setEditRoutineTarget(routineName)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant={isTodaySelected ? "default" : "outline"}
-                  size="sm"
-                  className={cn(
-                    "h-9 rounded-xl font-bold uppercase text-[11px] tracking-wider transition-all px-4",
-                    isTodaySelected
-                      ? "bg-cyan hover:bg-cyan/90 border-transparent text-white"
-                      : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800",
-                  )}
-                  onClick={() => handleUseToday(routine)}
-                >
-                  {isTodaySelected ? "Active Today" : "Use Today"}
-                </Button>
-              </div>
-            )}
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-5 lg:p-6 flex-1">
-          {routine.machineIds.length === 0 ? (
-            <div className="py-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800/40 rounded-xl bg-slate-50/40 dark:bg-slate-900/10 flex flex-col items-center justify-center p-4">
-              <p className="text-xs text-slate-400 font-medium font-sans uppercase tracking-widest mb-3">
-                No Machines Assigned
-              </p>
-              {isBActive && (
-                <Button
-                  onClick={() => setEditRoutineTarget(routineName)}
-                  variant="outline"
-                  size="sm"
-                  className="text-xs font-bold uppercase tracking-wider rounded-xl border-slate-200 dark:border-slate-800"
-                >
-                  Configure Routine
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {routine.machineIds.map((machineId, idx) => {
-                const machine = machines.find((m) => m.id === machineId);
-                if (!machine) return null;
-
-                const metric = client?.currentMachineMetrics?.[machineId];
-                const latestSessionWithLog = sessions.find((s) =>
-                  allLogs?.some(
-                    (l) => l.sessionId === s.id && l.machineId === machineId,
-                  ),
-                );
-                const latestLog = latestSessionWithLog
-                  ? allLogs.find(
-                      (l) =>
-                        l.sessionId === latestSessionWithLog.id &&
-                        l.machineId === machineId,
-                    )
-                  : allLogs
-                      ?.filter((l) => l.machineId === machineId)
-                      ?.sort((a, b) => {
-                        const sessA = sessions.find((s) => s.id === a.sessionId);
-                        const sessB = sessions.find((s) => s.id === b.sessionId);
-                        const numA =
-                          sessA?.sessionNumber ??
-                          parseSessionDate(sessA?.date || "");
-                        const numB =
-                          sessB?.sessionNumber ??
-                          parseSessionDate(sessB?.date || "");
-                        return numB - numA;
-                      })[0];
-
-                const weightVal =
-                  metric?.weight ||
-                  latestLog?.weight ||
-                  latestLog?.loadLb ||
-                  clientSettings[machineId]?.currentWeight ||
-                  clientSettings[machineId]?.startingWeight ||
-                  "--";
-                const repsVal =
-                  metric?.reps ||
-                  metric?.seconds ||
-                  latestLog?.reps ||
-                  latestLog?.seconds ||
-                  latestLog?.outcomeTut ||
-                  "--";
-                const isHold =
-                  metric?.isStaticHold ??
-                  latestLog?.isStaticHold ??
-                  latestLog?.isTSC;
-
-                return (
-                  <div
-                    key={`${machineId}-${idx}`}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-mono font-bold text-slate-500 dark:text-slate-400 shrink-0">
-                        {idx + 1}
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-xs font-bold uppercase tracking-tight text-slate-800 dark:text-neutral-200 block">
-                          {machine.name}
-                        </span>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium uppercase tracking-wider">
-                          {machine.anatomicalRegion || "Other Region"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <span className="text-xs font-mono font-bold text-slate-700 dark:text-neutral-300">
-                        {weightVal !== "--" ? `${weightVal} lb` : "--"}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-mono block">
-                        {repsVal !== "--"
-                          ? `${repsVal}${isHold ? "s Hold" : " reps"}`
-                          : "--"}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  };
-
-  const [isJournalExpanded, setIsJournalExpanded] = useState(false);
-
-  const renderRoutineJournalList = () => {
-    const changesThisMonth = calculateChangesThisMonth(routineAdjustments);
-
-    // Most recent adjustment across BOTH routines (routineAdjustments is
-    // already sorted newest-first) — drives the "last modified" timestamp
-    // shown above the changes-this-month badge.
-    const mostRecentAdj = routineAdjustments[0];
-    let lastModifiedText = "No changes logged yet";
-    if (mostRecentAdj?.createdAt) {
-      const time =
-        mostRecentAdj.createdAt.toMillis?.() ||
-        (typeof mostRecentAdj.createdAt === "number"
-          ? mostRecentAdj.createdAt
-          : 0);
-      if (time) {
-        const modifiedDate = new Date(time);
-        lastModifiedText = `Last modified ${modifiedDate.toLocaleDateString(
-          undefined,
-          { month: "short", day: "numeric", year: "numeric" },
-        )} at ${modifiedDate.toLocaleTimeString(undefined, {
-          hour: "numeric",
-          minute: "2-digit",
-        })}`;
-      }
-    }
-
-    return (
-      <Card className="col-span-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm mt-4 p-5 lg:p-6">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <History className="w-5 h-5 text-slate-500" />
-            <h3 className="text-sm font-bold uppercase tracking-tight text-slate-800 dark:text-neutral-200">
-              Routine Adjustment Journal
-            </h3>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <span className="text-[10px] text-slate-400 font-medium tracking-wide">
-              {lastModifiedText}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsJournalExpanded(!isJournalExpanded)}
-              className="rounded-xl font-bold uppercase text-[11px] tracking-wider border-slate-200 dark:border-slate-800"
-            >
-              {isJournalExpanded ? "Collapse Journal" : "Open Journal"}
-              <span className="ml-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full text-[10px]">
-                {changesThisMonth} {changesThisMonth === 1 ? "change" : "changes"}{" "}
-                this month
-              </span>
-              {isJournalExpanded ? (
-                <ChevronUp className="w-3.5 h-3.5 ml-1.5" />
-              ) : (
-                <ChevronDown className="w-3.5 h-3.5 ml-1.5" />
-              )}
-            </Button>
-          </div>
-        </div>
-
-        {isJournalExpanded && (
-          <div className="mt-5 space-y-4 max-h-87.5 overflow-y-auto pr-1">
-            {routineAdjustments.length === 0 ? (
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wide text-center py-6">
-                No adjustments recorded in clinical logs
-              </p>
-            ) : (
-              routineAdjustments.map((adj) => {
-                const { addedNames, removedNames } = getAdjustmentDiff(adj);
-
-                let dateText = "Date unknown";
-                if (adj.createdAt) {
-                  const time =
-                    adj.createdAt.toMillis?.() ||
-                    (typeof adj.createdAt === "number" ? adj.createdAt : 0);
-                  if (time) {
-                    dateText = new Date(time).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    });
-                  }
-                }
-
-                const trainerObj = trainers.find((t) => t.id === adj.trainerId);
-                const initials =
-                  trainerObj?.initials ||
-                  adj.trainerId?.substring(0, 2).toUpperCase() ||
-                  "TR";
-                const isToggle =
-                  adj.changeType === "enabled" || adj.changeType === "disabled";
-
-                return (
-                  <div
-                    key={adj.id}
-                    className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-2 text-xs"
-                  >
-                    <div className="flex items-center justify-between gap-2 border-b border-slate-200/40 dark:border-slate-800/40 pb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center justify-center w-7 h-7 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold font-mono text-slate-700 dark:text-slate-300 rounded-[#10px]">
-                          {initials}
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-700 dark:text-neutral-200">
-                            {trainerObj?.fullName || adj.trainerId}
-                          </p>
-                          <p className="text-[10px] text-slate-400 font-medium">
-                            {dateText}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="font-mono text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-550 dark:text-slate-400 px-2 py-0.5 rounded uppercase">
-                        {adj.changeType || "machines"}
-                      </span>
-                    </div>
-
-                    {!isToggle &&
-                      (addedNames.length > 0 || removedNames.length > 0) && (
-                        <div className="space-y-1 py-1">
-                          {addedNames.length > 0 && (
-                            <p className="text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight flex items-center gap-1">
-                              <span className="text-emerald-500 font-extrabold">
-                                + ADDED:
-                              </span>
-                              <span className="font-medium text-slate-700 dark:text-slate-300">
-                                {addedNames.join(", ")}
-                              </span>
-                            </p>
-                          )}
-                          {removedNames.length > 0 && (
-                            <p className="text-red-500 dark:text-red-400 font-bold uppercase tracking-tight flex items-center gap-1">
-                              <span className="text-red-400 font-extrabold">
-                                - REMOVED:
-                              </span>
-                              <span className="font-medium text-slate-700 dark:text-slate-300">
-                                {removedNames.join(", ")}
-                              </span>
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                    {isToggle && (
-                      <p
-                        className={cn(
-                          "font-bold uppercase tracking-wide",
-                          adj.changeType === "enabled"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-red-500 dark:text-red-450",
-                        )}
-                      >
-                        Protocol Routine B{" "}
-                        {adj.changeType === "enabled" ? "Enabled" : "Disabled"}
-                      </p>
-                    )}
-
-                    {adj.notes && (
-                      <p className="italic text-slate-600 dark:text-neutral-305 bg-white/40 dark:bg-slate-900/40 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                        "{adj.notes}"
-                      </p>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        )}
-      </Card>
-    );
-  };
-
   const fetchLogsForSessions = async (sessionIds: string[]) => {
     if (sessionIds.length === 0) return [];
     const chunks = [];
@@ -1522,23 +1057,21 @@ export function ClientProfileView({
   useEffect(() => {
     if (!clientId || hasQuotaError) return;
 
-    if (
-      activeTab !== "journey" &&
-      activeTab !== "history" &&
-      activeTab !== "clinical"
-    ) {
+    if (activeTab !== "journey" && activeTab !== "history") {
       return;
     }
 
     const fetchInitialSessions = async () => {
       try {
         // 2. Firebase Query Limits & Pagination
-        // Always restrict the initial query to 10 to save massive memory/bandwidth.
+        // The first page is 15 sessions: the Journey grid shows fourteen
+        // columns at once (Sep 2026 density round) and the fifteenth keeps
+        // the trend glyph on the oldest visible column honest.
         const sessionsQuery = query(
           collection(db, "sessions"),
           where("clientId", "==", clientId),
           orderBy("date", "desc"),
-          limit(10), // STRICT LIMIT 10
+          limit(SESSION_PAGE),
         );
 
         const sessionSnap = await getDocs(sessionsQuery);
@@ -1552,7 +1085,7 @@ export function ClientProfileView({
         }
 
         setLastVisibleSession(docs[docs.length - 1]);
-        setHasMoreSessions(docs.length === 10);
+        setHasMoreSessions(docs.length === SESSION_PAGE);
 
         const liveSessionsData = docs.map(
           (doc) => ({ id: doc.id, ...doc.data() }) as WorkoutSession,
@@ -1615,7 +1148,7 @@ export function ClientProfileView({
         where("clientId", "==", clientId),
         orderBy("date", "desc"),
         startAfter(lastVisibleSession),
-        limit(10),
+        limit(SESSION_PAGE),
       );
       const snap = await getDocs(moreQuery);
       if (snap.empty) {
@@ -1624,7 +1157,7 @@ export function ClientProfileView({
       }
 
       setLastVisibleSession(snap.docs[snap.docs.length - 1]);
-      setHasMoreSessions(snap.docs.length === 10);
+      setHasMoreSessions(snap.docs.length === SESSION_PAGE);
 
       const moreSessionsData = snap.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() }) as WorkoutSession,
@@ -2176,296 +1709,53 @@ export function ClientProfileView({
         return null;
       })()}
 
-      {/* Session Status Header — one flex row on tablet: avatar + name, then
-          the four headline metrics, then the actions. Nothing floats. */}
-      <div className="bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800/60 pb-4 mb-6 pt-2">
-        {/* < lg (iPad portrait): identity + actions on row one, metrics on row two.
-            ≥ lg (iPad landscape): everything on one row. */}
-        <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-4 gap-y-3 lg:gap-x-6">
-          {/* Identity */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 lg:flex-initial lg:max-w-[34%]">
-            <Button
-              onClick={() => {
-                setSelectedClientId(null);
-                setView("client-directory");
-              }}
-              variant="ghost"
-              size="icon"
-              className="shrink-0 text-slate-400 dark:text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full h-10 w-10"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </Button>
-
-            <Avatar
-              size="xl"
-              className="ring-2 ring-slate-200 dark:ring-slate-800 bg-slate-100 dark:bg-slate-800"
-            >
-              {client.photoUrl && (
-                <AvatarImage
-                  src={client.photoUrl}
-                  alt={`${client.firstName} ${client.lastName}`}
-                />
-              )}
-              <AvatarFallback className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-lg">
-                {`${(client.firstName || "").charAt(0)}${(client.lastName || "").charAt(0)}`.toUpperCase() || (
-                  <User className="w-7 h-7" />
-                )}
-              </AvatarFallback>
-            </Avatar>
-
-            <div className="flex flex-col min-w-0">
-              <h1 className="text-2xl md:text-[26px] lg:text-3xl font-black tracking-tight leading-none text-slate-900 dark:text-white truncate">
-                {client.firstName} {client.lastName}
-              </h1>
-              {(client.notes ||
-                (client.clinicalFlags && client.clinicalFlags.length > 0)) && (
-                <div className="mt-1.5 inline-flex w-fit bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/30 rounded px-2 py-0.5 items-center gap-1.5 animate-pulse">
-                  <AlertTriangle className="w-3 h-3" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">
-                    Clinical Notes Active
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Headline metrics */}
-          <div className="order-3 lg:order-none w-full lg:w-auto lg:flex-1 min-w-0 flex items-center gap-x-4 lg:gap-x-5 overflow-x-auto no-scrollbar pl-12 lg:pl-0">
-            {/* Top Trainer */}
-            <div className="flex flex-col shrink-0">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">
-                Top Trainer
-              </span>
-              <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                <UserCheck className="w-4 h-4 text-[#F06C22]" />
-                {(() => {
-                  const trainerCount: Record<string, number> = {};
-                  sessions.forEach((s) => {
-                    if (s.trainerId)
-                      trainerCount[s.trainerId] =
-                        (trainerCount[s.trainerId] || 0) + 1;
-                    else if (s.trainerName) {
-                      const t = trainers.find(
-                        (tr) =>
-                          tr.fullName === s.trainerName ||
-                          tr.initials === s.trainerName,
-                      );
-                      if (t && t.id)
-                        trainerCount[t.id] = (trainerCount[t.id] || 0) + 1;
-                    }
-                  });
-                  let topTrainerId = null;
-                  let maxCount = 0;
-                  for (const [id, count] of Object.entries(trainerCount)) {
-                    if (count > maxCount) {
-                      maxCount = count;
-                      topTrainerId = id;
-                    }
-                  }
-                  if (topTrainerId) {
-                    const t = trainers.find((tr) => tr.id === topTrainerId);
-                    return t ? t.fullName : "N/A";
-                  }
-                  return "N/A";
-                })()}
-              </div>
-            </div>
-
-            <div className="w-px h-8 bg-slate-200 dark:bg-slate-800 shrink-0"></div>
-
-            {/* Last Session */}
-            <div className="flex flex-col shrink-0">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">
-                Last Session
-              </span>
-              <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                <History className="w-4 h-4 text-[#68717A]" />
-                {sessions[0]?.date
-                  ? new Date(
-                      parseSessionDate(sessions[0].date),
-                    ).toLocaleDateString([], {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })
-                  : "N/A"}
-              </div>
-            </div>
-
-            <div className="w-px h-8 bg-slate-200 dark:bg-slate-800 shrink-0"></div>
-
-            {/* Next Session & Pre-booked */}
-            <div className="flex flex-col shrink-0">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">
-                Next Session
-              </span>
-              <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                <CalendarDays className="w-4 h-4 text-[#68717A]" />
-                {scheduledSessions.length > 0 ? (
-                  <>
-                    <span>
-                      {(() => {
-                        const dateVal = scheduledSessions[0].startTime;
-                        if (!dateVal) return "N/A";
-                        let d: Date;
-                        if (typeof (dateVal as any).toDate === "function") {
-                          d = (dateVal as any).toDate();
-                        } else if (typeof dateVal === "string") {
-                          d = new Date(
-                            dateVal.includes("T")
-                              ? dateVal
-                              : dateVal + "T12:00:00",
-                          );
-                        } else {
-                          d = new Date(dateVal);
-                        }
-                        return isNaN(d.getTime())
-                          ? "N/A"
-                          : d.toLocaleDateString([], {
-                              month: "short",
-                              day: "numeric",
-                            });
-                      })()}
-                    </span>
-                    {scheduledSessions.length > 1 && (
-                      <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-[#68717A] dark:text-slate-300 px-1.5 py-0.5 rounded ml-1">
-                        +{scheduledSessions.length - 1} booked
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-[#68717A] font-medium italic">
-                    Not Scheduled
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="w-px h-8 bg-slate-200 dark:bg-slate-800 shrink-0"></div>
-
-            {/* Session Counter */}
-            <div className="flex flex-col shrink-0">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-[#68717A] dark:text-slate-500 mb-1">
-                Sessions Completed
-              </span>
-              <div className="flex items-baseline gap-2 text-sm font-bold text-slate-900 dark:text-slate-100 leading-none whitespace-nowrap">
-                <span className="text-2xl font-black text-[#F06C22] leading-none">
-                  {calculatedSessionCount}
-                </span>
-                <span className="text-[#68717A] text-[11px] uppercase tracking-widest opacity-80">
-                  /{" "}
-                  {calculatedSessionCount + (client.remainingSessions ?? 0)}{" "}
-                  total
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto lg:ml-0">
-            <Button
-              onClick={() => {
-                setInfoSheetTab("identity");
-                setIsInfoSheetOpen(true);
-              }}
-              variant="outline"
-              className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 h-10 sm:h-12 px-4 shadow-sm transition-colors"
-            >
-              <Contact className="w-4 h-4 sm:mr-2" />
-              <span className="font-bold uppercase tracking-widest text-[10px] sm:text-xs hidden sm:inline">
-                Profile Details
-              </span>
-            </Button>
-
-            {activeInProgressSession ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap bg-amber-500 hover:bg-amber-600 rounded-xl font-bold uppercase text-[10px] sm:text-xs tracking-widest h-10 sm:h-12 px-4 sm:px-6 shadow-sm border-none w-auto text-white transition-colors">
-                  <Clock className="w-4 h-4 mr-1.5 animate-pulse" />
-                  IN-PROGRESS ({activeInProgressSession.trainerInitials})
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="w-60 rounded-2xl p-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-                >
-                  <div className="px-3 py-2 mb-2 border-b border-slate-200 dark:border-slate-800">
-                    <p className="text-[11px] font-medium uppercase text-amber-500 tracking-widest">
-                      Active Session Detected
-                    </p>
-                    <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200 mt-1">
-                      Started by {activeInProgressSession.trainerInitials} at{" "}
-                      {new Date(
-                        activeInProgressSession.startTime?.toMillis?.() || 0,
-                      ).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      localStorage.setItem(
-                        "max_strength_active_session_id",
-                        activeInProgressSession.id!,
-                      );
-                      setView("workouts");
-                    }}
-                    className="rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/20 transition-colors cursor-pointer flex items-center gap-2 p-3 text-amber-700 dark:text-amber-500"
-                  >
-                    <Play className="w-4 h-4" />
-                    <span className="font-bold uppercase text-xs">
-                      Take Over Session
-                    </span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setView("workouts")}
-                    className="rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-2 p-3 text-slate-700 dark:text-slate-300"
-                  >
-                    <Maximize className="w-4 h-4" />
-                    <span className="font-bold uppercase text-xs">
-                      View Current Profile
-                    </span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setShowDiscardActiveSessionConfirm(true)}
-                    className="rounded-xl hover:bg-red-50 dark:hover:bg-red-500/20 transition-colors cursor-pointer flex items-center gap-2 p-3 text-red-600 dark:text-red-500"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span className="font-bold uppercase text-xs">
-                      Discard Session
-                    </span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button
-                onClick={() => {
-                  localStorage.removeItem("max_strength_active_session_id");
-                  setView("workouts");
-                }}
-                disabled={isCheckingActiveSession}
-                className="bg-[#F06C22] hover:bg-[#F06C22]/90 rounded-xl font-bold uppercase text-[10px] sm:text-xs tracking-widest h-10 sm:h-12 px-4 sm:px-6 shadow-sm border-none w-auto text-white dark:text-white transition-transform active:scale-95"
-              >
-                <Play className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">
-                  {isCheckingActiveSession ? "Checking..." : "Start Session"}
-                </span>
-                <span className="sm:hidden">
-                  {isCheckingActiveSession ? "Checking..." : "Start"}
-                </span>
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* Header (Sep 2026 redesign) — identity, four facts, one action.
+          Lives in src/features/client-profile/ProfileHeader.tsx; this view
+          only hands it data and the session-start wiring. */}
+      <ProfileHeader
+        client={client}
+        studioName={studios?.find((s) => s.id === client.homeStudioId)?.name}
+        sessions={sessions}
+        scheduledSessions={scheduledSessions}
+        completedCount={calculatedSessionCount}
+        topTrainer={topTrainer}
+        pkg={clientPackage}
+        activeInProgressSession={activeInProgressSession}
+        isCheckingActiveSession={isCheckingActiveSession}
+        onBack={() => {
+          setSelectedClientId(null);
+          setView("client-directory");
+        }}
+        onStartSession={() => {
+          localStorage.removeItem("max_strength_active_session_id");
+          setView("workouts");
+        }}
+        onTakeOverSession={() => {
+          if (activeInProgressSession?.id) {
+            localStorage.setItem(
+              "max_strength_active_session_id",
+              activeInProgressSession.id,
+            );
+          }
+          setView("workouts");
+        }}
+        onViewCurrentSession={() => setView("workouts")}
+        onDiscardSession={() => setShowDiscardActiveSessionConfirm(true)}
+      />
 
       <Tabs
         value={activeTab}
         className="w-full flex-1 flex flex-col min-h-0"
         onValueChange={setActiveTab}
       >
-        <div className="mb-6 w-full">
-          <div className="w-full pb-1">
-            <TabsList className="bg-transparent p-0 grid grid-cols-6 w-full h-11! border-b border-slate-200 dark:border-slate-800 gap-0">
+        {/* Seven equal columns — Profile Details joined the row as "Details"
+            (Sep 2026). Equal tracks (not content-sized) are what keep the row
+            from ever scrolling sideways: at 834pt portrait each tab still
+            gets ~115px, and the condensed display face fits "EQUIPMENT" in
+            that with room. `truncate` is the belt to that suspender. */}
+        <div className="mb-2 w-full">
+          <div className="w-full pb-0.5">
+            <TabsList className="bg-transparent p-0 grid grid-cols-7 w-full h-11! border-b border-slate-200 dark:border-slate-800 gap-0">
               {[
                 { val: "journey", label: "Journey" },
                 { val: "routines", label: "Routines" },
@@ -2473,11 +1763,12 @@ export function ClientProfileView({
                 { val: "journal", label: "Journal" },
                 { val: "history", label: "History" },
                 { val: "clinical", label: "Clinical" },
+                { val: "details", label: "Details" },
               ].map((tab) => (
                 <TabsTrigger
                   key={tab.val}
                   value={tab.val}
-                  className="relative w-full h-11! px-1 sm:px-3 font-display italic text-[10px] sm:text-[13px] font-bold uppercase tracking-wider sm:tracking-widest text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-slate-800/80 data-[state=active]:text-[#F06C22] dark:data-[state=active]:text-[#F06C22] transition-all text-center cursor-pointer select-none rounded-none border-b-2 border-transparent data-[state=active]:border-[#F06C22] truncate flex items-center justify-center"
+                  className="relative w-full h-11! px-1 sm:px-2 font-display italic text-[10px] sm:text-[13px] font-bold uppercase tracking-wider sm:tracking-widest text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-slate-800/80 data-[state=active]:text-[#F06C22] dark:data-[state=active]:text-[#F06C22] transition-all text-center cursor-pointer select-none rounded-none border-b-2 border-transparent data-[state=active]:border-[#F06C22] truncate flex items-center justify-center"
                 >
                   {tab.label}
                 </TabsTrigger>
@@ -2485,6 +1776,26 @@ export function ClientProfileView({
             </TabsList>
           </div>
         </div>
+        <TabsContent
+          value="details"
+          className="mt-0 flex-1 min-h-0 flex flex-col focus-visible:outline-none"
+        >
+          {client && (
+            <ClientInfoSheet
+              variant="inline"
+              className="h-[calc(100dvh-340px)] min-h-[560px]"
+              isOpen
+              onOpenChange={() => setActiveTab("journey")}
+              client={client}
+              authTrainer={authTrainer ?? null}
+              defaultTab="identity"
+              machines={machines}
+              trainers={trainers}
+              onOpenJournal={() => setActiveTab("journal")}
+              onOpenReports={() => setActiveTab("journal")}
+            />
+          )}
+        </TabsContent>
         <TabsContent
           value="equipment"
           className="mt-0 flex-1 overflow-hidden min-h-0 flex flex-col rounded-xl relative"
@@ -2496,6 +1807,7 @@ export function ClientProfileView({
             clientSettings={clientSettings}
             clientBodyWeight={parseInt(client?.weight || "150", 10)}
             allLogs={allLogs}
+            sessions={sessions}
             activeStudioId={activeStudioId}
             authTrainer={authTrainer}
           />
@@ -2518,28 +1830,27 @@ export function ClientProfileView({
           value="routines"
           className="mt-0 flex-1 min-h-0 focus-visible:outline-none"
         >
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-stretch">
-            {/* Render Routine A Card */}
-            {renderRoutineCard("Routine A")}
-
-            {/* Render Routine B Card */}
-            {renderRoutineCard("Routine B")}
-
-            {/* Collapsible Routine Audit Journal */}
-            {renderRoutineJournalList()}
-          </div>
-
-          {/* Sticky Selected Routine Indicator */}
-          {selectedRoutineTodayId && (
-            <div className="mt-6 flex justify-center">
-              <StickyCTA
-                label={`${getSelectedRoutineLabel()} SELECTED`}
-                onClick={() => {
-                  setView("workouts");
-                }}
-              />
-            </div>
-          )}
+          {/* Both prescriptions as dense lists (features/routines). The
+              mutations stay here: the tab only reports taps. */}
+          <RoutinesTab
+            client={client}
+            clientId={clientId || ""}
+            routines={routines}
+            machines={machines}
+            clientSettings={clientSettings}
+            allLogs={allLogs}
+            sessions={sessions}
+            adjustments={routineAdjustments}
+            trainers={trainers}
+            selectedRoutineTodayId={selectedRoutineTodayId}
+            isBActive={!!client?.isRoutineBActive}
+            onEdit={(name) => setEditRoutineTarget(name)}
+            onUseToday={handleUseToday}
+            onToggleB={handlePromptToggleB}
+            onSelectMachine={openJourneyMachineSettings}
+            onOpenSession={() => setView("workouts")}
+            disabled={!!hasQuotaError}
+          />
 
           {/* Dialog/Modal for Routine B Toggle Reason */}
           <Dialog
@@ -2741,14 +2052,19 @@ export function ClientProfileView({
           value="clinical"
           className="mt-0 flex-1 min-h-125 focus-visible:outline-none"
         >
+          {/* Sep 2026: nothing loads on open. The tab is a "Generate clinical
+              report" gate with a date range; the report is compiled from
+              exactly that window. See src/features/clinical-review/. */}
           {client && (
-            <ClientClinicalReviewPreloader
+            <ClinicalReviewTab
               client={client}
               machines={machines}
-              initialLogs={allLogs}
-              initialSessions={sessions}
-              onOpenBriefing={() => setView("workouts")}
-              onClose={() => setActiveTab("journey")}
+              trainers={trainers}
+              timeZone={
+                studios?.find((s) => s.id === client.homeStudioId)?.timezone ||
+                undefined
+              }
+              disabled={!!hasQuotaError}
             />
           )}
         </TabsContent>
@@ -4745,26 +4061,6 @@ export function ClientProfileView({
           </div>
         </TabsContent>
       </Tabs>
-
-      {isInfoSheetOpen && client && (
-        <ClientInfoSheet
-          isOpen={isInfoSheetOpen}
-          onOpenChange={setIsInfoSheetOpen}
-          client={client}
-          authTrainer={authTrainer}
-          defaultTab={infoSheetTab}
-          machines={machines}
-          trainers={trainers}
-          onOpenJournal={() => {
-            setIsInfoSheetOpen(false);
-            setActiveTab("journal");
-          }}
-          onOpenReports={() => {
-            setIsInfoSheetOpen(false);
-            setActiveTab("journal");
-          }}
-        />
-      )}
 
       {showFullChart &&
         clientId &&

@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useMachineCatalog } from "../../hooks/useMachineCatalog";
 import { useToast } from "../../contexts/ToastContext";
 import { useActiveStudio } from "../../ActiveStudioContext";
-import type { Machine, ClientMachineSetting, ExerciseLog, Client, Trainer } from "../../types";
+import type { Machine, ClientMachineSetting, ExerciseLog, Client, Trainer, WorkoutSession } from "../../types";
 import { summarise, toEquipmentMachines } from "./adapters";
+import { useMachineStats } from "./useMachineStats";
 import { EquipmentSummaryBar } from "./EquipmentSummaryBar";
 import { MachineRail } from "./MachineRail";
 import { MachineDetailPanel } from "./MachineDetailPanel";
@@ -52,6 +53,8 @@ export interface EquipmentTabProps {
   machines: Machine[];
   clientSettings?: Record<string, ClientMachineSetting>;
   allLogs?: ExerciseLog[];
+  /** The sessions `allLogs` belong to; only used until the lifetime rollup exists. */
+  sessions?: WorkoutSession[];
   authTrainer?: Trainer | null;
   activeStudioId?: string | null;
   /** Accepted for prop compatibility with the view it replaces. */
@@ -64,10 +67,12 @@ export function EquipmentTab({
   machines,
   clientSettings = {},
   allLogs = [],
+  sessions = [],
   authTrainer,
   activeStudioId,
 }: EquipmentTabProps) {
   const { byId: catalogById } = useMachineCatalog();
+  const { stats: machineStats } = useMachineStats(client);
   const { activeStudio } = useActiveStudio();
   const { success: toastSuccess, error: toastError } = useToast();
 
@@ -92,8 +97,10 @@ export function EquipmentTab({
         allLogs,
         catalogById,
         studioMachineSettings: activeStudio?.machineSettings,
+        machineStats,
+        sessions,
       }),
-    [machines, clientSettings, allLogs, catalogById, activeStudio],
+    [machines, clientSettings, allLogs, catalogById, activeStudio, machineStats, sessions],
   );
 
   const summary = useMemo(() => summarise(equipment), [equipment]);

@@ -65,7 +65,15 @@ export function AppHeader({
             // whole text-xs -> sm:text-lg -> md:text-xl ramp instead of
             // clipping at only some sizes. max-w-37.5 (150px) was tuned for
             // one size and cut mid-word at the others.
-            "font-display italic text-xs sm:text-lg md:text-xl leading-none mt-1 uppercase justify-center transition-opacity text-left truncate max-w-[14ch] sm:max-w-[20ch] lg:max-w-[28ch]",
+            //
+            // pe-[0.22em] + leading-tight (Sep 5): `truncate` is
+            // overflow:hidden, and Saira Condensed ITALIC leans past its own
+            // advance width — so the last glyph's right edge ("SOLON" lost
+            // the leg of its N) and the tops of tall caps were shaved off
+            // even when the name fit. The trailing padding gives the slant
+            // room to land; the taller line box stops the vertical clip.
+            // Ellipsis behaviour for long names is unchanged.
+            "font-display italic text-xs sm:text-lg md:text-xl leading-tight uppercase justify-center transition-opacity text-left truncate pe-[0.22em] max-w-[14ch] sm:max-w-[20ch] lg:max-w-[28ch]",
             isLight ? "text-ink-l3" : "text-white",
             onStudioClick
               ? "hover:opacity-75 cursor-pointer"

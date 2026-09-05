@@ -2,6 +2,7 @@ import { ChevronLeft } from "lucide-react";
 import { NoteIndicator } from "./NoteIndicator";
 import { ChangeHistory } from "./ChangeHistory";
 import { MachineNotes } from "./MachineNotes";
+import { MachineUsageCard } from "./MachineUsageCard";
 import { PrescriptionCard } from "./PrescriptionCard";
 import { SettingsCard } from "./SettingsCard";
 import { SetupGuide } from "./SetupGuide";
@@ -104,6 +105,8 @@ export function MachineDetailPanel({
         onSaved={onWeightsSaved}
         onError={onError}
       />
+
+      <MachineUsageCard machine={machine} />
 
       <SettingsCard
         machine={machine}

@@ -27,14 +27,16 @@
  * for a field the legacy machine never had.
  */
 
-import type { Machine, ClientMachineSetting, ExerciseLog } from "../../types";
+import type { Machine, ClientMachineSetting, ClientMachineStat, ExerciseLog, WorkoutSession } from "../../types";
 import type { MachineCatalogEntry, MachineSettingField } from "../../types/machines";
 import { MACHINE_DATABASE } from "../../data/machine-database";
+import { toIsoDay } from "../../lib/client-rollups";
 import {
   EquipmentMachine,
   EquipmentRegion,
   EquipmentSummary,
   MachineGuide,
+  MachineUsage,
   REGION_LABELS,
   REGION_ORDER,
   RegionCount,
@@ -216,6 +218,85 @@ export function buildGuide(
 }
 
 /* ------------------------------------------------------------------ *
+ * Usage — first performed, times performed, progression
+ * ------------------------------------------------------------------ */
+
+export const NO_USAGE: MachineUsage = {
+  firstPerformed: null,
+  lastPerformed: null,
+  timesPerformed: 0,
+  firstWeight: null,
+  lastWeight: null,
+  progressionPct: null,
+  partial: false,
+};
+
+/** Percent change from the first load ever performed to the load in use now. */
+export function progressionPct(first: number | null, current: number | null): number | null {
+  if (first === null || current === null || first <= 0) return null;
+  return Math.round(((current - first) / first) * 100);
+}
+
+/**
+ * Lifetime usage from the persisted rollup. `current` is the prescribed
+ * current weight, which wins over the last performed load for the
+ * progression figure because it is what the client will lift next.
+ */
+export function usageFromStats(stat: ClientMachineStat | undefined, current: number | null): MachineUsage {
+  if (!stat) return NO_USAGE;
+  const firstWeight = asNumber(stat.firstWeight);
+  const lastWeight = asNumber(stat.lastWeight);
+  return {
+    firstPerformed: stat.firstPerformedDate || null,
+    lastPerformed: stat.lastPerformedDate || null,
+    timesPerformed: asNumber(stat.timesPerformed) ?? 0,
+    firstWeight,
+    lastWeight,
+    progressionPct: progressionPct(firstWeight, current ?? lastWeight),
+    partial: false,
+  };
+}
+
+/**
+ * The same figures reconstructed from the sessions the profile has loaded —
+ * the last page of history, not the lifetime — for clients whose rollup has
+ * not been backfilled yet. Always `partial`, so the UI can say "from the
+ * loaded sessions" rather than pass it off as the whole story.
+ */
+export function usageFromLogs(
+  machineId: string,
+  logs: ExerciseLog[],
+  sessions: WorkoutSession[],
+  current: number | null,
+): MachineUsage {
+  const dayOf = new Map<string, string>();
+  for (const s of sessions) if (s.id && s.date) dayOf.set(s.id, toIsoDay(s.date));
+
+  let first: { day: string; weight: number | null } | null = null;
+  let last: { day: string; weight: number | null } | null = null;
+  const sessionIds = new Set<string>();
+  for (const log of logs) {
+    if (log.machineId !== machineId || !log.sessionId) continue;
+    sessionIds.add(log.sessionId);
+    const day = dayOf.get(log.sessionId);
+    if (!day) continue;
+    const weight = asNumber(log.weight ?? log.loadLb);
+    if (!first || day < first.day) first = { day, weight };
+    if (!last || day > last.day) last = { day, weight };
+  }
+  if (sessionIds.size === 0) return { ...NO_USAGE, partial: true };
+  return {
+    firstPerformed: first?.day ?? null,
+    lastPerformed: last?.day ?? null,
+    timesPerformed: sessionIds.size,
+    firstWeight: first?.weight ?? null,
+    lastWeight: last?.weight ?? null,
+    progressionPct: progressionPct(first?.weight ?? null, current ?? last?.weight ?? null),
+    partial: true,
+  };
+}
+
+/* ------------------------------------------------------------------ *
  * The main adapter
  * ------------------------------------------------------------------ */
 
@@ -226,6 +307,14 @@ export interface ToEquipmentMachinesArgs {
   catalogById: Record<string, MachineCatalogEntry>;
   /** activeStudio.machineSettings — per-studio standard overrides, if any. */
   studioMachineSettings?: Record<string, Record<string, string>>;
+  /**
+   * `client.machineStats` once the lifetime rollup exists. When absent (or
+   * not yet backfilled) usage is rebuilt from `allLogs` + `sessions` and
+   * marked partial.
+   */
+  machineStats?: Record<string, ClientMachineStat> | null;
+  /** The sessions `allLogs` belong to — needed only for the partial fallback. */
+  sessions?: WorkoutSession[];
 }
 
 export function toEquipmentMachines({
@@ -234,6 +323,8 @@ export function toEquipmentMachines({
   allLogs,
   catalogById,
   studioMachineSettings,
+  machineStats,
+  sessions = [],
 }: ToEquipmentMachinesArgs): EquipmentMachine[] {
   const logCounts = new Map<string, number>();
   for (const log of allLogs || []) {
@@ -260,6 +351,9 @@ export function toEquipmentMachines({
     const currentWeight = asNumber(setting?.currentWeight);
     const loggedSetCount = logCounts.get(id) || 0;
     const isConfigured = Object.keys(settings).length > 0;
+    const usage = machineStats
+      ? usageFromStats(machineStats[id], currentWeight)
+      : usageFromLogs(id, allLogs || [], sessions, currentWeight);
 
     out.push({
       id,
@@ -281,7 +375,8 @@ export function toEquipmentMachines({
       notes,
       hasMaintenanceFlag: notes.some((n) => n?.isImportant),
       loggedSetCount,
-      inUse: startingWeight !== null || currentWeight !== null || isConfigured || loggedSetCount > 0,
+      usage,
+      inUse: startingWeight !== null || currentWeight !== null || isConfigured || loggedSetCount > 0 || usage.timesPerformed > 0,
       isConfigured,
     });
   }

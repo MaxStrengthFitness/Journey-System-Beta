@@ -27,6 +27,8 @@ const RailItem = memo(function RailItem({ machine, selected, onSelect }: RailIte
   );
 
   const hasWeights = machine.startingWeight !== null || machine.currentWeight !== null;
+  const pct = machine.usage.progressionPct;
+  const times = machine.usage.timesPerformed;
 
   return (
     <button
@@ -43,6 +45,17 @@ const RailItem = memo(function RailItem({ machine, selected, onSelect }: RailIte
     >
       <span className="eq-item__top">
         <span className="eq-item__name">{machine.name}</span>
+        {/* Progression since the first set ever performed — the one number
+            that says whether this machine is working for the client. */}
+        {pct !== null && (
+          <span
+            className={`eq-item__prog ${pct > 0 ? "eq-item__prog--up" : pct < 0 ? "eq-item__prog--down" : ""}`}
+            title={`${pct > 0 ? "+" : ""}${pct}% since the first set${machine.usage.partial ? " (loaded sessions only)" : ""}`}
+          >
+            {pct > 0 ? "+" : ""}
+            {pct}%
+          </span>
+        )}
         <NoteIndicator count={machine.notes.length} hasMaintenanceFlag={machine.hasMaintenanceFlag} />
       </span>
 
@@ -54,6 +67,12 @@ const RailItem = memo(function RailItem({ machine, selected, onSelect }: RailIte
           </span>
         ) : (
           <span className="eq-item__empty">Not set up</span>
+        )}
+
+        {times > 0 && (
+          <span className="eq-item__count" title={`Performed in ${times} session${times === 1 ? "" : "s"}${machine.usage.partial ? " (loaded sessions only)" : ""}`}>
+            {times}×
+          </span>
         )}
 
         {chips.length > 0 && (

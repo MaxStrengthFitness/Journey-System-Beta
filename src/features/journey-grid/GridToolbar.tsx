@@ -33,9 +33,9 @@ export function GridToolbar({ title, children }: GridToolbarProps) {
  * a set where tension broke carries a snapped edge and a hatch, and an
  * ordinary set carries neither. All three survive greyscale.
  */
-export function QualityLegend() {
+export function QualityLegend({ compact = false }: { compact?: boolean } = {}) {
   return (
-    <div className="jg-legend" aria-label="Rep quality key">
+    <div className={`jg-legend ${compact ? "jg-legend--compact" : ""}`} aria-label="Rep quality key">
       <span className="jg-legend__item">
         <span className="jg-legend__swatch jg-legend__swatch--q2" aria-hidden="true" />
         Completed

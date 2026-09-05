@@ -32,6 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { cn, parseSessionDate, parseMachineSettings } from '../lib/utils';
 import { planLegacyImport } from '../lib/legacy-import-utils';
+import { importedSessionsRollup } from '../lib/client-rollups';
 
 interface ImporterProps {
   clients: Client[];
@@ -520,6 +521,32 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
 
       // Build currentMachineMetrics from imported data so profile cards and live sessions auto-populate weights
       const targetClient = clients.find(c => c.id === selectedClientId);
+
+      // Top Trainer tally + per-machine lifetime stats (Sep 2026). The chart
+      // parser already resolved each column's trainer (trainerId / initials),
+      // so every imported session casts its vote here; sessions whose coach
+      // could not be identified are simply not counted.
+      Object.assign(
+        clientUpdateObj,
+        importedSessionsRollup(
+          targetClient,
+          sessionsToImport.map(vSess => ({
+            date: vSess.date,
+            trainerId: vSess.trainerId || 'legacy-trainer',
+            trainerInitials: vSess.trainer,
+            logs: vSess.machines
+              .filter(vLog => !!vLog.machineId)
+              .map(vLog => ({
+                machineId: vLog.machineId,
+                weight: vLog.weight,
+                reps: vLog.isStaticHold ? null : vLog.reps,
+                seconds: vLog.isStaticHold ? vLog.timeUnderLoad : null,
+              })),
+          })),
+          trainers,
+          { increment, serverTimestamp },
+        ),
+      );
       const currentMachineMetrics: Record<string, any> = {
         ...(targetClient?.currentMachineMetrics || {})
       };

@@ -73,6 +73,13 @@ export interface PreSessionCheckIn {
 
   stressLevel?: 1 | 2 | 3 | 4 | 5;
   hydration?: "low" | "ok" | "good";
+  /**
+   * One-tap energy and mood (Sep 2026), captured in the briefing beside
+   * sleep and stress so the Clinical Review can cross-reference them with
+   * rep quality and tonnage. `undefined` = not asked / not answered.
+   */
+  energyLevel?: "low" | "normal" | "high";
+  mood?: "low" | "neutral" | "good";
   note?: string;
 }
 
@@ -269,6 +276,30 @@ export interface CurrentMachineMetric {
   lastSessionId?: string;
 }
 
+/**
+ * Lifetime rollup for one machine, kept on the client document so the
+ * Equipment tab can show "first performed / times performed / progression"
+ * WITHOUT loading every exercise log the client ever produced. Written by
+ * lib/client-rollups.ts from the same two places that write the session
+ * counters: session completion and the legacy CSV import.
+ *
+ * `firstWeight` + `firstPerformedDate` are write-once (they only ever fill a
+ * blank); `timesPerformed` is a Firestore increment; `lastWeight` /
+ * `lastPerformedDate` overwrite. See src/features/client-profile/README.md.
+ */
+export interface ClientMachineStat {
+  /** ISO date (YYYY-MM-DD) of the first logged set on this machine. */
+  firstPerformedDate?: string;
+  /** Load of that first set, in lb. */
+  firstWeight?: number;
+  /** ISO date of the most recent logged set. */
+  lastPerformedDate?: string;
+  /** Load of the most recent set, in lb. */
+  lastWeight?: number;
+  /** Number of sessions in which this machine was logged. */
+  timesPerformed?: number;
+}
+
 export interface ClientRetentionMeta {
   excludedFromMIA?: boolean;
   excludedReason?: string;
@@ -461,6 +492,39 @@ export interface Client {
   smartGoal?: string;
   completedSessions?: number;
   sessionCount?: number;
+
+  /* ------------------------------------------------------------------ *
+   * TOP TRAINER — a tracked field, not a calculation (Sep 2026).
+   *
+   * `trainerTally` counts completed sessions per trainer id. It is bumped
+   * with a Firestore increment in the two places a completed session is
+   * born — finishing a live session and the legacy CSV import — and
+   * decremented when a session is deleted from the History tab, so the
+   * number is race-safe across two iPads finishing at once. Sessions whose
+   * trainer never resolved to a trainer document are counted under
+   * `initials:XX` so they are not lost.
+   *
+   * `topTrainerId` is the DERIVED winner, persisted for the hub and client
+   * list to read without loading sessions; the profile header re-derives
+   * it from the tally on every render so it can never be stale.
+   * lib/client-rollups.ts owns the rules (and the one-time backfill for
+   * clients created before the field existed).
+   * ------------------------------------------------------------------ */
+  trainerTally?: Record<string, number>;
+  topTrainerId?: string | null;
+  topTrainerName?: string | null;
+  topTrainerSessions?: number;
+  /** Firestore Timestamp of the last tally write (or backfill). */
+  trainerTallyUpdatedAt?: any;
+  /** Per-machine lifetime rollups keyed by machineId. See ClientMachineStat. */
+  machineStats?: Record<string, ClientMachineStat>;
+  /**
+   * Set once the Equipment tab has rebuilt `machineStats` from the complete
+   * session history (clients created before the rollup existed). Until it is
+   * present the tab shows figures from the sessions it has loaded and labels
+   * them as partial.
+   */
+  machineStatsBackfilledAt?: any;
   /**
    * Lifetime visit count as Mindbody counts it at the site. Distinct from
    * `sessionCount`, which is this app's own count of completed workouts — the
