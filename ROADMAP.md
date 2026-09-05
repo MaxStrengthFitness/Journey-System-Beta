@@ -1,30 +1,258 @@
 # Journey System — Product Roadmap
 
-A living document. We update it every working session — newest decisions at the top of each list. (Contractor-scope backend items live in PROJECT_TRACKER.md.)
+A living document. We update it every working session — newest decisions at the top of each list. (Contractor-scope backend items live in PROJECT_TRACKER.md. The tablet walkthrough and cleanup pass live in TESTING-CHECKLIST.md.)
 
-_Last updated: Sep 5, 2026_
+_Last updated: Sep 5, 2026 — restructured after a full repository audit._
 
 ---
 
-## 📍 State of play — read this first (Sep 5)
+## 🗺️ How this page is organised
 
-**Nine build rounds have shipped since Sep 1 and not one of them has been looked at on an iPad.** Six "Verify on the iPad" boxes are open — Catalog, Studio To-Do, Calendar, Equipment, Journey grid, Client profile — and every one of those rounds was designed and checked in a headless harness against mock data. That is the largest single risk on this page, and it is not a build task: it is one morning with the tablet. It comes before the next redesign because it can invalidate work that is already queued behind it.
+1. **State of play** — what is actually blocking, in one screen.
+2. **The critical path** — eight phases in dependency order. Each phase says *why it comes before the next one*. That is the part that matters when you are tempted to skip ahead.
+3. **Open work by theme** — the standing lists: the Sep 5 bugs, the audit findings, what to delete, what nobody has scoped yet, the pre-beta checklist.
+4. **Shipped — archive** — every completed round, newest first. Every word preserved; only the headings changed.
 
-**Three shipped features cannot work in production until rules are deployed.** `machineNotes` (Catalog round), `taskTemplates` and `taskInstances` (Studio To-Do round) are all written, tested and merged, and every write from them will fail with a permission error in front of a trainer until `firebase deploy --only firestore:rules` runs. This has now been the top unchecked item in two consecutive rounds. It is one command.
+The tablet walkthrough is a separate file, `TESTING-CHECKLIST.md`, because it is a thing you *do* rather than a thing you read.
 
-**The Mindbody linking backend has still never touched a database.** The canonical-ID migration was written Aug 30 and typechecks; until it runs, the manual-link escape hatch cannot come out of the Hub, and the polling sync keeps carrying load that the webhooks were built to carry.
+---
 
-**Roadmap hygiene.** There are nine sections on this page titled "Now", dated Sep 1 through Sep 5. They are an archive, not a plan — the detail in them is worth keeping, but only the two sections directly below are actually "now". Worth renaming the rest to "Shipped — <date>" next time this file is open.
+## 📍 State of play — read this first (end of Sep 5)
 
-**Suggested order for what comes next:** deploy the rules → iPad pass on what is already built → the three bugs in the section below (studio selector, mid-session routine edit, bug reporter) → Mindbody read cost → demo mode → the two dashboard redesigns last, because both were touched on Sep 1 and neither has been seen on the hardware yet.
+**Everything in Phase 0 is done, and the rules are provably live.** `firestore.rules` and the deployed ruleset on `gen-lang-client-0731527386` are **byte-identical** — 0 undeployed lines, 0 drift — confirmed with `scripts/fetch-live-rules.ts` against the Rules API rather than by trusting a deploy's own success message. That covers the Coaching Journal (`journalEntries`, `clientFocuses`), the Catalog's `machineNotes`, and both tiers of studio tasks. **Run that fetch script after every rules deploy**: the repo file describes intent, not reality, and a three-day-old snapshot is what made the first estimate on this page wrong.
 
-## 🆕 Now — reported Sep 5 (AJ), not yet started
+**The type-checker and the test suite now work, and both were lying before.** `@types/react` is installed: `npm run lint` reported **0 errors** when it was checking nothing, and reports **48** now. A `test` script exists: the suite is green, running against `firebase-admin@11.11.1` — the version `functions/package.json` actually declares, after a corrupted `functions/node_modules` was rebuilt.
+
+**Sixteen build rounds have shipped since Aug 27 and only the tail of one has been looked at on an iPad.** The Sep 5 pass found two bugs, both real, both now fixed on `studio-roster-and-todos`. Six "Verify on the iPad" boxes remain open across the archive. This is still the largest single risk on the page, and it is not a build task.
+
+**The empty machine roster was the root cause of both reported bugs, and it is still empty.** `studios/{id}/roster` has never been backfilled. The app now bridges to the global catalog so nothing renders blank, but the bridge is a stopgap: until somebody populates real rosters (Admin → Machines by hand, or `scripts/backfill-studio-rosters.ts`), no screen knows what equipment a location actually has. **This is the next physical action** — and it is also the acceptance test for the Sep 5 round.
+
+**The Mindbody linking backend has still never touched a database.** `scripts/migrate-canonical-client-ids.ts` writes a JSON backup to `backups/` before its first write, and there is no `backups/` directory. Until it runs, the manual-link escape hatch cannot come out of the Hub and the front end must not be deployed — shipping the strict pull-sync first unlinks every client whose `mindbodyClientId` is not yet stamped.
+
+**Multi-tenancy is still enforced on writes only.** 32 instances of `allow read: if isAuthenticated()` — `clients`, `sessions`, `exerciseLogs`, `journalEntries`, `clinicalIncidents`. Any authenticated trainer at any location can read every client record and every clinical note in the franchise. Known deferral; it needs a date, not a note, before 40 locations become 100.
+
+**Roughly 4,000 lines of code still have no way to reach them**, and a working per-studio roster feature (Admin → Machines) went unused for weeks because nothing pointed at it. See "Built but never connected".
+
+**Reported and not yet scoped: content trapped in inner scroll boxes.** On several screens — dashboards especially — the content sits in a box that scrolls inside the page instead of the page scrolling. AJ will name the exact screens. **This is a different bug from the five scroll traps in Round 1 of the checklist**, and the distinction decides the fix: a scroll trap is content stranded *unreachable* below the fold (a `min-h-screen` view rendered outside the app shell, where `src/index.css:297` sets `html, body { overflow: hidden }` and there is no scroller of its own). This one is content that *is* reachable but through a nested scroller nobody wanted. The precedent is the Sep 4 Catalog round, which collapsed three nested scrollers into one per mode, and the Sep 4 shell round, which made `<main>` the app's only scroller — so the likely cause is a screen that adds its own `overflow-y-auto` container inside `<main>` and fights it. Expect two or three shared root causes rather than one fix per screen.
+
+**Suggested order from here:** populate a studio roster and confirm the Sep 5 fixes → the iPad pass with `TESTING-CHECKLIST.md` → the inner-scroll-box batch once the screens are named → the three Sep 5 bugs (studio selector, mid-session routine edit, bug reporter) → connect-or-delete the audit findings → the Mindbody migration → hardening → the two dashboard redesigns last.
+
+---
+
+## 🚦 The critical path
+
+Eight phases. The ordering is not preference — each one removes an obstacle that would otherwise invalidate the next.
+
+### Phase 0 — Unblock production · ✅ **done Sep 5**
+
+Rules deployed to production (`prod` / `gen-lang-client-0731527386`), verified by writing a journal entry, a focus intent, a studio machine note and a studio task — all four saved. The multi-tenant note test passed too: a note saved at one studio was correctly absent at another.
+
+**Two corrections to what this page said before the deploy.** The CLI reported `latest version of firestore.rules already up to date, skipping upload` — the repo ruleset was already in the project and only the release was outstanding, so the "five collections failing in production" headline was partly stale. The `live-rules-ai-studio-*.rules` snapshot it was measured against was three days old; **refresh that snapshot whenever you deploy**, or the next diff will be wrong in the same way. And the real type-check baseline came in at **48 errors, not the ~1,400 estimated** — `strict` is still off, so what surfaced is only what the missing React types were hiding.
+
+- [x] ~~**`firebase deploy --only firestore:rules`**~~ — verified additive: 115 lines added, 0 removed. Unblocks `journalEntries`, `clientFocuses`, `machineNotes`, `taskTemplates`, `taskInstances`.
+- [ ] **Copy the live rules text back into `firestore.staging.rules`** — it is missing all five new blocks *and* the seven blocks that were console-edited back in August (`hub_announcements`, `notificationQueue`, `crossTrainAccess`, `crossTrainRequests`, `mindbodyEventLog`, `mindbodyDLQ`, `system/health`). The repo is not currently the source of truth for staging.
+- [x] ~~**`AppContent.tsx:1015` — remove `"notes"`~~ from the database-wipe collection list.** No `notes` rule exists and no other code references that collection, so `getDocs` throws `permission-denied` and **aborts the wipe loop part-way through**, leaving the database in a half-erased state. One-line fix, real consequence.
+- [x] ~~**Add `@types/react` and `@types/react-dom`.**~~ Baseline: **48 errors**, from a reported 0. Then run `npx tsc --noEmit` and record the new baseline. Until this lands, "typechecks clean" in every round above means nothing about the UI layer.
+- [x] ~~**Add a `test` script**~~ (`vitest run src` — note the positional arg is a path filter, so it matches `functions/src/**` too). Baseline: **322 passed, 0 failed** across 22 suites. Six suites under `functions/src/mindbody` initially failed to LOAD with `Cannot find module .../functions/node_modules/once/once.js` — a **corrupted install**, not a code or config problem: 19 packages there had a package.json but were missing the file their `main` pointed at, the signature of an interrupted npm install. The six that failed were exactly those importing `firebase-admin/firestore`, which reaches `once` transitively. **Resolved by deleting `functions/node_modules`** — a half-present package wins the module lookup and then fails, whereas an absent one lets Node walk up to the complete root install. Whole suite green afterwards. *(An earlier note blamed an ESM/CommonJS boundary; that was wrong — two functions suites ran fine from the same config, which rules it out.)*
+
+  - [x] ~~`functions/node_modules` reinstalled~~ — `npm ci` restored 381 packages with `firebase-admin@11.11.1`, the version `functions/package.json` actually declares, and the whole suite is green against it. The earlier green run resolved v13 from the root install and proved less than it looked. *Windows note:* the stuck `node_modules/.bin` could not be deleted by PowerShell, by `npm ci`, or across the bridge — an open handle makes a directory undeletable while still listing as empty. Renaming it worked, because a rename does not require the directory to be empty. An empty husk is parked at `functions/_node_modules_stuck`; it will delete after a reboot. and run it once. Twenty-five suites already exist. Whatever it reports, that is your real starting position.
+- [x] ~~**Delete `_to_delete/` and `.env.bak`**~~ — 65 MB, and it contains `prod-sdkconfig.json` (real production service config) plus two repo snapshots. It is gitignored so nothing leaked, but a folder named "to delete" is exactly where a credential gets forgotten and then swept into a backup. Also delete `.env.bak`, a byte-for-byte second copy of every live secret. *(`env.txt` in there is 0 bytes — harmless.)*
+
+### Phase 1 — See it on the hardware · *one morning*
+
+**Why here:** six rounds of work are queued behind an unknown. A layout that fails at 1024 portrait can invalidate a redesign that is already scheduled. Do not build the next thing until you have seen the last six.
+
+- [ ] **Work through `TESTING-CHECKLIST.md` on the iPad.** It is ordered so blockers clear first, and every item says what it means if it fails.
+- [ ] **Record findings as you go** — the checklist has a log section at the bottom. Screenshot + one line each is enough; this is where the "what to remove or adjust" list actually comes from.
+
+### Phase 2 — Core bugs & investigations · *scoped, not scheduled*
+
+**Why here:** all three are things a trainer hits during a normal shift. They outrank any redesign.
+
+- [ ] The studio-selector scroll trap — **and it is not alone.** See the expanded diagnosis under "Open — reported Sep 5" below: the **sign-in screen itself** has the same defect, which means the failure can happen before a trainer is even logged in.
+- [ ] Editing a routine mid-session fights the tracker. **The fix is already half-written and unreachable** — see "Built but never connected".
+- [ ] The bug reporter exists, which is the problem. Nobody can find it, it captures too little to act on, and nothing can ever close a report.
+
+### Phase 3 — Connect or delete · *the audit backlog*
+
+**Why here:** this is the cheapest phase on the page and it comes before the migration because it shrinks the surface the migration has to be correct across. Every item is either a feature you already paid for and cannot open, or a file you can delete outright. Full detail in "Built but never connected" and "The delete list".
+
+### Phase 4 — The Mindbody data migration · *the runbook in PROJECT_TRACKER.md*
+
+**Why here:** the manual-link escape hatch cannot come out of the Hub until this runs clean on live data, and the polling sync keeps carrying load the webhooks were built to carry. Follow the runbook exactly — studio mapping first, dry-run staging, commit staging, dry-run live, commit live, *then* deploy.
+
+- [ ] **Wire a DLQ drain before you rely on the webhooks.** `mindbodyDLQ` is currently **write-only**: `recordDeadLetter` fills it, `SyncStatusBadge` renders a depth number, and there is no replay, reprocess, or drain path anywhere in the repo. Once an event exhausts its four attempts it is stuck in a collection nobody can empty. A dead-letter queue you cannot drain is a list of bookings that will never arrive.
+- [ ] **Add a `hasRun` marker in Firestore for the migration.** Right now its only "has this run?" evidence is a resume log in a gitignored local folder. If you run it from a second machine, or after a reinstall, nothing stops it running again.
+- [ ] **`scripts/migrate.ts` (the PIN migration) has no guard at all** and would re-run destructively. Add the same `--commit` gate before anyone touches it.
+
+### Phase 5 — Hardening before beta
+
+**Why here:** it needs the migration done, because the tenancy fix has to be written against the final shape of the data.
+
+- [ ] Read-side multi-tenancy (the 32 open reads). This is the big one.
+- [ ] Move the browser-side destructive tools server-side — the wipe (`AppContent.tsx:1001-1030`), `DataMigrationTool.tsx` (which still carries the placeholder `TARGET_STUDIO_ID = "solon_studio_id_here"` and is reachable from two screens), and ideally the pull-sync.
+- [ ] Bound the two unbounded reads in `mindbody-api-sync.ts` (lines 349 and 363) and put `calculateFacilityAnalyticsV2` on incremental aggregation — it currently scans `clients`, `sessions` and `exerciseLogs` in full, on a schedule, forever.
+
+### Phase 6 — The two dashboard redesigns
+
+**Why last of the build work:** both were touched on Sep 1 and neither has been seen on hardware. Redesigning either before Phase 1 risks throwing away something that already works. Both need a markup pass from you before they are scoped.
+
+### Phase 7 — Demo mode + tutorials · *driven by the FileMaker cutover date*
+
+**Why last:** it is four different projects wearing one name and it needs a business decision, not a technical one. The decision list is in "Open — reported Sep 5" below.
+
+---
+
+## 🧾 Now — Studio roster & two-tier To-Do (Sep 5) — branch `studio-roster-and-todos`, one commit per phase
+
+From the first real iPad pass. Five commits, `npx tsc --noEmit` at 48 errors throughout — unchanged from the Phase 0 baseline, none in the files touched. **Tests not run:** vitest cannot run against Windows-installed `node_modules` from the container, so `npm test` is yours. **Not yet looked at on the iPad.**
+
+**The two bugs reported were one bug.** `studios/{id}/roster` has never been backfilled, so it is empty for every studio, and `useStudioMachines` read it with no fallback — its own header said so. Studio To-Do called that hook twice: the day plan expanded an all-machines template over an empty array and rendered "Nothing scheduled today" (which reads as *my task did not save*), and the machine picker mapped the same empty array inside a bordered box (which reads as *the button is broken*). The Catalog was unaffected because `useCatalogMachines` has a private roster-or-global fallback, and that differential is what found it.
+
+**The per-studio roster feature already exists.** `StudioInventoryManager`, at Admin → Machines, adds and removes machines per location and is the only thing that has ever written the roster. It was never used, which is why every roster is empty.
+
+- [x] ~~Phase 1 — the roster bridge~~ — opt-in `bridgeWhenRosterEmpty` on `useStudioMachines`, sourced from the global catalog when a studio has no roster docs at all, plus a `source` field. Deliberately **not** the default: every existing call site keeps its behaviour, and `useCatalogMachines` keeps its own fallback, so the screen you just verified does not change. `expandTemplate` now warns instead of silently returning `[]`; `StudioTasksView` tells three silences apart (no studio / saved-but-not-due / saved-but-no-equipment) where they used to read identically; the picker has an empty state. Regression test added — every existing test passed a non-empty roster, which is exactly why this shipped.
+- [x] ~~Phase 2 — stop dropping machines silently~~ — `SessionRoutineManagerModal` and `RoutineBuilderView` dropped a routine machine with a bare `return null` when it had no match in the list they render from: the row vanished, the id stayed in state, and it was written back on save. The mid-session one is the serious half. `RoutineBuilderView` renders from the static `MACHINE_LIST`, so a **custom** studio machine disappears today, not later. Both now name the ids and say they stay in the routine. `EditRoutineDrawer.applyPreset` was reviewed and left alone — its filter is deliberate and already records the drop as a real deviation.
+- [x] ~~Phase 3 — `scripts/backfill-studio-rosters.ts`~~ — dry run by default, skips any studio that already has roster docs (a curated roster is a set of decisions; `--fill-gaps` opts into topping up), every write carries `currentDocument.exists=false` so nothing is overwritten and a crashed run is safe to re-run, and it honours the deprecated `studioMachineSettings` possession flag so existing per-studio decisions survive the move. Refuses to run against an empty catalog rather than inventing one.
+- [x] ~~Phase 4 — the studio note says what it is~~ — one shared text block per machine per location, and nothing said so. Now states all three facts before the field is touched: shared clipboard, deletions are studio-wide, does not travel.
+- [x] ~~Phase 5 — two-tier To-Do~~ — studio tasks stay at `studios/{id}/task*`; personal tasks live at `trainers/{uid}/task*`. **The tier is a path, not a field**: Firestore cannot enforce "only your own rows" on a list query unless every query carries a matching constraint, so a `scope` field would make privacy depend on every future query being written correctly. `ownerId` is the Firebase **Auth uid**, not the trainer doc id. Ownership is by trainer, visibility is by location. Spec in `src/features/studio-tasks/README.md`.
+- [x] ~~**Deploy the rules again**~~ — done Sep 5. Verified the honest way, with `scripts/fetch-live-rules.ts` against the Rules API rather than trusting a deploy that reported success: **repo and live are byte-identical, 0 undeployed lines and 0 drift** — a first for this project. All seven blocks confirmed, including both personal-task blocks correctly NESTED inside `match /trainers/{trainerId}`; at the top level `trainerId` would be unbound and the rule would have denied everything silently. **Run that fetch script after every rules deploy** — a stale snapshot is what made the Sep 5 estimate wrong.
+- [ ] **Run `npm test`** — the container cannot. Expect the new `recurrence` cases to pass.
+- [ ] **Populate one studio's roster** at Admin → Machines and confirm both original bugs disappear. Populate it *completely* in one sitting: the moment a roster has one entry it becomes the source of truth for the Catalog, so a half-filled roster shows a half-filled Catalog.
+- [ ] **Verify on the iPad** — a daily all-machines task appearing in the day list; the task picker listing machines; creating a personal task as a plain trainer and confirming a second trainer cannot see it; a manager seeing both tiers; the "Mine" chip; a mixed multi-select marked done in one action (it spans two collections); the machine-note warning copy in both themes.
+- [ ] Follow-ups: no Studio/Mine **filter** on the day list yet — personal rows carry a chip and that is all. A task cannot be moved between tiers (a copy-and-delete across two collections; wants a deliberate design). Once the backfill has run everywhere, delete `bridgeWhenRosterEmpty` and fold `useCatalogMachines`'s private fallback into the hook so one place decides.
+
+---
+
+## 🔌 Built but never connected — audit, Sep 5
+
+Everything in this section already exists in the repo. None of it can be reached by a user today. Each item is a decision — **wire it or delete it** — and either answer is better than the current state, which is carrying the maintenance cost of both.
+
+### Whole screens with no navigation path
+
+Navigation is a single `useState<View>` in `AppContent.tsx:543`, rendered through a flat list of `{currentView === "x" && ...}` conditionals. Five views have a render block and **zero setter calls anywhere in `src/`, `harness/` or `tests/`** (verified by grepping every `setView(` / `setCurrentView(` call site, including non-literal arguments):
+
+- [ ] **`ProfilesView`** — 861 lines, view `"trainers"`. Ironically it contains working exits *to* other screens.
+- [ ] **`MachinesView`** — 226 lines, view `"machines"`. Superseded by `CatalogView`, which took the Catalog nav slot.
+- [ ] **`MachineLeaderboardDashboard`** — 486 lines, view `"leaderboard"`. Its `leaderboardReturnView` state (`AppContent.tsx:622`) is dead with it. **And the `leaderboards` collection it reads is never written by anything** — so even if you reached it, it would be empty.
+- [ ] **`ClientClinicalReviewPreloader` + `ClientClinicalReviewView`** — 1,081 lines, view `"clinical-review"`. This is the *older* clinical review; the live one is `features/clinical-review/ClinicalReviewTab`, reachable as a profile tab. The Sep 5 follow-up note already says to delete this "once the new tab has been used for a week" — the audit confirms nothing else references it.
+- [ ] **`PurchaseView`** — 20 lines, view `"purchases"`. A credit-card icon and a paragraph describing a feature that does not exist. It is both a stub *and* unreachable, so nobody can even see the placeholder. **Decision: design it or delete the file.** Hiding it is already done by accident.
+
+Also dead: the `View` union at `types.ts:1275-1301` has `"dashboard"`, `"chart"`, `"machine-knowledge"`, `"retention"` and `"mindbody"` as members with no render block at all (selecting `"dashboard"` renders an empty `<main>`), `"progress-report"` appears **twice**, and `"integrations"` is rendered but missing from the union — which is what the `as any` at `AppContent.tsx:2006` is hiding.
+
+### Features built end-to-end and never called
+
+- [ ] **The Gemini AI features.** `generateExecutionGuide`, `generateClinicalStrategy` and `generateMachineSetupGuide` (`services/geminiService.ts:105,114,123`) each have a live Express endpoint (`server.ts:137,148,171`). **No component imports any of them.** Only `processLegacyChart` and `extractMachineSettingsFromImage` are wired, via `LegacyChartImporter`. Three-fifths of your AI surface is paid for and invisible. *Decision: give them a button, or delete client + route together.*
+- [ ] **`useSessionMachines` (`hooks/useSessionMachines.ts:38`) — this one is a correctness risk, not just dead weight.** Its own doc comment says it exists "to make one rule impossible to get wrong: a session's machine list is bound to the studio where the training is PHYSICALLY HAPPENING — `activeStudioId` — never the client's home studio." Nothing calls it, so **that guarantee is currently unenforced.** Worth an hour to find out what the tracker actually binds to today.
+- [ ] **`comparePin` (`lib/auth-utils.ts:25`)** — PIN verification is never called. The PIN login path is not wired. Given `scripts/migrate.ts` exists to move PINs into `trainers/{id}/secrets/account`, decide whether PIN login is a real feature or a removed one.
+- [ ] **`googleProvider` (`firebase.ts:34`)** — instantiated, never passed to `signInWithPopup`. Sign-in uses a Microsoft provider (`AppContent.tsx:1268`). Dead auth path.
+- [ ] **`updateJournalEntry` / `updateFocusIntent` (`hooks/useClientJournal.ts:180,357`)** — journal edit mutations exist with no UI calling them, so **entries are effectively append-only**. A trainer who mistypes a clinical note cannot fix it.
+- [ ] **`getCachedSessionCount` (`lib/session-count-cache.ts:47`)** — a cache with a write path and no read path.
+- [ ] **`highestAuthorableTier`, `visibleToStudio`, `TIER_LABEL` (`lib/routine-templates.ts`)** — the routine-template permission tiering is half-consumed: `canAuthorTier` is used, the visibility half is not.
+- [ ] Smaller orphans: `mapMindbodySessions` (`lib/sync-utils.ts:89`), `isFranchiseOwner` (`lib/permissions.ts:108`), `getLatestMachinePerformance`, `calculateAverageTutPerMachine`, `formatStudioDateTime` + `studioZoneLabel` (`lib/studio-time.ts:353,374` — worth asking what *is* rendering studio-local times, then), and `useClientPercentile` + `ClinicalCard` + `mindbody/LedgerEntry.tsx` (never imported at all).
+
+### UI that exists but can never appear
+
+State declared whose setter is never called — each of these is a feature whose entry point was removed or never added:
+
+- [ ] **`MachineLeaderboardDashboard.tsx:158`** — `sortBy` is permanently `'weight'`; `setSortBy` is never called, so the entire **strength-gain view is unreachable** (the `'gain'` branches at `:107` and `:439`). Someone deleted the toggle.
+- [ ] **`WorkoutTrackerView.tsx:1181,1183,1186`** — `isAdjustingProtocol`, `adjustmentScope` (`"once" | "permanent"`) and `adjustedMachineIds` each appear exactly once, at their own declaration. **This is the scaffolding for the mid-session routine-edit fix in Phase 2** — the "today only vs. save to Routine A as well" concept is already sketched here, and `startNewSession` (~1862) already takes a `permanentSave` flag. You are closer to that fix than the bug write-up suggests. Same file: `isEditingRoutine` (:1110), `isSettingUpRoutine` (:1173), `lastRoutineLogs` (:1177) are orphaned too.
+- [ ] **`TrainerControlHubView.tsx:150,151`** — `isRestoringMachines` and `isCleansingApp`: two admin actions that were never built.
+- [ ] **`FranchiseTeamManagement.tsx:58,59`** — `isSyncingAll`, `syncingTrainerId`: the per-trainer sync UI is absent.
+- [ ] **`ClientProfileView.tsx:270,297,507`** — `highlightRoutine`, `historyPage` (pagination that never paginates), `matrixRoutineFilter`.
+- [ ] **`SessionRoutineManagerModal.tsx:94`** — `showAddMachine` is `useState(true)` and never set to `false`, yet it gates rendering in three places. The panel is permanently visible and the conditional is noise.
+
+### Errors captured and never shown to anyone
+
+This is the quietest and most damaging group. The value is assigned and never read, so the UI it was meant to drive does not exist:
+
+- [ ] **`AppContent.tsx:560` — `lastQuotaErrorMessage`.** A Firestore quota error is caught, stored, and **never surfaced**. On the floor this looks like the app silently not working. Given the Aug 30 429-storm, this is the exact signal a trainer needs.
+- [ ] **`TrainerControlHubView.tsx:906,908,919` — `isImporting`, `importStats`, `legacyError`.** A legacy chart import can fail and **say nothing**.
+- [ ] `ClientProfileView.tsx:254,264,469,495` — four `isSaving*` flags: the saving spinners were never rendered, so a slow save looks like a dead button.
+- [ ] `SessionNotesSidebar.tsx:39` `isLoading`; `AdminStudioManager.tsx:169,171`; `TrainerControlHubView.tsx:185-187` (three `isExporting*` flags); `ClientInfoSheet.tsx:73` `activeTab`.
+
+### Tests that were written and never wired
+
+- [ ] **No `vitest.config.*` and no `test` script.** 12 suites under `src/` and 13 under `functions/` — around 425 test cases including the genuinely strong Mindbody coverage (~130 tests across signature verification, idempotency, DLQ, retry ledger, client resolution) — none of it runs on demand or in CI. Add the script; this is free.
+
+---
+
+## 🖼️ Images, icons and offline — audit, Sep 5
+
+- [ ] **Every machine thumbnail in the app is an Unsplash hotlink.** `getMachineImageUrl` (`AppContent.tsx:461`) maps machines to `images.unsplash.com` photo IDs, and both `<img>` sites (`MachinesView.tsx:111`, `AppContent.tsx:2340-2359`) fall back to *another* Unsplash URL in their `onError`. **There is no local placeholder — the fallback itself needs the network.** On a studio floor with flaky Wi-Fi the Machine Catalog goes blank, and Unsplash does not promise those photo IDs stay live.
+- [ ] **You already ship six correct machine photos that never render.** `src/assets/images/*.webp` (chest press, leg curl, leg press, leg extension, hip abduction, hip adduction — 192 KB total, the result of the Aug 27 33.5 MB → 191 KB compression pass) are imported into `MACHINE_DATABASE`, but every render path reads the Firestore document's `imageUrl` instead. They are in the bundle and on nobody's screen. *Fix: fall back to the knowledge-base image before the remote URL.*
+- [ ] **There is no way to add a machine image.** `imageUrl` is read in three type definitions and **written by nothing** — no Firebase Storage anywhere in the repo, no upload control in `AdminMachineCreator`. This blocks the "Add Machine" feature in Next, which will produce machines with no picture and no way to give them one.
+- [ ] **No app icon, no manifest, no standalone mode.** `index.html` is 39 lines with only `charset` and `viewport`: no favicon, no `apple-touch-icon`, no `manifest.webmanifest`, no `theme-color`, no `apple-mobile-web-app-capable`, no splash. **On an iPad, "Add to Home Screen" gives a screenshot thumbnail and opens in Safari with browser chrome.** That chrome eats roughly the same vertical space the entire Sep 4 Now-bar round was spent reclaiming — the 8-machine rule is being paid for twice. There is no `public/` directory to put any of it in yet.
+- [ ] Two hobby-CDN texture hotlinks (`AppContent.tsx:1331`, `AccessRequestView.tsx:116` — `transparenttextures.com`). Inline as a data URI or a gradient.
+- [ ] `AccessRequestView.tsx:176` renders `src={photoURL || ""}` — an empty `src` makes the browser re-request the page as an image. Render conditionally instead.
+- [ ] Add `Claude outputs/` to `.gitignore` — 2.4 MB of untracked screenshots, one `git add .` from entering history forever.
+
+---
+
+## 🧭 Not yet on anyone's list — scoped Sep 5
+
+Things the roadmap does not currently account for, in rough order of how much they would hurt.
+
+- [ ] **What does a trainer do when Mindbody is down?** Manual "+ Add New Client" was deliberately removed from the Hub on Aug 30, and manual linking was deleted on the same day. Both were right calls for data integrity. Together they mean **the studio floor has a hard dependency on a third-party API being up.** If Mindbody is down, or a walk-in is not in it yet, or a booking lands in Limbo, there is now no path to running that person's session. Decide the answer before beta: an offline "unlinked session" that reconciles later, an admin-only manual create, or an accepted "we do not train them today". Right now the answer is the third one by accident.
+- [ ] **Offline and flaky Wi-Fi during a live session.** A gym floor is the worst network in the building. There is no service worker, no Firestore offline persistence enabled, and no queued-write story. The one thing that must never be lost is a set that a trainer just logged. Worth a deliberate test (checklist Round 4) and then a decision — Firestore's `enableIndexedDbPersistence` is a small change with a large payoff here.
+- [ ] **When something breaks on the floor, there is no path from "it broke" to "we know why."** Errors are logged and toasted, almost no screen renders an error state, only `CalendarView` has an `ErrorBoundary` — and `ErrorBoundary.tsx:1` is `// @ts-nocheck`, so the component that catches crashes is the one file TypeScript never looks at. Combined with the bug reporter capturing only issue type + free text + user agent, and quota errors being captured and never shown, a trainer's report will read "the routine thing is broken" and that will be all anyone ever knows. Fixing the bug reporter (Phase 2) and rendering `lastQuotaErrorMessage` are the same project.
+- [ ] **There is no "new studio" runbook.** You are going from 40 locations to about 100, and standing up a location currently means: create the studio by hand, set `mindbodySiteId` (and `mindbodyLocationId` if it shares a site), provision trainers one by one, backfill the machine roster, and hope nobody forgets a field — because a missing `mindbodySiteId` parks every booking in Limbo and makes that studio's trainers blind. **Write the checklist once and it pays for itself on location 41.** This pairs with the auto-provision item already in Next.
+- [ ] **Nothing in the app tells you which database you are pointed at.** The repo has three project ids in play (production `gen-lang-client-0731527386`, staging `msftesting-cda43`, and an unused `testingmsf-870ef`), rules have drifted between repo and console at least once, and root scripts default to production behind a `--yes-affect-production` flag. **A small environment badge in the app header — visible only outside production — removes a whole class of disaster** for the cost of an afternoon.
+- [ ] **No rollback plan is written down.** Rules, functions and front end each roll back differently, and the one you are most likely to need is rules. Two lines in this file beats improvising at 6am.
+- [ ] **Two iPads, one client.** Studio To-Do solved concurrency properly with derived instance ids. Sessions did not: "Active Session Detected" is the only guard, and it is per-client, not per-device. Add it to the floor test — two tablets, same client, both hit Start Session.
+- [ ] **First-load performance on real hardware and real Wi-Fi.** `dist/` is 4.2 MB (3.5 MB JS, 433 KB CSS), and `firebase.ts:9,24` initialises Firestore at module scope so the 394 KB Firestore chunk downloads and executes **before the first pixel**, regardless of the 20 `React.lazy` splits. `ClientProfileView` is a 413 KB chunk on its own. Time a cold load on a studio tablet before assuming the code-splitting is working.
+- [ ] **Time zones will bite at ~100 locations.** `formatStudioDateTime` and `studioZoneLabel` exist and are unused, which means something else is rendering times — worth finding out what, while the franchise is still in one zone.
+- [ ] **Accessibility has never had a pass.** VoiceOver is mentioned once, for the Catalog picker sheet. The instincts in the code are good (the inroad glyph survives greyscale, the note icon is three shapes not three colours) but nothing has been checked: touch-target sizes, focus order, contrast in the dense dark theme. One audit now is cheaper than retrofitting 20 screens.
+- [ ] **Client medical and clinical data is readable franchise-wide.** Beyond the security item in Phase 5, this is a policy question — injuries, clinical notes and medical history for every client, readable by every authenticated trainer at every location. Worth a deliberate decision about what you are willing to promise clients, made before beta rather than after an incident. (Not legal advice — but it is the kind of thing a franchise owner will be asked about.)
+- [ ] **Nothing exports a client's training history.** Years of session data, and no backup or handover path if a client leaves or a studio does. CSV export is in the Medium Priority list in PROJECT_TRACKER.md as a Data & Reports feature; this is the same work with a different motivation.
+
+---
+
+## 🗑️ The delete list
+
+Straight subtraction — no behaviour change, ~4,900 lines and 65 MB gone. Do it in one commit per group so any of it can be reverted alone.
+
+- [ ] `_to_delete/` (65 MB, contains `prod-sdkconfig.json`) and `.env.bak`. **Do this one today.**
+- [ ] `src/components/RetentionDashboardView.tsx` (1,154 lines) — import already commented out at `AdminDashboardView.tsx:11` with a note explaining why. It is in git history if it is ever revived.
+- [ ] `src/components/ClientClinicalReviewView.tsx` + `ClientClinicalReviewPreloader` (1,081) — after the new Clinical Review tab has a week of real use, as the Sep 5 follow-up already says.
+- [ ] `src/components/ProfilesView.tsx` (861) — unreachable. Confirm nothing in it is worth salvaging into the admin Staff & Roles tab first.
+- [ ] `src/components/MachineLeaderboardDashboard.tsx` (486) — unreachable, and its data source is never written. Delete, or write `leaderboards` and restore the sort toggle. Not both halves broken.
+- [ ] `src/components/MachinesView.tsx` (226) — superseded by `CatalogView`.
+- [ ] `src/components/mindbody/LedgerEntry.tsx` (180), `hooks/useClientPercentile.ts` (57), `hooks/useSessionMachines.ts` (50 — **read the Phase 3 note first**), `components/ClinicalCard.tsx` (44).
+- [ ] `src/components/mindbody/PurchaseView.tsx` (20) — or design it. Currently the worst of both.
+- [ ] The old Machine Performance Entry dialog (`editingWeightMachineId`) and `TRACKER_COL` in the tracker — already flagged in the Journey grid follow-ups, confirmed unreachable.
+- [ ] The legacy manual-link escape hatch in the Hub — **after** the canonical-ID migration runs clean on live, not before.
+- [ ] **Dependencies:** `@hello-pangea/dnd` (used in exactly one file, `RoutineBuilderView.tsx:2` — port it to `@dnd-kit` and remove a whole library), `@google-cloud/pubsub` (zero references), `react-body-highlighter` (superseded by `react-muscle-highlighter`), `ts-morph`, `autoprefixer` (no postcss config exists; Tailwind v4 prefixes itself), root-level `firebase-functions` (only used inside `functions/`, which declares its own).
+- [ ] **Also align `firebase-admin`:** root is `^13.10.0`, `functions/package.json` is `^11.11.0`. Two major versions apart, which means code that works in one may not in the other.
+- [ ] `import * as d3` at `MachineLeaderboardDashboard.tsx:2` pulls the entire d3 toolkit for one screen you cannot reach. Dies with the file.
+
+---
+
+## 🧹 Repo and code hygiene
+
+- [ ] **Two `utils` modules, both live, both exporting `cn()`.** `lib/utils.ts` (97 lines, reached via the `@/*` alias) and `src/lib/utils.ts` (406 lines, reached via relative imports). Roughly 45 files import one and 49 import the other, and **which `cn` you get depends purely on how you wrote the import path.** This is the single most confusing thing in the codebase. Merge them.
+- [ ] **Two different `ROUTINE_TEMPLATES` with the same name and incompatible shapes** — `src/constants.ts:2` is an object keyed by type; `src/data/routine-templates.ts:16` is an array. Both are consumed. Plus `src/lib/routine-templates.ts` and `src/data/routine-presets.ts`: **four files for one concept.**
+- [ ] Four overlapping machine hooks (`useMachines`, `useStudioMachines`, `useMachineCatalog`, `features/catalog/useCatalogMachines`) plus the dead `useSessionMachines`. It is a layered stack rather than pure duplication, but nothing tells you which is the correct entry point.
+- [ ] Two session-note sidebars (`SessionNotesSidebar` for history, `journal/SessionJournalSidebar` for the tracker) and two consultation wizards (`ConsultationWizard`, `ConsultationSetupWizard`) — one consumer each, likely divergent copies.
+- [ ] `ClientProfileView.tsx` ↔ `client-dossier/ClientDossier.tsx` is a migration that stopped halfway, bridged by a `LEGACY_TAB_TO_SECTION` map at `ClientInfoSheet.tsx:18`.
+- [ ] `harness/` is excluded via `.git/info/exclude`, which is **machine-local and never pushed**. All nine harness files are unversioned — one bad `git clean` and they are gone. Either commit it (adding `harness/dist/` to the real `.gitignore`) or move the rule into `.gitignore` so at least the intent travels.
+- [ ] Move `deactivate-webhook.js` and `reset-health.js` into `scripts/danger/`. Both are one flag away from a production incident and they currently sit at the repo root next to `README.md`. (`production-guard.js` itself is good work — keep it.)
+- [ ] Delete the stray log files at root: `diag.log`, `funcs.log`, `client-errors.log`, `test-output.txt`. Already gitignored, just clutter.
+- [ ] **Confirm the Mindbody credentials removed in commit `c53b3e2` were actually rotated.** Deleting a secret in a later commit does not remove it from history, and the remote is on GitHub. The `.env` comment in this repo says the webhook secret "was committed to a public repo". Rotation is the fix; a history rewrite (`git filter-repo`) is the cleanup.
+- [ ] Turn on `strict` in `tsconfig.json` incrementally — `noImplicitAny` first, after `@types/react` lands. 517 explicit `any` usages today, worst in `src/types.ts` (68), which is the shared vocabulary, so it leaks everywhere.
+- [ ] Remove the `// @ts-nocheck` from `ErrorBoundary.tsx:1`.
+- [ ] `functions/package.json` declares an `eslint` script but **no ESLint config or dependency exists anywhere** — the script cannot run.
+
+---
+
+## 🩹 Open — reported Sep 5 (AJ), not yet started
 
 Diagnosed but deliberately not built — these are scoped, not scheduled.
 
 ### Bugs
 
 - [ ] **Studio selector: you cannot scroll down to Strongsville.** *Root cause found; a one-line fix and a redesign, and they are separate jobs.* `StudioSelectionView` is an **early return** from `AppContent` (~line 1463), so it renders *instead of* the app shell — there is no `<main>` around it, and `<main>` is the app's only scroller. The Sep 4 "the nav is the actual bottom" round added `html, body { height: 100%; overflow: hidden }` and `#root { height: 100% }` to `src/index.css` (line 297) to stop the page scrolling behind the nav. The studio picker is a `min-h-screen` div inside that: it grows past the viewport into a container that cannot scroll, so **everything below the fold is unreachable**. Its cards are `min-h-55` (220px) in a 3-column grid grouped by network, so with 40 locations you are several screens deep and only the first few are selectable. *Fix now:* give the view its own scroller (`h-full overflow-y-auto`). *Check the same day:* every other early return that bypasses the shell has the identical exposure — `AccessRequestView`, and especially the new-client onboarding wizards (`ConsultationSetupWizard`, `ConsultationWizard`, both `min-h-screen` with `pb-48`/`pb-32`), which will strand a trainer mid-consultation the moment their content exceeds one screen. *Redesign after:* 220px cards do not scale from 40 locations to ~100. Wants a search field, compact rows, and the trainer's home/recent studios pinned at the top.
+- [ ] **The same trap is on the sign-in screen — which is worse.** *Found in the Sep 5 audit while confirming the bug above.* The login view (`AppContent.tsx:1325`) is a `min-h-screen` early return with `overflow-hidden` on its own root (`:1327`) and **zero scroll containers anywhere in its subtree** — so on a short landscape viewport the sign-in buttons are unreachable and a trainer cannot get into the app at all. `AccessRequestView` (`AccessRequestView.tsx:113`) and both consultation wizards (`ConsultationWizard.tsx:225`, `ConsultationSetupWizard.tsx:56`) carry the identical exposure, exactly as predicted above. Fix all five with the same `h-full overflow-y-auto` change and check them in one pass. *Also found:* the second `AccessRequestView` early return at `AppContent.tsx:1504` can never execute — `!authTrainer` already returned at `:1448`.
 - [ ] **Editing a routine mid-session fights the tracker.** *Trainers do this often — this is a normal workflow, and today it silently loses work and permanently edits the client's prescription.* The architectural cause is that **`WorkoutSession` has no machine list of its own.** The live list is derived in an effect (`WorkoutTrackerView.tsx` ~1806) that runs `setActiveMachineIds(routine.machineIds)` keyed on `[currentSession, routines, machines]`. `routines` is a Firestore listener, so *any* write to *any* routine document re-fires it and re-stamps the list; `machines` is a prop array, so a new array identity from a parent re-render does the same — which is the "reloads the old order on input" symptom exactly. On top of that the two mid-session affordances contradict each other: `moveMachine` (~1835) writes `machineIds` **straight to the routine document** — a permanent change to the client's standing prescription, made mid-session, with no reason and no adjustment record — and that write echoes back through the listener and resets the grid; while quick-add (~3529) only does `setActiveMachineIds(prev => [...prev, id])`, **local state that is never persisted**, so it is wiped by the next echo. `adjustedMachineIds` is declared at line 1186 and never used — an abandoned attempt at exactly this fix. *The fix:* give the session its own ordered `machineIds`, written at session start from the routine; the tracker reads the session, never the routine. Mid-session edits then become today-only by default, with an explicit "save to Routine A as well" — and that concept is already half-built, since `startNewSession` (~1862) already takes a `permanentSave` flag. Also settles which of the two behaviours is correct, because right now the app does both.
 - [ ] **Bug reporter — it exists, and that is the problem.** `TrainerControlHubView` (~line 203) already writes to a `bug_reports` collection, `AdminBugReports` reads it, and the rule is in `firestore.rules` (line 660). Three things are wrong with it. (1) **Nobody will find it:** it is buried inside the 2,963-line Trainer Control Hub settings screen, not reachable from wherever the trainer actually hit the problem. (2) **It captures too little to act on:** issue type, free text, and a user-agent string — not the screen they were on, the client or session in play, the console error, or a screenshot. Every report is going to read "the routine thing is broken". (3) **It is a one-way street:** `AdminBugReports` is 88 lines with no `updateDoc`, no buttons, no triage — every report is written `status: "open"` and nothing can ever change it, and the reporter never hears back. *Worth doing:* a persistent low-profile control in the app shell that captures current view + client id + session id + last console error automatically, and an admin side that can at minimum acknowledge, assign and close. **Check first** whether the `bug_reports` rule is actually deployed live — the repo/live rules drift documented in the Aug 29 section below means a report may be failing silently today.
 
@@ -38,7 +266,79 @@ Diagnosed but deliberately not built — these are scoped, not scheduled.
 - [ ] **Mindbody: sync faster and more often without the read bill.** *There is a concrete, bounded fix here — two unbounded reads.* Every pull sync does `getDocs(collection(db, "clients"))` — **the entire clients collection, every studio, no filter** (`mindbody-api-sync.ts` line 349) — and then reads **every schedule row the studio has ever had** (`where studioId ==`, with no date bound, line 363). Both grow forever, and both are paid on every single sync. The comment on the first one ("to guarantee clientId matching") is **stale**: since strict canonical IDs landed Aug 30 a client lives at `clients/{mindbodyClientId}` and nowhere else, so it can be direct document gets for only the ids in the fetched payload. Bounding the schedules query to the date window being synced is the second half. Second problem: **auto-sync is a `setInterval` inside a React component** (`IntegrationsHubView`, default 15 minutes), so it only runs while someone has that screen open, and it runs once per open tab — N tablets means N duplicate syncs of the same studio. Third, and the actual answer to "more often": **the webhooks already exist** (`functions/src/mindbody/`) and are push-based and near-instant. The honest path to fresher data is to finish that work — wire the DLQ, run the canonical-ID migration — and demote polling to a safety net on a server-side schedule, rather than turning the poll frequency up against two full-collection reads.
 - [ ] **Demo mode + tutorials.** *Nothing exists today* — no demo flag, no tour, no tutorial anywhere in `src`. The nearest thing is `src/lib/mockDataGenerator.ts` (`generateMockClientWithHistory`), already used by the client profile, which is a reasonable seed. This is driven by a business date, not a technical one: it is the Claris FileMaker cutover, and it needs scoping before it is built. **Decide first:** is "demo" a seeded demo studio inside the real database (cheapest, but demo data lives next to real client records), a fake data layer the app runs against with Firestore stubbed out (cleanest, most work, and it has to be maintained alongside every feature), or a guided read-only tour over a frozen snapshot? And separately: are the tutorials in-app coach marks, a video library, or a printed one-pager per screen? Those are four different projects wearing one name.
 
-## 🪪 Now — Client profile redesign (Sep 5) — branch `client-profile-redesign`, one commit per phase
+## ⏭️ Next
+
+- [ ] **iPad pass on the `ui-overhaul` branch** — walk each screen in portrait and landscape and mark up what's off: (1) Hub — does the day strip swipe, is the pinned "You" column right, do 60-minute blocks span two rows, is the NOW line where the clock says; (2) Client profile — header on one row in landscape, Recent Journey rows all the same height, dropdowns showing "Select an option…" for a client with nothing set; (3) Start Session — Routine picker at the top, check-in at the bottom, Weight/Reps/Quality under the right thumb in both orientations; (4) Calendar day view — header stays put when scrolling; (5) Admin — sidebar in landscape, strip in portrait. Then merge into `aug-2026-updates`.
+- [ ] **Hub "in session" tint follows the client, not the booking** — pre-existing, noticed while building Phase 1: `ClientsView` finds "today's workout session" by client id, so if a client has two bookings in one day both blocks show the live tint. Match on the schedule entry (appointment id / start time) once sessions carry that link.
+- [ ] **Header search is hidden below the `sm` breakpoint** — the app is tablet-first, and the Client Directory keeps its own search, but phones lose the Hub search until we add a tap-to-expand icon.
+- [ ] **Confirm whether Mindbody actually sends the pass fields** — the eight pass/waitlist/visit fields are wired end to end but Mindbody's documented appointment payload does not include them. Fire `send-test-webhook.js` (or watch a real booking) and check whether `mindbodyPass` appears on the schedule doc. If it never does, the honest options are to source pass data from the client contracts/memberships already synced, or drop the fields.
+- [ ] **Surface pass state on the schedule block** — the data now lands on the schedule doc but nothing displays it. "3 left" beside the session number would tell a trainer mid-shift that a client is about to run out. Deferred because AJ chose the compact `#12` badge over `#12 · 8 left` in the hub pass; revisit once real pass data is confirmed to arrive.
+
+- [ ] **Auto-provision standard trainer profiles when a studio is created** (AJ, Aug 30) — studio creation stays MANUAL by design: the rollout is phased across 40 current locations, heading to ~100, and they should not all be in the database up front. But when a studio IS created by hand, the system should stand up that location's standard trainer profiles automatically instead of leaving someone to add them one by one. Decide first: what the standard roster is (roles and count, presumably a Studio Leader plus N LifeTransformers), whether they are created as real invitable trainer docs or placeholders a real person later claims, and how `mindbodyStaffId` gets attached — the schedule importer matches trainers by that id first and falls back to full-name matching, so placeholder profiles with no staff id will fall back to name matching until a real person is linked. To be built AFTER the core linking work is settled and deployed.
+
+- [ ] **Run the canonical-ID migration** — the backend code for automatic Mindbody ↔ Firebase linking was written Aug 30 and typechecks, but nothing has touched a database yet. Follow the runbook at the top of PROJECT_TRACKER.md's linking spec: fix any missing `mindbodySiteId` in Admin → Studios, dry-run on staging, commit on staging, dry-run on live, commit on live, then deploy. Only after a clean live run can the manual-link escape hatch come out of the Hub.
+- [ ] **Pin a priority note from the client profile** — the schedule block's loud red flag already lights up from any active High-priority client event (Alert/Medical are standing; others expire with their date window), and `Client.priorityNote` / `Client.hasPriorityNote` are defined for it, but there is no UI yet to pin a free-text note or to raise the flag from a High-priority session note. Natural home is the notes card in the client info sheet.
+
+- [ ] **"Add Machine" feature** — let studios add custom machines properly: name, region, AND kinematic group + anatomy mapping, so new machines appear correctly in the catalog groupings, the routine picker (today they'd fall into "Other Equipment"), and the muscle-activation views. Multi-tenant note: decide whether custom machines are per-studio or shared across the franchise.
+- [ ] **Routine tab visual finalization** — polish the client profile Journey/Routines tabs as a coherent set.
+- [ ] **Start Session's inline routine builder is out of step with the catalog pattern** — spotted while redesigning the client-profile Edit Routine drawer (Aug 28): the "Execution Sequence" builder on the Start Session screen (`BriefingScreen.tsx`) lists machines as one flat row instead of the kinematic groupings used everywhere else. Worth a matching pass once we're back in that screen.
+- [ ] **Preset Routines management UI** — trainers can save/delete their studio's presets from inside the Edit Routine drawer now, but there's no dedicated place to rename one or see who created it. Built-in ("global") presets are hardcoded in `src/data/routine-presets.ts` for now — ask to add more there, or say the word if you'd rather they be Firestore-editable by Admins instead.
+
+
+- [ ] **Wire an image path for custom machines before building "Add Machine" above.** `imageUrl` is read in three places and written by nothing — no Firebase Storage, no upload control. A studio that adds a custom machine today gets one with no picture and no way to give it one. Either commit WebPs for the remaining machines or add Storage plus an upload field in `AdminMachineCreator`. (See "Images, icons and offline".)
+
+_The Sep 5 audit added a second queue of work — unreachable screens, unwired features, hygiene and newly-scoped risks. It lives in **Built but never connected**, **Not yet on anyone's list**, **The delete list** and **Repo and code hygiene** above, rather than being merged in here, so this list stays the product queue and that one stays the cleanup queue._
+
+## 📋 Backlog — front end
+
+- [ ] Split `ClientProfileView.tsx` (~6,260 lines, down from 6,690 — Edit Routine drawer extracted Aug 28) into smaller files, one tab at a time, as we touch each area.
+- [ ] Remove the duplicate drag-and-drop library (app uses both `@dnd-kit` and `@hello-pangea/dnd` — keep one).
+- [ ] "Purchases" screen is a placeholder — design it for real or hide it before trainers see it.
+- [ ] Navigation/app-shell cleanup (the long `currentView` chain in `AppContent.tsx`).
+- [ ] **Legacy-imported sets still carry a hardcoded `repQuality: 2`** — the importer no longer sets this for new imports (fixed Aug 29), but everything already imported through it still has the old fake "good" rating baked into Firestore. A one-time cleanup script (clear `repQuality` on any `exerciseLogs` doc that came from a legacy import) would be needed to fully undo it; not done yet since it touches live data directly.
+
+- [ ] Merge the two `utils` modules that both export `cn()` — see "Repo and code hygiene". This one is a live footgun, not just tidiness.
+- [ ] Consolidate the four routine-template modules (`src/constants.ts`, `src/data/routine-templates.ts`, `src/lib/routine-templates.ts`, `src/data/routine-presets.ts`), two of which export the same name with different shapes.
+- [ ] Finish the `ClientProfileView` → `client-dossier` migration, or decide it stops where it is and delete the `LEGACY_TAB_TO_SECTION` bridge.
+- [ ] Defer Firestore initialisation out of module scope in `src/firebase.ts` so the 394 KB Firestore chunk stops loading before first paint. Biggest single first-load win available.
+
+_Nav cleanup note (Sep 5): the `View` union in `types.ts` has a duplicate member, five members with no render block, and one rendered view missing from the union (hence the `as any` in `AppContent.tsx:2006`). Fix the union in the same pass as the `currentView` chain._
+
+## ⚠️ Found Aug 29 — rules deployment gap (now fixed live, needs follow-up)
+
+- [x] ~~studioMachineSettings + routinePresets weren't actually live~~ — while chasing the "Error loading studio machine settings: Missing or insufficient permissions" bug, discovered the real dev database (`msftesting-cda43` / "journey-test" in the Firebase console, the one `firebase-applet-config.json` actually points the app at) was missing BOTH the new `studioMachineSettings` rule and the `routinePresets` rule from a few rounds back — neither had ever actually been deployed, so Preset Routines was likely silently failing too, not just today's new feature. Published both rule blocks directly to that project's live Rules tab (with AJ's explicit go-ahead) — confirmed live as of tonight.
+- [ ] **Local rules files have drifted from what's actually live** — the deployed rules on `msftesting-cda43` have several blocks that AREN'T in `firestore.staging.rules` in this repo (`hub_announcements`, `notificationQueue`, `crossTrainAccess`, `crossTrainRequests`, `mindbodyEventLog`, `mindbodyDLQ`, `system/health`) — someone edited them directly in the Firebase console at some point without pulling the change back into the repo. Worth copying the live rules text back into `firestore.staging.rules` next time you're at the keyboard so the repo is the real source of truth again.
+- [x] ~~`firebase.json`'s firestore config points at the wrong project~~ — correction, Aug 29: this was wrong. Checked the production Firebase console directly — the named database `ai-studio-32cbbdcc-...` that `firebase.json` points at is the real, live production database under `gen-lang-client-0731527386` ("MaxStrengthFitness App," confirmed via real trainer accounts and live traffic), not `testingmsf-870ef`. `firebase.json` is correctly configured for production deploys; no change needed here. (`testingmsf-870ef` is a separate, unrelated, mostly-empty project that isn't used by the app at all.)
+
+## 🛡️ Before studio beta — safety & ops checklist
+
+- [x] ~~Deploy the 17 composite indexes to **live**~~ — verified Sep 2, 2026: all 17 are already live on `gen-lang-client-0731527386` / `ai-studio-32cbbdcc-…` and match `firestore.indexes.json` exactly (`npx tsx scripts/fetch-live-indexes.ts`). This item was stale.
+- [ ] **The blank profile panels are NOT an index problem** — that was the working theory behind the item above, and it is wrong, because the indexes were already there. Needs a fresh diagnosis: check the browser console for the actual Firestore error on a blank panel.
+- [ ] Check the **live** deployment for the contractor's hardcoded admin email (fixed in this copy only).
+- [ ] Confirm the MindBody developer account + API key are owned by Max Strength, not the contractor.
+- [ ] Contractor follow-up: webhook DLQ never wired + idempotency-before-processing (details in PROJECT_TRACKER.md, "contractor scope").
+- [ ] Security hardening review before launch: trainer-create bootstrap branch + cross-studio read access in the live rules (`firestore.staging.rules` is the working draft of the fix). The new `routinePresets` collection (Aug 28) and the new `studioMachineSettings` collection (Aug 29) were both written to match this same any-authenticated-trainer posture on purpose — sweep them in along with everything else.
+- [ ] Purge real client data from the staging project (`msftesting-cda43`) when the beta phase ends.
+
+- [ ] **The environment you test in is not the environment you ship to.** Two declared mismatches, same class: root `package.json` pins `firebase-admin` at `^13.10.0` while `functions/package.json` pins `^11.11.0` (two major versions apart, and the functions code is the half that talks to production data); and both files declare Node **22** while the dev machine runs **24.20.0** (`EBADENGINE` on every install). Neither blocks anything today. Both mean a green local run is weaker evidence than it appears, and for Cloud Functions the runtime version is part of the deployed contract.
+
+- [ ] **Rotate the Mindbody credentials that are still in git history.** Commit `c53b3e2` removed an inline API key, the webhook signing secret and the live function URL — but removing a secret in a later commit does not remove it from history, and the remote is on GitHub. Confirm rotation happened; then decide whether to rewrite history or accept it.
+- [ ] **Delete `_to_delete/` (65 MB, contains `prod-sdkconfig.json`) and `.env.bak`.** Gitignored, so nothing leaked — but two copies of every live secret is twice the chance one escapes.
+- [ ] **Add an environment badge to the app header, visible outside production.** Three project ids are in play and the rules have already drifted between repo and console once. This is an afternoon that prevents a category of disaster.
+- [ ] **Write down the rollback plan** — rules, functions and front end each roll back differently, and rules is the one you are most likely to need.
+- [ ] **Decide the answer to "Mindbody is down, a client is standing in front of me."** Manual client creation and manual linking were both removed on Aug 30 for good reasons; together they leave the floor with a hard third-party dependency and no fallback. See "Not yet on anyone's list".
+- [ ] **Write the new-studio runbook** — site id, location id, trainer provisioning, machine roster. You have 40 locations heading to ~100 and a missing `mindbodySiteId` makes a studio's trainers blind.
+- [ ] **A DLQ you cannot drain is not a safety net.** `mindbodyDLQ` is write-only today; build the replay path before the webhooks carry production load.
+- [ ] **Decide offline behaviour for a live session** — no service worker, no Firestore persistence, and a gym floor is the worst network in the building. The one thing that must never be lost is a set a trainer just logged.
+- [ ] **One accessibility pass** before 100 locations — touch targets, focus order, contrast in the dense dark theme. The colour-blind-safe instincts already in the code (the inroad glyph, the three-shape note icon) are worth checking systematically.
+
+## 📦 Shipped — archive
+
+Every completed round, in the order it was written. Nothing here has been edited except the headings: these were all titled "Now" and none of them are. Kept in full because the *why* in them is the most valuable thing in this repo — several of these entries are the only record of a root cause.
+
+Six of these rounds still carry an open **Verify on the iPad** box. Those boxes are the source material for `TESTING-CHECKLIST.md`; they stay here so the acceptance criteria sit next to the work they describe.
+
+### 🪪 Shipped — Client profile redesign (Sep 5) — branch `client-profile-redesign`, one commit per phase
 
 Seven annotated screenshots, seven sections, seven commits. Spec and UX critique: `src/features/client-profile/README.md`. `npx tsc --noEmit` clean after every phase; `npx vitest run` green (16 rollup + 9 package + clinical analytics + 11 routine-rows + 7 equipment-usage tests). Layout verified headless at 1024×1366 and 1366×1024 in both themes for the header, Journey grid, Routines, Equipment and the Clinical dashboard. **Not yet looked at on a real iPad.** Merge to `master` and `git push origin master` yourself — the container has no GitHub credentials.
 
@@ -52,7 +352,7 @@ Seven annotated screenshots, seven sections, seven commits. Spec and UX critique
 - [ ] **Verify on the iPad** — header at 1366 landscape with a long client name AND a long studio name; a 21-machine client on the Journey tab with a settings menu open; Routines with B off and with nothing chosen for today; the Equipment History card during the backfill (the "from loaded sessions" label must disappear on its own after the first open); Generate a 12-month Clinical Report on a real 100-session client — time it, then read every insight card and ask whether a clinician would nod; Journal and History in dark mode (not harness-verifiable — both subscribe to Firestore); Start Session with a session already in progress.
 - [ ] Follow-ups: delete `ClientClinicalReviewView.tsx` + its preloader once the new tab has been used for a week; the old review's `subjectiveSnapshot` panel has no home yet; `ClientHistoryCalendar.tsx` is still 1,650 lines on the old patterns — this round restyled its list and toggle only, the calendar cells and the session dialog are untouched; the trainer tally is fed by session save and CSV import but deliberately not by the Mindbody visit import (visits are not coached sessions); `StickyCTA` is still used by the briefing, clinical review and victory screens; the routine label heuristic (`name.includes("B")`) predates this round and should become an explicit `slot: "A" | "B"` field when routines get a schema pass.
 
-## 🧬 Now — Catalog redesign (Sep 4) — branch `catalog-redesign`, one commit per phase
+### 🧬 Shipped — Catalog redesign (Sep 4) — branch `catalog-redesign`, one commit per phase
 
 Spec: `src/features/catalog/README.md`. Seven annotated iPad screenshots; six were layout, one was a live multi-tenant leak. `npx tsc --noEmit` clean, `npx vite build` green, 20 new tests green (`npx vitest run src/features/catalog`). Layout verified in a headless harness at 1194×834 and 834×1112 in both themes. **Not yet looked at on a real iPad.**
 
@@ -68,7 +368,7 @@ Spec: `src/features/catalog/README.md`. Seven annotated iPad screenshots; six we
 - [ ] **Verify on the iPad** — both themes, portrait and landscape. Hip Abduction lands on posterior with glutes lit (via the rail, the sheet, and tapping the figure). Scroll a long machine (Leg Press): no inner scrollbar, no dead space, last line clears the nav. The sticky bar pinning in portrait. **The acceptance test for phase 1: type a note at Solon, save, sign in at a second studio, confirm it is not there.** Save with the network off — it must report failure. A long studio name in the header at every breakpoint. VoiceOver through the picker sheet.
 - [ ] Follow-ups: delete the stray `leg_extension` document from `machines/` (the console names it). `MACHINE_ANATOMY` has both `m-neck` and `cervical_extension` for the same machine — the catalog dedupes them but the data file should not carry both. `abductors` and `glutes` still collapse onto the model's single `gluteal` region, so Hip Abduction, Leg Curl and Lumbar Extension light the same blob; decide before the model goes app-wide whether to live with react-muscle-highlighter's region set or author an SVG with one region per `MuscleId` (`BODY_SLUG_MAP` is the only coupling point, so it stays a one-file change). Next consumers for `components/anatomy/`: `BodyStateTracker`, the progress report pain map.
 
-## 🧹 Now — Studio To-Do (Sep 4) — branch `studio-tasks`, one commit per phase
+### 🧹 Shipped — Studio To-Do (Sep 4) — branch `studio-tasks`, one commit per phase
 
 Cleaning, maintenance and floor operations. Spec: `src/features/studio-tasks/README.md`. `npx tsc --noEmit` clean, `npx vite build` green, 26 new tests (`npx vitest run src/features/studio-tasks`). Layout verified headless at 1194×834 and 834×1112 in both themes. **Not yet looked at on a real iPad.**
 
@@ -82,7 +382,7 @@ Cleaning, maintenance and floor operations. Spec: `src/features/studio-tasks/REA
 - [x] ~~Phase 7 — client tasks open the real flow~~ — a client task is a pointer at the screen where the work is done, not a tick that claims it happened. `progress-report` opens the report editor, `assessment` the consultation wizard; InBody has no screen of its own yet so it lands on the client profile, which is the closest honest destination. The manager picks the client and the destination in the editor.
 - [ ] Follow-ups: no reminders or digest — everything is pull. The instances query is one day at a time, so history growth is not yet a concern. `MACHINE_ANATOMY` keeps `cervical_extension` as a documented ALIAS of `m-neck` rather than deleting it: `clinical-matrix.ts` and `routine-templates.ts` both reference that id directly, so removing it would break lookups unrelated to the diagram. The Catalog collapses it via `canonicalMachineId`, and the audit harness now dedupes the same way. Still outstanding: delete the stray `leg_extension` document from the `machines/` collection (the console names it on load).
 
-## 📅 Now — Calendar redesign (Sep 3) — branch `calendar-redesign`, one commit per phase
+### 📅 Shipped — Calendar redesign (Sep 3) — branch `calendar-redesign`, one commit per phase
 
 Month / Week / Day rebuilt in `src/features/calendar/` (spec in its README.md). `CalendarView.tsx` 1,630 → 403 lines. `npx tsc --noEmit` clean, `npx vite build` green. **Not yet looked at on a real iPad.**
 
@@ -94,7 +394,7 @@ Month / Week / Day rebuilt in `src/features/calendar/` (spec in its README.md). 
 - [ ] **Verify on the iPad** — both themes; Month with a heavy Thursday; Week's delta on a week with no prior history loaded; the heatmap in dark mode; Day swimlanes in portrait (they scroll horizontally) and a lane expand; the nav arrows staying put stepping Aug → Sep → Oct.
 - [ ] Follow-ups: events only render in Month (they were never meaningful in the old week/day grids). `ClientHistoryCalendar.tsx` (1,643 lines) is a separate component still on the old patterns — fold it onto these tokens on a later pass. Decide whether the Day view should show a NOW line when viewing today.
 
-## 🧰 Now — Equipment tab dual-pane (Sep 3) — branch `equipment-dual-pane`, one commit per phase
+### 🧰 Shipped — Equipment tab dual-pane (Sep 3) — branch `equipment-dual-pane`, one commit per phase
 
 Replaces the twenty-card Equipment grid with a master-detail split: `src/features/equipment/` (spec in its README.md). `npx tsc --noEmit` clean and `npx vite build` green. Each phase is its own commit so any one can be reverted alone. **Not yet looked at on a real iPad** — checklist at the bottom.
 
@@ -108,7 +408,7 @@ Replaces the twenty-card Equipment grid with a master-detail split: `src/feature
 - [ ] **Verify on the iPad** — both themes, portrait drill-in + landscape split, a first-time machine setup (ghosts must stay ghosts, Gap pre-fills to 0), a settings change with an audit reason showing up on the Journal tab, a maintenance note reaching the pre-session briefing, the weight steppers, and the in-session prompt on a genuinely never-performed machine.
 - [ ] Follow-ups: settings render as free text until the roster backfill populates `settingFields` (typed inputs are already written and switch on automatically). Decide whether weight changes should journal after all. `MachineSettingsDashboardModal` and `TrainerMachineEditor` still carry their own copies of the old settings-editing UI — fold them onto `SettingsCard` on a later pass.
 
-## 🎨 Now — Journey grid (Sep 3) — LIVE on branch `journey-grid`, one commit per phase
+### 🎨 Shipped — Journey grid (Sep 3) — LIVE on branch `journey-grid`, one commit per phase
 
 One sticky grid for both the client profile Journey tab and the Active Session tracker: `src/features/journey-grid/` (spec in its README.md; the "Journey Grid" artifact in Claude is the same code with sample data). Type-checks clean (`npx tsc --noEmit`, 0 errors). Each phase is its own commit so any one can be reverted alone.
 
@@ -119,7 +419,7 @@ One sticky grid for both the client profile Journey tab and the Active Session t
 - [ ] **Verify on the iPad after deploy** — Journey tab (both themes, portrait + landscape, Older, Analytics cycle, tap-a-value jump), a real session end-to-end (weights/reps/quality, a Torso Rotation L/R set, Log-as-TSC, Add-to-session, a note from the Notes button showing up on the Journal tab), Finish session.
 - [ ] Follow-ups: the old Machine Performance Entry dialog (`editingWeightMachineId`) and `TRACKER_COL` are now unreachable/unused in the tracker — delete on the next pass. The End-Session dialog's "Session Notes" textarea and the post-session note still write legacy `sessionNotes` via `completeWorkoutSession` (journal reads them through the adapter) — move to `journalEntries` (`origin: post_session`) when touching that flow. Decide whether the Analytics column stays on in the tracker in portrait (`showStats={false}` turns it off).
 
-## 🔨 Now — iPad UI overhaul (Sep 1) — branch `ui-overhaul`, one commit per phase
+### 🔨 Shipped — iPad UI overhaul (Sep 1) — branch `ui-overhaul`, one commit per phase
 
 Built from AJ's five-phase blueprint (iPad Pro first, dense dark theme, Mindbody-style daily grid). Every phase typechecks clean (`npx tsc --noEmit`, 0 errors) and each is its own commit on `ui-overhaul`, so any single phase can be reverted on its own. **Not yet looked at on a real iPad** — see the checklist under Next.
 
@@ -130,7 +430,7 @@ Built from AJ's five-phase blueprint (iPad Pro first, dense dark theme, Mindbody
 - [x] ~~Phase 5 — Admin dashboard~~ — Persistent left sidebar on landscape with three tiers (Studio Management · Communications · System Backend pinned at the bottom behind a dashed divider); a two-tier horizontal strip in portrait. Minimal left-/bottom-border active states. Retention tab unmounted (import commented out, file kept). Overview metric cards stretch into the reclaimed height. Machines (added Aug 31) sits under Studio Management.
 - [ ] **Verify on the iPad** (see Next). Screenshots of the new Hub, Calendar day view and Admin sidebar were rendered offline with mock data during the build via `harness/` (untracked, git-ignored locally) — a tiny Vite entry that renders single screens with fake schedules and no Firebase. Worth keeping for future UI rounds: `npx vite build --config harness/vite.config.ts`, then open `harness/dist/harness/index.html` (`?view=calendar`, `?view=admin`, `?theme=light`).
 
-## 🔨 Now — current focus: the Routines experience
+### 🔨 Shipped — Routines experience & Mindbody linking (Aug 27–30)
 
 - [x] ~~"Everything says NOT SYNCED" after the 432-appointment sync~~ — done Aug 30. The client documents were being created correctly; **the UI could not see them.** `AppContent` builds its whole `clients` array from `useLiveSchedule`'s roster, and that roster covered **today only** — while the hub grid renders whichever day tab is selected. Every block on another day was therefore "Not synced" no matter what was in Firestore. Roster now spans yesterday → +8 studio days (capped at 400 clients, still memoised on the id-set). Also: the quota cooldown could never retry (it waited for a snapshot that never came once writes stopped — now on a timer); client creation moved out of the appointment loop into batched upserts that run BEFORE any schedule row is written, so rows never point at a document that does not exist yet; and that batch only creates clients for the studio actually being synced, or a sibling studio's clients would land with the wrong `homeStudioId`. Added `scripts/diagnose-schedule-links.ts` — read-only, tells you whether a "Not synced" block is a missing clientId, a missing client document, or a UI problem.
 
@@ -159,25 +459,7 @@ Built from AJ's five-phase blueprint (iPad Pro first, dense dark theme, Mindbody
 - [x] ~~Routines tab card layout fixes~~ — done Aug 28: fixed the Routine B card header clipping its "Protocol B Active" badge/toggle and Edit/Use Today buttons off the right edge of the card — the header row now wraps (instead of forcing everything onto one line that could overflow), with the action buttons pinned to the right whether they share the title's row or drop to their own line below it. Routine A and Routine B cards now always match height (switched the grid from `items-start`, which let each card size to its own content, to `items-stretch`), so the layout stays symmetrical no matter how many machines are in either list. Added a "Last modified [date] at [time]" label above the "X changes this month" badge in the Routine Adjustment Journal header, sourced from the most recent adjustment across both routines.
 - [x] ~~Edit Routine drawer, round 5~~ — done Aug 28: added a numbered badge to each row in "Sequence Order" so the order is unambiguous at a glance. Each row now also always shows that machine's **last performed weight and date**, pulled from the client's own session logs (sorted by session number, the most reliable recency signal, with the session date only as a tiebreaker) — shows "N/A" for both fields if the client has never done that machine. Moved the Notes field out of its own band and down into the footer, right above Close/Apply, so it reads as one action strip. Added keyboard-avoidance for iPad: tapping into Notes now tracks the on-screen keyboard (via the browser's VisualViewport API) and shifts the whole drawer up so Notes stays fully visible above the keyboard instead of getting covered; degrades safely to the normal centered layout on anything that doesn't support it.
 
-## ⏭️ Next
-
-- [ ] **iPad pass on the `ui-overhaul` branch** — walk each screen in portrait and landscape and mark up what's off: (1) Hub — does the day strip swipe, is the pinned "You" column right, do 60-minute blocks span two rows, is the NOW line where the clock says; (2) Client profile — header on one row in landscape, Recent Journey rows all the same height, dropdowns showing "Select an option…" for a client with nothing set; (3) Start Session — Routine picker at the top, check-in at the bottom, Weight/Reps/Quality under the right thumb in both orientations; (4) Calendar day view — header stays put when scrolling; (5) Admin — sidebar in landscape, strip in portrait. Then merge into `aug-2026-updates`.
-- [ ] **Hub "in session" tint follows the client, not the booking** — pre-existing, noticed while building Phase 1: `ClientsView` finds "today's workout session" by client id, so if a client has two bookings in one day both blocks show the live tint. Match on the schedule entry (appointment id / start time) once sessions carry that link.
-- [ ] **Header search is hidden below the `sm` breakpoint** — the app is tablet-first, and the Client Directory keeps its own search, but phones lose the Hub search until we add a tap-to-expand icon.
-- [ ] **Confirm whether Mindbody actually sends the pass fields** — the eight pass/waitlist/visit fields are wired end to end but Mindbody's documented appointment payload does not include them. Fire `send-test-webhook.js` (or watch a real booking) and check whether `mindbodyPass` appears on the schedule doc. If it never does, the honest options are to source pass data from the client contracts/memberships already synced, or drop the fields.
-- [ ] **Surface pass state on the schedule block** — the data now lands on the schedule doc but nothing displays it. "3 left" beside the session number would tell a trainer mid-shift that a client is about to run out. Deferred because AJ chose the compact `#12` badge over `#12 · 8 left` in the hub pass; revisit once real pass data is confirmed to arrive.
-
-- [ ] **Auto-provision standard trainer profiles when a studio is created** (AJ, Aug 30) — studio creation stays MANUAL by design: the rollout is phased across 40 current locations, heading to ~100, and they should not all be in the database up front. But when a studio IS created by hand, the system should stand up that location's standard trainer profiles automatically instead of leaving someone to add them one by one. Decide first: what the standard roster is (roles and count, presumably a Studio Leader plus N LifeTransformers), whether they are created as real invitable trainer docs or placeholders a real person later claims, and how `mindbodyStaffId` gets attached — the schedule importer matches trainers by that id first and falls back to full-name matching, so placeholder profiles with no staff id will fall back to name matching until a real person is linked. To be built AFTER the core linking work is settled and deployed.
-
-- [ ] **Run the canonical-ID migration** — the backend code for automatic Mindbody ↔ Firebase linking was written Aug 30 and typechecks, but nothing has touched a database yet. Follow the runbook at the top of PROJECT_TRACKER.md's linking spec: fix any missing `mindbodySiteId` in Admin → Studios, dry-run on staging, commit on staging, dry-run on live, commit on live, then deploy. Only after a clean live run can the manual-link escape hatch come out of the Hub.
-- [ ] **Pin a priority note from the client profile** — the schedule block's loud red flag already lights up from any active High-priority client event (Alert/Medical are standing; others expire with their date window), and `Client.priorityNote` / `Client.hasPriorityNote` are defined for it, but there is no UI yet to pin a free-text note or to raise the flag from a High-priority session note. Natural home is the notes card in the client info sheet.
-
-- [ ] **"Add Machine" feature** — let studios add custom machines properly: name, region, AND kinematic group + anatomy mapping, so new machines appear correctly in the catalog groupings, the routine picker (today they'd fall into "Other Equipment"), and the muscle-activation views. Multi-tenant note: decide whether custom machines are per-studio or shared across the franchise.
-- [ ] **Routine tab visual finalization** — polish the client profile Journey/Routines tabs as a coherent set.
-- [ ] **Start Session's inline routine builder is out of step with the catalog pattern** — spotted while redesigning the client-profile Edit Routine drawer (Aug 28): the "Execution Sequence" builder on the Start Session screen (`BriefingScreen.tsx`) lists machines as one flat row instead of the kinematic groupings used everywhere else. Worth a matching pass once we're back in that screen.
-- [ ] **Preset Routines management UI** — trainers can save/delete their studio's presets from inside the Edit Routine drawer now, but there's no dedicated place to rename one or see who created it. Built-in ("global") presets are hardcoded in `src/data/routine-presets.ts` for now — ask to add more there, or say the word if you'd rather they be Firestore-editable by Admins instead.
-
-## 🔨 Now — Active Session, round 4: the Now bar (Sep 4)
+### 🔨 Shipped — Active Session, round 4: the Now bar (Sep 4)
 
 - [x] ~~Density round 4 — Today's entry leaves the grid~~ — done Sep 4 on branch `session-density-round4` (8 commits, one per phase). AJ's round-3 grid was still bulky in tablet portrait; the root cause was one number. The Today column was the *input* (252px of steppers, a reps field and two quality buttons), and because a CSS Grid row track is as tall as its tallest item, that one cell also forced every history cell in its row to 96px. It cost width and height at the same time, which is why only 4 sessions and 6 machines fit on an iPad.
   - **Phase 1 — the nav is the actual bottom (app-wide).** The shell was `min-h-screen` with a `position:fixed` nav and `pb-24` on `<main>`: ~96px of padding rendering behind and below a 56px bar, on *every* view. Now a bounded `h-[100dvh]` flex column, `<main>` the only scroller, both navs ordinary `flex-none` last children. Dropped the `calc(100dvh - 136px)` hack on the Hub/Catalog branch, which only existed to compensate for the floating chrome.
@@ -191,19 +473,11 @@ Built from AJ's five-phase blueprint (iPad Pro first, dense dark theme, Mindbody
   - **Result:** portrait fits **8 history columns (was 4)** and **8 machines with no vertical scroll (was 6)**. `npx tsc --noEmit` clean, `vite build` clean.
   - **Not yet judged in-studio:** losing inline entry in the grid is the one real habit change. Worth a session on the floor before assuming it is right.
 
-## 📋 Backlog — front end
-
-- [ ] Split `ClientProfileView.tsx` (~6,260 lines, down from 6,690 — Edit Routine drawer extracted Aug 28) into smaller files, one tab at a time, as we touch each area.
-- [ ] Remove the duplicate drag-and-drop library (app uses both `@dnd-kit` and `@hello-pangea/dnd` — keep one).
-- [ ] "Purchases" screen is a placeholder — design it for real or hide it before trainers see it.
-- [ ] Navigation/app-shell cleanup (the long `currentView` chain in `AppContent.tsx`).
-- [ ] **Legacy-imported sets still carry a hardcoded `repQuality: 2`** — the importer no longer sets this for new imports (fixed Aug 29), but everything already imported through it still has the old fake "good" rating baked into Firestore. A one-time cleanup script (clear `repQuality` on any `exerciseLogs` doc that came from a legacy import) would be needed to fully undo it; not done yet since it touches live data directly.
-
-## 🔨 Now — Active Session table, round 2 (Aug 29)
+### 🔨 Shipped — Active Session table, round 2 (Aug 29)
 
 - [x] ~~Right-align Weight/Reps/Quality, drop "(lbs)" clutter, exercise-name hierarchy~~ — done Aug 29, addressing AJ's follow-up markup on the round above: (1) moved the flex-1 filler cell from trailing after the Quality column to sitting between the History grid and the Weight column instead — Weight/Reps/Quality (and their headers) are now pinned to the right screen edge instead of floating in the middle with dead space past them. (2) Dropped the "(lbs)" unit label under the weight number in the 5-session History cells — pounds are the given unit there, so it was pure clutter; the TIME/REPS bottom half is unchanged. (3) Bumped the exercise name up a step (`text-xs` → `text-sm font-semibold`) so it clearly leads the shorthand settings line below it, and restyled that line (wider-tracked, more muted keys like "G:"; slightly higher-contrast values) so it's legible but unmistakably secondary. Confirmed Gap already always sorts first in that line — `orderMachineSettings()` in `src/lib/utils.ts` has hardcoded that priority since before this round, nothing to change there. `npx tsc --noEmit` clean.
 
-## 🔨 Now — Active Session table, round 3: real bugs, not just styling (Aug 29)
+### 🔨 Shipped — Active Session table, round 3: real bugs, not just styling (Aug 29)
 
 - [x] ~~History-grid dates out of order + Last Weight Performed wrong~~ — done Aug 29: both traced to the same root cause. The `sessions` list was sorted with `createdAt` as the first-priority key, but `createdAt` is when the Firestore doc was *written*, not when the workout happened — for the ~years of history brought in through `LegacyChartImporter.tsx`, that's whenever the import ran, completely unrelated to the actual session date. That's exactly why the 5 History-grid date headers were showing scrambled order (e.g. "Jun 1, Jun 11, Mar 16, Feb 26, Jun 8") instead of true chronological order, and why "Last Weight Performed" (which just reads `sessions[0]`) was grabbing whichever session happened to import last instead of the truly most recent one. Fixed by sorting `sessions` with `parseSessionDate(session.date)` — the same date-parsing helper already used everywhere else in the app (`ClientProfileView.tsx`, `ClientHistoryCalendar.tsx`) for exactly this — instead of `createdAt`. Both the date headers and Last Weight Performed read from this same sorted list, so one fix resolved both.
 - [x] ~~Rep-quality dots always looking "yellow"~~ — done Aug 29: this was real data, not a display bug. `LegacyChartImporter.tsx` was hardcoding `repQuality: 2` (the "good/amber" value) on every single imported historical set, because the old paper charts never tracked a quality rating — so every legacy-imported set looked exactly like a trainer had rated it "good," indistinguishable from a real rating. Changed the importer to leave `repQuality` unset for new imports instead, so those sets now correctly show as "no quality recorded." Note: this only affects future imports — the sets already imported still carry the old hardcoded `2` in Firestore, since fixing the code can't retroactively change data that's already written; flagged in the backlog below in case a one-time cleanup pass is wanted.
@@ -211,40 +485,24 @@ Built from AJ's five-phase blueprint (iPad Pro first, dense dark theme, Mindbody
 - [x] ~~Blank gap between History grid and Weight column~~ — done Aug 29: confirmed this is not a data/mapping bug (no phantom array index) — it's the same right-alignment filler cell added last round, which had no visual treatment at all so it read as a rendering glitch on wide screens. Capped its max width and gave it the same light background shading already used for the small spacer between Last Weight Performed and the History grid, so it now reads as an intentional gap between column groups instead of a hole in the layout.
 - [x] ~~History-cell REPS/TIME label de-emphasis~~ — done Aug 29: lightened those small labels (lighter weight, lower opacity) under the weight number in each History cell so the weight itself is the clear visual anchor of each cell. `npx tsc --noEmit` clean (0 errors).
 
-## 🔨 Now — Active Session table, round 4: quality-outline correction + row tracking (Aug 29)
+### 🔨 Shipped — Active Session table, round 4: quality-outline correction + row tracking (Aug 29)
 
 - [x] ~~Quality selector: reverted back to solid-fill dots~~ — done Aug 29: AJ clarified that round 3's outline-vs-fill change was meant for the History grid's quality coloring, not the live far-right Quality selector — reverted that column (both single and torso left/right variants) back to its original solid-filled circles.
 - [x] ~~History grid quality: thick border instead of full-cell fill~~ — done Aug 29: each History cell used to get a full solid background wash (e.g. `bg-emerald-100`) based on that set's rep quality, which is what AJ actually wanted changed. Replaced it with a 2px inset ring in the same quality color instead (an inset box-shadow, not a real border, so it doesn't fight the cell's existing right-edge divider or add to its layout width) — reads as a colored border around the cell rather than a solid color wash.
 - [x] ~~Horizontal row dividers were basically invisible in dark mode~~ — done Aug 29: each machine row already had a `border-b` divider, but its dark-mode color (`slate-800/50`) was nearly the same near-black as the table's own dark background (`#0D1A2B`), so it wasn't actually helping track a row across the screen like AJ described. Lightened it (`slate-600/70` in dark mode, `slate-200/70` in light mode) so the line between rows is now genuinely visible while staying subtle. `npx tsc --noEmit` clean (0 errors).
 
-## 🔨 Now — Active Session table, round 5: Notes column + quick-add (Aug 29)
+### 🔨 Shipped — Active Session table, round 5: Notes column + quick-add (Aug 29)
 
 - [x] ~~Machine-specific Notes column~~ — done Aug 29: added a real "Notes" column in the gap between the History grid and Weight/Reps/Quality (previously just a shaded spacer). Each row gets a notes icon/button — gray by default, blue once that machine has any notes on file for this client, red/alert if any of those notes is flagged High Importance. Clicking it opens a panel listing that machine's notes (author + date, newest first, deletable) with an input and a High Importance toggle switch to add a new one. These notes are **not session-scoped** — they're stored on the same `clientMachineSettings` doc (`machineNotes: MachineNote[]`) already used by the Client Profile Journey grid's red-alert icon and the Equipment Prescriptions note log, so a note added here shows up in both of those places too, and vice versa — one shared note history per client+machine, not a new parallel system.
 - [x] ~~Quick-add confirmation on the routine dot~~ — done Aug 29: the small dot to the left of a machine that isn't part of today's routine (shown once a session is already running) is now clickable and opens a confirm dialog ("Add [machine] to today's routine?") instead of doing nothing. Confirming adds it to the session's active machine list, same as machines chosen at session start — it does not permanently change the saved Routine template, only this session, matching how the existing Edit Routine mid-session flow already behaves. `npx tsc --noEmit` clean (0 errors).
 
-## 🔨 Now — Notes column repositioned (Aug 29)
+### 🔨 Shipped — Notes column repositioned (Aug 29)
 
 - [x] ~~Moved Notes to the 2nd column~~ — done Aug 29: relocated the Notes button from between the History grid and Weight/Reps/Quality to right after the leftmost #/routine column, as its own compact fixed-width column (was flex-1, right of the History grid). Restored the shaded flex-1 filler in its old spot between the History grid and Weight/Reps/Quality to keep those columns pinned to the right edge on wide screens. `npx tsc --noEmit` clean (0 errors).
 
-## 🔨 Now — Active Session table follow-up (Aug 29)
+### 🔨 Shipped — Active Session table follow-up (Aug 29)
 
 - [x] ~~Clickable sequence numbers, Edit Routine rename, dead-gap fix, split history cells~~ — done Aug 29: (1) the numbered badge (1, 2, 3...) on each active machine's row is now clickable and opens the same weight/reps entry panel as tapping the Weight cell (for two-sided machines it opens whichever side isn't filled in yet). (2) The "Routine" button in the top action bar now reads "Edit Routine," matching the tooltip already on the small icon-button version of the same action in the table header. (3) Fixed the empty strip of page background that showed on the right of every row on wide screens — every column was a fixed width with nothing to absorb leftover space, so added an invisible flex-1 filler cell to the end of the header and every row. (4) Redesigned the 5-session History grid cells: each is now a real two-part cell — weight + "(lbs)" on top, a hairline divider, then a labeled TIME (stopwatch icon + m:ss) or REPS row on the bottom depending on whether that set was a static hold — instead of the old cramped weight-over-reps stack. Bumped row height (`h-11`/`h-12` → `h-16`/`h-17`) to give the new two-part cells room to breathe. `npx tsc --noEmit` clean.
-
-## ⚠️ Found Aug 29 — rules deployment gap (now fixed live, needs follow-up)
-
-- [x] ~~studioMachineSettings + routinePresets weren't actually live~~ — while chasing the "Error loading studio machine settings: Missing or insufficient permissions" bug, discovered the real dev database (`msftesting-cda43` / "journey-test" in the Firebase console, the one `firebase-applet-config.json` actually points the app at) was missing BOTH the new `studioMachineSettings` rule and the `routinePresets` rule from a few rounds back — neither had ever actually been deployed, so Preset Routines was likely silently failing too, not just today's new feature. Published both rule blocks directly to that project's live Rules tab (with AJ's explicit go-ahead) — confirmed live as of tonight.
-- [ ] **Local rules files have drifted from what's actually live** — the deployed rules on `msftesting-cda43` have several blocks that AREN'T in `firestore.staging.rules` in this repo (`hub_announcements`, `notificationQueue`, `crossTrainAccess`, `crossTrainRequests`, `mindbodyEventLog`, `mindbodyDLQ`, `system/health`) — someone edited them directly in the Firebase console at some point without pulling the change back into the repo. Worth copying the live rules text back into `firestore.staging.rules` next time you're at the keyboard so the repo is the real source of truth again.
-- [x] ~~`firebase.json`'s firestore config points at the wrong project~~ — correction, Aug 29: this was wrong. Checked the production Firebase console directly — the named database `ai-studio-32cbbdcc-...` that `firebase.json` points at is the real, live production database under `gen-lang-client-0731527386` ("MaxStrengthFitness App," confirmed via real trainer accounts and live traffic), not `testingmsf-870ef`. `firebase.json` is correctly configured for production deploys; no change needed here. (`testingmsf-870ef` is a separate, unrelated, mostly-empty project that isn't used by the app at all.)
-
-## 🛡️ Before studio beta — safety & ops checklist
-
-- [x] ~~Deploy the 17 composite indexes to **live**~~ — verified Sep 2, 2026: all 17 are already live on `gen-lang-client-0731527386` / `ai-studio-32cbbdcc-…` and match `firestore.indexes.json` exactly (`npx tsx scripts/fetch-live-indexes.ts`). This item was stale.
-- [ ] **The blank profile panels are NOT an index problem** — that was the working theory behind the item above, and it is wrong, because the indexes were already there. Needs a fresh diagnosis: check the browser console for the actual Firestore error on a blank panel.
-- [ ] Check the **live** deployment for the contractor's hardcoded admin email (fixed in this copy only).
-- [ ] Confirm the MindBody developer account + API key are owned by Max Strength, not the contractor.
-- [ ] Contractor follow-up: webhook DLQ never wired + idempotency-before-processing (details in PROJECT_TRACKER.md, "contractor scope").
-- [ ] Security hardening review before launch: trainer-create bootstrap branch + cross-studio read access in the live rules (`firestore.staging.rules` is the working draft of the fix). The new `routinePresets` collection (Aug 28) and the new `studioMachineSettings` collection (Aug 29) were both written to match this same any-authenticated-trainer posture on purpose — sweep them in along with everything else.
-- [ ] Purge real client data from the staging project (`msftesting-cda43`) when the beta phase ends.
 
 ## ✅ Done
 

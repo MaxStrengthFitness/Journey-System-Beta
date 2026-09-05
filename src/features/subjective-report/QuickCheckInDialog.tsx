@@ -1,6 +1,12 @@
 /**
- * Run the 90-day check-in on its own — from the pre-session briefing or the
+ * Run the Client Check-in on its own — from the pre-session briefing or the
  * post-session screen — without building the whole progress report.
+ *
+ * NOTE: this dialog still saves a FINALIZED check-in in one sitting. The
+ * resumable draft lives in the Journal tab's Check-in panel
+ * (components/journal/ClientCheckInPanel). Wiring these two together — so a
+ * check-in begun at the briefing continues in the panel — needs the dialog
+ * to load the open draft first, and is deliberately left for its own round.
  *
  * Full-screen sheet (the form is long; a centred modal would be a scroll
  * inside a scroll on an iPad). Saves as a check-in-only report; see
@@ -100,7 +106,7 @@ export function QuickCheckInDialog({
       className="fixed inset-0 z-[120] flex flex-col bg-slate-100 dark:bg-slate-950"
       role="dialog"
       aria-modal="true"
-      aria-label="90-day check-in"
+      aria-label="Client check-in"
     >
       {/* header */}
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
@@ -110,7 +116,7 @@ export function QuickCheckInDialog({
           </span>
           <div className="min-w-0">
             <h2 className="truncate text-base font-black uppercase italic tracking-tight text-slate-900 dark:text-white">
-              90-Day Check-In · {client.firstName} {client.lastName}
+              Client Check-in · {client.firstName} {client.lastName}
             </h2>
             <p className="truncate text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
               {origin === "pre_session" ? "Before the session" : origin === "post_session" ? "After the session" : "Standalone"}

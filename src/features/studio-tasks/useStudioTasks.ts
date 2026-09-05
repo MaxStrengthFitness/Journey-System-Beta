@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { onSnapshot, query, where } from "firebase/firestore";
 import { studioDateKey } from "../../lib/studio-time";
 import { useStudioMachines } from "../../hooks/useStudioMachines";
-import { instancesRef, templatesRef } from "./mutations";
+import {
+  instancesRef,
+  personalInstancesRef,
+  personalTemplatesRef,
+  templatesRef,
+} from "./mutations";
 import { planDay } from "./recurrence";
 import type { TaskInstance, TaskRow, TaskTemplate } from "./types";
 
@@ -25,22 +30,51 @@ export interface UseStudioTasksResult {
   dateKey: string;
   loading: boolean;
   counts: { total: number; done: number; flagged: number };
+  /** Machines the day plan expanded over. 0 means machine tasks make no rows. */
+  machineCount: number;
+}
+
+export interface UseStudioTasksOptions {
+  /**
+   * Auth uid of the signed-in trainer, for their PERSONAL list.
+   * Must be the Firebase Auth uid, not the trainer document id: the two are
+   * the same for trainers created through Auth but not necessarily for older
+   * ones, and the uid is what trainers/{id}/task* is keyed and ruled on.
+   * Null means studio tasks only.
+   */
+  ownerId?: string | null;
+  /** Studio-local 'YYYY-MM-DD'. Defaults to today in the studio's timezone. */
+  dateKey?: string;
+  /** For naming client tasks. Optional — the id renders if absent. */
+  clientNames?: Record<string, string>;
 }
 
 export function useStudioTasks(
   studioId: string | null,
-  /** Studio-local 'YYYY-MM-DD'. Defaults to today in the studio's timezone. */
-  dateKey?: string,
-  /** For naming client tasks. Optional — the id renders if absent. */
-  clientNames?: Record<string, string>,
+  opts: UseStudioTasksOptions = {},
 ): UseStudioTasksResult {
+  const { ownerId = null, dateKey, clientNames } = opts;
   const day = dateKey ?? studioDateKey(new Date()) ?? "";
 
-  const { machines } = useStudioMachines(studioId);
+  // Bridged: before the roster backfill runs studios/{id}/roster is empty, and
+  // an unbridged read here makes every machine task silently produce no rows.
+  const { machines } = useStudioMachines(studioId, {
+    bridgeWhenRosterEmpty: true,
+  });
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [instances, setInstances] = useState<Record<string, TaskInstance>>({});
   const [templatesLoaded, setTemplatesLoaded] = useState(false);
   const [instancesLoaded, setInstancesLoaded] = useState(false);
+
+  // The trainer's own list. Separate collections, not a filtered read of the
+  // shared one — see TaskScope in types.ts for why that is the whole point.
+  const [personalTemplates, setPersonalTemplates] = useState<TaskTemplate[]>(
+    [],
+  );
+  const [personalInstances, setPersonalInstances] = useState<
+    Record<string, TaskInstance>
+  >({});
+  const [personalLoaded, setPersonalLoaded] = useState(true);
 
   useEffect(() => {
     if (!studioId) {
@@ -96,6 +130,81 @@ export function useStudioTasks(
     return () => unsub();
   }, [studioId, day]);
 
+  useEffect(() => {
+    if (!ownerId) {
+      setPersonalTemplates([]);
+      return;
+    }
+    const unsub = onSnapshot(
+      personalTemplatesRef(ownerId),
+      (snap) => {
+        setPersonalTemplates(
+          snap.docs.map(
+            (d) =>
+              ({
+                ...d.data(),
+                id: d.id,
+                scope: "personal",
+                ownerId,
+              }) as TaskTemplate,
+          ),
+        );
+      },
+      (err) => {
+        console.error("Error loading personal task templates:", err);
+        setPersonalTemplates([]);
+      },
+    );
+    return () => unsub();
+  }, [ownerId]);
+
+  useEffect(() => {
+    if (!ownerId || !day) {
+      setPersonalInstances({});
+      setPersonalLoaded(true);
+      return;
+    }
+    setPersonalLoaded(false);
+    const unsub = onSnapshot(
+      query(personalInstancesRef(ownerId), where("localDate", "==", day)),
+      (snap) => {
+        const map: Record<string, TaskInstance> = {};
+        snap.docs.forEach((d) => {
+          map[d.id] = { ...(d.data() as Omit<TaskInstance, "id">), id: d.id };
+        });
+        setPersonalInstances(map);
+        setPersonalLoaded(true);
+      },
+      (err) => {
+        console.error("Error loading personal task instances:", err);
+        setPersonalInstances({});
+        setPersonalLoaded(true);
+      },
+    );
+    return () => unsub();
+  }, [ownerId, day]);
+
+  /**
+   * Both tiers, one list. A personal task is filtered to the studio it was
+   * created at: ownership is by trainer, visibility is by location, so
+   * "restock the towels" does not follow a trainer across town.
+   *
+   * Instance ids embed their template id and template ids are random, so the
+   * two maps cannot collide.
+   */
+  const allTemplates = useMemo(
+    () => [
+      ...templates,
+      ...personalTemplates.filter((t) => !t.studioId || t.studioId === studioId),
+    ],
+    [templates, personalTemplates, studioId],
+  );
+
+  const allInstances = useMemo(
+    () => ({ ...instances, ...personalInstances }),
+    [instances, personalInstances],
+  );
+
   const machineIds = useMemo(
     () => machines.map((m) => m.machineId),
     [machines],
@@ -108,10 +217,10 @@ export function useStudioTasks(
 
   const rows = useMemo<TaskRow[]>(() => {
     if (!day) return [];
-    const byId = new Map(templates.map((t) => [t.id, t]));
+    const byId = new Map(allTemplates.map((t) => [t.id, t]));
 
-    return planDay(templates, day, machineIds).map((planned) => {
-      const instance = instances[planned.id] ?? null;
+    return planDay(allTemplates, day, machineIds).map((planned) => {
+      const instance = allInstances[planned.id] ?? null;
       const template = byId.get(planned.templateId) as TaskTemplate;
       const clientId =
         template?.target.kind === "client" ? template.target.clientId : undefined;
@@ -127,7 +236,7 @@ export function useStudioTasks(
         clientName: clientId ? clientNames?.[clientId] : undefined,
       };
     });
-  }, [templates, day, machineIds, instances, machineNames, clientNames]);
+  }, [allTemplates, day, machineIds, allInstances, machineNames, clientNames]);
 
   const counts = useMemo(() => {
     let done = 0;
@@ -141,9 +250,10 @@ export function useStudioTasks(
 
   return {
     rows,
-    templates,
+    templates: allTemplates,
     dateKey: day,
-    loading: !templatesLoaded || !instancesLoaded,
+    loading: !templatesLoaded || !instancesLoaded || !personalLoaded,
     counts,
+    machineCount: machineIds.length,
   };
 }

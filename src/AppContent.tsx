@@ -1012,7 +1012,6 @@ export default function AppContent({
         "routines",
         "routineAdjustments",
         "schedules",
-        "notes",
         "sessionNotes",
         "machineSettingChanges",
       ];

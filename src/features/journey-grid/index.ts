@@ -8,5 +8,5 @@ export { TodayCell } from "./TodayCell";
 export { QualityMark, QUALITY_MARK_LABEL } from "./QualityMark";
 export { GridToolbar, QualityLegend } from "./GridToolbar";
 export { SessionNowBar, type SessionNowBarProps } from "./SessionNowBar";
-export { RecentJourneyView, type RecentJourneyViewProps, type RowOrder } from "./RecentJourneyView";
+export { RecentJourneyView, type RecentJourneyViewProps, type RowFilter } from "./RecentJourneyView";
 export { ActiveSessionView, useLiveSession, type ActiveSessionViewProps, type LiveSessionState } from "./ActiveSessionView";

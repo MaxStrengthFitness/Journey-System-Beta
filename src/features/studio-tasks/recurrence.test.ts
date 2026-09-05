@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   dayOfMonthOf,
   expandTemplate,
@@ -134,6 +134,24 @@ describe("expandTemplate", () => {
     const out = expandTemplate(tpl(), "2026-09-04", machines);
     expect(out).toHaveLength(3);
     expect(out.map((i) => i.machineId)).toEqual(machines);
+  });
+
+  // The case this file missed (Sep 5 2026): every test above hands in a
+  // non-empty roster. In production studios/{id}/roster was empty everywhere,
+  // so a daily all-machines template expanded to nothing and the day list
+  // told the manager who had just saved it "Nothing scheduled today".
+  it("produces nothing when the studio has no machines, and warns", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const out = expandTemplate(tpl(), "2026-09-04", []);
+    expect(out).toEqual([]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it("plans an empty day for an all-machines template with no machines", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(planDay([tpl()], "2026-09-04", [])).toEqual([]);
+    warn.mockRestore();
   });
 
   it("expands 'all' against the CURRENT roster, so new equipment is covered", () => {

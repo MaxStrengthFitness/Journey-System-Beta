@@ -16,6 +16,7 @@ import {
   MachineUpkeepCard,
   TaskNoteDialog,
   setTaskStatus,
+  studioLocation,
   useMachineUpkeep,
   useStudioTasks,
   type TaskRow,
@@ -133,7 +134,9 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
     setUpkeepBusy(true);
     try {
       await setTaskStatus({
-        studioId: activeStudioId,
+        // Machine upkeep is always the studio's shared checklist, never a
+        // trainer's private list: the machine belongs to the location.
+        location: studioLocation(activeStudioId),
         planned: row,
         status,
         author,

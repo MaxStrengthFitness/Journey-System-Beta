@@ -121,6 +121,20 @@ export function expandTemplate(
     kind: template.kind,
   };
 
+  if (
+    template.target.kind === "machine" &&
+    template.target.machineIds === "all" &&
+    studioMachineIds.length === 0
+  ) {
+    // A due template that expands to nothing is invisible: no row, no error,
+    // and the day list then tells the manager who just saved it that there is
+    // "Nothing scheduled today". Name it instead. (Sep 5 2026.)
+    console.warn(
+      `[studio-tasks] "${template.title}" targets every machine, but no ` +
+        `machines are available for this studio, so it produced no rows.`,
+    );
+  }
+
   const out: PlannedInstance[] = [];
 
   for (const shift of shiftsFor(template)) {

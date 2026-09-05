@@ -258,7 +258,9 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
     <div
       className={
         inline
-          ? `flex flex-col min-h-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white overflow-hidden ${className || ""}`
+          // No `overflow-hidden` in the inline variant: it would cut the
+          // sticky jump rail and the sticky save bar out of the page scroll.
+          ? `flex flex-col rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${className || ""}`
           : "fixed inset-0 z-100 flex flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-none overflow-hidden m-0 animate-in fade-in zoom-in-[0.98] duration-200"
       }
     >
@@ -343,13 +345,16 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
         onOpenReports={onOpenReports}
         onSyncMindbody={handleSyncMindbody}
         isSyncingMb={isSyncingMb}
+        scroll={inline ? "page" : "inner"}
       />
 
       {/* Sticky Footer */}
       <div
         className={
           inline
-            ? "px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 mt-auto flex-none flex justify-end"
+            // Sticky to the viewport bottom: the form is now as long as the
+            // page, and Save must never be a scroll away.
+            ? "sticky bottom-0 z-20 rounded-b-2xl px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/90 backdrop-blur-sm mt-auto flex-none flex justify-end"
             : "p-4 md:px-10 md:py-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 mt-auto flex-none flex justify-end shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]"
         }
       >

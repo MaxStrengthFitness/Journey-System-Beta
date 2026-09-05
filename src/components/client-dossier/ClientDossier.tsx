@@ -102,6 +102,12 @@ export interface ClientDossierProps {
   onOpenReports?: () => void;
   onSyncMindbody?: () => void;
   isSyncingMb?: boolean;
+  /**
+   * "inner" (default, the full-screen overlay): the spine is its own
+   * scroll container. "page" (the Details tab): the spine has no scroller
+   * of its own — the page scrolls, and the jump rail sticks alongside it.
+   */
+  scroll?: "inner" | "page";
 }
 
 export function ClientDossier({
@@ -116,7 +122,9 @@ export function ClientDossier({
   onOpenReports,
   onSyncMindbody,
   isSyncingMb = false,
+  scroll = "inner",
 }: ClientDossierProps) {
+  const pageScroll = scroll === "page";
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [activeSection, setActiveSection] = useState<DossierSection>(
     defaultSection || "general",
@@ -143,14 +151,15 @@ export function ClientDossier({
         const id = visible[0]?.target.getAttribute("data-dossier-section");
         if (id) setActiveSection(id as DossierSection);
       },
-      { root, rootMargin: "0px 0px -65% 0px", threshold: 0 },
+      // A null root means the viewport, which is the scroller in page mode.
+      { root: pageScroll ? null : root, rootMargin: "0px 0px -65% 0px", threshold: 0 },
     );
 
     root
       .querySelectorAll("[data-dossier-section]")
       .forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, []);
+  }, [pageScroll]);
 
   const jump = useCallback((section: DossierSection) => {
     const el = document.getElementById(`dossier-${section}`);
@@ -231,14 +240,19 @@ export function ClientDossier({
 
   /* --- render --------------------------------------------------------- */
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className={cn("flex flex-col", !pageScroll && "min-h-0 flex-1")}>
       <ClientSnapshot client={client} criticalEntries={criticalEntries} onJump={jump} />
 
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        {/* jump list — a shortcut, not a switch */}
+      <div className={cn("flex flex-col md:flex-row", !pageScroll && "min-h-0 flex-1")}>
+        {/* jump list — a shortcut, not a switch. In page mode it sticks:
+            the spine is now as long as the page, and a jump list that
+            scrolls away at section two is no shortcut at all. */}
         <nav
           aria-label="Dossier sections"
-          className="shrink-0 border-b border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-950 md:w-52 md:border-b-0 md:border-r md:px-3 md:py-5 lg:w-56"
+          className={cn(
+            "shrink-0 border-b border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-950 md:w-52 md:border-b-0 md:border-r md:px-3 md:py-5 lg:w-56",
+            pageScroll && "md:sticky md:top-0 md:self-start md:max-h-dvh md:overflow-y-auto",
+          )}
         >
           <span className="mb-2 hidden px-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-slate-400 md:block">
             Jump to
@@ -266,8 +280,19 @@ export function ClientDossier({
         </nav>
 
         {/* the spine */}
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto bg-white dark:bg-slate-900">
-          <div className="mx-auto flex max-w-4xl flex-col gap-9 px-5 py-7 pb-28 md:px-9">
+        <div
+          ref={scrollRef}
+          className={cn(
+            "flex-1 bg-white dark:bg-slate-900",
+            pageScroll ? "min-w-0" : "min-h-0 overflow-y-auto",
+          )}
+        >
+          <div
+            className={cn(
+              "mx-auto flex max-w-4xl flex-col gap-9 px-5 py-7 md:px-9",
+              pageScroll ? "pb-10 [&_[data-dossier-section]]:scroll-mt-4" : "pb-28",
+            )}
+          >
 
             {/* ---------------- GENERAL ---------------- */}
             <DossierSectionShell

@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Users, History, Play, Loader2 } from "lucide-react";
+import {
+  Search,
+  Users,
+  History,
+  Play,
+  Loader2,
+  CalendarCheck,
+  CircleCheckBig,
+  ListChecks,
+  CalendarPlus,
+} from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   collection,
@@ -10,10 +20,11 @@ import {
   updateDoc,
   doc,
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 import { Client, Trainer, View, WorkoutSession } from "../types";
 import { isFuzzyNameMatch } from "../lib/sync-utils";
 import { ScheduleBlock } from "./schedule/ScheduleBlock";
+import { useStudioTasks } from "../features/studio-tasks";
 import {
   zonedHM,
   calendarLabelKey,
@@ -57,8 +68,14 @@ const SLOT_MINUTES = 30;
 const ROW_PX = 56;
 /** Height of the sticky trainer header row (Tailwind h-16). */
 const HEADER_PX = 64;
-const DEFAULT_START_HOUR = 7;
-const DEFAULT_END_HOUR = 19;
+/**
+ * The timeline runs 5:30 AM -> 8:00 PM. Trainers take early exceptions and
+ * late make-ups, and the old 7 AM floor hid them below the scroll. A booking
+ * outside this window still stretches the grid to include it.
+ */
+const DEFAULT_START_MIN = 5 * 60 + 30;
+/** The LAST row STARTS here, so the grid closes at 8:00 PM. */
+const DEFAULT_END_MIN = 19 * 60 + 30;
 /** Minimum width per trainer column before the grid scrolls sideways. */
 const MIN_COLUMN_PX = 144;
 const TIME_AXIS_PX = 56;
@@ -70,6 +87,56 @@ const hourLabel = (minutes: number): string => {
   const mm = minutes % 60;
   return `${h12}${mm ? `:${String(mm).padStart(2, "0")}` : ""} ${h24 >= 12 ? "PM" : "AM"}`;
 };
+
+/**
+ * One number in the Hub's day strip.
+ *
+ * Value over label, both left-aligned, tabular figures so the four tiles
+ * do not shift width as the day fills up. The accent lives on the number
+ * alone; the label stays grey. A trainer scanning this row is reading
+ * digits, not chrome.
+ */
+function DayStat({
+  value,
+  label,
+  sub,
+  icon,
+  tone,
+  title,
+}: {
+  value: number | string;
+  label: string;
+  sub?: string;
+  icon: React.ReactNode;
+  tone: string;
+  title: string;
+}) {
+  return (
+    <div
+      className="flex items-center gap-2 px-2.5 md:px-3 bg-white dark:bg-slate-900"
+      title={title}
+    >
+      <span className={cn("shrink-0 hidden md:block opacity-70", tone)}>
+        {icon}
+      </span>
+      <span className="flex flex-col justify-center leading-none gap-0.5">
+        <span className="flex items-baseline gap-1">
+          <span className={cn("text-base font-black tabular-nums", tone)}>
+            {value}
+          </span>
+          {sub && (
+            <span className="text-[10px] font-bold tabular-nums text-slate-400 dark:text-slate-500">
+              {sub}
+            </span>
+          )}
+        </span>
+        <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+          {label}
+        </span>
+      </span>
+    </div>
+  );
+}
 
 export function ClientsView({
   clients,
@@ -229,7 +296,16 @@ export function ClientsView({
     return !!a && a === b;
   };
 
-  const isTrainerMatch = (s: any, trainer: Trainer): boolean => {
+  /**
+   * Structural, not `Trainer`: the visible list mixes real trainer documents
+   * with the lightweight stand-ins built for names that appear on the
+   * schedule but have no roster row. Both carry an id and a name, which is
+   * all this reads.
+   */
+  const isTrainerMatch = (
+    s: any,
+    trainer: { id?: string; fullName?: string },
+  ): boolean => {
     if (!s || !trainer) return false;
     const sId = s.trainerId || s.staffId || s.StaffId;
     if (sId && trainer.id && String(sId) === String(trainer.id)) return true;
@@ -293,11 +369,11 @@ export function ClientsView({
 
   /**
    * One unbroken timeline for the whole day — no AM/PM shift break. The grid
-   * defaults to 7:00 → 19:30 and stretches to include any booking outside it.
+   * defaults to 5:30 → 20:00 and stretches to include any booking outside it.
    */
   const timelineSlots = React.useMemo(() => {
-    let startMin = DEFAULT_START_HOUR * 60;
-    let endMin = DEFAULT_END_HOUR * 60 + 30; // last row starts at 19:30
+    let startMin = DEFAULT_START_MIN;
+    let endMin = DEFAULT_END_MIN; // last row starts at 19:30, closing at 8 PM
     (todaysSchedules || []).forEach((s) => {
       const start = safeToDate(s.startTime || s.StartDateTime || s.date);
       if (!start) return;
@@ -318,22 +394,23 @@ export function ClientsView({
     return slots;
   }, [todaysSchedules]);
 
-  const timelineStartMin = timelineSlots[0] ?? DEFAULT_START_HOUR * 60;
+  const timelineStartMin = timelineSlots[0] ?? DEFAULT_START_MIN;
 
   const preBookedCount = todaysSchedules.filter(
     (s) => !s.clientName?.toLowerCase().includes("unavailab"),
   ).length;
 
   /**
-   * Day carousel: yesterday through two weeks out. That is exactly the window
-   * the live schedule hook loads (24h back, 30 days forward) trimmed to what a
-   * trainer plans around, so every day shown has real data behind it.
+   * Day carousel: today plus the next six days. Fifteen days needed a
+   * horizontal scroll of its own and pushed the schedule down the screen;
+   * seven fit without scrolling, which is what frees the row beside them for
+   * the day's numbers. Anything further out is the Calendar tab's job.
    */
   const carouselDays = React.useMemo(() => {
     const days: Date[] = [];
     const base = new Date();
     base.setHours(0, 0, 0, 0);
-    for (let offset = -1; offset <= 13; offset++) {
+    for (let offset = 0; offset <= 6; offset++) {
       const d = new Date(base);
       d.setDate(base.getDate() + offset);
       days.push(d);
@@ -493,6 +570,84 @@ export function ClientsView({
     }
     return list;
   }, [sortedTrainers, activeStudioId, todaysSchedules, authTrainer]);
+
+  /* ------------------------------------------------------------------ *
+   * The day at a glance.
+   *
+   * Four numbers, read left to right as a sentence: how much is booked,
+   * how much is done, what else is owed, and what room is left. They sit
+   * in the strip beside the day carousel rather than in a band of their
+   * own — condensing the carousel to seven days freed the width, and the
+   * schedule keeps every vertical pixel it had.
+   * ------------------------------------------------------------------ */
+
+  /** Open task rows for the SELECTED day, studio list + this trainer's own. */
+  const { counts: taskCounts } = useStudioTasks(activeStudioId || null, {
+    ownerId: auth.currentUser?.uid ?? null,
+    dateKey: calendarLabelKey(selectedDate),
+  });
+  const openTaskCount = Math.max(0, taskCounts.total - taskCounts.done);
+
+  /** Sessions actually logged on the selected day. */
+  const completedCount = React.useMemo(
+    () =>
+      (sessions || []).filter((s) => {
+        if (s.status !== "Completed") return false;
+        const t = parseSessionDate(s.date);
+        return t > 0 && t >= dateStart.getTime() && t <= dateEnd.getTime();
+      }).length,
+    [sessions, dateStart, dateEnd],
+  );
+
+  /**
+   * Slots left to sell. A 30-minute slot counts as open when at least one
+   * visible trainer has nothing in it — the question this answers is "can
+   * you fit me in?", and one free trainer is a yes. Slots already past are
+   * excluded on today; a future day counts from open to close.
+   */
+  const openSlots = React.useMemo(() => {
+    const trainerList = visibleTrainersList;
+    if (trainerList.length === 0) return { open: 0, remaining: 0 };
+    const isToday = calendarLabelKey(selectedDate) === studioDateKey(currentTime);
+    const fromMin = isToday ? studioMinutes(currentTime) : -1;
+
+    // Minutes each trainer is occupied, as [start, end) pairs.
+    const busy = new Map<string, Array<[number, number]>>();
+    todaysSchedules.forEach((s) => {
+      const start = safeToDate(s.startTime || s.StartDateTime || s.date);
+      if (!start) return;
+      const end = safeToDate(s.endTime || s.EndDateTime);
+      const a = studioMinutes(start);
+      const b = end ? studioMinutes(end) : a + SLOT_MINUTES;
+      trainerList.forEach((t) => {
+        if (!isTrainerMatch(s, t)) return;
+        const key = String(t.id);
+        const arr = busy.get(key) || [];
+        arr.push([a, Math.max(b, a + 1)]);
+        busy.set(key, arr);
+      });
+    });
+
+    let open = 0;
+    let remaining = 0;
+    timelineSlots.forEach((slot) => {
+      if (slot + SLOT_MINUTES <= fromMin) return; // already gone
+      remaining += 1;
+      const anyFree = trainerList.some((t) => {
+        const spans = busy.get(String(t.id));
+        if (!spans) return true;
+        return !spans.some(([a, b]) => a < slot + SLOT_MINUTES && b > slot);
+      });
+      if (anyFree) open += 1;
+    });
+    return { open, remaining };
+  }, [
+    visibleTrainersList,
+    todaysSchedules,
+    timelineSlots,
+    selectedDate,
+    currentTime,
+  ]);
 
   return (
     <motion.div
@@ -874,24 +1029,66 @@ export function ClientsView({
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden w-full">
         {!searchTerm ? (
           <div className="flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-slate-950">
-            {/* Slim strip directly under the header: pre-booked total + day carousel.
-                Both share one row to give the timeline every vertical pixel we can. */}
+            {/* Slim strip directly under the header: the day's four numbers +
+                the seven-day carousel. Both share one row so the timeline
+                keeps every vertical pixel it had. */}
             <div className="shrink-0 flex items-center gap-3 md:gap-4 px-3 md:px-4 h-12 border-b border-slate-200 dark:border-slate-800">
-              <div className="text-sm font-medium text-foreground dark:text-slate-200 whitespace-nowrap shrink-0">
-                Total Pre-Booked:{" "}
-                <span className="font-bold tabular-nums text-cyan-700 dark:text-cyan">
-                  {preBookedCount}
-                </span>
-                <span className="hidden lg:inline font-normal text-slate-500 dark:text-slate-400">
-                  {" "}
-                  ·{" "}
-                  {selectedDate.toLocaleDateString([], {
-                    weekday: "long",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
+              <div
+                className="shrink-0 flex items-stretch gap-px rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-200 dark:bg-slate-800 h-9"
+                role="group"
+                aria-label={`Day summary for ${selectedDate.toLocaleDateString([], {
+                  weekday: "long",
+                  month: "short",
+                  day: "numeric",
+                })}`}
+              >
+                <DayStat
+                  value={preBookedCount}
+                  label="Sessions"
+                  icon={<CalendarCheck className="w-3.5 h-3.5" />}
+                  tone="text-cyan-700 dark:text-cyan"
+                  title="Sessions booked on this day"
+                />
+                <DayStat
+                  value={completedCount}
+                  label="Complete"
+                  sub={preBookedCount > 0 ? `/ ${preBookedCount}` : undefined}
+                  icon={<CircleCheckBig className="w-3.5 h-3.5" />}
+                  tone="text-emerald-600 dark:text-emerald-400"
+                  title="Sessions logged as completed on this day"
+                />
+                <DayStat
+                  value={openTaskCount}
+                  label="To-do"
+                  icon={<ListChecks className="w-3.5 h-3.5" />}
+                  tone={
+                    openTaskCount > 0
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-slate-400 dark:text-slate-500"
+                  }
+                  title="Studio and personal tasks still open for this day"
+                />
+                <DayStat
+                  value={openSlots.open}
+                  label="Open slots"
+                  sub={
+                    openSlots.remaining > 0
+                      ? `/ ${openSlots.remaining}`
+                      : undefined
+                  }
+                  icon={<CalendarPlus className="w-3.5 h-3.5" />}
+                  tone="text-slate-700 dark:text-slate-200"
+                  title="Half-hour slots left with at least one trainer free"
+                />
               </div>
+
+              <span className="hidden xl:block text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 whitespace-nowrap shrink-0">
+                {selectedDate.toLocaleDateString([], {
+                  weekday: "long",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
 
               <div
                 ref={carouselRef}

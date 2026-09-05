@@ -142,7 +142,6 @@ import {
   getMillis,
   calculateExerciseVolume,
   getMuscleGroupColor,
-  isBig5Machine,
   orderMachineSettings,
 } from "../lib/utils";
 import { RoutineBuilderView } from "./RoutineBuilderView";
@@ -847,6 +846,11 @@ export function ClientProfileView({
   };
 
   useEffect(() => {
+    // Clear first. This view is not remounted between clients, and the fetch
+    // below only ever WRITES on resolve — so between switching client and the
+    // round-trip landing, the previous client's routines were still in state
+    // and the Journey tab's A/B filters resolved against them.
+    setRoutines([]);
     if (!clientId || hasQuotaError) return;
 
     const fetchRoutines = async () => {
@@ -1202,6 +1206,22 @@ export function ClientProfileView({
     );
   }, [sessions, calculatedSessionCount]);
 
+  /**
+   * Routine A / B machine ids, for the Journey tab's filters. Matched on the
+   * routine NAME containing its letter, which is how the rest of this view
+   * already tells the two apart.
+   */
+  const routineAMachineIds = useMemo(
+    () =>
+      routines.find((r) => (r.name || "").toUpperCase().includes("A"))?.machineIds ?? [],
+    [routines],
+  );
+  const routineBMachineIds = useMemo(
+    () =>
+      routines.find((r) => (r.name || "").toUpperCase().includes("B"))?.machineIds ?? [],
+    [routines],
+  );
+
   const journeyGridRows = useMemo(() => {
     const ordered = [...machines].sort(
       (a, b) =>
@@ -1217,10 +1237,10 @@ export function ClientProfileView({
         ),
     );
     const currentStudio = studios?.find((st) => st.id === activeStudioId);
-    const starred = new Set(
-      ordered.filter((m) => isBig5Machine(m.name)).map((m) => m.id!),
-    );
-    return toJourneyRows(ordered, allLogs, clientSettings, starred).map((row) => {
+    // Marker 7: the Big Five star is gone from the grid. Every machine in
+    // this method is a core lift; a star on five of them said the other
+    // sixteen were optional, which is not what the prescription means.
+    return toJourneyRows(ordered, allLogs, clientSettings).map((row) => {
       const machine = ordered.find((m) => m.id === row.machine.id);
       if (!machine) return row;
       const settings = clientSettings[machine.id!]?.settings || {};
@@ -1776,14 +1796,15 @@ export function ClientProfileView({
             </TabsList>
           </div>
         </div>
+        {/* Marker 13: the settings used to live in a 100dvh-340px box with
+            its own scrollbar. Natural height now; the page scrolls. */}
         <TabsContent
           value="details"
-          className="mt-0 flex-1 min-h-0 flex flex-col focus-visible:outline-none"
+          className="mt-0 focus-visible:outline-none"
         >
           {client && (
             <ClientInfoSheet
               variant="inline"
-              className="h-[calc(100dvh-340px)] min-h-[560px]"
               isOpen
               onOpenChange={() => setActiveTab("journey")}
               client={client}
@@ -1812,9 +1833,11 @@ export function ClientProfileView({
             authTrainer={authTrainer}
           />
         </TabsContent>
+        {/* Marker 3: no `overflow-hidden`, no bounded height. The machine
+            list is as long as it is and the PAGE scrolls to meet it. */}
         <TabsContent
           value="journey"
-          className="mt-0 flex-1 overflow-hidden min-h-0 flex flex-col rounded-xl relative"
+          className="mt-0 rounded-xl relative focus-visible:outline-none"
         >
           <RecentJourneyView
             sessions={journeyGridSessions}
@@ -1822,7 +1845,9 @@ export function ClientProfileView({
             hasMoreOnServer={hasMoreSessions}
             onLoadMore={handleLoadMoreHistory}
             loadingMore={isLoadingMore}
-            layout="viewport"
+            layout="page"
+            routineAMachineIds={routineAMachineIds}
+            routineBMachineIds={routineBMachineIds}
             onSelectMachine={openJourneyMachineSettings}
           />
         </TabsContent>
@@ -1848,7 +1873,6 @@ export function ClientProfileView({
             onUseToday={handleUseToday}
             onToggleB={handlePromptToggleB}
             onSelectMachine={openJourneyMachineSettings}
-            onOpenSession={() => setView("workouts")}
             disabled={!!hasQuotaError}
           />
 

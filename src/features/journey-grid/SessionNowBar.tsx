@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, Minus, Pause, Play, Plus, RotateCcw, Star, Timer } from "lucide-react";
+import { ChevronRight, Minus, Pause, Play, Plus, RotateCcw, Timer } from "lucide-react";
 import type { JourneyRow, JourneySession, LiveSet, RepQuality } from "./types";
 import { computeRowStats, formatSeconds, journeySummary, orderedSets } from "./stats";
 import { QualityMark, QUALITY_MARK_LABEL } from "./QualityMark";
@@ -214,7 +214,6 @@ function SessionNowBarImpl({
           <span className="jg-nb__name" aria-live="polite">
             {machine.name}
           </span>
-          {machine.starred && <Star className="jg-nb__star" size={13} fill="currentColor" strokeWidth={0} aria-label="core lift" />}
         </span>
 
         {settingEntries.length > 0 && (

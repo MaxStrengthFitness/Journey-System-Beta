@@ -20,7 +20,7 @@ import { CalendarDays, ChevronLeft, Clock, History, Maximize, Play, Trash2, User
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn, parseSessionDate } from "../../lib/utils";
-import { formatStudioTime, toDate } from "../../lib/studio-time";
+import { formatStudioTime, toDate, zonedYMD } from "../../lib/studio-time";
 import type { Client, ScheduleEntry, WorkoutSession } from "../../types";
 import type { PackageSummary } from "./client-package";
 import { remainingLabel } from "./client-package";
@@ -51,6 +51,7 @@ export interface ProfileHeaderProps {
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function relativeDays(ms: number): string | null {
@@ -88,22 +89,51 @@ function Stat({
   icon,
   children,
   sub,
+  meter,
   className,
 }: {
   label: string;
   icon?: ReactNode;
   children: ReactNode;
   sub?: ReactNode;
+  /**
+   * Optional fuel gauge drawn on the tile's bottom edge. Absolute, so a
+   * ratio becomes readable at a glance without costing the header a single
+   * pixel of height — which the Journey grid below spends on machines.
+   */
+  meter?: { value: number; max: number; label?: string };
   className?: string;
 }) {
+  const pct =
+    meter && meter.max > 0
+      ? Math.max(0, Math.min(100, (meter.value / meter.max) * 100))
+      : null;
   return (
-    <div className={cn("min-w-0 bg-white dark:bg-slate-950 px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-0.5", className)}>
+    <div
+      className={cn(
+        "relative min-w-0 bg-white dark:bg-slate-950 px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-0.5",
+        pct !== null && "pb-2.5",
+        className,
+      )}
+    >
       <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 leading-none">{label}</span>
       <span className="flex items-center gap-2 min-w-0 text-[15px] font-bold leading-tight text-slate-900 dark:text-slate-50">
         {icon && <span className="shrink-0 text-slate-400 dark:text-slate-500 [&>svg]:w-4 [&>svg]:h-4">{icon}</span>}
         <span className="min-w-0 flex items-center gap-2 [&>.truncate]:min-w-0">{children}</span>
       </span>
       {sub && <span className="text-[11px] font-medium leading-none text-slate-500 dark:text-slate-400 min-w-0 flex items-center [&>*]:min-w-0 [&>span:not(.inline-flex)]:truncate">{sub}</span>}
+      {pct !== null && (
+        <span
+          className="absolute inset-x-0 bottom-0 h-1 bg-slate-200/80 dark:bg-slate-800 overflow-hidden"
+          role="img"
+          aria-label={meter!.label ?? `${meter!.value} of ${meter!.max}`}
+        >
+          <span
+            className="block h-full bg-[#F06C22] transition-[width] duration-500"
+            style={{ width: `${pct}%` }}
+          />
+        </span>
+      )}
     </div>
   );
 }
@@ -134,8 +164,30 @@ export function ProfileHeader({
   /* ---- next session ---- */
   const next = scheduledSessions[0];
   const nextDate = next ? toDate(next.startTime) : null;
-  const nextLabel = nextDate ? `${WEEKDAYS[nextDate.getDay()]} · ${MONTHS[nextDate.getMonth()]} ${nextDate.getDate()}` : null;
   const nextTime = nextDate ? formatStudioTime(nextDate, undefined, "") : "";
+  /**
+   * "Tuesday 12:30 PM". The month was noise — a next session is days away,
+   * never months, and "see you Tuesday at half twelve" is the sentence this
+   * tile exists to support. Inside two days the weekday gives way to the
+   * word a trainer would actually say.
+   */
+  // The weekday is read on the STUDIO's clock, like the time printed beside
+  // it. `getDay()` reads the viewer's, so a late-evening session opened from
+  // a browser a few hours off Eastern showed the wrong weekday next to the
+  // right time — exactly the hazard lib/studio-time exists to prevent.
+  const nextYMD = nextDate ? zonedYMD(nextDate) : null;
+  const nextWeekday =
+    nextYMD !== null
+      ? WEEKDAYS_LONG[new Date(Date.UTC(nextYMD.year, nextYMD.month - 1, nextYMD.day)).getUTCDay()]
+      : null;
+  const nextDay = nextDate
+    ? daysUntil(nextDate) === "today"
+      ? "Today"
+      : daysUntil(nextDate) === "tomorrow"
+        ? "Tomorrow"
+        : nextWeekday
+    : null;
+  const nextLabel = nextDay ? `${nextDay}${nextTime ? ` ${nextTime}` : ""}` : null;
   const moreBooked = Math.max(0, scheduledSessions.length - 1);
 
   /* ---- package ---- */
@@ -285,10 +337,13 @@ export function ProfileHeader({
           label="Next session"
           icon={<CalendarDays />}
           sub={
-            nextDate ? (
+            nextDate && daysUntil(nextDate) && nextDay !== "Today" && nextDay !== "Tomorrow" ? (
               <span className="inline-flex items-center gap-2">
-                {nextTime && <span>{nextTime}</span>}
-                {daysUntil(nextDate) && <span className="text-slate-400">· {daysUntil(nextDate)}</span>}
+                <span className="text-slate-400">{daysUntil(nextDate)}</span>
+              </span>
+            ) : nextDate ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="text-slate-400">{MONTHS[nextDate.getMonth()]} {nextDate.getDate()}</span>
               </span>
             ) : undefined
           }
@@ -308,8 +363,22 @@ export function ProfileHeader({
           )}
         </Stat>
 
+        {/* Marker 6: the package used to be "46" shouting next to "of 96 in
+            package" whispering, so the ratio never registered. Now the two
+            numbers are one fraction at comparable weight, and the tile's
+            bottom edge carries a gauge — how much of the package is spent
+            is legible without reading a digit. */}
         <Stat
           label="Completed sessions"
+          meter={
+            pkg.total && pkg.total > 0
+              ? {
+                  value: Math.min(completedCount, pkg.total),
+                  max: pkg.total,
+                  label: `${completedCount} of ${pkg.total} sessions in this package used`,
+                }
+              : undefined
+          }
           sub={
             pkg.source === "none" ? undefined : (
               <span
@@ -328,9 +397,14 @@ export function ProfileHeader({
             )
           }
         >
-          <span className="text-2xl font-black leading-none text-[#F06C22]">{completedCount}</span>
-          {pkg.total && pkg.remaining !== null && pkg.total > 0 && (
-            <span className="truncate text-[11px] font-semibold text-slate-400">of {pkg.total} in package</span>
+          <span className="text-2xl font-black leading-none text-[#F06C22] tabular-nums">{completedCount}</span>
+          {!!pkg.total && pkg.total > 0 && (
+            <span className="shrink-0 flex items-baseline gap-1 leading-none">
+              <span className="text-lg font-black text-slate-300 dark:text-slate-700" aria-hidden="true">
+                /
+              </span>
+              <span className="text-lg font-black tabular-nums text-slate-700 dark:text-slate-200">{pkg.total}</span>
+            </span>
           )}
         </Stat>
       </div>

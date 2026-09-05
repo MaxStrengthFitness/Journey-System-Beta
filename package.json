@@ -14,6 +14,7 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "start": "node dist/server.cjs",
+    "test": "vitest run src",
     "test:rules": "firebase emulators:exec 'vitest run tests/firestore.rules.test.ts'"
   },
   "dependencies": {
@@ -56,6 +57,8 @@
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/papaparse": "^5.5.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.5.0",
     "esbuild": "^0.28.0",

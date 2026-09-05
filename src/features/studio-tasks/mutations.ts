@@ -42,6 +42,7 @@ import { db } from "../../firebase";
 import type {
   PlannedInstance,
   TaskInstance,
+  TaskLocation,
   TaskStatus,
   TaskTemplate,
 } from "./types";
@@ -63,6 +64,33 @@ export function instanceRef(studioId: string, instanceId: string) {
   return doc(db, "studios", studioId, "taskInstances", instanceId);
 }
 
+/** A trainer's private list. The uid IS the tenancy - see TaskScope. */
+export function personalTemplatesRef(ownerId: string) {
+  return collection(db, "trainers", ownerId, "taskTemplates");
+}
+
+export function personalInstancesRef(ownerId: string) {
+  return collection(db, "trainers", ownerId, "taskInstances");
+}
+
+/** The one place either tier is turned into a path. */
+export function templateDocRef(loc: TaskLocation, templateId: string) {
+  return loc.scope === "personal"
+    ? doc(db, "trainers", loc.ownerId, "taskTemplates", templateId)
+    : doc(db, "studios", loc.studioId, "taskTemplates", templateId);
+}
+
+export function instanceDocRef(loc: TaskLocation, instanceId: string) {
+  return loc.scope === "personal"
+    ? doc(db, "trainers", loc.ownerId, "taskInstances", instanceId)
+    : doc(db, "studios", loc.studioId, "taskInstances", instanceId);
+}
+
+/** Convenience for the many call sites that only ever mean a studio task. */
+export function studioLocation(studioId: string): TaskLocation {
+  return { scope: "studio", studioId };
+}
+
 /**
  * Firestore caps a batch at 500 operations. A studio with a lot of templates
  * and a full roster can exceed that on "mark everything", so chunk below the
@@ -77,14 +105,16 @@ const BATCH_LIMIT = 450;
 
 function instancePayload(
   planned: PlannedInstance,
-  studioId: string,
+  loc: TaskLocation,
   status: TaskStatus,
   author: TaskAuthor | null,
   extra: { note?: string; flagged?: boolean } = {},
 ): Omit<TaskInstance, "id"> & Record<string, unknown> {
   const done = status === "done";
   return {
-    studioId,
+    studioId: loc.studioId,
+    scope: loc.scope,
+    ...(loc.scope === "personal" ? { ownerId: loc.ownerId } : {}),
     templateId: planned.templateId,
     localDate: planned.localDate,
     shift: planned.shift,
@@ -111,19 +141,21 @@ function instancePayload(
 
 /** Set one task's status. Creates the instance document if this is its first action. */
 export async function setTaskStatus(params: {
-  studioId: string;
+  location: TaskLocation;
   planned: PlannedInstance;
   status: TaskStatus;
   author: TaskAuthor | null;
   note?: string;
   flagged?: boolean;
 }): Promise<void> {
-  const { studioId, planned, status, author, note, flagged } = params;
-  if (!studioId) throw new Error("No active studio — cannot update a task.");
+  const { location, planned, status, author, note, flagged } = params;
+  if (!location.studioId) {
+    throw new Error("No active studio — cannot update a task.");
+  }
 
   await setDoc(
-    instanceRef(studioId, planned.id),
-    instancePayload(planned, studioId, status, author, { note, flagged }),
+    instanceDocRef(location, planned.id),
+    instancePayload(planned, location, status, author, { note, flagged }),
     { merge: true },
   );
 }
@@ -136,14 +168,16 @@ export async function setTaskStatus(params: {
  * all" costs nothing.
  */
 export async function setManyTaskStatuses(params: {
-  studioId: string;
+  location: TaskLocation;
   planned: PlannedInstance[];
   status: TaskStatus;
   author: TaskAuthor | null;
   note?: string;
 }): Promise<number> {
-  const { studioId, planned, status, author, note } = params;
-  if (!studioId) throw new Error("No active studio — cannot update tasks.");
+  const { location, planned, status, author, note } = params;
+  if (!location.studioId) {
+    throw new Error("No active studio — cannot update tasks.");
+  }
   if (planned.length === 0) return 0;
 
   let written = 0;
@@ -152,8 +186,8 @@ export async function setManyTaskStatuses(params: {
     const batch = writeBatch(db);
     for (const p of chunk) {
       batch.set(
-        instanceRef(studioId, p.id),
-        instancePayload(p, studioId, status, author, { note }),
+        instanceDocRef(location, p.id),
+        instancePayload(p, location, status, author, { note }),
         { merge: true },
       );
     }
@@ -166,21 +200,25 @@ export async function setManyTaskStatuses(params: {
 // ── TEMPLATES (manager) ──────────────────────────────────────────────────
 
 export async function saveTaskTemplate(params: {
-  studioId: string;
+  location: TaskLocation;
   template: TaskTemplate;
   author: TaskAuthor | null;
   isNew: boolean;
 }): Promise<void> {
-  const { studioId, template, author, isNew } = params;
-  if (!studioId) throw new Error("No active studio — cannot save a task.");
+  const { location, template, author, isNew } = params;
+  if (!location.studioId) {
+    throw new Error("No active studio — cannot save a task.");
+  }
   if (!template.title.trim()) throw new Error("A task needs a title.");
 
   const { id, ...rest } = template;
   await setDoc(
-    doc(db, "studios", studioId, "taskTemplates", id),
+    templateDocRef(location, id),
     {
       ...rest,
-      studioId,
+      studioId: location.studioId,
+      scope: location.scope,
+      ...(location.scope === "personal" ? { ownerId: location.ownerId } : {}),
       updatedAt: serverTimestamp(),
       updatedBy: author?.id ?? null,
       ...(isNew
@@ -199,24 +237,24 @@ export async function saveTaskTemplate(params: {
  * Hard delete is reserved for a template created in error.
  */
 export async function setTaskTemplateActive(params: {
-  studioId: string;
+  location: TaskLocation;
   templateId: string;
   active: boolean;
   author: TaskAuthor | null;
 }): Promise<void> {
-  const { studioId, templateId, active, author } = params;
+  const { location, templateId, active, author } = params;
   await setDoc(
-    doc(db, "studios", studioId, "taskTemplates", templateId),
+    templateDocRef(location, templateId),
     { active, updatedAt: serverTimestamp(), updatedBy: author?.id ?? null },
     { merge: true },
   );
 }
 
 export async function deleteTaskTemplate(
-  studioId: string,
+  location: TaskLocation,
   templateId: string,
 ): Promise<void> {
-  await deleteDoc(doc(db, "studios", studioId, "taskTemplates", templateId));
+  await deleteDoc(templateDocRef(location, templateId));
 }
 
 /** Ids are readable on purpose — they appear inside every instance id. */

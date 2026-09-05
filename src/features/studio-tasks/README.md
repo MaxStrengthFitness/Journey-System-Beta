@@ -170,3 +170,52 @@ just-completed task look like the oldest one.
 - A studio with hundreds of days of history will eventually want the instances
   query bounded by date range rather than by day; the current query is a single
   day, so this is not urgent.
+
+---
+
+## Two tiers: studio tasks and personal tasks (Sep 5, 2026)
+
+A studio task is authored by a manager and belongs to the location — everyone
+on the floor sees it and anyone can close it. A personal task belongs to one
+trainer and nobody else can see it, not even a studio owner.
+
+**The tier is a path, not a field.**
+
+    studios/{studioId}/taskTemplates/{id}    scope: "studio"
+    studios/{studioId}/taskInstances/{id}
+    trainers/{uid}/taskTemplates/{id}        scope: "personal"
+    trainers/{uid}/taskInstances/{id}
+
+The cheaper design is one collection with a `scope` field and a rule that hides
+other people's rows. It was rejected. Firestore cannot enforce "only your own
+rows" on a **list** query unless every query carries a matching constraint, so
+privacy would depend on every future query being written correctly — and a
+single unconstrained read added months from now leaks every trainer's private
+list at once. With separate paths the rule is `request.auth.uid == trainerId`
+and there is nothing for a future caller to remember.
+
+`scope` is stored on the document as well, so a row that has already been read
+knows where to write itself back. `taskLocationOf()` in `types.ts` is the only
+place either tier becomes a path, and it falls back to the studio path when a
+personal template has somehow lost its `ownerId` — writing to the shared list
+is wrong, but writing to `trainers/undefined/...` is worse.
+
+**`ownerId` is the Firebase Auth uid, not the trainer document id.** They
+coincide for trainers created through Auth and not necessarily for older
+documents, and the uid is what the path and the rule are keyed on.
+
+**Ownership is by trainer; visibility is by location.** A personal task still
+carries a `studioId` and the day list filters on it, so "restock the towels"
+does not follow a trainer to another location.
+
+**Mixed writes.** A multi-select can span both tiers, and they are different
+collections, so one batch cannot cover both. `StudioTasksView.writeMany()`
+groups the selection by location and writes each group.
+
+### Still open
+
+- No Studio / Mine filter on the day list yet; personal rows carry a "Mine"
+  chip and that is all. A segmented filter is the obvious next step.
+- A task cannot be moved between tiers after it is created. Promoting a
+  personal task to the studio list is a copy-and-delete across two collections
+  and wants a deliberate design rather than a drive-by one.

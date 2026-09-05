@@ -108,10 +108,80 @@ export type TaskTarget =
       action?: "inbody" | "assessment" | "progress-report" | "custom";
     };
 
-/** Firestore: studios/{studioId}/taskTemplates/{templateId} */
+/**
+ * Which tier a task belongs to.
+ *
+ *   "studio"   - authored by a manager, visible to everyone at that location.
+ *                Lives at studios/{studioId}/task*.
+ *   "personal" - a trainer's own list, visible only to them.
+ *                Lives at trainers/{uid}/task*.
+ *
+ * THE TIER IS A PATH, NOT A FIELD TO FILTER ON.
+ *
+ * The cheaper design is one collection with a `scope` field and a rule that
+ * hides other people's rows. Firestore cannot enforce that on a LIST unless
+ * every query carries a matching constraint, so privacy would depend on every
+ * future query being written correctly, and one unconstrained read added later
+ * leaks every trainer's private list at once. Separate paths make it
+ * structural instead: the rule is `request.auth.uid == trainerId` and there is
+ * nothing for a future caller to remember.
+ *
+ * `scope` is ALSO stored on the document, so a row that has already been read
+ * knows where to write itself back without the caller reconstructing it.
+ */
+export type TaskScope = "studio" | "personal";
+
+export const SCOPE_LABEL: Record<TaskScope, string> = {
+  studio: "Studio",
+  personal: "Mine",
+};
+
+/**
+ * Where one task's documents live.
+ *
+ * A personal task still carries a studioId - a trainer's own list is filtered
+ * to the location they are working at, so "restock the towels" does not follow
+ * them across town - but the studio is not part of its path. Ownership is by
+ * trainer; visibility is by location.
+ */
+export type TaskLocation =
+  | { scope: "studio"; studioId: string }
+  | { scope: "personal"; studioId: string; ownerId: string };
+
+/** Documents written before Sep 2026 predate the tiers and are all studio tasks. */
+export function taskScopeOf(t: { scope?: TaskScope }): TaskScope {
+  return t.scope === "personal" ? "personal" : "studio";
+}
+
+/**
+ * The path a template's writes belong on.
+ *
+ * Falls back to the studio path when a personal template has somehow lost its
+ * ownerId. Writing to the shared list is wrong, but writing to
+ * trainers/undefined/... is worse: it would silently succeed for the first
+ * trainer to do it and be readable by nobody.
+ */
+export function taskLocationOf(
+  template: { scope?: TaskScope; ownerId?: string },
+  studioId: string,
+): TaskLocation {
+  return taskScopeOf(template) === "personal" && template.ownerId
+    ? { scope: "personal", studioId, ownerId: template.ownerId }
+    : { scope: "studio", studioId };
+}
+
+/**
+ * Firestore:
+ *   studios/{studioId}/taskTemplates/{templateId}   (scope "studio")
+ *   trainers/{ownerId}/taskTemplates/{templateId}   (scope "personal")
+ */
 export interface TaskTemplate {
   id: string;
   studioId: string;
+  /** Absent on pre-Sep-2026 documents, which are all studio tasks. */
+  scope?: TaskScope;
+  /** Auth uid of the owner. Set on personal tasks only, and is their path. */
+  ownerId?: string;
 
   title: string;
   detail?: string;
@@ -139,13 +209,17 @@ export interface TaskTemplate {
 export type TaskStatus = "open" | "done" | "skipped";
 
 /**
- * Firestore: studios/{studioId}/taskInstances/{instanceId}
+ * Firestore, mirroring its template:
+ *   studios/{studioId}/taskInstances/{instanceId}
+ *   trainers/{ownerId}/taskInstances/{instanceId}
  * where instanceId = instanceId(...) from recurrence.ts.
  */
 export interface TaskInstance {
   id: string;
   studioId: string;
   templateId: string;
+  scope?: TaskScope;
+  ownerId?: string;
 
   /** Studio-local 'YYYY-MM-DD'. */
   localDate: string;
