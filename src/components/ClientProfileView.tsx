@@ -174,6 +174,9 @@ import {
 } from "../features/client-profile";
 
 
+/** Sessions per Firestore page for the profile's history (see the Journey tab). */
+const SESSION_PAGE = 15;
+
 export function ClientProfileView({
   clientId,
   isLoadingClient = false,
@@ -1541,12 +1544,14 @@ export function ClientProfileView({
     const fetchInitialSessions = async () => {
       try {
         // 2. Firebase Query Limits & Pagination
-        // Always restrict the initial query to 10 to save massive memory/bandwidth.
+        // The first page is 15 sessions: the Journey grid shows fourteen
+        // columns at once (Sep 2026 density round) and the fifteenth keeps
+        // the trend glyph on the oldest visible column honest.
         const sessionsQuery = query(
           collection(db, "sessions"),
           where("clientId", "==", clientId),
           orderBy("date", "desc"),
-          limit(10), // STRICT LIMIT 10
+          limit(SESSION_PAGE),
         );
 
         const sessionSnap = await getDocs(sessionsQuery);
@@ -1560,7 +1565,7 @@ export function ClientProfileView({
         }
 
         setLastVisibleSession(docs[docs.length - 1]);
-        setHasMoreSessions(docs.length === 10);
+        setHasMoreSessions(docs.length === SESSION_PAGE);
 
         const liveSessionsData = docs.map(
           (doc) => ({ id: doc.id, ...doc.data() }) as WorkoutSession,
@@ -1623,7 +1628,7 @@ export function ClientProfileView({
         where("clientId", "==", clientId),
         orderBy("date", "desc"),
         startAfter(lastVisibleSession),
-        limit(10),
+        limit(SESSION_PAGE),
       );
       const snap = await getDocs(moreQuery);
       if (snap.empty) {
@@ -1632,7 +1637,7 @@ export function ClientProfileView({
       }
 
       setLastVisibleSession(snap.docs[snap.docs.length - 1]);
-      setHasMoreSessions(snap.docs.length === 10);
+      setHasMoreSessions(snap.docs.length === SESSION_PAGE);
 
       const moreSessionsData = snap.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() }) as WorkoutSession,
@@ -2228,8 +2233,8 @@ export function ClientProfileView({
             from ever scrolling sideways: at 834pt portrait each tab still
             gets ~115px, and the condensed display face fits "EQUIPMENT" in
             that with room. `truncate` is the belt to that suspender. */}
-        <div className="mb-4 w-full">
-          <div className="w-full pb-1">
+        <div className="mb-2 w-full">
+          <div className="w-full pb-0.5">
             <TabsList className="bg-transparent p-0 grid grid-cols-7 w-full h-11! border-b border-slate-200 dark:border-slate-800 gap-0">
               {[
                 { val: "journey", label: "Journey" },

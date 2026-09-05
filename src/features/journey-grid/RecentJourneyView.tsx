@@ -48,6 +48,13 @@ const GROUP_LABEL: Record<MovementGroup, string> = {
  * Lives UNDER the static client header (name, trainer, last/next session,
  * tabs). This component owns only the section caption row, the grid and the
  * legend; the grid scrolls inside whatever height is left.
+ *
+ * Density (Sep 2026): fourteen sessions are loaded and asked for up front,
+ * and the grid runs in `fit="auto"` — it measures the height and width it
+ * has and shrinks rows and columns until every machine is on screen at once
+ * and at least ten sessions show across. Machine settings live behind the
+ * ⋯ menu here; the inline rail is the Active Session's, where the trainer
+ * reads it walking up to the machine.
  */
 export function RecentJourneyView({
   sessions,
@@ -55,11 +62,11 @@ export function RecentJourneyView({
   hasMoreOnServer = false,
   onLoadMore,
   loadingMore = false,
-  initialVisible = 10,
-  pageStep = 5,
+  initialVisible = 14,
+  pageStep = 7,
   layout = "fill",
   maxHeight,
-  viewportReserve,
+  viewportReserve = 72,
   initialMetric = "high",
   onSelectMachine,
 }: RecentJourneyViewProps) {
@@ -111,6 +118,12 @@ export function RecentJourneyView({
           <ChevronLeft size={15} strokeWidth={2.5} />
           {loadingMore ? "Loading…" : `Older +${pageStep}`}
         </button>
+        {/* The key rides in the toolbar so the grid can take the full height
+            down to the nav — in landscape that is the difference between 16
+            and 21 machines on screen. */}
+        <div className="jg-toolbar__legend">
+          <QualityLegend compact />
+        </div>
       </GridToolbar>
 
       <JourneyGrid
@@ -127,11 +140,10 @@ export function RecentJourneyView({
         maxHeight={maxHeight}
         viewportReserve={viewportReserve}
         title="Equipment"
+        fit="auto"
+        settingsDisplay="menu"
+        targetColumns={initialVisible}
       />
-
-      <div className="jg-view__legend">
-        <QualityLegend />
-      </div>
     </section>
   );
 }

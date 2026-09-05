@@ -97,13 +97,13 @@ function Stat({
   className?: string;
 }) {
   return (
-    <div className={cn("min-w-0 bg-white dark:bg-slate-950 px-3.5 py-2.5 flex flex-col justify-center gap-1", className)}>
+    <div className={cn("min-w-0 bg-white dark:bg-slate-950 px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-0.5", className)}>
       <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 leading-none">{label}</span>
       <span className="flex items-center gap-2 min-w-0 text-[15px] font-bold leading-tight text-slate-900 dark:text-slate-50">
         {icon && <span className="shrink-0 text-slate-400 dark:text-slate-500 [&>svg]:w-4 [&>svg]:h-4">{icon}</span>}
-        <span className="min-w-0 truncate">{children}</span>
+        <span className="min-w-0 flex items-center gap-2 [&>.truncate]:min-w-0">{children}</span>
       </span>
-      {sub && <span className="text-[11px] font-medium leading-none text-slate-500 dark:text-slate-400 min-w-0 truncate">{sub}</span>}
+      {sub && <span className="text-[11px] font-medium leading-none text-slate-500 dark:text-slate-400 min-w-0 flex items-center [&>*]:min-w-0 [&>span:not(.inline-flex)]:truncate">{sub}</span>}
     </div>
   );
 }
@@ -145,9 +145,22 @@ export function ProfileHeader({
   const initials = `${(client.firstName || "").charAt(0)}${(client.lastName || "").charAt(0)}`.toUpperCase();
 
   return (
-    <header className="bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800/60 pb-3 mb-4 pt-1">
-      {/* ---------- row 1: identity + the one action ---------- */}
-      <div className="flex items-center gap-2 sm:gap-3">
+    <header
+      className={cn(
+        "bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800/60 pb-2.5 mb-3 pt-1",
+        // Portrait (a 13" iPad is 1024px — Tailwind's lg): identity + action on
+        // row one, the four facts on row two. Landscape (1366px — xl): one
+        // band — identity, facts, action — which hands the Journey grid ~90px
+        // more height, the difference between 19 and 21 machines on screen.
+        // The identity block gives up its sub-line details until 2xl so the
+        // four tiles keep ~180px each.
+        "grid gap-x-3 xl:gap-x-4 gap-y-3 items-center",
+        "grid-cols-[minmax(0,1fr)_auto] [grid-template-areas:'id_cta'_'strip_strip']",
+        "xl:grid-cols-[auto_minmax(0,1fr)_auto] xl:[grid-template-areas:'id_strip_cta']",
+      )}
+    >
+      {/* ---------- identity ---------- */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 [grid-area:id]">
         <button
           type="button"
           onClick={onBack}
@@ -157,34 +170,38 @@ export function ProfileHeader({
           <ChevronLeft className="w-6 h-6" />
         </button>
 
-        <Avatar size="xl" className="ring-2 ring-slate-200 dark:ring-slate-800 bg-slate-100 dark:bg-slate-800 shrink-0">
+        <Avatar size="xl" className="ring-2 ring-slate-200 dark:ring-slate-800 bg-slate-100 dark:bg-slate-800 shrink-0 xl:size-12 2xl:size-14">
           {client.photoUrl && <AvatarImage src={client.photoUrl} alt={`${client.firstName} ${client.lastName}`} />}
           <AvatarFallback className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-lg">
             {initials || <User className="w-7 h-7" />}
           </AvatarFallback>
         </Avatar>
 
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl md:text-[26px] lg:text-3xl font-black tracking-tight leading-none text-slate-900 dark:text-white truncate">
+        <div className="min-w-0 flex-1 xl:max-w-[240px] 2xl:max-w-[320px]">
+          <h1 className="text-2xl md:text-[26px] xl:text-[28px] font-black tracking-tight leading-none text-slate-900 dark:text-white truncate">
             {client.firstName} {client.lastName}
           </h1>
           <div className="mt-1.5 flex items-center gap-2.5 min-w-0">
             <BrandTiles size={6} gap={2} />
             <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 truncate">
-              {[studioName, since ? `Client since ${since}` : null, client.experienceLevel || client.trainingPedigree]
-                .filter(Boolean)
-                .join("  ·  ")}
+              <span>{studioName}</span>
+              {since && <span className="xl:hidden 2xl:inline">{studioName ? "  ·  " : ""}Client since {since}</span>}
+              {(client.experienceLevel || client.trainingPedigree) && (
+                <span className="xl:hidden 2xl:inline">  ·  {client.experienceLevel || client.trainingPedigree}</span>
+              )}
             </span>
             {hasFlags && (
-              <span className="hidden sm:inline-flex items-center gap-1.5 rounded px-2 py-0.5 border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+              <span className="hidden sm:inline-flex xl:hidden 2xl:inline-flex items-center gap-1.5 rounded px-2 py-0.5 border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
                 <AlertTriangle className="w-3 h-3" />
                 <span className="text-[10px] font-bold uppercase tracking-widest">Clinical notes</span>
               </span>
             )}
           </div>
         </div>
+      </div>
 
-        {/* The action. Hero orange appears nowhere else in the header. */}
+      {/* ---------- the action. Hero orange appears nowhere else in the header. ---------- */}
+      <div className="[grid-area:cta] justify-self-end">
         {activeInProgressSession ? (
           <DropdownMenu>
             <DropdownMenuTrigger className="inline-flex items-center gap-2 h-12 px-4 sm:px-5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-display italic uppercase tracking-wider text-sm sm:text-base shadow-[0_10px_30px_-12px_rgba(245,158,11,.8)] transition-colors">
@@ -220,18 +237,18 @@ export function ProfileHeader({
             onClick={onStartSession}
             disabled={isCheckingActiveSession}
             className={cn(
-              "group relative shrink-0 inline-flex items-center gap-3 h-12 lg:h-[52px] pl-1.5 pr-3 sm:pr-6 rounded-2xl text-white",
+              "group relative shrink-0 inline-flex items-center gap-3 h-12 xl:h-[52px] pl-1.5 pr-3 sm:pr-5 rounded-2xl text-white",
               "bg-[linear-gradient(135deg,#ef5302_0%,#f36d21_100%)] ring-1 ring-white/25 ring-inset",
               "shadow-[0_14px_34px_-14px_rgba(239,83,2,.85)] hover:shadow-[0_18px_40px_-14px_rgba(239,83,2,.95)] hover:brightness-[1.04]",
               "active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-wait",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#0a548b]",
             )}
           >
-            <span className="grid place-items-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-white/20 group-hover:bg-white/25 transition-colors">
-              <Play className="w-4 h-4 lg:w-[18px] lg:h-[18px] fill-current translate-x-px" />
+            <span className="grid place-items-center w-9 h-9 xl:w-10 xl:h-10 rounded-xl bg-white/20 group-hover:bg-white/25 transition-colors">
+              <Play className="w-4 h-4 xl:w-[18px] xl:h-[18px] fill-current translate-x-px" />
             </span>
             <span className="hidden sm:flex flex-col items-start leading-none">
-              <span className="font-display italic uppercase tracking-wider text-base lg:text-lg">
+              <span className="font-display italic uppercase tracking-wider text-base xl:text-lg">
                 {isCheckingActiveSession ? "Checking…" : "Start session"}
               </span>
               {!isCheckingActiveSession && nextDate && daysUntil(nextDate) === "today" && (
@@ -242,8 +259,8 @@ export function ProfileHeader({
         )}
       </div>
 
-      {/* ---------- row 2: the four facts, hairline-divided ---------- */}
-      <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+      {/* ---------- the four facts, hairline-divided ---------- */}
+      <div className="[grid-area:strip] min-w-0 grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
         <Stat
           label="Top trainer"
           icon={<UserCheck />}
@@ -257,7 +274,7 @@ export function ProfileHeader({
               : undefined
           }
         >
-          {topTrainer.top?.name ?? <span className="text-slate-400 font-medium">Not yet</span>}
+          {topTrainer.top?.name ? <span className="truncate">{topTrainer.top.name}</span> : <span className="text-slate-400 font-medium">Not yet</span>}
         </Stat>
 
         <Stat label="Last session" icon={<History />} sub={lastMs ? relativeDays(lastMs) ?? undefined : undefined}>
@@ -277,44 +294,44 @@ export function ProfileHeader({
           }
         >
           {nextLabel ? (
-            <span className="inline-flex items-center gap-2 min-w-0">
+            <>
               <span className="truncate">{nextLabel}</span>
               {moreBooked > 0 && (
-                <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 tracking-wide">
-                  +{moreBooked} booked
+                <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 tracking-wide whitespace-nowrap">
+                  +{moreBooked}
+                  <span className="xl:hidden 2xl:inline"> booked</span>
                 </span>
               )}
-            </span>
+            </>
           ) : (
             <span className="text-slate-400 font-medium italic">Not scheduled</span>
           )}
         </Stat>
 
         <Stat
-          label="Sessions completed"
+          label="Completed sessions"
           sub={
             pkg.source === "none" ? undefined : (
               <span
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                  "inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider min-w-0 max-w-full",
                   pkg.fromMindbody
                     ? "bg-[#0a548b]/10 text-[#0a548b] dark:bg-[#5198d8]/15 dark:text-[#8cc4f2]"
                     : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
                 )}
                 title={pkg.fromMindbody ? "Synced from Mindbody" : "Entered in this app"}
               >
-                {pkg.fromMindbody && <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" aria-hidden="true" />}
-                {[pkg.label, remaining].filter(Boolean).join(" · ")}
+                {pkg.fromMindbody && <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80 shrink-0" aria-hidden="true" />}
+                {/* Count first: when the tile is narrow the package NAME is what truncates. */}
+                <span className="truncate">{[remaining, pkg.label].filter(Boolean).join(" · ")}</span>
               </span>
             )
           }
         >
-          <span className="inline-flex items-baseline gap-2">
-            <span className="text-2xl font-black leading-none text-[#F06C22]">{completedCount}</span>
-            {pkg.total && pkg.remaining !== null && pkg.total > 0 && (
-              <span className="text-[11px] font-semibold text-slate-400">of {pkg.total} in package</span>
-            )}
-          </span>
+          <span className="text-2xl font-black leading-none text-[#F06C22]">{completedCount}</span>
+          {pkg.total && pkg.remaining !== null && pkg.total > 0 && (
+            <span className="truncate text-[11px] font-semibold text-slate-400">of {pkg.total} in package</span>
+          )}
         </Stat>
       </div>
     </header>

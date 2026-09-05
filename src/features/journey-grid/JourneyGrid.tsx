@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { AlertCircle, ChevronsRight, NotebookPen, Star, Plus } from "lucide-react";
+import { createPortal } from "react-dom";
+import { AlertCircle, ChevronsRight, NotebookPen, Star, Plus, MoreHorizontal } from "lucide-react";
 import type { JourneyRow, JourneySession, JourneySet, LiveColumn, LiveSet, StatMetric } from "./types";
 import {
   computeRowStats,
@@ -83,6 +84,25 @@ export interface JourneyGridProps {
   viewportReserve?: number;
   /** Column caption in the sticky corner. */
   title?: string;
+  /**
+   * "fixed" (default, Active Session): the tuned density — 44px rows, 84px
+   * columns — and the grid scrolls when it overflows.
+   * "auto" (Recent Journey): the grid measures the height and width it has
+   * been given and shrinks rows (44 → 28px) and session columns (84 → 56px)
+   * until every loaded machine fits vertically and at least ten sessions fit
+   * across. Below 36px rows the cell goes single-line ("116 · 12↓") and the
+   * settings rail folds into the ⋯ menu.
+   */
+  fit?: "fixed" | "auto";
+  /**
+   * "inline": the settings rail under the machine name (Active Session — the
+   * trainer reads it walking up to the machine). "menu": the name alone, with
+   * a ⋯ button that opens the settings in a popover; buys the row height the
+   * dense Recent Journey needs.
+   */
+  settingsDisplay?: "inline" | "menu";
+  /** Session columns to aim for when fitting (default 14; never fewer than 10 are fitted). */
+  targetColumns?: number;
 }
 
 /* ------------------------------------------------------------------ *
@@ -107,6 +127,7 @@ interface RowProps {
   live?: LiveColumn;
   liveValue?: LiveSet;
   liveInactive: boolean;
+  settingsDisplay: "inline" | "menu";
 }
 
 function RowImpl({
@@ -127,6 +148,7 @@ function RowImpl({
   live,
   liveValue,
   liveInactive,
+  settingsDisplay,
 }: RowProps) {
   const { machine } = row;
   const hasLive = !!live && !liveInactive;
@@ -190,7 +212,7 @@ function RowImpl({
               <AlertCircle className="jg-machine__alert" size={13} strokeWidth={2.5} aria-label="important machine note" />
             )}
           </span>
-          {settingEntries.length > 0 && (
+          {settingEntries.length > 0 && settingsDisplay === "inline" && (
             <span className="jg-machine__meta">
               {shownSettings.map(([k, v]) => (
                 <span key={k} className="jg-setting" title={`${settingLabel(k)} ${v}`}>
@@ -213,6 +235,15 @@ function RowImpl({
           >
             <NotebookPen size={13} strokeWidth={2.25} />
           </button>
+        )}
+        {settingsDisplay === "menu" && (settingEntries.length > 0 || machine.noteCount) && (
+          <MachineMenu
+            machineName={machine.name}
+            settings={settingEntries.map(([k, v]) => ({ key: k, label: settingLabel(k), value: v }))}
+            noteCount={machine.noteCount}
+            summary={journeySummary(row, history)}
+            onNote={onNote ? () => onNote(machine.id) : undefined}
+          />
         )}
       </div>
 
@@ -265,6 +296,106 @@ function RowImpl({
   );
 }
 
+/**
+ * The ⋯ at the right edge of a machine cell in the dense grid. Opens a small
+ * popover with the machine's settings (the same G/S pairs the inline rail
+ * shows in the Active Session), the start → now readout and the note count.
+ * Rendered through a portal: the sticky machine column lives inside an
+ * overflow scroller, so anything positioned inside the cell would be clipped.
+ */
+function MachineMenu({
+  machineName,
+  settings,
+  noteCount,
+  summary,
+  onNote,
+}: {
+  machineName: string;
+  settings: { key: string; label: string; value: string }[];
+  noteCount?: number;
+  summary: string;
+  onNote?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const toggle = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 6, left: Math.max(8, Math.min(r.right - 220, window.innerWidth - 232)) });
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: Event) => {
+      const t = e.target as Node | null;
+      if (btnRef.current && t && btnRef.current.contains(t)) return;
+      if (t && (t as Element).closest?.(".jg-menu")) return;
+      setOpen(false);
+    };
+    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", close, true);
+    document.addEventListener("keydown", key);
+    window.addEventListener("scroll", () => setOpen(false), { once: true, capture: true });
+    return () => {
+      document.removeEventListener("pointerdown", close, true);
+      document.removeEventListener("keydown", key);
+    };
+  }, [open]);
+
+  const title = settings.length ? settings.map((s) => `${s.label} ${s.value}`).join(" · ") : "No settings on file";
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        className={`jg-machine__more ${open ? "is-open" : ""} ${noteCount ? "has-notes" : ""}`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={`${machineName}: settings and notes. ${title}`}
+        title={title}
+        onClick={toggle}
+      >
+        <MoreHorizontal size={14} strokeWidth={2.5} />
+      </button>
+      {open &&
+        pos &&
+        createPortal(
+          <div className="jg-menu" role="dialog" aria-label={`${machineName} settings`} style={{ top: pos.top, left: pos.left }}>
+            <div className="jg-menu__title">
+              {machineName}
+              <span className="jg-menu__summary">{summary}</span>
+            </div>
+            {settings.length ? (
+              <dl className="jg-menu__settings">
+                {settings.map((s) => (
+                  <div key={s.key} className="jg-menu__setting">
+                    <dt>{s.label}</dt>
+                    <dd>{s.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <p className="jg-menu__empty">No machine settings saved for this client.</p>
+            )}
+            {onNote && (
+              <button type="button" className="jg-menu__note" onClick={() => { setOpen(false); onNote(); }}>
+                <NotebookPen size={13} strokeWidth={2.25} /> {noteCount ? `${noteCount} note${noteCount === 1 ? "" : "s"}` : "Add a note"}
+              </button>
+            )}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
 const Row = memo(RowImpl);
 
 /* ------------------------------------------------------------------ *
@@ -292,6 +423,9 @@ export function JourneyGrid({
   maxHeight,
   viewportReserve = 112,
   title = "Equipment",
+  fit = "fixed",
+  settingsDisplay = "inline",
+  targetColumns = 14,
 }: JourneyGridProps) {
   const history = historySessions ?? sessions;
   const latestSessionId = latestProp !== undefined ? latestProp : (history[history.length - 1]?.id ?? null);
@@ -432,10 +566,73 @@ export function JourneyGrid({
   // is no longer counted among the session columns.
   const cols = sessions.length;
 
+  /* --- "auto" fit: size rows and columns to the space we actually have --- */
+  const rowCount = sections.reduce((n, s) => n + (s.collapsed ? 0 : s.rows.length), 0);
+  const dividerCount = sections.length;
+  const [fitVars, setFitVars] = useState<{ rowH: number; colW: number; dense: boolean } | null>(null);
+  useLayoutEffect(() => {
+    if (fit !== "auto") {
+      setFitVars(null);
+      return;
+    }
+    const el = scrollerRef.current;
+    if (!el) return;
+    const MACHINE_W = settingsDisplay === "menu" ? 150 : 184;
+    const STAT_W = settingsDisplay === "menu" ? 92 : 100;
+    const OLDER_W = 26;
+    const HEAD_H = 40;
+    const measure = () => {
+      // Height we may fill: the viewport that is left under the header, or
+      // the flex box the parent handed us.
+      let availH: number;
+      if (layout === "viewport") {
+        const top = Math.round(el.getBoundingClientRect().top + window.scrollY);
+        availH = Math.max(240, window.innerHeight - top - viewportReserve);
+      } else {
+        availH = el.clientHeight || 400;
+      }
+      // Sections cost a divider each (30px, 24px when dense). Solve for the
+      // row height that fits every row, then clamp to the readable range.
+      const dividerH = 30;
+      const rowsH = availH - HEAD_H - dividerCount * dividerH - 2;
+      // 26px is the floor: 12.5px numerals with 3px of air each side. Below
+      // that the trainer is squinting, and scrolling two rows beats that.
+      const dense = rowCount > 0 && Math.floor(rowsH / rowCount) < 36;
+      const dividerAdj = dense ? dividerCount * (dividerH - 24) + (HEAD_H - 36) : 0; // dense chrome is shorter
+      const rowH = rowCount > 0 ? Math.max(26, Math.min(44, Math.floor((rowsH + dividerAdj) / rowCount))) : 44;
+      // Width: fit `targetColumns` sessions (never fewer than ten) into what
+      // is left beside the sticky rails, between 56 and 84px each.
+      const availW = el.clientWidth - MACHINE_W - (showStats ? STAT_W : 0) - (hasOlderColumn ? OLDER_W : 0);
+      const want = Math.max(10, Math.min(targetColumns, Math.max(1, cols)));
+      const colW = Math.max(56, Math.min(84, Math.floor(availW / want)));
+      setFitVars((prev) => (prev && prev.rowH === rowH && prev.colW === colW && prev.dense === dense ? prev : { rowH, colW, dense }));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    ro?.observe(document.body);
+    return () => {
+      window.removeEventListener("resize", measure);
+      ro?.disconnect();
+    };
+  }, [fit, layout, viewportReserve, rowCount, dividerCount, showStats, hasOlderColumn, cols, targetColumns, settingsDisplay]);
+
   const effectiveMaxH = layout === "viewport" ? viewportMaxH : maxHeight;
   const style = {
     "--jg-cols": cols,
     ...(effectiveMaxH ? { "--jg-max-h": effectiveMaxH } : null),
+    ...(settingsDisplay === "menu" ? { "--jg-col-machine": "150px", "--jg-col-stat": "92px" } : null),
+    ...(fitVars
+      ? {
+          "--jg-row-h": `${fitVars.rowH}px`,
+          "--jg-col-session": `${fitVars.colW}px`,
+          "--jg-head-h": `${fitVars.dense ? 36 : 40}px`,
+          // In viewport/fill fits the scroller should BE the available height,
+          // not merely be capped by it, so the grid reaches the bottom.
+          ...(layout === "viewport" && effectiveMaxH ? { "--jg-min-h": effectiveMaxH } : null),
+        }
+      : null),
   } as CSSProperties;
 
   const metricLabel = STAT_LABEL[metric];
@@ -447,6 +644,8 @@ export function JourneyGrid({
       data-live={live ? "true" : "false"}
       data-stats={showStats ? "true" : "false"}
       data-older={hasOlderColumn ? "true" : "false"}
+      data-dense={fitVars?.dense ? "line" : "stack"}
+      data-settings={settingsDisplay}
       style={style}
     >
       <div
@@ -565,6 +764,7 @@ export function JourneyGrid({
               onNote={onMachineNote}
               hasOlderColumn={hasOlderColumn}
               live={live}
+              settingsDisplay={settingsDisplay}
             />
           ))}
         </div>
@@ -588,6 +788,7 @@ interface SectionBlockProps {
   onNote?: (machineId: string) => void;
   hasOlderColumn: boolean;
   live?: LiveColumn;
+  settingsDisplay: "inline" | "menu";
 }
 
 const SectionBlock = memo(function SectionBlock({
@@ -605,6 +806,7 @@ const SectionBlock = memo(function SectionBlock({
   onNote,
   hasOlderColumn,
   live,
+  settingsDisplay,
 }: SectionBlockProps) {
   const toggle = section.onToggle;
   return (
@@ -642,6 +844,7 @@ const SectionBlock = memo(function SectionBlock({
             live={live}
             liveValue={live?.values[row.machine.id]}
             liveInactive={!!section.inactive}
+            settingsDisplay={settingsDisplay}
           />
         ))}
     </>

@@ -5,6 +5,20 @@ Design spec for `src/features/journey-grid/` — the sticky client-tracking grid
 
 Files: `src/features/journey-grid/`. Live prototype: the "Journey Grid" artifact (same code, compiled with Judy Daus's data).
 
+**v5 (Sep 5) — auto-fit density in Recent Journey.** The profile grid now
+runs `fit="auto"`: it measures the height and width it is given and solves
+for the row height (44 → 26px) that puts EVERY loaded machine on screen and
+the column width (84 → 56px) that puts at least ten of the fourteen loaded
+sessions across. Under 36px rows the cell goes single-line ("116 · 12↓"),
+the Analytics cell drops its context line, the group divider shrinks to
+24px, and machine settings fold into a ⋯ menu (`settingsDisplay="menu"`) so
+the machine column narrows to 150px. The legend rides in the toolbar so the
+grid can reach the nav. Result on the 13" iPad: 21 machines × 12 sessions in
+portrait at ~41px rows, 21 × 13 in landscape at 26px rows. The Active
+Session keeps `fit="fixed"` and the inline settings rail — a trainer reads
+those numbers walking up to the machine. The first Firestore page is 15
+sessions (was 10) so fourteen columns arrive with the profile.
+
 **v4 (Sep 4) — the Now bar.** Today's column stopped being the input. It is a
 read-only 84px cell the same width and shape as a history cell; all entry
 moved to `SessionNowBar`, a fixed bar above the nav. The reason is mechanical:
