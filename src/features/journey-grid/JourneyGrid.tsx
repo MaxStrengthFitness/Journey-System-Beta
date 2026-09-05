@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { AlertCircle, ChevronsRight, NotebookPen, Star, Plus, MoreHorizontal } from "lucide-react";
+import { AlertCircle, ChevronsRight, NotebookPen, Plus, MoreHorizontal } from "lucide-react";
 import type { JourneyRow, JourneySession, JourneySet, LiveColumn, LiveSet, StatMetric } from "./types";
 import {
   computeRowStats,
@@ -210,9 +210,6 @@ function RowImpl({
           <span className="jg-machine__name">
             {orderNumber !== undefined && <span className="jg-machine__order">{orderNumber}</span>}
             <span className="jg-machine__label">{machine.name}</span>
-            {machine.starred && (
-              <Star className="jg-machine__star" size={12} fill="currentColor" strokeWidth={0} aria-label="core lift" />
-            )}
             {machine.alert && (
               <AlertCircle className="jg-machine__alert" size={13} strokeWidth={2.5} aria-label="important machine note" />
             )}

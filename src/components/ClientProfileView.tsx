@@ -142,7 +142,6 @@ import {
   getMillis,
   calculateExerciseVolume,
   getMuscleGroupColor,
-  isBig5Machine,
   orderMachineSettings,
 } from "../lib/utils";
 import { RoutineBuilderView } from "./RoutineBuilderView";
@@ -1202,6 +1201,22 @@ export function ClientProfileView({
     );
   }, [sessions, calculatedSessionCount]);
 
+  /**
+   * Routine A / B machine ids, for the Journey tab's filters. Matched on the
+   * routine NAME containing its letter, which is how the rest of this view
+   * already tells the two apart.
+   */
+  const routineAMachineIds = useMemo(
+    () =>
+      routines.find((r) => (r.name || "").toUpperCase().includes("A"))?.machineIds ?? [],
+    [routines],
+  );
+  const routineBMachineIds = useMemo(
+    () =>
+      routines.find((r) => (r.name || "").toUpperCase().includes("B"))?.machineIds ?? [],
+    [routines],
+  );
+
   const journeyGridRows = useMemo(() => {
     const ordered = [...machines].sort(
       (a, b) =>
@@ -1217,10 +1232,10 @@ export function ClientProfileView({
         ),
     );
     const currentStudio = studios?.find((st) => st.id === activeStudioId);
-    const starred = new Set(
-      ordered.filter((m) => isBig5Machine(m.name)).map((m) => m.id!),
-    );
-    return toJourneyRows(ordered, allLogs, clientSettings, starred).map((row) => {
+    // Marker 7: the Big Five star is gone from the grid. Every machine in
+    // this method is a core lift; a star on five of them said the other
+    // sixteen were optional, which is not what the prescription means.
+    return toJourneyRows(ordered, allLogs, clientSettings).map((row) => {
       const machine = ordered.find((m) => m.id === row.machine.id);
       if (!machine) return row;
       const settings = clientSettings[machine.id!]?.settings || {};
@@ -1826,6 +1841,8 @@ export function ClientProfileView({
             onLoadMore={handleLoadMoreHistory}
             loadingMore={isLoadingMore}
             layout="page"
+            routineAMachineIds={routineAMachineIds}
+            routineBMachineIds={routineBMachineIds}
             onSelectMachine={openJourneyMachineSettings}
           />
         </TabsContent>

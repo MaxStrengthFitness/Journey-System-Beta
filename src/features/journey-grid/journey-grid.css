@@ -551,7 +551,6 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.jg-machine__star { color: var(--jg-hero); flex: none; }
 /* The note glyph is absolutely positioned in the cell's top-right corner,
    so the NAME row reserves room for it. The settings row underneath runs
    the full width -- five settings need every pixel of it. */
@@ -965,7 +964,6 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.jg-nb__star { color: var(--jg-hero); flex: none; }
 
 /* Spelled out, not abbreviated. The grid rail says "SH 4" because it has
    168px; this is what a trainer actually presets the machine from. */
