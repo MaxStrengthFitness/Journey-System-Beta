@@ -4,6 +4,7 @@ import {
 } from "@firebase/rules-unit-testing";
 import { assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
 import {
+  deleteDoc,
   setDoc,
   getDoc,
   doc,
@@ -308,6 +309,85 @@ describe("Firestore Security Rules", () => {
         basedOn: "m-hip-abd",
         overrides: { clinicalWarnings: [] },
       }),
+    );
+  });
+
+  // ── STUDIO TASKS (Studio To-Do, Sep 2026) ────────────────────────────
+  //
+  // The split that matters: authoring the checklist is a management act,
+  // completing an item is the trainer's job. If either half is wrong the
+  // feature is either useless or unsafe.
+
+  it("allows a trainer to complete a task instance", async () => {
+    const ctx = testEnv.authenticatedContext("trainerA", {
+      email: "trainera@test.com",
+    });
+    const db = ctx.firestore();
+    await assertSucceeds(
+      setDoc(
+        doc(db, "studios", "studioA", "taskInstances", "wipe__2026-09-04__am__m-ext"),
+        {
+          studioId: "studioA",
+          templateId: "wipe",
+          localDate: "2026-09-04",
+          shift: "am",
+          machineId: "m-ext",
+          status: "done",
+          title: "Wipe down",
+          category: "cleaning",
+          kind: "machine",
+        },
+      ),
+    );
+  });
+
+  it("denies a trainer authoring a task template", async () => {
+    // Templates set the standard the floor is held to.
+    const ctx = testEnv.authenticatedContext("trainerA", {
+      email: "trainera@test.com",
+    });
+    const db = ctx.firestore();
+    await assertFails(
+      setDoc(doc(db, "studios", "studioA", "taskTemplates", "wipe"), {
+        studioId: "studioA",
+        title: "Wipe down",
+        kind: "machine",
+        category: "cleaning",
+        target: { kind: "machine", machineIds: "all" },
+        recurrence: { type: "daily" },
+        active: true,
+      }),
+    );
+  });
+
+  it("allows a studio owner to author a task template", async () => {
+    const ctx = testEnv.authenticatedContext("ownerA", {
+      email: "ownera@test.com",
+    });
+    const db = ctx.firestore();
+    await assertSucceeds(
+      setDoc(doc(db, "studios", "studioA", "taskTemplates", "wipe"), {
+        studioId: "studioA",
+        title: "Wipe down",
+        kind: "machine",
+        category: "cleaning",
+        target: { kind: "machine", machineIds: "all" },
+        recurrence: { type: "daily" },
+        active: true,
+      }),
+    );
+  });
+
+  it("denies a trainer deleting task history", async () => {
+    // A wrong tick is re-opened, not erased — the audit trail survives.
+    const ctx = testEnv.authenticatedContext("trainerA", {
+      email: "trainera@test.com",
+    });
+    const db = ctx.firestore();
+    await assertFails(
+      deleteDoc(
+        doc(db, "studios", "studioA", "taskInstances", "wipe__2026-09-04__am"),
+      ),
     );
   });
 });
