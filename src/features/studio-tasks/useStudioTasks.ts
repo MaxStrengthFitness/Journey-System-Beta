@@ -31,6 +31,8 @@ export function useStudioTasks(
   studioId: string | null,
   /** Studio-local 'YYYY-MM-DD'. Defaults to today in the studio's timezone. */
   dateKey?: string,
+  /** For naming client tasks. Optional — the id renders if absent. */
+  clientNames?: Record<string, string>,
 ): UseStudioTasksResult {
   const day = dateKey ?? studioDateKey(new Date()) ?? "";
 
@@ -110,17 +112,22 @@ export function useStudioTasks(
 
     return planDay(templates, day, machineIds).map((planned) => {
       const instance = instances[planned.id] ?? null;
+      const template = byId.get(planned.templateId) as TaskTemplate;
+      const clientId =
+        template?.target.kind === "client" ? template.target.clientId : undefined;
+
       return {
         ...planned,
-        template: byId.get(planned.templateId)!,
+        template,
         instance,
         status: instance?.status ?? "open",
         machineName: planned.machineId
           ? (machineNames[planned.machineId] ?? planned.machineId)
           : undefined,
+        clientName: clientId ? clientNames?.[clientId] : undefined,
       };
     });
-  }, [templates, day, machineIds, instances, machineNames]);
+  }, [templates, day, machineIds, instances, machineNames, clientNames]);
 
   const counts = useMemo(() => {
     let done = 0;

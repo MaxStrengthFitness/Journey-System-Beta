@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "../../contexts/ToastContext";
+import type { Client } from "../../types";
 import { useStudioMachines } from "../../hooks/useStudioMachines";
 import {
   deleteTaskTemplate,
@@ -16,8 +17,10 @@ import {
 } from "./mutations";
 import {
   CATEGORY_LABEL,
+  CLIENT_ACTION_LABEL,
   SHIFT_LABEL,
   TASK_SHIFTS,
+  type ClientTaskAction,
   type TaskCategory,
   type TaskKind,
   type TaskShift,
@@ -64,6 +67,7 @@ export interface TaskManagerProps {
   studioId: string | null;
   templates: TaskTemplate[];
   author?: { id: string; name: string } | null;
+  clients?: Client[];
 }
 
 export function TaskManager({
@@ -72,6 +76,7 @@ export function TaskManager({
   studioId,
   templates,
   author,
+  clients,
 }: TaskManagerProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   const { machines } = useStudioMachines(studioId);
@@ -419,6 +424,65 @@ export function TaskManager({
                   </div>
                 )}
               </div>
+            )}
+
+            {draft.target.kind === "client" && (
+              <>
+                <label className="flex flex-col gap-1.5">
+                  <span className={label}>Which client</span>
+                  <select
+                    className={input}
+                    value={draft.target.clientId ?? ""}
+                    onChange={(e) =>
+                      set("target", {
+                        ...(draft.target as { kind: "client" }),
+                        kind: "client",
+                        clientId: e.target.value || undefined,
+                      })
+                    }
+                  >
+                    <option value="">Choose a client…</option>
+                    {[...(clients ?? [])]
+                      .sort((a, b) =>
+                        `${a.lastName}${a.firstName}`.localeCompare(
+                          `${b.lastName}${b.firstName}`,
+                        ),
+                      )
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.firstName} {c.lastName}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+
+                <label className="flex flex-col gap-1.5">
+                  <span className={label}>What opens when a trainer taps it</span>
+                  <select
+                    className={input}
+                    value={draft.target.action ?? "custom"}
+                    onChange={(e) =>
+                      set("target", {
+                        ...(draft.target as { kind: "client" }),
+                        kind: "client",
+                        action: e.target.value as ClientTaskAction,
+                      })
+                    }
+                  >
+                    {(
+                      Object.keys(CLIENT_ACTION_LABEL) as ClientTaskAction[]
+                    ).map((a) => (
+                      <option key={a} value={a}>
+                        {CLIENT_ACTION_LABEL[a]}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[11px] leading-relaxed text-muted-foreground">
+                    The task opens that screen for this client rather than being
+                    a tick that claims the work happened.
+                  </span>
+                </label>
+              </>
             )}
 
             <label className="flex flex-col gap-1.5">

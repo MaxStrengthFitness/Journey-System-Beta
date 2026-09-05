@@ -223,7 +223,16 @@ export const MACHINE_ANATOMY: Record<string, MachineAnatomyMap> = {
     movementPattern: 'Core: Spine Extension',
     clinicalNote: 'Multi-directional cervical stimulation.',
   },
-  // We can keep cervical_extension just in case
+  /**
+   * ALIAS of m-neck, not a second machine.
+   *
+   * Kept because two other data files reference this id directly —
+   * clinical-matrix.ts (affectedMachineIds) and routine-templates.ts — so
+   * deleting it here would break lookups that have nothing to do with the
+   * diagram. features/catalog/machine-identity.ts collapses it onto m-neck,
+   * so the Catalog never shows it twice; anything else iterating this map
+   * should dedupe with canonicalMachineId() rather than trusting the key count.
+   */
   cervical_extension: {
     machineId: 'cervical_extension',
     preferredView: 'side',

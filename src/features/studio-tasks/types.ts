@@ -189,4 +189,20 @@ export interface TaskRow extends PlannedInstance {
   status: TaskStatus;
   /** Machine display name, when machine-scoped. */
   machineName?: string;
+  /** Client display name, when client-scoped. */
+  clientName?: string;
 }
+
+/** What a client task actually opens. */
+export type ClientTaskAction =
+  | "inbody"
+  | "assessment"
+  | "progress-report"
+  | "custom";
+
+export const CLIENT_ACTION_LABEL: Record<ClientTaskAction, string> = {
+  inbody: "InBody scan",
+  assessment: "Assessment",
+  "progress-report": "Progress report",
+  custom: "Something else",
+};

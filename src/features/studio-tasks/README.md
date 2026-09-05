@@ -162,10 +162,10 @@ just-completed task look like the oldest one.
   confirm the badge and the Upkeep section in the Catalog. An AM+PM template
   producing two separate cards. A weekly task on a day it is not due showing
   nothing. Sign in at a second studio and confirm none of it is there.
-- Client tasks (InBody, assessment, progress report) render and complete, but do
-  not yet deep-link into those flows — the check-off is still a tick. Wiring
-  `target.action` to the real screens is the next obvious step, and the field is
-  already in the model for it.
+- **InBody has no screen of its own.** `target.action: 'inbody'` opens the client
+  profile, which is the closest honest destination; `assessment` opens the
+  consultation wizard and `progress-report` opens the report editor. When an
+  InBody flow exists, point it there.
 - No scheduled reminder or digest. Everything is pull, not push.
 - A studio with hundreds of days of history will eventually want the instances
   query bounded by date range rather than by day; the current query is a single

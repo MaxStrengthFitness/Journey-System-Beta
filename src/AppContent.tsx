@@ -1805,7 +1805,24 @@ export default function AppContent({
               <CatalogView machines={machines} authTrainer={authTrainer} />
             )}
             {currentView === "studio-tasks" && (
-              <StudioTasksView authTrainer={authTrainer} />
+              <StudioTasksView
+                authTrainer={authTrainer}
+                clients={clients}
+                onOpenClientTask={(clientId, action) => {
+                  // A client task points at the screen where the work is
+                  // actually done, rather than being a tick that claims it
+                  // happened. 'inbody' has no screen of its own yet, so it
+                  // lands on the profile — the closest honest destination.
+                  setSelectedClientId(clientId);
+                  setCurrentView(
+                    action === "progress-report"
+                      ? "progress-report"
+                      : action === "assessment"
+                        ? "consultation-wizard"
+                        : "profile",
+                  );
+                }}
+              />
             )}
             {currentView === "leaderboard" && (
               <MachineLeaderboardDashboard

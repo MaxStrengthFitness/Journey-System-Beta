@@ -4,10 +4,11 @@ import {
   ClipboardList,
   Settings2,
   Minus,
+  ExternalLink,
   MessageSquarePlus,
   TriangleAlert,
 } from "lucide-react";
-import type { Trainer } from "../../types";
+import type { Client, Trainer } from "../../types";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
@@ -15,7 +16,12 @@ import { setManyTaskStatuses, setTaskStatus } from "./mutations";
 import { TaskManager } from "./TaskManager";
 import { TaskNoteDialog } from "./TaskNoteDialog";
 import { useStudioTasks } from "./useStudioTasks";
-import { SHIFT_LABEL, type TaskRow, type TaskShift } from "./types";
+import {
+  SHIFT_LABEL,
+  type ClientTaskAction,
+  type TaskRow,
+  type TaskShift,
+} from "./types";
 
 /**
  * THE STUDIO TO-DO.
@@ -34,16 +40,42 @@ import { SHIFT_LABEL, type TaskRow, type TaskShift } from "./types";
  */
 export interface StudioTasksViewProps {
   authTrainer?: Trainer | null;
+  /** For naming client tasks and opening them. */
+  clients?: Client[];
+  /**
+   * Open the real flow a client task refers to.
+   *
+   * A client task is not a checkbox that claims an InBody scan happened — it
+   * is a pointer at the screen where the work is actually done. Ticking it is
+   * still possible (someone has to close the loop), but the primary action is
+   * to go and do the thing.
+   */
+  onOpenClientTask?: (clientId: string, action?: ClientTaskAction) => void;
 }
 
 type ShiftFilter = TaskShift | "all";
 
-export function StudioTasksView({ authTrainer }: StudioTasksViewProps) {
+export function StudioTasksView({
+  authTrainer,
+  clients,
+  onOpenClientTask,
+}: StudioTasksViewProps) {
   const { activeStudioId, activeStudio, hasPermission } = useActiveStudio();
   const { success: toastSuccess, error: toastError } = useToast();
 
-  const { rows, templates, dateKey, loading, counts } =
-    useStudioTasks(activeStudioId);
+  const clientNames = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of clients ?? []) {
+      if (c.id) map[c.id] = `${c.firstName} ${c.lastName}`.trim();
+    }
+    return map;
+  }, [clients]);
+
+  const { rows, templates, dateKey, loading, counts } = useStudioTasks(
+    activeStudioId,
+    undefined,
+    clientNames,
+  );
   const [filter, setFilter] = useState<ShiftFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [noteRow, setNoteRow] = useState<TaskRow | null>(null);
@@ -368,7 +400,10 @@ export function StudioTasksView({ authTrainer }: StudioTasksViewProps) {
 
                       <span className="st__row-text">
                         <span className="st__row-name">
-                          {row.machineName ?? row.title}
+                          {row.machineName ??
+                            (row.clientName
+                              ? `${row.title} — ${row.clientName}`
+                              : row.title)}
                         </span>
                         <span className="st__row-sub">
                           {[
@@ -400,6 +435,32 @@ export function StudioTasksView({ authTrainer }: StudioTasksViewProps) {
                         )}
                       </span>
                     </button>
+
+                    {row.kind === "client" &&
+                      onOpenClientTask &&
+                      row.template?.target.kind === "client" &&
+                      row.template.target.clientId && (
+                        <button
+                          type="button"
+                          className="st__btn"
+                          onClick={() => {
+                            const t = row.template.target as {
+                              clientId?: string;
+                              action?: ClientTaskAction;
+                            };
+                            if (t.clientId) {
+                              onOpenClientTask(t.clientId, t.action);
+                            }
+                          }}
+                        >
+                          <ExternalLink
+                            size={12}
+                            aria-hidden
+                            className="inline align-middle"
+                          />{" "}
+                          Open
+                        </button>
+                      )}
 
                     <button
                       type="button"
@@ -487,6 +548,7 @@ export function StudioTasksView({ authTrainer }: StudioTasksViewProps) {
           studioId={activeStudioId}
           templates={templates}
           author={author}
+          clients={clients}
         />
       )}
 
