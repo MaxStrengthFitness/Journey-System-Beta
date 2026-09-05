@@ -379,23 +379,15 @@ export function ClientJournalTab({
         </div>
       )}
 
-      <CriticalStrip entries={criticalEntries} machines={machines} />
-
-      <FocusBoard
-        focuses={focuses}
-        entries={entries}
-        machines={machines}
-        currentTrainerId={authTrainer?.id}
-        onCreate={handleCreateFocus}
-        onPass={handlePass}
-        onExtend={handleExtend}
-        onRetire={handleRetire}
-        onCheckIn={handleCheckIn}
-      />
-
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
         {/* ---------------------------- stream ---------------------------- */}
         <div className="min-w-0 space-y-4">
+          {/* Composer first: the tab opens on the thing a trainer came to do —
+              write the note while it is fresh. The critical strip is pinned
+              directly beneath so "read this before you touch the client" is
+              the first thing under the cursor, not something scrolled past.
+              Both live in the stream column so the composer never stretches
+              across the whole landscape screen. */}
           <div id="journal-composer">
             <JournalComposer
               clientFirstName={client?.firstName || ""}
@@ -406,6 +398,20 @@ export function ClientJournalTab({
               disabled={!clientId}
             />
           </div>
+
+          <CriticalStrip entries={criticalEntries} machines={machines} />
+
+          <FocusBoard
+            focuses={focuses}
+            entries={entries}
+            machines={machines}
+            currentTrainerId={authTrainer?.id}
+            onCreate={handleCreateFocus}
+            onPass={handlePass}
+            onExtend={handleExtend}
+            onRetire={handleRetire}
+            onCheckIn={handleCheckIn}
+          />
 
           {/* Filter rail collapses into a toggle below xl. */}
           <div className="xl:hidden">
