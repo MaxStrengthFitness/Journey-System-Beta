@@ -28,6 +28,8 @@ import {
   Trash2,
   Maximize,
   Network,
+  CalendarDays,
+  List as ListIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -468,28 +470,42 @@ export function ClientHistoryCalendar({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
+          {/* View toggle — a real segmented control, big enough to be the
+              first thing a thumb finds. Brand blue = "you can act on this";
+              the two labels stay visible in both states so the trainer can
+              always see where they are AND where they can go. */}
+          <div
+            role="group"
+            aria-label="History view"
+            className="inline-flex h-11 sm:h-12 items-stretch p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm"
+          >
             <button
+              type="button"
               onClick={() => setViewType("calendar")}
+              aria-pressed={viewType === "calendar"}
               className={cn(
-                "px-3 sm:px-5 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider whitespace-nowrap transition-all",
+                "inline-flex items-center gap-2 px-3.5 sm:px-5 rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all",
                 viewType === "calendar"
-                  ? "bg-[#38BDF8] text-slate-950 font-bold shadow-sm"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200",
+                  ? "bg-[#0a548b] text-white shadow-sm dark:bg-[#4a9fd8] dark:text-slate-950"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100",
               )}
             >
-              Calendar View
+              <CalendarDays className="w-4 h-4" />
+              Calendar
             </button>
             <button
+              type="button"
               onClick={() => setViewType("list")}
+              aria-pressed={viewType === "list"}
               className={cn(
-                "px-3 sm:px-5 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider whitespace-nowrap transition-all",
+                "inline-flex items-center gap-2 px-3.5 sm:px-5 rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all",
                 viewType === "list"
-                  ? "bg-[#38BDF8] text-slate-950 font-bold shadow-sm"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200",
+                  ? "bg-[#0a548b] text-white shadow-sm dark:bg-[#4a9fd8] dark:text-slate-950"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100",
               )}
             >
-              List View
+              <ListIcon className="w-4 h-4" />
+              List
             </button>
           </div>
           <Button
@@ -698,180 +714,209 @@ export function ClientHistoryCalendar({
           </div>
         </>
       ) : (
-        <div className="flex-1 overflow-y-auto px-4 custom-scrollbar flex flex-col gap-4">
-          {sessions.map((session, index, arr) => {
-            const timestamp = parseSessionDate(session.date);
-            const sDate = timestamp > 0 ? new Date(timestamp) : null;
-            const completedSessions = arr.filter(
-              (s) => s.status === "Completed",
-            );
-            const completedIndex = completedSessions.findIndex(
-              (s) => s.id === session.id,
-            );
-            const calculatedSessionNumber =
-              completedIndex >= 0
-                ? completedSessions.length - completedIndex
-                : "?";
-
-            // Calculate days since previous session (which is the next item in the reverse-chronological array)
-            let daysSincePrev = null;
-            if (index < arr.length - 1) {
-              const prevTimestamp = parseSessionDate(arr[index + 1].date);
-              if (timestamp > 0 && prevTimestamp > 0) {
-                daysSincePrev = Math.round(
-                  (timestamp - prevTimestamp) / (1000 * 60 * 60 * 24),
-                );
+        <div className="flex-1 overflow-y-auto px-1 sm:px-2 custom-scrollbar flex flex-col gap-5 pb-6">
+          {/* The list is the calendar unrolled: the same month framing, the
+              same day tile with the routine letter top-right and the trainer
+              chip bottom-right, so switching views never re-teaches the eye
+              where anything lives. Each row adds what a tile has no room for —
+              session number, time, gap since the last visit, machines, volume. */}
+          {(() => {
+            const completedSessions = sessions.filter((s) => s.status === "Completed");
+            // `routineName` is denormalised onto session docs by the live
+            // session flow but never made it onto the type; read it loosely.
+            type HistorySession = WorkoutSession & { routineName?: string };
+            const groups: { key: string; label: string; year: number; items: HistorySession[] }[] = [];
+            for (const s of sessions as HistorySession[]) {
+              const t = parseSessionDate(s.date);
+              const d = t > 0 ? new Date(t) : null;
+              const key = d ? `${d.getFullYear()}-${d.getMonth()}` : "undated";
+              let g = groups.find((x) => x.key === key);
+              if (!g) {
+                g = {
+                  key,
+                  label: d ? d.toLocaleString("default", { month: "long" }) : "Undated",
+                  year: d ? d.getFullYear() : 0,
+                  items: [],
+                };
+                groups.push(g);
               }
+              g.items.push(s);
             }
 
-            const isLegacy =
-              session.legacy_filemaker_id ||
-              session.trainerId === "legacy-trainer" ||
-              session.trainerInitials === "Legacy" ||
-              session.trainerInitials === "Chart";
-
-            const sessionLogs = (allLogs || localAllLogs).filter(
-              (l) => l.sessionId === session.id,
-            );
-            const totalVolume = Math.round(
-              sessionLogs.reduce(
-                (acc, log) => acc + calculateExerciseVolume(log),
-                0,
-              ),
-            );
-            const machineNames = sessionLogs
-              .map((l) => {
-                const m = machines.find((mac) => mac.id === l.machineId);
-                return m?.name || "Unknown";
-              })
-              .filter(Boolean);
-            const shorthandMachines =
-              machineNames.length > 0
-                ? machineNames.filter((n) => n !== "Unknown").join(", ")
-                : "";
-
-            return (
-              <div
-                key={session.id}
-                onClick={() => {
-                  setSelectedDaySessions([session]);
-                  setActiveSessionIndex(0);
-                }}
-                className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-[#38BDF8]/40 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/60 shadow-sm text-slate-800 dark:text-slate-200 relative overflow-hidden"
-              >
-                {session.isCrossTrain && (
-                  <div className="absolute top-0 left-0 bg-[#38BDF8] text-slate-950 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-br-lg shadow-sm z-10 flex items-center gap-1">
-                    <Network className="w-3 h-3" />
-                    Cross-Train
-                  </div>
-                )}
-                {isLegacy && (
-                  <div className="absolute top-0 right-0 bg-[#F06C22] text-white text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-bl-lg shadow-sm z-10">
-                    Imported
-                  </div>
-                )}
-
-                <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                  {/* Date Badge */}
-                  <div className="flex flex-col items-center justify-center min-w-13.75 sm:min-w-16.25 px-2 py-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shrink-0">
-                    <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 font-display leading-tight">
-                      {sDate ? sDate.getDate() : "--"}
+            return groups.map((group) => (
+              <section key={group.key}>
+                <div className="sticky top-0 z-10 flex items-baseline gap-3 py-1.5 mb-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm">
+                  <h3 className="text-lg sm:text-xl font-black italic uppercase tracking-tighter leading-none font-display text-slate-900 dark:text-slate-100">
+                    {group.label}
+                  </h3>
+                  {group.year > 0 && (
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+                      {group.year}
                     </span>
-                    <span className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
-                      {sDate
-                        ? sDate.toLocaleDateString("default", {
-                            month: "short",
-                          }) +
-                          " '" +
-                          sDate.getFullYear().toString().substring(2)
-                        : "Invalid"}
-                    </span>
-                  </div>
-
-                  {/* Trainer Avatar */}
-                  <div
-                    className={cn(
-                      "w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-full flex items-center justify-center border border-slate-200 dark:border-slate-800 font-black shadow-sm",
-                      getTrainerChipStyles(session.trainerInitials),
-                    )}
-                  >
-                    <span className="text-xs sm:text-sm font-black">
-                      {session.trainerInitials || "TR"}
-                    </span>
-                  </div>
-
-                  {/* Session Info Details */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] sm:text-[11px] font-black text-[#0284c7] dark:text-[#38BDF8] uppercase tracking-wider border-[#38BDF8]/30 bg-[#38BDF8]/10 px-2 py-0.5 rounded-lg h-auto! shrink-0"
-                      >
-                        S{calculatedSessionNumber}
-                      </Badge>
-
-                      <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 font-mono shrink-0">
-                        {isLegacy
-                          ? "Import Session"
-                          : session.startTime && timestamp > 0
-                            ? new Date(
-                                session.startTime?.toMillis?.() ||
-                                  session.startTime,
-                              ).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : sDate
-                              ? "12:00 PM"
-                              : "--:--"}
-                      </span>
-
-                      {daysSincePrev !== null && (
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] sm:text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg h-auto! shrink-0"
-                        >
-                          {daysSincePrev === 1
-                            ? "1 Day Since"
-                            : `${daysSincePrev} Days Since`}
-                        </Badge>
-                      )}
-                    </div>
-
-                    <p className="text-[11px] sm:text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider truncate">
-                      {session.routineName
-                        ? `Routine ${session.routineName}`
-                        : isLegacy
-                          ? "Imported Session"
-                          : ""}
-                      {(session.routineName || isLegacy) && shorthandMachines
-                        ? " • "
-                        : ""}
-                      {shorthandMachines ||
-                        (!session.routineName && !isLegacy
-                          ? "No Machines Logged"
-                          : "")}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Total Volume */}
-                <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-sans">
-                    Total Volume
+                  )}
+                  <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    {group.items.length} {group.items.length === 1 ? "session" : "sessions"}
                   </span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-lg sm:text-2xl font-black text-slate-900 dark:text-slate-100 font-display">
-                      {totalVolume.toLocaleString()}
-                    </span>
-                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase">
-                      lbs
-                    </span>
-                  </div>
                 </div>
-              </div>
-            );
-          })}
+
+                <div className="flex flex-col gap-2">
+                  {group.items.map((session) => {
+                    const index = sessions.indexOf(session);
+                    const timestamp = parseSessionDate(session.date);
+                    const sDate = timestamp > 0 ? new Date(timestamp) : null;
+                    const completedIndex = completedSessions.findIndex((s) => s.id === session.id);
+                    const calculatedSessionNumber =
+                      completedIndex >= 0 ? completedSessions.length - completedIndex : "?";
+
+                    // Days since the previous session — the next item in the
+                    // reverse-chronological array.
+                    let daysSincePrev: number | null = null;
+                    if (index >= 0 && index < sessions.length - 1) {
+                      const prevTimestamp = parseSessionDate(sessions[index + 1].date);
+                      if (timestamp > 0 && prevTimestamp > 0) {
+                        daysSincePrev = Math.round((timestamp - prevTimestamp) / (1000 * 60 * 60 * 24));
+                      }
+                    }
+
+                    const isLegacy =
+                      session.legacy_filemaker_id ||
+                      session.trainerId === "legacy-trainer" ||
+                      session.trainerInitials === "Legacy" ||
+                      session.trainerInitials === "Chart";
+
+                    const sessionLogs = (allLogs || localAllLogs).filter((l) => l.sessionId === session.id);
+                    const totalVolume = Math.round(sessionLogs.reduce((acc, log) => acc + calculateExerciseVolume(log), 0));
+                    const machineNames = sessionLogs
+                      .map((l) => machines.find((mac) => mac.id === l.machineId)?.name || "Unknown")
+                      .filter((n) => n !== "Unknown");
+                    const shorthandMachines = machineNames.join(", ");
+
+                    const upper = session.routineName?.toUpperCase() || "";
+                    const isB = upper.includes("B");
+                    const isA = upper.includes("A");
+                    const letter = isB ? "B" : isA ? "A" : "•";
+                    const routineBg = isB
+                      ? "bg-cta text-white"
+                      : isA
+                        ? "bg-cyan text-white"
+                        : "bg-slate-400 dark:bg-slate-500 text-white";
+                    const initials = session.trainerInitials || "--";
+                    const timeLabel = isLegacy
+                      ? null
+                      : session.startTime && timestamp > 0
+                        ? new Date(session.startTime?.toMillis?.() || session.startTime).toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })
+                        : null;
+
+                    return (
+                      <div
+                        key={session.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          setSelectedDaySessions([session]);
+                          setActiveSessionIndex(0);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setSelectedDaySessions([session]);
+                            setActiveSessionIndex(0);
+                          }
+                        }}
+                        className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:gap-4 p-2 sm:p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all text-slate-800 dark:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a548b] dark:focus-visible:ring-[#4a9fd8]"
+                      >
+                        {/* Day tile — the calendar cell, lifted into the list. */}
+                        <div className="relative w-16 h-16 sm:w-18 sm:h-18 shrink-0 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-1.5 sm:p-2 flex flex-col">
+                          <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 leading-none">
+                            {sDate ? sDate.toLocaleDateString("default", { weekday: "short" }) : "—"}
+                          </span>
+                          <span className="text-xl sm:text-2xl font-black leading-none font-sans text-slate-900 dark:text-slate-100 mt-1">
+                            {sDate ? sDate.getDate() : "--"}
+                          </span>
+                          <div
+                            className={cn(
+                              "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black uppercase absolute top-1.5 right-1.5 shadow-sm",
+                              routineBg,
+                            )}
+                            title={session.routineName ? `Routine ${session.routineName}` : "No routine recorded"}
+                          >
+                            {letter}
+                          </div>
+                          <div
+                            className={cn(
+                              "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black uppercase absolute bottom-1.5 right-1.5 shadow-sm",
+                              getTrainerChipStyles(initials),
+                            )}
+                            title={`Trainer ${initials}`}
+                          >
+                            {initials}
+                          </div>
+                        </div>
+
+                        {/* What the tile has no room for. */}
+                        <div className="min-w-0 flex flex-col justify-center gap-1">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] sm:text-[11px] font-black text-[#034a84] dark:text-[#7cc0ee] uppercase tracking-wider border-[#0a548b]/25 bg-[#0a548b]/10 dark:border-[#4a9fd8]/30 dark:bg-[#4a9fd8]/10 px-2 py-0.5 rounded-lg h-auto! shrink-0"
+                            >
+                              S{calculatedSessionNumber}
+                            </Badge>
+                            <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 font-mono shrink-0">
+                              {isLegacy ? "Imported" : timeLabel ?? "—"}
+                            </span>
+                            {daysSincePrev !== null && (
+                              <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0">
+                                · {daysSincePrev === 1 ? "1 day" : `${daysSincePrev} days`} since last
+                              </span>
+                            )}
+                            {session.isCrossTrain && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] font-black uppercase tracking-wider border-[#0a548b]/30 text-[#034a84] dark:text-[#7cc0ee] dark:border-[#4a9fd8]/30 px-2 py-0.5 rounded-lg h-auto! shrink-0 inline-flex items-center gap-1"
+                              >
+                                <Network className="w-3 h-3" /> Cross-train
+                              </Badge>
+                            )}
+                            {isLegacy && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] font-black uppercase tracking-wider border-[#F06C22]/40 text-[#bc2c00] dark:text-[#ff9455] px-2 py-0.5 rounded-lg h-auto! shrink-0"
+                              >
+                                Imported
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-[11px] sm:text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider truncate">
+                            {session.routineName ? `Routine ${session.routineName}` : isLegacy ? "Imported session" : ""}
+                            {(session.routineName || isLegacy) && shorthandMachines ? " • " : ""}
+                            {shorthandMachines || (!session.routineName && !isLegacy ? "No machines logged" : "")}
+                          </p>
+                        </div>
+
+                        {/* Volume */}
+                        <div className="flex flex-col items-end justify-center shrink-0 pr-1 sm:pr-2">
+                          <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-sans">
+                            Volume
+                          </span>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-base sm:text-xl font-black text-slate-900 dark:text-slate-100 font-display tabular-nums">
+                              {totalVolume.toLocaleString()}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase">lbs</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ));
+          })()}
         </div>
       )}
 
