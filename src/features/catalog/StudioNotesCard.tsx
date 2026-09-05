@@ -95,8 +95,17 @@ export function StudioNotesCard({
 
   return (
     <>
+      {/* This is ONE shared text block, not per-trainer notes: everyone at
+          the studio reads and edits the same field, so a deletion is a
+          deletion for the whole location. That was not said anywhere, and a
+          trainer would only find out by doing it. (Sep 5 2026 iPad pass.) */}
       <p className="cat__notes-scope">
-        <UserCog size={12} aria-hidden /> Visible only at {scope}.
+        <UserCog size={12} aria-hidden /> {scope}’s shared clipboard
+      </p>
+      <p className="cat__notes-warning">
+        Everyone at this location sees and edits this same note, so anything
+        you delete is deleted for the whole studio. It does not follow you to
+        other locations.
       </p>
       <textarea
         id={textareaId}

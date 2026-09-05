@@ -835,6 +835,15 @@
   color: var(--cat-ink-muted);
 }
 
+/* The shared-and-destructive warning. Sits between the scope line and the
+   textarea so it is read before the field is touched, not after. */
+.cat__notes-warning {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--cat-ink-muted);
+}
+
 .cat__textarea {
   width: 100%;
   min-height: 6rem;
