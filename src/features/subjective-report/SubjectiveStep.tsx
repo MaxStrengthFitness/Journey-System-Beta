@@ -216,7 +216,7 @@ export function SubjectiveStep({
  * Category card
  * ====================================================================== */
 
-function CategoryCard({
+export function CategoryCard({
   def,
   value,
   onChange,
@@ -334,7 +334,7 @@ function CategoryCard({
  * Protein
  * ====================================================================== */
 
-function ProteinCard({
+export function ProteinCard({
   value,
   onChange,
   bodyWeightLbs,
@@ -495,7 +495,7 @@ function ProteinCard({
  * Hydration
  * ====================================================================== */
 
-function HydrationCard({
+export function HydrationCard({
   value,
   onChange,
   bodyWeightLbs,
@@ -641,7 +641,7 @@ function HydrationCard({
 
 const painKey = (region: BodyRegion, side: BodySide) => `${region}:${side}`;
 
-function PainMapCard({
+export function PainMapCard({
   value,
   onChange,
   previous,
@@ -932,7 +932,7 @@ function PainPointEditor({
  * Stress anchors
  * ====================================================================== */
 
-function StressCard({
+export function StressCard({
   value,
   onChange,
   clientFirstName,

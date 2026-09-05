@@ -77,7 +77,7 @@ export const REPORT_STEPS: ReportStepDef[] = [
   {
     id: "checkin",
     n: 5,
-    title: "90-day check-in",
+    title: "Client check-in",
     subtitle: "Sleep, energy, pain, habits, food",
     purpose:
       "How life is going outside the gym — scored the same way every 90 days so the trend is real. Protein, hydration, specific pain and what's stressing them live here too.",

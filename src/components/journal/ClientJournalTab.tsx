@@ -1,12 +1,18 @@
 /**
- * THE JOURNAL — one screen, three zones, read top to bottom the way a coach
- * actually approaches a client:
+ * THE JOURNAL — a safety rail, then four named areas.
  *
- *   1. BEFORE YOU START  — critical notes only, and only if there are any.
- *   2. COACHING FOCUS    — what every coach is working on, with pass/extend.
- *   3. THE STREAM        — quick-add, then a date-grouped timeline, with the
- *                          filter rail and the progress-report shelf parked in
- *                          a sidebar on wide screens.
+ *   BEFORE YOU START     — critical notes only, and only if there are any.
+ *                          Not an area: a rail, above everything, because it
+ *                          must be read before the client is touched.
+ *   1. PROGRESS REPORTS  — the shelf of finalized evaluations.
+ *   2. CLIENT CHECK-IN   — the modular assessment, filled a piece at a time.
+ *   3. FOCUS             — what each coach is working on, with pass/extend.
+ *   4. NOTES             — quick-add, then the date-grouped timeline, with
+ *                          the filter rail in a sidebar on wide screens.
+ *
+ * It used to be one column with the reports demoted to a sidebar card, and
+ * nobody found them. Four titled bands and a sticky jump rail instead: a
+ * 20-minute session has no time to scroll looking for the right one.
  *
  * On iPad portrait everything stacks into one column and the filter rail
  * becomes a horizontal chip bar; on landscape (xl) the sidebar splits off.
@@ -54,6 +60,7 @@ import { FocusBoard } from "./FocusBoard";
 import { JournalComposer } from "./JournalComposer";
 import { JournalEntryCard } from "./JournalEntryCard";
 import { ProgressReportArchive } from "./ProgressReportArchive";
+import { ClientCheckInPanel } from "./ClientCheckInPanel";
 
 type WindowFilter = "7d" | "30d" | "90d" | "all";
 
@@ -363,7 +370,7 @@ export function ClientJournalTab({
   /* -------------------------------- render ----------------------------- */
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {needsIndex && (
         <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-[11px] leading-snug text-amber-700 dark:text-amber-300">
           <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" />
@@ -379,164 +386,238 @@ export function ClientJournalTab({
         </div>
       )}
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
-        {/* ---------------------------- stream ---------------------------- */}
-        <div className="min-w-0 space-y-4">
-          {/* Composer first: the tab opens on the thing a trainer came to do —
-              write the note while it is fresh. The critical strip is pinned
-              directly beneath so "read this before you touch the client" is
-              the first thing under the cursor, not something scrolled past.
-              Both live in the stream column so the composer never stretches
-              across the whole landscape screen. */}
-          <div id="journal-composer">
-            <JournalComposer
-              clientFirstName={client?.firstName || ""}
-              machines={machines}
-              focusContext={focusContext}
-              onClearFocusContext={() => setFocusContext(null)}
-              onSubmit={handleCreate}
-              disabled={!clientId}
-            />
-          </div>
+      {/* Before you start. Not one of the four areas: it is a safety rail,
+          and it stays above them because a critical note is the one thing
+          that must be read before the client is touched. */}
+      <CriticalStrip entries={criticalEntries} machines={machines} />
 
-          <CriticalStrip entries={criticalEntries} machines={machines} />
+      {/* The four areas, and a rail to jump between them. A 20-minute
+          session does not have time to scroll looking for the right one. */}
+      <nav
+        aria-label="Journal areas"
+        className="sticky top-0 z-20 -mx-2 flex gap-1.5 overflow-x-auto border-b border-slate-200 bg-slate-50/95 px-2 py-2 backdrop-blur-sm no-scrollbar dark:border-slate-800 dark:bg-slate-950/95"
+      >
+        {JOURNAL_AREAS.map((area) => (
+          <a
+            key={area.id}
+            href={`#${area.id}`}
+            className="shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-500 transition-colors hover:border-[#F06C22]/40 hover:text-[#F06C22] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+          >
+            {area.label}
+          </a>
+        ))}
+      </nav>
 
-          <FocusBoard
-            focuses={focuses}
-            entries={entries}
-            machines={machines}
-            currentTrainerId={authTrainer?.id}
-            onCreate={handleCreateFocus}
-            onPass={handlePass}
-            onExtend={handleExtend}
-            onRetire={handleRetire}
-            onCheckIn={handleCheckIn}
-          />
+      {/* ------------------ 1 · CLIENT PROGRESS REPORTS ------------------ */}
+      <JournalArea
+        id="progress-reports"
+        title="Client Progress Reports"
+        blurb="Finalized evaluations, newest first. The shelf a coach reads before a review conversation."
+      >
+        <ProgressReportArchive
+          reports={progressReports}
+          onSelect={onSelectReport}
+          onDelete={onDeleteReport}
+          onNew={onNewReport}
+        />
+      </JournalArea>
 
-          {/* Filter rail collapses into a toggle below xl. */}
-          <div className="xl:hidden">
-            <button
-              type="button"
-              onClick={() => setShowFilters((v) => !v)}
-              className={cn(
-                "inline-flex h-10 items-center gap-1.5 rounded-xl border px-3.5 text-[11px] font-black uppercase tracking-wider transition-colors",
-                filtersActive
-                  ? "border-[#F06C22]/30 bg-[#F06C22]/10 text-[#F06C22]"
-                  : "border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400",
+      {/* ----------------------- 2 · CLIENT CHECK-IN --------------------- */}
+      <JournalArea
+        id="check-in"
+        title="Client Check-in"
+        blurb="Filled in a piece at a time and saved as you go. Open one topic, answer it, come back next session."
+      >
+        <ClientCheckInPanel client={client} trainer={authTrainer ?? null} machines={machines} />
+      </JournalArea>
+
+      {/* ---------------------------- 3 · FOCUS -------------------------- */}
+      <JournalArea
+        id="focus"
+        title="Focus"
+        blurb="What each coach is working on with this client, and whether it passed."
+      >
+        <FocusBoard
+          focuses={focuses}
+          entries={entries}
+          machines={machines}
+          currentTrainerId={authTrainer?.id}
+          onCreate={handleCreateFocus}
+          onPass={handlePass}
+          onExtend={handleExtend}
+          onRetire={handleRetire}
+          onCheckIn={handleCheckIn}
+        />
+      </JournalArea>
+
+      {/* ---------------------------- 4 · NOTES -------------------------- */}
+      <JournalArea
+        id="notes"
+        title="Notes"
+        blurb="Everything logged about this client, newest first. Write it while it is fresh."
+      >
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="min-w-0 space-y-4">
+            <div id="journal-composer">
+              <JournalComposer
+                clientFirstName={client?.firstName || ""}
+                machines={machines}
+                focusContext={focusContext}
+                onClearFocusContext={() => setFocusContext(null)}
+                onSubmit={handleCreate}
+                disabled={!clientId}
+              />
+            </div>
+
+            {/* Filter rail collapses into a toggle below xl. */}
+            <div className="xl:hidden">
+              <button
+                type="button"
+                onClick={() => setShowFilters((v) => !v)}
+                className={cn(
+                  "inline-flex h-10 items-center gap-1.5 rounded-xl border px-3.5 text-[11px] font-black uppercase tracking-wider transition-colors",
+                  filtersActive
+                    ? "border-[#F06C22]/30 bg-[#F06C22]/10 text-[#F06C22]"
+                    : "border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400",
+                )}
+              >
+                <Filter className="h-3.5 w-3.5" />
+                Filters
+                {filtersActive && <span className="ml-0.5">· on</span>}
+              </button>
+              {showFilters && (
+                <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70">
+                  {filterRail}
+                </div>
               )}
-            >
-              <Filter className="h-3.5 w-3.5" />
-              Filters
-              {filtersActive && <span className="ml-0.5">· on</span>}
-            </button>
-            {showFilters && (
-              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70">
-                {filterRail}
-              </div>
+            </div>
+
+            <div className="flex items-baseline justify-between gap-2">
+              <h4 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                Timeline
+              </h4>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
+                {visible.length} of {entries.length}
+              </span>
+            </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 py-16 text-slate-400 dark:border-slate-800">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-xs font-bold uppercase tracking-wider">Loading journal</span>
+          </div>
+        ) : grouped.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-800">
+            {entries.length === 0 ? (
+              <>
+                <BookOpen className="mb-3 h-9 w-9 text-slate-300 dark:text-slate-700" />
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Nothing logged yet
+                </p>
+                <p className="mt-1 max-w-xs text-[11px] text-slate-400">
+                  Write the first entry above. Consultation notes, incidents and
+                  session notes from elsewhere in the app land here automatically.
+                </p>
+              </>
+            ) : (
+              <>
+                <Clock className="mb-3 h-9 w-9 text-slate-300 dark:text-slate-700" />
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  No entries match these filters
+                </p>
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="mt-3 h-10 rounded-xl border border-slate-200 px-4 text-[11px] font-black uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                >
+                  Clear filters
+                </button>
+              </>
             )}
           </div>
+        ) : (
+          <div className="space-y-5">
+            {grouped.map((group) => (
+              <section key={group.label}>
+                <div className="mb-2 flex items-center gap-3">
+                  <h4 className="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                    {group.label}
+                  </h4>
+                  <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                  <span className="font-mono text-[10px] text-slate-300 dark:text-slate-600">
+                    {group.items.length}
+                  </span>
+                </div>
+                <div className="space-y-2.5">
+                  {group.items.map((entry) => (
+                    <JournalEntryCard
+                      key={entry.id}
+                      entry={entry}
+                      machines={machines}
+                      onArchive={entry.isLegacy ? undefined : handleArchive}
+                      onResolve={entry.isLegacy ? undefined : handleResolve}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
 
-          <div className="flex items-baseline justify-between gap-2">
-            <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
-              Timeline
-            </h3>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
-              {visible.length} of {entries.length}
-            </span>
           </div>
 
-          {isLoading ? (
-            <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 py-16 text-slate-400 dark:border-slate-800">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-xs font-bold uppercase tracking-wider">Loading journal</span>
+          <aside className="hidden min-w-0 space-y-4 xl:block">
+            <div className="sticky top-16 space-y-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70">
+                {filterRail}
+              </div>
+              <ReferenceShelf entries={referenceEntries} machines={machines} />
             </div>
-          ) : grouped.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-800">
-              {entries.length === 0 ? (
-                <>
-                  <BookOpen className="mb-3 h-9 w-9 text-slate-300 dark:text-slate-700" />
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Nothing logged yet
-                  </p>
-                  <p className="mt-1 max-w-xs text-[11px] text-slate-400">
-                    Write the first entry above. Consultation notes, incidents and
-                    session notes from elsewhere in the app land here automatically.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Clock className="mb-3 h-9 w-9 text-slate-300 dark:text-slate-700" />
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    No entries match these filters
-                  </p>
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="mt-3 h-10 rounded-xl border border-slate-200 px-4 text-[11px] font-black uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
-                  >
-                    Clear filters
-                  </button>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-5">
-              {grouped.map((group) => (
-                <section key={group.label}>
-                  <div className="mb-2 flex items-center gap-3">
-                    <h4 className="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                      {group.label}
-                    </h4>
-                    <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-                    <span className="font-mono text-[10px] text-slate-300 dark:text-slate-600">
-                      {group.items.length}
-                    </span>
-                  </div>
-                  <div className="space-y-2.5">
-                    {group.items.map((entry) => (
-                      <JournalEntryCard
-                        key={entry.id}
-                        entry={entry}
-                        machines={machines}
-                        onArchive={entry.isLegacy ? undefined : handleArchive}
-                        onResolve={entry.isLegacy ? undefined : handleResolve}
-                      />
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          )}
-        </div>
+          </aside>
 
-        {/* --------------------------- sidebar ---------------------------- */}
-        <aside className="hidden min-w-0 space-y-4 xl:block">
-          <div className="sticky top-4 space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70">
-              {filterRail}
-            </div>
+          <div className="xl:hidden">
             <ReferenceShelf entries={referenceEntries} machines={machines} />
-            <ProgressReportArchive
-              reports={progressReports}
-              onSelect={onSelectReport}
-              onDelete={onDeleteReport}
-              onNew={onNewReport}
-            />
           </div>
-        </aside>
-
-        {/* Reference shelf and reports move below the stream on narrower screens. */}
-        <div className="space-y-4 xl:hidden">
-          <ReferenceShelf entries={referenceEntries} machines={machines} />
-          <ProgressReportArchive
-            reports={progressReports}
-            onSelect={onSelectReport}
-            onDelete={onDeleteReport}
-            onNew={onNewReport}
-          />
         </div>
-      </div>
+      </JournalArea>
     </div>
+  );
+}
+
+const JOURNAL_AREAS = [
+  { id: "progress-reports", label: "Reports" },
+  { id: "check-in", label: "Check-in" },
+  { id: "focus", label: "Focus" },
+  { id: "notes", label: "Notes" },
+] as const;
+
+/**
+ * One of the four areas. A titled band with a one-line brief, so the tab
+ * reads as four rooms rather than one long column of cards — which is what
+ * it was, and why nobody could find the reports.
+ */
+function JournalArea({
+  id,
+  title,
+  blurb,
+  children,
+}: {
+  id: string;
+  title: string;
+  blurb: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section id={id} className="scroll-mt-16">
+      <div className="mb-3 flex items-baseline gap-3">
+        <h3 className="font-display text-lg font-black uppercase italic tracking-tight text-slate-900 dark:text-white">
+          {title}
+        </h3>
+        <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+      </div>
+      <p className="mb-3 text-[11px] font-medium text-slate-500 dark:text-slate-400">{blurb}</p>
+      {children}
+    </section>
   );
 }
 

@@ -943,7 +943,7 @@ export function ClientProgressReportView({
                 className="flex w-full items-center justify-between gap-3 text-left"
               >
                 <span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-white">
-                  <HeartPulse className="h-4 w-4 text-[#F06C22]" /> Coach view · 90-day check-in
+                  <HeartPulse className="h-4 w-4 text-[#F06C22]" /> Coach view · Client check-in
                   {(report.subjective.summary?.flags.length ?? 0) > 0 && (
                     <span className="rounded-md bg-rose-500 px-1.5 py-0.5 text-[10px] text-white">
                       {report.subjective.summary!.flags.filter((f) => f.severity === "red").length} red ·{" "}
