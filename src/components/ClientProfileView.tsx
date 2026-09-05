@@ -1807,6 +1807,7 @@ export function ClientProfileView({
             clientSettings={clientSettings}
             clientBodyWeight={parseInt(client?.weight || "150", 10)}
             allLogs={allLogs}
+            sessions={sessions}
             activeStudioId={activeStudioId}
             authTrainer={authTrainer}
           />

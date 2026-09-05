@@ -519,6 +519,13 @@ export interface Client {
   /** Per-machine lifetime rollups keyed by machineId. See ClientMachineStat. */
   machineStats?: Record<string, ClientMachineStat>;
   /**
+   * Set once the Equipment tab has rebuilt `machineStats` from the complete
+   * session history (clients created before the rollup existed). Until it is
+   * present the tab shows figures from the sessions it has loaded and labels
+   * them as partial.
+   */
+  machineStatsBackfilledAt?: any;
+  /**
    * Lifetime visit count as Mindbody counts it at the site. Distinct from
    * `sessionCount`, which is this app's own count of completed workouts — the
    * two will not agree and neither is wrong.

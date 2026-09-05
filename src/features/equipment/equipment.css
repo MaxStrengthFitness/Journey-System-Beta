@@ -272,6 +272,29 @@
   color: var(--eq-ink-faint);
   font-style: italic;
 }
+/* Progression since the first set — green up, plum down, muted flat. */
+.eq-item__prog {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-surface-2);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  color: var(--eq-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.eq-item__prog--up   { color: var(--eq-ok);   border-color: var(--eq-ok);   background: var(--eq-ok-fill); }
+.eq-item__prog--down { color: var(--eq-warn); border-color: var(--eq-warn); background: var(--eq-warn-fill); }
+/* "12×" — sessions the machine appeared in. Quiet on purpose. */
+.eq-item__count {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--eq-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
 
 /* ---------- Note indicator ------------------------------------------ */
 
@@ -472,6 +495,70 @@
   color: var(--eq-ink-muted);
 }
 .eq-rx__std b { color: var(--eq-ink-2); font-weight: 800; }
+
+/* ---------- History (first / times / last / progression) ------------- */
+
+.eq-use {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+@media (max-width: 1279px) { .eq-use { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.eq-use__stat {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 11px;
+  background: var(--eq-bg);
+  border: 1px solid var(--eq-border);
+}
+.eq-use__stat--prog { border-color: var(--eq-border-strong); }
+.eq-use__value {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--eq-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.eq-use__value small {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--eq-ink-muted);
+}
+.eq-use__value--up    { color: var(--eq-ok); }
+.eq-use__value--down  { color: var(--eq-warn); }
+.eq-use__value--empty { color: var(--eq-ink-faint); }
+.eq-use__sub {
+  margin: 3px 0 0;
+  min-height: 15px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--eq-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.eq-use__partial {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--eq-ink-faint);
+  white-space: nowrap;
+}
+.eq-use__never {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  font-style: italic;
+  color: var(--eq-ink-muted);
+}
 
 /* ---------- Weight steppers ------------------------------------------ */
 

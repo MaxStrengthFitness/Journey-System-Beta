@@ -190,6 +190,8 @@ SetupPromptDialog                                  used by WorkoutTrackerView
 | `NoteIndicator.tsx` | The three-state icon |
 | `ChangeHistory.tsx` | `machines/{id}/settingHistory` for this client |
 | `SetupPromptDialog.tsx` | In-session prompt (phase 6) |
+| `MachineUsageCard.tsx` | First / times / last performed + progression (§3.7) |
+| `useMachineStats.ts` | Reads `client.machineStats`; one-time history backfill |
 
 ### 3.2 The `EquipmentMachine` adapter — why it exists
 
@@ -277,3 +279,33 @@ does not turn into a loop.
 - **Reordering machines** from this tab. Studio display order is admin territory.
 - **Cross-machine bulk actions.** Mass-Apply was removed on purpose; if a real
   need appears it should be a reviewed, multi-select flow, not a single button.
+
+### 3.7 Usage figures (client profile redesign, Sep 2026)
+
+Each machine now carries **Date first performed**, **Times performed** and
+**Progression %** — in the rail as a `+29%` chip and a quiet `10×`, in the
+detail pane as the History card under the prescription.
+
+Where the numbers come from, in order of trust:
+
+1. `client.machineStats[machineId]` — the lifetime rollup that
+   `lib/client-rollups.ts` maintains on every session save and CSV import
+   (`firstPerformedDate`, `firstWeight`, `lastPerformedDate`, `lastWeight`,
+   `timesPerformed`). Trusted only once `client.machineStatsBackfilledAt` is
+   set, because a client who trained before the rollup existed has a field
+   that only counts recent sessions.
+2. Until then, `usageFromLogs` rebuilds the same shape from the sessions the
+   profile has loaded (the last page of history) and marks it `partial`; the
+   card says "from loaded sessions" and the chips carry the caveat in their
+   tooltip. Meanwhile `useMachineStats` fetches the complete history once,
+   runs `rollupFromHistory`, and writes `machineStats` + the marker back. The
+   next snapshot replaces the partial figures for good, on every surface.
+
+"Times performed" counts **sessions**, not sets — three sets of Leg Press in
+one visit is one performance. "Progression" is measured from the **first load
+ever performed** to the prescribed current weight (falling back to the last
+performed load), not from the prescription's starting weight: a starting
+weight is sometimes typed in months later from memory, whereas the first set
+is a fact that happened on the floor. Positive is green, negative plum, flat
+stays muted — a `0%` after ten sessions is a plateau worth seeing, so it is
+not hidden.
