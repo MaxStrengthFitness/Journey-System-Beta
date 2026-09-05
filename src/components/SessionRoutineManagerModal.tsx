@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -129,6 +129,18 @@ export function SessionRoutineManagerModal({
     }
   };
 
+  // A sequence entry with no match in `machines` was dropped by a bare
+  // `return null` in the list below: the row vanished, while its id stayed in
+  // localIds and was written back on Save. Mid-session, that means a trainer
+  // can neither see the machine nor remove it, and cannot tell that the
+  // routine they are looking at is not the routine they will save. Once the
+  // roster narrows to equipment a studio actually owns this stops being
+  // hypothetical, so name it rather than hide it. (Sep 5 2026.)
+  const unavailableIds = useMemo(
+    () => localIds.filter((id) => !machines.some((m) => m.id === id)),
+    [localIds, machines],
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-136 sm:max-w-136 w-full bg-bg-dark border border-div-d text-ink-d1 p-0 overflow-hidden shadow-2xl rounded-3xl flex flex-col h-[80vh] md:h-[70vh]">
@@ -143,6 +155,26 @@ export function SessionRoutineManagerModal({
 
         <div className="flex-1 overflow-y-auto bg-bg-dark p-4 md:p-6 custom-scrollbar">
           <div className="flex flex-col">
+            {unavailableIds.length > 0 && (
+              <div className="mb-3 rounded-2xl border border-amber-800/50 bg-amber-900/30 p-3 text-amber-200">
+                <p className="text-[11px] font-bold uppercase tracking-widest">
+                  Not available at this studio
+                </p>
+                <p className="mt-1 text-xs leading-relaxed">
+                  {unavailableIds.length}
+                  {unavailableIds.length === 1
+                    ? " machine in this routine is"
+                    : " machines in this routine are"}{" "}
+                  not on this location’s equipment list, so
+                  {unavailableIds.length === 1 ? " it is" : " they are"} not
+                  shown below and cannot be reordered here:{" "}
+                  <span className="font-mono">{unavailableIds.join(", ")}</span>.
+                  {unavailableIds.length === 1 ? " It stays" : " They stay"} in
+                  the routine when you save.
+                </p>
+              </div>
+            )}
+
             {localIds.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-12 min-h-50 border border-dashed border-div-l rounded-2xl bg-bg-l-card mt-2 text-ink-l">
                 No machines in sequence. Add some below.

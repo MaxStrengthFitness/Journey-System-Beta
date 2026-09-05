@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 const DraggableAny = Draggable as any;
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -19,6 +19,15 @@ interface RoutineBuilderViewProps {
 
 export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBuilderViewProps) {
   const [selectedSequence, setSelectedSequence] = useState<string[]>([]);
+  // MACHINE_LIST is the static catalog, so a custom studio machine
+  // (sm-{studio}-*) has no match and was dropped by a bare `return null`
+  // below - silently removed from the builder while staying in the saved
+  // sequence. Name it instead. (Sep 5 2026.)
+  const unavailableIds = useMemo(
+    () =>
+      selectedSequence.filter((id) => !MACHINE_LIST.some((m) => m.id === id)),
+    [selectedSequence],
+  );
   const [violations, setViolations] = useState<ValidationRuleViolation[]>([]);
   const [recommendedTemplate, setRecommendedTemplate] = useState(ROUTINE_TEMPLATES[0]);
   const [previewMode, setPreviewMode] = useState(false);
@@ -232,6 +241,13 @@ export function RoutineBuilderView({ client, onSaveRoutine, onBack }: RoutineBui
                       </div>
                     )}
                     
+                    {unavailableIds.length > 0 && (
+                      <div className="mb-2 rounded-md border border-amber-800/50 bg-amber-900/30 p-2 text-xs text-amber-200">
+                        <strong className="mr-2 font-bold uppercase">Not in the catalog:</strong>
+                        {unavailableIds.join(', ')} &mdash; kept in the sequence, but not shown or reorderable here.
+                      </div>
+                    )}
+
                     <Accordion type="multiple" className="w-full space-y-2">
                       {selectedSequence.map((machineId, index) => {
                         const machine = MACHINE_LIST.find(m => m.id === machineId);
