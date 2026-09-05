@@ -280,7 +280,10 @@ export function StudioTasksView({ authTrainer }: StudioTasksViewProps) {
           const complete = done === group.rows.length;
 
           return (
-            <section className="st__group" key={group.key}>
+            <section
+              className={`st__group${isMulti ? "" : " st__group--single"}`}
+              key={group.key}
+            >
               <div className="st__group-head">
                 <div className="st__group-text">
                   <span className="st__group-title">{first.title}</span>
@@ -345,14 +348,23 @@ export function StudioTasksView({ authTrainer }: StudioTasksViewProps) {
                           {row.machineName ?? row.title}
                         </span>
                         <span className="st__row-sub">
-                          {row.instance?.completedBy?.name
-                            ? `Done by ${row.instance.completedBy.name}`
-                            : row.template?.requiresNote
-                              ? "Note required"
-                              : row.machineName
-                                ? row.category
-                                : SHIFT_LABEL[row.shift]}
+                          {[
+                            row.instance?.completedBy?.name
+                              ? `Done by ${row.instance.completedBy.name}`
+                              : row.template?.requiresNote
+                                ? "Note required"
+                                : null,
+                            row.shift !== "any" ? SHIFT_LABEL[row.shift] : null,
+                            row.category,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </span>
+                        {!isMulti && row.template?.detail && (
+                          <span className="st__row-note">
+                            {row.template.detail}
+                          </span>
+                        )}
                         {row.instance?.note && (
                           <span className="st__row-note">
                             {row.instance.flagged && (

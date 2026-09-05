@@ -83,7 +83,11 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 0 1rem 1.5rem;
+  /* No bottom padding: the selection bar is sticky to the BOTTOM of this
+     container, and any padding here leaves a strip below it where content
+     shows through and reads as a rendering bug. The bar carries its own
+     breathing room instead. */
+  padding: 0 1rem;
 }
 .st__scroll > * { flex: none; }
 
@@ -109,10 +113,13 @@
 .st__progress { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
 .st__progress-text { font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--st-ink-muted); font-variant-numeric: tabular-nums; }
-.st__bar { width: 5rem; height: 6px; border-radius: 999px; background: var(--st-surface-3);
-  overflow: hidden; }
-.st__bar-fill { height: 100%; background: var(--st-done); border-radius: 999px;
-  transition: width 200ms ease; }
+/* Both are <span>s, so display has to be set explicitly: width and height do
+   not apply to an inline box, which is why the fill rendered as nothing. */
+.st__bar { display: inline-block; width: 6rem; height: 10px; border-radius: 999px;
+  background: var(--st-surface-3); border: 1px solid var(--st-border); overflow: hidden;
+  vertical-align: middle; }
+.st__bar-fill { display: block; height: 100%; min-width: 2px; background: var(--st-done);
+  border-radius: 999px; transition: width 200ms ease; }
 @media (prefers-reduced-motion: reduce) { .st__bar-fill { transition: none; } }
 
 .st__filters { display: inline-flex; padding: 3px; gap: 2px; background: var(--st-surface-2);
@@ -202,8 +209,8 @@
 
 /* ── selection bar ──────────────────────────────────────────────────────── */
 .st__selection { position: sticky; bottom: 0; z-index: 20; display: flex; align-items: center;
-  gap: 0.5rem; margin: 0.75rem 0 0; padding: 0.625rem 0.875rem; border: 1px solid var(--st-border);
-  border-radius: var(--st-radius); background: var(--st-surface);
+  gap: 0.5rem; margin: 0.75rem -1rem 0; padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--st-border); background: var(--st-surface);
   box-shadow: 0 -4px 20px var(--st-shadow); flex-wrap: wrap; }
 .st__selection-count { font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--st-ink); font-variant-numeric: tabular-nums;
@@ -222,3 +229,10 @@
 
 .st__sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+/* ── single-row task ─────────────────────────────────────────────────────
+   A facility or client task is one row. Rendering a card header AND a row
+   printed its title twice and cost 60px of vertical space per task — on a
+   list where the whole point is to see what is left at a glance. */
+.st__group--single .st__group-head { display: none; }
+.st__group--single .st__row-name { font-size: 13px; }
