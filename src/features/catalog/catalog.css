@@ -1010,3 +1010,19 @@
 /* The picker now only ever renders inside the sheet in stack mode, and the
    sheet is portalled outside .cat — so its list keeps its own scroller and the
    "nothing inside the root scrolls" rule is not broken by it. */
+
+/* A machine a trainer has reported a problem with. Sits under the clinical
+   note so it is read before anyone sets a client up on it. */
+.cat__flagged {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--cat-warn-border);
+  border-radius: 10px;
+  background: var(--cat-warn-fill);
+  color: var(--cat-warn);
+  font-size: 11px;
+  font-weight: 700;
+}
