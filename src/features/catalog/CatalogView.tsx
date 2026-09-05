@@ -12,6 +12,15 @@ import { MachineDetail } from "./MachineDetail";
 import { MachinePicker } from "./MachinePicker";
 import { X } from "lucide-react";
 import { machinesForBodySlug } from "./anatomy";
+import {
+  MachineUpkeepCard,
+  TaskNoteDialog,
+  setTaskStatus,
+  useMachineUpkeep,
+  useStudioTasks,
+  type TaskRow,
+} from "../studio-tasks";
+import { useToast } from "../../contexts/ToastContext";
 import { useCatalogMachines } from "./useCatalogMachines";
 import { useLayoutMode } from "./useLayoutMode";
 import type { GroupingMode } from "./types";
@@ -64,6 +73,15 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
   const [grouping, setGrouping] = useState<GroupingMode>("movement");
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  // Upkeep is read ONCE here and passed down. Mounting these inside the detail
+  // pane would re-subscribe on every machine tap — twenty-two listeners torn
+  // down and rebuilt while a trainer scrolls the rail.
+  const { success: toastSuccess, error: toastError } = useToast();
+  const { byMachineId: upkeepById } = useMachineUpkeep(activeStudioId);
+  const { rows: todayTaskRows } = useStudioTasks(activeStudioId);
+  const [noteRow, setNoteRow] = useState<TaskRow | null>(null);
+  const [upkeepBusy, setUpkeepBusy] = useState(false);
+
   const selected = useMemo(
     () => catalogMachines.find((m) => m.id === selectedId) ?? null,
     [catalogMachines, selectedId],
@@ -92,9 +110,61 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
     if (target) setSelectedId(target);
   };
 
+  const machineTaskRows = useMemo(() => {
+    const map: Record<string, TaskRow[]> = {};
+    for (const r of todayTaskRows) {
+      if (!r.machineId) continue;
+      (map[r.machineId] ??= []).push(r);
+    }
+    return map;
+  }, [todayTaskRows]);
+
   const author = authTrainer?.id
     ? { id: authTrainer.id, name: authTrainer.fullName ?? "" }
     : null;
+
+  const runUpkeep = async (
+    row: TaskRow,
+    status: "done" | "open",
+    note?: string,
+    flagged?: boolean,
+  ) => {
+    if (!activeStudioId) return;
+    setUpkeepBusy(true);
+    try {
+      await setTaskStatus({
+        studioId: activeStudioId,
+        planned: row,
+        status,
+        author,
+        note,
+        flagged,
+      });
+      toastSuccess(status === "done" ? "Marked done." : "Re-opened.");
+    } catch (err) {
+      console.error("Failed to update machine upkeep:", err);
+      toastError("Could not save. Check your connection.");
+    } finally {
+      setUpkeepBusy(false);
+    }
+  };
+
+  const upkeepFor = (machineId: string) => (
+    <MachineUpkeepCard
+      machineId={machineId}
+      rows={machineTaskRows[machineId] ?? []}
+      upkeep={upkeepById[machineId]}
+      busy={upkeepBusy}
+      onComplete={(row) => {
+        if (row.status !== "done" && row.template?.requiresNote) {
+          setNoteRow(row);
+          return;
+        }
+        runUpkeep(row, row.status === "done" ? "open" : "done");
+      }}
+      onAddNote={setNoteRow}
+    />
+  );
 
   const stage = selected ? (
     <AnatomyStage
@@ -107,6 +177,14 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
     />
   ) : null;
 
+  const flaggedIds = useMemo(
+    () =>
+      new Set(
+        Object.keys(upkeepById).filter((id) => upkeepById[id]?.flagged),
+      ),
+    [upkeepById],
+  );
+
   const picker = (
     <MachinePicker
       machines={catalogMachines}
@@ -114,6 +192,7 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
       onSelect={setSelectedId}
       grouping={grouping}
       onGroupingChange={setGrouping}
+      flaggedIds={flaggedIds}
     />
   );
 
@@ -149,6 +228,8 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
                 studioId={activeStudioId}
                 studioName={activeStudio?.name}
                 author={author}
+                upkeep={upkeepFor(selected.id)}
+                isFlagged={Boolean(upkeepById[selected.id]?.flagged)}
               />
             )}
           </div>
@@ -178,6 +259,8 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
           studioId={activeStudioId}
           studioName={activeStudio?.name}
           author={author}
+          upkeep={upkeepFor(selected.id)}
+          isFlagged={Boolean(upkeepById[selected.id]?.flagged)}
         />
       )}
 
@@ -203,6 +286,7 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
             </button>
           </div>
           <MachinePicker
+            flaggedIds={flaggedIds}
             machines={catalogMachines}
             selectedId={selectedId}
             onSelect={(id) => {
@@ -216,6 +300,15 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
           />
         </SheetContent>
       </Sheet>
+
+      <TaskNoteDialog
+        row={noteRow}
+        open={Boolean(noteRow)}
+        onOpenChange={(o) => !o && setNoteRow(null)}
+        onSubmit={(note, flagged) =>
+          noteRow ? runUpkeep(noteRow, "done", note, flagged) : undefined
+        }
+      />
     </div>
   );
 }

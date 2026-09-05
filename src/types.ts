@@ -1226,6 +1226,7 @@ export type View =
   | "consultation-wizard"
   | "machine-knowledge"
   | "machine-anatomy"
+  | "studio-tasks"
   | "client-directory"
   | "chart-importer"
   | "leaderboard"

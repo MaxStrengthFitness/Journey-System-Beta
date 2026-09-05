@@ -4,6 +4,7 @@ export type PermissionAction =
   | "view_all_studios"
   | "manage_all_studios"
   | "manage_studio" // edit settings, announcement
+  | "manage_studio_tasks" // author the cleaning/maintenance/ops checklist
   | "manage_studio_settings" // site parameters
   | "create_trainer"
   | "edit_trainer"
@@ -191,6 +192,10 @@ export function hasPermission(
 
     case "manage_studio":
     case "manage_studio_settings":
+    // Authoring the task list sets the standard the floor is held to, so it
+    // sits with the people who run the floor. COMPLETING a task is not gated
+    // here — any trainer can close one, which is the whole point of the screen.
+    case "manage_studio_tasks":
       if (isOwner(trainer)) {
         return isStudioInTerritory(trainer, evaluationStudioId, networks);
       }

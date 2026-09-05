@@ -1,7 +1,10 @@
+import type React from "react";
 import {
   Activity,
   Settings2,
   Target,
+  Sparkles,
+  TriangleAlert,
   UserCog,
   Users,
   Wrench,
@@ -30,6 +33,9 @@ export interface MachineDetailProps {
   studioId: string | null;
   studioName?: string;
   author?: { id: string; name: string } | null;
+  /** Cleaning/maintenance card, owned by features/studio-tasks. */
+  upkeep?: React.ReactNode;
+  isFlagged?: boolean;
 }
 
 export function MachineDetail({
@@ -37,6 +43,8 @@ export function MachineDetail({
   studioId,
   studioName,
   author,
+  upkeep,
+  isFlagged,
 }: MachineDetailProps) {
   const specs = [
     {
@@ -81,6 +89,12 @@ export function MachineDetail({
         <h2 className="cat__title">{machine.name}</h2>
         {machine.clinicalNote && (
           <p className="cat__note">{machine.clinicalNote}</p>
+        )}
+        {isFlagged && (
+          <p className="cat__flagged">
+            <TriangleAlert size={13} aria-hidden /> Flagged for maintenance —
+            see Upkeep below.
+          </p>
         )}
       </header>
 
@@ -183,6 +197,17 @@ export function MachineDetail({
                 <li key={i}>{c}</li>
               ))}
             </ul>
+          </Section>
+        )}
+
+        {upkeep && (
+          <Section
+            id="upkeep"
+            title="Upkeep"
+            icon={<Sparkles size={14} aria-hidden />}
+            {...section("upkeep", Boolean(isFlagged))}
+          >
+            {upkeep}
           </Section>
         )}
 

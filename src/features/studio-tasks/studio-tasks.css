@@ -1,0 +1,290 @@
+/* ==========================================================================
+   Studio To-Do
+   --------------------------------------------------------------------------
+   Round: Studio To-Do, Sep 2026.
+
+   Same discipline as features/catalog: tokens only, no hex in components,
+   light on :root and dark on .dark, and ONE scroller — AppContent's <main>
+   already bounds this view and the bottom nav is a sibling after </main>, so
+   there is no viewport maths and no bottom padding to clear a bar that is not
+   overlapping anything.
+
+   Contrast checked to WCAG 2.1 AA: text >= 4.5:1, non-text UI >= 3:1.
+   ========================================================================== */
+
+:root {
+  --st-bg:            #f1f5f8;
+  --st-surface:       #ffffff;
+  --st-surface-2:     #e8eef2;
+  --st-surface-3:     #dae1e6;
+  --st-border:        #d3dadf;
+  --st-border-strong: #a9b2b9;
+
+  --st-ink:       #121c23;
+  --st-ink-2:     #3e4952;
+  --st-ink-muted: #5b6770;
+  --st-ink-faint: #848e95;
+
+  --st-done:      #1c7a52;   /* 4.9:1 */
+  --st-done-fill: #e3f1ea;
+  --st-live:      #0a548b;   /* 7.9:1 */
+  --st-live-fill: #e6eef3;
+  --st-flag:        #8a5300; /* 5.1:1 */
+  --st-flag-fill:   #fdf3e3;
+  --st-flag-border: #e5c48f;
+  --st-hero:      #ef5302;
+
+  --st-radius: 14px;
+  --st-shadow: rgba(18, 28, 35, 0.10);
+}
+
+.dark, [data-theme="dark"] {
+  --st-bg:            #070b0f;
+  --st-surface:       #0e151c;
+  --st-surface-2:     #151e27;
+  --st-surface-3:     #1d2833;
+  --st-border:        #1f2a35;
+  --st-border-strong: #3a4855;
+
+  --st-ink:       #eef3f7;
+  --st-ink-2:     #b3c0cb;
+  --st-ink-muted: #8b98a4;
+  --st-ink-faint: #63707c;
+
+  --st-done:      #34d399;
+  --st-done-fill: rgba(52, 211, 153, 0.12);
+  --st-live:      #38bdf8;
+  --st-live-fill: rgba(56, 189, 248, 0.12);
+  --st-flag:        #fbbf24;
+  --st-flag-fill:   rgba(251, 191, 36, 0.10);
+  --st-flag-border: rgba(251, 191, 36, 0.32);
+  --st-hero:      #ff6a1f;
+
+  --st-shadow: rgba(0, 0, 0, 0.5);
+}
+
+.st {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--st-bg);
+  color: var(--st-ink);
+}
+
+.st *, .st *::before, .st *::after { box-sizing: border-box; }
+
+/* The one scroller. Children may not shrink — flex-shrink defaults to 1, so a
+   column flex container compresses them to fit BEFORE it lets itself scroll,
+   and the overflow then paints under whatever follows. */
+.st__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  /* No bottom padding: the selection bar is sticky to the BOTTOM of this
+     container, and any padding here leaves a strip below it where content
+     shows through and reads as a rendering bug. The bar carries its own
+     breathing room instead. */
+  padding: 0 1rem;
+}
+.st__scroll > * { flex: none; }
+
+/* ── header ─────────────────────────────────────────────────────────────── */
+.st__head {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 0 0.75rem;
+  background: var(--st-bg);
+  border-bottom: 1px solid var(--st-border);
+}
+
+.st__title { margin: 0; font-size: 15px; font-weight: 900; font-style: italic;
+  text-transform: uppercase; letter-spacing: -0.01em; }
+.st__date { display: block; font-size: 10px; font-weight: 800; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--st-ink-muted); }
+
+.st__progress { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+.st__progress-text { font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--st-ink-muted); font-variant-numeric: tabular-nums; }
+/* Both are <span>s, so display has to be set explicitly: width and height do
+   not apply to an inline box, which is why the fill rendered as nothing. */
+.st__bar { display: inline-block; width: 6rem; height: 10px; border-radius: 999px;
+  background: var(--st-surface-3); border: 1px solid var(--st-border); overflow: hidden;
+  vertical-align: middle; }
+.st__bar-fill { display: block; height: 100%; min-width: 2px; background: var(--st-done);
+  border-radius: 999px; transition: width 200ms ease; }
+@media (prefers-reduced-motion: reduce) { .st__bar-fill { transition: none; } }
+
+.st__filters { display: inline-flex; padding: 3px; gap: 2px; background: var(--st-surface-2);
+  border: 1px solid var(--st-border); border-radius: 12px; flex-wrap: wrap; }
+.st__filter { min-height: 40px; padding: 0 0.75rem; border: 0; border-radius: 9px;
+  background: transparent; color: var(--st-ink-muted); font: inherit; font-size: 10px;
+  font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer;
+  white-space: nowrap; }
+.st__filter[aria-pressed="true"] { background: var(--st-surface); color: var(--st-ink);
+  box-shadow: 0 1px 2px var(--st-shadow); }
+.st__filter:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+
+/* ── group card ─────────────────────────────────────────────────────────── */
+.st__group { margin-top: 0.75rem; border: 1px solid var(--st-border);
+  border-radius: var(--st-radius); background: var(--st-surface); overflow: hidden; }
+
+.st__group-head { display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 0.875rem; border-bottom: 1px solid var(--st-border);
+  background: var(--st-surface-2); }
+.st__group-text { min-width: 0; flex: 1; }
+.st__group-title { display: block; font-size: 13px; font-weight: 800; color: var(--st-ink);
+  overflow-wrap: anywhere; }
+.st__group-meta { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--st-ink-muted); font-variant-numeric: tabular-nums; }
+.st__group-detail { margin: 0.375rem 0 0; font-size: 12px; line-height: 1.5;
+  color: var(--st-ink-2); }
+
+.st__chip { display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 999px;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.st__chip--shift { background: var(--st-live-fill); color: var(--st-live); }
+.st__chip--flag { background: var(--st-flag-fill); color: var(--st-flag); }
+
+/* ── rows ───────────────────────────────────────────────────────────────── */
+.st__rows { display: flex; flex-direction: column; }
+
+/* The row is a DIV holding two buttons. The note control is interactive, and
+   nesting a button inside a button is invalid HTML — the inner one becomes
+   unreachable by keyboard and screen readers announce it wrong. */
+.st__row { display: flex; align-items: center; gap: 0.25rem; width: 100%;
+  padding-right: 0.5rem; border-top: 1px solid var(--st-border); }
+.st__rows > .st__row:first-child { border-top: 0; }
+.st__row:hover { background: var(--st-surface-2); }
+
+.st__row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.75rem;
+  min-height: 52px; padding: 0.5rem 0.875rem; border: 0; background: transparent;
+  color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.st__row-main:disabled { cursor: default; }
+.st__row-main:focus-visible { outline: 2px solid var(--st-live); outline-offset: -2px; }
+
+.st__box { flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border: 2px solid var(--st-border-strong); border-radius: 8px;
+  color: transparent; }
+.st__row[data-status="done"] .st__box { background: var(--st-done); border-color: var(--st-done);
+  color: #fff; }
+.st__row[data-status="skipped"] .st__box { background: var(--st-surface-3);
+  border-color: var(--st-border-strong); color: var(--st-ink-muted); }
+.st__row[data-selected="true"] { background: var(--st-live-fill); }
+.st__row[data-selected="true"] .st__box { border-color: var(--st-live); }
+
+.st__row-text { flex: 1; min-width: 0; }
+.st__row-name { display: block; font-size: 13px; font-weight: 700; color: var(--st-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st__row[data-status="done"] .st__row-name,
+.st__row[data-status="skipped"] .st__row-name { color: var(--st-ink-muted); }
+.st__row-sub { display: block; font-size: 11px; color: var(--st-ink-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st__row-note { display: block; margin-top: 2px; font-size: 11px; line-height: 1.45;
+  color: var(--st-ink-2); white-space: normal; }
+
+.st__row-action { flex: none; display: inline-flex; align-items: center;
+  justify-content: center; width: 40px; height: 40px; border: 0; border-radius: 999px;
+  background: transparent; color: var(--st-ink-muted); cursor: pointer; }
+.st__row-action:hover { background: var(--st-surface-3); color: var(--st-ink); }
+.st__row-action:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+
+/* ── buttons ────────────────────────────────────────────────────────────── */
+.st__btn { min-height: 40px; padding: 0 0.875rem; border: 1px solid var(--st-border-strong);
+  border-radius: 10px; background: var(--st-surface); color: var(--st-ink); font: inherit;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+  cursor: pointer; white-space: nowrap; }
+.st__btn:hover { background: var(--st-surface-2); }
+.st__btn:disabled { opacity: 0.55; cursor: default; }
+.st__btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+.st__btn--primary { border-color: transparent; background: var(--st-live); color: #fff; }
+.st__btn--done { border-color: transparent; background: var(--st-done); color: #fff; }
+.st__btn--ghost { border-color: transparent; background: transparent; color: var(--st-ink-muted); }
+
+/* ── selection bar ──────────────────────────────────────────────────────── */
+.st__selection { position: sticky; bottom: 0; z-index: 20; display: flex; align-items: center;
+  gap: 0.5rem; margin: 0.75rem -1rem 0; padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--st-border); background: var(--st-surface);
+  box-shadow: 0 -4px 20px var(--st-shadow); flex-wrap: wrap; }
+.st__selection-count { font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--st-ink); font-variant-numeric: tabular-nums;
+  margin-right: auto; }
+
+/* ── empty / flag banner ────────────────────────────────────────────────── */
+.st__empty { padding: 3rem 1.5rem; text-align: center; color: var(--st-ink-muted); }
+.st__empty-title { font-size: 12px; font-weight: 800; letter-spacing: 0.16em;
+  text-transform: uppercase; }
+.st__empty-body { margin: 0.5rem auto 0; max-width: 26rem; font-size: 12px;
+  line-height: 1.6; color: var(--st-ink-faint); }
+
+.st__banner { display: flex; align-items: flex-start; gap: 0.5rem; margin-top: 0.75rem;
+  padding: 0.75rem 0.875rem; border: 1px solid var(--st-flag-border); border-radius: var(--st-radius);
+  background: var(--st-flag-fill); color: var(--st-flag); font-size: 12px; line-height: 1.5; }
+
+.st__sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+/* ── single-row task ─────────────────────────────────────────────────────
+   A facility or client task is one row. Rendering a card header AND a row
+   printed its title twice and cost 60px of vertical space per task — on a
+   list where the whole point is to see what is left at a glance. */
+.st__group--single .st__group-head { display: none; }
+.st__group--single .st__row-name { font-size: 13px; }
+
+/* ==========================================================================
+   MACHINE UPKEEP CARD — rendered inside the Catalog's detail pane
+   --------------------------------------------------------------------------
+   Its own prefix because it lives in another feature's layout. It borrows
+   nothing from .cat and .cat borrows nothing from it; both read tokens from
+   :root, which is the only thing they share.
+   ========================================================================== */
+
+.stu { display: flex; flex-direction: column; gap: 0.625rem; }
+
+.stu__flag { display: flex; align-items: flex-start; gap: 0.5rem; margin: 0;
+  padding: 0.625rem 0.75rem; border: 1px solid var(--st-flag-border);
+  border-radius: 10px; background: var(--st-flag-fill); color: var(--st-flag);
+  font-size: 12px; line-height: 1.5; }
+.stu__flag-icon { flex: none; margin-top: 2px; }
+.stu__flag-by { color: inherit; opacity: 0.85; }
+
+.stu__facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem; margin: 0; }
+.stu__facts dt { display: flex; align-items: center; gap: 0.3rem; font-size: 9px;
+  font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--st-ink-muted); }
+.stu__facts dd { margin: 0.2rem 0 0; font-size: 12px; font-weight: 700;
+  color: var(--st-ink); overflow-wrap: anywhere; }
+
+.stu__none { margin: 0; font-size: 12px; color: var(--st-ink-muted); }
+
+.stu__tasks { list-style: none; margin: 0; padding: 0; display: flex;
+  flex-direction: column; gap: 0.375rem; }
+.stu__task { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.5rem;
+  border: 1px solid var(--st-border); border-radius: 10px; background: var(--st-surface); }
+.stu__task[data-done] .stu__task-name { color: var(--st-ink-muted); }
+
+.stu__tick { flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border: 2px solid var(--st-border-strong); border-radius: 8px;
+  background: transparent; color: transparent; cursor: pointer; }
+.stu__task[data-done] .stu__tick { background: var(--st-done); border-color: var(--st-done);
+  color: #fff; }
+.stu__tick:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+
+.stu__task-text { flex: 1; min-width: 0; }
+.stu__task-name { display: block; font-size: 12px; font-weight: 700; color: var(--st-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stu__task-sub { display: block; font-size: 10px; color: var(--st-ink-muted); }
+
+.stu__note { flex: none; min-height: 32px; padding: 0 0.6rem; border: 1px solid var(--st-border);
+  border-radius: 8px; background: transparent; color: var(--st-ink-muted); font: inherit;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  cursor: pointer; }
+.stu__note:hover { background: var(--st-surface-2); color: var(--st-ink); }
+.stu__note:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }

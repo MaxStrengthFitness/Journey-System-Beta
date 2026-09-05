@@ -29,6 +29,8 @@ export interface MachinePickerProps {
   /** Renders wider, two-up items for the sheet. */
   variant?: "rail" | "sheet";
   autoFocusSearch?: boolean;
+  /** Machines a trainer has reported a problem with. */
+  flaggedIds?: Set<string>;
 }
 
 function groupOf(machine: CatalogMachine, mode: GroupingMode): string {
@@ -45,6 +47,7 @@ export function MachinePicker({
   onGroupingChange,
   variant = "rail",
   autoFocusSearch = false,
+  flaggedIds,
 }: MachinePickerProps) {
   const [search, setSearch] = useState("");
 
@@ -146,16 +149,19 @@ export function MachinePicker({
                   onClick={() => onSelect(m.id)}
                 >
                   <span className="cat__item-name">{m.name}</span>
-                  {(m.isStudioCustom || m.rosterStatus === "maintenance") && (
+                  {(m.isStudioCustom ||
+                    m.rosterStatus === "maintenance" ||
+                    flaggedIds?.has(m.id)) && (
                     <span className="cat__item-meta">
                       {m.isStudioCustom && (
                         <span className="cat__badge cat__badge--custom">
                           Studio
                         </span>
                       )}
-                      {m.rosterStatus === "maintenance" && (
+                      {(m.rosterStatus === "maintenance" ||
+                        flaggedIds?.has(m.id)) && (
                         <span className="cat__badge cat__badge--maintenance">
-                          Maintenance
+                          {flaggedIds?.has(m.id) ? "Flagged" : "Maintenance"}
                         </span>
                       )}
                     </span>
