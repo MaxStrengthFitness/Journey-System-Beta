@@ -76,8 +76,13 @@ export interface JourneyGridProps {
    * sizes itself to the viewport that is left (minus `viewportReserve` for a
    * bottom bar / legend). Use this under a static page header on a page that
    * is NOT itself height-bounded — the grid, not the page, scrolls.
+   * "page": the inverse of "viewport". The grid is exactly as tall as its
+   * machine list, so the PAGE scrolls and the grid has no vertical scrollbar
+   * of its own. Sessions still scroll sideways inside the grid — the page
+   * must never scroll horizontally. Rows keep a readable fixed height
+   * instead of being squeezed to fit a box.
    */
-  layout?: "auto" | "fill" | "viewport";
+  layout?: "auto" | "fill" | "viewport" | "page";
   /** CSS length for the scroll container when layout="auto". */
   maxHeight?: string;
   /** Pixels kept free under the grid in "viewport" layout (bottom bar, legend). */
@@ -582,6 +587,21 @@ export function JourneyGrid({
     const OLDER_W = 26;
     const HEAD_H = 40;
     const measure = () => {
+      // "page" has no height budget to solve for: the list sets the page's
+      // length, so rows keep their readable height and only the COLUMN
+      // width is fitted to the width we were handed.
+      if (layout === "page") {
+        const availWPage =
+          el.clientWidth - MACHINE_W - (showStats ? STAT_W : 0) - (hasOlderColumn ? OLDER_W : 0);
+        const wantPage = Math.max(10, Math.min(targetColumns, Math.max(1, cols)));
+        const colWPage = Math.max(56, Math.min(84, Math.floor(availWPage / wantPage)));
+        setFitVars((prev) =>
+          prev && prev.rowH === 38 && prev.colW === colWPage && prev.dense === false
+            ? prev
+            : { rowH: 38, colW: colWPage, dense: false },
+        );
+        return;
+      }
       // Height we may fill: the viewport that is left under the header, or
       // the flex box the parent handed us.
       let availH: number;
@@ -618,7 +638,7 @@ export function JourneyGrid({
     };
   }, [fit, layout, viewportReserve, rowCount, dividerCount, showStats, hasOlderColumn, cols, targetColumns, settingsDisplay]);
 
-  const effectiveMaxH = layout === "viewport" ? viewportMaxH : maxHeight;
+  const effectiveMaxH = layout === "page" ? undefined : layout === "viewport" ? viewportMaxH : maxHeight;
   const style = {
     "--jg-cols": cols,
     ...(effectiveMaxH ? { "--jg-max-h": effectiveMaxH } : null),
@@ -640,7 +660,7 @@ export function JourneyGrid({
 
   return (
     <div
-      className={`jg ${layout === "fill" ? "jg--fill" : ""}`}
+      className={`jg ${layout === "fill" ? "jg--fill" : ""} ${layout === "page" ? "jg--page" : ""}`}
       data-live={live ? "true" : "false"}
       data-stats={showStats ? "true" : "false"}
       data-older={hasOlderColumn ? "true" : "false"}

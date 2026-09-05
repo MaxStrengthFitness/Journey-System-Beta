@@ -71,6 +71,29 @@
 .jg--fill .jg-scroller { flex: 1 1 auto; min-height: 0; max-height: none; }
 .jg-view { display: flex; flex-direction: column; gap: 0; min-height: 0; }
 .jg-view--fill { flex: 1 1 auto; height: 100%; }
+
+/* ---- "page" layout ---------------------------------------------------
+   Marker 3: the grid used to be a box with its own vertical scrollbar,
+   sitting in a page that did not scroll, so 21 machines were read four at
+   a time through a letterbox with dead space underneath.
+
+   Here the scroller is exactly as tall as its content. It still carries
+   overflow-x for the session timeline — the page must never scroll
+   sideways — and the overflow-y:auto that a non-visible overflow-x forces
+   onto it therefore never has anything to scroll. The machine list sets
+   the length of the page, which is the only thing that scrolls.        */
+.jg--page { display: block; }
+.jg--page .jg-scroller {
+  max-height: none;
+  min-height: 0;
+  height: auto;
+  /* Chain vertical scrolling straight out to the page; keep the horizontal
+     timeline from dragging the page sideways with it. */
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+  touch-action: pan-x pan-y;
+}
+.jg-view--page { display: block; flex: none; height: auto; min-height: 0; }
 .jg-view__legend { padding: 10px 2px 0; flex: none; }
 
 /* ---- the scroller ---------------------------------------------------- */

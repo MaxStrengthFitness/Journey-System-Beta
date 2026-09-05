@@ -1776,14 +1776,15 @@ export function ClientProfileView({
             </TabsList>
           </div>
         </div>
+        {/* Marker 13: the settings used to live in a 100dvh-340px box with
+            its own scrollbar. Natural height now; the page scrolls. */}
         <TabsContent
           value="details"
-          className="mt-0 flex-1 min-h-0 flex flex-col focus-visible:outline-none"
+          className="mt-0 focus-visible:outline-none"
         >
           {client && (
             <ClientInfoSheet
               variant="inline"
-              className="h-[calc(100dvh-340px)] min-h-[560px]"
               isOpen
               onOpenChange={() => setActiveTab("journey")}
               client={client}
@@ -1812,9 +1813,11 @@ export function ClientProfileView({
             authTrainer={authTrainer}
           />
         </TabsContent>
+        {/* Marker 3: no `overflow-hidden`, no bounded height. The machine
+            list is as long as it is and the PAGE scrolls to meet it. */}
         <TabsContent
           value="journey"
-          className="mt-0 flex-1 overflow-hidden min-h-0 flex flex-col rounded-xl relative"
+          className="mt-0 rounded-xl relative focus-visible:outline-none"
         >
           <RecentJourneyView
             sessions={journeyGridSessions}
@@ -1822,7 +1825,7 @@ export function ClientProfileView({
             hasMoreOnServer={hasMoreSessions}
             onLoadMore={handleLoadMoreHistory}
             loadingMore={isLoadingMore}
-            layout="viewport"
+            layout="page"
             onSelectMachine={openJourneyMachineSettings}
           />
         </TabsContent>

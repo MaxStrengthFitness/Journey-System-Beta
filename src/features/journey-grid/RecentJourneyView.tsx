@@ -24,7 +24,7 @@ export interface RecentJourneyViewProps {
    * grid scrolls in the space under the client header. "auto": the grid caps
    * at `maxHeight` and the page scrolls.
    */
-  layout?: "fill" | "auto" | "viewport";
+  layout?: "fill" | "auto" | "viewport" | "page";
   maxHeight?: string;
   /** Pixels kept free under the grid in "viewport" layout. */
   viewportReserve?: number;
@@ -98,7 +98,10 @@ export function RecentJourneyView({
   }, [rows, order]);
 
   return (
-    <section className={`jg-view ${layout === "fill" ? "jg-view--fill" : ""}`} aria-label="Recent journey">
+    <section
+      className={`jg-view ${layout === "fill" ? "jg-view--fill" : ""} ${layout === "page" ? "jg-view--page" : ""}`}
+      aria-label="Recent journey"
+    >
       <GridToolbar title="Recent journey">
         <div className="jg-seg" role="radiogroup" aria-label="Row order">
           {(["sequence", "group"] as RowOrder[]).map((o) => (
