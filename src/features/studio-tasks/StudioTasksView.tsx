@@ -71,11 +71,8 @@ export function StudioTasksView({
     return map;
   }, [clients]);
 
-  const { rows, templates, dateKey, loading, counts } = useStudioTasks(
-    activeStudioId,
-    undefined,
-    clientNames,
-  );
+  const { rows, templates, dateKey, loading, counts, machineCount } =
+    useStudioTasks(activeStudioId, undefined, clientNames);
   const [filter, setFilter] = useState<ShiftFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [noteRow, setNoteRow] = useState<TaskRow | null>(null);
@@ -317,13 +314,25 @@ export function StudioTasksView({
               aria-hidden
               className="mx-auto mb-3 opacity-40"
             />
-            <p className="st__empty-title">Nothing scheduled today</p>
+            {/* Three different silences, and they used to read identically.
+                Saved-but-nothing-due is normal; saved-but-no-equipment is a
+                setup gap that used to look exactly like "the task did not
+                save". (Sep 5 2026.) */}
+            <p className="st__empty-title">
+              {activeStudioId && templates.length > 0 && machineCount === 0
+                ? "No equipment for this studio"
+                : "Nothing scheduled today"}
+            </p>
             <p className="st__empty-body">
-              {activeStudioId
-                ? canManage
-                  ? "Add cleaning, maintenance and opening/closing duties with Manage, and they will appear here on the days they are due."
-                  : "A studio manager can add cleaning, maintenance and opening/closing duties, and they will appear here on the days they are due."
-                : "Select a studio to see its checklist."}
+              {!activeStudioId
+                ? "Select a studio to see its checklist."
+                : templates.length > 0 && machineCount === 0
+                  ? "This studio has saved tasks, but no machines are available to attach them to, so anything targeting equipment produces no rows. Add this location’s machines in Admin → Machines."
+                  : templates.length > 0
+                    ? "There are saved tasks, but none of them fall due today."
+                    : canManage
+                      ? "Add cleaning, maintenance and opening/closing duties with Manage, and they will appear here on the days they are due."
+                      : "A studio manager can add cleaning, maintenance and opening/closing duties, and they will appear here on the days they are due."}
             </p>
           </div>
         )}

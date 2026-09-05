@@ -79,7 +79,12 @@ export function TaskManager({
   clients,
 }: TaskManagerProps) {
   const { success: toastSuccess, error: toastError } = useToast();
-  const { machines } = useStudioMachines(studioId);
+  // Bridged for the same reason as useStudioTasks: an unbridged empty roster
+  // renders this picker as a bordered box with nothing in it, which reads as
+  // a broken button rather than as missing data.
+  const { machines } = useStudioMachines(studioId, {
+    bridgeWhenRosterEmpty: true,
+  });
   const [draft, setDraft] = useState<TaskTemplate | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -421,6 +426,13 @@ export function TaskManager({
                         </button>
                       );
                     })}
+                    {machines.length === 0 && (
+                      <p className="text-[11px] leading-relaxed text-muted-foreground">
+                        No equipment is available for this studio yet, so there
+                        is nothing to choose. Add this location’s machines in
+                        Admin → Machines, or pick “Every machine” above.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

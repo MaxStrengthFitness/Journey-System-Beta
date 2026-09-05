@@ -25,6 +25,8 @@ export interface UseStudioTasksResult {
   dateKey: string;
   loading: boolean;
   counts: { total: number; done: number; flagged: number };
+  /** Machines the day plan expanded over. 0 means machine tasks make no rows. */
+  machineCount: number;
 }
 
 export function useStudioTasks(
@@ -36,7 +38,11 @@ export function useStudioTasks(
 ): UseStudioTasksResult {
   const day = dateKey ?? studioDateKey(new Date()) ?? "";
 
-  const { machines } = useStudioMachines(studioId);
+  // Bridged: before the roster backfill runs studios/{id}/roster is empty, and
+  // an unbridged read here makes every machine task silently produce no rows.
+  const { machines } = useStudioMachines(studioId, {
+    bridgeWhenRosterEmpty: true,
+  });
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [instances, setInstances] = useState<Record<string, TaskInstance>>({});
   const [templatesLoaded, setTemplatesLoaded] = useState(false);
@@ -145,5 +151,6 @@ export function useStudioTasks(
     dateKey: day,
     loading: !templatesLoaded || !instancesLoaded,
     counts,
+    machineCount: machineIds.length,
   };
 }
