@@ -74,6 +74,18 @@
   --jg-q-poor-fill:    #f4e9f0;
   --jg-q-poor-hatch:   rgba(162, 69, 126, 0.16);
 
+  /* Load movement ----------------------------------------------------- *
+     The one thing this methodology drives up. Emerald, because every other
+     hue in the grid is spoken for — orange is the brand's action, blue is
+     "you can act on this", gold is a full inroad — and because "the number
+     went up" is the one meaning a green reads as instantly and correctly.
+     A drop is deliberately NOT red: dropping the pin is a coaching
+     decision, not a failure, so it stays in the neutral ink.             */
+  --jg-gain:           #0f7a52;   /* 5.3:1 on white                        */
+  --jg-gain-fill:      #e3f5ec;
+  --jg-gain-edge:      #1a9c69;
+  --jg-drop:           var(--jg-ink-muted);
+
   /* Misc ------------------------------------------------------------- */
   --jg-focus-ring:     var(--jg-live);
   --jg-sticky-shadow:  rgba(18, 28, 35, 0.10);
@@ -125,6 +137,11 @@
   --jg-q-poor-fill:    #372438;
   --jg-q-poor-hatch:   rgba(224, 125, 184, 0.14);
 
+  --jg-gain:           #3fca8e;   /* 8.0:1 on surface                      */
+  --jg-gain-fill:      #123028;
+  --jg-gain-edge:      #2fae77;
+  --jg-drop:           var(--jg-ink-muted);
+
   --jg-sticky-shadow:  rgba(0, 0, 0, 0.45);
   --jg-dim:            0.34;
 
@@ -162,6 +179,10 @@
     --jg-q-poor-text:    #f8a7d4;
     --jg-q-poor-fill:    #372438;
     --jg-q-poor-hatch:   rgba(224, 125, 184, 0.14);
+    --jg-gain:           #3fca8e;
+    --jg-gain-fill:      #123028;
+    --jg-gain-edge:      #2fae77;
+    --jg-drop:           var(--jg-ink-muted);
     --jg-sticky-shadow:  rgba(0, 0, 0, 0.45);
     --jg-dim:            0.34;
     color-scheme: dark;

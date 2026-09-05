@@ -88,6 +88,22 @@ export function journeySummary(row: JourneyRow, history: JourneySession[]): stri
 /** Trend of a set vs the previous logged set on the same machine. */
 export type Trend = "up" | "down" | "flat" | "reps-up" | "reps-down" | null;
 
+/**
+ * Pounds gained or lost against the previous logged set, or null when the
+ * load did not move (or there is nothing to compare against).
+ *
+ * This method inroads the muscle under continuous tension; the load is what
+ * the trainer is actually driving up, and reps are the by-product of how
+ * deep a given load took them. 58 → 60 lb is the win even when reps halve,
+ * so the delta gets its own number in the cell rather than being flattened
+ * into an up-arrow that looks the same as "one more rep".
+ */
+export function loadDelta(current: JourneySet, previous: JourneySet | undefined): number | null {
+  if (!previous) return null;
+  const d = current.weight - previous.weight;
+  return d === 0 ? null : d;
+}
+
 export function trendVsPrevious(current: JourneySet, previous: JourneySet | undefined): Trend {
   if (!previous) return null;
   if (current.weight > previous.weight) return "up";

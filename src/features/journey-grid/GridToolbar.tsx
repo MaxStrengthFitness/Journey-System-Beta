@@ -61,7 +61,7 @@ export function QualityLegend({ compact = false }: { compact?: boolean } = {}) {
         Latest session
       </span>
       <span className="jg-legend__item jg-legend__item--quiet">
-        &#9650;&#9660; load vs last &middot; &#8593;&#8595; reps vs last
+        <span className="jg-delta jg-delta--gain">+2</span> load vs last &middot; &#8593;&#8595; reps vs last
       </span>
     </div>
   );
