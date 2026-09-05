@@ -2,7 +2,43 @@ import { ActivityLevel, OCCUPATIONS } from "./occupational-matrix";
 import { Client, WorkoutSession, ExerciseLog } from "../types";
 import { MACHINE_LIST } from "./machine-database";
 import { safeToDate } from "../lib/utils";
-import { machineMuscleMap } from "./machineMuscleMap";
+import { MACHINE_ANATOMY } from "./machine-anatomy-map";
+import type { MuscleId } from "../types/machines";
+
+/**
+ * Which roll-up bucket each muscle belongs to.
+ *
+ * Exhaustive over MuscleId (Record, not Partial) so adding a muscle to the
+ * vocabulary is a type error here rather than a silent "Core" in the insights
+ * dashboard — which is what the previous inline string lists did whenever a
+ * name drifted.
+ */
+const MUSCLE_GROUP_CATEGORY: Record<MuscleId, string> = {
+  quads: "Legs",
+  hamstrings: "Legs",
+  glutes: "Legs",
+  calves: "Legs",
+  adductors: "Legs",
+  abductors: "Legs",
+
+  pecs: "Chest",
+
+  lats: "Back",
+  rhomboids: "Back",
+  traps: "Back",
+  "lower-back": "Back",
+
+  biceps: "Arms & Shoulders",
+  triceps: "Arms & Shoulders",
+  forearms: "Arms & Shoulders",
+  "delts-front": "Arms & Shoulders",
+  "delts-rear": "Arms & Shoulders",
+  neck: "Arms & Shoulders",
+
+  abs: "Core",
+  obliques: "Core",
+};
+
 
 /**
  * Defines the parameters for isolating specific demographic cohorts within the
@@ -264,33 +300,11 @@ export class InsightsAggregator {
     Object.entries(machineEfficacyMap).forEach(([machineId, entry]) => {
       if (entry.clientGains.length === 0) return;
       const mapping =
-        machineMuscleMap[machineId] || machineMuscleMap[`m-${machineId}`];
-      let category = "Core";
-      if (mapping && mapping.primary && mapping.primary.length > 0) {
-        const p = mapping.primary[0];
-        if (
-          ["quadriceps", "gluteal", "hamstring", "calves", "adductor"].includes(
-            p,
-          )
-        ) {
-          category = "Legs";
-        } else if (["chest"].includes(p)) {
-          category = "Chest";
-        } else if (["upper-back", "lower-back", "trapezius"].includes(p)) {
-          category = "Back";
-        } else if (
-          [
-            "biceps",
-            "triceps",
-            "front-deltoids",
-            "back-deltoids",
-            "neck",
-            "forearm",
-          ].includes(p)
-        ) {
-          category = "Arms & Shoulders";
-        }
-      }
+        MACHINE_ANATOMY[machineId] || MACHINE_ANATOMY[`m-${machineId}`];
+      const primary = mapping?.primary?.[0];
+      const category = primary
+        ? (MUSCLE_GROUP_CATEGORY[primary] ?? "Core")
+        : "Core";
       muscleGroupGains[category].push(...entry.clientGains);
     });
 

@@ -39,16 +39,33 @@ export function AppHeader({
         isLight ? "bg-white border-div-l" : "bg-bg-dark-2 border-div-d",
       )}
     >
-      <div className="flex items-center gap-3">
+      {/* min-w-0 is what lets this cluster shrink at all. Without it the flex
+          item refuses to go below its content width, so a long studio name
+          CLIPS instead of truncating — which is how the end of a name went
+          missing with no ellipsis to say it had. */}
+      <div className="flex items-center gap-3 min-w-0">
         <MaxStrengthLogo
           size="md"
           showText={false}
-          className={isLight ? "text-ink-l1" : "text-white"}
+          className={cn("shrink-0", isLight ? "text-ink-l1" : "text-white")}
         />
         <button
           onClick={onStudioClick}
+          // This control SWITCHES STUDIOS. A half-rendered name is genuinely
+          // ambiguous across a franchise with similar location names, so the
+          // full one has to stay recoverable.
+          title={studioName}
+          aria-label={
+            onStudioClick
+              ? `Studio: ${studioName}. Change studio.`
+              : `Studio: ${studioName}`
+          }
           className={cn(
-            "font-display italic text-xs sm:text-lg md:text-xl leading-none mt-1 uppercase justify-center transition-opacity text-left truncate max-w-37.5 sm:max-w-none",
+            // ch, not px: the cap scales with the font so it holds across the
+            // whole text-xs -> sm:text-lg -> md:text-xl ramp instead of
+            // clipping at only some sizes. max-w-37.5 (150px) was tuned for
+            // one size and cut mid-word at the others.
+            "font-display italic text-xs sm:text-lg md:text-xl leading-none mt-1 uppercase justify-center transition-opacity text-left truncate max-w-[14ch] sm:max-w-[20ch] lg:max-w-[28ch]",
             isLight ? "text-ink-l3" : "text-white",
             onStudioClick
               ? "hover:opacity-75 cursor-pointer"

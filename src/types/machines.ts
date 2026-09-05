@@ -131,6 +131,69 @@ const BODY_SLUG_MAP: Record<MuscleId, string> = {
 };
 
 /**
+ * Which side of the figure each muscle is actually drawn on.
+ *
+ * The model has one 'deltoids' region and one 'trapezius' region that appear on
+ * both sides, and 'forearm'/'neck' likewise. Everything else belongs to exactly
+ * one view — which is the whole reason preferredView exists, and the thing that
+ * has to be checked when a mapping is authored: a machine whose PRIMARY muscle
+ * is invisible on its preferred view renders a figure lit only by its
+ * synergists, which is what the Hip Abduction report turned out to be.
+ */
+export const MUSCLE_VISIBLE_ON: Record<MuscleId, ('front' | 'back')[]> = {
+  pecs: ['front'],
+  'delts-front': ['front', 'back'],
+  'delts-rear': ['front', 'back'],
+  biceps: ['front'],
+  forearms: ['front', 'back'],
+  abs: ['front'],
+  obliques: ['front'],
+  adductors: ['front'],
+  abductors: ['back'],
+  quads: ['front'],
+  traps: ['front', 'back'],
+  rhomboids: ['back'],
+  lats: ['back'],
+  triceps: ['back'],
+  'lower-back': ['back'],
+  glutes: ['back'],
+  hamstrings: ['back'],
+  calves: ['back'],
+  neck: ['front', 'back'],
+};
+
+/** True when this muscle is drawn on this side of the figure. */
+export function isMuscleVisibleOn(id: MuscleId, view: 'front' | 'back'): boolean {
+  return MUSCLE_VISIBLE_ON[id]?.includes(view) ?? false;
+}
+
+/** Every muscle id the diagram knows, for runtime validation of loose data. */
+export const ALL_MUSCLE_IDS = Object.keys(BODY_SLUG_MAP) as MuscleId[];
+
+/** True when an arbitrary string is a MuscleId the diagram can paint. */
+export function isMuscleId(value: string): value is MuscleId {
+  return Object.prototype.hasOwnProperty.call(BODY_SLUG_MAP, value);
+}
+
+/** The body model's region slug for one muscle id. */
+export function toBodySlug(id: MuscleId): string | undefined {
+  return BODY_SLUG_MAP[id];
+}
+
+/**
+ * Every muscle id that paints onto one of the body model's regions.
+ *
+ * The reverse of toBodySlug, and deliberately many-to-one: tapping the figure's
+ * single 'deltoids' region has to match both delts-front and delts-rear, and
+ * 'gluteal' has to match both glutes and abductors. Anything that needs to go
+ * from a region the user touched back to our vocabulary goes through here, so
+ * BODY_SLUG_MAP stays the only place the library's names are written down.
+ */
+export function musclesForBodySlug(slug: string): MuscleId[] {
+  return ALL_MUSCLE_IDS.filter((id) => BODY_SLUG_MAP[id] === slug);
+}
+
+/**
  * Translate our muscle ids into the body model's slugs, de-duplicated —
  * several of ours collapse onto one region, and highlighting the same
  * region twice makes it render at double intensity.
@@ -431,8 +494,16 @@ interface RosterEntryBase {
   /** Falls back to the catalog's defaultOrder, then machine-display-order.ts. */
   order?: number;
 
-  /** The Catalog view's "Studio Notes" box writes HERE, not to the global
-   *  catalog doc — that write was leaking one studio's notes to all of them. */
+  /**
+   * MANAGER-authored note on this studio's copy of the machine.
+   *
+   * NOT where the Catalog's "Studio Notes" box writes. That box is used by
+   * floor trainers, and this document is manager-write only in firestore.rules
+   * (isStudioOwnerOrHeadTrainer) precisely because `overrides` below can
+   * rewrite safety content. Trainer notes live in the sibling collection
+   * studios/{studioId}/machineNotes/{machineId} — see
+   * features/catalog/mutations.ts for the full reasoning.
+   */
   studioNotes?: string;
 
   /** Optional physical unit tracking; enables maintenance reporting. */

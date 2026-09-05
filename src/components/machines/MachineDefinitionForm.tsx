@@ -26,6 +26,7 @@ import {
   TurnaroundRule,
   settingFieldKey,
 } from "../../types/machines";
+import { MuscleSelector } from "../anatomy";
 
 /**
  * MACHINE DEFINITION FORM
@@ -547,6 +548,29 @@ export function MachineDefinitionForm({
             fields below carry the precise anatomy with joint actions — the diagram
             has no region for Multifidus or Pectineus, but a coach still needs to read it.
           </p>
+
+          {/* The figure renders what the chips below actually produce. Every
+              muscle-mapping bug found this round was invisible in a list of
+              nineteen toggles and obvious the moment the figure was drawn. */}
+          <Field label="Diagram preview">
+            <MuscleSelector
+              primary={value.primaryMuscles}
+              secondary={[...value.secondaryMuscles, ...value.synergistMuscles]}
+              view={value.preferredView === "back" ? "back" : "front"}
+              onChange={(next) => {
+                set("primaryMuscles", next.primary);
+                // The figure paints two intensities; secondary is the field it
+                // writes back to, and synergists stay chip-only.
+                set(
+                  "secondaryMuscles",
+                  next.secondary.filter(
+                    (m) => !value.synergistMuscles.includes(m),
+                  ),
+                );
+              }}
+              onSuggestView={(v) => set("preferredView", v)}
+            />
+          </Field>
 
           <Field label="Primary — diagram">
             <MusclePicker selected={value.primaryMuscles} onChange={(m) => set("primaryMuscles", m)} />
