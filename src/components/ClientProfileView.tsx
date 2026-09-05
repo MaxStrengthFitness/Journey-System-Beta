@@ -112,7 +112,7 @@ import {
 import { ROUTINE_TEMPLATES, RoutineTemplateType } from "../constants";
 import { ClientFocusDashboard } from "./ClientFocusDashboard";
 import { getCompletedSessionCount } from "../lib/session-count-cache";
-import { ClientClinicalReviewPreloader } from "./ClientClinicalReviewPreloader";
+import { ClinicalReviewTab } from "../features/clinical-review";
 import { ClientInfoSheet } from "./ClientInfoSheet";
 import {
   Client,
@@ -1534,11 +1534,7 @@ export function ClientProfileView({
   useEffect(() => {
     if (!clientId || hasQuotaError) return;
 
-    if (
-      activeTab !== "journey" &&
-      activeTab !== "history" &&
-      activeTab !== "clinical"
-    ) {
+    if (activeTab !== "journey" && activeTab !== "history") {
       return;
     }
 
@@ -2531,14 +2527,19 @@ export function ClientProfileView({
           value="clinical"
           className="mt-0 flex-1 min-h-125 focus-visible:outline-none"
         >
+          {/* Sep 2026: nothing loads on open. The tab is a "Generate clinical
+              report" gate with a date range; the report is compiled from
+              exactly that window. See src/features/clinical-review/. */}
           {client && (
-            <ClientClinicalReviewPreloader
+            <ClinicalReviewTab
               client={client}
               machines={machines}
-              initialLogs={allLogs}
-              initialSessions={sessions}
-              onOpenBriefing={() => setView("workouts")}
-              onClose={() => setActiveTab("journey")}
+              trainers={trainers}
+              timeZone={
+                studios?.find((s) => s.id === client.homeStudioId)?.timezone ||
+                undefined
+              }
+              disabled={!!hasQuotaError}
             />
           )}
         </TabsContent>

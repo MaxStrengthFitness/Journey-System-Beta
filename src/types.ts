@@ -73,6 +73,13 @@ export interface PreSessionCheckIn {
 
   stressLevel?: 1 | 2 | 3 | 4 | 5;
   hydration?: "low" | "ok" | "good";
+  /**
+   * One-tap energy and mood (Sep 2026), captured in the briefing beside
+   * sleep and stress so the Clinical Review can cross-reference them with
+   * rep quality and tonnage. `undefined` = not asked / not answered.
+   */
+  energyLevel?: "low" | "normal" | "high";
+  mood?: "low" | "neutral" | "good";
   note?: string;
 }
 
