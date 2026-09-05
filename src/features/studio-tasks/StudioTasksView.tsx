@@ -13,6 +13,9 @@ import { useActiveStudio } from "../../ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
 import { setManyTaskStatuses, setTaskStatus } from "./mutations";
+import { taskLocationOf, taskScopeOf } from "./types";
+import type { TaskLocation } from "./types";
+import { auth } from "../../firebase";
 import { TaskManager } from "./TaskManager";
 import { TaskNoteDialog } from "./TaskNoteDialog";
 import { useStudioTasks } from "./useStudioTasks";
@@ -71,8 +74,48 @@ export function StudioTasksView({
     return map;
   }, [clients]);
 
+  // The Firebase Auth uid, NOT authTrainer.id: personal tasks live at
+  // trainers/{uid}/task* and the rule is request.auth.uid == trainerId. The
+  // two ids coincide for trainers created through Auth but not for every
+  // older document, and getting it wrong here means a silent permission
+  // denial on somebody else's account.
+  const ownerId = auth.currentUser?.uid ?? null;
+
   const { rows, templates, dateKey, loading, counts, machineCount } =
-    useStudioTasks(activeStudioId, undefined, clientNames);
+    useStudioTasks(activeStudioId, { ownerId, clientNames });
+
+  /**
+   * A selection can span both tiers, and they are different collections, so
+   * one batch cannot cover both. Group by where each row actually lives and
+   * write each group. Returns the total written so callers can report it.
+   */
+  const writeMany = async (
+    chosen: TaskRow[],
+    status: "done" | "open",
+  ): Promise<number> => {
+    const groups = new Map<
+      string,
+      { location: TaskLocation; planned: TaskRow[] }
+    >();
+    for (const r of chosen) {
+      const location = taskLocationOf(r.template ?? {}, activeStudioId!);
+      const key =
+        location.scope === "personal" ? `personal:${location.ownerId}` : "studio";
+      const g = groups.get(key) ?? { location, planned: [] };
+      g.planned.push(r);
+      groups.set(key, g);
+    }
+    let written = 0;
+    for (const g of groups.values()) {
+      written += await setManyTaskStatuses({
+        location: g.location,
+        planned: g.planned,
+        status,
+        author,
+      });
+    }
+    return written;
+  };
   const [filter, setFilter] = useState<ShiftFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [noteRow, setNoteRow] = useState<TaskRow | null>(null);
@@ -152,7 +195,7 @@ export function StudioTasksView({
     await run(
       () =>
         setTaskStatus({
-          studioId: activeStudioId!,
+          location: taskLocationOf(row.template ?? {}, activeStudioId!),
           planned: row,
           status: next,
           author,
@@ -166,12 +209,7 @@ export function StudioTasksView({
     if (pending.length === 0) return;
     await run(
       () =>
-        setManyTaskStatuses({
-          studioId: activeStudioId!,
-          planned: pending,
-          status: "done",
-          author,
-        }),
+        writeMany(pending, "done"),
       `Marked ${pending.length} done.`,
     );
   };
@@ -186,12 +224,7 @@ export function StudioTasksView({
     }
     await run(
       () =>
-        setManyTaskStatuses({
-          studioId: activeStudioId!,
-          planned: chosen,
-          status,
-          author,
-        }),
+        writeMany(chosen, status),
       `${status === "done" ? "Marked" : "Re-opened"} ${chosen.length}.`,
     );
     setSelected(new Set());
@@ -202,7 +235,7 @@ export function StudioTasksView({
     await run(
       () =>
         setTaskStatus({
-          studioId: activeStudioId!,
+          location: taskLocationOf(noteRow.template ?? {}, activeStudioId!),
           planned: noteRow,
           status: "done",
           author,
@@ -256,16 +289,17 @@ export function StudioTasksView({
             </div>
           )}
 
-          {canManage && (
-            <button
-              type="button"
-              className="st__btn"
-              onClick={() => setManaging(true)}
-            >
-              <Settings2 size={14} aria-hidden className="inline align-middle" />{" "}
-              Manage
-            </button>
-          )}
+          {/* Open to everyone now: a manager authors the studio list here, and
+              a trainer authors their own. What each may create is decided
+              inside the dialog, not by hiding the button. */}
+          <button
+            type="button"
+            className="st__btn"
+            onClick={() => setManaging(true)}
+          >
+            <Settings2 size={14} aria-hidden className="inline align-middle" />{" "}
+            {canManage ? "Manage" : "My tasks"}
+          </button>
 
           <div className="st__progress">
             <span className="st__progress-text">
@@ -352,6 +386,18 @@ export function StudioTasksView({
                 <div className="st__group-text">
                   <span className="st__group-title">{first.title}</span>
                   <span className="st__group-meta">
+                    {taskScopeOf(first.template ?? {}) === "personal" && (
+                      <span
+                        className="st__chip"
+                        style={{
+                          background: "var(--st-live)",
+                          color: "#fff",
+                          borderColor: "transparent",
+                        }}
+                      >
+                        Mine
+                      </span>
+                    )}{" "}
                     {first.shift !== "any" && (
                       <span className="st__chip st__chip--shift">
                         {SHIFT_LABEL[first.shift]}
@@ -531,12 +577,7 @@ export function StudioTasksView({
                   onClick={() =>
                     run(
                       () =>
-                        setManyTaskStatuses({
-                          studioId: activeStudioId!,
-                          planned: allPending,
-                          status: "done",
-                          author,
-                        }),
+                        writeMany(allPending, "done"),
                       `Marked ${allPending.length} done.`,
                     )
                   }
@@ -550,11 +591,13 @@ export function StudioTasksView({
         )}
       </div>
 
-      {canManage && (
+      {(
         <TaskManager
           open={managing}
           onOpenChange={setManaging}
           studioId={activeStudioId}
+          canManageStudio={canManage}
+          ownerId={ownerId}
           templates={templates}
           author={author}
           clients={clients}

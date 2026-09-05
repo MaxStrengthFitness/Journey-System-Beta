@@ -260,6 +260,28 @@ service cloud.firestore {
              isStudioOwnerOrHeadTrainer(get(/databases/$(database)/documents/trainers/$(trainerId)).data.primaryHomeStudioId));
       }
 
+      // PERSONAL TASKS — a trainer's own to-do list (Sep 2026).
+      //
+      // Deliberately a separate PATH rather than a `scope` field on the shared
+      // studios/{id}/task* collections. Rules cannot enforce "only your own
+      // rows" on a LIST query unless every query carries a matching
+      // constraint, so privacy would rest on every future query being written
+      // correctly, and one unconstrained read added later would leak every
+      // trainer's private list at once. Here it is structural: the uid in the
+      // path IS the tenancy.
+      //
+      // trainerId is the Firebase Auth uid, which is why this compares against
+      // request.auth.uid directly and costs no document read. Not even a
+      // studio owner can read these: a private list is private, and the
+      // shared list is where anything a manager needs to see belongs.
+      match /taskTemplates/{templateId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == trainerId;
+      }
+
+      match /taskInstances/{instanceId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == trainerId;
+      }
+
     }
 
     // CLIENTS: All authenticated trainers can read clients (needed to start sessions)

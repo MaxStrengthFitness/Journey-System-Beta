@@ -8,6 +8,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "../../contexts/ToastContext";
 import type { Client } from "../../types";
+import { taskLocationOf, taskScopeOf } from "./types";
+import type { TaskScope } from "./types";
 import { useStudioMachines } from "../../hooks/useStudioMachines";
 import {
   deleteTaskTemplate,
@@ -48,10 +50,16 @@ const KINDS: { value: TaskKind; label: string; category: TaskCategory }[] = [
   { value: "client", label: "With a client", category: "client-service" },
 ];
 
-function blank(studioId: string): TaskTemplate {
+function blank(
+  studioId: string,
+  scope: TaskScope,
+  ownerId: string | null,
+): TaskTemplate {
   return {
     id: "",
     studioId,
+    scope,
+    ...(scope === "personal" && ownerId ? { ownerId } : {}),
     title: "",
     kind: "machine",
     category: "cleaning",
@@ -65,6 +73,10 @@ export interface TaskManagerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   studioId: string | null;
+  /** May this trainer author the SHARED studio list? Personal is always on. */
+  canManageStudio: boolean;
+  /** Firebase Auth uid — the path and the tenancy for personal tasks. */
+  ownerId: string | null;
   templates: TaskTemplate[];
   author?: { id: string; name: string } | null;
   clients?: Client[];
@@ -74,6 +86,8 @@ export function TaskManager({
   open,
   onOpenChange,
   studioId,
+  canManageStudio,
+  ownerId,
   templates,
   author,
   clients,
@@ -90,9 +104,20 @@ export function TaskManager({
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // A trainer without manage rights opens this dialog to write their OWN
+  // list, so they must not be shown - or be able to open - the shared studio
+  // templates. Filtering the list is the guard; the rules are the backstop.
+  const visibleTemplates = useMemo(
+    () =>
+      canManageStudio
+        ? templates
+        : templates.filter((t) => taskScopeOf(t) === "personal"),
+    [templates, canManageStudio],
+  );
+
   const sorted = useMemo(
     () =>
-      [...templates].sort(
+      [...visibleTemplates].sort(
         (a, b) =>
           Number(b.active) - Number(a.active) ||
           (a.order ?? 999) - (b.order ?? 999) ||
@@ -104,9 +129,11 @@ export function TaskManager({
   const set = <K extends keyof TaskTemplate>(k: K, v: TaskTemplate[K]) =>
     setDraft((d) => (d ? { ...d, [k]: v } : d));
 
-  const startNew = () => {
+  const startNew = (scope: TaskScope) => {
     if (!studioId) return;
-    setDraft(blank(studioId));
+    if (scope === "studio" && !canManageStudio) return;
+    if (scope === "personal" && !ownerId) return;
+    setDraft(blank(studioId, scope, ownerId));
     setIsNew(true);
     setConfirmDelete(false);
   };
@@ -132,7 +159,7 @@ export function TaskManager({
     try {
       const id = draft.id || newTemplateId(draft.title);
       await saveTaskTemplate({
-        studioId,
+        location: taskLocationOf(draft, studioId),
         template: { ...draft, id, order: draft.order ?? sorted.length + 1 },
         author: author ?? null,
         isNew,
@@ -151,7 +178,7 @@ export function TaskManager({
     if (!studioId) return;
     try {
       await setTaskTemplateActive({
-        studioId,
+        location: taskLocationOf(t, studioId),
         templateId: t.id,
         active: !t.active,
         author: author ?? null,
@@ -166,7 +193,7 @@ export function TaskManager({
     if (!draft || !studioId || !draft.id) return;
     setBusy(true);
     try {
-      await deleteTaskTemplate(studioId, draft.id);
+      await deleteTaskTemplate(taskLocationOf(draft, studioId), draft.id);
       toastSuccess("Task deleted.");
       close();
     } catch {
@@ -195,7 +222,17 @@ export function TaskManager({
                 <ChevronLeft size={18} aria-hidden />
               </button>
             )}
-            {draft ? (isNew ? "New task" : "Edit task") : "Studio tasks"}
+            {draft
+              ? isNew
+                ? taskScopeOf(draft) === "personal"
+                  ? "New personal task"
+                  : "New studio task"
+                : taskScopeOf(draft) === "personal"
+                  ? "Edit personal task"
+                  : "Edit studio task"
+              : canManageStudio
+                ? "Studio tasks"
+                : "My tasks"}
           </DialogTitle>
         </DialogHeader>
 
@@ -251,13 +288,23 @@ export function TaskManager({
               </div>
             ))}
 
+            {canManageStudio && (
+              <button
+                type="button"
+                className="st__btn st__btn--primary mt-2 flex items-center justify-center gap-2"
+                onClick={() => startNew("studio")}
+                disabled={!studioId}
+              >
+                <Plus size={14} aria-hidden /> New studio task
+              </button>
+            )}
             <button
               type="button"
-              className="st__btn st__btn--primary mt-2 flex items-center justify-center gap-2"
-              onClick={startNew}
-              disabled={!studioId}
+              className="st__btn mt-2 flex items-center justify-center gap-2"
+              onClick={() => startNew("personal")}
+              disabled={!studioId || !ownerId}
             >
-              <Plus size={14} aria-hidden /> New task
+              <Plus size={14} aria-hidden /> New personal task
             </button>
           </div>
         )}
