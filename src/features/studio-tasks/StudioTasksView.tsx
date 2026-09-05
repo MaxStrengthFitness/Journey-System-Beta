@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   Check,
   ClipboardList,
+  Settings2,
   Minus,
   MessageSquarePlus,
   TriangleAlert,
@@ -11,6 +12,7 @@ import { useActiveStudio } from "../../ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
 import { setManyTaskStatuses, setTaskStatus } from "./mutations";
+import { TaskManager } from "./TaskManager";
 import { TaskNoteDialog } from "./TaskNoteDialog";
 import { useStudioTasks } from "./useStudioTasks";
 import { SHIFT_LABEL, type TaskRow, type TaskShift } from "./types";
@@ -37,14 +39,22 @@ export interface StudioTasksViewProps {
 type ShiftFilter = TaskShift | "all";
 
 export function StudioTasksView({ authTrainer }: StudioTasksViewProps) {
-  const { activeStudioId, activeStudio } = useActiveStudio();
+  const { activeStudioId, activeStudio, hasPermission } = useActiveStudio();
   const { success: toastSuccess, error: toastError } = useToast();
 
-  const { rows, dateKey, loading, counts } = useStudioTasks(activeStudioId);
+  const { rows, templates, dateKey, loading, counts } =
+    useStudioTasks(activeStudioId);
   const [filter, setFilter] = useState<ShiftFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [noteRow, setNoteRow] = useState<TaskRow | null>(null);
   const [busy, setBusy] = useState(false);
+  const [managing, setManaging] = useState(false);
+
+  // Authoring the list sets the standard the floor is held to. Completing a
+  // task is not gated — any trainer closes one, which is the whole screen.
+  const canManage = hasPermission("manage_studio_tasks", {
+    studioId: activeStudioId ?? undefined,
+  });
 
   const author = authTrainer?.id
     ? { id: authTrainer.id, name: authTrainer.fullName ?? "" }
@@ -217,6 +227,17 @@ export function StudioTasksView({ authTrainer }: StudioTasksViewProps) {
             </div>
           )}
 
+          {canManage && (
+            <button
+              type="button"
+              className="st__btn"
+              onClick={() => setManaging(true)}
+            >
+              <Settings2 size={14} aria-hidden className="inline align-middle" />{" "}
+              Manage
+            </button>
+          )}
+
           <div className="st__progress">
             <span className="st__progress-text">
               {counts.done} / {counts.total}
@@ -267,7 +288,9 @@ export function StudioTasksView({ authTrainer }: StudioTasksViewProps) {
             <p className="st__empty-title">Nothing scheduled today</p>
             <p className="st__empty-body">
               {activeStudioId
-                ? "A studio manager can add cleaning, maintenance and opening/closing duties from the task settings, and they will appear here on the days they are due."
+                ? canManage
+                  ? "Add cleaning, maintenance and opening/closing duties with Manage, and they will appear here on the days they are due."
+                  : "A studio manager can add cleaning, maintenance and opening/closing duties, and they will appear here on the days they are due."
                 : "Select a studio to see its checklist."}
             </p>
           </div>
@@ -456,6 +479,16 @@ export function StudioTasksView({ authTrainer }: StudioTasksViewProps) {
           </div>
         )}
       </div>
+
+      {canManage && (
+        <TaskManager
+          open={managing}
+          onOpenChange={setManaging}
+          studioId={activeStudioId}
+          templates={templates}
+          author={author}
+        />
+      )}
 
       <TaskNoteDialog
         row={noteRow}
