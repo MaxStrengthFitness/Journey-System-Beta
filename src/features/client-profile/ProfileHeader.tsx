@@ -20,7 +20,7 @@ import { CalendarDays, ChevronLeft, Clock, History, Maximize, Play, Trash2, User
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn, parseSessionDate } from "../../lib/utils";
-import { formatStudioTime, toDate } from "../../lib/studio-time";
+import { formatStudioTime, toDate, zonedYMD } from "../../lib/studio-time";
 import type { Client, ScheduleEntry, WorkoutSession } from "../../types";
 import type { PackageSummary } from "./client-package";
 import { remainingLabel } from "./client-package";
@@ -109,7 +109,13 @@ function Stat({
       ? Math.max(0, Math.min(100, (meter.value / meter.max) * 100))
       : null;
   return (
-    <div className={cn("relative min-w-0 bg-white dark:bg-slate-950 px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-0.5", className)}>
+    <div
+      className={cn(
+        "relative min-w-0 bg-white dark:bg-slate-950 px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-0.5",
+        pct !== null && "pb-2.5",
+        className,
+      )}
+    >
       <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 leading-none">{label}</span>
       <span className="flex items-center gap-2 min-w-0 text-[15px] font-bold leading-tight text-slate-900 dark:text-slate-50">
         {icon && <span className="shrink-0 text-slate-400 dark:text-slate-500 [&>svg]:w-4 [&>svg]:h-4">{icon}</span>}
@@ -165,12 +171,21 @@ export function ProfileHeader({
    * tile exists to support. Inside two days the weekday gives way to the
    * word a trainer would actually say.
    */
+  // The weekday is read on the STUDIO's clock, like the time printed beside
+  // it. `getDay()` reads the viewer's, so a late-evening session opened from
+  // a browser a few hours off Eastern showed the wrong weekday next to the
+  // right time — exactly the hazard lib/studio-time exists to prevent.
+  const nextYMD = nextDate ? zonedYMD(nextDate) : null;
+  const nextWeekday =
+    nextYMD !== null
+      ? WEEKDAYS_LONG[new Date(Date.UTC(nextYMD.year, nextYMD.month - 1, nextYMD.day)).getUTCDay()]
+      : null;
   const nextDay = nextDate
     ? daysUntil(nextDate) === "today"
       ? "Today"
       : daysUntil(nextDate) === "tomorrow"
         ? "Tomorrow"
-        : WEEKDAYS_LONG[nextDate.getDay()]
+        : nextWeekday
     : null;
   const nextLabel = nextDay ? `${nextDay}${nextTime ? ` ${nextTime}` : ""}` : null;
   const moreBooked = Math.max(0, scheduledSessions.length - 1);

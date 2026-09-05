@@ -69,21 +69,58 @@ const stripUndefined = (obj: any): any => {
   return out;
 };
 
+const toOpen = (id: string, data: any): OpenCheckIn => ({
+  id,
+  assessment: data.subjective as SubjectiveAssessment,
+  sectionsReviewed: Array.isArray(data.checkInSectionsReviewed)
+    ? (data.checkInSectionsReviewed as string[])
+    : [],
+  startedAt: millis(data.createdAt),
+  updatedAt: millis(data.updatedAt),
+});
+
 /**
  * The client's open draft, or null.
  *
- * Ordered by `createdAt` and read ten deep rather than filtered on status in
- * the query: a composite index on (clientId, status, isCheckInOnly,
- * createdAt) is one more index to deploy for a list that is never long, and
- * `loadPreviousCheckIn` already reads this same page.
+ * Asks for the draft directly. The first version read the ten newest reports
+ * and filtered in the browser, which quietly broke for any client with ten
+ * reports newer than their open draft: the panel found nothing, started a
+ * SECOND draft, and orphaned a half-finished one. The wide read survives as
+ * a fallback for the window before the composite index is deployed — the
+ * same pattern the journal uses.
  */
 export async function loadOpenCheckIn(clientId: string): Promise<OpenCheckIn | null> {
+  try {
+    const exact = await getDocs(
+      query(
+        collection(db, "progressReports"),
+        where("clientId", "==", clientId),
+        where("isCheckInOnly", "==", true),
+        where("status", "==", "Draft"),
+        orderBy("createdAt", "desc"),
+        limit(1),
+      ),
+    );
+    const d = exact.docs[0];
+    if (!d) return null;
+    const data = d.data() as any;
+    return data.subjective ? toOpen(d.id, data) : null;
+  } catch (err) {
+    // failed-precondition = the index is not deployed yet. Anything else is
+    // a real failure and should not be masked.
+    if ((err as any)?.code !== "failed-precondition") throw err;
+    console.warn(
+      "[check-in] composite index missing; falling back to a wide read. " +
+        "Run: firebase deploy --only firestore:indexes",
+    );
+  }
+
   const snap = await getDocs(
     query(
       collection(db, "progressReports"),
       where("clientId", "==", clientId),
       orderBy("createdAt", "desc"),
-      limit(10),
+      limit(25),
     ),
   );
   const found = snap.docs

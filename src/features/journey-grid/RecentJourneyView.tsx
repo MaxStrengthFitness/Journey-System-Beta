@@ -87,8 +87,13 @@ export function RecentJourneyView({
   const [visible, setVisible] = useState(initialVisible);
 
 
-  // Never inherit the previous client's expansion.
-  useEffect(() => setVisible(initialVisible), [initialVisible, rows]);
+  // Never inherit the previous client's expansion — or their filter. This
+  // view is not remounted between clients, and "B routine" left on from the
+  // last client resolved against the new client's rows.
+  useEffect(() => {
+    setVisible(initialVisible);
+    setFilter("performed");
+  }, [initialVisible, rows]);
 
   const visibleSessions = useMemo(() => sessions.slice(Math.max(0, sessions.length - visible)), [sessions, visible]);
   const canLoadOlder = visible < sessions.length || hasMoreOnServer;
@@ -119,6 +124,11 @@ export function RecentJourneyView({
   const sections = useMemo<GridSection[]>(() => {
     const inA = new Set(routineAMachineIds ?? []);
     const inB = new Set(routineBMachineIds ?? []);
+    // Performed means performed in a column the grid is actually DRAWING.
+    // Measured against all loaded history it kept rows whose last set was
+    // 25 sessions ago — a full row of em-dashes, which is the exact thing
+    // this filter exists to remove.
+    const shownIds = new Set(visibleSessions.map((s) => s.id));
     const pick =
       filter === "all"
         ? rows
@@ -126,9 +136,9 @@ export function RecentJourneyView({
           ? rows.filter((r) => inA.has(r.machine.id))
           : filter === "b"
             ? rows.filter((r) => inB.has(r.machine.id))
-            : rows.filter((r) => Object.keys(r.sets).length > 0);
+            : rows.filter((r) => Object.keys(r.sets).some((id) => shownIds.has(id)));
     return [{ id: filter, label: FILTER_LABEL[filter], rows: pick }];
-  }, [rows, filter, routineAMachineIds, routineBMachineIds]);
+  }, [rows, filter, routineAMachineIds, routineBMachineIds, visibleSessions]);
 
   return (
     <section

@@ -73,8 +73,26 @@ export function useCheckInDraft(opts: {
 
   const timer = useRef<number | null>(null);
   const pending = useRef<{ assessment: SubjectiveAssessment; reviewed: string[] } | null>(null);
-  /** Nothing is written until the coach actually touches something. */
-  const dirty = useRef(false);
+
+  /**
+   * `flush` MUST be identity-stable, and everything it reads therefore lives
+   * in a ref rather than a dependency.
+   *
+   * The version that closed over `draftId` created duplicate drafts: the
+   * debounce timer captures whichever `flush` existed when the coach tapped,
+   * and until the first addDoc resolves that closure still sees
+   * `draftId === null` — so a second tap 100ms later wrote a SECOND draft
+   * document. `loadOpenCheckIn` then only ever finds the newest of them and
+   * the first is orphaned with a coach's answers in it.
+   */
+  const draftIdRef = useRef<string | null>(null);
+  const clientRef = useRef<Client | null>(client);
+  const trainerRef = useRef<Trainer | null>(trainer);
+  /** Serialises writes so two flushes can never race the same document. */
+  const inFlight = useRef<Promise<void> | null>(null);
+
+  clientRef.current = client;
+  trainerRef.current = trainer;
 
   /* ---- load ---------------------------------------------------------- */
   useEffect(() => {
@@ -84,19 +102,20 @@ export function useCheckInDraft(opts: {
     }
     let cancelled = false;
     setLoading(true);
-    dirty.current = false;
 
     Promise.all([loadOpenCheckIn(clientId), loadPreviousCheckIn(clientId)])
       .then(([open, prev]) => {
         if (cancelled) return;
         setPrevious(prev);
         if (open) {
+          draftIdRef.current = open.id;
           setDraftId(open.id);
           setAssessment(open.assessment);
           setReviewed(open.sectionsReviewed);
           setStartedAt(open.startedAt);
           setSavedAt(open.updatedAt);
         } else {
+          draftIdRef.current = null;
           setDraftId(null);
           setAssessment({
             ...emptyAssessment({ bodyWeightLbs }),
@@ -116,40 +135,60 @@ export function useCheckInDraft(opts: {
   }, [clientId, enabled, bodyWeightLbs]);
 
   /* ---- save ---------------------------------------------------------- */
-  const flush = useCallback(async () => {
+  const flush = useCallback(async (): Promise<void> => {
+    // Never overlap: the first write is what decides the document id.
+    if (inFlight.current) await inFlight.current.catch(() => {});
     const next = pending.current;
-    if (!next || !client || !trainer) return;
+    const c = clientRef.current;
+    const t = trainerRef.current;
+    if (!next || !c || !t) return;
     pending.current = null;
     setSaveState("saving");
-    try {
-      const id = await saveCheckInDraft({
-        draftId,
-        client,
-        trainer,
-        assessment: next.assessment,
-        sectionsReviewed: next.reviewed,
-      });
-      setDraftId(id);
-      setSavedAt(Date.now());
-      setStartedAt((s) => s ?? Date.now());
-      setSaveState("saved");
-    } catch (err) {
-      setSaveState("error");
-      handleFirestoreError(err, draftId ? OperationType.UPDATE : OperationType.CREATE, "progressReports");
-    }
-  }, [client, trainer, draftId]);
+
+    const run = (async () => {
+      const existing = draftIdRef.current;
+      try {
+        const id = await saveCheckInDraft({
+          draftId: existing,
+          client: c,
+          trainer: t,
+          assessment: next.assessment,
+          sectionsReviewed: next.reviewed,
+        });
+        draftIdRef.current = id;
+        setDraftId(id);
+        setSavedAt(Date.now());
+        setStartedAt((prev) => prev ?? Date.now());
+        setSaveState("saved");
+      } catch (err) {
+        setSaveState("error");
+        handleFirestoreError(
+          err,
+          existing ? OperationType.UPDATE : OperationType.CREATE,
+          "progressReports",
+        );
+      }
+    })();
+
+    inFlight.current = run;
+    await run;
+    inFlight.current = null;
+  }, []);
 
   const queue = useCallback(
     (nextAssessment: SubjectiveAssessment, nextReviewed: string[]) => {
       pending.current = { assessment: nextAssessment, reviewed: nextReviewed };
-      dirty.current = true;
+
       if (timer.current) window.clearTimeout(timer.current);
       timer.current = window.setTimeout(() => void flush(), SAVE_DEBOUNCE_MS);
     },
     [flush],
   );
 
-  // Never lose the last answer to a tab change.
+  // Never lose the last answer to a tab change. Empty deps on purpose:
+  // keyed on [flush] this cleanup ran on every identity change of client or
+  // trainer, cancelling the debounce and firing the write early — which is
+  // the other half of the duplicate-draft bug.
   useEffect(
     () => () => {
       if (timer.current) window.clearTimeout(timer.current);
@@ -166,17 +205,18 @@ export function useCheckInDraft(opts: {
     [queue, reviewed],
   );
 
+  // Computed outside the updater: a setState updater must be pure, and
+  // `queue` schedules a timer and mutates refs. StrictMode double-invokes
+  // updaters, which would have armed the save twice.
   const toggleReviewed = useCallback(
     (sectionId: string) => {
-      setReviewed((prev) => {
-        const next = prev.includes(sectionId)
-          ? prev.filter((s) => s !== sectionId)
-          : [...prev, sectionId];
-        queue(assessment, next);
-        return next;
-      });
+      const next = reviewed.includes(sectionId)
+        ? reviewed.filter((s) => s !== sectionId)
+        : [...reviewed, sectionId];
+      setReviewed(next);
+      queue(assessment, next);
     },
-    [assessment, queue],
+    [assessment, queue, reviewed],
   );
 
   const saveNow = useCallback(async () => {
@@ -246,6 +286,7 @@ export function useCheckInDraft(opts: {
       if (timer.current) window.clearTimeout(timer.current);
       if (pending.current) await flush();
       await finalizeCheckIn({ draftId, client, assessment, previous });
+      draftIdRef.current = null;
       setDraftId(null);
       setAssessment({
         ...emptyAssessment({ bodyWeightLbs }),
@@ -270,6 +311,7 @@ export function useCheckInDraft(opts: {
       if (timer.current) window.clearTimeout(timer.current);
       pending.current = null;
       await discardCheckInDraft(draftId);
+      draftIdRef.current = null;
       setDraftId(null);
       setAssessment({
         ...emptyAssessment({ bodyWeightLbs }),

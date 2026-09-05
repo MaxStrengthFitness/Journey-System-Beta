@@ -14,7 +14,7 @@
  * to report" because an empty list cannot otherwise be told apart from a
  * conversation that never happened.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -70,11 +70,20 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
   const draft = useCheckInDraft({ client, trainer, machines });
   const [openId, setOpenId] = useState<string | null>(null);
   const [confirmFinalize, setConfirmFinalize] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  /**
+   * Auto-open happens ONCE. Keyed on `openId === null` it fought the user:
+   * collapsing a section sets openId to null, which was also the re-open
+   * condition, so the accordion snapped straight back open.
+   */
+  const autoOpened = useRef(false);
 
   // Land on the first thing still owed, once the draft is in.
   useEffect(() => {
-    if (!draft.loading && openId === null && draft.hasDraft) setOpenId(draft.firstOpenSection);
-  }, [draft.loading, draft.hasDraft, draft.firstOpenSection, openId]);
+    if (autoOpened.current || draft.loading || !draft.hasDraft) return;
+    autoOpened.current = true;
+    setOpenId(draft.firstOpenSection);
+  }, [draft.loading, draft.hasDraft, draft.firstOpenSection]);
 
   if (!client) return null;
 
@@ -238,13 +247,42 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
       {/* ---------------------------- footer ---------------------------- */}
       {draft.hasDraft && (
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 px-4 py-3 dark:border-slate-800">
-          <button
-            type="button"
-            onClick={() => void draft.discard()}
-            className="mr-auto inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-[10px] font-black uppercase tracking-wider text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
-          >
-            <RotateCcw className="h-3 w-3" /> Discard draft
-          </button>
+          {/* Two taps: this deletes answers that may represent several
+              sessions of conversation, and it sits beside Finish. */}
+          {confirmDiscard ? (
+            <span className="mr-auto flex items-center gap-2">
+              <span className="text-[11px] font-medium text-red-600 dark:text-red-400">
+                Delete this draft and its answers?
+              </span>
+              <button
+                type="button"
+                onClick={() => setConfirmDiscard(false)}
+                className="h-10 rounded-xl border border-slate-200 px-3 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:border-slate-700"
+              >
+                Keep
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await draft.discard();
+                  setConfirmDiscard(false);
+                  setOpenId(null);
+                  autoOpened.current = false;
+                }}
+                className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-red-500/40 bg-red-500/10 px-3 text-[10px] font-black uppercase tracking-wider text-red-600 dark:text-red-400"
+              >
+                <RotateCcw className="h-3 w-3" /> Discard
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDiscard(true)}
+              className="mr-auto inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-[10px] font-black uppercase tracking-wider text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+            >
+              <RotateCcw className="h-3 w-3" /> Discard draft
+            </button>
+          )}
 
           {confirmFinalize ? (
             <>
@@ -270,6 +308,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
                   if (ok) {
                     setConfirmFinalize(false);
                     setOpenId(null);
+                    autoOpened.current = false;
                   }
                 }}
                 className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#F06C22] px-4 text-[10px] font-black uppercase tracking-wider text-white transition-colors hover:brightness-105 disabled:opacity-60"

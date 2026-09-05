@@ -838,9 +838,13 @@ export function ClientHistoryCalendar({
                             minute: "2-digit",
                           });
 
-                    // Volume against the previous session — the column the eye
-                    // runs down when it wants "is this client progressing?".
-                    const prevSession = index >= 0 ? sessions[index + 1] : undefined;
+                    // Volume against the previous COMPLETED session — the
+                    // column the eye runs down when it wants "is this client
+                    // progressing?". Walking the raw `sessions` array instead
+                    // put a cancelled or scheduled row in between, which zeroed
+                    // the comparison and silently dropped the delta.
+                    const prevSession =
+                      completedIndex >= 0 ? completedSessions[completedIndex + 1] : undefined;
                     const prevVolume = prevSession
                       ? Math.round(
                           (allLogs || localAllLogs)

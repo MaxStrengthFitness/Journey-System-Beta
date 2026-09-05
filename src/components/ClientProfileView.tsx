@@ -846,6 +846,11 @@ export function ClientProfileView({
   };
 
   useEffect(() => {
+    // Clear first. This view is not remounted between clients, and the fetch
+    // below only ever WRITES on resolve — so between switching client and the
+    // round-trip landing, the previous client's routines were still in state
+    // and the Journey tab's A/B filters resolved against them.
+    setRoutines([]);
     if (!clientId || hasQuotaError) return;
 
     const fetchRoutines = async () => {
