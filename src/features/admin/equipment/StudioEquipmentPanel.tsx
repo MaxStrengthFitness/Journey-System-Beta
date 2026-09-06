@@ -18,7 +18,7 @@ import React, { useMemo, useState } from "react";
 import { collection, doc, getDocs, serverTimestamp, setDoc, writeBatch } from "firebase/firestore";
 import { Dumbbell, Sparkles, Wrench } from "lucide-react";
 import { auth, db } from "../../../firebase";
-import type { Studio } from "../../../types";
+import type { Studio, Trainer } from "../../../types";
 import { useStudioMachines } from "../../../hooks/useStudioMachines";
 import { useMachineCatalog } from "../../../hooks/useMachineCatalog";
 import { useToast } from "../../../contexts/ToastContext";
@@ -39,12 +39,20 @@ import {
 import { standardSetSeed } from "../studios/registry";
 import { describeOverrides, overriddenSafetyFields } from "./clone";
 import { LocalSetupDialog } from "./LocalSetupDialog";
+import { UpkeepDialog } from "../upkeep/UpkeepDialog";
+import { useStudioUpkeep } from "../upkeep/useStudioUpkeep";
+import { DEFAULT_UPKEEP_POLICY, tallyUpkeep, worstStatus } from "../upkeep/upkeepLog";
+import { studioDateKey } from "../../../lib/studio-time";
 
 export interface StudioEquipmentPanelProps {
   studio: Studio;
+  authTrainer?: Trainer | null;
 }
 
-export function StudioEquipmentPanel({ studio }: StudioEquipmentPanelProps) {
+export function StudioEquipmentPanel({
+  studio,
+  authTrainer,
+}: StudioEquipmentPanelProps) {
   const studioId = studio.id ?? "";
   const { success: toastSuccess } = useToast();
   const { catalog } = useMachineCatalog();
@@ -54,7 +62,10 @@ export function StudioEquipmentPanel({ studio }: StudioEquipmentPanelProps) {
   const [seeding, setSeeding] = useState(false);
   const [seedSummary, setSeedSummary] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  const [upkeepFor, setUpkeepFor] = useState<string | null>(null);
   const [showInventory, setShowInventory] = useState(false);
+  const { events: upkeepEvents } = useStudioUpkeep(studioId);
+  const todayKey = studioDateKey(new Date()) ?? "";
 
   const catalogById = useMemo(
     () => Object.fromEntries(catalog.map((c) => [c.id, c])),
@@ -83,10 +94,14 @@ export function StudioEquipmentPanel({ studio }: StudioEquipmentPanelProps) {
             risky: overriddenSafetyFields(overrides),
             notes: entry.studioNotes,
             serial: entry.unit?.serialNumber,
+            upkeep: worstStatus(
+              tallyUpkeep(upkeepEvents, entry.machineId, todayKey),
+              DEFAULT_UPKEEP_POLICY,
+            ),
           };
         })
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [rosterEntries, catalogById],
+    [rosterEntries, catalogById, upkeepEvents, todayKey],
   );
 
   const seedStandardSet = async () => {
@@ -202,6 +217,19 @@ export function StudioEquipmentPanel({ studio }: StudioEquipmentPanelProps) {
                         {row.entry.status}
                       </AdminBadge>
                     )}
+                    {row.upkeep === "overdue" && (
+                      <AdminBadge tone="alert">Upkeep overdue</AdminBadge>
+                    )}
+                    {row.upkeep === "due" && (
+                      <AdminBadge tone="warn">Upkeep due</AdminBadge>
+                    )}
+                    <AdminButton
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setUpkeepFor(row.entry.machineId)}
+                    >
+                      Upkeep
+                    </AdminButton>
                     <AdminButton
                       variant="ghost"
                       size="sm"
@@ -221,6 +249,19 @@ export function StudioEquipmentPanel({ studio }: StudioEquipmentPanelProps) {
         <div className="mt-5" style={{ borderTop: "1px solid var(--adm-border)", paddingTop: 16 }}>
           <StudioInventoryManager studioId={studioId} studioName={studio.name} />
         </div>
+      )}
+
+      {upkeepFor && (
+        <UpkeepDialog
+          studioId={studioId}
+          machineId={upkeepFor}
+          machineName={
+            rows.find((r) => r.entry.machineId === upkeepFor)?.name ?? upkeepFor
+          }
+          events={upkeepEvents}
+          authTrainer={authTrainer}
+          onClose={() => setUpkeepFor(null)}
+        />
       )}
 
       {editingRow && (

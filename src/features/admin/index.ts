@@ -47,6 +47,21 @@ export {
 } from "./syncPolicy";
 
 export { StudioEquipmentPanel } from "./equipment/StudioEquipmentPanel";
+export { UpkeepDialog } from "./upkeep/UpkeepDialog";
+export { useStudioUpkeep } from "./upkeep/useStudioUpkeep";
+export {
+  DEFAULT_UPKEEP_POLICY,
+  UPKEEP_LABEL,
+  mergeUpkeepHistory,
+  tallyUpkeep,
+  upkeepStatus,
+  worstStatus,
+  type UpkeepEvent,
+  type UpkeepKind,
+  type UpkeepLogEntry,
+  type UpkeepStatus,
+  type UpkeepTally,
+} from "./upkeep/upkeepLog";
 export { LocalSetupDialog } from "./equipment/LocalSetupDialog";
 export {
   REPLACING_SAFETY_FIELDS,

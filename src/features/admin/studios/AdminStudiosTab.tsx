@@ -293,6 +293,7 @@ export function AdminStudiosTab({
             <>
             <StudioDetailPanel
               studio={selected}
+              authTrainer={authTrainer}
               studios={studios}
               networks={networks}
               trainers={trainers}

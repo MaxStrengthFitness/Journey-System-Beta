@@ -703,6 +703,28 @@ service cloud.firestore {
         allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
 
+      // EQUIPMENT UPKEEP LOG — "I deep-cleaned the leg press just now"
+      // (round: Admin Overhaul, Sep 2026).
+      //
+      // Cleaning and servicing that was SCHEDULED already lands in
+      // taskInstances. This is for the work that was not: a spilled shake, an
+      // engineer replacing a seat pad on a Tuesday. Both feed one merged
+      // timeline — see features/admin/upkeep/upkeepLog.ts.
+      //
+      // Any trainer may write, for the same reason as machineNotes: the
+      // person who cleans the machine is the person on the floor, and an
+      // upkeep entry carries no override power over safety content. Tenancy
+      // comes from the path, so no get() is spent checking it.
+      //
+      // Entries are not editable after the fact — an accountability log that
+      // can be rewritten is not one — but a manager can delete a mistake.
+      match /upkeepLog/{entryId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
+        allow update: if false;
+        allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
+      }
+
       // STUDIO TASKS — cleaning, maintenance and floor operations
       // (round: Studio To-Do, Sep 2026).
       //

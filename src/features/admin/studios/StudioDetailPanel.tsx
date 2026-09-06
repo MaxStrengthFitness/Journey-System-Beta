@@ -100,6 +100,7 @@ export function studioToForm(studio: Studio): StudioForm {
 
 export interface StudioDetailPanelProps {
   studio: Studio;
+  authTrainer?: Trainer | null;
   studios: Studio[];
   networks: FranchiseNetwork[];
   trainers: Trainer[];
@@ -112,6 +113,7 @@ export interface StudioDetailPanelProps {
 
 export function StudioDetailPanel({
   studio,
+  authTrainer,
   studios,
   networks,
   trainers,
@@ -376,7 +378,7 @@ export function StudioDetailPanel({
         )}
       </AdminPanel>
 
-      <StudioEquipmentPanel studio={studio} />
+      <StudioEquipmentPanel studio={studio} authTrainer={authTrainer} />
 
       {canDelete && (
         <AdminPanel title="Delete this studio">
