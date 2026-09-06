@@ -46,6 +46,16 @@ export {
   type SyncVerdict,
 } from "./syncPolicy";
 
+export { AdminStaffTab } from "./staff/AdminStaffTab";
+export {
+  buildStaffRoster,
+  summariseRoster,
+  type AccessRequest,
+  type MindbodyStaff,
+  type StaffRow,
+  type StaffState,
+} from "./staff/roster";
+
 export { AdminStudiosTab } from "./studios/AdminStudiosTab";
 export { ProvisionalPanel } from "./provisional/ProvisionalPanel";
 export { ReconcileDialog } from "./provisional/ReconcileDialog";

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, ScheduleEntry } from "../types";
-import { AdminUserDirectory } from "./AdminUserDirectory";
 import { AdminBugReports } from "./AdminBugReports";
 import { AdminHubAnnouncements } from "./AdminHubAnnouncements";
 import { InsightsDashboardView } from "./InsightsDashboardView";
@@ -21,6 +20,7 @@ import { IntegrationsHubView } from "./IntegrationsHubView";
 import { AdminSystemToolsTab } from "./AdminSystemToolsTab";
 import { AdminOverviewTab } from "../features/admin/AdminOverviewTab";
 import { AdminStudiosTab } from "../features/admin/studios/AdminStudiosTab";
+import { AdminStaffTab } from "../features/admin/staff/AdminStaffTab";
 
 interface Props {
   authTrainer: Trainer;
@@ -270,7 +270,13 @@ export function AdminDashboardView({
           />
         )}
         {activeTab === "users" && (
-          <AdminUserDirectory studios={studios} onRefresh={onRefresh} />
+          <AdminStaffTab
+            trainers={trainers}
+            studios={studios}
+            activeStudioId={activeStudioId}
+            isAdmin={isAdmin}
+            onRefresh={onRefresh}
+          />
         )}
         {activeTab === "clients" && (
           <AdminSystemClients clients={clients} studios={studios} />
