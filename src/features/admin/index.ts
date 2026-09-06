@@ -48,6 +48,20 @@ export {
 
 export { AdminStudiosTab } from "./studios/AdminStudiosTab";
 export { ProvisionalPanel } from "./provisional/ProvisionalPanel";
+export { ReconcileDialog } from "./provisional/ReconcileDialog";
+export { mergeProvisionalClient } from "./provisional/mergeClient";
+export {
+  CLIENT_COMPOSITE_ID_COLLECTION,
+  CLIENT_REFERENCE_FIELDS,
+  checkMerge,
+  isMergedAway,
+  mergeSteps,
+  rankCandidates,
+  scoreCandidate,
+  survivorPatch,
+  tombstonePatch,
+  type Candidate,
+} from "./provisional/reconcile";
 export {
   isProvisional,
   isSuperseded,

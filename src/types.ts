@@ -598,6 +598,13 @@ export interface Client {
   /** Set on the SURVIVING record: where its history came from. */
   mergedFromId?: string | null;
   mergedAt?: string;
+  /**
+   * LEGACY tombstone, from scripts/migrate-canonical-client-ids.ts. Read,
+   * never written: a document tombstoned by that script must not look live to
+   * the reconciliation workflow, which is what isMergedAway() is for.
+   */
+  migratedTo?: string | null;
+  migratedAt?: any;
   mindbody_name?: string;
   /** First 1000 chars of the client's Mindbody account notes (webhook-synced, read-only in app). */
   mindbodyNotes?: string;

@@ -277,7 +277,25 @@ async function deleteDoc(collectionName: string, id: string): Promise<void> {
 // What references a client
 // ---------------------------------------------------------------------------
 
-/** Collections carrying a `clientId` FIELD that must be repointed. */
+/**
+ * Collections carrying a `clientId` FIELD that must be repointed.
+ *
+ * CORRECTED Sep 2026. This list was written before the journal overhaul and
+ * had gone stale in the worst possible way: it covered `focusRecords` and
+ * `trainerFocuses` but NOT `journalEntries` or `clientFocuses` — and
+ * src/types/journal.ts says in as many words that clientFocuses REPLACES that
+ * pair. Running this as it stood would have moved a client's legacy focus
+ * records and abandoned their entire current journal.
+ *
+ * The list now mirrors CLIENT_REFERENCE_FIELDS in
+ * src/features/admin/provisional/reconcile.ts, which is the same list for the
+ * same job and is asserted by tests. Two hand-maintained copies of one list is
+ * how this drifted; if you add a collection, add it in both, and prefer
+ * deleting this copy in favour of importing that one.
+ *
+ * `routinePresets` is kept for safety although the type has no clientId
+ * member — a no-op query costs one read and removing it proves nothing.
+ */
 const CLIENT_ID_FIELD_COLLECTIONS = [
   "sessions",
   "sessionNotes",
@@ -286,10 +304,16 @@ const CLIENT_ID_FIELD_COLLECTIONS = [
   "routines",
   "routineAdjustments",
   "progressReports",
-  "focusRecords",
-  "trainerFocuses",
   "clinicalIncidents",
   "machineSettingChanges",
+  // The current journal pair — the gap this comment is about.
+  "journalEntries",
+  "clientFocuses",
+  // Legacy, still read through the journal's adapter.
+  "focusRecords",
+  "trainerFocuses",
+  // A queued Mindbody event that happened to resolve to the merged-away id.
+  "mindbodyLimbo",
   "routinePresets",
 ];
 

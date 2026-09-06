@@ -38,6 +38,7 @@ import {
   validateMint,
 } from "./provisional";
 import { PROVISIONAL_REASONS } from "./types";
+import { ReconcileDialog } from "./ReconcileDialog";
 
 type Kind = "client" | "trainer";
 
@@ -68,6 +69,7 @@ export function ProvisionalPanel({
   const [email, setEmail] = useState("");
   const [reason, setReason] = useState<string>(PROVISIONAL_REASONS[0]);
   const [saving, setSaving] = useState(false);
+  const [reconciling, setReconciling] = useState<Client | null>(null);
 
   const studioId = studio.id ?? "";
 
@@ -289,15 +291,34 @@ export function ProvisionalPanel({
                     </>
                   }
                   trailing={
-                    <AdminBadge tone={age >= STALE_DAYS ? "alert" : "warn"}>
-                      Temporary
-                    </AdminBadge>
+                    row.kind === "Client" ? (
+                      <AdminButton
+                        variant="quiet"
+                        size="sm"
+                        onClick={() => setReconciling(row.record as Client)}
+                      >
+                        Reconcile
+                      </AdminButton>
+                    ) : (
+                      <AdminBadge tone={age >= STALE_DAYS ? "alert" : "warn"}>
+                        Claims at sign-in
+                      </AdminBadge>
+                    )
                   }
                 />
               );
             })}
           </AdminRows>
         </div>
+      )}
+
+      {reconciling && (
+        <ReconcileDialog
+          temp={reconciling}
+          clients={clients}
+          onClose={() => setReconciling(null)}
+          onMerged={onCreated}
+        />
       )}
 
       {waiting === 0 && (
