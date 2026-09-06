@@ -46,6 +46,22 @@ export {
   type SyncVerdict,
 } from "./syncPolicy";
 
+export { AdminClientsTab } from "./clients/AdminClientsTab";
+export {
+  DEFAULT_READ_BUDGET,
+  MIN_SEARCH_LENGTH,
+  PAGE_SIZE,
+  budgetLeft,
+  matchesClient,
+  newBudget,
+  planClientQuery,
+  spend,
+  summarisePage,
+  toPrefix,
+  type ClientQueryPlan,
+  type ReadBudget,
+} from "./clients/clientQuery";
+
 export { AdminStaffTab } from "./staff/AdminStaffTab";
 export {
   buildStaffRoster,

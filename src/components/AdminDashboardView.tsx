@@ -13,7 +13,6 @@ import { AdminRoutineTemplatesTab } from "./routines/AdminRoutineTemplatesTab";
 import { cn } from "@/lib/utils";
 import "../features/admin/admin.css";
 
-import { AdminSystemClients } from "./AdminSystemClients";
 import { AdminMachinesTab } from "./machines/AdminMachinesTab";
 import { AdminDataReportsTab } from "../features/admin-data";
 import { IntegrationsHubView } from "./IntegrationsHubView";
@@ -21,6 +20,7 @@ import { AdminSystemToolsTab } from "./AdminSystemToolsTab";
 import { AdminOverviewTab } from "../features/admin/AdminOverviewTab";
 import { AdminStudiosTab } from "../features/admin/studios/AdminStudiosTab";
 import { AdminStaffTab } from "../features/admin/staff/AdminStaffTab";
+import { AdminClientsTab } from "../features/admin/clients/AdminClientsTab";
 
 interface Props {
   authTrainer: Trainer;
@@ -279,7 +279,11 @@ export function AdminDashboardView({
           />
         )}
         {activeTab === "clients" && (
-          <AdminSystemClients clients={clients} studios={studios} />
+          <AdminClientsTab
+            studios={studios}
+            activeStudioId={activeStudioId}
+            onNavigateProfile={onNavigateProfile}
+          />
         )}
         {activeTab === "studios" && (
           <AdminStudiosTab
