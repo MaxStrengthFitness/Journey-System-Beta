@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   collection,
-  addDoc,
   doc,
   updateDoc,
   deleteDoc,
@@ -28,9 +27,8 @@ import {
   Link,
   Trophy,
 } from "lucide-react";
-import { Trainer, Studio, CreateTrainerPayload } from "../types";
+import { Trainer, Studio } from "../types";
 import { cn, getRoleColor, getRoleDisplayName } from "@/lib/utils";
-import { CreateTrainerModal } from "./CreateTrainerModal";
 import { DocumentIdMissingError, OperationType } from "../lib/firestore-errors";
 import { useToast } from "../contexts/ToastContext";
 
@@ -53,7 +51,6 @@ export function FranchiseTeamManagement({
   const [trainerSearchQuery, setTrainerSearchQuery] = useState("");
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
   const [trainerToDelete, setTrainerToDelete] = useState<Trainer | null>(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [syncingTrainerId, setSyncingTrainerId] = useState<string | null>(null);
 
@@ -79,22 +76,22 @@ export function FranchiseTeamManagement({
     trainers.find((t) => t.id === selectedTrainer?.id) ||
     (filteredTrainers.length > 0 ? filteredTrainers[0] : null);
 
-  const handleCreateTrainer = async (data: CreateTrainerPayload) => {
-    try {
-      const { pinHash, pin, ...restData } = data;
-      // A placeholder until this person signs in and claims it — see the note
-      // in AdminUserDirectory and src/features/trainer-identity/claim.ts.
-      const ref = await addDoc(collection(db, "trainers"), {
-        ...restData,
-        primaryHomeStudioId: restData.primaryHomeStudioId || activeStudioId, // falls back nicely
-        pendingClaim: true,
-        createdAt: serverTimestamp(),
-      });
-      toastSuccess("Trainer profile created successfully.");
-    } catch (e: any) {
-      toastError("Error creating trainer: " + e.message);
-    }
-  };
+  /*
+   * NOBODY IS CREATED HERE ANY MORE (Round 2 Phase 4).
+   *
+   * `handleCreateTrainer` used to addDoc into `trainers`, which mints a RANDOM
+   * document id. Firestore rules only accept writes at `trainers/{auth uid}`,
+   * so the person that profile was made for could never write to it: not their
+   * PIN, not their bio, not their own name. It was marked `pendingClaim` so the
+   * claim flow could adopt it later, which made it survivable rather than
+   * correct - and Round 1 removed the identical button from the admin
+   * directory. This was the last one.
+   *
+   * The model that replaced it: Mindbody staff put people on the schedule, a
+   * head trainer or above approves them when they first sign in (the document
+   * is then keyed on their uid), and a temporary profile covers the case where
+   * Mindbody is not available - see features/admin/provisional/.
+   */
 
   const handleDeleteTrainer = async () => {
     if (!trainerToDelete?.id) return;
@@ -172,17 +169,6 @@ export function FranchiseTeamManagement({
     <div className="space-y-6">
       {/* Detail Headers */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          {isAdmin && (
-            <Button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="rounded-xl bg-orange-500 dark:bg-orange-600 text-white h-10 px-4 font-black uppercase text-[11px] tracking-widest gap-2 shadow-sm dark:shadow-none"
-            >
-              <Plus className="w-4 h-4" />
-              Add New
-            </Button>
-          )}
-        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -510,12 +496,6 @@ export function FranchiseTeamManagement({
           )}
         </div>
       </div>
-
-      <CreateTrainerModal
-        isOpen={isCreateModalOpen}
-        onOpenChange={(open) => !open && setIsCreateModalOpen(false)}
-        onSubmit={handleCreateTrainer}
-      />
 
       {trainerToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

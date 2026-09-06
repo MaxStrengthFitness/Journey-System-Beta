@@ -1236,3 +1236,45 @@
 .adm-bug-detail__actions .adm-field {
   min-width: 170px;
 }
+
+/* ==================================================================== *
+ * FRANCHISE HUB (Round 2 Phase 4, Section 15)
+ * ==================================================================== */
+
+.adm-fr-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-fr-list > li + li {
+  border-top: 1px solid var(--adm-border);
+}
+
+.adm-fr-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 11px 14px;
+}
+
+.adm-fr-row__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.adm-fr-row__name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--adm-ink);
+  margin-right: 2px;
+}
+
+.adm-fr-row__why {
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--adm-ink-muted);
+}

@@ -246,3 +246,16 @@ export {
   type ReportStatus,
   type ReportView,
 } from "./bugs/reportView";
+
+export { FranchiseHub } from "./franchise/FranchiseHub";
+export {
+  attentionCounts,
+  isSuperAdminRole,
+  resolveScope,
+  staffCountByStudio,
+  trainerIsIn,
+  visibleNetworks,
+  type AttentionCounts,
+  type OwnerScope,
+  type ScopeInput,
+} from "./franchise/scope";

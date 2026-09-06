@@ -2203,15 +2203,15 @@ export default function AppContent({
                   activeIndicator="bg-indigo-500 dark:bg-indigo-600"
                 />
               )}
-              <NavButton
-                active={currentView === "trainer-hub"}
-                onClick={() => setCurrentView("trainer-hub")}
-                icon={<Settings className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="Customize Studio"
-                activeColor="text-emerald-500"
-                activeBg="bg-emerald-500/10 dark:bg-emerald-600/10"
-                activeIndicator="bg-emerald-500 dark:bg-emerald-600"
-              />
+              {/*
+                "Customize Studio" used to be a third NavButton here. It went to
+                `trainer-hub` - the same place the gear in the header goes, from
+                every screen in the app - under a different name and a different
+                icon. Two routes to one screen is a wrong guess waiting to
+                happen; two routes with different NAMES teaches people the app
+                has two settings screens and they picked the wrong one. The gear
+                stays, because it is reachable from everywhere. Section 16.
+              */}
             </nav>
           )}
         </div>
