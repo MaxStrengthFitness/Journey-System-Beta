@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { decideClaim, claimedProfile, tombstone, isStranded } from "./claim";
+import {
+  decideClaim,
+  claimedProfile,
+  tombstone,
+  isStranded,
+  isSuperseded,
+  withoutSuperseded,
+} from "./claim";
 
 const UID = "aaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 28 chars, like a real auth uid
 const RANDOM = "k3Jd82nAqPz01LmXbQ7f"; // 20 chars, like a Firestore auto-id
@@ -165,5 +172,39 @@ describe("who still needs the migration", () => {
 
   it("does not count a tombstone", () => {
     expect(isStranded({ id: RANDOM, supersededByUid: UID }, uids)).toBe(false);
+  });
+});
+
+describe("keeping tombstones out of the roster", () => {
+  // A claimed placeholder stays in the collection, so every list that reads
+  // `trainers` would otherwise show the same person twice — once under a
+  // document nobody can write.
+  const rows = [
+    { id: "uid-1", fullName: "Sam" },
+    { id: RANDOM, fullName: "Sam", supersededByUid: "uid-1" },
+    { id: "uid-2", fullName: "Riley" },
+  ];
+
+  it("drops claimed placeholders", () => {
+    expect(withoutSuperseded(rows).map((r) => r.id)).toEqual([
+      "uid-1",
+      "uid-2",
+    ]);
+  });
+
+  it("keeps documents that have never carried the field", () => {
+    // Which is all of them today — this is why the filter is in code and not
+    // a where("supersededByUid","==",null) query, which would drop the lot.
+    const untouched: { id: string; supersededByUid?: string | null }[] = [
+      { id: "a" },
+      { id: "b" },
+    ];
+    expect(withoutSuperseded(untouched)).toHaveLength(2);
+  });
+
+  it("treats an explicit null as live", () => {
+    expect(isSuperseded({ supersededByUid: null })).toBe(false);
+    expect(isSuperseded(null)).toBe(false);
+    expect(isSuperseded({ supersededByUid: "uid-1" })).toBe(true);
   });
 });

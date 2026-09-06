@@ -156,3 +156,25 @@ export function isStranded(
   if (knownAuthUids.has(profile.id)) return false;
   return profile.pendingClaim !== true;
 }
+
+/**
+ * A claimed placeholder is tombstoned rather than deleted, so it is still in
+ * the collection — and every list that reads `trainers` would otherwise show
+ * the same person twice, once under a document nobody can write.
+ *
+ * Filtered in code rather than by a Firestore query on purpose: a
+ * `where("supersededByUid", "==", null)` would silently drop every document
+ * that has never carried the field at all, which today is all of them.
+ */
+export function isSuperseded(
+  trainer: { supersededByUid?: string | null } | null | undefined,
+): boolean {
+  return !!trainer?.supersededByUid;
+}
+
+/** Drop tombstones from a roster, directory or picker. */
+export function withoutSuperseded<
+  T extends { supersededByUid?: string | null },
+>(trainers: T[]): T[] {
+  return trainers.filter((t) => !isSuperseded(t));
+}

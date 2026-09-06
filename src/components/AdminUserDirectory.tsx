@@ -82,6 +82,7 @@ import {
 } from "@/lib/utils";
 import { CreateTrainerModal } from "./CreateTrainerModal";
 import { EditTrainerModal } from "./EditTrainerModal";
+import { withoutSuperseded } from "../features/trainer-identity/claim";
 
 interface Props {
   studios: Studio[];
@@ -333,9 +334,12 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
       }
 
       const snap = await getDocs(q);
-      const data = snap.docs.map(
-        (doc) =>
-          ({ id: doc.id, ...(doc.data() as Omit<Trainer, "id">) }) as Trainer,
+      // Tombstoned placeholders are not people — see trainer-identity/claim.ts.
+      const data = withoutSuperseded(
+        snap.docs.map(
+          (doc) =>
+            ({ id: doc.id, ...(doc.data() as Omit<Trainer, "id">) }) as Trainer,
+        ),
       );
 
       setUsers(data);

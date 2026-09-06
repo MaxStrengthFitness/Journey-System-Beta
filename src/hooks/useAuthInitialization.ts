@@ -16,6 +16,7 @@ import {
   decideClaim,
   claimedProfile,
   tombstone,
+  withoutSuperseded,
 } from "../features/trainer-identity/claim";
 
 export function useAuthInitialization() {
@@ -215,8 +216,10 @@ export function useAuthInitialization() {
           try {
             const trainersSnap = await getDocs(collection(db, "trainers"));
             setTrainers(
-              trainersSnap.docs.map(
-                (d) => ({ id: d.id, ...d.data() }) as Trainer,
+              withoutSuperseded(
+                trainersSnap.docs.map(
+                  (d) => ({ id: d.id, ...d.data() }) as Trainer,
+                ),
               ),
             );
           } catch (e) {}
