@@ -511,7 +511,6 @@ import { useNetworks } from "./hooks/useNetworks";
 import { useMachines } from "./hooks/useMachines";
 import { useSessions } from "./hooks/useSessions";
 import { useLiveSchedule } from "./hooks/useLiveSchedule";
-import { useHubAnnouncements } from "./hooks/useHubAnnouncements";
 import { useClientMutations } from "./hooks/useClientMutations";
 import { StrongConfirmationModal } from "./components/StrongConfirmationModal";
 
@@ -674,7 +673,15 @@ export default function AppContent({
     const mine = trainers.find((t) => t.id === authTrainer?.id);
     return new Set((mine?.kaizenRoster ?? []).map((e) => e.clientId));
   }, [trainers, authTrainer?.id]);
-  const { announcements } = useHubAnnouncements(authTrainer, activeStudioId);
+  /*
+   * There is no announcements stream here on purpose. A second copy of
+   * `useHubAnnouncements` used to run at this line and open a live listener
+   * on the whole `hub_announcements` collection for every signed-in
+   * trainer - and nothing read its result. It survived the Sep 6 pass that
+   * moved announcements into the notification sheet because deleting a bell
+   * does not delete the hook that fed it. The bell reads them now; see
+   * features/notifications/useHubAnnouncements.ts.
+   */
 
   const clients = Array.from(
     new Map(

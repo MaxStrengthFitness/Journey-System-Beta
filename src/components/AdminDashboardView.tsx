@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, ScheduleEntry } from "../types";
 import { AdminBugReports } from "./AdminBugReports";
-import { AdminHubAnnouncements } from "./AdminHubAnnouncements";
 import { InsightsDashboardView } from "./InsightsDashboardView";
 // Deprecated (Sep 2026 UI overhaul): the Retention route is unmounted. The
 // component file stays on disk in case it is revived; nothing imports it here.
@@ -21,6 +20,7 @@ import { AdminOverviewTab } from "../features/admin/AdminOverviewTab";
 import { AdminStudiosTab } from "../features/admin/studios/AdminStudiosTab";
 import { AdminStaffTab } from "../features/admin/staff/AdminStaffTab";
 import { AdminClientsTab } from "../features/admin/clients/AdminClientsTab";
+import { AdminAnnouncementsTab } from "../features/admin/announcements/AdminAnnouncementsTab";
 
 interface Props {
   authTrainer: Trainer;
@@ -323,7 +323,11 @@ export function AdminDashboardView({
           </div>
         )}
         {activeTab === "announcements" && (
-          <AdminHubAnnouncements studios={studios} authTrainer={authTrainer} />
+          <AdminAnnouncementsTab
+            authTrainer={authTrainer}
+            studios={studios}
+            networks={networks}
+          />
         )}
         {activeTab === "limbo" && (
           <AdminLimboQueue studios={studios} clients={clients} />

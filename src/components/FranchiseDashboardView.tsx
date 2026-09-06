@@ -1,13 +1,5 @@
-import React, { useState, useEffect } from "react";
-import {
-  collection,
-  query,
-  getDocs,
-  addDoc,
-  serverTimestamp,
-  deleteDoc,
-  doc,
-} from "firebase/firestore";
+import React, { useEffect, useMemo, useState } from "react";
+import { collection, deleteDoc, doc, onSnapshot, query } from "firebase/firestore";
 import { db } from "../firebase";
 import { Studio, Trainer, HubAnnouncement, FranchiseNetwork } from "../types";
 import {
@@ -27,8 +19,6 @@ import {
   Plus,
   ArrowRight,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -38,9 +28,15 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { cn, getAnnouncementStyle } from "@/lib/utils";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { useToast } from "../contexts/ToastContext";
+import { AnnouncementComposer } from "../features/admin/announcements/AnnouncementComposer";
+import {
+  millis,
+  type AnnouncementScope,
+  type NetworkOption,
+} from "../features/admin/announcements/audience";
+import "../features/admin/admin.css";
 
 interface FranchiseDashboardViewProps {
   authTrainer: Trainer;
@@ -99,113 +95,66 @@ export function FranchiseDashboardView({
       t.activeGuestStudioIds?.some((id) => ownedStudioIds.includes(id)),
   );
 
-  const [announcements, setAnnouncements] = useState<HubAnnouncement[]>([]);
-  const [isCreatingAnnouncement, setIsCreatingAnnouncement] = useState(false);
-  const [newAnnouncement, setNewAnnouncement] = useState<
-    Partial<HubAnnouncement>
-  >({
-    title: "",
-    shortContent: "",
-    longContent: "",
-    targetScope: "network",
-    targetId: "all_owned",
-    type: "shout-out",
-    priority: "medium",
-  });
-  const [lifespan, setLifespan] = useState("24h");
+  /**
+   * Live notices this owner posted. Streamed rather than fetched once, so
+   * taking one down on another device does not leave a phantom row here;
+   * filtered to this author because an owner has no business taking down
+   * head office's announcement from their own dashboard.
+   */
+  const [allAnnouncements, setAllAnnouncements] = useState<HubAnnouncement[]>(
+    [],
+  );
 
   useEffect(() => {
-    const fetchAnnouncements = async () => {
-      try {
-        const q = query(collection(db, "hub_announcements"));
-        const snap = await getDocs(q);
-        const data = snap.docs.map(
-          (d) => ({ id: d.id, ...d.data() }) as HubAnnouncement,
+    const unsub = onSnapshot(
+      query(collection(db, "hub_announcements")),
+      (snap) => {
+        setAllAnnouncements(
+          snap.docs.map((d) => ({ ...(d.data() as HubAnnouncement), id: d.id })),
         );
+      },
+      (err) =>
+        handleFirestoreError(err, OperationType.GET, "hub_announcements"),
+    );
+    return () => unsub();
+  }, []);
 
-        const filtered = data
-          .filter((a) => a.authorId === authTrainer.id)
-          .filter((a) => a.isActive !== false)
-          .filter((a) => {
-            if (a.expiresAt) {
-              const expTime = a.expiresAt.toDate
-                ? a.expiresAt.toDate().getTime()
-                : typeof a.expiresAt === "number"
-                  ? a.expiresAt
-                  : 0;
-              if (expTime > 0 && expTime < Date.now()) return false;
-            }
-            return true;
-          })
-          .sort((a, b) => {
-            const timeA = a.createdAt?.toMillis?.() || 0;
-            const timeB = b.createdAt?.toMillis?.() || 0;
-            return timeB - timeA;
-          });
-        setAnnouncements(filtered);
-      } catch (err) {
-        handleFirestoreError(err, OperationType.GET, "hub_announcements");
-      }
-    };
-    fetchAnnouncements();
-  }, [authTrainer.id]);
+  const myAnnouncements = useMemo(() => {
+    const now = Date.now();
+    return allAnnouncements
+      .filter((a) => a.authorId === authTrainer.id)
+      .filter((a) => a.isActive !== false)
+      .filter((a) => {
+        const expires = millis(a.expiresAt);
+        return expires === 0 || expires >= now;
+      })
+      .sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
+  }, [allAnnouncements, authTrainer.id]);
 
-  const handleCreateAnnouncement = async () => {
-    if (!newAnnouncement.title || !newAnnouncement.shortContent) return;
-    setIsCreatingAnnouncement(true);
-    try {
-      const now = new Date();
-      let expiresAt = new Date(now);
-      if (lifespan === "24h") expiresAt.setHours(expiresAt.getHours() + 24);
-      else if (lifespan === "1w") expiresAt.setDate(expiresAt.getDate() + 7);
-      else expiresAt.setMonth(expiresAt.getMonth() + 1);
+  /**
+   * Only the networks this person actually holds, expanded to their studios
+   * so the composer can resolve an audience without loading anything.
+   */
+  const composerNetworks: NetworkOption[] = useMemo(
+    () =>
+      displayNetworks.map((n) => ({
+        id: n.id,
+        name: n.name,
+        studioIds: n.studioIds ?? [],
+      })),
+    [displayNetworks],
+  );
 
-      const docRef = await addDoc(collection(db, "hub_announcements"), {
-        ...newAnnouncement,
-        authorId: authTrainer.id,
-        authorName: authTrainer.fullName,
-        studioId:
-          newAnnouncement.targetScope === "studio"
-            ? newAnnouncement.targetId
-            : "all",
-        createdAt: serverTimestamp(),
-        expiresAt: expiresAt,
-        isActive: true,
-        readBy: [],
-      });
-
-      const obj: HubAnnouncement = {
-        ...(newAnnouncement as any),
-        id: docRef.id,
-        authorId: authTrainer.id!,
-        authorName: authTrainer.fullName,
-        studioId:
-          newAnnouncement.targetScope === "studio"
-            ? newAnnouncement.targetId
-            : "all",
-        createdAt: { toMillis: () => Date.now(), toDate: () => new Date() },
-        expiresAt: expiresAt,
-        isActive: true,
-        readBy: [],
-      };
-
-      setAnnouncements((p) => [obj, ...p]);
-      setNewAnnouncement({
-        title: "",
-        shortContent: "",
-        longContent: "",
-        targetScope: "network",
-        targetId: "all_owned",
-        type: "shout-out",
-        priority: "medium",
-      });
-      toastSuccess("Franchise network message published successfully.");
-    } catch (e: any) {
-      toastError("Error publishing message: " + e.message);
-    } finally {
-      setIsCreatingAnnouncement(false);
-    }
-  };
+  /**
+   * "Everyone" is not on this menu. A franchise owner addressing the whole
+   * platform is exactly the bug this round closed, and leaving the option
+   * present-but-discouraged would reopen it on the first busy morning.
+   */
+  const composerScopes: AnnouncementScope[] = useMemo(
+    () =>
+      composerNetworks.length > 0 ? ["network", "studio"] : ["studio"],
+    [composerNetworks],
+  );
 
   return (
     <div className="space-y-8 pb-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
@@ -312,263 +261,29 @@ export function FranchiseDashboardView({
         </Card>
       </div>
 
-      <Card className="rounded-[32px] border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
-        <CardHeader className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            <Megaphone className="w-5 h-5 text-[#F06C22]" />
-            <div>
-              <CardTitle className="text-xl font-black uppercase italic tracking-tight">
-                Franchise Internal Announcements
-              </CardTitle>
-              <CardDescription className="text-[11px] uppercase tracking-widest font-bold mt-1">
-                Broadcast direct updates to your network
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">
-                  Select Scope
-                </Label>
-                <Select
-                  value={newAnnouncement.targetScope}
-                  onValueChange={(v: "network" | "studio") =>
-                    setNewAnnouncement((p) => ({
-                      ...p,
-                      targetScope: v,
-                      targetId:
-                        v === "network" ? "all_owned" : ownedStudios[0]?.id,
-                    }))
-                  }
-                >
-                  <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="network">Entire Network</SelectItem>
-                    <SelectItem value="studio">Specific Studio</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+      {/*
+        ANNOUNCEMENTS. The form that used to be inlined here is gone.
 
-              {newAnnouncement.targetScope === "studio" && (
-                <div className="space-y-2 animate-in fade-in">
-                  <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">
-                    Select Studio
-                  </Label>
-                  <Select
-                    value={newAnnouncement.targetId}
-                    onValueChange={(v) =>
-                      setNewAnnouncement((p) => ({ ...p, targetId: v }))
-                    }
-                  >
-                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ownedStudios.map((s) => (
-                        <SelectItem key={s.id} value={s.id!}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+        It was a second implementation of the admin composer with its own
+        field conventions, and the conventions did not match: it wrote
+        targetScope "network" alongside studioId "all", and the reader treats
+        studioId "all" as everybody. So an owner posting to their network
+        published to every trainer on the platform, and the card labelled it
+        "To: All Studios" - accurately, as it turned out, just not the studios
+        anyone meant. See features/admin/announcements/audience.ts.
 
-              <div className="space-y-2">
-                <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">
-                  Headline
-                </Label>
-                <Input
-                  value={newAnnouncement.title || ""}
-                  onChange={(e) =>
-                    setNewAnnouncement((p) => ({ ...p, title: e.target.value }))
-                  }
-                  placeholder="e.g., Happy Holidays Team!"
-                  className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 font-bold"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">
-                  Main Message
-                </Label>
-                <Textarea
-                  value={newAnnouncement.longContent || ""}
-                  onChange={(e) =>
-                    setNewAnnouncement((p) => ({
-                      ...p,
-                      longContent: e.target.value,
-                    }))
-                  }
-                  placeholder="The full inner communication message..."
-                  className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-xs min-h-20"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">
-                  Short Summary (Ticker)
-                </Label>
-                <Input
-                  placeholder="Appears on dashboard widgets..."
-                  className="h-10 bg-slate-50 dark:bg-slate-950"
-                  value={newAnnouncement.shortContent}
-                  onChange={(e) =>
-                    setNewAnnouncement((p) => ({
-                      ...p,
-                      shortContent: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-4">
-                <div className="flex-1 min-w-30 space-y-2">
-                  <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">
-                    Type
-                  </Label>
-                  <Select
-                    value={newAnnouncement.type || "news"}
-                    onValueChange={(v: any) =>
-                      setNewAnnouncement((p) => ({ ...p, type: v }))
-                    }
-                  >
-                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[11px] tracking-widest border-slate-200 dark:border-slate-800">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="news">News</SelectItem>
-                      <SelectItem value="shout-out">Shout Outs</SelectItem>
-                      <SelectItem value="event">Events</SelectItem>
-                      <SelectItem value="tip">Tips</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex-1 min-w-30 space-y-2">
-                  <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">
-                    Urgency
-                  </Label>
-                  <Select
-                    value={newAnnouncement.priority || "low"}
-                    onValueChange={(v: any) =>
-                      setNewAnnouncement((p) => ({ ...p, priority: v }))
-                    }
-                  >
-                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[11px] tracking-widest border-slate-200 dark:border-slate-800">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Standard</SelectItem>
-                      <SelectItem value="high">High & Urgent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex-1 min-w-30 space-y-2">
-                  <Label className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">
-                    Lifespan
-                  </Label>
-                  <Select
-                    value={lifespan}
-                    onValueChange={(v) => setLifespan(v)}
-                  >
-                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-950 font-bold uppercase text-[11px] tracking-widest border-slate-200 dark:border-slate-800">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="24h">24 Hours</SelectItem>
-                      <SelectItem value="1w">1 Week</SelectItem>
-                      <SelectItem value="1m">1 Month</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <Button
-                onClick={handleCreateAnnouncement}
-                disabled={
-                  isCreatingAnnouncement ||
-                  !newAnnouncement.title ||
-                  !newAnnouncement.shortContent
-                }
-                className="w-full bg-[#F06C22] hover:bg-[#D95B16] text-white font-black uppercase tracking-widest h-12"
-              >
-                {isCreatingAnnouncement ? (
-                  <Loader2 className="animate-spin w-4 h-4 mr-2" />
-                ) : (
-                  <Megaphone className="w-4 h-4 mr-2" />
-                )}
-                Broadcast
-              </Button>
-            </div>
-
-            <div className="bg-slate-50 dark:bg-slate-900/40 rounded-[24px] p-5 border border-slate-100 dark:border-slate-800 h-full max-h-125 overflow-y-auto w-full">
-              <h3 className="text-[11px] tracking-widest font-black uppercase text-slate-500 mb-4 sticky top-0 bg-slate-50 dark:bg-slate-900/40 py-1">
-                Recent Transmissions
-              </h3>
-              <div className="space-y-3">
-                {announcements.length === 0 ? (
-                  <p className="text-xs text-slate-400 font-medium py-8 text-center border-dashed border-2 dark:border-slate-800 rounded-2xl">
-                    No broadcasts sent yet.
-                  </p>
-                ) : (
-                  announcements.map((a) => (
-                    <div
-                      key={a.id}
-                      className={cn(
-                        "p-4 rounded-2xl border flex flex-col gap-2 relative group",
-                        getAnnouncementStyle(a.type, a.priority),
-                      )}
-                    >
-                      <div className="flex gap-2 items-start justify-between">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <span className="font-black text-sm uppercase italic tracking-tight">
-                              {a.title}
-                            </span>
-                            {a.priority === "high" && (
-                              <Badge className="bg-rose-500 hover:bg-rose-600 text-white border-0 text-[11px] font-black uppercase px-1.5 h-4">
-                                Urgent
-                              </Badge>
-                            )}
-                            <Badge
-                              variant="outline"
-                              className="bg-white/50 dark:bg-black/20 text-[11px] font-black uppercase tracking-widest px-1.5 border-current opacity-70"
-                            >
-                              {a.type || "news"}
-                            </Badge>
-                          </div>
-                          <p className="text-xs font-bold leading-tight opacity-90">
-                            {a.shortContent}
-                          </p>
-                        </div>
-                      </div>
-                      {a.longContent && (
-                        <p className="text-xs italic mt-1 opacity-80 line-clamp-3">
-                          {a.longContent}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-current border-opacity-10 justify-between">
-                        <span className="text-[11px] uppercase font-bold tracking-widest opacity-60">
-                          To:{" "}
-                          {a.targetScope === "network"
-                            ? "All Studios"
-                            : ownedStudios.find((s) => s.id === a.studioId)
-                                ?.name || "Studio"}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        The scope list below is the enforcement: an owner is offered their own
+        networks and the studios inside them, and nothing else exists to pick.
+      */}
+      <AnnouncementComposer
+        author={{ id: authTrainer.id, fullName: authTrainer.fullName }}
+        studios={ownedStudios.map((s) => ({ id: s.id, name: s.name }))}
+        networks={composerNetworks}
+        scopes={composerScopes}
+        published={myAnnouncements}
+        title="Message your network"
+        subtitle="Lands in the alerts bell for everyone at the studios you pick."
+      />
     </div>
   );
 }

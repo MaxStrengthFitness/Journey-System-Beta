@@ -1,7 +1,7 @@
 /**
  * HUB ANNOUNCEMENTS, read by the one bell.
  *
- * Round: Sep 6 2026 UI pass.
+ * Round: Sep 6 2026 UI pass; targeting extracted Round 2 Phase 1.
  *
  * WHY THIS HOOK EXISTS AT ALL
  * ---------------------------
@@ -17,12 +17,16 @@
  * nowhere. So the STREAM moved here and the RENDERING moved into the
  * notification sheet. One bell, two sections, nothing lost.
  *
- * THE FILTERING IS UNCHANGED, DELIBERATELY
+ * THE FILTERING NOW LIVES IN A PURE MODULE
  * ----------------------------------------
- * Scope targeting, the expiry check and the read-tracking are lifted verbatim
- * from the widget. This round was about where announcements appear, not about
- * who sees which one, and quietly changing the targeting rules in the same
- * commit would make any resulting "why can't I see it" report untraceable.
+ * The Sep 6 pass lifted the scope check verbatim from the widget and said so,
+ * on the grounds that moving code and changing behaviour in one commit makes
+ * any resulting "why can't I see it" report untraceable. Round 2 came back for
+ * the behaviour: the lifted check honoured `studioId === "all"` on documents
+ * the franchise composer wrote for a single network, so a network notice went
+ * to the whole platform. That check now lives in features/admin/announcements/
+ * audience.ts, under test, shared with both composers, and its header explains
+ * the leak and the migration.
  *
  * READS ARE MARKED ON OPEN, NOT ON RENDER
  * ---------------------------------------
@@ -43,35 +47,10 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import type { HubAnnouncement, Trainer } from "../../types";
-
-/** Milliseconds out of whatever shape the field happens to be in. */
-function millis(v: unknown): number {
-  if (!v) return 0;
-  const ts = v as { toMillis?: () => number; toDate?: () => Date };
-  if (typeof ts.toMillis === "function") return ts.toMillis();
-  if (typeof ts.toDate === "function") return ts.toDate().getTime();
-  if (typeof v === "number") return v;
-  if (v instanceof Date) return v.getTime();
-  return 0;
-}
-
-/** Whether this trainer is inside an announcement's target scope. */
-function isTargeted(a: HubAnnouncement, trainer: Trainer): boolean {
-  const accessible = trainer.accessibleStudioIds ?? [];
-  return (
-    a.targetScope === "universal" ||
-    a.studioId === "all" ||
-    a.studioId === trainer.primaryHomeStudioId ||
-    accessible.includes(a.studioId) ||
-    (a.targetScope === "studio" &&
-      (a.targetId === trainer.primaryHomeStudioId ||
-        (Boolean(a.targetId) && accessible.includes(a.targetId as string)))) ||
-    (a.targetScope === "network" &&
-      (trainer.role === "Owner" ||
-        trainer.role === "FranchiseOwner" ||
-        trainer.role === "StudioOwner"))
-  );
-}
+import {
+  unreadFor,
+  visibleAnnouncements,
+} from "../admin/announcements/audience";
 
 export interface UseHubAnnouncementsResult {
   /** Active, in-scope, unexpired. Newest first. */
@@ -106,24 +85,22 @@ export function useHubAnnouncements(
     return () => unsub();
   }, [trainer]);
 
-  const announcements = useMemo(() => {
-    if (!trainer) return [];
-    const now = Date.now();
-    return all
-      .filter((a) => a.isActive !== false)
-      .filter((a) => {
-        const expires = millis(a.expiresAt);
-        return expires === 0 || expires >= now;
-      })
-      .filter((a) => isTargeted(a, trainer))
-      .sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
-  }, [all, trainer]);
+  /**
+   * `Date.now()` is read inside the memo rather than held in state, so expiry
+   * is evaluated whenever the stream or the trainer changes. A notice that
+   * lapses while the tab sits open therefore disappears on the next snapshot,
+   * not the next second - which is the right trade: a timer ticking every
+   * minute to retire a 24-hour message would re-render the header forever.
+   */
+  const announcements = useMemo(
+    () => visibleAnnouncements(all, trainer, Date.now()),
+    [all, trainer],
+  );
 
-  const unread = useMemo(() => {
-    const id = trainer?.id ?? "";
-    if (!id) return [];
-    return announcements.filter((a) => !a.readBy?.includes(id));
-  }, [announcements, trainer]);
+  const unread = useMemo(
+    () => unreadFor(announcements, trainer?.id),
+    [announcements, trainer],
+  );
 
   return { announcements, unread, unreadCount: unread.length };
 }

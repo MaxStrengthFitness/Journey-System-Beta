@@ -843,3 +843,105 @@
   color: var(--adm-ink-2);
   font-variant-numeric: tabular-nums;
 }
+
+/* ==================================================================== *
+ * ANNOUNCEMENTS (Round 2 Phase 1, Section 8)
+ * ==================================================================== */
+
+/* Compose on the left, live list on the right. `adm-grid` is the FIELD
+   grid — auto-fit at 230px — so using it for two panels would shred them
+   into narrow columns on a wide screen. Two panels want two columns. */
+.adm-two {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .adm-two {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* Who is about to receive this, in a sentence, before the button is pressed.
+   The old franchise composer had no equivalent, which is why a notice going
+   to the entire platform instead of one network looked exactly like a notice
+   going to one network. */
+.adm-reach {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--adm-bg);
+  border: 1px solid var(--adm-border);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--adm-ink-2);
+}
+
+.adm-reach svg {
+  margin-top: 1px;
+  color: var(--adm-ink-muted);
+}
+
+.adm-problems {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.adm-ann-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-ann-list > li + li {
+  border-top: 1px solid var(--adm-border);
+}
+
+.adm-ann {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 14px;
+}
+
+.adm-ann-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.adm-ann-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--adm-ink);
+  min-width: 0;
+}
+
+.adm-ann-short {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--adm-ink-2);
+}
+
+.adm-ann-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--adm-ink-muted);
+}
