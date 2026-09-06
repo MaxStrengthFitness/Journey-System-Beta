@@ -53,6 +53,15 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
+          // NOTE ON WIDTH: `sm:max-w-sm` below is a RESPONSIVE class, so
+          // tailwind-merge keeps it alongside a plain `max-w-3xl` passed by a
+          // caller — and above 640px the responsive one wins. Every dialog in
+          // the app that asked for `max-w-3xl` was therefore 384px wide on an
+          // iPad, which is why the machine and routine editors had their
+          // content cut off. To widen a dialog, pass the `sm:` variant too:
+          //
+          //     <DialogContent className="sm:max-w-5xl">
+          //
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}

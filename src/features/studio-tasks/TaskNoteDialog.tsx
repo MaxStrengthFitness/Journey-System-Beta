@@ -64,7 +64,7 @@ export function TaskNoteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="st max-w-lg">
+      <DialogContent className="st max-w-lg sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-base">
             {row.title}

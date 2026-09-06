@@ -242,7 +242,7 @@ export function TaskManager({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="st max-w-2xl max-h-[85dvh] overflow-y-auto">
+      <DialogContent className="st max-w-2xl sm:max-w-2xl max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             {draft && (

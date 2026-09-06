@@ -2214,7 +2214,7 @@ export default function AppContent({
           open={!!infoMachineId}
           onOpenChange={(open) => !open && setInfoMachineId(null)}
         >
-          <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto rounded-[32px] p-0 border-none shadow-2xl dark:shadow-none">
+          <DialogContent className="max-w-3xl sm:max-w-3xl max-h-[90dvh] overflow-y-auto rounded-[32px] p-0 border-none shadow-2xl dark:shadow-none">
             {infoMachine && (
               <>
                 <DialogHeader className="p-8 bg-white dark:bg-bg-dark border-b relative">
@@ -2644,7 +2644,7 @@ export default function AppContent({
           open={showNewClientsDialog}
           onOpenChange={setShowNewClientsDialog}
         >
-          <DialogContent className="max-w-2xl rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
+          <DialogContent className="max-w-2xl sm:max-w-2xl rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
             <DialogHeader className="p-8 bg-primary/5 border-b border-primary/10">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-primary/10 rounded-2xl">
@@ -2720,7 +2720,7 @@ export default function AppContent({
           open={isReorderingTrainers}
           onOpenChange={setIsReorderingTrainers}
         >
-          <DialogContent className="max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none max-h-[85dvh] flex flex-col">
+          <DialogContent className="max-w-md sm:max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none max-h-[85dvh] flex flex-col">
             <DialogHeader className="p-8 bg-white dark:bg-bg-dark border-b shrink-0">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-primary/10 rounded-2xl">

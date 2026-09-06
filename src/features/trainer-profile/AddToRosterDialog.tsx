@@ -86,7 +86,7 @@ export function AddToRosterDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Add to Kaizen Roster</DialogTitle>
         </DialogHeader>
