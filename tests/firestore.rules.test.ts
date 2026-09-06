@@ -390,4 +390,147 @@ describe("Firestore Security Rules", () => {
       ),
     );
   });
+
+  // ── SELF-CREATED TRAINER DOCUMENTS (Admin Overhaul, Sep 2026) ─────────
+  //
+  // `allow create` has a bootstrap clause letting a signed-in person own
+  // trainers/{their uid} — the claim at first sign-in depends on it. But
+  // isValidTrainer placed no constraint on `role`, so any authenticated
+  // Google account could create a trainer document for ITSELF with role
+  // "Admin" and become a system administrator. The UPDATE rule has always
+  // refused that escalation; create never did.
+  //
+  // These four are the whole contract: the escalation is closed, and the two
+  // legitimate paths through that same clause still work.
+
+  it("denies a signed-in account making itself an Admin", async () => {
+    const ctx = testEnv.authenticatedContext("newguy", {
+      email: "newguy@test.com",
+    });
+    const db = ctx.firestore();
+    await assertFails(
+      setDoc(doc(db, "trainers", "newguy"), {
+        fullName: "New Guy",
+        initials: "NG",
+        role: "Admin",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+      }),
+    );
+  });
+
+  it("denies a signed-in account making itself a Founder or Overseer", async () => {
+    const db = testEnv
+      .authenticatedContext("newguy", { email: "newguy@test.com" })
+      .firestore();
+    const base = {
+      fullName: "New Guy",
+      initials: "NG",
+      primaryHomeStudioId: "studioA",
+      accessibleStudioIds: ["studioA"],
+    };
+    await assertFails(
+      setDoc(doc(db, "trainers", "newguy"), { ...base, role: "Founder" }),
+    );
+    await assertFails(
+      setDoc(doc(db, "trainers", "newguy"), { ...base, role: "Overseer" }),
+    );
+  });
+
+  it("still allows a signed-in account to create its own ordinary profile", async () => {
+    // This is the claim-at-first-sign-in path. Break it and an admin-created
+    // placeholder can never become a real account.
+    const ctx = testEnv.authenticatedContext("newguy", {
+      email: "newguy@test.com",
+    });
+    const db = ctx.firestore();
+    await assertSucceeds(
+      setDoc(doc(db, "trainers", "newguy"), {
+        fullName: "New Guy",
+        initials: "NG",
+        role: "LifeTransformer",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+      }),
+    );
+  });
+
+  it("still allows the owner's own bootstrap to mint an Admin profile", async () => {
+    // Exempted by email, mirroring the hard-coded bootstrap in
+    // useAuthInitialization.ts. Not new surface — the same surface, written
+    // down in the one place that can actually enforce it.
+    const ctx = testEnv.authenticatedContext("ownerBootstrap", {
+      email: "jurgensaj@gmail.com",
+    });
+    const db = ctx.firestore();
+    await assertSucceeds(
+      setDoc(doc(db, "trainers", "ownerBootstrap"), {
+        fullName: "System Admin",
+        initials: "SA",
+        role: "Admin",
+        primaryHomeStudioId: "system",
+        accessibleStudioIds: ["system"],
+      }),
+    );
+  });
+
+  // ── EQUIPMENT UPKEEP LOG (Admin Overhaul, Sep 2026) ───────────────────
+  //
+  // Any trainer may log work — the person who cleans the machine is the
+  // person on the floor. Nobody may rewrite an entry afterwards: an
+  // accountability log that can be edited is not one.
+
+  it("allows a trainer to log equipment upkeep", async () => {
+    const db = testEnv
+      .authenticatedContext("trainerA", { email: "trainera@test.com" })
+      .firestore();
+    await assertSucceeds(
+      setDoc(doc(db, "studios", "studioA", "upkeepLog", "u1"), {
+        machineId: "m-ext",
+        kind: "deep-clean",
+        at: "2026-09-06T14:00:00.000Z",
+        byId: "trainerA",
+        byName: "Trainer A",
+      }),
+    );
+  });
+
+  it("denies rewriting an upkeep entry after the fact", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), "studios", "studioA", "upkeepLog", "u1"),
+        { machineId: "m-ext", kind: "clean", at: "2026-09-06T14:00:00.000Z" },
+      );
+    });
+    const db = testEnv
+      .authenticatedContext("trainerA", { email: "trainera@test.com" })
+      .firestore();
+    await assertFails(
+      updateDoc(doc(db, "studios", "studioA", "upkeepLog", "u1"), {
+        kind: "deep-clean",
+      }),
+    );
+  });
+
+  it("denies a trainer deleting an upkeep entry, but allows a studio owner", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), "studios", "studioA", "upkeepLog", "u1"),
+        { machineId: "m-ext", kind: "clean", at: "2026-09-06T14:00:00.000Z" },
+      );
+    });
+    const trainerDb = testEnv
+      .authenticatedContext("trainerA", { email: "trainera@test.com" })
+      .firestore();
+    await assertFails(
+      deleteDoc(doc(trainerDb, "studios", "studioA", "upkeepLog", "u1")),
+    );
+
+    const ownerDb = testEnv
+      .authenticatedContext("ownerA", { email: "ownera@test.com" })
+      .firestore();
+    await assertSucceeds(
+      deleteDoc(doc(ownerDb, "studios", "studioA", "upkeepLog", "u1")),
+    );
+  });
 });
