@@ -46,6 +46,23 @@ export {
   type SyncVerdict,
 } from "./syncPolicy";
 
+export { AdminStudiosTab } from "./studios/AdminStudiosTab";
+export {
+  deleteStudioPlan,
+  findLocationConflict,
+  findOrphans,
+  hasOrphans,
+  linkPlan,
+  mindbodyLinkState,
+  repairPlan,
+  standardSetSeed,
+  unlinkPlan,
+  validateStudioIdentity,
+  type MindbodyLinkState,
+  type RegistryOrphans,
+  type RegistryWrite,
+} from "./studios/registry";
+
 export { AdminOverviewTab } from "./AdminOverviewTab";
 export type { AdminOverviewTabProps } from "./AdminOverviewTab";
 

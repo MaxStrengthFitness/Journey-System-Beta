@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, ScheduleEntry } from "../types";
-import { AdminStudioManager } from "./AdminStudioManager";
 import { AdminUserDirectory } from "./AdminUserDirectory";
 import { AdminBugReports } from "./AdminBugReports";
 import { AdminHubAnnouncements } from "./AdminHubAnnouncements";
@@ -21,6 +20,7 @@ import { AdminDataReportsTab } from "../features/admin-data";
 import { IntegrationsHubView } from "./IntegrationsHubView";
 import { AdminSystemToolsTab } from "./AdminSystemToolsTab";
 import { AdminOverviewTab } from "../features/admin/AdminOverviewTab";
+import { AdminStudiosTab } from "../features/admin/studios/AdminStudiosTab";
 
 interface Props {
   authTrainer: Trainer;
@@ -276,7 +276,7 @@ export function AdminDashboardView({
           <AdminSystemClients clients={clients} studios={studios} />
         )}
         {activeTab === "studios" && (
-          <AdminStudioManager
+          <AdminStudiosTab
             authTrainer={authTrainer}
             studios={studios}
             networks={networks}
