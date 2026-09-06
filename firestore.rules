@@ -896,8 +896,16 @@ service cloud.firestore {
     }
 
     // BUG REPORTS
+    //
+    // The read rule was superadmin-only, and features/feedback/useMyFeedback
+    // queries this collection filtered to `userId == me` so a trainer can see
+    // what became of their reports - its own header says it exists "for when
+    // reports feel like they go nowhere". That listener was denied for every
+    // trainer but the owner, silently, so the reports went nowhere visibly
+    // too. A reporter may read their OWN report; nobody else can.
     match /bug_reports/{reportId} {
-      allow read: if isSuperAdmin();
+      allow read: if isSuperAdmin()
+                  || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow create: if isAuthenticated();
       allow update, delete: if isSuperAdmin();
     }

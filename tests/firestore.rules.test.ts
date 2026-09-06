@@ -533,4 +533,58 @@ describe("Firestore Security Rules", () => {
       deleteDoc(doc(ownerDb, "studios", "studioA", "upkeepLog", "u1")),
     );
   });
+
+  // ── BUG REPORTS (Admin Overhaul R2 Phase 3) ──────────────────────
+  //
+  // useMyFeedback queries bug_reports filtered to the signed-in user so a
+  // trainer can see what became of their reports. The read rule was
+  // superadmin-only, so that listener was denied for everyone but the owner.
+  it("lets a trainer read their own bug report", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "bug_reports", "mine"), {
+        userId: "trainerA",
+        description: "Timer froze",
+        status: "open",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerA", {
+      email: "trainera@test.com",
+    });
+    await assertSucceeds(getDoc(doc(ctx.firestore(), "bug_reports", "mine")));
+  });
+
+  it("denies a trainer reading somebody else's bug report", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "bug_reports", "theirs"), {
+        userId: "someone-else",
+        description: "Timer froze",
+        status: "open",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerA", {
+      email: "trainera@test.com",
+    });
+    await assertFails(getDoc(doc(ctx.firestore(), "bug_reports", "theirs")));
+  });
+
+  it("denies a trainer changing the status on their own report", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "bug_reports", "mine"), {
+        userId: "trainerA",
+        description: "Timer froze",
+        status: "open",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerA", {
+      email: "trainera@test.com",
+    });
+    await assertFails(
+      updateDoc(doc(ctx.firestore(), "bug_reports", "mine"), {
+        status: "fixed",
+      }),
+    );
+  });
 });

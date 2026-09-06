@@ -226,3 +226,23 @@ export {
   type StudioDiagnosis,
   type SyncState,
 } from "./mindbody/diagnostics";
+
+export { AdminBugReportsTab } from "./bugs/AdminBugReportsTab";
+export {
+  EMPTY_FILTER as EMPTY_REPORT_FILTER,
+  KIND_LABEL as REPORT_KIND_LABEL,
+  STATUS_LABEL as REPORT_STATUS_LABEL,
+  STATUS_ORDER as REPORT_STATUS_ORDER,
+  countReports,
+  describeUserAgent,
+  filterReports,
+  orderReports,
+  reportAsText,
+  toReportView,
+  type DiagnosticRow,
+  type RawReport,
+  type ReportCounts,
+  type ReportFilter,
+  type ReportStatus,
+  type ReportView,
+} from "./bugs/reportView";

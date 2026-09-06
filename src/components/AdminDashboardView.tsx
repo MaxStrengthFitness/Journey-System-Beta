@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, ScheduleEntry } from "../types";
-import { AdminBugReports } from "./AdminBugReports";
 import { InsightsDashboardView } from "./InsightsDashboardView";
 // Deprecated (Sep 2026 UI overhaul): the Retention route is unmounted. The
 // component file stays on disk in case it is revived; nothing imports it here.
@@ -20,6 +19,7 @@ import { AdminStaffTab } from "../features/admin/staff/AdminStaffTab";
 import { AdminClientsTab } from "../features/admin/clients/AdminClientsTab";
 import { AdminAnnouncementsTab } from "../features/admin/announcements/AdminAnnouncementsTab";
 import { AdminMindbodyTab } from "../features/admin/mindbody/AdminMindbodyTab";
+import { AdminBugReportsTab } from "../features/admin/bugs/AdminBugReportsTab";
 
 interface Props {
   authTrainer: Trainer;
@@ -346,7 +346,7 @@ export function AdminDashboardView({
           />
         )}
 
-        {activeTab === "bugs" && <AdminBugReports />}
+        {activeTab === "bugs" && <AdminBugReportsTab studios={studios} />}
 
         {activeTab === "system" && (
           <AdminSystemToolsTab
