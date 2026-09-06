@@ -30,6 +30,22 @@ export {
 
 export { useDirtyForm, type DirtyForm } from "./useDirtyForm";
 
+export { AdminOverviewTab } from "./AdminOverviewTab";
+export type { AdminOverviewTabProps } from "./AdminOverviewTab";
+
+export {
+  attentionItems,
+  entriesForDay,
+  loadByDay,
+  summariseFloor,
+  trainerLanes,
+  type AttentionItem,
+  type AttentionKind,
+  type DayLoad,
+  type FloorSummary,
+  type TrainerLane,
+} from "./overview";
+
 export {
   acknowledgeSaved,
   adoptExternal,

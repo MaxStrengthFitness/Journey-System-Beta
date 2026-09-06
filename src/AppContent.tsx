@@ -2003,6 +2003,7 @@ export default function AppContent({
                     clients={clients}
                     sessions={sessions}
                     machines={machines}
+                    schedules={schedules}
                     newClientsCount={newClientsThisMonth.length}
                     onShowNewClients={() => setShowNewClientsDialog(true)}
                     onUpdateStudio={updateStudio}
@@ -2016,6 +2017,7 @@ export default function AppContent({
                       setSelectedClientId(clientId);
                       setCurrentView("profile");
                     }}
+                    onOpenStudioTasks={() => setCurrentView("studio-tasks")}
                   />
                 )}
                 {currentView === "trainer-hub" && (

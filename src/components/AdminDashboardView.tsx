@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine } from "../types";
-import { AdminMetricsDashboard } from "./AdminMetricsDashboard";
+import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, ScheduleEntry } from "../types";
 import { AdminStudioManager } from "./AdminStudioManager";
 import { AdminUserDirectory } from "./AdminUserDirectory";
 import { AdminBugReports } from "./AdminBugReports";
@@ -21,6 +20,7 @@ import { AdminMachinesTab } from "./machines/AdminMachinesTab";
 import { AdminDataReportsTab } from "../features/admin-data";
 import { IntegrationsHubView } from "./IntegrationsHubView";
 import { AdminSystemToolsTab } from "./AdminSystemToolsTab";
+import { AdminOverviewTab } from "../features/admin/AdminOverviewTab";
 
 interface Props {
   authTrainer: Trainer;
@@ -34,6 +34,12 @@ interface Props {
   clients?: Client[];
   sessions?: WorkoutSession[];
   machines?: Machine[];
+  /**
+   * Everything the live schedule hook has loaded for the active studio —
+   * today plus roughly a week ahead. The Overview needs it; nothing else on
+   * this screen does, which is why it is optional.
+   */
+  schedules?: ScheduleEntry[];
   newClientsCount?: number;
   onShowNewClients?: () => void;
   onUpdateStudio?: (id: string, updates: Partial<Studio>) => Promise<void>;
@@ -55,6 +61,8 @@ interface Props {
   onRestoreMachines?: () => void;
   onReorderTrainers?: () => void;
   onAppCleanse?: () => void;
+  /** Opens the full studio to-do screen from the Overview's task panel. */
+  onOpenStudioTasks?: () => void;
 }
 
 export function AdminDashboardView({
@@ -67,6 +75,7 @@ export function AdminDashboardView({
   clients = [],
   sessions = [],
   machines = [],
+  schedules = [],
   newClientsCount = 0,
   onShowNewClients,
   onUpdateStudio,
@@ -77,6 +86,7 @@ export function AdminDashboardView({
   onRestoreMachines,
   onReorderTrainers,
   onAppCleanse,
+  onOpenStudioTasks,
 }: Props) {
   type AdminTab =
     | "metrics"
@@ -247,10 +257,16 @@ export function AdminDashboardView({
 
       <div className="flex-1 min-w-0 w-full">
         {activeTab === "metrics" && (
-          <AdminMetricsDashboard
-            onManageStudios={() => setActiveTab("studios")}
+          <AdminOverviewTab
+            authTrainer={authTrainer}
+            studios={studios}
+            activeStudioId={activeStudioId}
+            schedules={schedules}
+            sessions={sessions}
             clients={clients}
-            networks={networks}
+            onManageStudios={() => setActiveTab("studios")}
+            onOpenStudioTasks={onOpenStudioTasks}
+            onNavigateProfile={onNavigateProfile}
           />
         )}
         {activeTab === "users" && (

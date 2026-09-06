@@ -679,3 +679,167 @@
   background: var(--adm-surface-2);
   border-top: 1px solid var(--adm-border);
 }
+
+/* ==========================================================================
+   Overview — the operational welcome screen
+   ========================================================================== */
+
+.adm-ov__cols {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .adm-ov__cols {
+    /* The floor is the thing you came to look at, so it gets the wide column.
+       To-do and week shape are context. */
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  }
+}
+
+.adm-ov__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* ---------- Trainer lane ---------------------------------------------- */
+
+.adm-lane {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  min-height: 60px;
+}
+
+.adm-lane__who {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.adm-lane__name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--adm-ink);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.adm-lane__sub {
+  font-size: 12px;
+  color: var(--adm-ink-muted);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A trainer mid-session. The dot is the signal; the word "Live" beside it is
+   what makes it work for anyone who cannot separate the colours. */
+.adm-lane__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--adm-ok);
+}
+
+.adm-lane__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: adm-pulse 2s ease-in-out infinite;
+}
+
+@keyframes adm-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adm-lane__dot { animation: none; }
+}
+
+/* Progress through a trainer's booked day. */
+.adm-lane__count {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--adm-ink-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.adm-lane__track {
+  width: 86px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--adm-surface-3);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.adm-lane__fill {
+  height: 100%;
+  background: var(--adm-ok);
+}
+
+/* ---------- Week shape ------------------------------------------------- */
+
+.adm-week {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 4px 2px 0;
+}
+
+.adm-week__day {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.adm-week__bar {
+  width: 100%;
+  min-height: 3px;
+  border-radius: 4px 4px 0 0;
+  background: var(--adm-live-fill);
+  display: flex;
+  flex-direction: column-reverse;
+  overflow: hidden;
+}
+
+.adm-week__bar-done {
+  width: 100%;
+  background: var(--adm-live);
+}
+
+.adm-week__label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--adm-ink-muted);
+}
+
+.adm-week__day--today .adm-week__label {
+  color: var(--adm-hero-text);
+}
+
+.adm-week__n {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--adm-ink-2);
+  font-variant-numeric: tabular-nums;
+}
