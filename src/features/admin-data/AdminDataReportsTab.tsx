@@ -1,28 +1,44 @@
 /**
- * ADMIN — DATA & REPORTS.
+ * ADMIN — EXPORTS.
  *
- * Round: Settings tiers & Task Board, Sep 2026.
+ * Data out and data in, on one screen, because an admin looking for one is
+ * looking near the other. Rebuilt on the admin kit in the Sep 2026 overhaul,
+ * and two things changed beyond the styling.
  *
- * The new home for what used to be the trainer hub's "Data & Reports" tab (D)
- * and the legacy CSV ingestion that sat inside App Settings (B4). Both are
- * admin work: a payroll CSV covers every trainer at the studio, a progress CSV
- * carries client data in bulk, and the legacy importer writes thousands of
- * documents from one file picker while the client schema migration is still
- * pending.
+ * The per-client PROGRESS export is gone. A progress report is a coaching
+ * document about one person; generating eighty of them from a date picker is
+ * how a client's report ends up written by somebody who has never met them.
+ * It now starts from the client's own profile, where the coach who knows them
+ * is standing. (It was also the most expensive control here — an unbounded
+ * exerciseLogs range query across the whole studio.)
  *
- * The two are on one screen because they are the same job in both directions -
- * data out, data in - and an admin looking for one is looking near the other.
- * The importer is placed second and visually cooled down deliberately: an
- * export is routine and a bulk import is not, and the destructive control
- * should not be the first thing under the thumb.
+ * The legacy importer stays, because it works and studios need it, but it is
+ * described honestly: it handles one file at a time while the client schema
+ * migration is pending, and the full migration — the one that moves a client
+ * with eighty-plus historical sessions — is not this. That gets its own
+ * placeholder rather than being quietly implied by the button that exists.
  */
 
 import React, { useRef } from "react";
-import { Database, Download, FileSpreadsheet, TrendingUp, TriangleAlert, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Database,
+  Download,
+  FileSpreadsheet,
+  HardDriveUpload,
+  Users,
+} from "lucide-react";
 import { Client, Machine, Studio, Trainer } from "../../types";
+import {
+  AdminBadge,
+  AdminButton,
+  AdminField,
+  AdminGrid,
+  AdminHeader,
+  AdminInput,
+  AdminNotice,
+  AdminPanel,
+  AdminScreen,
+} from "../admin/primitives";
 import { useStudioExports } from "./useStudioExports";
 import { useLegacyImport } from "./useLegacyImport";
 
@@ -49,28 +65,18 @@ function ExportCard({
   busy: boolean;
 }) {
   return (
-    <div className="flex flex-col rounded-3xl border border-border bg-card overflow-hidden">
-      <div className="flex items-center gap-2.5 px-5 py-4 border-b border-border bg-background">
-        <Icon className="w-4 h-4 text-cta shrink-0" />
-        <h4 className="text-[11px] font-black uppercase tracking-widest text-foreground">
-          {title}
-        </h4>
-      </div>
-      <div className="flex-1 px-5 py-4">
-        <p className="text-sm text-muted-foreground font-medium leading-relaxed">
-          {description}
-        </p>
-      </div>
-      <div className="px-5 pb-5">
-        <Button
-          onClick={onDownload}
-          disabled={busy}
-          className="w-full h-11 rounded-2xl bg-cta text-white font-black uppercase text-[10px] tracking-widest gap-2 disabled:opacity-40"
-        >
-          <Download className="w-4 h-4" />
-          {busy ? "Building…" : "Download CSV"}
-        </Button>
-      </div>
+    <div className="adm-tile" style={{ gap: 8 }}>
+      <span className="adm-tile__label" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <Icon className="w-3.5 h-3.5" />
+        {title}
+      </span>
+      <p className="adm-hint" style={{ flex: 1, margin: 0 }}>
+        {description}
+      </p>
+      <AdminButton variant="primary" busy={busy} onClick={onDownload}>
+        <Download className="w-3.5 h-3.5" />
+        {busy ? "Building" : "Download CSV"}
+      </AdminButton>
     </div>
   );
 }
@@ -92,10 +98,8 @@ export function AdminDataReportsTab({
     setExportEndDate,
     isExportingPayroll,
     isExportingAttendance,
-    isExportingProgress,
     handleExportPayroll,
     handleExportAttendance,
-    handleExportProgress,
   } = useStudioExports({ trainers, clients, studios, activeStudioId });
 
   const { isLegacyImporting, legacyStats, legacyError, handleLegacyFileUpload } =
@@ -105,154 +109,145 @@ export function AdminDataReportsTab({
     studios.find((s) => s.id === activeStudioId)?.name ?? "all studios";
 
   return (
-    <div className="space-y-6">
-      {/* ── EXPORTS ──────────────────────────────────────────────── */}
-      <section className="rounded-[32px] border border-border bg-card overflow-hidden">
-        <header className="flex items-center gap-4 px-6 sm:px-8 py-6 border-b border-border bg-background">
-          <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center border border-border shadow-inner shrink-0">
-            <Download className="w-6 h-6 text-cta" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-xl sm:text-2xl font-black text-foreground italic tracking-tight">
-              Data Exports &amp; Reporting
-            </h3>
-            <p className="text-muted-foreground font-medium uppercase text-[10px] sm:text-[11px] tracking-widest">
-              CSV reports for performance, payroll and logs — {studioName}
-            </p>
-          </div>
-        </header>
+    <AdminScreen>
+      <AdminHeader
+        icon={<Download className="w-5 h-5" />}
+        title="Exports"
+        subtitle={`Business reporting for ${studioName}. Anything about one client starts from that client's profile.`}
+      />
 
-        <div className="p-6 sm:p-8 space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 rounded-3xl border border-border bg-background">
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                Start date
-              </Label>
-              <Input
-                type="date"
-                value={exportStartDate}
-                onChange={(e) => setExportStartDate(e.target.value)}
-                className="h-11 rounded-2xl bg-card border-border text-foreground"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                End date
-              </Label>
-              <Input
-                type="date"
-                value={exportEndDate}
-                onChange={(e) => setExportEndDate(e.target.value)}
-                className="h-11 rounded-2xl bg-card border-border text-foreground"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <ExportCard
-              icon={FileSpreadsheet}
-              title="Trainer & payroll"
-              description="Every completed session in the range with trainer, studio, client, date and type — the sheet payroll is actually built from."
-              onDownload={handleExportPayroll}
-              busy={isExportingPayroll}
+      <AdminPanel
+        title="Date range"
+        subtitle="Applies to both exports below."
+      >
+        <AdminGrid>
+          <AdminField label="Start date">
+            <AdminInput
+              type="date"
+              value={exportStartDate}
+              onChange={(e) => setExportStartDate(e.target.value)}
             />
-            <ExportCard
-              icon={Users}
-              title="Client attendance"
-              description="Historical check-ins, completed sessions and no-shows, one row per session."
-              onDownload={handleExportAttendance}
-              busy={isExportingAttendance}
+          </AdminField>
+          <AdminField label="End date">
+            <AdminInput
+              type="date"
+              value={exportEndDate}
+              onChange={(e) => setExportEndDate(e.target.value)}
             />
-            <ExportCard
-              icon={TrendingUp}
-              title="Client progress"
-              description="Session counts, average resistance workload and target tracking, one row per client."
-              onDownload={handleExportProgress}
-              busy={isExportingProgress}
-            />
-          </div>
-        </div>
-      </section>
+          </AdminField>
+        </AdminGrid>
 
-      {/* ── INGESTION ────────────────────────────────────────────── */}
-      <section className="rounded-[32px] border border-amber/30 bg-card overflow-hidden">
-        <header className="flex items-center gap-4 px-6 sm:px-8 py-6 border-b border-amber/20 bg-amber/5">
-          <div className="w-12 h-12 rounded-2xl bg-amber/10 flex items-center justify-center border border-amber/30 shrink-0">
-            <Database className="w-6 h-6 text-amber" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-xl sm:text-2xl font-black text-foreground italic tracking-tight">
-              Legacy Data Ingestion
-            </h3>
-            <p className="text-muted-foreground font-medium uppercase text-[10px] sm:text-[11px] tracking-widest">
-              Import historical FileMaker client logs
-            </p>
-          </div>
-        </header>
-
-        <div className="p-6 sm:p-8 space-y-4">
-          <p className="flex items-start gap-2.5 text-sm text-amber font-medium leading-relaxed">
-            <TriangleAlert className="w-4 h-4 mt-0.5 shrink-0" />
-            <span>
-              This writes clients, sessions and exercise logs straight into{" "}
-              <strong>{studioName}</strong>. The client data schema migration is
-              still pending, so import one file at a time and check the result
-              before running another.
-            </span>
-          </p>
-
-          <input
-            ref={fileInput}
-            type="file"
-            accept=".csv"
-            onChange={handleLegacyFileUpload}
-            disabled={isLegacyImporting}
-            className="hidden"
+        <div className="adm-tiles" style={{ marginTop: 14 }}>
+          <ExportCard
+            icon={FileSpreadsheet}
+            title="Trainer & payroll"
+            description="Every completed session in the range with trainer, studio, client, date and type — the sheet payroll is actually built from."
+            onDownload={handleExportPayroll}
+            busy={isExportingPayroll}
           />
-          <Button
-            variant="outline"
-            onClick={() => fileInput.current?.click()}
-            disabled={isLegacyImporting}
-            className="w-full h-14 rounded-2xl border-dashed border-2 border-amber/40 bg-background text-amber hover:bg-amber/10 font-black uppercase text-[10px] tracking-widest gap-2"
-          >
-            <Database className="w-4 h-4" />
-            {isLegacyImporting ? "Processing legacy data…" : "Choose a CSV to import"}
-          </Button>
-
-          {legacyStats && (
-            <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                ["Clients", legacyStats.clients],
-                ["Sessions", legacyStats.sessions],
-                ["Logs", legacyStats.logs],
-                ["Failed", legacyStats.failed],
-              ].map(([label, n]) => (
-                <div
-                  key={String(label)}
-                  className="rounded-2xl border border-border bg-background px-4 py-3"
-                >
-                  <dt className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                    {label}
-                  </dt>
-                  <dd
-                    className={`text-2xl font-black italic ${
-                      label === "Failed" && Number(n) > 0
-                        ? "text-amber"
-                        : "text-foreground"
-                    }`}
-                  >
-                    {n}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          )}
-
-          {legacyError && (
-            <p className="text-sm font-medium text-red-500">{legacyError}</p>
-          )}
+          <ExportCard
+            icon={Users}
+            title="Client attendance"
+            description="Historical check-ins, completed sessions and no-shows, one row per session."
+            onDownload={handleExportAttendance}
+            busy={isExportingAttendance}
+          />
         </div>
-      </section>
-    </div>
+
+        <div style={{ marginTop: 14 }}>
+          <AdminNotice tone="info">
+            Progress reports are no longer generated from here. Open the client
+            and start one from their profile — the report is a coaching document
+            about that person, and the coach who knows them should be the one
+            writing it.
+          </AdminNotice>
+        </div>
+      </AdminPanel>
+
+      <AdminPanel
+        title="Legacy import"
+        icon={<Database className="w-3.5 h-3.5" />}
+        subtitle="Historical FileMaker client logs, one file at a time."
+        actions={<AdminBadge tone="warn">Limited</AdminBadge>}
+      >
+        <AdminNotice tone="warn">
+          This writes clients, sessions and exercise logs straight into{" "}
+          <b>{studioName}</b>. The client schema migration is still pending, so
+          import one file and check the result before running another.
+        </AdminNotice>
+
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".csv"
+          onChange={handleLegacyFileUpload}
+          disabled={isLegacyImporting}
+          className="hidden"
+        />
+        <div style={{ marginTop: 12 }}>
+          <AdminButton
+            variant="quiet"
+            busy={isLegacyImporting}
+            onClick={() => fileInput.current?.click()}
+          >
+            <Database className="w-3.5 h-3.5" />
+            {isLegacyImporting ? "Processing" : "Choose a CSV"}
+          </AdminButton>
+        </div>
+
+        {legacyStats && (
+          <div className="adm-tiles" style={{ marginTop: 14 }}>
+            {[
+              ["Clients", legacyStats.clients],
+              ["Sessions", legacyStats.sessions],
+              ["Logs", legacyStats.logs],
+              ["Failed", legacyStats.failed],
+            ].map(([label, n]) => (
+              <div key={String(label)} className="adm-tile">
+                <span className="adm-tile__label">{label}</span>
+                <span
+                  className={
+                    label === "Failed" && Number(n) > 0
+                      ? "adm-tile__value adm-tile__value--alert"
+                      : "adm-tile__value"
+                  }
+                >
+                  {n}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {legacyError && (
+          <div style={{ marginTop: 12 }}>
+            <AdminNotice tone="alert">{legacyError}</AdminNotice>
+          </div>
+        )}
+      </AdminPanel>
+
+      <AdminPanel
+        title="Full historical migration"
+        icon={<HardDriveUpload className="w-3.5 h-3.5" />}
+        subtitle="Moving a whole studio off FileMaker in one pass."
+        actions={<AdminBadge tone="hero">Coming soon</AdminBadge>}
+      >
+        <p className="adm-hint" style={{ margin: 0, fontSize: "13px" }}>
+          The importer above takes one file at a time and is meant for a handful
+          of clients. What is coming is the other thing: a whole roster at once,
+          including clients carrying eighty or more historical sessions, with a
+          dry run you can read before anything is written and a report of what
+          matched and what did not.
+        </p>
+        <div style={{ marginTop: 12 }}>
+          <AdminNotice tone="info">
+            It waits on the client schema migration, because a bulk import that
+            writes into a schema still being changed is a bulk import you have
+            to undo. Nothing here is blocked in the meantime — the one-file
+            importer above works today.
+          </AdminNotice>
+        </div>
+      </AdminPanel>
+    </AdminScreen>
   );
 }
