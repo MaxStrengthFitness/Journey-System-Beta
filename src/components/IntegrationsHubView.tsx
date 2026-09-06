@@ -1,3 +1,5 @@
+import { isSyncConfigured, nextSyncLabel } from "../features/admin/useAutoSync";
+import { formatStudioTime } from "../lib/studio-time";
 import React, { useState, useEffect } from "react";
 import {
   collection,
@@ -113,38 +115,41 @@ export function IntegrationsHubView({
   const [countdownText, setCountdownText] = useState("");
   const [dbLogs, setDbLogs] = useState<any[]>([]);
 
+  /**
+   * The real countdown.
+   *
+   * What was here before computed a wall-clock-aligned "next sync in 3m 40s"
+   * and ticked it down every second — while nothing anywhere ran a sync. It
+   * was a clock with no engine behind it, which is worse than an empty panel:
+   * it told a studio leader their schedule was about to refresh, forever.
+   *
+   * useAutoSync now holds a shared lease on the studio document, so this reads
+   * the actual state: when the last pull happened, when the next one is due,
+   * and whether the studio is even configured to sync.
+   */
   useEffect(() => {
-    if (!autoSync) {
-      setCountdownText("Paused manually");
-      return;
-    }
-
-    const intervalMinutes = parseInt(syncInterval, 10);
-
-    const updateTimer = () => {
-      const now = new Date();
-      const currentMinutes = now.getMinutes();
-      const currentSeconds = now.getSeconds();
-
-      const nextAlignedMinute =
-        Math.ceil((currentMinutes + 0.001) / intervalMinutes) * intervalMinutes;
-
-      let diffMinutes = nextAlignedMinute - currentMinutes - 1;
-      let diffSeconds = 60 - currentSeconds;
-
-      if (diffSeconds === 60) {
-        diffSeconds = 0;
-        diffMinutes += 1;
+    const update = () => {
+      if (!activeStudio) return setCountdownText("No studio selected");
+      if (!autoSync) return setCountdownText("Paused manually");
+      if (!isSyncConfigured(activeStudio, studios)) {
+        return setCountdownText("Waiting on Mindbody configuration");
       }
-
-      const minStr = diffMinutes > 0 ? `${diffMinutes}m ` : "";
-      setCountdownText(`Running (Next sync in ${minStr}${diffSeconds}s)`);
+      const failures = activeStudio.scheduleSyncFailures ?? 0;
+      const label = nextSyncLabel(activeStudio);
+      setCountdownText(
+        failures > 0
+          ? `${failures} failed ${failures === 1 ? "attempt" : "attempts"} — retrying ${label.toLowerCase()}`
+          : activeStudio.lastScheduleSyncAt
+            ? `Last pull ${formatStudioTime(activeStudio.lastScheduleSyncAt)} · next ${label.toLowerCase()}`
+            : "Next pull on the first open tab",
+      );
     };
-
-    updateTimer();
-    const intervalId = setInterval(updateTimer, 1000);
-    return () => clearInterval(intervalId);
-  }, [autoSync, syncInterval]);
+    update();
+    // Half a minute, not a second: this is a status line, not a stopwatch,
+    // and the underlying lease only moves every few minutes at best.
+    const id = setInterval(update, 30_000);
+    return () => clearInterval(id);
+  }, [autoSync, activeStudio, studios]);
 
   // Real-time Event Logs listener
   useEffect(() => {
@@ -764,8 +769,14 @@ export function IntegrationsHubView({
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                     Engine Status
                   </div>
-                  <div className="font-bold flex items-center text-emerald-600 dark:text-emerald-400">
-                    <Activity className="w-3.5 h-3.5 mr-1.5 animate-pulse" />
+                  <div
+                    className={
+                      (activeStudio?.scheduleSyncFailures ?? 0) > 0
+                        ? "font-bold flex items-center text-rose-600 dark:text-rose-400"
+                        : "font-bold flex items-center text-emerald-600 dark:text-emerald-400"
+                    }
+                  >
+                    <Activity className="w-3.5 h-3.5 mr-1.5" />
                     {countdownText}
                   </div>
                 </div>

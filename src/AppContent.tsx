@@ -504,6 +504,7 @@ export const getMachineImageUrl = (machineId?: string): string => {
 import { useActiveStudio } from "./ActiveStudioContext";
 
 
+import { useAutoSync } from "./features/admin/useAutoSync";
 import { useTrainers } from "./hooks/useTrainers";
 import { useStudios } from "./hooks/useStudios";
 import { useNetworks } from "./hooks/useNetworks";
@@ -645,6 +646,21 @@ export default function AppContent({
     isDataReady,
   );
   const { sessions } = useSessions(activeStudioId, isDataReady);
+
+  /**
+   * Background Mindbody pulls. autoSyncEnabled and syncIntervalMinutes have
+   * been settable from Integrations since the round that added them and
+   * nothing has ever read them; this is what reads them. The lease is shared
+   * across every device at the studio, so a floor with six iPads still does
+   * one sync per interval rather than six. See features/admin/syncPolicy.ts.
+   */
+  useAutoSync({
+    studios,
+    activeStudioId,
+    trainers,
+    clients: liveRosterClients,
+    enabled: isDataReady,
+  });
 
   /**
    * The signed-in trainer's Kaizen Roster, as a set of client ids.

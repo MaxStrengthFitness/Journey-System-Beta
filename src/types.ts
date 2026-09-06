@@ -1327,6 +1327,16 @@ export interface Studio {
   };
   autoSyncEnabled?: boolean;
   syncIntervalMinutes?: number;
+  /**
+   * SHARED sync lease, epoch ms. Every device at this studio reads the same
+   * value, so only one of them runs the pull — see features/admin/syncPolicy.
+   * A client clock, not serverTimestamp(): the lease has to be readable
+   * synchronously off the streamed studio document, and a 15-minute interval
+   * tolerates the few seconds of drift that costs.
+   */
+  lastScheduleSyncAt?: number;
+  /** Consecutive failed automatic syncs. Reset to 0 on success; drives backoff. */
+  scheduleSyncFailures?: number;
   brandColor?: string;
 }
 

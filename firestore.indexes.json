@@ -33,6 +33,20 @@
       ]
     },
     {
+      "collectionGroup": "clients",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "homeStudioId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isActive",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "exerciseLogs",
       "queryScope": "COLLECTION",
       "fields": [

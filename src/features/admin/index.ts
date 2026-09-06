@@ -30,6 +30,22 @@ export {
 
 export { useDirtyForm, type DirtyForm } from "./useDirtyForm";
 
+export { useAutoSync, isSyncConfigured, nextSyncLabel } from "./useAutoSync";
+export type { AutoSyncState } from "./useAutoSync";
+
+export {
+  DEFAULT_INTERVAL_MINUTES,
+  MAX_INTERVAL_MINUTES,
+  MIN_INTERVAL_MINUTES,
+  claimIsStillDue,
+  decideSync,
+  intervalWithBackoff,
+  nextDueAt,
+  normaliseInterval,
+  type SyncContext,
+  type SyncVerdict,
+} from "./syncPolicy";
+
 export { AdminOverviewTab } from "./AdminOverviewTab";
 export type { AdminOverviewTabProps } from "./AdminOverviewTab";
 
