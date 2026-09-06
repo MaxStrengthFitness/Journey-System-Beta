@@ -945,3 +945,120 @@
   font-weight: 700;
   color: var(--adm-ink-muted);
 }
+
+/* ==================================================================== *
+ * MINDBODY DIAGNOSTICS (Round 2 Phase 2, Sections 10-12)
+ * ==================================================================== */
+
+.adm-mb-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-mb-list > li + li {
+  border-top: 1px solid var(--adm-border);
+}
+
+/* A whole row is the target. The old screens made you find a chevron. */
+.adm-mb-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: center;
+  width: 100%;
+  padding: 11px 14px;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+.adm-mb-row:hover {
+  background: var(--adm-surface-2);
+}
+
+.adm-mb-row:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: -2px;
+}
+
+.adm-mb-row--on {
+  background: var(--adm-surface-3);
+}
+
+.adm-mb-row__name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--adm-ink);
+  min-width: 0;
+}
+
+.adm-mb-row__badges {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* The reason spans both columns: it is a sentence, not a cell. */
+.adm-mb-row__why {
+  grid-column: 1 / -1;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--adm-ink-muted);
+}
+
+.adm-mb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.adm-log {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 340px;
+  overflow-y: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.adm-log__line {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 14px;
+  font-size: 12px;
+  line-height: 1.45;
+  border-left: 3px solid transparent;
+}
+
+.adm-log__line + .adm-log__line {
+  border-top: 1px solid var(--adm-border);
+}
+
+.adm-log__line--error {
+  border-left-color: var(--adm-alert);
+  background: var(--adm-alert-fill);
+}
+
+.adm-log__line--warn {
+  border-left-color: var(--adm-warn);
+  background: var(--adm-warn-fill);
+}
+
+.adm-log__time {
+  font-weight: 700;
+  color: var(--adm-ink-muted);
+}
+
+.adm-log__msg {
+  font-weight: 600;
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}

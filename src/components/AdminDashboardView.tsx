@@ -5,22 +5,21 @@ import { InsightsDashboardView } from "./InsightsDashboardView";
 // Deprecated (Sep 2026 UI overhaul): the Retention route is unmounted. The
 // component file stays on disk in case it is revived; nothing imports it here.
 // import { RetentionDashboardView } from "./RetentionDashboardView";
-import { MindbodyDashboard } from "./mindbody/MindbodyDashboard";
 import { AdminLimboQueue } from "./AdminLimboQueue";
-import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Webhook, Database } from "lucide-react";
+import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Database } from "lucide-react";
 import { AdminRoutineTemplatesTab } from "./routines/AdminRoutineTemplatesTab";
 import { cn } from "@/lib/utils";
 import "../features/admin/admin.css";
 
 import { AdminMachinesTab } from "./machines/AdminMachinesTab";
 import { AdminDataReportsTab } from "../features/admin-data";
-import { IntegrationsHubView } from "./IntegrationsHubView";
 import { AdminSystemToolsTab } from "./AdminSystemToolsTab";
 import { AdminOverviewTab } from "../features/admin/AdminOverviewTab";
 import { AdminStudiosTab } from "../features/admin/studios/AdminStudiosTab";
 import { AdminStaffTab } from "../features/admin/staff/AdminStaffTab";
 import { AdminClientsTab } from "../features/admin/clients/AdminClientsTab";
 import { AdminAnnouncementsTab } from "../features/admin/announcements/AdminAnnouncementsTab";
+import { AdminMindbodyTab } from "../features/admin/mindbody/AdminMindbodyTab";
 
 interface Props {
   authTrainer: Trainer;
@@ -100,7 +99,6 @@ export function AdminDashboardView({
     | "bugs"
     | "insights"
     | "mindbody"
-    | "integrations"
     | "system"
     | "limbo";
   const [activeTab, setActiveTab] = useState<AdminTab>("metrics");
@@ -109,10 +107,11 @@ export function AdminDashboardView({
 
   const canSee = (id: AdminTab): boolean => {
     if (id === "users") return isFranchiseOwnerOrAdmin;
+    // Site id, location id, the webhook and the schedule pull: these
+    // credentials configure the whole Mindbody link. The separate
+    // "Integrations" tab folded in here in Round 2 Phase 2 - it was the same
+    // subject at the same permission tier, split across two screens.
     if (id === "mindbody") return isAdmin;
-    // Site id, auth key and the staff schedule import. Relocated out of the
-    // trainer hub (F): these credentials configure the whole Mindbody link.
-    if (id === "integrations") return isAdmin;
     // Seeds, restores and a full wipe. Admin only, obviously.
     if (id === "system") return isAdmin;
     // Releasing a booking assigns it to a studio, so this is admin-only for the
@@ -176,7 +175,6 @@ export function AdminDashboardView({
       tier: "secondary",
       tabs: [
         { id: "mindbody", label: "Mindbody", icon: <Zap className="w-4 h-4" /> },
-        { id: "integrations", label: "Integrations", icon: <Webhook className="w-4 h-4" /> },
         { id: "limbo", label: "Limbo", icon: <Inbox className="w-4 h-4" /> },
         { id: "bugs", label: "Bug Reports", icon: <Bug className="w-4 h-4" /> },
         { id: "system", label: "System Tools", icon: <Database className="w-4 h-4" /> },
@@ -318,9 +316,12 @@ export function AdminDashboardView({
         )}
         {/* "retention" tab removed — see the commented import at the top. */}
         {activeTab === "mindbody" && (
-          <div className="bg-slate-50 dark:bg-slate-950 p-0 rounded-2xl overflow-hidden">
-            <MindbodyDashboard />
-          </div>
+          <AdminMindbodyTab
+            studios={studios}
+            trainers={trainers}
+            clients={clients ?? []}
+            activeStudioId={activeStudioId ?? null}
+          />
         )}
         {activeTab === "announcements" && (
           <AdminAnnouncementsTab
@@ -332,16 +333,7 @@ export function AdminDashboardView({
         {activeTab === "limbo" && (
           <AdminLimboQueue studios={studios} clients={clients} />
         )}
-        {activeTab === "integrations" && (
-          <IntegrationsHubView
-            authTrainer={authTrainer}
-            activeStudioId={activeStudioId}
-            studios={studios}
-            trainers={trainers}
-            clients={clients}
-            onBack={() => setActiveTab("mindbody")}
-          />
-        )}
+        {/* "integrations" folded into the Mindbody tab above, Round 2 Phase 2. */}
 
         {activeTab === "data" && (
           <AdminDataReportsTab
