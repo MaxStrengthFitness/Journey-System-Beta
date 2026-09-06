@@ -132,17 +132,6 @@ export interface Owner {
   ownedStudioIds: string[];
 }
 
-export interface TrainerAvailability {
-  standard: {
-    [day: string]: { isOpen: boolean; slots: { start: string; end: string }[] };
-  };
-  overrides?: {
-    [date: string]: {
-      isOpen: boolean;
-      slots: { start: string; end: string }[];
-    };
-  };
-}
 
 /**
  * TRAINER & STAFF PROFILES
@@ -286,9 +275,7 @@ export interface Trainer {
   thirdPartyCalendarUrl?: string;
   certifications?: string[];
   employmentStartDate?: any;
-  availability?: TrainerAvailability;
   mindbodyStaffId?: string;
-  mindbody_ical_url?: string;
   legacy_filemaker_id?: string;
   createdAt?: any;
   order?: number;
@@ -351,7 +338,6 @@ export interface UpdateTrainerPayload {
   thirdPartyCalendarUrl?: string;
   certifications?: string[];
   mindbodyStaffId?: string;
-  mindbody_ical_url?: string;
   order?: number;
   /** The Start date picker in Edit Trainer had nowhere to land before. */
   employmentStartDate?: any;
@@ -1335,16 +1321,6 @@ export interface Studio {
   createdAt?: any;
   networkId?: string; // Newly added to associate with a FranchiseNetwork
   machineSettings?: Record<string, Record<string, string>>; // studioStandardSettings per machine
-  retentionSettings?: {
-    atRiskThresholdDays: number;
-    miaThresholdDays: number;
-    autoExcludeAfterDays: number;
-    sleepPoorCountThreshold?: number;
-    poorMachineLogsThreshold?: number;
-    stressLowCountThreshold?: number;
-    stressLowValueThreshold?: number;
-    noStrengthGainsDays?: number;
-  };
   notificationSettings?: {
     bookingRemindersEnabled?: boolean;
     dailySummaryEnabled?: boolean;
@@ -1429,21 +1405,16 @@ export type View =
   | "profile"
   | "chart"
   | "progress-report"
-  | "clinical-review"
   | "trainer-profile"
-  | "progress-report"
   | "consultation-wizard"
   | "machine-knowledge"
   | "machine-anatomy"
   | "studio-tasks"
   | "client-directory"
   | "chart-importer"
-  | "leaderboard"
   | "admin-dashboard"
   | "franchise-dashboard"
-  | "retention"
-  | "mindbody"
-  | "purchases";
+  | "mindbody";
 
 export interface AuditLogEntry {
   id?: string;

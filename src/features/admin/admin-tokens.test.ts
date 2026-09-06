@@ -159,6 +159,8 @@ const TEXT_PAIRS: [string, string, string][] = [
   ["neutral badge", "--adm-ink-2", "--adm-surface-3"],
   ["read-only value", "--adm-ink-2", "--adm-live-fill"],
   ["input text", "--adm-ink", "--adm-bg"],
+  ["nav label, active", "--adm-hero-text", "--adm-bg"],
+  ["nav label, idle", "--adm-ink-2", "--adm-bg"],
   ["placeholder text", "--adm-ink-muted", "--adm-bg"],
 ];
 

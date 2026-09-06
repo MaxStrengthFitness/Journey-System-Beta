@@ -1,5 +1,4 @@
 import React from "react";
-import { Moon, Bell, Settings } from "lucide-react";
 import { MaxStrengthLogo } from "./MaxStrengthLogo";
 import { cn } from "@/lib/utils";
 
@@ -8,7 +7,12 @@ interface AppHeaderProps {
   trainerInitials?: string;
   studioName?: string;
   onStudioClick?: () => void;
-  onSettingsClick?: () => void;
+  /**
+   * The header's icon cluster. Every screen passes the app shell's controls
+   * (refresh, theme, feedback, notifications, settings), so there is no
+   * fallback: a header with no controls should look empty rather than grow
+   * three buttons that do nothing, which is what used to happen here.
+   */
   rightControls?: React.ReactNode;
   trainerDropdown?: React.ReactNode;
   /**
@@ -25,7 +29,6 @@ export function AppHeader({
   trainerInitials,
   studioName = "SOLON",
   onStudioClick,
-  onSettingsClick,
   rightControls,
   trainerDropdown,
   searchSlot,
@@ -92,36 +95,7 @@ export function AppHeader({
       )}
 
       <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-        {rightControls || (
-          <>
-            {!isLight && (
-              <button className="text-ink-d2 hover:text-white transition-colors min-w-8 min-h-8 sm:min-w-11 sm:min-h-11 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-bg-dark">
-                <Moon className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
-              </button>
-            )}
-            <button
-              onClick={onSettingsClick}
-              className={cn(
-                "transition-colors min-w-8 min-h-8 sm:min-w-11 sm:min-h-11 flex items-center justify-center",
-                isLight
-                  ? "text-ink-l3 hover:text-ink-l1"
-                  : "text-ink-d2 hover:text-white",
-              )}
-            >
-              <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-            <button
-              className={cn(
-                "transition-colors min-w-8 min-h-8 sm:min-w-11 sm:min-h-11 flex items-center justify-center",
-                isLight
-                  ? "text-cyan hover:text-cyan/80"
-                  : "text-ink-d2 hover:text-white",
-              )}
-            >
-              <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-          </>
-        )}
+        {rightControls}
 
         <div
           className={cn(

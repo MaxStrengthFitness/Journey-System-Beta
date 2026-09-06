@@ -53,7 +53,6 @@ import {
   ExerciseLog,
   ClientMachineSetting,
   SessionType,
-  TrainerFocus,
   FocusRecord,
   SessionNote,
   Routine,
@@ -930,7 +929,6 @@ export function WorkoutTrackerView({
   setClientFormData,
   onOpenInfo,
   authTrainer,
-  trainerFocuses,
   isSyncing,
   setIsSyncing,
   schedules,
@@ -953,7 +951,6 @@ export function WorkoutTrackerView({
   setClientFormData: (v: any) => void;
   onOpenInfo: (m: Machine) => void;
   authTrainer: Trainer | null;
-  trainerFocuses: TrainerFocus[];
   isSyncing: boolean;
   setIsSyncing: (v: boolean) => void;
   isIntroSession?: boolean;
@@ -2958,7 +2955,6 @@ export function WorkoutTrackerView({
         }}
         machines={machines}
         routines={routines}
-        trainerFocuses={trainerFocuses.filter((f) => f.clientId === clientId)}
         focusRecords={focusRecords}
         sessionNotes={sessionNotes}
         trainers={trainers}

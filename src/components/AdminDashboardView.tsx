@@ -11,13 +11,14 @@ import { InsightsDashboardView } from "./InsightsDashboardView";
 // import { RetentionDashboardView } from "./RetentionDashboardView";
 import { MindbodyDashboard } from "./mindbody/MindbodyDashboard";
 import { AdminLimboQueue } from "./AdminLimboQueue";
-import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Bell, Webhook, Database } from "lucide-react";
+import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Webhook, Database } from "lucide-react";
 import { AdminRoutineTemplatesTab } from "./routines/AdminRoutineTemplatesTab";
 import { cn } from "@/lib/utils";
+import "../features/admin/admin.css";
 
 import { AdminSystemClients } from "./AdminSystemClients";
 import { AdminMachinesTab } from "./machines/AdminMachinesTab";
-import { AdminDataReportsTab, AdminAlertsTab } from "../features/admin-data";
+import { AdminDataReportsTab } from "../features/admin-data";
 import { IntegrationsHubView } from "./IntegrationsHubView";
 import { AdminSystemToolsTab } from "./AdminSystemToolsTab";
 
@@ -85,7 +86,6 @@ export function AdminDashboardView({
     | "machines"
     | "routines"
     | "announcements"
-    | "alerts"
     | "data"
     | "bugs"
     | "insights"
@@ -115,9 +115,6 @@ export function AdminDashboardView({
     // documents from one file picker, so both sit at the same tier as staff
     // management rather than one tap from a trainer's settings screen.
     if (id === "data") return isFranchiseOwnerOrAdmin;
-    // Arms outbound SMS/email to clients. Owner-and-above for the obvious
-    // reason: an accidental tap messages real people with nobody watching.
-    if (id === "alerts") return isFranchiseOwnerOrAdmin;
     if (id === "machines") return isFranchiseOwnerOrAdmin;
     // Studio leaders author their own location's templates, so this is
     // deliberately NOT gated to franchise-owner-or-admin the way machines
@@ -148,11 +145,11 @@ export function AdminDashboardView({
         { id: "metrics", label: "Overview", icon: <Activity className="w-4 h-4" /> },
         { id: "studios", label: "Studios", icon: <Building2 className="w-4 h-4" /> },
         { id: "users", label: "Staff & Roles", icon: <Users className="w-4 h-4" /> },
-        { id: "clients", label: "System Clients", icon: <Users className="w-4 h-4" /> },
+        { id: "clients", label: "Clients", icon: <Users className="w-4 h-4" /> },
         { id: "machines", label: "Machines", icon: <Dumbbell className="w-4 h-4" /> },
-        { id: "routines", label: "Routine Templates", icon: <ClipboardList className="w-4 h-4" /> },
+        { id: "routines", label: "Routines", icon: <ClipboardList className="w-4 h-4" /> },
         { id: "insights", label: "Insights", icon: <TrendingUp className="w-4 h-4" /> },
-        { id: "data", label: "Data & Reports", icon: <Download className="w-4 h-4" /> },
+        { id: "data", label: "Exports", icon: <Download className="w-4 h-4" /> },
       ],
     },
     {
@@ -161,7 +158,6 @@ export function AdminDashboardView({
       tier: "primary",
       tabs: [
         { id: "announcements", label: "Announcements", icon: <Megaphone className="w-4 h-4" /> },
-        { id: "alerts", label: "Alerts & Comms", icon: <Bell className="w-4 h-4" /> },
       ],
     },
     {
@@ -190,27 +186,16 @@ export function AdminDashboardView({
         onClick={() => setActiveTab(tab.id)}
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "flex items-center gap-2.5 text-[11px] font-bold uppercase tracking-widest transition-colors cursor-pointer select-none whitespace-nowrap",
+          "adm adm-nav__btn flex items-center gap-2.5 text-[11px] font-bold uppercase tracking-widest transition-colors cursor-pointer select-none whitespace-nowrap",
+          isActive && "adm-nav__btn--active",
           orientation === "sidebar"
             ? // Minimal left border for the active item — no pill container.
-              cn(
-                "w-full h-10 px-3 border-l-2 text-left",
-                isActive
-                  ? "border-[#F06C22] text-[#F06C22] bg-slate-100/80 dark:bg-slate-800/50"
-                  : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/60 dark:hover:bg-slate-800/40",
-              )
+              "w-full h-10 px-3 border-l-2 text-left"
             : // Bottom border on the horizontal strip (portrait / narrow).
-              cn(
-                "h-11 px-3 border-b-2 shrink-0",
-                isActive
-                  ? "border-[#F06C22] text-[#F06C22]"
-                  : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100",
-              ),
+              "h-11 px-3 border-b-2 shrink-0",
         )}
       >
-        <span className={isActive ? "text-[#F06C22]" : "text-slate-400 dark:text-slate-500"}>
-          {tab.icon}
-        </span>
+        <span className="adm-nav__icon">{tab.icon}</span>
         {tab.label}
       </button>
     );
@@ -224,9 +209,7 @@ export function AdminDashboardView({
           .filter((g) => g.tier === "primary")
           .map((group, gIdx) => (
             <div key={group.id} className={cn(gIdx > 0 && "mt-5")}>
-              <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                {group.label}
-              </div>
+              <div className="adm-nav__group px-3 pb-1.5">{group.label}</div>
               <div className="flex flex-col">
                 {group.tabs.map((tab) => renderNavButton(tab, "sidebar"))}
               </div>
@@ -238,11 +221,9 @@ export function AdminDashboardView({
           .map((group) => (
             <div
               key={group.id}
-              className="mt-auto pt-5 border-t border-dashed border-slate-200 dark:border-slate-800"
+              className="adm-nav__rule mt-auto pt-5 border-t border-dashed"
             >
-              <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-600">
-                {group.label}
-              </div>
+              <div className="adm-nav__group px-3 pb-1.5">{group.label}</div>
               <div className="flex flex-col">
                 {group.tabs.map((tab) => renderNavButton(tab, "sidebar"))}
               </div>
@@ -255,9 +236,7 @@ export function AdminDashboardView({
         <div className="flex items-end gap-4 overflow-x-auto no-scrollbar">
           {groups.map((group, gIdx) => (
             <div key={group.id} className={cn("flex flex-col shrink-0", gIdx > 0 && "border-l border-slate-200 dark:border-slate-800 pl-4")}>
-              <span className="px-3 text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                {group.label}
-              </span>
+              <span className="adm-nav__group px-3 text-[9px]">{group.label}</span>
               <div className="flex">
                 {group.tabs.map((tab) => renderNavButton(tab, "strip"))}
               </div>
@@ -348,10 +327,6 @@ export function AdminDashboardView({
             activeStudioId={activeStudioId}
             authTrainer={authTrainer}
           />
-        )}
-
-        {activeTab === "alerts" && (
-          <AdminAlertsTab studios={studios} activeStudioId={activeStudioId} />
         )}
 
         {activeTab === "bugs" && <AdminBugReports />}

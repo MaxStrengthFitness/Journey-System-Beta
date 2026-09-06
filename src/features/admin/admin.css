@@ -77,6 +77,52 @@
   flex-wrap: wrap;
 }
 
+/* ---------- Tab navigation -------------------------------------------- */
+
+/* The dashboard's tier labels and tab buttons. Layout stays in the component
+   (it switches between a sidebar and a horizontal strip at lg); only colour
+   lives here, because the hard-coded #F06C22 in that file was one of the
+   twelve hex literals this round is retiring. */
+
+.adm-nav__group {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--adm-ink-muted);
+}
+
+.adm-nav__btn {
+  color: var(--adm-ink-2);
+  border-color: transparent;
+}
+.adm-nav__btn:hover {
+  color: var(--adm-ink);
+  background: var(--adm-surface-3);
+}
+.adm-nav__btn:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: -2px;
+}
+
+.adm-nav__btn--active,
+.adm-nav__btn--active:hover {
+  color: var(--adm-hero-text);
+  border-color: var(--adm-hero);
+  background: transparent;
+}
+
+.adm-nav__icon {
+  color: var(--adm-ink-faint);
+}
+.adm-nav__btn--active .adm-nav__icon {
+  color: var(--adm-hero-text);
+}
+
+.adm-nav__rule {
+  border-color: var(--adm-border);
+}
+
 /* ---------- Panel ---------------------------------------------------- */
 
 .adm-panel {

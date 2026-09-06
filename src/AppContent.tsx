@@ -65,7 +65,6 @@ import {
 import { db, auth } from "./firebase";
 import {
   Trainer,
-  TrainerAvailability,
   Client,
   View,
   Machine,
@@ -104,18 +103,6 @@ const LegacyChartImporter = lazy(() =>
   })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
-const MachineLeaderboardDashboard = lazy(() =>
-  import("./components/MachineLeaderboardDashboard").then((m) => ({
-    default: m.MachineLeaderboardDashboard,
-  })),
-);
-// Lazy-loaded: downloaded on first visit to this view, not at app start.
-const ProfilesView = lazy(() =>
-  import("./components/ProfilesView").then((m) => ({
-    default: m.ProfilesView,
-  })),
-);
-// Lazy-loaded: downloaded on first visit to this view, not at app start.
 const ClientDirectoryView = lazy(() =>
   import("./components/ClientDirectoryView").then((m) => ({
     default: m.ClientDirectoryView,
@@ -138,12 +125,6 @@ import { ClientsView } from "./components/ClientsView";
 const ClientHistoryView = lazy(() =>
   import("./components/ClientHistoryView").then((m) => ({
     default: m.ClientHistoryView,
-  })),
-);
-// Lazy-loaded: downloaded on first visit to this view, not at app start.
-const MachinesView = lazy(() =>
-  import("./components/MachinesView").then((m) => ({
-    default: m.MachinesView,
   })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
@@ -175,12 +156,6 @@ import { CreateClientModal } from "./components/CreateClientModal";
 const ClientProgressReportView = lazy(() =>
   import("./components/ClientProgressReportView").then((m) => ({
     default: m.ClientProgressReportView,
-  })),
-);
-// Lazy-loaded: downloaded on first visit to this view, not at app start.
-const ClientClinicalReviewPreloader = lazy(() =>
-  import("./components/ClientClinicalReviewPreloader").then((m) => ({
-    default: m.ClientClinicalReviewPreloader,
   })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
@@ -528,12 +503,6 @@ export const getMachineImageUrl = (machineId?: string): string => {
 
 import { useActiveStudio } from "./ActiveStudioContext";
 
-// Lazy-loaded: downloaded on first visit to this view, not at app start.
-const PurchaseView = lazy(() =>
-  import("./components/mindbody/PurchaseView").then((m) => ({
-    default: m.PurchaseView,
-  })),
-);
 
 import { useTrainers } from "./hooks/useTrainers";
 import { useStudios } from "./hooks/useStudios";
@@ -599,11 +568,13 @@ export default function AppContent({
   const isLoadingClient =
     !!selectedClientId && resolvedClientId !== selectedClientId;
   const [hasQuotaError, setHasQuotaError] = useState(false);
-  const [lastQuotaErrorMessage, setLastQuotaErrorMessage] = useState("");
 
   const triggerQuotaError = (msg: string) => {
+    // The message itself was stored in state nothing read. Keeping the log
+    // means a quota storm is still diagnosable from the console, which is
+    // where the Aug 30 one was actually found.
+    console.warn("Firestore quota error:", msg);
     setHasQuotaError(true);
-    setLastQuotaErrorMessage(msg);
   };
 
   useEffect(() => {
@@ -661,8 +632,6 @@ export default function AppContent({
   const [selectedProfileTrainerId, setSelectedProfileTrainerId] = useState<
     string | null
   >(null);
-  const [leaderboardReturnView, setLeaderboardReturnView] =
-    useState<View>("trainer-hub");
 
   const isDataReady = !!authTrainer && !hasQuotaError;
 
@@ -690,7 +659,6 @@ export default function AppContent({
     return new Set((mine?.kaizenRoster ?? []).map((e) => e.clientId));
   }, [trainers, authTrainer?.id]);
   const { announcements } = useHubAnnouncements(authTrainer, activeStudioId);
-  const [trainerFocuses, setTrainerFocuses] = useState<TrainerFocus[]>([]);
 
   const clients = Array.from(
     new Map(
@@ -1842,31 +1810,6 @@ export default function AppContent({
                     onCancel={() => setCurrentView("profile")}
                   />
                 )}
-                {currentView === "trainers" && (
-                  <ProfilesView
-                    trainers={trainers}
-                    clients={clients}
-                    sessions={sessions}
-                    schedules={schedules}
-                    onSelectClient={(id) => {
-                      setSelectedClientId(id);
-                    }}
-                    setSelectedClientId={setSelectedClientId}
-                    setView={setCurrentView}
-                    authTrainer={authTrainer}
-                    onTrainerLogin={handleTrainerLogin}
-                    onViewTrainerProfile={(id) => {
-                      setSelectedProfileTrainerId(id);
-                      setCurrentView("trainer-profile");
-                    }}
-                    isAdmin={
-                      tokenRole === "Admin" ||
-                      authTrainer?.role === "Admin" ||
-                      tokenRole === "Founder" ||
-                      authTrainer?.role === "Founder"
-                    }
-                  />
-                )}
                 {currentView === "client-directory" && (
                   <ClientDirectoryView
                     clients={clients}
@@ -1940,23 +1883,6 @@ export default function AppContent({
                     }}
                   />
                 )}
-                {currentView === "leaderboard" && (
-                  <MachineLeaderboardDashboard
-                    clients={clients}
-                    activeStudioId={activeStudioId}
-                    onBack={() => setCurrentView(leaderboardReturnView)}
-                  />
-                )}
-                {currentView === "machines" && (
-                  <MachinesView
-                    machines={machines}
-                    clients={clients}
-                    onOpenInfo={(m) => {
-                      setInfoMachineId(m.id!);
-                      setIsEditingMachineInfo(false);
-                    }}
-                  />
-                )}
                 {currentView === "workouts" && (
                   <WorkoutTrackerView
                     clientId={selectedClientId}
@@ -1976,7 +1902,6 @@ export default function AppContent({
                       setIsEditingMachineInfo(false);
                     }}
                     authTrainer={authTrainer}
-                    trainerFocuses={trainerFocuses}
                     isSyncing={isSyncing}
                     setIsSyncing={setIsSyncing}
                     isIntroSession={isIntroSession}
@@ -2017,23 +1942,6 @@ export default function AppContent({
                     activeStudioId={activeStudioId}
                   />
                 )}
-                {currentView === "clinical-review" &&
-                  selectedClientId &&
-                  authTrainer && (
-                    <ClientClinicalReviewPreloader
-                      client={
-                        clients.find((c) => c.id === selectedClientId) ||
-                        ({} as Client)
-                      }
-                      machines={machines}
-                      onOpenBriefing={() => {
-                        setCurrentView("workouts");
-                      }}
-                      onClose={() => {
-                        setCurrentView("profile");
-                      }}
-                    />
-                  )}
                 {currentView === "progress-report" &&
                   selectedClientId &&
                   authTrainer && (
@@ -2118,11 +2026,7 @@ export default function AppContent({
                     machines={machines}
                     activeStudioId={activeStudioId}
                     onLogout={handleLogout}
-                    setView={(view) => {
-                      if (view === "leaderboard")
-                        setLeaderboardReturnView("trainer-hub");
-                      setCurrentView(view as any);
-                    }}
+                    setView={(view) => setCurrentView(view as any)}
                   />
                 )}
 
@@ -2167,7 +2071,6 @@ export default function AppContent({
                     />
                   </ErrorBoundary>
                 )}
-                {currentView === "purchases" && <PurchaseView />}
                 {currentView === "chart-importer" && (
                   <LegacyChartImporter
                     clients={clients}
@@ -2956,32 +2859,3 @@ function NavButton({
   );
 }
 
-const DEFAULT_AVAILABILITY: TrainerAvailability = {
-  standard: {
-    Monday: {
-      isOpen: true,
-      slots: [
-        { start: "07:00", end: "12:30" },
-        { start: "15:00", end: "18:30" },
-      ],
-    },
-    Tuesday: {
-      isOpen: true,
-      slots: [
-        { start: "07:00", end: "12:30" },
-        { start: "15:00", end: "18:30" },
-      ],
-    },
-    Wednesday: { isOpen: true, slots: [{ start: "07:00", end: "12:30" }] },
-    Thursday: {
-      isOpen: true,
-      slots: [
-        { start: "07:00", end: "12:30" },
-        { start: "15:00", end: "18:30" },
-      ],
-    },
-    Friday: { isOpen: true, slots: [{ start: "07:00", end: "12:30" }] },
-    Saturday: { isOpen: true, slots: [{ start: "07:00", end: "12:30" }] },
-    Sunday: { isOpen: false, slots: [] },
-  },
-};

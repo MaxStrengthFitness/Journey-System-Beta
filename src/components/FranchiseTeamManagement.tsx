@@ -31,7 +31,6 @@ import {
 import { Trainer, Studio, CreateTrainerPayload } from "../types";
 import { cn, getRoleColor, getRoleDisplayName } from "@/lib/utils";
 import { CreateTrainerModal } from "./CreateTrainerModal";
-import { DataMigrationTool } from "./DataMigrationTool";
 import { DocumentIdMissingError, OperationType } from "../lib/firestore-errors";
 import { useToast } from "../contexts/ToastContext";
 
