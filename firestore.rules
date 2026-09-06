@@ -246,9 +246,45 @@ service cloud.firestore {
         .hasAny(['rollups', 'mindbody']);
     }
 
+    // ---------------------------------------------------------------
+    // OWNING YOUR OWN TRAINER DOCUMENT (round: trainer identity, Sep 2026)
+    //
+    // Every rule here used to answer "is this your document?" with
+    // request.auth.uid == trainerId. That is only true when the document id
+    // IS the auth uid -- and two admin creation paths used addDoc, which
+    // assigns a random one. Sign-in then matches those people BY EMAIL
+    // (useAuthInitialization), so they arrive holding a document id that no
+    // rule will accept, and every write to their own profile is denied. The
+    // Kaizen Roster was simply the first place that produced a visible
+    // symptom.
+    //
+    // So ownership is asked properly: the uid, OR the email on the document
+    // matching the email in the token. It is the same match the app already
+    // performs to hand them the profile in the first place, so this grants no
+    // access they were not already being shown.
+    //
+    // Only valid where `resource` exists -- update and delete, never create.
+    //
+    // email_verified is deliberately NOT required. Both sign-in paths are
+    // OAuth (Google and Microsoft), where the provider has already verified
+    // the address, and Microsoft tokens do not reliably carry the claim.
+    // REVISIT THIS if password sign-up is ever added: an unverified address
+    // would then be self-asserted, and this rule would trust it.
+    // ---------------------------------------------------------------
+    function ownsTrainerDoc(trainerId) {
+      return isAuthenticated() && (
+        request.auth.uid == trainerId ||
+        (
+          request.auth.token.email != null &&
+          resource.data.get('email', '') != '' &&
+          resource.data.email == request.auth.token.email
+        )
+      );
+    }
+
     function writesForeignRoster(trainerId) {
       return request.resource.data.diff(resource.data).affectedKeys().hasAny(['kaizenRoster'])
-        && request.auth.uid != trainerId;
+        && !ownsTrainerDoc(trainerId);
     }
 
     match /trainers/{trainerId} {
@@ -265,7 +301,7 @@ service cloud.firestore {
                       !writesForeignRoster(trainerId) &&
                       (isFranchiseOwner() || 
                       (resource.data.primaryHomeStudioId != null && isStudioOwnerOrHeadTrainer(resource.data.primaryHomeStudioId)) || 
-                      (isAuthenticated() && request.auth.uid == trainerId))
+                      ownsTrainerDoc(trainerId))
                       && 
                       (!('role' in request.resource.data) || 
                        request.resource.data.role == resource.data.role || 

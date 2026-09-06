@@ -3,7 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  lazy,
+  Suspense,
+} from "react";
 import {
   Users,
   Plus,
@@ -74,37 +81,54 @@ import AccessRequestView from "./components/AccessRequestView";
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const TrainerSettingsView = lazy(() =>
-  import("./features/settings").then((m) => ({ default: m.TrainerSettingsView })),
+  import("./features/settings").then((m) => ({
+    default: m.TrainerSettingsView,
+  })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const ClientProfileView = lazy(() =>
-  import("./components/ClientProfileView").then((m) => ({ default: m.ClientProfileView })),
+  import("./components/ClientProfileView").then((m) => ({
+    default: m.ClientProfileView,
+  })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const CalendarView = lazy(() =>
-  import("./components/CalendarView").then((m) => ({ default: m.CalendarView })),
+  import("./components/CalendarView").then((m) => ({
+    default: m.CalendarView,
+  })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const LegacyChartImporter = lazy(() =>
-  import("./components/LegacyChartImporter").then((m) => ({ default: m.LegacyChartImporter })),
+  import("./components/LegacyChartImporter").then((m) => ({
+    default: m.LegacyChartImporter,
+  })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const MachineLeaderboardDashboard = lazy(() =>
-  import("./components/MachineLeaderboardDashboard").then((m) => ({ default: m.MachineLeaderboardDashboard })),
+  import("./components/MachineLeaderboardDashboard").then((m) => ({
+    default: m.MachineLeaderboardDashboard,
+  })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const ProfilesView = lazy(() =>
-  import("./components/ProfilesView").then((m) => ({ default: m.ProfilesView })),
+  import("./components/ProfilesView").then((m) => ({
+    default: m.ProfilesView,
+  })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const ClientDirectoryView = lazy(() =>
-  import("./components/ClientDirectoryView").then((m) => ({ default: m.ClientDirectoryView })),
+  import("./components/ClientDirectoryView").then((m) => ({
+    default: m.ClientDirectoryView,
+  })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const TrainerProfileView = lazy(() =>
-  import("./features/trainer-profile").then((m) => ({ default: m.TrainerProfileView })),
+  import("./features/trainer-profile").then((m) => ({
+    default: m.TrainerProfileView,
+  })),
 );
 import { StudioSelectionView } from "./components/StudioSelectionView";
+import { withoutSuperseded } from "./features/trainer-identity/claim";
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 
 import { AppHeader } from "./components/AppHeader";
@@ -112,36 +136,52 @@ import { useTheme } from "./components/ThemeProvider";
 import { ClientsView } from "./components/ClientsView";
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const ClientHistoryView = lazy(() =>
-  import("./components/ClientHistoryView").then((m) => ({ default: m.ClientHistoryView })),
+  import("./components/ClientHistoryView").then((m) => ({
+    default: m.ClientHistoryView,
+  })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const MachinesView = lazy(() =>
-  import("./components/MachinesView").then((m) => ({ default: m.MachinesView })),
+  import("./components/MachinesView").then((m) => ({
+    default: m.MachinesView,
+  })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const WorkoutTrackerView = lazy(() =>
-  import("./components/WorkoutTrackerView").then((m) => ({ default: m.WorkoutTrackerView })),
+  import("./components/WorkoutTrackerView").then((m) => ({
+    default: m.WorkoutTrackerView,
+  })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const ConsultationWizard = lazy(() =>
-  import("./components/ConsultationWizard").then((m) => ({ default: m.ConsultationWizard })),
+  import("./components/ConsultationWizard").then((m) => ({
+    default: m.ConsultationWizard,
+  })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const AdminDashboardView = lazy(() =>
-  import("./components/AdminDashboardView").then((m) => ({ default: m.AdminDashboardView })),
+  import("./components/AdminDashboardView").then((m) => ({
+    default: m.AdminDashboardView,
+  })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const FranchiseDashboardView = lazy(() =>
-  import("./components/FranchiseDashboardView").then((m) => ({ default: m.FranchiseDashboardView })),
+  import("./components/FranchiseDashboardView").then((m) => ({
+    default: m.FranchiseDashboardView,
+  })),
 );
 import { CreateClientModal } from "./components/CreateClientModal";
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const ClientProgressReportView = lazy(() =>
-  import("./components/ClientProgressReportView").then((m) => ({ default: m.ClientProgressReportView })),
+  import("./components/ClientProgressReportView").then((m) => ({
+    default: m.ClientProgressReportView,
+  })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const ClientClinicalReviewPreloader = lazy(() =>
-  import("./components/ClientClinicalReviewPreloader").then((m) => ({ default: m.ClientClinicalReviewPreloader })),
+  import("./components/ClientClinicalReviewPreloader").then((m) => ({
+    default: m.ClientClinicalReviewPreloader,
+  })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 import { FeedbackProvider, FeedbackButton } from "./features/feedback";
@@ -490,7 +530,9 @@ import { useActiveStudio } from "./ActiveStudioContext";
 
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const PurchaseView = lazy(() =>
-  import("./components/mindbody/PurchaseView").then((m) => ({ default: m.PurchaseView })),
+  import("./components/mindbody/PurchaseView").then((m) => ({
+    default: m.PurchaseView,
+  })),
 );
 
 import { useTrainers } from "./hooks/useTrainers";
@@ -1227,8 +1269,11 @@ export default function AppContent({
         );
       } else if (collectionName === "trainers") {
         const snap = await getDocs(collection(db, "trainers"));
+        // Tombstoned placeholders are not people — see trainer-identity/claim.ts.
         setTrainers(
-          snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Trainer),
+          withoutSuperseded(
+            snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Trainer),
+          ),
         );
       }
     } catch (e) {
@@ -1754,1113 +1799,1118 @@ export default function AppContent({
         sessionId={currentSession?.id ?? null}
         theme={theme}
       >
-      <div className="flex flex-col h-[100dvh] overflow-hidden bg-background text-foreground font-sans overflow-x-hidden w-full max-w-full">
-        {/* Header */}
-        {currentView !== "workouts" && (
-          <AppHeader
-            variant={theme === "light" ? "light" : "dark"}
-            studioName={activeStudioName || undefined}
-            onStudioClick={() => setIsChangingStudio(true)}
-            rightControls={headerRightControls}
-            trainerDropdown={headerTrainerDropdown}
-            searchSlot={headerSearchSlot}
-          />
-        )}
+        <div className="flex flex-col h-[100dvh] overflow-hidden bg-background text-foreground font-sans overflow-x-hidden w-full max-w-full">
+          {/* Header */}
+          {currentView !== "workouts" && (
+            <AppHeader
+              variant={theme === "light" ? "light" : "dark"}
+              studioName={activeStudioName || undefined}
+              onStudioClick={() => setIsChangingStudio(true)}
+              rightControls={headerRightControls}
+              trainerDropdown={headerTrainerDropdown}
+              searchSlot={headerSearchSlot}
+            />
+          )}
 
-        {/* Main Content */}
-        <main
-          className={`w-full max-w-full mx-auto relative ${currentView === "workouts" ? "flex-1 min-h-0 p-2 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950 flex flex-col" : currentView === "clients" || currentView === "client-directory" || currentView === "dashboard" || currentView === "machine-anatomy" || currentView === "studio-tasks" ? "flex-1 min-h-0 overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col" : "flex-1 min-h-0 p-6 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950"}`}
-          style={
-            currentView === "clients" ||
-            currentView === "client-directory" ||
-            currentView === "dashboard" ||
-            currentView === "machine-anatomy"
-              ? undefined
-              : undefined
-          }
-        >
-          <Suspense fallback={<ViewLoader />}>
-          <AnimatePresence mode="wait">
-            {currentView === "consultation-wizard" && selectedClientId && (
-              <ConsultationWizard
-                client={
-                  clients.find((c) => c.id === selectedClientId) ||
-                  ({} as Client)
-                }
-                machines={machines}
-                authTrainer={authTrainer}
-                trainers={trainers}
-                onComplete={(id) => {
-                  setSelectedClientId(id);
-                  setCurrentView("profile");
-                }}
-                onCancel={() => setCurrentView("profile")}
-              />
-            )}
-            {currentView === "trainers" && (
-              <ProfilesView
-                trainers={trainers}
-                clients={clients}
-                sessions={sessions}
-                schedules={schedules}
-                onSelectClient={(id) => {
-                  setSelectedClientId(id);
-                }}
-                setSelectedClientId={setSelectedClientId}
-                setView={setCurrentView}
-                authTrainer={authTrainer}
-                onTrainerLogin={handleTrainerLogin}
-                onViewTrainerProfile={(id) => {
-                  setSelectedProfileTrainerId(id);
-                  setCurrentView("trainer-profile");
-                }}
-                isAdmin={
-                  tokenRole === "Admin" ||
-                  authTrainer?.role === "Admin" ||
-                  tokenRole === "Founder" ||
-                  authTrainer?.role === "Founder"
-                }
-              />
-            )}
-            {currentView === "client-directory" && (
-              <ClientDirectoryView
-                clients={clients}
-                onSelectClient={(id) => {
-                  setSelectedClientId(id);
-                  setCurrentView("profile");
-                }}
-                onStartOpenSession={startUnassignedSession}
-                authTrainer={authTrainer}
-                kaizenClientIds={kaizenClientIds}
-                onUpdateSessions={updateClientSessions}
-                onStartNewClientOnboarding={setNewClientOnboardingName}
-              />
-            )}
-            {currentView === "clients" && (
-              <ClientsView
-                clients={clients}
-                trainers={trainers}
-                sortedTrainers={sortedTrainers}
-                isAdmin={
-                  tokenRole === "Admin" ||
-                  authTrainer?.role === "Admin" ||
-                  tokenRole === "Founder" ||
-                  authTrainer?.role === "Founder"
-                }
-                activeStudioId={activeStudioId}
-                authTrainer={authTrainer}
-                onSelectClient={(id) => {
-                  setSelectedClientId(id);
-                  setView("profile");
-                }}
-                setView={setView}
-                schedules={schedules}
-                sessions={sessions}
-                editingClient={editingClient}
-                setEditingClient={setEditingClient}
-                formData={clientFormData}
-                setFormData={setClientFormData}
-                onSubmit={handleClientSubmit}
-                startEdit={startEditClient}
-                updateSessions={updateClientSessions}
-                setSelectedSessionId={setSelectedSessionId}
-                onSelectTrainer={(id) => {
-                  setSelectedProfileTrainerId(id);
-                  setView("trainer-profile");
-                }}
-                searchTerm={hubSearchTerm}
-                onSearchTermChange={setHubSearchTerm}
-              />
-            )}
-            {currentView === "machine-anatomy" && (
-              <CatalogView machines={machines} authTrainer={authTrainer} />
-            )}
-            {currentView === "studio-tasks" && (
-              <StudioTasksView
-                authTrainer={authTrainer}
-                clients={clients}
-                onOpenClientTask={(clientId, action) => {
-                  // A client task points at the screen where the work is
-                  // actually done, rather than being a tick that claims it
-                  // happened. 'inbody' has no screen of its own yet, so it
-                  // lands on the profile — the closest honest destination.
-                  setSelectedClientId(clientId);
-                  setCurrentView(
-                    action === "progress-report"
-                      ? "progress-report"
-                      : action === "assessment"
-                        ? "consultation-wizard"
-                        : "profile",
-                  );
-                }}
-              />
-            )}
-            {currentView === "leaderboard" && (
-              <MachineLeaderboardDashboard
-                clients={clients}
-                activeStudioId={activeStudioId}
-                onBack={() => setCurrentView(leaderboardReturnView)}
-              />
-            )}
-            {currentView === "machines" && (
-              <MachinesView
-                machines={machines}
-                clients={clients}
-                onOpenInfo={(m) => {
-                  setInfoMachineId(m.id!);
-                  setIsEditingMachineInfo(false);
-                }}
-              />
-            )}
-            {currentView === "workouts" && (
-              <WorkoutTrackerView
-                clientId={selectedClientId}
-                clients={clients}
-                machines={machines}
-                schedules={schedules}
-                trainers={trainers}
-                user={user}
-                setView={setView}
-                setSelectedClientId={setSelectedClientId}
-                showClientPicker={showClientPicker}
-                setShowClientPicker={setShowClientPicker}
-                onStartNewClientOnboarding={setNewClientOnboardingName}
-                setClientFormData={setClientFormData}
-                onOpenInfo={(m) => {
-                  setInfoMachineId(m.id!);
-                  setIsEditingMachineInfo(false);
-                }}
-                authTrainer={authTrainer}
-                trainerFocuses={trainerFocuses}
-                isSyncing={isSyncing}
-                setIsSyncing={setIsSyncing}
-                isIntroSession={isIntroSession}
-                rightControls={headerRightControls}
-                trainerDropdown={headerTrainerDropdown}
-                onStudioClick={() => setIsChangingStudio(true)}
-              />
-            )}
-            {currentView === "history" && (
-              <ClientHistoryView
-                clientId={selectedClientId}
-                clients={clients}
-                machines={machines}
-                trainers={trainers}
-                setView={setCurrentView}
-                selectedSessionId={selectedSessionId}
-                user={user}
-              />
-            )}
-            {currentView === "profile" && (
-              <ClientProfileView
-                clientId={selectedClientId}
-                isLoadingClient={isLoadingClient}
-                clients={clients}
-                machines={machines}
-                authTrainer={authTrainer}
-                trainers={trainers}
-                onDelete={handleDeleteClient}
-                onSelectReport={(reportId) => {
-                  setSelectedReportId(reportId);
-                  setView("progress-report");
-                }}
-                setView={setView}
-                setSelectedClientId={setSelectedClientId}
-                hasQuotaError={hasQuotaError}
-                user={user}
-                studios={studios}
-                activeStudioId={activeStudioId}
-              />
-            )}
-            {currentView === "clinical-review" &&
-              selectedClientId &&
-              authTrainer && (
-                <ClientClinicalReviewPreloader
-                  client={
-                    clients.find((c) => c.id === selectedClientId) ||
-                    ({} as Client)
-                  }
-                  machines={machines}
-                  onOpenBriefing={() => {
-                    setCurrentView("workouts");
-                  }}
-                  onClose={() => {
-                    setCurrentView("profile");
-                  }}
-                />
-              )}
-            {currentView === "progress-report" &&
-              selectedClientId &&
-              authTrainer && (
-                <ClientProgressReportView
-                  client={
-                    clients.find((c) => c.id === selectedClientId) ||
-                    ({} as Client)
-                  }
-                  trainer={authTrainer}
-                  machines={machines}
-                  existingReportId={selectedReportId || undefined}
-                  onBack={() => {
-                    setSelectedReportId(null);
-                    setCurrentView("profile");
-                  }}
-                />
-              )}
-            {currentView === "trainer-profile" &&
-              (selectedProfileTrainerId
-                ? trainers.find((t) => t.id === selectedProfileTrainerId)
-                : authTrainer) && (
-                <TrainerProfileView
-                  trainer={
-                    // Always the LIVE document: `authTrainer` is captured at
-                    // sign-in and never re-read, so viewing your own profile
-                    // through it would never see your own Kaizen Roster edits
-                    // or the session counters the Cloud Function maintains.
-                    (trainers.find(
-                      (t) => t.id === (selectedProfileTrainerId || authTrainer?.id),
-                    ) || authTrainer)!
-                  }
-                  schedules={schedules}
-                  sessions={sessions}
-                  clients={clients}
-                  studios={studios}
-                  onSelectClient={setSelectedClientId}
-                  setView={setCurrentView}
-                  authTrainer={authTrainer}
-                />
-              )}
-            {currentView === "franchise-dashboard" && authTrainer && (
-              <FranchiseDashboardView
-                authTrainer={authTrainer}
-                allStudios={studios}
-                allTrainers={trainers}
-                networks={networks}
-              />
-            )}
-            {currentView === "admin-dashboard" && authTrainer && (
-              <AdminDashboardView
-                authTrainer={authTrainer}
-                studios={studios}
-                networks={networks}
-                trainers={trainers}
-                isAdmin={isAdmin}
-                onRefresh={handleManualRefresh}
-                clients={clients}
-                sessions={sessions}
-                machines={machines}
-                newClientsCount={newClientsThisMonth.length}
-                onShowNewClients={() => setShowNewClientsDialog(true)}
-                onUpdateStudio={updateStudio}
-                onUpdateClient={updateClient}
-                activeStudioId={activeStudioId}
-                onSeedDemoClient={handleSeedDemoClient}
-                onRestoreMachines={handleRestoreMachines}
-                onReorderTrainers={() => setIsReorderingTrainers(true)}
-                onAppCleanse={handleAppCleanse}
-                onNavigateProfile={(clientId) => {
-                  setSelectedClientId(clientId);
-                  setCurrentView("profile");
-                }}
-              />
-            )}
-            {currentView === "trainer-hub" && (
-              <TrainerSettingsView
-                authTrainer={authTrainer}
-                studios={studios}
-                trainers={trainers}
-                machines={machines}
-                activeStudioId={activeStudioId}
-                onLogout={handleLogout}
-                setView={(view) => {
-                  if (view === "leaderboard")
-                    setLeaderboardReturnView("trainer-hub");
-                  setCurrentView(view as any);
-                }}
-              />
-            )}
+          {/* Main Content */}
+          <main
+            className={`w-full max-w-full mx-auto relative ${currentView === "workouts" ? "flex-1 min-h-0 p-2 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950 flex flex-col" : currentView === "clients" || currentView === "client-directory" || currentView === "dashboard" || currentView === "machine-anatomy" || currentView === "studio-tasks" ? "flex-1 min-h-0 overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col" : "flex-1 min-h-0 p-6 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950"}`}
+            style={
+              currentView === "clients" ||
+              currentView === "client-directory" ||
+              currentView === "dashboard" ||
+              currentView === "machine-anatomy"
+                ? undefined
+                : undefined
+            }
+          >
+            <Suspense fallback={<ViewLoader />}>
+              <AnimatePresence mode="wait">
+                {currentView === "consultation-wizard" && selectedClientId && (
+                  <ConsultationWizard
+                    client={
+                      clients.find((c) => c.id === selectedClientId) ||
+                      ({} as Client)
+                    }
+                    machines={machines}
+                    authTrainer={authTrainer}
+                    trainers={trainers}
+                    onComplete={(id) => {
+                      setSelectedClientId(id);
+                      setCurrentView("profile");
+                    }}
+                    onCancel={() => setCurrentView("profile")}
+                  />
+                )}
+                {currentView === "trainers" && (
+                  <ProfilesView
+                    trainers={trainers}
+                    clients={clients}
+                    sessions={sessions}
+                    schedules={schedules}
+                    onSelectClient={(id) => {
+                      setSelectedClientId(id);
+                    }}
+                    setSelectedClientId={setSelectedClientId}
+                    setView={setCurrentView}
+                    authTrainer={authTrainer}
+                    onTrainerLogin={handleTrainerLogin}
+                    onViewTrainerProfile={(id) => {
+                      setSelectedProfileTrainerId(id);
+                      setCurrentView("trainer-profile");
+                    }}
+                    isAdmin={
+                      tokenRole === "Admin" ||
+                      authTrainer?.role === "Admin" ||
+                      tokenRole === "Founder" ||
+                      authTrainer?.role === "Founder"
+                    }
+                  />
+                )}
+                {currentView === "client-directory" && (
+                  <ClientDirectoryView
+                    clients={clients}
+                    onSelectClient={(id) => {
+                      setSelectedClientId(id);
+                      setCurrentView("profile");
+                    }}
+                    onStartOpenSession={startUnassignedSession}
+                    authTrainer={authTrainer}
+                    kaizenClientIds={kaizenClientIds}
+                    onUpdateSessions={updateClientSessions}
+                    onStartNewClientOnboarding={setNewClientOnboardingName}
+                  />
+                )}
+                {currentView === "clients" && (
+                  <ClientsView
+                    clients={clients}
+                    trainers={trainers}
+                    sortedTrainers={sortedTrainers}
+                    isAdmin={
+                      tokenRole === "Admin" ||
+                      authTrainer?.role === "Admin" ||
+                      tokenRole === "Founder" ||
+                      authTrainer?.role === "Founder"
+                    }
+                    activeStudioId={activeStudioId}
+                    authTrainer={authTrainer}
+                    onSelectClient={(id) => {
+                      setSelectedClientId(id);
+                      setView("profile");
+                    }}
+                    setView={setView}
+                    schedules={schedules}
+                    sessions={sessions}
+                    editingClient={editingClient}
+                    setEditingClient={setEditingClient}
+                    formData={clientFormData}
+                    setFormData={setClientFormData}
+                    onSubmit={handleClientSubmit}
+                    startEdit={startEditClient}
+                    updateSessions={updateClientSessions}
+                    setSelectedSessionId={setSelectedSessionId}
+                    onSelectTrainer={(id) => {
+                      setSelectedProfileTrainerId(id);
+                      setView("trainer-profile");
+                    }}
+                    searchTerm={hubSearchTerm}
+                    onSearchTermChange={setHubSearchTerm}
+                  />
+                )}
+                {currentView === "machine-anatomy" && (
+                  <CatalogView machines={machines} authTrainer={authTrainer} />
+                )}
+                {currentView === "studio-tasks" && (
+                  <StudioTasksView
+                    authTrainer={authTrainer}
+                    clients={clients}
+                    onOpenClientTask={(clientId, action) => {
+                      // A client task points at the screen where the work is
+                      // actually done, rather than being a tick that claims it
+                      // happened. 'inbody' has no screen of its own yet, so it
+                      // lands on the profile — the closest honest destination.
+                      setSelectedClientId(clientId);
+                      setCurrentView(
+                        action === "progress-report"
+                          ? "progress-report"
+                          : action === "assessment"
+                            ? "consultation-wizard"
+                            : "profile",
+                      );
+                    }}
+                  />
+                )}
+                {currentView === "leaderboard" && (
+                  <MachineLeaderboardDashboard
+                    clients={clients}
+                    activeStudioId={activeStudioId}
+                    onBack={() => setCurrentView(leaderboardReturnView)}
+                  />
+                )}
+                {currentView === "machines" && (
+                  <MachinesView
+                    machines={machines}
+                    clients={clients}
+                    onOpenInfo={(m) => {
+                      setInfoMachineId(m.id!);
+                      setIsEditingMachineInfo(false);
+                    }}
+                  />
+                )}
+                {currentView === "workouts" && (
+                  <WorkoutTrackerView
+                    clientId={selectedClientId}
+                    clients={clients}
+                    machines={machines}
+                    schedules={schedules}
+                    trainers={trainers}
+                    user={user}
+                    setView={setView}
+                    setSelectedClientId={setSelectedClientId}
+                    showClientPicker={showClientPicker}
+                    setShowClientPicker={setShowClientPicker}
+                    onStartNewClientOnboarding={setNewClientOnboardingName}
+                    setClientFormData={setClientFormData}
+                    onOpenInfo={(m) => {
+                      setInfoMachineId(m.id!);
+                      setIsEditingMachineInfo(false);
+                    }}
+                    authTrainer={authTrainer}
+                    trainerFocuses={trainerFocuses}
+                    isSyncing={isSyncing}
+                    setIsSyncing={setIsSyncing}
+                    isIntroSession={isIntroSession}
+                    rightControls={headerRightControls}
+                    trainerDropdown={headerTrainerDropdown}
+                    onStudioClick={() => setIsChangingStudio(true)}
+                  />
+                )}
+                {currentView === "history" && (
+                  <ClientHistoryView
+                    clientId={selectedClientId}
+                    clients={clients}
+                    machines={machines}
+                    trainers={trainers}
+                    setView={setCurrentView}
+                    selectedSessionId={selectedSessionId}
+                    user={user}
+                  />
+                )}
+                {currentView === "profile" && (
+                  <ClientProfileView
+                    clientId={selectedClientId}
+                    isLoadingClient={isLoadingClient}
+                    clients={clients}
+                    machines={machines}
+                    authTrainer={authTrainer}
+                    trainers={trainers}
+                    onDelete={handleDeleteClient}
+                    onSelectReport={(reportId) => {
+                      setSelectedReportId(reportId);
+                      setView("progress-report");
+                    }}
+                    setView={setView}
+                    setSelectedClientId={setSelectedClientId}
+                    hasQuotaError={hasQuotaError}
+                    user={user}
+                    studios={studios}
+                    activeStudioId={activeStudioId}
+                  />
+                )}
+                {currentView === "clinical-review" &&
+                  selectedClientId &&
+                  authTrainer && (
+                    <ClientClinicalReviewPreloader
+                      client={
+                        clients.find((c) => c.id === selectedClientId) ||
+                        ({} as Client)
+                      }
+                      machines={machines}
+                      onOpenBriefing={() => {
+                        setCurrentView("workouts");
+                      }}
+                      onClose={() => {
+                        setCurrentView("profile");
+                      }}
+                    />
+                  )}
+                {currentView === "progress-report" &&
+                  selectedClientId &&
+                  authTrainer && (
+                    <ClientProgressReportView
+                      client={
+                        clients.find((c) => c.id === selectedClientId) ||
+                        ({} as Client)
+                      }
+                      trainer={authTrainer}
+                      machines={machines}
+                      existingReportId={selectedReportId || undefined}
+                      onBack={() => {
+                        setSelectedReportId(null);
+                        setCurrentView("profile");
+                      }}
+                    />
+                  )}
+                {currentView === "trainer-profile" &&
+                  (selectedProfileTrainerId
+                    ? trainers.find((t) => t.id === selectedProfileTrainerId)
+                    : authTrainer) && (
+                    <TrainerProfileView
+                      trainer={
+                        // Always the LIVE document: `authTrainer` is captured at
+                        // sign-in and never re-read, so viewing your own profile
+                        // through it would never see your own Kaizen Roster edits
+                        // or the session counters the Cloud Function maintains.
+                        (trainers.find(
+                          (t) =>
+                            t.id ===
+                            (selectedProfileTrainerId || authTrainer?.id),
+                        ) || authTrainer)!
+                      }
+                      schedules={schedules}
+                      sessions={sessions}
+                      clients={clients}
+                      studios={studios}
+                      onSelectClient={setSelectedClientId}
+                      setView={setCurrentView}
+                      authTrainer={authTrainer}
+                    />
+                  )}
+                {currentView === "franchise-dashboard" && authTrainer && (
+                  <FranchiseDashboardView
+                    authTrainer={authTrainer}
+                    allStudios={studios}
+                    allTrainers={trainers}
+                    networks={networks}
+                  />
+                )}
+                {currentView === "admin-dashboard" && authTrainer && (
+                  <AdminDashboardView
+                    authTrainer={authTrainer}
+                    studios={studios}
+                    networks={networks}
+                    trainers={trainers}
+                    isAdmin={isAdmin}
+                    onRefresh={handleManualRefresh}
+                    clients={clients}
+                    sessions={sessions}
+                    machines={machines}
+                    newClientsCount={newClientsThisMonth.length}
+                    onShowNewClients={() => setShowNewClientsDialog(true)}
+                    onUpdateStudio={updateStudio}
+                    onUpdateClient={updateClient}
+                    activeStudioId={activeStudioId}
+                    onSeedDemoClient={handleSeedDemoClient}
+                    onRestoreMachines={handleRestoreMachines}
+                    onReorderTrainers={() => setIsReorderingTrainers(true)}
+                    onAppCleanse={handleAppCleanse}
+                    onNavigateProfile={(clientId) => {
+                      setSelectedClientId(clientId);
+                      setCurrentView("profile");
+                    }}
+                  />
+                )}
+                {currentView === "trainer-hub" && (
+                  <TrainerSettingsView
+                    authTrainer={authTrainer}
+                    studios={studios}
+                    trainers={trainers}
+                    machines={machines}
+                    activeStudioId={activeStudioId}
+                    onLogout={handleLogout}
+                    setView={(view) => {
+                      if (view === "leaderboard")
+                        setLeaderboardReturnView("trainer-hub");
+                      setCurrentView(view as any);
+                    }}
+                  />
+                )}
 
+                {currentView === "calendar" && (
+                  <ErrorBoundary
+                    fallback={
+                      <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
+                        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
+                          <AlertTriangle className="w-8 h-8 text-red-500" />
+                        </div>
+                        <h3 className="text-xl font-bold mb-2">
+                          Schedule Unavailable
+                        </h3>
+                        <p className="text-muted-foreground max-w-sm mb-6">
+                          The schedule grid encountered an error. You can still
+                          access client metrics and profiles.
+                        </p>
+                        <Button
+                          variant="outline"
+                          onClick={() => window.location.reload()}
+                        >
+                          Reload Dashboard
+                        </Button>
+                      </div>
+                    }
+                  >
+                    <CalendarView
+                      schedules={schedules}
+                      trainers={trainers}
+                      authTrainer={authTrainer}
+                      isAdmin={
+                        tokenRole === "Admin" ||
+                        authTrainer?.role === "Admin" ||
+                        tokenRole === "Founder" ||
+                        authTrainer?.role === "Founder"
+                      }
+                      activeStudioId={activeStudioId}
+                      onSelectClient={setSelectedClientId}
+                      onStartNewClientOnboarding={setNewClientOnboardingName}
+                      setView={setView}
+                      clients={clients}
+                    />
+                  </ErrorBoundary>
+                )}
+                {currentView === "purchases" && <PurchaseView />}
+                {currentView === "chart-importer" && (
+                  <LegacyChartImporter
+                    clients={clients}
+                    machines={machines}
+                    trainers={trainers}
+                    initialClientId={selectedClientId || undefined}
+                    onComplete={() => {
+                      if (selectedClientId) setCurrentView("profile");
+                      else setCurrentView("clients");
+                    }}
+                  />
+                )}
+              </AnimatePresence>
+            </Suspense>
+          </main>
 
-            {currentView === "calendar" && (
-              <ErrorBoundary
-                fallback={
-                  <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
-                      <AlertTriangle className="w-8 h-8 text-red-500" />
-                    </div>
-                    <h3 className="text-xl font-bold mb-2">
-                      Schedule Unavailable
-                    </h3>
-                    <p className="text-muted-foreground max-w-sm mb-6">
-                      The schedule grid encountered an error. You can still
-                      access client metrics and profiles.
-                    </p>
-                    <Button
-                      variant="outline"
-                      onClick={() => window.location.reload()}
-                    >
-                      Reload Dashboard
-                    </Button>
-                  </div>
-                }
-              >
-                <CalendarView
-                  schedules={schedules}
-                  trainers={trainers}
-                  authTrainer={authTrainer}
-                  isAdmin={
-                    tokenRole === "Admin" ||
-                    authTrainer?.role === "Admin" ||
-                    tokenRole === "Founder" ||
-                    authTrainer?.role === "Founder"
-                  }
-                  activeStudioId={activeStudioId}
-                  onSelectClient={setSelectedClientId}
-                  onStartNewClientOnboarding={setNewClientOnboardingName}
-                  setView={setView}
-                  clients={clients}
-                />
-              </ErrorBoundary>
-            )}
-            {currentView === "purchases" && <PurchaseView />}
-            {currentView === "chart-importer" && (
-              <LegacyChartImporter
-                clients={clients}
-                machines={machines}
-                trainers={trainers}
-                initialClientId={selectedClientId || undefined}
-                onComplete={() => {
-                  if (selectedClientId) setCurrentView("profile");
-                  else setCurrentView("clients");
-                }}
-              />
-            )}
-          </AnimatePresence>
-          </Suspense>
-        </main>
-
-        {/* Navigation Bar */}
-        {appMode === "trainer" ? (
-          <nav className="flex-none bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around z-30">
-            <NavButton
-              active={currentView === "clients"}
-              onClick={() => setCurrentView("clients")}
-              icon={<Users className="w-5 h-5 sm:w-6 sm:h-6" />}
-              label="Hub"
-            />
-            <NavButton
-              active={[
-                "profile",
-                "history",
-                "progress-report",
-                "client-directory",
-              ].includes(currentView)}
-              onClick={() => {
-                if (selectedClientId) {
-                  setCurrentView("profile");
-                } else {
-                  setCurrentView("client-directory");
-                }
-              }}
-              icon={<ClipboardList className="w-5 h-5 sm:w-6 sm:h-6" />}
-              label="Client"
-            />
-            <NavButton
-              active={currentView === "workouts"}
-              onClick={() => {
-                if (currentSession || selectedClientId) {
-                  setCurrentView("workouts");
-                } else {
-                  setCurrentView("client-directory");
-                }
-              }}
-              icon={<PlayCircle className="w-5 h-5 sm:w-6 sm:h-6" />}
-              label={currentSession ? "Active Session" : "Start Session"}
-              activeColor={currentSession ? "text-orange-500" : undefined}
-              activeBg={
-                currentSession
-                  ? "bg-orange-500/10 dark:bg-orange-600/10"
-                  : undefined
-              }
-              activeIndicator={
-                currentSession ? "bg-orange-500 dark:bg-orange-600" : undefined
-              }
-            />
-            <NavButton
-              active={currentView === "machine-anatomy"}
-              onClick={() => setCurrentView("machine-anatomy")}
-              icon={<Dumbbell className="w-5 h-5 sm:w-6 sm:h-6" />}
-              label="Catalog"
-            />
-            <NavButton
-              active={currentView === "studio-tasks"}
-              onClick={() => setCurrentView("studio-tasks")}
-              icon={<ListChecks className="w-5 h-5 sm:w-6 sm:h-6" />}
-              label="To-Do"
-            />
-            <NavButton
-              active={currentView === "calendar"}
-              onClick={() => setCurrentView("calendar")}
-              icon={<Calendar className="w-5 h-5 sm:w-6 sm:h-6" />}
-              label="Calendar"
-            />
-          </nav>
-        ) : (
-          <nav className="flex-none bg-white dark:bg-bg-dark border-t border-orange-500/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around z-30">
-            <NavButton
-              active={currentView === "admin-dashboard"}
-              onClick={() => setCurrentView("admin-dashboard" as any)}
-              icon={<LayoutDashboard className="w-5 h-5 sm:w-6 sm:h-6" />}
-              label="Admin"
-              activeColor="text-orange-500"
-              activeBg="bg-orange-500/10 dark:bg-orange-600/10"
-              activeIndicator="bg-orange-500 dark:bg-orange-600"
-            />
-            {(isOwner(authTrainer) ||
-              checkIsAdmin(authTrainer, user.email || undefined)) && (
+          {/* Navigation Bar */}
+          {appMode === "trainer" ? (
+            <nav className="flex-none bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around z-30">
               <NavButton
-                active={currentView === "franchise-dashboard"}
-                onClick={() => setCurrentView("franchise-dashboard" as any)}
-                icon={<Network className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="Franchise"
-                activeColor="text-indigo-500"
-                activeBg="bg-indigo-500/10 dark:bg-indigo-600/10"
-                activeIndicator="bg-indigo-500 dark:bg-indigo-600"
+                active={currentView === "clients"}
+                onClick={() => setCurrentView("clients")}
+                icon={<Users className="w-5 h-5 sm:w-6 sm:h-6" />}
+                label="Hub"
               />
-            )}
-            <NavButton
-              active={currentView === "trainer-hub"}
-              onClick={() => setCurrentView("trainer-hub")}
-              icon={<Settings className="w-5 h-5 sm:w-6 sm:h-6" />}
-              label="Customize Studio"
-              activeColor="text-emerald-500"
-              activeBg="bg-emerald-500/10 dark:bg-emerald-600/10"
-              activeIndicator="bg-emerald-500 dark:bg-emerald-600"
-            />
-          </nav>
-        )}
-      </div>
+              <NavButton
+                active={[
+                  "profile",
+                  "history",
+                  "progress-report",
+                  "client-directory",
+                ].includes(currentView)}
+                onClick={() => {
+                  if (selectedClientId) {
+                    setCurrentView("profile");
+                  } else {
+                    setCurrentView("client-directory");
+                  }
+                }}
+                icon={<ClipboardList className="w-5 h-5 sm:w-6 sm:h-6" />}
+                label="Client"
+              />
+              <NavButton
+                active={currentView === "workouts"}
+                onClick={() => {
+                  if (currentSession || selectedClientId) {
+                    setCurrentView("workouts");
+                  } else {
+                    setCurrentView("client-directory");
+                  }
+                }}
+                icon={<PlayCircle className="w-5 h-5 sm:w-6 sm:h-6" />}
+                label={currentSession ? "Active Session" : "Start Session"}
+                activeColor={currentSession ? "text-orange-500" : undefined}
+                activeBg={
+                  currentSession
+                    ? "bg-orange-500/10 dark:bg-orange-600/10"
+                    : undefined
+                }
+                activeIndicator={
+                  currentSession
+                    ? "bg-orange-500 dark:bg-orange-600"
+                    : undefined
+                }
+              />
+              <NavButton
+                active={currentView === "machine-anatomy"}
+                onClick={() => setCurrentView("machine-anatomy")}
+                icon={<Dumbbell className="w-5 h-5 sm:w-6 sm:h-6" />}
+                label="Catalog"
+              />
+              <NavButton
+                active={currentView === "studio-tasks"}
+                onClick={() => setCurrentView("studio-tasks")}
+                icon={<ListChecks className="w-5 h-5 sm:w-6 sm:h-6" />}
+                label="To-Do"
+              />
+              <NavButton
+                active={currentView === "calendar"}
+                onClick={() => setCurrentView("calendar")}
+                icon={<Calendar className="w-5 h-5 sm:w-6 sm:h-6" />}
+                label="Calendar"
+              />
+            </nav>
+          ) : (
+            <nav className="flex-none bg-white dark:bg-bg-dark border-t border-orange-500/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around z-30">
+              <NavButton
+                active={currentView === "admin-dashboard"}
+                onClick={() => setCurrentView("admin-dashboard" as any)}
+                icon={<LayoutDashboard className="w-5 h-5 sm:w-6 sm:h-6" />}
+                label="Admin"
+                activeColor="text-orange-500"
+                activeBg="bg-orange-500/10 dark:bg-orange-600/10"
+                activeIndicator="bg-orange-500 dark:bg-orange-600"
+              />
+              {(isOwner(authTrainer) ||
+                checkIsAdmin(authTrainer, user.email || undefined)) && (
+                <NavButton
+                  active={currentView === "franchise-dashboard"}
+                  onClick={() => setCurrentView("franchise-dashboard" as any)}
+                  icon={<Network className="w-5 h-5 sm:w-6 sm:h-6" />}
+                  label="Franchise"
+                  activeColor="text-indigo-500"
+                  activeBg="bg-indigo-500/10 dark:bg-indigo-600/10"
+                  activeIndicator="bg-indigo-500 dark:bg-indigo-600"
+                />
+              )}
+              <NavButton
+                active={currentView === "trainer-hub"}
+                onClick={() => setCurrentView("trainer-hub")}
+                icon={<Settings className="w-5 h-5 sm:w-6 sm:h-6" />}
+                label="Customize Studio"
+                activeColor="text-emerald-500"
+                activeBg="bg-emerald-500/10 dark:bg-emerald-600/10"
+                activeIndicator="bg-emerald-500 dark:bg-emerald-600"
+              />
+            </nav>
+          )}
+        </div>
 
-      {/* Machine Information Deep Dive Dialog */}
-      <Dialog
-        open={!!infoMachineId}
-        onOpenChange={(open) => !open && setInfoMachineId(null)}
-      >
-        <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto rounded-[32px] p-0 border-none shadow-2xl dark:shadow-none">
-          {infoMachine && (
-            <>
-              <DialogHeader className="p-8 bg-white dark:bg-bg-dark border-b relative">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-xl text-primary shadow-sm dark:shadow-none">
-                    {infoMachine.order}
+        {/* Machine Information Deep Dive Dialog */}
+        <Dialog
+          open={!!infoMachineId}
+          onOpenChange={(open) => !open && setInfoMachineId(null)}
+        >
+          <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto rounded-[32px] p-0 border-none shadow-2xl dark:shadow-none">
+            {infoMachine && (
+              <>
+                <DialogHeader className="p-8 bg-white dark:bg-bg-dark border-b relative">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-xl text-primary shadow-sm dark:shadow-none">
+                      {infoMachine.order}
+                    </div>
+                    <div>
+                      <DialogTitle className="text-3xl font-black uppercase italic tracking-tighter">
+                        {infoMachine.fullName || infoMachine.name}
+                      </DialogTitle>
+                      <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                        Deep Dive & Operational Guidelines
+                      </DialogDescription>
+                    </div>
                   </div>
-                  <div>
-                    <DialogTitle className="text-3xl font-black uppercase italic tracking-tighter">
-                      {infoMachine.fullName || infoMachine.name}
-                    </DialogTitle>
-                    <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                      Deep Dive & Operational Guidelines
-                    </DialogDescription>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-6 right-6 h-10 w-10 rounded-xl"
-                  onClick={() => setIsEditingMachineInfo(!isEditingMachineInfo)}
-                >
-                  <Edit3 className="w-5 h-5" />
-                </Button>
-              </DialogHeader>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-6 right-6 h-10 w-10 rounded-xl"
+                    onClick={() =>
+                      setIsEditingMachineInfo(!isEditingMachineInfo)
+                    }
+                  >
+                    <Edit3 className="w-5 h-5" />
+                  </Button>
+                </DialogHeader>
 
-              <div className="p-8 space-y-8">
-                {isEditingMachineInfo ? (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                          Target Muscles
-                        </Label>
-                        <Input
-                          value={machineInfoDraft.targetMuscles || ""}
-                          onChange={(e) =>
-                            setMachineInfoDraft({
-                              ...machineInfoDraft,
-                              targetMuscles: e.target.value,
-                            })
-                          }
-                          placeholder="e.g. Chest, Triceps"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                          Form Video URL
-                        </Label>
-                        <Input
-                          value={machineInfoDraft.formVideoUrl || ""}
-                          onChange={(e) =>
-                            setMachineInfoDraft({
-                              ...machineInfoDraft,
-                              formVideoUrl: e.target.value,
-                            })
-                          }
-                          placeholder="Youtube/Vimeo Link"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                        Standard Machine Settings (Tips)
-                      </Label>
-                      <Textarea
-                        value={machineInfoDraft.settings || ""}
-                        onChange={(e) =>
-                          setMachineInfoDraft({
-                            ...machineInfoDraft,
-                            settings: e.target.value,
-                          })
-                        }
-                        placeholder="Recommended starting points for different heights/sizes..."
-                        className="min-h-20"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                        Cueing Tips (Trainer to Trainer)
-                      </Label>
-                      <Textarea
-                        value={machineInfoDraft.cueingTips || ""}
-                        onChange={(e) =>
-                          setMachineInfoDraft({
-                            ...machineInfoDraft,
-                            cueingTips: e.target.value,
-                          })
-                        }
-                        placeholder="Pointers for better client form..."
-                        className="min-h-25"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                        Deep Dive Notes
-                      </Label>
-                      <Textarea
-                        value={machineInfoDraft.deepDiveNotes || ""}
-                        onChange={(e) =>
-                          setMachineInfoDraft({
-                            ...machineInfoDraft,
-                            deepDiveNotes: e.target.value,
-                          })
-                        }
-                        placeholder="History, benefits, or complex cues..."
-                        className="min-h-37.5"
-                      />
-                    </div>
-
-                    <div className="flex gap-3">
-                      <Button
-                        className="flex-1 h-12 rounded-xl font-black uppercase italic tracking-widest"
-                        onClick={async () => {
-                          try {
-                            await updateDoc(
-                              doc(db, "machines", infoMachine.id!),
-                              {
+                <div className="p-8 space-y-8">
+                  {isEditingMachineInfo ? (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+                            Target Muscles
+                          </Label>
+                          <Input
+                            value={machineInfoDraft.targetMuscles || ""}
+                            onChange={(e) =>
+                              setMachineInfoDraft({
                                 ...machineInfoDraft,
-                                updatedAt: serverTimestamp(),
-                              },
-                            );
-                            setIsEditingMachineInfo(false);
-                          } catch (err) {
-                            handleFirestoreError(
-                              err,
-                              OperationType.UPDATE,
-                              "machines",
-                            );
+                                targetMuscles: e.target.value,
+                              })
+                            }
+                            placeholder="e.g. Chest, Triceps"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+                            Form Video URL
+                          </Label>
+                          <Input
+                            value={machineInfoDraft.formVideoUrl || ""}
+                            onChange={(e) =>
+                              setMachineInfoDraft({
+                                ...machineInfoDraft,
+                                formVideoUrl: e.target.value,
+                              })
+                            }
+                            placeholder="Youtube/Vimeo Link"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+                          Standard Machine Settings (Tips)
+                        </Label>
+                        <Textarea
+                          value={machineInfoDraft.settings || ""}
+                          onChange={(e) =>
+                            setMachineInfoDraft({
+                              ...machineInfoDraft,
+                              settings: e.target.value,
+                            })
+                          }
+                          placeholder="Recommended starting points for different heights/sizes..."
+                          className="min-h-20"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+                          Cueing Tips (Trainer to Trainer)
+                        </Label>
+                        <Textarea
+                          value={machineInfoDraft.cueingTips || ""}
+                          onChange={(e) =>
+                            setMachineInfoDraft({
+                              ...machineInfoDraft,
+                              cueingTips: e.target.value,
+                            })
+                          }
+                          placeholder="Pointers for better client form..."
+                          className="min-h-25"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+                          Deep Dive Notes
+                        </Label>
+                        <Textarea
+                          value={machineInfoDraft.deepDiveNotes || ""}
+                          onChange={(e) =>
+                            setMachineInfoDraft({
+                              ...machineInfoDraft,
+                              deepDiveNotes: e.target.value,
+                            })
+                          }
+                          placeholder="History, benefits, or complex cues..."
+                          className="min-h-37.5"
+                        />
+                      </div>
+
+                      <div className="flex gap-3">
+                        <Button
+                          className="flex-1 h-12 rounded-xl font-black uppercase italic tracking-widest"
+                          onClick={async () => {
+                            try {
+                              await updateDoc(
+                                doc(db, "machines", infoMachine.id!),
+                                {
+                                  ...machineInfoDraft,
+                                  updatedAt: serverTimestamp(),
+                                },
+                              );
+                              setIsEditingMachineInfo(false);
+                            } catch (err) {
+                              handleFirestoreError(
+                                err,
+                                OperationType.UPDATE,
+                                "machines",
+                              );
+                            }
+                          }}
+                        >
+                          Save Information
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-12 px-6 rounded-xl"
+                          onClick={() => setIsEditingMachineInfo(false)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-8">
+                      {/* Visual & Core Info Header */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="aspect-video bg-muted rounded-2xl overflow-hidden relative flex items-center justify-center border border-border group">
+                          {infoMachine.imageUrl ? (
+                            <img
+                              src={infoMachine.imageUrl}
+                              className="w-full h-full object-cover brightness-100 transition-all duration-500"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src =
+                                  "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80";
+                              }}
+                            />
+                          ) : (
+                            // Unsplash default photo mechanism for robust mockups
+                            <img
+                              src={getMachineImageUrl(infoMachine.id)}
+                              className="w-full h-full object-cover brightness-100 transition-all duration-500"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src =
+                                  "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80";
+                              }}
+                            />
+                          )}
+                          <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end z-10">
+                            <div>
+                              <p className="text-[11px] font-bold uppercase tracking-widest text-orange-500 mb-1">
+                                Targeted Muscles
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {infoMachine.targetMuscles
+                                  ?.split(",")
+                                  .map((m) => (
+                                    <Badge
+                                      key={m}
+                                      className="bg-primary/90 text-primary-foreground border-none font-medium uppercase text-[11px] px-2 py-0.5"
+                                    >
+                                      {m.trim()}
+                                    </Badge>
+                                  )) || (
+                                  <Badge className="bg-primary/90 text-primary-foreground border-none font-medium uppercase text-[11px] px-2 py-0.5">
+                                    Primary Target Area
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 flex flex-col justify-center">
+                          <div className="bg-primary/5 rounded-2xl p-6 border border-primary/10">
+                            <h3 className="text-sm font-bold uppercase tracking-tight text-primary mb-2">
+                              Resource Actions
+                            </h3>
+                            <div className="space-y-3">
+                              <Button className="w-full justify-start h-12 rounded-xl bg-background border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all">
+                                <Play className="w-4 h-4 mr-3" />
+                                <span className="font-bold text-[11px] uppercase tracking-widest">
+                                  View Form Guide Video
+                                </span>
+                              </Button>
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start h-12 rounded-xl font-bold text-[11px] uppercase tracking-widest text-secondary hover:bg-secondary hover:text-secondary-foreground transition-all"
+                              >
+                                <MessageSquare className="w-4 h-4 mr-3" />
+                                Send Resource to Client
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Machine Insights Section (Orange Application) */}
+                      <div className="bg-action/5 border border-action/20 rounded-2xl p-6 md:p-8">
+                        <h3 className="text-xl font-bold uppercase tracking-tight text-action mb-6 flex items-center gap-2">
+                          <TrendingUp className="w-6 h-6" />
+                          Machine Insights & Demographics
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          {/* Demographic 1 */}
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-end">
+                              <div>
+                                <p className="text-[12px] font-bold text-secondary">
+                                  Age 20-30
+                                </p>
+                                <p className="text-[11px] font-medium text-secondary/60 uppercase tracking-widest">
+                                  Female | Beginner
+                                </p>
+                              </div>
+                            </div>
+                            <div className="space-y-3">
+                              <div>
+                                <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
+                                  <span>Average Weight (45 lbs)</span>
+                                  <span className="text-action">SD ±5</span>
+                                </div>
+                                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-action w-[45%]" />
+                                </div>
+                              </div>
+                              <div>
+                                <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
+                                  <span>Average Reps (12)</span>
+                                  <span className="text-action">SD ±2</span>
+                                </div>
+                                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-action/60 w-[60%]" />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          {/* Demographic 2 */}
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-end">
+                              <div>
+                                <p className="text-[12px] font-bold text-secondary">
+                                  Age 30-40
+                                </p>
+                                <p className="text-[11px] font-medium text-secondary/60 uppercase tracking-widest">
+                                  Male | Advanced
+                                </p>
+                              </div>
+                            </div>
+                            <div className="space-y-3">
+                              <div>
+                                <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
+                                  <span>Average Weight (120 lbs)</span>
+                                  <span className="text-primary">SD ±15</span>
+                                </div>
+                                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-primary w-[85%]" />
+                                </div>
+                              </div>
+                              <div>
+                                <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
+                                  <span>Average Reps (8)</span>
+                                  <span className="text-primary">SD ±1.5</span>
+                                </div>
+                                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-primary/60 w-[40%]" />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Trainer Cues and Tips */}
+                        <div className="space-y-4">
+                          <h4 className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-primary mb-4">
+                            <Users className="w-4 h-4" />
+                            Trainer Cues & Tips
+                          </h4>
+
+                          <div className="space-y-3">
+                            {/* Simulated Collapsible Cards */}
+                            <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-bg-dark transition-colors cursor-pointer group">
+                              <div className="flex justify-between items-center">
+                                <p className="text-[12px] font-bold text-secondary">
+                                  Marina's Cue
+                                </p>
+                                <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                              </div>
+                              <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+                                "Keep your chest proud and drive through the
+                                mid-foot rather than the toes."
+                              </p>
+                            </div>
+                            <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-bg-dark transition-colors cursor-pointer group">
+                              <div className="flex justify-between items-center">
+                                <p className="text-[12px] font-bold text-secondary">
+                                  Christian's Cue
+                                </p>
+                                <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                              </div>
+                              <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+                                "Imagine retracting your shoulder blades
+                                completely before pulling the weight down."
+                              </p>
+                            </div>
+                            <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-bg-dark transition-colors cursor-pointer group">
+                              <div className="flex justify-between items-center">
+                                <p className="text-[12px] font-bold text-secondary">
+                                  Austin's Cue
+                                </p>
+                                <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                              </div>
+                              <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+                                "Focus on the eccentric phase; count to three as
+                                you release the tension."
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Common Mistakes & Setup */}
+                        <div className="space-y-4">
+                          <h4 className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-secondary mb-4">
+                            <AlertCircle className="w-4 h-4" />
+                            Critical Setup Deviations
+                          </h4>
+                          <div className="bg-white dark:bg-bg-dark rounded-2xl p-6 border border-border">
+                            <ul className="space-y-4">
+                              <li className="space-y-2">
+                                <div className="flex justify-between">
+                                  <p className="text-[11px] font-bold text-secondary">
+                                    Seat Too High
+                                  </p>
+                                  <span className="text-[11px] font-bold text-action">
+                                    High Risk
+                                  </span>
+                                </div>
+                                <div className="h-1.5 bg-background rounded-full overflow-hidden">
+                                  <div className="h-full bg-action w-[75%]" />
+                                </div>
+                                <p className="text-[11px] text-muted-foreground">
+                                  Places extreme stress on the lower back during
+                                  extension.
+                                </p>
+                              </li>
+                              <li className="space-y-2">
+                                <div className="flex justify-between">
+                                  <p className="text-[11px] font-bold text-secondary">
+                                    Incomplete Range of Motion
+                                  </p>
+                                  <span className="text-[11px] font-bold text-amber-500">
+                                    Medium Risk
+                                  </span>
+                                </div>
+                                <div className="h-1.5 bg-background rounded-full overflow-hidden">
+                                  <div className="h-full bg-amber-500 w-[45%]" />
+                                </div>
+                                <p className="text-[11px] text-muted-foreground">
+                                  Failing to fully lock out or fully stretch at
+                                  the bottom.
+                                </p>
+                              </li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Deep Dive Notes */}
+                      <div className="space-y-4">
+                        <h4 className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-secondary mb-2">
+                          <StickyNote className="w-4 h-4" />
+                          Deep Dive Notes
+                        </h4>
+                        <div className="p-4 bg-background border border-border rounded-xl min-h-25">
+                          <p className="text-[11px] leading-relaxed text-muted-foreground">
+                            {infoMachine.deepDiveNotes ||
+                              "Enter detailed clinical observations and biomechanical notes here..."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Log Session Action */}
+                      <div className="pt-4 border-t border-border flex justify-end">
+                        <Button className="bg-action hover:bg-action/90 text-action-foreground font-bold uppercase tracking-widest text-[11px] h-12 px-8 rounded-xl shadow-lg shadow-action/20">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Log Session / Add Data Points
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* New Clients Dialog */}
+        <Dialog
+          open={showNewClientsDialog}
+          onOpenChange={setShowNewClientsDialog}
+        >
+          <DialogContent className="max-w-2xl rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
+            <DialogHeader className="p-8 bg-primary/5 border-b border-primary/10">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-primary/10 rounded-2xl">
+                  <Users className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <DialogTitle className="text-2xl font-black uppercase italic tracking-tighter">
+                    New Clients Dashboard
+                  </DialogTitle>
+                  <DialogDescription className="text-[11px] font-black uppercase tracking-widest text-primary/60">
+                    Registered in{" "}
+                    {new Date().toLocaleDateString([], {
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="p-6 max-h-[60dvh] overflow-y-auto">
+              {newClientsThisMonth.length > 0 ? (
+                <div className="grid gap-3">
+                  {newClientsThisMonth.map((client) => (
+                    <div
+                      key={client.id}
+                      onClick={() => {
+                        setSelectedClientId(client.id!);
+                        setCurrentView("profile");
+                        setShowNewClientsDialog(false);
+                      }}
+                      className="flex items-center justify-between p-4 bg-white dark:bg-bg-dark rounded-2xl border border-transparent hover:border-primary/20 hover:bg-white transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center font-black text-primary border shadow-sm dark:shadow-none group-hover:scale-110 transition-transform">
+                          {(client.firstName || "?")[0] || "?"}
+                          {(client.lastName || "")[0] || ""}
+                        </div>
+                        <div>
+                          <p className="font-black uppercase tracking-tight text-sm">
+                            {client.firstName} {client.lastName}
+                          </p>
+                          <p className="text-[11px] font-bold text-muted-foreground uppercase">
+                            {client.occupation || "No occupation listed"}
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-20 text-center">
+                  <Users className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
+                  <p className="text-xs font-black uppercase text-muted-foreground">
+                    No new clients registered this month.
+                  </p>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="p-6 bg-white dark:bg-bg-dark border-t">
+              <Button
+                onClick={() => setShowNewClientsDialog(false)}
+                className="rounded-xl font-bold uppercase tracking-widest w-full h-12"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Trainer Reordering Dialog */}
+        <Dialog
+          open={isReorderingTrainers}
+          onOpenChange={setIsReorderingTrainers}
+        >
+          <DialogContent className="max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none max-h-[85dvh] flex flex-col">
+            <DialogHeader className="p-8 bg-white dark:bg-bg-dark border-b shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-primary/10 rounded-2xl">
+                  <GripVertical className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl font-black uppercase italic tracking-tighter">
+                    Team Presence Sorting
+                  </DialogTitle>
+                  <DialogDescription className="text-[11px] font-bold text-muted-foreground uppercase">
+                    Organize how trainers appear in the hub grid.
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="p-6 space-y-3 flex-1 overflow-y-auto custom-scrollbar">
+              {sortedTrainers
+                .filter(
+                  (t) =>
+                    !activeStudioId ||
+                    t.primaryHomeStudioId === activeStudioId ||
+                    t.accessibleStudioIds?.includes(activeStudioId) ||
+                    t.activeGuestStudioIds?.includes(activeStudioId),
+                )
+                .map((trainer, idx, studioTrainers) => (
+                  <div
+                    key={trainer.id}
+                    className="flex items-center gap-4 p-4 bg-white dark:bg-bg-dark rounded-2xl border border-border/50 group"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-background border flex items-center justify-center font-black text-xs text-muted-foreground">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-black uppercase tracking-tighter text-sm">
+                        {trainer.fullName}
+                      </p>
+                      <p className="text-[11px] font-bold text-muted-foreground uppercase italic">
+                        {trainer.initials}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={idx === 0}
+                        className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
+                        onClick={async () => {
+                          const newSorted = [...studioTrainers];
+                          [newSorted[idx], newSorted[idx - 1]] = [
+                            newSorted[idx - 1],
+                            newSorted[idx],
+                          ];
+                          for (let i = 0; i < newSorted.length; i++) {
+                            if (newSorted[i].id) {
+                              await updateDoc(
+                                doc(db, "trainers", newSorted[i].id!),
+                                { order: i },
+                              );
+                            }
                           }
                         }}
                       >
-                        Save Information
+                        <ChevronUp className="w-4 h-4" />
                       </Button>
                       <Button
-                        variant="outline"
-                        className="h-12 px-6 rounded-xl"
-                        onClick={() => setIsEditingMachineInfo(false)}
+                        variant="ghost"
+                        size="icon"
+                        disabled={idx === studioTrainers.length - 1}
+                        className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
+                        onClick={async () => {
+                          const newSorted = [...studioTrainers];
+                          [newSorted[idx], newSorted[idx + 1]] = [
+                            newSorted[idx + 1],
+                            newSorted[idx],
+                          ];
+                          for (let i = 0; i < newSorted.length; i++) {
+                            if (newSorted[i].id) {
+                              await updateDoc(
+                                doc(db, "trainers", newSorted[i].id!),
+                                { order: i },
+                              );
+                            }
+                          }
+                        }}
                       >
-                        Cancel
+                        <ChevronDown className="w-4 h-4" />
                       </Button>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-8">
-                    {/* Visual & Core Info Header */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      <div className="aspect-video bg-muted rounded-2xl overflow-hidden relative flex items-center justify-center border border-border group">
-                        {infoMachine.imageUrl ? (
-                          <img
-                            src={infoMachine.imageUrl}
-                            className="w-full h-full object-cover brightness-100 transition-all duration-500"
-                            referrerPolicy="no-referrer"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src =
-                                "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80";
-                            }}
-                          />
-                        ) : (
-                          // Unsplash default photo mechanism for robust mockups
-                          <img
-                            src={getMachineImageUrl(infoMachine.id)}
-                            className="w-full h-full object-cover brightness-100 transition-all duration-500"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src =
-                                "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80";
-                            }}
-                          />
-                        )}
-                        <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end z-10">
-                          <div>
-                            <p className="text-[11px] font-bold uppercase tracking-widest text-orange-500 mb-1">
-                              Targeted Muscles
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {infoMachine.targetMuscles
-                                ?.split(",")
-                                .map((m) => (
-                                  <Badge
-                                    key={m}
-                                    className="bg-primary/90 text-primary-foreground border-none font-medium uppercase text-[11px] px-2 py-0.5"
-                                  >
-                                    {m.trim()}
-                                  </Badge>
-                                )) || (
-                                <Badge className="bg-primary/90 text-primary-foreground border-none font-medium uppercase text-[11px] px-2 py-0.5">
-                                  Primary Target Area
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4 flex flex-col justify-center">
-                        <div className="bg-primary/5 rounded-2xl p-6 border border-primary/10">
-                          <h3 className="text-sm font-bold uppercase tracking-tight text-primary mb-2">
-                            Resource Actions
-                          </h3>
-                          <div className="space-y-3">
-                            <Button className="w-full justify-start h-12 rounded-xl bg-background border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all">
-                              <Play className="w-4 h-4 mr-3" />
-                              <span className="font-bold text-[11px] uppercase tracking-widest">
-                                View Form Guide Video
-                              </span>
-                            </Button>
-                            <Button
-                              variant="outline"
-                              className="w-full justify-start h-12 rounded-xl font-bold text-[11px] uppercase tracking-widest text-secondary hover:bg-secondary hover:text-secondary-foreground transition-all"
-                            >
-                              <MessageSquare className="w-4 h-4 mr-3" />
-                              Send Resource to Client
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Machine Insights Section (Orange Application) */}
-                    <div className="bg-action/5 border border-action/20 rounded-2xl p-6 md:p-8">
-                      <h3 className="text-xl font-bold uppercase tracking-tight text-action mb-6 flex items-center gap-2">
-                        <TrendingUp className="w-6 h-6" />
-                        Machine Insights & Demographics
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Demographic 1 */}
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-end">
-                            <div>
-                              <p className="text-[12px] font-bold text-secondary">
-                                Age 20-30
-                              </p>
-                              <p className="text-[11px] font-medium text-secondary/60 uppercase tracking-widest">
-                                Female | Beginner
-                              </p>
-                            </div>
-                          </div>
-                          <div className="space-y-3">
-                            <div>
-                              <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
-                                <span>Average Weight (45 lbs)</span>
-                                <span className="text-action">SD ±5</span>
-                              </div>
-                              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                <div className="h-full bg-action w-[45%]" />
-                              </div>
-                            </div>
-                            <div>
-                              <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
-                                <span>Average Reps (12)</span>
-                                <span className="text-action">SD ±2</span>
-                              </div>
-                              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                <div className="h-full bg-action/60 w-[60%]" />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        {/* Demographic 2 */}
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-end">
-                            <div>
-                              <p className="text-[12px] font-bold text-secondary">
-                                Age 30-40
-                              </p>
-                              <p className="text-[11px] font-medium text-secondary/60 uppercase tracking-widest">
-                                Male | Advanced
-                              </p>
-                            </div>
-                          </div>
-                          <div className="space-y-3">
-                            <div>
-                              <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
-                                <span>Average Weight (120 lbs)</span>
-                                <span className="text-primary">SD ±15</span>
-                              </div>
-                              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                <div className="h-full bg-primary w-[85%]" />
-                              </div>
-                            </div>
-                            <div>
-                              <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
-                                <span>Average Reps (8)</span>
-                                <span className="text-primary">SD ±1.5</span>
-                              </div>
-                              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                <div className="h-full bg-primary/60 w-[40%]" />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      {/* Trainer Cues and Tips */}
-                      <div className="space-y-4">
-                        <h4 className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-primary mb-4">
-                          <Users className="w-4 h-4" />
-                          Trainer Cues & Tips
-                        </h4>
-
-                        <div className="space-y-3">
-                          {/* Simulated Collapsible Cards */}
-                          <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-bg-dark transition-colors cursor-pointer group">
-                            <div className="flex justify-between items-center">
-                              <p className="text-[12px] font-bold text-secondary">
-                                Marina's Cue
-                              </p>
-                              <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                            </div>
-                            <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
-                              "Keep your chest proud and drive through the
-                              mid-foot rather than the toes."
-                            </p>
-                          </div>
-                          <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-bg-dark transition-colors cursor-pointer group">
-                            <div className="flex justify-between items-center">
-                              <p className="text-[12px] font-bold text-secondary">
-                                Christian's Cue
-                              </p>
-                              <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                            </div>
-                            <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
-                              "Imagine retracting your shoulder blades
-                              completely before pulling the weight down."
-                            </p>
-                          </div>
-                          <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-bg-dark transition-colors cursor-pointer group">
-                            <div className="flex justify-between items-center">
-                              <p className="text-[12px] font-bold text-secondary">
-                                Austin's Cue
-                              </p>
-                              <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                            </div>
-                            <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
-                              "Focus on the eccentric phase; count to three as
-                              you release the tension."
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Common Mistakes & Setup */}
-                      <div className="space-y-4">
-                        <h4 className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-secondary mb-4">
-                          <AlertCircle className="w-4 h-4" />
-                          Critical Setup Deviations
-                        </h4>
-                        <div className="bg-white dark:bg-bg-dark rounded-2xl p-6 border border-border">
-                          <ul className="space-y-4">
-                            <li className="space-y-2">
-                              <div className="flex justify-between">
-                                <p className="text-[11px] font-bold text-secondary">
-                                  Seat Too High
-                                </p>
-                                <span className="text-[11px] font-bold text-action">
-                                  High Risk
-                                </span>
-                              </div>
-                              <div className="h-1.5 bg-background rounded-full overflow-hidden">
-                                <div className="h-full bg-action w-[75%]" />
-                              </div>
-                              <p className="text-[11px] text-muted-foreground">
-                                Places extreme stress on the lower back during
-                                extension.
-                              </p>
-                            </li>
-                            <li className="space-y-2">
-                              <div className="flex justify-between">
-                                <p className="text-[11px] font-bold text-secondary">
-                                  Incomplete Range of Motion
-                                </p>
-                                <span className="text-[11px] font-bold text-amber-500">
-                                  Medium Risk
-                                </span>
-                              </div>
-                              <div className="h-1.5 bg-background rounded-full overflow-hidden">
-                                <div className="h-full bg-amber-500 w-[45%]" />
-                              </div>
-                              <p className="text-[11px] text-muted-foreground">
-                                Failing to fully lock out or fully stretch at
-                                the bottom.
-                              </p>
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Deep Dive Notes */}
-                    <div className="space-y-4">
-                      <h4 className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-secondary mb-2">
-                        <StickyNote className="w-4 h-4" />
-                        Deep Dive Notes
-                      </h4>
-                      <div className="p-4 bg-background border border-border rounded-xl min-h-25">
-                        <p className="text-[11px] leading-relaxed text-muted-foreground">
-                          {infoMachine.deepDiveNotes ||
-                            "Enter detailed clinical observations and biomechanical notes here..."}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Log Session Action */}
-                    <div className="pt-4 border-t border-border flex justify-end">
-                      <Button className="bg-action hover:bg-action/90 text-action-foreground font-bold uppercase tracking-widest text-[11px] h-12 px-8 rounded-xl shadow-lg shadow-action/20">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Log Session / Add Data Points
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* New Clients Dialog */}
-      <Dialog
-        open={showNewClientsDialog}
-        onOpenChange={setShowNewClientsDialog}
-      >
-        <DialogContent className="max-w-2xl rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
-          <DialogHeader className="p-8 bg-primary/5 border-b border-primary/10">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-primary/10 rounded-2xl">
-                <Users className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <DialogTitle className="text-2xl font-black uppercase italic tracking-tighter">
-                  New Clients Dashboard
-                </DialogTitle>
-                <DialogDescription className="text-[11px] font-black uppercase tracking-widest text-primary/60">
-                  Registered in{" "}
-                  {new Date().toLocaleDateString([], {
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-          <div className="p-6 max-h-[60dvh] overflow-y-auto">
-            {newClientsThisMonth.length > 0 ? (
-              <div className="grid gap-3">
-                {newClientsThisMonth.map((client) => (
-                  <div
-                    key={client.id}
-                    onClick={() => {
-                      setSelectedClientId(client.id!);
-                      setCurrentView("profile");
-                      setShowNewClientsDialog(false);
-                    }}
-                    className="flex items-center justify-between p-4 bg-white dark:bg-bg-dark rounded-2xl border border-transparent hover:border-primary/20 hover:bg-white transition-all cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center font-black text-primary border shadow-sm dark:shadow-none group-hover:scale-110 transition-transform">
-                        {(client.firstName || "?")[0] || "?"}
-                        {(client.lastName || "")[0] || ""}
-                      </div>
-                      <div>
-                        <p className="font-black uppercase tracking-tight text-sm">
-                          {client.firstName} {client.lastName}
-                        </p>
-                        <p className="text-[11px] font-bold text-muted-foreground uppercase">
-                          {client.occupation || "No occupation listed"}
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                   </div>
                 ))}
-              </div>
-            ) : (
-              <div className="py-20 text-center">
-                <Users className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
-                <p className="text-xs font-black uppercase text-muted-foreground">
-                  No new clients registered this month.
-                </p>
-              </div>
-            )}
-          </div>
-          <DialogFooter className="p-6 bg-white dark:bg-bg-dark border-t">
-            <Button
-              onClick={() => setShowNewClientsDialog(false)}
-              className="rounded-xl font-bold uppercase tracking-widest w-full h-12"
-            >
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Trainer Reordering Dialog */}
-      <Dialog
-        open={isReorderingTrainers}
-        onOpenChange={setIsReorderingTrainers}
-      >
-        <DialogContent className="max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none max-h-[85dvh] flex flex-col">
-          <DialogHeader className="p-8 bg-white dark:bg-bg-dark border-b shrink-0">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-primary/10 rounded-2xl">
-                <GripVertical className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <DialogTitle className="text-xl font-black uppercase italic tracking-tighter">
-                  Team Presence Sorting
-                </DialogTitle>
-                <DialogDescription className="text-[11px] font-bold text-muted-foreground uppercase">
-                  Organize how trainers appear in the hub grid.
-                </DialogDescription>
-              </div>
             </div>
-          </DialogHeader>
-          <div className="p-6 space-y-3 flex-1 overflow-y-auto custom-scrollbar">
-            {sortedTrainers
-              .filter(
-                (t) =>
-                  !activeStudioId ||
-                  t.primaryHomeStudioId === activeStudioId ||
-                  t.accessibleStudioIds?.includes(activeStudioId) ||
-                  t.activeGuestStudioIds?.includes(activeStudioId),
-              )
-              .map((trainer, idx, studioTrainers) => (
-                <div
-                  key={trainer.id}
-                  className="flex items-center gap-4 p-4 bg-white dark:bg-bg-dark rounded-2xl border border-border/50 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-background border flex items-center justify-center font-black text-xs text-muted-foreground">
-                    {idx + 1}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-black uppercase tracking-tighter text-sm">
-                      {trainer.fullName}
-                    </p>
-                    <p className="text-[11px] font-bold text-muted-foreground uppercase italic">
-                      {trainer.initials}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={idx === 0}
-                      className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
-                      onClick={async () => {
-                        const newSorted = [...studioTrainers];
-                        [newSorted[idx], newSorted[idx - 1]] = [
-                          newSorted[idx - 1],
-                          newSorted[idx],
-                        ];
-                        for (let i = 0; i < newSorted.length; i++) {
-                          if (newSorted[i].id) {
-                            await updateDoc(
-                              doc(db, "trainers", newSorted[i].id!),
-                              { order: i },
-                            );
-                          }
-                        }
-                      }}
-                    >
-                      <ChevronUp className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={idx === studioTrainers.length - 1}
-                      className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
-                      onClick={async () => {
-                        const newSorted = [...studioTrainers];
-                        [newSorted[idx], newSorted[idx + 1]] = [
-                          newSorted[idx + 1],
-                          newSorted[idx],
-                        ];
-                        for (let i = 0; i < newSorted.length; i++) {
-                          if (newSorted[i].id) {
-                            await updateDoc(
-                              doc(db, "trainers", newSorted[i].id!),
-                              { order: i },
-                            );
-                          }
-                        }
-                      }}
-                    >
-                      <ChevronDown className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-          </div>
-          <DialogFooter className="p-6 border-t bg-white dark:bg-bg-dark shrink-0">
-            <Button
-              onClick={() => setIsReorderingTrainers(false)}
-              className="rounded-xl font-bold uppercase tracking-widest w-full h-12"
-            >
-              Done
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter className="p-6 border-t bg-white dark:bg-bg-dark shrink-0">
+              <Button
+                onClick={() => setIsReorderingTrainers(false)}
+                className="rounded-xl font-bold uppercase tracking-widest w-full h-12"
+              >
+                Done
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      <StrongConfirmationModal
-        isOpen={isWipeModalOpen}
-        title="Wipe Entire Database"
-        description="This critical action will permanently delete all Clients, Trainers, Sessions, Schedules, Notes, and Logs. It will then completely re-initialize the 20 standard machines to factory defaults. This cannot be undone."
-        confirmationPhrase="confirm wipe system"
-        onConfirm={executeAppCleanse}
-        onCancel={() => setIsWipeModalOpen(false)}
-        isDestructive={true}
-      />
+        <StrongConfirmationModal
+          isOpen={isWipeModalOpen}
+          title="Wipe Entire Database"
+          description="This critical action will permanently delete all Clients, Trainers, Sessions, Schedules, Notes, and Logs. It will then completely re-initialize the 20 standard machines to factory defaults. This cannot be undone."
+          confirmationPhrase="confirm wipe system"
+          onConfirm={executeAppCleanse}
+          onCancel={() => setIsWipeModalOpen(false)}
+          isDestructive={true}
+        />
       </FeedbackProvider>
     </ErrorBoundary>
   );

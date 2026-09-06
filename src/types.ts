@@ -252,6 +252,22 @@ export interface TrainerRollups {
 
 export interface Trainer {
   id: string;
+  /**
+   * TRAINER IDENTITY (Sep 2026). Firestore rules only accept writes to
+   * `trainers/{auth uid}`, but an admin creating a profile for someone who has
+   * not signed in yet has no uid to key it on. Such a profile is a PLACEHOLDER
+   * — usable for scheduling, unwritable by its owner — until that person signs
+   * in and claims it. See src/features/trainer-identity/claim.ts.
+   */
+  /** Marks a profile an admin created that nobody has claimed yet. */
+  pendingClaim?: boolean;
+  /** On the placeholder once claimed: the document that replaced it. */
+  supersededByUid?: string | null;
+  supersededAt?: string;
+  /** On the claimed document: where it came from, for the migration. */
+  claimedFromId?: string | null;
+  claimedAt?: string;
+  authUid?: string;
   fullName: string;
   nickname?: string;
   initials: string;

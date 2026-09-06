@@ -28,6 +28,21 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // OWNING YOUR OWN TRAINER DOCUMENT — see the long note in
+    // firestore.rules. Mirrored here because staging carries the same
+    // identity clause and therefore the same bug; this file has otherwise
+    // diverged from the live rules and is NOT a copy.
+    function ownsTrainerDoc(trainerId) {
+      return isAuthenticated() && (
+        request.auth.uid == trainerId ||
+        (
+          request.auth.token.email != null &&
+          resource.data.get('email', '') != '' &&
+          resource.data.email == request.auth.token.email
+        )
+      );
+    }
+
     // Primary lookup: trainer doc by UID (for trainers created via Firebase Auth UID as doc ID)
     function getTrainerByUID() {
       return exists(/databases/$(database)/documents/trainers/$(request.auth.uid))
@@ -245,7 +260,7 @@ service cloud.firestore {
       allow update: if isSuperAdmin() || 
                     ( (isFranchiseOwner() || 
                       (resource.data.primaryHomeStudioId != null && isStudioOwnerOrHeadTrainer(resource.data.primaryHomeStudioId)) || 
-                      (isAuthenticated() && request.auth.uid == trainerId))
+                      ownsTrainerDoc(trainerId))
                       && 
                       (!('role' in request.resource.data) || 
                        request.resource.data.role == resource.data.role || 

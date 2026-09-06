@@ -8,9 +8,16 @@ import {
   query,
   where,
   setDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { Trainer, Studio, FranchiseNetwork } from "../types";
+import {
+  decideClaim,
+  claimedProfile,
+  tombstone,
+  withoutSuperseded,
+} from "../features/trainer-identity/claim";
 
 export function useAuthInitialization() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -42,30 +49,27 @@ export function useAuthInitialization() {
           // lookup is keyed on email, so without this fallback a valid Microsoft
           // user is treated as having no profile and sent to Request Access.
           const resolvedEmail =
-            u.email ||
-            u.providerData?.find((p) => p?.email)?.email ||
-            null;
+            u.email || u.providerData?.find((p) => p?.email)?.email || null;
 
           if (resolvedEmail) {
             try {
-              // Primary method: Lookup by email
-              const trainersRef = collection(db, "trainers");
-              const q = query(
-                trainersRef,
-                where("email", "==", resolvedEmail.toLowerCase()),
-              );
-              const querySnapshot = await getDocs(q);
-
-              if (!querySnapshot.empty) {
-                const docSnap = querySnapshot.docs[0];
-                const rawData = docSnap.data();
-                trainerData = {
-                  id: docSnap.id,
-                  ...rawData,
-                  role: rawData.role || "LifeTransformer",
-                } as Trainer;
-              } else if (u.uid) {
-                // Secondary fallback: Lookup by UID (just in case they used an auto-assigned flow previously)
+              /**
+               * UID FIRST, THEN EMAIL.
+               *
+               * This order used to be reversed, and the reversal is what made
+               * the trainer-identity bug permanent. Every Firestore rule asks
+               * whether request.auth.uid matches the document id, so
+               * trainers/{uid} is the ONLY document a person can actually
+               * write. Matching on email first meant that whenever both
+               * existed, the app handed them the one they could not use.
+               *
+               * Looking up the uid first also makes the claim below
+               * idempotent: once trainers/{uid} exists it always wins, so a
+               * claim that half-finished — new document written, old one not
+               * yet superseded — resolves correctly on the next sign-in and
+               * can simply be run again.
+               */
+              if (u.uid) {
                 const uidDoc = await getDoc(doc(db, "trainers", u.uid));
                 if (uidDoc.exists()) {
                   const rawData = uidDoc.data();
@@ -74,6 +78,94 @@ export function useAuthInitialization() {
                     ...rawData,
                     role: rawData.role || "LifeTransformer",
                   } as Trainer;
+                }
+              }
+
+              if (!trainerData) {
+                const trainersRef = collection(db, "trainers");
+                const q = query(
+                  trainersRef,
+                  where("email", "==", resolvedEmail.toLowerCase()),
+                );
+                const querySnapshot = await getDocs(q);
+
+                // Skip anything a previous claim already superseded, so a
+                // leftover document can never be handed back to its owner.
+                const live = querySnapshot.docs.filter(
+                  (d) => !d.data()?.supersededByUid,
+                );
+
+                if (live.length > 0) {
+                  const docSnap = live[0];
+                  const rawData = docSnap.data();
+
+                  /**
+                   * CLAIM. An admin-created placeholder becomes a real
+                   * account the first time its owner signs in — because
+                   * sign-in is the first moment their uid exists.
+                   *
+                   * Write the new document FIRST, tombstone the placeholder
+                   * SECOND. There is no transaction spanning a create and an
+                   * update that the rules will accept here, so the claim can
+                   * be interrupted between the two, and the order is what
+                   * makes every interruption harmless: stopping after step 1
+                   * leaves a working trainers/{uid} that the lookup above
+                   * now finds first, and the next sign-in finishes the job.
+                   * The reverse order would strand someone with no profile.
+                   */
+                  const decision = decideClaim(
+                    { id: docSnap.id, ...rawData } as any,
+                    u.uid,
+                    resolvedEmail,
+                  );
+
+                  if (decision.kind === "claim") {
+                    const nowIso = new Date().toISOString();
+                    try {
+                      const claimed = claimedProfile(
+                        { ...rawData, id: docSnap.id },
+                        u.uid,
+                        nowIso,
+                      );
+                      await setDoc(doc(db, "trainers", u.uid), claimed);
+                      trainerData = {
+                        id: u.uid,
+                        ...claimed,
+                        role: (claimed.role as string) || "LifeTransformer",
+                      } as unknown as Trainer;
+
+                      // Best effort. If this fails the profile still works —
+                      // the uid lookup wins from here — and the next sign-in
+                      // retries, because decideClaim is a no-op once
+                      // trainers/{uid} exists.
+                      try {
+                        await updateDoc(
+                          doc(db, "trainers", docSnap.id),
+                          tombstone(u.uid, nowIso),
+                        );
+                      } catch (tombErr) {
+                        console.warn(
+                          "Claimed the profile but could not mark the placeholder superseded.",
+                          tombErr,
+                        );
+                      }
+                    } catch (claimErr) {
+                      // Fall back to the placeholder. They are no worse off
+                      // than before this round, and nothing was destroyed.
+                      console.warn(
+                        "Could not claim trainer profile.",
+                        claimErr,
+                      );
+                    }
+                  }
+
+                  if (!trainerData) {
+                    trainerData = {
+                      id: docSnap.id,
+                      ...rawData,
+                      role: rawData.role || "LifeTransformer",
+                    } as Trainer;
+                  }
                 }
               }
 
@@ -124,8 +216,10 @@ export function useAuthInitialization() {
           try {
             const trainersSnap = await getDocs(collection(db, "trainers"));
             setTrainers(
-              trainersSnap.docs.map(
-                (d) => ({ id: d.id, ...d.data() }) as Trainer,
+              withoutSuperseded(
+                trainersSnap.docs.map(
+                  (d) => ({ id: d.id, ...d.data() }) as Trainer,
+                ),
               ),
             );
           } catch (e) {}

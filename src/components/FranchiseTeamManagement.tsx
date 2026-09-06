@@ -83,9 +83,12 @@ export function FranchiseTeamManagement({
   const handleCreateTrainer = async (data: CreateTrainerPayload) => {
     try {
       const { pinHash, pin, ...restData } = data;
+      // A placeholder until this person signs in and claims it — see the note
+      // in AdminUserDirectory and src/features/trainer-identity/claim.ts.
       const ref = await addDoc(collection(db, "trainers"), {
         ...restData,
         primaryHomeStudioId: restData.primaryHomeStudioId || activeStudioId, // falls back nicely
+        pendingClaim: true,
         createdAt: serverTimestamp(),
       });
       toastSuccess("Trainer profile created successfully.");
