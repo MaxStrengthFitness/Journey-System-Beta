@@ -84,6 +84,30 @@ describe("validateStudioIdentity", () => {
     expect((problem as any).siblings).toHaveLength(2);
   });
 
+  it("lets a deliberately offline studio exist with no Site ID", () => {
+    // Requiring one unconditionally is what made an offline studio
+    // impossible to create — the whole point of the fallback protocol.
+    expect(
+      validateStudioIdentity({
+        siteId: "",
+        locationId: "",
+        studios,
+        mode: "offline",
+      }),
+    ).toBeNull();
+  });
+
+  it("still checks a site id an offline studio supplies anyway", () => {
+    expect(
+      validateStudioIdentity({
+        siteId: "100",
+        locationId: "2",
+        studios,
+        mode: "offline",
+      }),
+    ).toMatchObject({ code: "location-taken" });
+  });
+
   it("allows no location on a site nobody else uses", () => {
     expect(
       validateStudioIdentity({ siteId: "999", locationId: "", studios }),
@@ -110,6 +134,14 @@ describe("mindbodyLinkState", () => {
   it("is linked when the site belongs to this studio alone", () => {
     const s = studio({ id: "x", mindbodySiteId: "1" });
     expect(mindbodyLinkState(s, [s])).toBe("linked");
+  });
+
+  it("distinguishes a deliberately offline studio from an unconfigured one", () => {
+    // Showing both as "Not linked" is how a demo floor ends up looking broken
+    // on every screen that lists it.
+    const offline = studio({ id: "demo", mindbodyMode: "offline" });
+    expect(mindbodyLinkState(offline, [offline])).toBe("offline");
+    expect(mindbodyLinkState(studio({ id: "x" }), [])).toBe("unlinked");
   });
 
   it("flags a shared site with no location", () => {

@@ -281,6 +281,7 @@ export function AdminDashboardView({
             studios={studios}
             networks={networks}
             trainers={trainers}
+            clients={clients}
             isAdmin={isAdmin}
             onRefresh={onRefresh}
           />

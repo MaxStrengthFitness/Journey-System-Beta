@@ -26,7 +26,7 @@ import {
 } from "firebase/firestore";
 import { Building2, Plus, ShieldCheck, Wrench } from "lucide-react";
 import { auth, db } from "../../../firebase";
-import type { FranchiseNetwork, Studio, Trainer } from "../../../types";
+import type { Client, FranchiseNetwork, Studio, Trainer } from "../../../types";
 import { OperationType, handleFirestoreError } from "../../../lib/firestore-errors";
 import { useToast } from "../../../contexts/ToastContext";
 import { getStudioClientCounts } from "../../../lib/studio-client-count";
@@ -61,12 +61,14 @@ import {
 } from "./registry";
 import { useMindbodyLocations } from "./useMindbodyLocations";
 import { LINK_BADGE, StudioDetailPanel, type StudioForm } from "./StudioDetailPanel";
+import { ProvisionalPanel } from "../provisional/ProvisionalPanel";
 
 export interface AdminStudiosTabProps {
   authTrainer: Trainer;
   studios: Studio[];
   networks: FranchiseNetwork[];
   trainers: Trainer[];
+  clients: Client[];
   isAdmin: boolean;
   onRefresh?: (
     collectionName: "studios" | "networks" | "trainers",
@@ -94,6 +96,7 @@ export function AdminStudiosTab({
   studios,
   networks,
   trainers,
+  clients,
   isAdmin,
   onRefresh,
 }: AdminStudiosTabProps) {
@@ -337,6 +340,7 @@ export function AdminStudiosTab({
 
         <div className="adm-ov__stack">
           {selected ? (
+            <>
             <StudioDetailPanel
               studio={selected}
               studios={studios}
@@ -350,6 +354,16 @@ export function AdminStudiosTab({
               onSeedStandardSet={seedStandardSet}
               seedSummary={seedSummary}
             />
+            <ProvisionalPanel
+              studio={selected}
+              clients={clients}
+              trainers={trainers}
+              authTrainer={authTrainer}
+              onCreated={async () => {
+                await onRefresh?.("trainers");
+              }}
+            />
+            </>
           ) : (
             <AdminPanel title="Studio details">
               <AdminEmpty title="Nothing selected">
@@ -454,10 +468,11 @@ function NewStudioPanel({
   const [siteId, setSiteId] = useState("");
   const [locationId, setLocationId] = useState("");
   const [timezone, setTimezone] = useState("America/New_York");
+  const [mode, setMode] = useState<"linked" | "offline">("linked");
   const [saving, setSaving] = useState(false);
 
   const locations = useMindbodyLocations(siteId);
-  const problem = validateStudioIdentity({ siteId, locationId, studios });
+  const problem = validateStudioIdentity({ siteId, locationId, studios, mode });
   const canSubmit = !!name.trim() && !problem && !saving;
 
   const create = async () => {
@@ -468,7 +483,8 @@ function NewStudioPanel({
         timezone,
         createdAt: serverTimestamp(),
         ownerId: authTrainer.id,
-        mindbodySiteId: siteId.trim(),
+        mindbodyMode: mode,
+        ...(siteId.trim() ? { mindbodySiteId: siteId.trim() } : {}),
         ...(locationId.trim() ? { mindbodyLocationId: locationId.trim() } : {}),
       });
       setName("");
@@ -490,7 +506,7 @@ function NewStudioPanel({
     <AdminPanel
       title="Add a location"
       icon={<Plus className="w-3.5 h-3.5" />}
-      subtitle="A Site ID is all it takes. Its locations load as you type, and the standard twenty machines can be added straight after."
+      subtitle="A Site ID is all it takes — or none at all, for a floor that is not on Mindbody yet. The standard twenty machines can be added straight after."
     >
       <AdminGrid>
         <AdminField label="Studio name" required>
@@ -513,8 +529,20 @@ function NewStudioPanel({
           </AdminSelect>
         </AdminField>
         <AdminField
+          label="Mindbody"
+          hint="Offline studios can be created, staffed and run today, and linked later."
+        >
+          <AdminSelect
+            value={mode}
+            onChange={(e) => setMode(e.target.value as "linked" | "offline")}
+          >
+            <option value="linked">Linked to Mindbody</option>
+            <option value="offline">Offline — pre-launch or demo floor</option>
+          </AdminSelect>
+        </AdminField>
+        <AdminField
           label="Mindbody Site ID"
-          required
+          required={mode === "linked"}
           error={problem?.code === "no-site" && siteId ? problem.message : null}
         >
           <AdminInput

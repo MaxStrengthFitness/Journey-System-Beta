@@ -21,6 +21,7 @@
  */
 
 import type { FranchiseNetwork, Studio } from "../../../types";
+import type { StudioMindbodyMode } from "../provisional/types";
 import { canonicalMachineId } from "../../catalog/machine-identity";
 
 /* ==================================================================== *
@@ -73,11 +74,22 @@ export function validateStudioIdentity(input: {
   locationId: string;
   studios: Studio[];
   excludeStudioId?: string | null;
+  /**
+   * "offline" is a DELIBERATE choice — a pre-launch floor, a demo area, or a
+   * Mindbody account that is not provisioned yet — and such a studio needs no
+   * Site ID. Requiring one unconditionally is what made an offline studio
+   * impossible to create, which is the whole point of the fallback protocol.
+   * A site id supplied anyway is still validated: someone who has typed one
+   * has an intention worth checking.
+   */
+  mode?: StudioMindbodyMode;
 }): IdentityProblem | null {
   const site = str(input.siteId);
   const location = str(input.locationId);
+  const offline = input.mode === "offline";
 
   if (!site) {
+    if (offline) return null;
     return {
       code: "no-site",
       message: "A Mindbody Site ID is required before this studio can sync.",
@@ -118,13 +130,23 @@ export type MindbodyLinkState =
   | "linked"
   | "linked-shared"
   | "needs-location"
+  | "offline"
   | "unlinked";
 
-/** What to show beside a studio in the list. */
+/**
+ * What to show beside a studio in the list.
+ *
+ * "offline" and "unlinked" are different states and must read differently.
+ * Offline is a studio someone chose to run without Mindbody; unlinked is one
+ * that expects Mindbody and has not been configured. Showing both as "Not
+ * linked" is how a deliberately offline demo floor ends up looking broken on
+ * every screen that lists it.
+ */
 export function mindbodyLinkState(
   studio: Studio,
   studios: Studio[],
 ): MindbodyLinkState {
+  if (studio.mindbodyMode === "offline") return "offline";
   const site = str(studio.mindbodySiteId);
   if (!site) return "unlinked";
   const shared = studios.some(

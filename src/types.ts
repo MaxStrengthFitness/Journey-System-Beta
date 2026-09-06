@@ -257,6 +257,31 @@ export interface Trainer {
   claimedFromId?: string | null;
   claimedAt?: string;
   authUid?: string;
+  /* ------------------------------------------------------------------ *
+   * TEMPORARY PROFILES (Sep 2026)
+   *
+   * Mindbody is the source of truth for people, and is also sometimes down,
+   * rate-limited, or not yet provisioned for a studio opening on Monday. A
+   * manager can mint a temporary record to keep working, and reconcile it
+   * against the real one later. See src/features/admin/provisional/.
+   * ------------------------------------------------------------------ */
+  /** True while this record has no Mindbody counterpart. */
+  provisional?: boolean;
+  provisionalSince?: string;
+  /** Trainer document id of whoever minted it. */
+  provisionalBy?: string;
+  provisionalReason?: string;
+  /**
+   * A merged temporary trainer is superseded by the surviving document, so it
+   * reuses the tombstone above (supersededByUid / supersededAt) rather than
+   * growing a second, near-identical one. Clients have no uid and use
+   * supersededById instead — see features/admin/provisional/provisional.ts,
+   * which reads either key.
+   */
+  /** Set on the SURVIVING record: where its history came from. */
+  mergedFromId?: string | null;
+  mergedAt?: string;
+
   fullName: string;
   nickname?: string;
   initials: string;
@@ -550,6 +575,29 @@ export interface Client {
   preferredTodayRoutineId?: string;
   remainingSessions: number;
   legacy_filemaker_id?: string;
+  /* ------------------------------------------------------------------ *
+   * TEMPORARY PROFILES (Sep 2026)
+   *
+   * Mindbody is the source of truth for people, and is also sometimes down,
+   * rate-limited, or not yet provisioned for a studio opening on Monday. A
+   * manager can mint a temporary record to keep working, and reconcile it
+   * against the real one later. See src/features/admin/provisional/.
+   * ------------------------------------------------------------------ */
+  /** True while this record has no Mindbody counterpart. */
+  provisional?: boolean;
+  provisionalSince?: string;
+  /** Trainer document id of whoever minted it. */
+  provisionalBy?: string;
+  provisionalReason?: string;
+  /**
+   * Set on the TEMPORARY record once merged into a real one. Never deleted,
+   * so anything still holding the temporary id stays traceable.
+   */
+  supersededById?: string | null;
+  supersededAt?: string;
+  /** Set on the SURVIVING record: where its history came from. */
+  mergedFromId?: string | null;
+  mergedAt?: string;
   mindbody_name?: string;
   /** First 1000 chars of the client's Mindbody account notes (webhook-synced, read-only in app). */
   mindbodyNotes?: string;
@@ -1318,6 +1366,13 @@ export interface Studio {
   /** MindBody Location ID for location-specific filtering when site IDs are shared */
   mindbodyLocationId?: string | number;
   locationType?: "corporate" | "franchise";
+  /**
+   * How this studio relates to Mindbody. "offline" means DELIBERATELY without
+   * it — a pre-launch floor, a demo area, or an account not provisioned yet —
+   * as opposed to someone leaving the Site ID blank by accident, which the
+   * old screen could not tell apart. See features/admin/provisional/types.ts.
+   */
+  mindbodyMode?: "linked" | "offline";
   createdAt?: any;
   networkId?: string; // Newly added to associate with a FranchiseNetwork
   machineSettings?: Record<string, Record<string, string>>; // studioStandardSettings per machine

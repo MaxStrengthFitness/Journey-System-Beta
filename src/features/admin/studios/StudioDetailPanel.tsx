@@ -53,6 +53,9 @@ export const LINK_BADGE: Record<
   linked: { label: "Mindbody linked", tone: "ok" },
   "linked-shared": { label: "Linked · shared site", tone: "ok" },
   "needs-location": { label: "Needs a location", tone: "alert" },
+  // Deliberately offline reads differently from unconfigured. A demo floor
+  // running without Mindbody on purpose should not look broken.
+  offline: { label: "Runs offline", tone: "neutral" },
   unlinked: { label: "Not linked", tone: "warn" },
 };
 
@@ -73,6 +76,7 @@ export interface StudioForm {
   mindbodyLocationId: string;
   locationType: string;
   brandColor: string;
+  mindbodyMode: "linked" | "offline";
 }
 
 export function studioToForm(studio: Studio): StudioForm {
@@ -89,6 +93,7 @@ export function studioToForm(studio: Studio): StudioForm {
         : "",
     locationType: studio.locationType ?? "franchise",
     brandColor: studio.brandColor ?? "#F37427",
+    mindbodyMode: studio.mindbodyMode ?? "linked",
   };
 }
 
@@ -127,11 +132,13 @@ export function StudioDetailPanel({
 
   const locations = useMindbodyLocations(form.value.mindbodySiteId);
 
+  const offline = form.value.mindbodyMode === "offline";
   const problem = validateStudioIdentity({
     siteId: form.value.mindbodySiteId,
     locationId: form.value.mindbodyLocationId,
     studios,
     excludeStudioId: studio.id,
+    mode: form.value.mindbodyMode,
   });
 
   const linkState = mindbodyLinkState(studio, studios);
@@ -188,10 +195,29 @@ export function StudioDetailPanel({
           </AdminField>
 
           <AdminField
+            label="Mindbody"
+            hint="Offline is for a pre-launch floor, a demo area, or an account that is not provisioned yet. Everything still works; nothing syncs."
+          >
+            <AdminSelect
+              value={form.value.mindbodyMode}
+              onChange={(e) =>
+                form.setField("mindbodyMode", e.target.value as "linked" | "offline")
+              }
+            >
+              <option value="linked">Linked — bookings arrive from Mindbody</option>
+              <option value="offline">Offline — this studio runs on its own</option>
+            </AdminSelect>
+          </AdminField>
+
+          <AdminField
             label="Mindbody Site ID"
-            required
+            required={!offline}
             error={problem?.code === "no-site" ? problem.message : null}
-            hint="Locations load automatically once this is entered."
+            hint={
+              offline
+                ? "Not needed while this studio runs offline. Fill it in when the account exists."
+                : "Locations load automatically once this is entered."
+            }
           >
             <AdminInput
               inputMode="numeric"
