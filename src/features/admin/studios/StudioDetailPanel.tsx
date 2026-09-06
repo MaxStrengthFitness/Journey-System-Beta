@@ -30,6 +30,7 @@ import {
   SaveBar,
 } from "../primitives";
 import { useDirtyForm } from "../useDirtyForm";
+import { StudioEquipmentPanel } from "../equipment/StudioEquipmentPanel";
 import { useMindbodyLocations } from "./useMindbodyLocations";
 import {
   mindbodyLinkState,
@@ -107,8 +108,6 @@ export interface StudioDetailPanelProps {
   onSave: (patch: Partial<StudioForm>) => Promise<void>;
   onDelete: () => Promise<void>;
   onChangeNetwork: (networkId: string | null) => Promise<void>;
-  onSeedStandardSet?: () => Promise<void>;
-  seedSummary?: string | null;
 }
 
 export function StudioDetailPanel({
@@ -121,14 +120,11 @@ export function StudioDetailPanel({
   onSave,
   onDelete,
   onChangeNetwork,
-  onSeedStandardSet,
-  seedSummary,
 }: StudioDetailPanelProps) {
   const external = useMemo(() => studioToForm(studio), [studio]);
   const form = useDirtyForm(external, (patch) => onSave(patch));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [seeding, setSeeding] = useState(false);
 
   const locations = useMindbodyLocations(form.value.mindbodySiteId);
 
@@ -380,34 +376,7 @@ export function StudioDetailPanel({
         )}
       </AdminPanel>
 
-      {onSeedStandardSet && (
-        <AdminPanel
-          title="Equipment"
-          subtitle="Most locations run the same twenty machines. Adding them again is safe — anything already on the floor is skipped."
-        >
-          <div className="flex flex-wrap items-center gap-3">
-            <AdminButton
-              variant="primary"
-              busy={seeding}
-              onClick={async () => {
-                setSeeding(true);
-                try {
-                  await onSeedStandardSet();
-                } finally {
-                  setSeeding(false);
-                }
-              }}
-            >
-              Add the standard set
-            </AdminButton>
-            {seedSummary && (
-              <span className="adm-hint" style={{ margin: 0 }}>
-                {seedSummary}
-              </span>
-            )}
-          </div>
-        </AdminPanel>
-      )}
+      <StudioEquipmentPanel studio={studio} />
 
       {canDelete && (
         <AdminPanel title="Delete this studio">

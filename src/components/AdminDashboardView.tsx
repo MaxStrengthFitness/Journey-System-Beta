@@ -156,7 +156,7 @@ export function AdminDashboardView({
         { id: "studios", label: "Studios", icon: <Building2 className="w-4 h-4" /> },
         { id: "users", label: "Staff & Roles", icon: <Users className="w-4 h-4" /> },
         { id: "clients", label: "Clients", icon: <Users className="w-4 h-4" /> },
-        { id: "machines", label: "Machines", icon: <Dumbbell className="w-4 h-4" /> },
+        { id: "machines", label: "Catalog", icon: <Dumbbell className="w-4 h-4" /> },
         { id: "routines", label: "Routines", icon: <ClipboardList className="w-4 h-4" /> },
         { id: "insights", label: "Insights", icon: <TrendingUp className="w-4 h-4" /> },
         { id: "data", label: "Exports", icon: <Download className="w-4 h-4" /> },
@@ -296,13 +296,7 @@ export function AdminDashboardView({
             onRefresh={onRefresh}
           />
         )}
-        {activeTab === "machines" && (
-          <AdminMachinesTab
-            studios={studios}
-            authTrainer={authTrainer}
-            isAdmin={isAdmin}
-          />
-        )}
+        {activeTab === "machines" && <AdminMachinesTab isAdmin={isAdmin} />}
         {activeTab === "routines" && (
           <AdminRoutineTemplatesTab
             studios={studios}

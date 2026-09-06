@@ -30,7 +30,6 @@ import type { Client, FranchiseNetwork, Studio, Trainer } from "../../../types";
 import { OperationType, handleFirestoreError } from "../../../lib/firestore-errors";
 import { useToast } from "../../../contexts/ToastContext";
 import { getStudioClientCounts } from "../../../lib/studio-client-count";
-import { useMachineCatalog } from "../../../hooks/useMachineCatalog";
 import {
   AdminBadge,
   AdminButton,
@@ -54,7 +53,6 @@ import {
   linkPlan,
   mindbodyLinkState,
   repairPlan,
-  standardSetSeed,
   unlinkPlan,
   validateStudioIdentity,
   type RegistryWrite,
@@ -104,8 +102,6 @@ export function AdminStudiosTab({
     studios[0]?.id ?? null,
   );
   const [clientCounts, setClientCounts] = useState<Record<string, number | null>>({});
-  const [seedSummary, setSeedSummary] = useState<string | null>(null);
-  const { catalog } = useMachineCatalog();
   const { success: toastSuccess } = useToast();
 
   // Keep a selection even after the selected studio is deleted or filtered out.
@@ -187,52 +183,6 @@ export function AdminStudiosTab({
       toastSuccess(networkId ? "Studio moved." : "Studio is now independent.");
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, "networks");
-    }
-  };
-
-  const seedStandardSet = async () => {
-    if (!selected?.id) return;
-    const studioId = selected.id;
-    try {
-      // Read the roster at seed time rather than trusting a stream: this is
-      // the one place where being a few seconds stale would write a duplicate.
-      const rosterSnap = await getDocs(
-        collection(db, "studios", studioId, "roster"),
-      );
-      const rostered = rosterSnap.docs.map((d) => d.id);
-      const { seed, duplicates, alreadyPresent } = standardSetSeed(
-        catalog as any[],
-        rostered,
-      );
-      const batch = writeBatch(db);
-      for (const machine of seed) {
-        batch.set(
-          doc(db, "studios", studioId, "roster", machine.id),
-          {
-            machineId: machine.id,
-            studioId,
-            source: "catalog",
-            basedOn: machine.id,
-            status: "active",
-            updatedAt: serverTimestamp(),
-            updatedBy: auth.currentUser?.uid ?? null,
-          },
-          { merge: true },
-        );
-      }
-      await batch.commit();
-
-      const dupCount = Object.values(duplicates).flat().length;
-      setSeedSummary(
-        `${seed.length} added${alreadyPresent ? `, ${alreadyPresent} already there` : ""}${
-          dupCount
-            ? `. ${dupCount} duplicate catalog ${dupCount === 1 ? "entry" : "entries"} collapsed — delete ${Object.values(duplicates).flat().join(", ")} from the catalog.`
-            : "."
-        }`,
-      );
-      toastSuccess(`Added ${seed.length} machines to ${selected.name}.`);
-    } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, `studios/${studioId}/roster`);
     }
   };
 
@@ -351,8 +301,6 @@ export function AdminStudiosTab({
               onSave={saveStudio}
               onDelete={deleteSelectedStudio}
               onChangeNetwork={changeNetwork}
-              onSeedStandardSet={seedStandardSet}
-              seedSummary={seedSummary}
             />
             <ProvisionalPanel
               studio={selected}

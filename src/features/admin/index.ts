@@ -46,6 +46,18 @@ export {
   type SyncVerdict,
 } from "./syncPolicy";
 
+export { StudioEquipmentPanel } from "./equipment/StudioEquipmentPanel";
+export { LocalSetupDialog } from "./equipment/LocalSetupDialog";
+export {
+  REPLACING_SAFETY_FIELDS,
+  buildClone,
+  describeOverrides,
+  isPlainAdoption,
+  overriddenSafetyFields,
+  pruneOverrides,
+  type LocalMetadata,
+} from "./equipment/clone";
+
 export { AdminClientsTab } from "./clients/AdminClientsTab";
 export {
   DEFAULT_READ_BUDGET,
