@@ -165,12 +165,47 @@ service cloud.firestore {
     // VALIDATORS & PROPERTY MATCHERS
     // ===============================================================
 
+    /**
+     * A trainer document someone is creating FOR THEMSELVES may not hand
+     * itself a privileged role.
+     *
+     * The bootstrap clause on `allow create` exists so a signed-in person can
+     * own trainers/{their uid} — the claim at first sign-in depends on it, and
+     * so does the very first account on a new project. But isValidTrainer
+     * places no constraint on `role`, so until now any signed-in Google
+     * account could create trainers/{its own uid} with role "Admin" and become
+     * a system administrator. The UPDATE rule has always refused exactly that
+     * escalation; create simply never did, and phase 8 makes the gap matter
+     * more, because approval is now the only intended way to get an account.
+     *
+     * The ceiling is deliberately the SAME three roles update refuses, no
+     * more. Owner and StudioOwner stay allowed because placeholder profiles
+     * created by the old Franchise "Add New" path carry them, and those
+     * profiles still have to be claimable by the people they belong to.
+     *
+     * The owner's own bootstrap is exempted by email, mirroring the hard-coded
+     * bootstrap in src/hooks/useAuthInitialization.ts. It is not new surface —
+     * that address already boots itself an admin profile in app code.
+     *
+     * Recovery if this ever blocks someone who should be an admin: an existing
+     * super admin sets the role, which the update rule permits.
+     */
+    function selfCreatedRoleIsAllowed() {
+      return !('role' in request.resource.data)
+          || request.resource.data.role == null
+          // The owner's own bootstrap, mirroring useAuthInitialization.ts.
+          || (request.resource.data.role == 'Admin'
+              && request.auth.token.email == 'jurgensaj@gmail.com')
+          || (request.resource.data.role != 'Admin'
+              && request.resource.data.role != 'Founder'
+              && request.resource.data.role != 'Overseer');
+    }
+
     function isValidTrainer(data) {
       return hasRequiredFields(['fullName', 'initials', 'primaryHomeStudioId']) &&
              data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
              data.initials is string && data.initials.size() >= 2 && data.initials.size() <= 4 &&
              data.primaryHomeStudioId is string && data.primaryHomeStudioId.size() > 0 && data.primaryHomeStudioId.size() < 100 &&
-             (!('mindbody_ical_url' in data) || data.mindbody_ical_url == null || (data.mindbody_ical_url is string && data.mindbody_ical_url.size() < 500)) &&
              (!('role' in data) || data.role == null || data.role is string) &&
              (!('accessibleStudioIds' in data) || data.accessibleStudioIds == null || data.accessibleStudioIds is list) &&
              (!('activeGuestStudioIds' in data) || data.activeGuestStudioIds == null || data.activeGuestStudioIds is list) &&
@@ -294,8 +329,10 @@ service cloud.firestore {
                     isValidTrainer(request.resource.data) &&
                     (isSuperAdmin() || isFranchiseOwner() || 
                      isStudioOwnerOrHeadTrainer(request.resource.data.primaryHomeStudioId) ||
-                     // Allow any authenticated user to create the first trainer (bootstrap)
-                     (request.auth.uid == trainerId));
+                     // Bootstrap / claim: a person may own trainers/{their uid},
+                     // but may not hand themselves Admin, Founder or Overseer.
+                     // See selfCreatedRoleIsAllowed() above.
+                     (request.auth.uid == trainerId && selfCreatedRoleIsAllowed()));
       allow update: if (isSuperAdmin() && !writesDerivedTrainerFields()) || 
                     ( !writesDerivedTrainerFields() &&
                       !writesForeignRoster(trainerId) &&
