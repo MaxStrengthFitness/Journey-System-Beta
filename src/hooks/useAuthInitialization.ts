@@ -8,9 +8,15 @@ import {
   query,
   where,
   setDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { Trainer, Studio, FranchiseNetwork } from "../types";
+import {
+  decideClaim,
+  claimedProfile,
+  tombstone,
+} from "../features/trainer-identity/claim";
 
 export function useAuthInitialization() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -91,11 +97,74 @@ export function useAuthInitialization() {
                 if (live.length > 0) {
                   const docSnap = live[0];
                   const rawData = docSnap.data();
-                  trainerData = {
-                    id: docSnap.id,
-                    ...rawData,
-                    role: rawData.role || "LifeTransformer",
-                  } as Trainer;
+
+                  /**
+                   * CLAIM. An admin-created placeholder becomes a real
+                   * account the first time its owner signs in — because
+                   * sign-in is the first moment their uid exists.
+                   *
+                   * Write the new document FIRST, tombstone the placeholder
+                   * SECOND. There is no transaction spanning a create and an
+                   * update that the rules will accept here, so the claim can
+                   * be interrupted between the two, and the order is what
+                   * makes every interruption harmless: stopping after step 1
+                   * leaves a working trainers/{uid} that the lookup above
+                   * now finds first, and the next sign-in finishes the job.
+                   * The reverse order would strand someone with no profile.
+                   */
+                  const decision = decideClaim(
+                    { id: docSnap.id, ...rawData } as any,
+                    u.uid,
+                    resolvedEmail,
+                  );
+
+                  if (decision.kind === "claim") {
+                    const nowIso = new Date().toISOString();
+                    try {
+                      const claimed = claimedProfile(
+                        { ...rawData, id: docSnap.id },
+                        u.uid,
+                        nowIso,
+                      );
+                      await setDoc(doc(db, "trainers", u.uid), claimed);
+                      trainerData = {
+                        id: u.uid,
+                        ...claimed,
+                        role: (claimed.role as string) || "LifeTransformer",
+                      } as unknown as Trainer;
+
+                      // Best effort. If this fails the profile still works —
+                      // the uid lookup wins from here — and the next sign-in
+                      // retries, because decideClaim is a no-op once
+                      // trainers/{uid} exists.
+                      try {
+                        await updateDoc(
+                          doc(db, "trainers", docSnap.id),
+                          tombstone(u.uid, nowIso),
+                        );
+                      } catch (tombErr) {
+                        console.warn(
+                          "Claimed the profile but could not mark the placeholder superseded.",
+                          tombErr,
+                        );
+                      }
+                    } catch (claimErr) {
+                      // Fall back to the placeholder. They are no worse off
+                      // than before this round, and nothing was destroyed.
+                      console.warn(
+                        "Could not claim trainer profile.",
+                        claimErr,
+                      );
+                    }
+                  }
+
+                  if (!trainerData) {
+                    trainerData = {
+                      id: docSnap.id,
+                      ...rawData,
+                      role: rawData.role || "LifeTransformer",
+                    } as Trainer;
+                  }
                 }
               }
 

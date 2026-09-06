@@ -392,10 +392,17 @@ export function AdminUserDirectory({ studios, onRefresh }: Props) {
     try {
       const role: UserRole = trainerData.isOwner ? "Owner" : "LifeTransformer";
       const { pinHash, pin, ...restData } = trainerData;
+      // An admin creating a profile for someone who has not signed in has no
+      // auth uid to key the document on, so this stays an addDoc — but the
+      // result is a PLACEHOLDER, not an account. Firestore rules only accept
+      // writes to trainers/{uid}, so until this person signs in and claims it
+      // they cannot write their own profile at all. pendingClaim is what lets
+      // the claim at sign-in find it and fix it.
       const ref = await addDoc(collection(db, "trainers"), {
         ...restData,
         role: role,
         systemStatus: "active",
+        pendingClaim: true,
         createdAt: new Date().toISOString(),
       });
 
