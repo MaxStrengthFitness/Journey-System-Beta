@@ -1,0 +1,448 @@
+/* ==========================================================================
+   MSF Topics
+   --------------------------------------------------------------------------
+   Reuses the Catalog's tokens rather than defining a third palette — this
+   screen lives inside the Catalog and a separate set would drift from it the
+   first time either changed. Only geometry and type are set here.
+
+   The one decision worth stating: `--acd-measure` caps the prose column at
+   66 characters. The Academy's paragraphs run to 1,200 characters as a single
+   line, and on an iPad in landscape an uncapped column is roughly 160
+   characters wide, which is about twice what anyone can track back to the
+   start of the next line. Everything else on this screen follows from wanting
+   these documents to be readable rather than merely present.
+   ========================================================================== */
+
+@import "../catalog/catalog.tokens.css";
+
+.acd {
+  --acd-measure: 66ch;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.25rem 1rem 3rem;
+  background: var(--cat-bg);
+  color: var(--cat-ink);
+}
+
+.acd__head {
+  margin-bottom: 1rem;
+}
+
+.acd__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--cat-ink);
+}
+
+.acd__eyebrow {
+  margin: 0 0 2px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cat-hero-text);
+}
+
+.acd__blurb,
+.acd__note {
+  margin: 6px 0 0;
+  max-width: var(--acd-measure);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--cat-ink-muted);
+}
+
+.acd__note {
+  margin-bottom: 12px;
+}
+
+.acd__meta {
+  margin: 4px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cat-ink-muted);
+}
+
+.acd__empty {
+  padding: 1.5rem 0;
+  font-size: 13px;
+  color: var(--cat-ink-muted);
+}
+
+/* ── back ─────────────────────────────────────────────────────────── */
+
+.acd__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 10px;
+  padding: 5px 10px 5px 7px;
+  border: 1px solid var(--cat-border);
+  border-radius: 999px;
+  background: var(--cat-surface);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cat-ink-muted);
+  cursor: pointer;
+}
+
+.acd__back:hover {
+  color: var(--cat-ink);
+  border-color: var(--cat-border-strong);
+}
+
+.acd__back:focus-visible,
+.acd__row:focus-visible,
+.acd__module:focus-visible,
+.acd__card:focus-visible,
+.acd__tab:focus-visible,
+.acd__hit:focus-visible,
+.acd__search:focus-visible {
+  outline: 2px solid var(--cat-focus-ring);
+  outline-offset: 2px;
+}
+
+/* ── search ───────────────────────────────────────────────────────── */
+
+.acd__searchwrap {
+  position: relative;
+  max-width: var(--acd-measure);
+  margin-bottom: 12px;
+}
+
+.acd__searchicon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--cat-ink-muted);
+  pointer-events: none;
+}
+
+.acd__search {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 12px 8px 34px;
+  border: 1px solid var(--cat-ink-muted);
+  border-radius: var(--cat-radius);
+  background: var(--cat-surface);
+  color: var(--cat-ink);
+  font-size: 14px;
+}
+
+.acd__hits {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: var(--acd-measure);
+  margin-bottom: 14px;
+}
+
+.acd__hit {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 9px 12px;
+  text-align: left;
+  border: 1px solid var(--cat-border);
+  border-radius: var(--cat-radius);
+  background: var(--cat-surface);
+  cursor: pointer;
+}
+
+.acd__hit:hover { background: var(--cat-surface-2); }
+.acd__hittitle { font-size: 13px; font-weight: 700; color: var(--cat-ink); }
+.acd__hitmod { font-size: 11px; font-weight: 600; color: var(--cat-ink-muted); }
+
+/* ── tabs ─────────────────────────────────────────────────────────── */
+
+.acd__tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.acd__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* 44px is the floor for a thumb on an iPad. */
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--cat-border);
+  border-radius: 999px;
+  background: var(--cat-surface);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--cat-ink-2);
+  cursor: pointer;
+}
+
+.acd__tab[aria-selected="true"] {
+  background: var(--cat-hero-fill);
+  border-color: var(--cat-hero);
+  color: var(--cat-hero-text);
+}
+
+/* ── module list ──────────────────────────────────────────────────── */
+
+.acd__modules,
+.acd__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: var(--acd-measure);
+}
+
+.acd__module,
+.acd__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 14px;
+  text-align: left;
+  border: 1px solid var(--cat-border);
+  border-radius: var(--cat-radius);
+  background: var(--cat-surface);
+  cursor: pointer;
+}
+
+.acd__module:hover,
+.acd__row:hover {
+  border-color: var(--cat-border-strong);
+  background: var(--cat-surface-2);
+}
+
+.acd__modn,
+.acd__n {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--cat-hero-fill);
+  color: var(--cat-hero-text);
+  font-size: 12px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.acd__modmain,
+.acd__rowmain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.acd__modtitle,
+.acd__rowtitle {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--cat-ink);
+}
+
+.acd__modblurb {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--cat-ink-muted);
+}
+
+.acd__modmeta,
+.acd__rowmeta {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cat-ink-muted);
+}
+
+/* ── machine cards ────────────────────────────────────────────────── */
+
+.acd__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.acd__card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 10px 12px;
+  text-align: left;
+  border: 1px solid var(--cat-border);
+  border-radius: var(--cat-radius);
+  background: var(--cat-surface);
+  cursor: pointer;
+}
+
+.acd__card:hover {
+  border-color: var(--cat-border-strong);
+  background: var(--cat-surface-2);
+}
+
+/* The Academy's own abbreviation, which is what a trainer sees written on the
+   charts — so it leads, and the full name follows. */
+.acd__cardabbr {
+  flex-shrink: 0;
+  min-width: 34px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: var(--cat-hero-fill);
+  color: var(--cat-hero-text);
+  font-size: 11px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.acd__cardtitle {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--cat-ink);
+  min-width: 0;
+}
+
+/* ── prose ────────────────────────────────────────────────────────── */
+
+.acd--reader {
+  max-width: none;
+}
+
+.acd__prose {
+  max-width: var(--acd-measure);
+  margin-top: 14px;
+}
+
+.acd__prose p {
+  margin: 0 0 0.9em;
+  font-size: 15px;
+  line-height: 1.62;
+  color: var(--cat-ink-2);
+}
+
+.acd__prose h2 {
+  margin: 1.6em 0 0.5em;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cat-hero-text);
+}
+
+.acd__prose h3 {
+  margin: 1.4em 0 0.4em;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--cat-ink);
+}
+
+.acd__prose h2:first-child,
+.acd__prose h3:first-child {
+  margin-top: 0;
+}
+
+/* Rendered as a paragraph with a marker rather than a real <ul>, because the
+   source has no list structure to recover — the classifier only knows this
+   line began with a bullet glyph, not where the list starts or ends. */
+.acd__bullet {
+  position: relative;
+  padding-left: 1.1em;
+  margin-bottom: 0.5em !important;
+}
+
+.acd__bullet::before {
+  content: "•";
+  position: absolute;
+  left: 0.2em;
+  color: var(--cat-hero-text);
+  font-weight: 900;
+}
+
+.acd__source {
+  max-width: var(--acd-measure);
+  margin-top: 2rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--cat-border);
+  font-size: 11px;
+  color: var(--cat-ink-muted);
+}
+
+.acd__source code {
+  font-size: 10.5px;
+  overflow-wrap: anywhere;
+}
+
+/* ── quick reference card, open ───────────────────────────────────── */
+
+.acd__section {
+  max-width: var(--acd-measure);
+  margin-top: 1.25rem;
+}
+
+.acd__section h2 {
+  margin: 0 0 0.5em;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cat-hero-text);
+}
+
+.acd__section ul {
+  margin: 0;
+  padding-left: 1.1em;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.acd__section li {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--cat-ink-2);
+}
+
+/* ── glossary ─────────────────────────────────────────────────────── */
+
+.acd__glossary {
+  max-width: var(--acd-measure);
+  margin: 0;
+}
+
+.acd__glossary dt {
+  margin-top: 1.1em;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--cat-ink);
+}
+
+.acd__glossary dt:first-child {
+  margin-top: 0;
+}
+
+.acd__glossary dd {
+  margin: 3px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--cat-ink-2);
+}

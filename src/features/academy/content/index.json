@@ -1,0 +1,570 @@
+{
+  "generatedFrom": "docs/msf-academy",
+  "corpusHash": "ca8f36a2e134",
+  "totalWords": 77936,
+  "modules": [
+    {
+      "id": "intro",
+      "n": 1,
+      "title": "Introduction",
+      "blurb": "How to use the manual, where MSF came from, and the vocabulary you are expected to use.",
+      "topics": [
+        {
+          "id": "intro-a-quick-word",
+          "title": "A Quick Word",
+          "readingMinutes": 2,
+          "words": 367
+        },
+        {
+          "id": "intro-glossary",
+          "title": "Glossary",
+          "readingMinutes": 30,
+          "words": 5902
+        },
+        {
+          "id": "intro-philosophy",
+          "title": "Philosophy",
+          "readingMinutes": 1,
+          "words": 203
+        },
+        {
+          "id": "intro-mission",
+          "title": "Mission",
+          "readingMinutes": 2,
+          "words": 469
+        },
+        {
+          "id": "intro-strength-training-at-msf",
+          "title": "Strength Training at MSF",
+          "readingMinutes": 2,
+          "words": 485
+        },
+        {
+          "id": "intro-posture-path-pace-purpose",
+          "title": "Posture, Path, Pace, Purpose",
+          "readingMinutes": 10,
+          "words": 2002
+        },
+        {
+          "id": "intro-random-notes-and-faqs",
+          "title": "Random Notes and FAQs",
+          "readingMinutes": 19,
+          "words": 3805
+        }
+      ]
+    },
+    {
+      "id": "benefits",
+      "n": 2,
+      "title": "Benefits of Resistance Training",
+      "blurb": "Why properly performed resistance training covers every factor of fitness on its own.",
+      "topics": [
+        {
+          "id": "benefits-why-resistance-training",
+          "title": "Why Resistance Training",
+          "readingMinutes": 5,
+          "words": 1051
+        },
+        {
+          "id": "benefits-muscular-strength-size-and-endurance",
+          "title": "Muscular Strength, Size, and Endurance",
+          "readingMinutes": 1,
+          "words": 218
+        },
+        {
+          "id": "benefits-cardiovascular-efficiency",
+          "title": "Cardiovascular Efficiency",
+          "readingMinutes": 1,
+          "words": 239
+        },
+        {
+          "id": "benefits-flexibility",
+          "title": "Flexibility",
+          "readingMinutes": 3,
+          "words": 535
+        },
+        {
+          "id": "benefits-body-composition",
+          "title": "Body Composition",
+          "readingMinutes": 2,
+          "words": 377
+        },
+        {
+          "id": "benefits-structural-integrity-bone-density",
+          "title": "Structural Integrity (Bone Density)",
+          "readingMinutes": 5,
+          "words": 1037
+        },
+        {
+          "id": "benefits-metabolic-health-and-hormonal-benefits",
+          "title": "Metabolic Health and Hormonal Benefits",
+          "readingMinutes": 1,
+          "words": 184
+        },
+        {
+          "id": "benefits-other-health-factors",
+          "title": "Other Health Factors",
+          "readingMinutes": 1,
+          "words": 202
+        }
+      ]
+    },
+    {
+      "id": "principles",
+      "n": 3,
+      "title": "Basic Principles of Exercise",
+      "blurb": "Overload, intensity, volume, frequency — and the stimulating reps model.",
+      "topics": [
+        {
+          "id": "principles-introduction",
+          "title": "Introduction",
+          "readingMinutes": 2,
+          "words": 427
+        },
+        {
+          "id": "principles-progressive-overload-and-intensity",
+          "title": "Progressive Overload and Intensity",
+          "readingMinutes": 2,
+          "words": 325
+        },
+        {
+          "id": "principles-progression-the-mastery-of-effort",
+          "title": "Progression - The Mastery of Effort",
+          "readingMinutes": 3,
+          "words": 573
+        },
+        {
+          "id": "principles-volume",
+          "title": "Volume",
+          "readingMinutes": 3,
+          "words": 567
+        },
+        {
+          "id": "principles-frequency",
+          "title": "Frequency",
+          "readingMinutes": 3,
+          "words": 525
+        },
+        {
+          "id": "principles-specificity",
+          "title": "Specificity",
+          "readingMinutes": 1,
+          "words": 180
+        },
+        {
+          "id": "principles-individual-variability",
+          "title": "Individual Variability",
+          "readingMinutes": 1,
+          "words": 234
+        },
+        {
+          "id": "principles-productive-exercise-the-stimulating-reps-model",
+          "title": "Productive Exercise - The Stimulating Reps Model",
+          "readingMinutes": 7,
+          "words": 1370
+        }
+      ]
+    },
+    {
+      "id": "performance",
+      "n": 4,
+      "title": "Exercise Performance",
+      "blurb": "The mechanics of one repetition, and why the turnarounds are the part to master.",
+      "topics": [
+        {
+          "id": "performance-eih",
+          "title": "EIH",
+          "readingMinutes": 4,
+          "words": 710
+        },
+        {
+          "id": "performance-components-of-a-repetition",
+          "title": "Components of a Repetition",
+          "readingMinutes": 4,
+          "words": 819
+        },
+        {
+          "id": "performance-gradual-load-up",
+          "title": "Gradual Load-up",
+          "readingMinutes": 4,
+          "words": 807
+        },
+        {
+          "id": "performance-range-of-motion",
+          "title": "Range of Motion",
+          "readingMinutes": 2,
+          "words": 408
+        },
+        {
+          "id": "performance-speed-of-movement",
+          "title": "Speed of Movement",
+          "readingMinutes": 3,
+          "words": 649
+        },
+        {
+          "id": "performance-turnaround-technique",
+          "title": "Turnaround Technique",
+          "readingMinutes": 4,
+          "words": 849
+        },
+        {
+          "id": "performance-set-duration",
+          "title": "Set Duration",
+          "readingMinutes": 3,
+          "words": 501
+        },
+        {
+          "id": "performance-rest-interval-between-exercises",
+          "title": "Rest Interval Between Exercises",
+          "readingMinutes": 4,
+          "words": 719
+        },
+        {
+          "id": "performance-number-of-sets",
+          "title": "Number of Sets",
+          "readingMinutes": 1,
+          "words": 272
+        },
+        {
+          "id": "performance-warm-up-considerations",
+          "title": "Warm-up Considerations",
+          "readingMinutes": 1,
+          "words": 172
+        }
+      ]
+    },
+    {
+      "id": "continuous-tension",
+      "n": 5,
+      "title": "Continuous Tension Method",
+      "blurb": "The house protocol: six to ten seconds each way, and never unloading the muscle.",
+      "topics": [
+        {
+          "id": "continuous-tension-about-our-continuous-tension-method",
+          "title": "About our Continuous Tension Method",
+          "readingMinutes": 1,
+          "words": 272
+        },
+        {
+          "id": "continuous-tension-what-makes-the-continuous-tension-method-",
+          "title": "What Makes the Continuous Tension Method Effective",
+          "readingMinutes": 5,
+          "words": 908
+        },
+        {
+          "id": "continuous-tension-performing-the-continuous-tension-method",
+          "title": "Performing the Continuous Tension Method",
+          "readingMinutes": 3,
+          "words": 565
+        },
+        {
+          "id": "continuous-tension-other-factors-to-consider",
+          "title": "Other Factors to Consider",
+          "readingMinutes": 4,
+          "words": 781
+        },
+        {
+          "id": "continuous-tension-athletic-performance",
+          "title": "Athletic Performance",
+          "readingMinutes": 2,
+          "words": 465
+        }
+      ]
+    },
+    {
+      "id": "programming",
+      "n": 6,
+      "title": "Programming and Progression",
+      "blurb": "The rulebook the routine builder is built on — categories, rep ranges, A/B rotation.",
+      "topics": [
+        {
+          "id": "programming-workout-programming-considerations",
+          "title": "Workout Programming Considerations",
+          "readingMinutes": 6,
+          "words": 1203
+        },
+        {
+          "id": "programming-novice-level-trainees",
+          "title": "Novice Level Trainees",
+          "readingMinutes": 2,
+          "words": 332
+        },
+        {
+          "id": "programming-intermediate-level-trainees",
+          "title": "Intermediate Level Trainees",
+          "readingMinutes": 2,
+          "words": 310
+        },
+        {
+          "id": "programming-advanced-level-trainees",
+          "title": "Advanced Level Trainees",
+          "readingMinutes": 1,
+          "words": 215
+        },
+        {
+          "id": "programming-workout-progressions",
+          "title": "Workout Progressions",
+          "readingMinutes": 2,
+          "words": 334
+        },
+        {
+          "id": "programming-ab-routines-how-to-optimize-programming",
+          "title": "AB Routines - How to Optimize Programming",
+          "readingMinutes": 8,
+          "words": 1653
+        },
+        {
+          "id": "programming-exercise-selection-template",
+          "title": "Exercise Selection Template",
+          "readingMinutes": 10,
+          "words": 1971
+        },
+        {
+          "id": "programming-considerations-for-training-with-pain",
+          "title": "Considerations for Training with Pain",
+          "readingMinutes": 3,
+          "words": 575
+        },
+        {
+          "id": "programming-exercise-instruction-general-cues-and-timing",
+          "title": "Exercise Instruction - General Cues and Timing",
+          "readingMinutes": 5,
+          "words": 998
+        },
+        {
+          "id": "programming-exercise-selection-and-long-term-programming",
+          "title": "Exercise Selection and Long-Term Programming",
+          "readingMinutes": 10,
+          "words": 1995
+        },
+        {
+          "id": "programming-exercise-substitutes",
+          "title": "Exercise Substitutes",
+          "readingMinutes": 1,
+          "words": 73
+        },
+        {
+          "id": "programming-faq",
+          "title": "FAQ",
+          "readingMinutes": 9,
+          "words": 1780
+        }
+      ]
+    },
+    {
+      "id": "variations",
+      "n": 7,
+      "title": "Variations on the Protocol",
+      "blurb": "Timed static contraction, static hold, forced reps and drop sets — and when each is allowed.",
+      "topics": [
+        {
+          "id": "variations-timed-static-contraction-tsc",
+          "title": "Timed Static Contraction (TSC)",
+          "readingMinutes": 6,
+          "words": 1149
+        },
+        {
+          "id": "variations-static-hold-sh",
+          "title": "Static Hold (SH)",
+          "readingMinutes": 6,
+          "words": 1193
+        },
+        {
+          "id": "variations-forced-reps",
+          "title": "Forced Reps",
+          "readingMinutes": 2,
+          "words": 387
+        },
+        {
+          "id": "variations-drop-sets",
+          "title": "Drop Sets",
+          "readingMinutes": 1,
+          "words": 168
+        }
+      ]
+    },
+    {
+      "id": "equipment",
+      "n": 8,
+      "title": "Basic Equipment Knowledge",
+      "blurb": "What you must know about every machine before you train anyone on it.",
+      "topics": [
+        {
+          "id": "equipment-basic-equipment-and-exercise-information",
+          "title": "Basic Equipment and Exercise Information",
+          "readingMinutes": 5,
+          "words": 1044
+        },
+        {
+          "id": "equipment-basic-equipment-and-exercise-information-entryexit",
+          "title": "Basic Equipment and Exercise Information - EntryExit",
+          "readingMinutes": 1,
+          "words": 261
+        }
+      ]
+    },
+    {
+      "id": "instruction",
+      "n": 9,
+      "title": "Exercise Instruction",
+      "blurb": "The verbal layer: cue phrases by moment in the set, and the full workout scripts.",
+      "topics": [
+        {
+          "id": "instruction-exercise-instruction-cues-and-timing",
+          "title": "Exercise Instruction - Cues and Timing",
+          "readingMinutes": 5,
+          "words": 989
+        },
+        {
+          "id": "instruction-msf-lower-body-setup-and-instruction",
+          "title": "MSF Lower Body - setup and instruction",
+          "readingMinutes": 12,
+          "words": 2463
+        },
+        {
+          "id": "instruction-msf-spinetrunkcore-setup-and-instruction",
+          "title": "MSF SpineTrunkCore - setup and instruction",
+          "readingMinutes": 12,
+          "words": 2447
+        },
+        {
+          "id": "instruction-msf-upper-body-setup-and-instruction",
+          "title": "MSF Upper Body - setup and instruction",
+          "readingMinutes": 23,
+          "words": 4528
+        }
+      ]
+    },
+    {
+      "id": "mastery",
+      "n": 10,
+      "title": "Mastery Series",
+      "blurb": "The short pieces on posture, pace, path, purpose, breathing and effort.",
+      "topics": [
+        {
+          "id": "mastery-posture",
+          "title": "POSTURE",
+          "readingMinutes": 3,
+          "words": 601
+        },
+        {
+          "id": "mastery-pace",
+          "title": "PACE",
+          "readingMinutes": 3,
+          "words": 615
+        },
+        {
+          "id": "mastery-path",
+          "title": "PATH",
+          "readingMinutes": 3,
+          "words": 632
+        },
+        {
+          "id": "mastery-purpose",
+          "title": "PURPOSE",
+          "readingMinutes": 5,
+          "words": 989
+        },
+        {
+          "id": "mastery-gradual-load-up",
+          "title": "Gradual Load Up",
+          "readingMinutes": 4,
+          "words": 859
+        },
+        {
+          "id": "mastery-lower-turnarounds",
+          "title": "Lower Turnarounds",
+          "readingMinutes": 5,
+          "words": 1093
+        },
+        {
+          "id": "mastery-squeeze-technique",
+          "title": "Squeeze Technique",
+          "readingMinutes": 5,
+          "words": 961
+        },
+        {
+          "id": "mastery-effort",
+          "title": "Effort",
+          "readingMinutes": 6,
+          "words": 1188
+        },
+        {
+          "id": "mastery-breathing",
+          "title": "Breathing",
+          "readingMinutes": 4,
+          "words": 879
+        },
+        {
+          "id": "mastery-putting-it-all-together-the-physiology-of-strength-p",
+          "title": "Putting it All Together (The Physiology of Strength) - part 1",
+          "readingMinutes": 8,
+          "words": 1691
+        },
+        {
+          "id": "mastery-exercise-categories-postureexecutiongaps",
+          "title": "Exercise Categories (postureexecutiongaps)",
+          "readingMinutes": 2,
+          "words": 472
+        },
+        {
+          "id": "mastery-exercise-instruction-cues-and-timing",
+          "title": "Exercise Instruction - Cues and Timing",
+          "readingMinutes": 5,
+          "words": 989
+        },
+        {
+          "id": "mastery-exercise-selection-and-long-term-programming",
+          "title": "Exercise Selection and Long-Term Programming",
+          "readingMinutes": 10,
+          "words": 1954
+        },
+        {
+          "id": "mastery-exercise-selection-template",
+          "title": "Exercise Selection Template",
+          "readingMinutes": 10,
+          "words": 2013
+        },
+        {
+          "id": "mastery-exercise-substitutes",
+          "title": "Exercise Substitutes",
+          "readingMinutes": 1,
+          "words": 73
+        },
+        {
+          "id": "mastery-faq",
+          "title": "FAQ",
+          "readingMinutes": 9,
+          "words": 1761
+        },
+        {
+          "id": "mastery-how-intensely-to-push-a-client",
+          "title": "How Intensely to Push a Client",
+          "readingMinutes": 9,
+          "words": 1841
+        },
+        {
+          "id": "mastery-msf-overview",
+          "title": "MSF OVERVIEW",
+          "readingMinutes": 10,
+          "words": 1995
+        },
+        {
+          "id": "mastery-the-benefits-of-high-intensity-resistance-training",
+          "title": "The Benefits of High-Intensity Resistance Training",
+          "readingMinutes": 3,
+          "words": 513
+        },
+        {
+          "id": "mastery-training-with-pain-arthritis-fibro-myalgia-tendoniti",
+          "title": "Training with pain (arthritis, fibro myalgia, tendonitis, bursitis, etc)",
+          "readingMinutes": 3,
+          "words": 575
+        }
+      ]
+    }
+  ],
+  "cardCount": 18,
+  "overviewCount": 19,
+  "glossaryCount": 52
+}

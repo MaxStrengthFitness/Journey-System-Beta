@@ -29,6 +29,7 @@ import { useStudioMachineSettings } from "../../hooks/useStudioMachineSettings";
 import { isStudioLeader } from "../../lib/permissions";
 import { useLayoutMode } from "./useLayoutMode";
 import { CatalogLanding } from "./CatalogLanding";
+import { AcademyView } from "../academy/AcademyView";
 import { upkeepByMachine, upkeepEventsFrom, dayKey } from "./grouping";
 import type { GroupingMode } from "./types";
 
@@ -95,6 +96,12 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
    * Hip Abduction and scrolled is not sent back to a menu by a re-render.
    */
   const [landing, setLanding] = useState(true);
+  /**
+   * MSF Topics. `null` when closed; a machine id when opened from a machine,
+   * which lands the reader on that machine's card rather than the syllabus.
+   * The empty string means opened from the landing, with no machine in mind.
+   */
+  const [academyFor, setAcademyFor] = useState<string | null>(null);
   /** Machine ids the landing narrowed to, or null for the whole roster. */
   const [groupFilter, setGroupFilter] = useState<string[] | null>(null);
 
@@ -295,6 +302,7 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
       studioName={activeStudio?.name}
       onOpenGroup={(ids) => leaveLanding(ids)}
       onBrowseAll={() => leaveLanding(null)}
+      onOpenAcademy={() => setAcademyFor("")}
     />
   );
 
@@ -309,6 +317,22 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
               : "Select a studio to see its equipment."}
           </p>
         </div>
+      </div>
+    );
+  }
+
+  /*
+   * MSF Topics takes the whole pane rather than opening in a dialog. These are
+   * documents — the longest runs to 6,400 words — and reading one inside a
+   * modal over a half-visible catalog is worse than simply going somewhere.
+   */
+  if (academyFor !== null) {
+    return (
+      <div className={`cat cat--${layout} cat--landing`} data-source={source}>
+        <AcademyView
+          initialMachineId={academyFor || null}
+          onBack={() => setAcademyFor(null)}
+        />
       </div>
     );
   }
@@ -353,6 +377,7 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
                 upkeep={upkeepFor(selected.id)}
                 studioSetup={studioSetupFor(selected.id, selected.name)}
                 isFlagged={Boolean(upkeepById[selected.id]?.flagged)}
+                onOpenAcademy={(id) => setAcademyFor(id)}
               />
             )}
           </div>
@@ -385,6 +410,7 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
           upkeep={upkeepFor(selected.id)}
           studioSetup={studioSetupFor(selected.id, selected.name)}
           isFlagged={Boolean(upkeepById[selected.id]?.flagged)}
+          onOpenAcademy={(id) => setAcademyFor(id)}
         />
       )}
 

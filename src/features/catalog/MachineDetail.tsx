@@ -1,5 +1,6 @@
 import type React from "react";
 import {
+  BookOpen,
   Activity,
   Settings2,
   Target,
@@ -40,6 +41,14 @@ export interface MachineDetailProps {
    *  on every tap in the rail. */
   studioSetup?: React.ReactNode;
   isFlagged?: boolean;
+  /**
+   * Open the MSF Academy quick reference card for this machine.
+   *
+   * The Academy documents every machine on this floor and the app has carried
+   * those 214 files, unread, since they were committed. This is the one tap
+   * between standing at a machine and the studio's own written method for it.
+   */
+  onOpenAcademy?: (machineId: string) => void;
 }
 
 export function MachineDetail({
@@ -50,6 +59,7 @@ export function MachineDetail({
   upkeep,
   studioSetup,
   isFlagged,
+  onOpenAcademy,
 }: MachineDetailProps) {
   const specs = [
     {
@@ -225,6 +235,20 @@ export function MachineDetail({
           >
             {upkeep}
           </Section>
+        )}
+
+        {onOpenAcademy && (
+          <button
+            type="button"
+            className="cat__academy-link"
+            onClick={() => onOpenAcademy(machine.id)}
+          >
+            <BookOpen size={14} aria-hidden />
+            <span>
+              <strong>MSF Academy card</strong>
+              <em>Target muscles, setup, posture and turnarounds</em>
+            </span>
+          </button>
         )}
 
         <Section

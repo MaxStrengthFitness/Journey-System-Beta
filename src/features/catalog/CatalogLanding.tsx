@@ -47,6 +47,8 @@ export interface CatalogLandingProps {
   onOpenGroup: (machineIds: string[]) => void;
   /** Skip the landing and go straight to the list. */
   onBrowseAll: () => void;
+  /** Open MSF Topics — the Academy curriculum, cards and glossary. */
+  onOpenAcademy?: () => void;
   studioName?: string | null;
 }
 
@@ -63,6 +65,7 @@ export function CatalogLanding({
   flaggedIds,
   onOpenGroup,
   onBrowseAll,
+  onOpenAcademy,
   studioName,
 }: CatalogLandingProps) {
   const todayKey = dayKey();
@@ -122,6 +125,29 @@ export function CatalogLanding({
           built here cannot draw from{" "}
           {overview.missingCategories.length === 1 ? "that group" : "those groups"}.
         </p>
+      )}
+
+      {onOpenAcademy && (
+        /*
+         * MSF Topics sits ABOVE the body groups, not in a tab or a menu.
+         *
+         * The Academy corpus has been in the repo since it was committed and
+         * its own README said nothing read it at runtime — 283,000 words of
+         * the studio's method that no trainer could reach. A link nobody finds
+         * is the same as no link, so it goes where the eye already is.
+         */
+        <button type="button" className="cat__academy" onClick={onOpenAcademy}>
+          <span className="cat__academy-main">
+            <span className="cat__academy-title">MSF Topics</span>
+            <span className="cat__academy-sub">
+              The Academy curriculum, a quick reference card for every machine,
+              and the glossary.
+            </span>
+          </span>
+          <span className="cat__academy-go" aria-hidden>
+            &rarr;
+          </span>
+        </button>
       )}
 
       <div className="cat__landing-grid">
