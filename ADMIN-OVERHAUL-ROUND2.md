@@ -1,0 +1,202 @@
+# Admin Overhaul — Round 2
+
+Branch `admin-overhaul-round2`, off `admin-overhaul-round1` at `133769c`.
+Five commits, one per phase group. Sections 8, 10–13, 15, 16, 18 and 18a.
+
+Round 1 covered sections 1–5 and 7, the offline-studio protocol, machine cloning
+and the maintenance log. Section 6 (Insights) stays deferred at your request.
+
+---
+
+## What shipped
+
+| Section | Phase | What landed |
+|---|---|---|
+| 8 | 1 | One announcement composer, shared by Admin and Franchise |
+| 10–12 | 2 | One Mindbody diagnostic screen; the Downtown Studio Hub deleted |
+| 13 | 3 | Bug reports show the diagnostics, plus status and a limit |
+| 15 | 4 | Franchise command hub; last random-id trainer path removed |
+| 16 | 4 | The redundant "Customize Studio" route removed |
+| 18, 18a | 5–7 | Catalog landing, Academy grouping, one definition of "overdue" |
+
+Verification at the end of the round:
+
+```
+43 test files, 1084 tests passing      (Round 1 ended at 38 / 873)
+typecheck 42 errors                    (baseline 43 — see note below)
+vite build clean
+firestore rules 30 tests               (25 pass; 5 pre-existing failures)
+```
+
+The typecheck count went **down** by one. `CreateTrainerModal.tsx` carried a
+shadcn `Select` `position` prop error and was orphaned by phase 4, so deleting it
+removed the error with it. Nothing was suppressed.
+
+---
+
+## Six defects found that were not in the brief
+
+Each of these was found by rebuilding something the spec asked for, not by
+looking for bugs. They are listed worst first.
+
+### 1. A franchise owner's network announcement went to the entire platform 🔴
+
+Two composers wrote into `hub_announcements` with different conventions:
+
+```
+Admin      studioId "all" for universal, studioId <id> for one studio
+Franchise  targetScope "network", targetId "all_owned", studioId "all"
+```
+
+The reader treats `studioId === "all"` as everybody. So an owner addressing
+their own network published to every trainer at every studio in the system. The
+card even labelled it "To: All Studios" — accurately, just not the studios
+anyone meant. Nothing surfaced it: the franchise list filtered on
+`authorId === me`, so the author saw a tidy list of their own notices and no
+hint of where they had landed.
+
+Fixed in `features/admin/announcements/audience.ts`, under test, shared by both
+composers. Networks resolve to `targetStudioIds` at publish time, so the reader
+does set membership against studios it already holds — no extra reads on any
+device. Documents already in Firestore **narrow** rather than leak: `isTargeted`
+reads `targetScope` first, so old network notices stop being universal
+immediately and fall back to the owner-role check. No migration needed.
+
+### 2. A trainer could never see what happened to their bug reports
+
+`features/feedback/useMyFeedback` queries `bug_reports` filtered to
+`userId == me`, and its own header says it exists "for when reports feel like
+they go nowhere". The read rule was `allow read: if isSuperAdmin()`. That
+listener was permission-denied for every trainer but the owner, silently.
+
+Fixed in `firestore.rules`: a reporter may read their own report and nobody
+else's, and still cannot change its status. Three rules tests.
+
+### 3. A franchise owner could see an empty screen, permanently
+
+```ts
+const [selectedNetworkId, setSelectedNetworkId] =
+  useState(displayNetworks[0]?.id || null);
+```
+
+`networks` arrives from a Firestore listener, so on the first render that array
+is empty and the initial value is `null` — and `useState` ignores every later
+argument. A super admin could recover with the picker; an ordinary owner had no
+picker, it was rendered behind `isSuperAdmin`. So for an owner whose studios are
+reached through network membership rather than `studio.ownerId`, the screen
+stayed empty.
+
+Fixed by resolving the selection as a derived value in
+`features/admin/franchise/scope.ts` — which removes the class, not the instance:
+it also covers a deleted network and an owner losing access to one.
+
+### 4. Two buttons that reported results they had not measured
+
+- **"Test Connect"** on the Integrations screen ran a one-second `setTimeout`
+  and then reported success or failure from the **cached** health document. It
+  made no request. Pressing it after changing a Site ID gave a confident answer
+  about the old one.
+- **The event log** fabricated an entry reading *"System initialized. Waiting
+  for MindBody webhook events…"* whenever the collection was empty — an invented
+  line in the one panel whose entire purpose is to be trustworthy.
+
+Both replaced: "Check now" does the request the mockup's buried control actually
+did, and an empty log says it is empty.
+
+### 5. The bug report screen discarded every diagnostic the app collected
+
+`features/feedback` captures the screen, studio, client, session, viewport,
+orientation, theme, pixel ratio, app version, URL and the last five runtime
+errors, all under `context`. `AdminBugReports` read `report.browser`,
+`report.platform`, `report.os` and `report.studioName` — **top-level** fields the
+current writer has never written — behind `if (report.browser || report.os)`,
+which made the whole block dead code.
+
+`features/admin/bugs/reportView.ts` reads both shapes (the pre-Sep-2026
+documents really did keep those at the top level) and hands the screen one view.
+
+### 6. A dead Firestore listener on every signed-in session
+
+`src/hooks/useHubAnnouncements.ts` ran in `AppContent` and opened a live
+`onSnapshot` on the whole `hub_announcements` collection for every signed-in
+trainer. Nothing read its result. It survived the Sep 6 pass that moved
+announcements into the notification bell, because deleting a bell does not
+delete the hook that fed it. Deleted.
+
+---
+
+## Two smaller things worth knowing
+
+**`bug_reports` had no limit.** The old fetch was
+`getDocs(orderBy('createdAt','desc'))` with no `limit` — the entire collection,
+every time the tab opened, on exactly the collection that grows without bound.
+Now the newest 100.
+
+**`FeedbackReport.status` was typed and never set.** open / investigating /
+fixed / wont-fix has been in the type all along and no screen ever wrote it, so
+every report was open forever and the list only grew.
+
+---
+
+## Deleted this round
+
+Roughly 4,240 lines, all of it either a mockup, a duplicate, or orphaned by one:
+
+```
+src/components/mindbody/MindbodyDashboard.tsx        332   the Downtown Studio Hub
+src/components/mindbody/StudioHubGrid.tsx            186
+src/components/mindbody/ShiftRosterRow.tsx           154
+src/components/mindbody/AppointmentCard.tsx          290
+src/components/mindbody/WaitlistRecoveryWidget.tsx   184
+src/components/mindbody/ClientReliabilityScore.tsx   126
+src/components/mindbody/LedgerEntry.tsx              180
+src/components/mindbody/CrossTrainApprovalCard.tsx   227
+src/components/mindbody/CrossTrainAccessGate.tsx     118
+src/components/IntegrationsHubView.tsx               818   folded into the above
+src/components/AdminHubAnnouncements.tsx             419   → 108 on the kit
+src/components/AdminBugReports.tsx                    88   → 403, with diagnostics
+src/components/CreateTrainerModal.tsx                      orphaned by phase 4
+src/hooks/useHubAnnouncements.ts                      37   dead listener
+```
+
+The cross-train pair implemented a request/approve flow that does not exist. The
+live mechanism is `approvedCrossTrainStudioIds` on the client, edited in
+`ClientDossier` and enforced in `lib/permissions.ts`.
+
+`FranchiseDashboardView` went from 574 lines to 137 and is now wiring only.
+
+---
+
+## Review order on the iPad
+
+1. **Admin → Announcements.** Post one to a single studio. Sign in as a trainer
+   elsewhere and confirm the bell does *not* show it. This is the acceptance
+   test for defect 1.
+2. **Franchise → Message your network.** Confirm "Everyone" is not offered, and
+   that the sentence under the form counts the studios before you publish.
+3. **Admin → Mindbody.** A studio with no Site ID should report *that*, not
+   "never synced". Press "Check now" with a wrong Site ID and confirm it fails
+   with Mindbody's own message rather than a cached green.
+4. **Admin → Bug Reports.** Send yourself feedback from the drawer, then open it
+   here: screen, viewport, orientation and any runtime errors should all be
+   present. Set a status and reload.
+5. **Franchise hub**, signed in as an owner who is *not* a super admin, whose
+   studios come from network membership. The screen should not be empty.
+6. **Catalog.** Lands on body groups. Switch the picker to Academy and confirm
+   Hip Abduction sits under Hips. Search "hips".
+7. **Customize Studio** is gone from the admin nav; the header gear still works.
+
+---
+
+## Still open
+
+- **The cross-studio tenancy gap.** 5 of the 30 rules tests fail, and four are
+  one hole: `sessions` and `clients` are readable by any authenticated trainer
+  with no studio scoping. A trainer at one studio can read every client and
+  every session in the platform. The tests encode a policy that was never
+  written into the rules; they had been failing invisibly because the suite
+  could not run without JDK 21. **This is the next thing worth doing.**
+- The fifth failure is separate: nothing blocks `pinHash` on a trainer create.
+- **Section 6, Insights** — deferred by you, deliberately.
+- The two WCAG failures Round 1 found in the shared palette affect screens
+  outside admin and are not yet fixed at the source.
