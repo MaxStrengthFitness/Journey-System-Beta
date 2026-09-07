@@ -1278,3 +1278,105 @@
   line-height: 1.4;
   color: var(--adm-ink-muted);
 }
+
+/* ==================================================================== *
+ * INSIGHTS (Section 6)
+ * ==================================================================== */
+
+.adm-ins-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.adm-ins-controls .adm-field {
+  min-width: 150px;
+}
+
+.adm-ins-findings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.adm-ins-finding {
+  font-weight: 700;
+}
+
+/* The action line is the reason the finding is on screen, so it is quieter
+   than the finding but never hidden behind a disclosure. */
+.adm-ins-action {
+  margin-top: 3px;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.adm-ins-table-wrap {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.adm-ins-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.adm-ins-table th,
+.adm-ins-table td {
+  padding: 9px 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* The trainer name is the only text column; everything else is a number and
+   reads better right-aligned so the digits line up. */
+.adm-ins-table thead th:first-child,
+.adm-ins-table tbody th {
+  text-align: left;
+}
+
+.adm-ins-table thead th {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+  border-bottom: 1px solid var(--adm-border);
+}
+
+.adm-ins-table tbody tr + tr th,
+.adm-ins-table tbody tr + tr td {
+  border-top: 1px solid var(--adm-border);
+}
+
+.adm-ins-table tbody th {
+  font-weight: 800;
+  color: var(--adm-ink);
+}
+
+.adm-ins-table tbody td {
+  font-weight: 600;
+  color: var(--adm-ink-2);
+}
+
+.adm-ins-bad {
+  color: var(--adm-alert);
+  font-weight: 800;
+}
+
+/* Said next to the name rather than as a footnote: a rate computed from four
+   sessions should never be read as a fact about a person. */
+.adm-ins-thin {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--adm-surface-3);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}

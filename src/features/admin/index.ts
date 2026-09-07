@@ -259,3 +259,15 @@ export {
   type OwnerScope,
   type ScopeInput,
 } from "./franchise/scope";
+
+export { AdminInsightsTab } from "./insights/AdminInsightsTab";
+export {
+  activeMinutes,
+  observations,
+  returnRate,
+  studioSummary,
+  trainerMetrics,
+  type Observation,
+  type StudioSummary,
+  type TrainerMetrics,
+} from "./insights/metrics";

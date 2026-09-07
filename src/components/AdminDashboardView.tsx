@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, ScheduleEntry } from "../types";
-import { InsightsDashboardView } from "./InsightsDashboardView";
 // Deprecated (Sep 2026 UI overhaul): the Retention route is unmounted. The
 // component file stays on disk in case it is revived; nothing imports it here.
 // import { RetentionDashboardView } from "./RetentionDashboardView";
@@ -20,6 +19,7 @@ import { AdminClientsTab } from "../features/admin/clients/AdminClientsTab";
 import { AdminAnnouncementsTab } from "../features/admin/announcements/AdminAnnouncementsTab";
 import { AdminMindbodyTab } from "../features/admin/mindbody/AdminMindbodyTab";
 import { AdminBugReportsTab } from "../features/admin/bugs/AdminBugReportsTab";
+import { AdminInsightsTab } from "../features/admin/insights/AdminInsightsTab";
 
 interface Props {
   authTrainer: Trainer;
@@ -303,16 +303,11 @@ export function AdminDashboardView({
           />
         )}
         {activeTab === "insights" && (
-          <div className="bg-slate-50 dark:bg-slate-950 p-0 rounded-2xl overflow-hidden">
-            <InsightsDashboardView
-              clients={clients}
-              trainers={trainers}
-              machines={machines}
-              sessions={sessions}
-              newClientsCount={newClientsCount}
-              onShowNewClients={onShowNewClients}
-            />
-          </div>
+          <AdminInsightsTab
+            studios={studios}
+            trainers={trainers}
+            activeStudioId={activeStudioId ?? null}
+          />
         )}
         {/* "retention" tab removed — see the commented import at the top. */}
         {activeTab === "mindbody" && (
