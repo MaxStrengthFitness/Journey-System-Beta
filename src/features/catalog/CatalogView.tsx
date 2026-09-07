@@ -28,6 +28,8 @@ import { useCatalogMachines } from "./useCatalogMachines";
 import { useStudioMachineSettings } from "../../hooks/useStudioMachineSettings";
 import { isStudioLeader } from "../../lib/permissions";
 import { useLayoutMode } from "./useLayoutMode";
+import { CatalogLanding } from "./CatalogLanding";
+import { upkeepByMachine, upkeepEventsFrom, dayKey } from "./grouping";
 import type { GroupingMode } from "./types";
 
 /**
@@ -78,6 +80,24 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
   const [grouping, setGrouping] = useState<GroupingMode>("movement");
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  /**
+   * THE LANDING (Round 2 Phase 5, Section 18).
+   *
+   * The Catalog used to open on the first machine of the roster, because the
+   * alternative it was written against was an "Awaiting Selection" placeholder
+   * occupying the widest pane and saying nothing. Against a screen that
+   * answers a question, opening on a machine is the wrong default: it makes
+   * "which machine do I want" a scan of twenty-two names, and it buries the
+   * upkeep state one machine at a time behind twenty-two taps.
+   *
+   * `landing` is therefore the initial state, and it is left the moment a
+   * machine is chosen. It is not re-entered on its own - a trainer who picked
+   * Hip Abduction and scrolled is not sent back to a menu by a re-render.
+   */
+  const [landing, setLanding] = useState(true);
+  /** Machine ids the landing narrowed to, or null for the whole roster. */
+  const [groupFilter, setGroupFilter] = useState<string[] | null>(null);
+
   // Upkeep is read ONCE here and passed down. Mounting these inside the detail
   // pane would re-subscribe on every machine tap — twenty-two listeners torn
   // down and rebuilt while a trainer scrolls the rail.
@@ -110,13 +130,45 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
     [catalogMachines, selectedId],
   );
 
-  // Land on a machine rather than an "Awaiting Selection" placeholder that
-  // occupies the widest pane on the screen and says nothing.
+  // Keep the selection valid, but do not CREATE one: choosing the first
+  // machine on mount is what the landing replaced. This only repairs a
+  // selection that has gone stale - a machine removed from the roster, or a
+  // studio switch - which would otherwise leave the detail pane blank with no
+  // way back to the list.
   useEffect(() => {
-    if (catalogMachines.length === 0) return;
+    if (landing || catalogMachines.length === 0) return;
     if (selectedId && catalogMachines.some((m) => m.id === selectedId)) return;
     setSelectedId(catalogMachines[0].id);
-  }, [catalogMachines, selectedId]);
+  }, [catalogMachines, selectedId, landing]);
+
+  /**
+   * Upkeep state per machine, judged by features/admin/upkeep's rules rather
+   * than a second set written here. See grouping.ts - the Catalog and the
+   * admin equipment panel now agree on what "overdue" means.
+   */
+  const upkeepEvents = useMemo(
+    () => upkeepEventsFrom(upkeepById),
+    [upkeepById],
+  );
+  const upkeepStatusById = useMemo(
+    () => upkeepByMachine(catalogMachines, upkeepEvents, dayKey()),
+    [catalogMachines, upkeepEvents],
+  );
+
+  /** What the picker shows: the whole roster, or the group the landing chose. */
+  const pickerMachines = useMemo(() => {
+    if (!groupFilter) return catalogMachines;
+    const wanted = new Set(groupFilter);
+    return catalogMachines.filter((m) => wanted.has(m.id));
+  }, [catalogMachines, groupFilter]);
+
+  const leaveLanding = (ids: string[] | null) => {
+    setGroupFilter(ids);
+    setLanding(false);
+    const first = ids?.[0] ?? catalogMachines[0]?.id ?? null;
+    if (first) setSelectedId(first);
+    if (layout === "stack") setSheetOpen(true);
+  };
 
   // Turn the figure to the side that actually shows the activation, on EVERY
   // path that can change the selection. Doing this inside the click handler is
@@ -225,12 +277,24 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
 
   const picker = (
     <MachinePicker
-      machines={catalogMachines}
+      machines={pickerMachines}
       selectedId={selectedId}
       onSelect={setSelectedId}
       grouping={grouping}
       onGroupingChange={setGrouping}
       flaggedIds={flaggedIds}
+      upkeep={upkeepStatusById}
+    />
+  );
+
+  const landingScreen = (
+    <CatalogLanding
+      machines={catalogMachines}
+      events={upkeepEvents}
+      flaggedIds={flaggedIds}
+      studioName={activeStudio?.name}
+      onOpenGroup={(ids) => leaveLanding(ids)}
+      onBrowseAll={() => leaveLanding(null)}
     />
   );
 
@@ -249,10 +313,30 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
     );
   }
 
+  if (landing) {
+    return (
+      <div className={`cat cat--${layout} cat--landing`} data-source={source}>
+        {landingScreen}
+      </div>
+    );
+  }
+
   if (layout === "split") {
     return (
       <div className="cat cat--split" data-source={source}>
         <aside className="cat__pane" aria-label="Machines">
+          {groupFilter && (
+            <button
+              type="button"
+              className="cat__back"
+              onClick={() => {
+                setGroupFilter(null);
+                setLanding(true);
+              }}
+            >
+              All body groups
+            </button>
+          )}
           {picker}
         </aside>
 
@@ -318,6 +402,17 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
             </SheetTitle>
             <button
               type="button"
+              className="cat__back"
+              onClick={() => {
+                setSheetOpen(false);
+                setGroupFilter(null);
+                setLanding(true);
+              }}
+            >
+              Body groups
+            </button>
+            <button
+              type="button"
               className="cat__sheet-close"
               onClick={() => setSheetOpen(false)}
               aria-label="Close"
@@ -327,7 +422,8 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
           </div>
           <MachinePicker
             flaggedIds={flaggedIds}
-            machines={catalogMachines}
+            upkeep={upkeepStatusById}
+            machines={pickerMachines}
             selectedId={selectedId}
             onSelect={(id) => {
               setSelectedId(id);

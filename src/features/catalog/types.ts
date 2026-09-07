@@ -63,4 +63,12 @@ export interface CatalogGroup {
   machines: CatalogMachine[];
 }
 
-export type GroupingMode = "movement" | "region";
+/**
+ * How the picker buckets machines.
+ *
+ * "academy" arrived with Round 2 Phase 6 (Section 18a) and reads the five MSF
+ * programming categories from features/routine-builder/academy.ts. It is a
+ * third vocabulary rather than a re-mapping of the other two on purpose - see
+ * the header of catalog/grouping.ts.
+ */
+export type GroupingMode = "movement" | "region" | "academy";

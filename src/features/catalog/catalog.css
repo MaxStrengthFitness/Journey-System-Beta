@@ -1176,3 +1176,197 @@
   color: var(--cat-ink-muted);
   cursor: default;
 }
+
+
+/* ==================================================================== *
+ * LANDING (Round 2 Phase 5, Section 18)
+ * ==================================================================== */
+
+.cat__landing {
+  padding: 1.25rem 1rem 2rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+}
+
+.cat__landing-head {
+  margin-bottom: 1rem;
+}
+
+.cat__landing-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--cat-ink);
+}
+
+.cat__landing-sub {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cat-ink-muted);
+}
+
+.cat__link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--cat-hero-text);
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.cat__link:focus-visible {
+  outline: 2px solid var(--cat-focus-ring);
+  outline-offset: 2px;
+}
+
+.cat__landing-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+.cat__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--cat-border);
+  border-radius: var(--cat-radius);
+  background: var(--cat-surface);
+}
+
+.cat__stat--warn {
+  border-color: var(--cat-warn-border);
+  background: var(--cat-warn-fill);
+}
+
+.cat__stat--alert {
+  border-color: var(--cat-warn-strong);
+  background: var(--cat-warn-fill);
+}
+
+.cat__stat-value {
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--cat-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.cat__stat-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cat-ink-muted);
+}
+
+/* The one piece of analysis on this screen: an Academy category with no
+   machine behind it means a routine built here cannot be complete. */
+.cat__landing-gap {
+  margin: 0 0 1rem;
+  padding: 10px 12px;
+  border-radius: var(--cat-radius);
+  background: var(--cat-warn-fill);
+  border: 1px solid var(--cat-warn-border);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--cat-warn);
+}
+
+.cat__landing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.cat__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  /* 44px is the floor; these are the primary target on the screen. */
+  min-height: 84px;
+  padding: 14px 16px;
+  text-align: left;
+  border: 1px solid var(--cat-border);
+  border-radius: var(--cat-radius-lg);
+  background: var(--cat-surface);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.cat__tile:hover {
+  border-color: var(--cat-border-strong);
+  background: var(--cat-surface-2);
+}
+
+.cat__tile:focus-visible {
+  outline: 2px solid var(--cat-focus-ring);
+  outline-offset: 2px;
+}
+
+.cat__tile-label {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: var(--cat-ink);
+}
+
+.cat__tile-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cat-ink-muted);
+}
+
+.cat__tile-flags {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+.cat__badge--upkeep {
+  background: var(--cat-warn-fill);
+  color: var(--cat-warn-strong);
+}
+
+/* The landing owns its own scroll in both layouts: it is one column, so the
+   three-column grid's rules do not apply to it. */
+.cat--landing {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+
+.cat__back {
+  align-self: flex-start;
+  margin: 0 0 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--cat-border);
+  border-radius: 999px;
+  background: var(--cat-surface-2);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cat-ink-muted);
+  cursor: pointer;
+}
+
+.cat__back:hover {
+  color: var(--cat-ink);
+  border-color: var(--cat-border-strong);
+}
+
+.cat__back:focus-visible {
+  outline: 2px solid var(--cat-focus-ring);
+  outline-offset: 2px;
+}
