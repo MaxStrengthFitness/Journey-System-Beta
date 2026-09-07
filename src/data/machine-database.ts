@@ -31,6 +31,24 @@ export interface MachineKnowledge {
 
 export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
   // Neck
+  /*
+   * SUPERSEDED (Sep 2026). The Catalog no longer reaches this record.
+   *
+   * There is no MSF Academy document for a 4-Way Neck machine anywhere in
+   * docs/msf-academy/ - the only neck exercise the Academy documents is the
+   * Cervical Extension, and the studio's own equipment list calls the machine
+   * "CX (4 WAY NECK)", where Cx is the Academy's abbreviation for Cervical
+   * Extension. So the parenthetical describes the hardware and the exercise is
+   * the Cervical Extension.
+   *
+   * This entry stayed reachable for months only because its key sorted above
+   * `cervical_extension` in the id-collapse table, and while it did, the app
+   * told trainers the machine needs no hand-off and omitted the Academy's
+   * "NEVER take to failure" rule. See features/catalog/machine-identity.ts.
+   *
+   * Kept, not deleted, so a Firestore machine document still filed under this
+   * id resolves to something rather than nothing. Do not add content here.
+   */
   "4_way_neck": {
     id: "4_way_neck",
     name: "4-Way Neck",
@@ -141,10 +159,11 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
       "Wrist Flexors (Forearms) - gripping/holding - anchoring into seat with arms"
     ],
     setupCues: [
-      "LC will most likely have a gap of 2 or 3 as an introduction to this exercise (this will be determined by the Studio Leader and MSF Corp). A gap of 3 or more may be advised for those with knee injuries/issues.",
+      "Larger legs and hip girdles will require more room and a larger gap at the starting point, to avoid potential hyperextension at the knee.",
+      "SOURCE CONFLICT: the Comprehensive Overview says a gap of 2 or 3 as an introduction in one paragraph and 'at least 1 and maybe 2' two paragraphs later; the Quick Reference Guide says 1 or 2. Confirm with your Studio Leader. A gap of 3 or more may be advised for those with knee injuries/issues.",
       "Move the seat back to the rearmost position leaving the largest possible area on the seat.",
       "Have the subject sit with their femurs cantilevered off the front of the seat and the lower leg hanging.",
-      "The knee should align with the axis of rotation of the machine, which puts the knee cap at the edge of the roller pad but NOT under the pad. No part of the patella can be under the roller pad.",
+      "The knee should align with the axis of rotation of the machine, which puts the knee cap at the edge of the roller pad but NOT under the pad. No part of the patella can be under the roller pad, as this is extremely uncomfortable and puts the knee in a position of hyperextension. Instead the patellas should 'crowd' the roller pad with the top of the tibia under the pad.",
       "Subject leans slightly forward, seat back is brought forward to just contact the lower back without pushing knees ahead of axis.",
       "Verify that the knees are still in alignment with the axis of rotation.",
       "Subject exits the machine to allow for weight selection and proper loading.",
@@ -607,14 +626,42 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
     id: "lateral_raise",
     name: "Lateral Raise",
     kinematicClassification: "Simple Push",
-    executionPosture: "Chest Up / Anterior Pelvic Tilt",
+    /*
+     * POSTERIOR, not anterior. This said "Chest Up / Anterior Pelvic Tilt",
+     * which contradicts both sources: the Upper Body script says "abdomen
+     * tight (PPT)" and "tighten down your midsection so the middle of your
+     * back rounds into the back pad", and machine-setup-template.md says
+     * "maintain a tight abdominal wall (posterior pelvic tilt) to keep the
+     * chest down and prevent the lumbar spine from hyperextending".
+     */
+    executionPosture: "Abdomen Tight / Posterior Pelvic Tilt",
     requiresHandoff: false,
     category: "Upper Body - Push",
     baseMale: 30,
     baseFemale: 15,
     setup: "Seat height such that axis of rotation is slightly below shoulders.",
     execution: "Lead with elbows. Raise to parallel. Slower eccentric lowering.",
-    target: "Lateral Deltoid"
+    target: "Lateral Deltoid",
+    targetMuscles: [
+      "Lateral Deltoid (Middle Deltoid) - Shoulder Abduction"
+    ],
+    synergists: [
+      "Supraspinatus - Shoulder Abduction (first 15 degrees)",
+      "Trapezius - Scapular Upward Rotation"
+    ],
+    setupCues: [
+      "Seat height so the axis of rotation sits slightly below the shoulders.",
+      "Abdomen tight, middle of the back rounded into the back pad.",
+      "SOURCE CONFLICT on the gap: machine-setup-template.md says a standardized gap of 2; the Upper Body script says no gap, depending on width. Confirm with your Studio Leader."
+    ],
+    executionCues: [
+      "Lead with the elbows, not the hands.",
+      "Raise to parallel. Further is not better - beyond that the tension shifts to the trapezius and neck."
+    ],
+    clinicalWarnings: [
+      "Shoulder impingement or AC joint issues: increase the weight stack gap to limit the downward range, and stop the concentric slightly below 90 degrees of shoulder abduction to prevent painful impingement.",
+      "Raising beyond parallel shifts tension to the trapezius and neck muscles rather than the target."
+    ]
   },
   // Upper Body - Pull
   "compound_row": {
@@ -882,7 +929,13 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
     kinematicClassification: "Simple Pull",
     executionPosture: "Chest Up / Anterior Pelvic Tilt",
     requiresHandoff: false,
-    setupGap: "Gap 4-6",
+    // NOT SOURCED. No gap number for the Lumbar Extension appears anywhere in
+    // docs/msf-academy/ - the Comprehensive Overview deliberately declines to
+    // give one ("there needs to be a consideration made for the size and
+    // tolerance of each individual"). Every other gap in this file is quotable.
+    // Left visible rather than deleted so it can be confirmed or dropped, but
+    // marked so nobody reads it as doctrine.
+    setupGap: "Set individually (no standard gap)",
     sequencingContraindications: ["Do not pair immediately before Leg Press or Leg Curl (lumbar pump exacerbation).","Avoid back-to-back pulling exercises to prevent localized forearm/biceps fatigue limiting torso stimulation."],
     category: "Trunk/Spine/Core",
     baseMale: 40,
@@ -905,7 +958,7 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
       "Move carriage all the way back, place pin in main stack to lock movement arm.",
       "Practical Alignment: back pad lands on majority of shoulder blade area.",
       "Theoretical Alignment: align iliac crest with top of roller pad.",
-      "Monitor top-heaviness (shoulder blades above back pad = seat might be too high).",
+      "Monitor top-heaviness (shoulder blades above back pad = seat might be too high). If the back pad is near or making contact with the cervical spine, the seat is too LOW.",
       "Raise femur restraint to clear space for footplate adjustment.",
       "Position footplate so knee joint is slightly higher than hip joint (downward femur slope).",
       "Fasten seatbelt across hip crease AFTER feet are up.",
@@ -915,7 +968,7 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
     ],
     executionCues: [
       "Posture: 'Chin tucked, chest up, establish breathing, gradually build pressure into back pad by lifting ribcage'.",
-      "Prevent lifting head and holding breath. Check for overly emphasized leg drive.",
+      "Prevent lifting head and holding breath. There will tend to be an urge to throw the head back in the contracted position: this poses a risk to the neck and creates a false sense of progress. Check for overly emphasized leg drive.",
       "CONCENTRIC: 'Chest up, back arched' or 'Lift your chest and arch your back'.",
       "UPPER TURN: Watch stopper abutt frame. Pause 1-2s (or 2-3s squeeze from rep 3).",
       "Provide actionable cues for squeeze: 'Keep arching, keep breathing... ease out'.",
@@ -1122,5 +1175,36 @@ export function calculateStartingWeight(
   const rawWeight = baseWeight * ageMultiplier * skillMultiplier;
 
   // Round to nearest even number
-  return Math.round(rawWeight / 2) * 2;
+  const rounded = Math.round(rawWeight / 2) * 2;
+
+  /*
+   * A CEILING FOR MACHINES THE ACADEMY GIVES A FIXED STARTING LOAD FOR.
+   *
+   * The multipliers above are a reasonable heuristic for most of the floor,
+   * but they are not doctrine, and on the Cervical Extension they were
+   * producing a number the Academy contradicts outright:
+   *
+   *   "Most clients will start with 20 pounds, the lightest increment
+   *    available on this exercise."
+   *   - Comprehensive Equipment Overview / Cervical Extension.txt
+   *
+   * A 35-year-old male novice came out at 36 lb, and an advanced client at
+   * 46 lb, on the one exercise the Academy says must never be taken to
+   * failure. Where a document states the starting load, the document wins.
+   */
+  const stated = ACADEMY_STARTING_WEIGHT[machineId];
+  if (stated !== undefined) return Math.min(rounded, stated);
+
+  return rounded;
 }
+
+/**
+ * Starting loads the Academy states outright, as a hard ceiling on the
+ * calculation above. Add to this only with a quotable sentence.
+ */
+const ACADEMY_STARTING_WEIGHT: Record<string, number> = {
+  // "Most clients will start with 20 pounds, the lightest increment available
+  // on this exercise." Also the lightest the machine offers, so the app must
+  // not go below it either - see the clamp in the caller.
+  cervical_extension: 20,
+};

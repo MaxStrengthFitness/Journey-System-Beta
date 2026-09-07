@@ -50,12 +50,44 @@ const DB_KEY_TO_CANONICAL: Record<string, string> = {
   torso_rotation: "m-torso-rotation",
 };
 
+/**
+ * When two database keys collapse onto one canonical id, which record wins.
+ *
+ * ONLY `m-neck` is contested, and getting it wrong was a safety defect rather
+ * than a cosmetic one. This map used to be derived by "first wins" over
+ * DB_KEY_TO_CANONICAL, which made `m-neck` resolve to `4_way_neck` purely
+ * because that line was typed above `cervical_extension`. A comment recorded
+ * the behaviour without noticing what it cost:
+ *
+ *   4_way_neck          requiresHandoff: false
+ *                       one warning, "use extremely light loads"
+ *
+ *   cervical_extension  requiresHandoff: true
+ *                       never to failure, 8 reps is excessive, the cervical
+ *                       spine is controlling an external load
+ *
+ * The Academy has NO document for a 4-Way Neck machine — `grep -ril "4[- ]way"`
+ * across all 214 files in docs/msf-academy/ returns nothing. The studio's own
+ * equipment list calls this machine "CX (4 WAY NECK)" (AppContent's
+ * DEFAULT_MACHINES), and Cx is the Academy's own abbreviation for Cervical
+ * Extension — so the parenthetical is the studio's note about the hardware,
+ * and the exercise is the Cervical Extension. `academy.ts` already agrees:
+ * MACHINE_ABBR maps "m-neck" to "Cx".
+ *
+ * Stated explicitly here rather than left to key order, so that adding a
+ * database key can never silently change which safety copy a trainer reads.
+ */
+const CONTESTED_CANONICAL: Record<string, string> = {
+  "m-neck": "cervical_extension",
+};
+
 /** The reverse, for reaching MACHINE_DATABASE from a canonical id. */
 export const CANONICAL_TO_DB_KEY: Record<string, string> = Object.entries(
   DB_KEY_TO_CANONICAL,
 ).reduce<Record<string, string>>((acc, [dbKey, canonical]) => {
-  // First wins, so m-neck resolves to 4_way_neck rather than cervical_extension.
-  if (!acc[canonical]) acc[canonical] = dbKey;
+  const preferred = CONTESTED_CANONICAL[canonical];
+  if (preferred) acc[canonical] = preferred;
+  else if (!acc[canonical]) acc[canonical] = dbKey;
   return acc;
 }, {});
 
@@ -123,8 +155,28 @@ export function canonicalMachineId(
 ): string {
   if (!id) return "";
   if (id.startsWith("sm-")) return id;
-  if (MACHINE_ANATOMY[id]) return id;
+
+  /*
+   * THE COLLAPSE TABLE IS CONSULTED FIRST, and the order is load-bearing.
+   *
+   * It used to be second, behind `if (MACHINE_ANATOMY[id]) return id`. That
+   * looks harmless because MACHINE_ANATOMY is keyed by canonical m-* ids — but
+   * it carries ONE alias under a database key, `cervical_extension`, added so
+   * clinical-matrix.ts and routine-templates.ts could look it up directly. Its
+   * own comment says "machine-identity.ts collapses it onto m-neck".
+   *
+   * It did not. The early return matched the alias and handed back
+   * `cervical_extension` unchanged, so the one machine this function was
+   * pointed at by name was the one machine it did not collapse — and a
+   * Firestore document filed under that id would render as a second neck
+   * machine in the Catalog, which is exactly the duplicate this file exists to
+   * prevent.
+   *
+   * An explicit table of things that ARE aliases has to outrank a table that
+   * merely happens to contain one.
+   */
   if (DB_KEY_TO_CANONICAL[id]) return DB_KEY_TO_CANONICAL[id];
+  if (MACHINE_ANATOMY[id]) return id;
 
   // leg_extension -> m-leg-extension, for any pair the table above misses.
   const dashed = `m-${id.replace(/_/g, "-")}`;

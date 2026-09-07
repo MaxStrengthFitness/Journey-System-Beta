@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { canonicalMachineId, dedupeMachines } from "./machine-identity";
+import {
+  CANONICAL_TO_DB_KEY,
+  canonicalMachineId,
+  dedupeMachines,
+} from "./machine-identity";
 
 describe("canonicalMachineId", () => {
   it("leaves an already-canonical id alone", () => {
@@ -78,5 +82,29 @@ describe("dedupeMachines", () => {
       { id: "sm-beachwood-leg-press", name: "Leg Press" },
     ]);
     expect(machines).toHaveLength(2);
+  });
+});
+
+describe("CANONICAL_TO_DB_KEY — the contested neck machine", () => {
+  it("REGRESSION: m-neck reaches the Cervical Extension, not the 4-Way Neck", () => {
+    // This resolved to "4_way_neck" purely because that key was typed first.
+    // The 4_way_neck record carries requiresHandoff: false and one generic
+    // warning; cervical_extension carries the Academy's never-to-failure rule
+    // and the hand-off requirement. The Academy has no 4-Way Neck document at
+    // all. Getting this wrong is a safety defect, so it is pinned by a test.
+    expect(CANONICAL_TO_DB_KEY["m-neck"]).toBe("cervical_extension");
+  });
+
+  it("still resolves every other machine to its only database key", () => {
+    expect(CANONICAL_TO_DB_KEY["m-leg-press"]).toBe("leg_press");
+    expect(CANONICAL_TO_DB_KEY["m-ext"]).toBe("leg_extension");
+    expect(CANONICAL_TO_DB_KEY["m-lumbar"]).toBe("lumbar_extension");
+  });
+
+  it("keeps recognising both spellings on the way in", () => {
+    // The mapping that decides which RECORD wins is separate from the one that
+    // recognises an incoming id, and both spellings must still be accepted.
+    expect(canonicalMachineId("4_way_neck")).toBe("m-neck");
+    expect(canonicalMachineId("cervical_extension")).toBe("m-neck");
   });
 });

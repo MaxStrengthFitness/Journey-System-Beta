@@ -221,7 +221,14 @@ export const MACHINE_ANATOMY: Record<string, MachineAnatomyMap> = {
     primary: ['neck'],
     secondary: ['traps'],
     movementPattern: 'Core: Spine Extension',
-    clinicalNote: 'Multi-directional cervical stimulation.',
+    /*
+     * The Academy documents ONE neck machine, the Cervical Extension, and
+     * there is no document anywhere in docs/msf-academy/ for a "4-way neck".
+     * This note used to read "Multi-directional cervical stimulation", which
+     * described the 4-way framing the rest of the app has now dropped — see
+     * features/catalog/machine-identity.ts.
+     */
+    clinicalNote: 'Cervical extension - posterior neck musculature isolation.',
   },
   /**
    * ALIAS of m-neck, not a second machine.
