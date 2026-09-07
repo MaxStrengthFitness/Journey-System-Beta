@@ -190,14 +190,16 @@ live mechanism is `approvedCrossTrainStudioIds` on the client, edited in
 
 ## Still open
 
-- **The cross-studio tenancy gap.** 5 of the 30 rules tests fail, and four are
-  one hole: `sessions` and `clients` are readable by any authenticated trainer
-  with no studio scoping. A trainer at one studio can read every client and
-  every session in the platform. The tests encode a policy that was never
-  written into the rules; they had been failing invisibly because the suite
-  could not run without JDK 21. **This is the next thing worth doing.**
-- The fifth failure is separate: nothing blocks `pinHash` on a trainer create.
-- **Section 6, Insights** — deferred by you, deliberately.
+- ~~**The cross-studio tenancy gap.**~~ **Fixed.** 5 of the 30 rules tests were
+  failing, and four were one hole: `sessions` and `clients` were readable by
+  any authenticated trainer with no studio scoping — a trainer at one studio
+  could read every client and every session in the platform. The tests encoded
+  a policy that was never written into the rules, and they had been failing
+  invisibly because the suite could not run without JDK 21. Both the rules and
+  every query that reads those collections are now scoped; see *The tenancy
+  fix* below.
+- ~~The fifth failure: nothing blocks `pinHash` on a trainer create.~~ **Fixed.**
+- ~~**Section 6, Insights** — deferred by you, deliberately.~~ **Built.**
 - The two WCAG failures Round 1 found in the shared palette affect screens
   outside admin and are not yet fixed at the source.
 
@@ -295,9 +297,22 @@ One query: sessions only, one studio, one date range, capped at 1,500.
 **The order matters.** Indexes must exist before the app asks for them, and the
 app must be scoped before the rules are tightened.
 
+Run these from `J:\Journey-System-Beta-master`, not from your home directory.
+
+**`npx firebase`, not `firebase`.** `firebase-tools` is a devDependency here,
+so it lives in `node_modules/.bin` and is not on your PATH. `npm run test:rules`
+works because npm puts that directory on the path for the length of the script;
+a bare `firebase` at the prompt does not get the same treatment and fails with
+"not recognized".
+
 ```
+# 0. Confirm you are logged in as the account that owns the prod project.
+npx firebase login:list
+
 # 1. Indexes first — additive, breaks nothing, takes a few minutes to build.
-firebase deploy --only firestore:indexes --project prod
+#    These must exist BEFORE the app ships, because the app asks for them
+#    the moment it loads.
+npx firebase deploy --only firestore:indexes --project prod
 
 # 2. Verify the rules while the indexes build. Expect 37 passing.
 npm run test:rules > rules-test.log 2>&1
@@ -307,7 +322,7 @@ git push origin master
 
 # 4. Rules last. Until this runs, the app is simply stricter than it needs
 #    to be — which is the safe direction to be caught in.
-firebase deploy --only firestore:rules --project prod
+npx firebase deploy --only firestore:rules --project prod
 ```
 
 If step 2 fails, stop before step 4 — steps 1 and 3 are safe on their own.
@@ -320,6 +335,59 @@ netstat -ano | findstr :8080
 taskkill /PID <the number at the end of that line> /F
 ```
 
+---
+
+# After Round 2: the Academy, and one palette
+
+Two rounds landed on top of the above. Both are already merged into `master`
+and ship with the same push.
+
+## MSF Topics — the Academy, readable from the app
+
+The catalog knew machines. It did not know the 214 Academy documents sitting
+in `docs/`, so a trainer wanting the cueing for a movement had to go and find
+a PDF. `src/features/academy/` parses that corpus at build time —
+`scripts/build-academy-content.ts` writes `src/features/academy/content/*.json`,
+111,666 words across 13 modules — and `AcademyView` reads it in five tabs:
+Curriculum, Cueing, At the machine, Glossary, Deep dives. A machine's detail
+page opens straight to its own Academy material.
+
+Checking the catalog against the source documents turned up content problems
+that had nothing to do with layout:
+
+- **The neck machine was serving un-sourced content with its warnings
+  stripped.** No MSF document for a "4-Way Neck" machine exists in the 214
+  files. It carried `requiresHandoff: false` and no never-to-failure rule.
+  Both restored, and the starting weight capped at the Academy's ceiling.
+- The Leg Curl hyperextension warning, the Lumbar gap instruction and the
+  Lateral Raise setup had each drifted from their sources. Restored.
+- Three places where two Academy documents genuinely contradict each other —
+  Leg Press foot rotation, Leg Curl gap, Lateral Raise gap — are marked
+  **SOURCE CONFLICT … confirm with your Studio Leader** rather than silently
+  picking a winner. **These three need a human ruling.**
+
+## One palette
+
+Ten of thirteen admin tabs were on the kit. The shell around them was not:
+`adm` sat on individual nav buttons, so `--adm-*` resolved there and nowhere
+else, and the frame stayed raw Tailwind slate while every tab inside it used
+kit surfaces. Fixed, along with the last three tabs — System Tools, Routine
+Templates, Limbo Queue.
+
+Two of those changed behaviour, not only colour, because putting them on the
+kit meant honouring the rules the kit encodes:
+
+- **Limbo dismiss now confirms.** `primitives.tsx` has named it an outstanding
+  offender since the kit was written. Throwing away a parked booking committed
+  on a single tap, with a tooltip as its only warning.
+- **The studio picker is the one admin select**, not a second implementation
+  of one.
+
+Every `.tsx` reachable from the admin surface — 57 files — now carries zero hex
+literals and zero raw Tailwind palette classes, with six deliberate exceptions:
+brand-colour *data*, the CSS variable that publishes it, and hex fills passed
+to the anatomy library, which takes strings rather than classes.
+
 ## Still open
 
 - **`demo-mode-foundation`** is 10 commits, unmerged, and overlaps this work in
@@ -327,3 +395,6 @@ taskkill /PID <the number at the end of that line> /F
   needs a deliberate merge, not a fast-forward.
 - The two WCAG failures Round 1 found in the shared palette affect screens
   outside admin and are not yet fixed at the source.
+- **Three source conflicts need a human ruling** — Leg Press foot rotation,
+  Leg Curl gap, Lateral Raise gap. They are flagged in the app, not guessed at.
+- `MACHINE_CATEGORY` omits Calf, Rear Delt and Scapular Retraction.
