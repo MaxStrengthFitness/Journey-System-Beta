@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { AppHeader } from "./AppHeader";
 import { StickyCTA } from "./StickyCTA";
 import { FeelToggle } from "./FeelToggle";
+import type { ClientFeel } from "../types";
 import { BentoStatTile } from "./BentoStatTile";
 import {
   Client,
@@ -50,9 +51,13 @@ export function VictoryHUDScreen({
   trainerDropdown,
   onStudioClick,
 }: VictoryHUDScreenProps) {
-  const [feel, setFeel] = useState<
-    "great" | "good" | "fatigued" | "sore" | "pain"
-  >("good");
+  /*
+   * `ClientFeel`, the same union the toggle emits and the clinical review
+   * reads. It used to be a five-value union of its own invention that no
+   * other file shared, reconciled at the call site with `as any` — see
+   * FeelToggle for what that cost.
+   */
+  const [feel, setFeel] = useState<ClientFeel>("Good");
   const [notes, setNotes] = useState("");
   const [priority, setPriority] = useState<"High" | "Medium" | "Low">("Medium");
   const [showCheckIn, setShowCheckIn] = useState(false);
@@ -370,7 +375,7 @@ export function VictoryHUDScreen({
               How does {client.firstName} feel?
             </div>
 
-            <FeelToggle value={feel} onChange={(val) => setFeel(val as any)} />
+            <FeelToggle value={feel} onChange={setFeel} />
 
             <textarea
               className="w-full bg-black/25 border border-white/10 rounded-[10px] p-2.5 px-3 min-h-15 text-[13px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic placeholder:font-sans resize-none outline-none focus:border-cyan transition-colors mt-1"

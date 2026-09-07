@@ -148,6 +148,28 @@ service cloud.firestore {
              );
     }
 
+    // Can this trainer see the session at /sessions/{id}? Used by the logs
+    // subcollection, which is addressable without the parent.
+    function isTrainerOfSessionId(sessionId) {
+      return exists(/databases/$(database)/documents/sessions/$(sessionId))
+        && isTrainerOfSessionData(
+             get(/databases/$(database)/documents/sessions/$(sessionId)).data);
+    }
+
+    function isTrainerOfSessionData(sessionData) {
+      return sessionData.get('trainerId', '') == request.auth.uid
+          || isTrainerOfStudio(sessionData.get('hostedAtStudioId', ''))
+          || namedClientIsReadable(sessionData.get('clientId', ''));
+    }
+
+    // isTrainerOfClient builds /documents/clients/$(id). An empty id makes
+    // that path malformed, so the emptiness check has to come first and the
+    // short-circuit has to be relied on. Sessions written before
+    // `hostedAtStudioId` was enforced also predate a reliable clientId.
+    function namedClientIsReadable(clientId) {
+      return clientId != null && clientId != '' && isTrainerOfClient(clientId);
+    }
+
     function isTrainerOfStudioOrClient(studioId, clientId) {
       return isSuperAdmin() || isFranchiseOwnerOnly() || (
         isAuthenticated() && (
@@ -419,15 +441,54 @@ service cloud.firestore {
 
     }
 
-    // CLIENTS: All authenticated trainers can read clients (needed to start sessions)
+    // CLIENTS — scoped to the reader's studios (tenancy pass, Sep 2026)
+    //
+    // This rule used to be `allow read: if isAuthenticated()`. Any trainer at
+    // any studio could read every client record in the platform — name, date
+    // of birth, phone, email, clinical notes — for every other franchise.
+    //
+    // The machinery to prevent that was already in this file and had never
+    // been wired to this collection. `isTrainerOfClientData` encodes exactly
+    // the policy lib/permissions.ts implements: your own studios, plus a
+    // client who has explicitly approved cross-training at one of them.
+    //
+    // READ IS WIDER THAN WRITE, DELIBERATELY. A cross-train client's record
+    // has to be readable at the studio they are visiting — that is what makes
+    // them trainable there — but editing them stays with the studio that owns
+    // the relationship. A visiting trainer correcting a phone number on
+    // someone else's client is how two studios end up disagreeing about who a
+    // person is.
+    //
+    // NOTE ON QUERIES: Firestore evaluates this per document and rejects a
+    // whole query if any document it would return fails. So every list query
+    // against this collection must be constrained to the reader's studios.
+    // The unscoped ones were fixed alongside this rule — see the tenancy
+    // section of ADMIN-OVERHAUL-ROUND2.md.
     match /clients/{clientId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && 
-                    isValidClient(request.resource.data) && 
-                    (isSuperAdmin() || isAnyAuthenticatedTrainer());
-      allow update: if isAuthenticated() && 
-                    isValidClient(request.resource.data) && 
-                    (isSuperAdmin() || isAnyAuthenticatedTrainer());
+      allow read: if isSuperAdmin()
+                  || isFranchiseOwnerOnly()
+                  || (isAnyAuthenticatedTrainer()
+                      && isTrainerOfClientData(
+                           clientId,
+                           resource.data,
+                           getTrainerData().primaryHomeStudioId,
+                           getTrainerData().get('accessibleStudioIds', []),
+                           getTrainerData().get('activeGuestStudioIds', [])));
+
+      allow create: if isValidClient(request.resource.data)
+                    && (isSuperAdmin()
+                        || (isAnyAuthenticatedTrainer()
+                            && isTrainerOfStudio(
+                                 getStudioIdFromData(request.resource.data))));
+
+      // `resource.data` is the EXISTING document: a trainer may only edit a
+      // client their own studio holds, whatever the incoming payload claims.
+      allow update: if isValidClient(request.resource.data)
+                    && (isSuperAdmin()
+                        || (isAnyAuthenticatedTrainer()
+                            && isTrainerOfStudio(
+                                 getStudioIdFromData(resource.data))));
+
       allow delete: if isSuperAdmin();
     }
 
@@ -542,15 +603,74 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && isAnyAuthenticatedTrainer();
     }
 
-    // TRAINING SESSIONS — KEY FIX: Any authenticated trainer with a profile can write sessions
+    // TRAINING SESSIONS — scoped three ways (tenancy pass, Sep 2026)
+    //
+    // This was `allow read: if isAuthenticated()`, so every trainer could read
+    // every session ever recorded anywhere: which client, which trainer, what
+    // weight, what notes.
+    //
+    // WHY THREE BRANCHES RATHER THAN A STUDIO CHECK
+    // ---------------------------------------------
+    // The obvious rule — "the session's studio is one of mine" — is wrong here
+    // for two reasons the code makes plain.
+    //
+    // First, eighteen read paths query sessions by `clientId`, not by studio:
+    // a client's history, their charts, their progress report, their machine
+    // stats. Scoping those by studio would silently truncate the history of
+    // any client who has ever trained at a second location — and cross-training
+    // is a feature of this product, not an edge case.
+    //
+    // Second, sessions written before `hostedAtStudioId` was enforced carry
+    // "", "unknown", "legacy" or nothing at all. A studio-only rule would make
+    // those documents unreadable by every single user, including the owner,
+    // and would poison any query that could return one.
+    //
+    // So the question the rule asks is the one the app actually asks: can this
+    // trainer read the CLIENT? That is `isTrainerOfClient`, the same predicate
+    // guarding the client record itself, so a session can never be more
+    // visible than the person it is about. The studio branch covers a session
+    // at my location whose client record is gone; the trainer branch covers my
+    // own history after I move studios.
+    //
+    // COST: for a `clientId`-pinned query every document resolves the same
+    // client path, which Firestore caches within one evaluation — two document
+    // reads for the whole query, against a limit of ten.
     match /sessions/{sessionId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isAnyAuthenticatedTrainer() && isValidSession(request.resource.data);
-      allow update: if isAuthenticated() && isAnyAuthenticatedTrainer() && isValidSession(request.resource.data);
+      allow read: if isSuperAdmin()
+                  || isFranchiseOwnerOnly()
+                  || (isAnyAuthenticatedTrainer()
+                      && (resource.data.get('trainerId', '') == request.auth.uid
+                          || isTrainerOfStudio(
+                               resource.data.get('hostedAtStudioId', ''))
+                          || namedClientIsReadable(
+                               resource.data.get('clientId', ''))));
+
+      allow create: if isValidSession(request.resource.data)
+                    && (isSuperAdmin()
+                        || (isAnyAuthenticatedTrainer()
+                            && (isTrainerOfStudio(
+                                  request.resource.data.get('hostedAtStudioId', ''))
+                                || namedClientIsReadable(
+                                     request.resource.data.get('clientId', '')))));
+
+      allow update: if isValidSession(request.resource.data)
+                    && (isSuperAdmin()
+                        || (isAnyAuthenticatedTrainer()
+                            && (resource.data.get('trainerId', '') == request.auth.uid
+                                || isTrainerOfStudio(
+                                     resource.data.get('hostedAtStudioId', ''))
+                                || namedClientIsReadable(
+                                     resource.data.get('clientId', '')))));
+
       allow delete: if isSuperAdmin() || isFranchiseOwner();
 
+      // The logs hang off a session whose parent rule has already been
+      // evaluated to reach this path in the UI, but a client can address them
+      // directly, so they carry the same client check rather than trusting it.
       match /logs/{logId} {
-        allow read, write: if isAuthenticated() && isAnyAuthenticatedTrainer();
+        allow read, write: if isSuperAdmin()
+                           || (isAnyAuthenticatedTrainer()
+                               && isTrainerOfSessionId(sessionId));
       }
     }
 

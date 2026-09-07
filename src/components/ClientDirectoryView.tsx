@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useActiveStudio } from "../ActiveStudioContext";
 import { Client, Trainer } from "../types";
 import { db } from "../firebase";
+import { queryStudioIds } from "../lib/tenancy";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import SyncStatusBadge from "./mindbody/SyncStatusBadge";
 
@@ -173,16 +174,28 @@ export function ClientDirectoryView({
       const fetchRecentClients = async () => {
         try {
           const clientsRef = collection(db, "clients");
-          let q;
-          if (!isGlobalSearch && activeStudioId) {
-            q = query(
-              clientsRef,
-              where("homeStudioId", "==", activeStudioId),
-              limit(30),
-            );
-          } else {
-            q = query(clientsRef, limit(30));
+          /*
+           * SCOPED BY STUDIO (tenancy pass, Sep 2026).
+           *
+           * The `else` branch here used to be `query(clientsRef, limit(30))` —
+           * no studio constraint — which is what "global search" meant and
+           * what made every client in the platform readable from this screen.
+           * Global now means every studio THIS trainer may read, which is the
+           * only thing it could honestly have meant.
+           */
+          const studioIds = queryStudioIds(authTrainer, activeStudioId, {
+            includeAll: isGlobalSearch,
+          });
+          if (studioIds.length === 0) {
+            setDbSearchResults([]);
+            setIsSearchingDb(false);
+            return;
           }
+          const q = query(
+            clientsRef,
+            where("homeStudioId", "in", studioIds),
+            limit(30),
+          );
           const snap = await getDocs(q);
           const fetched = snap.docs.map(
             (d) => ({ id: d.id, ...(d.data() as any) }) as Client,
@@ -213,15 +226,36 @@ export function ClientDirectoryView({
           return;
         }
 
+        /*
+         * SCOPED BY STUDIO (tenancy pass, Sep 2026).
+         *
+         * `clients` used to be `allow read: if isAuthenticated()`, and this
+         * query used to run with no studio constraint at all — which is how a
+         * trainer at one location could search every client in the platform.
+         * The rule is now per-document, and Firestore rejects a whole query
+         * that could return a document failing it, so the studios have to be
+         * named here. See src/lib/tenancy.ts.
+         */
+        const studioIds = queryStudioIds(authTrainer, activeStudioId, {
+          includeAll: isGlobalSearch,
+        });
+        if (studioIds.length === 0) {
+          setDbSearchResults([]);
+          setIsSearchingDb(false);
+          return;
+        }
+
         const clientsRef = collection(db, "clients");
         const q1 = query(
           clientsRef,
+          where("homeStudioId", "in", studioIds),
           where("firstName", ">=", prefixCapitalized),
           where("firstName", "<=", prefixCapitalized + "\uf8ff"),
           limit(30),
         );
         const q2 = query(
           clientsRef,
+          where("homeStudioId", "in", studioIds),
           where("lastName", ">=", prefixCapitalized),
           where("lastName", "<=", prefixCapitalized + "\uf8ff"),
           limit(30),
@@ -340,8 +374,23 @@ export function ClientDirectoryView({
 
     const fetchLastSessions = async () => {
       try {
+        /*
+         * Scoped to this studio (tenancy pass, Sep 2026).
+         *
+         * Without it the rule would have to resolve up to thirty different
+         * client documents to authorise one query, and Firestore allows ten
+         * document reads per evaluation — so the query would fail outright.
+         * With it the studio branch of the rule matches first and the whole
+         * query costs one cached read.
+         *
+         * The column therefore shows the last session AT THIS STUDIO, which
+         * is also the more useful reading of "Last Session" on a directory
+         * that is already scoped to one location.
+         */
+        if (!activeStudioId) return;
         const q = query(
           collection(db, "sessions"),
+          where("hostedAtStudioId", "==", activeStudioId),
           where("clientId", "in", idsToFetch),
           limit(100),
         );

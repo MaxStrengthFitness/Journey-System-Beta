@@ -19,6 +19,7 @@ import {
   doc,
 } from "firebase/firestore";
 import { auth, db } from "../firebase";
+import { queryStudioIds } from "../lib/tenancy";
 import { Client, Trainer, View, WorkoutSession } from "../types";
 import { isFuzzyNameMatch } from "../lib/sync-utils";
 import { ScheduleBlock } from "./schedule/ScheduleBlock";
@@ -212,15 +213,33 @@ export function ClientsView({
           return;
         }
 
+        /*
+         * SCOPED BY STUDIO (tenancy pass, Sep 2026).
+         *
+         * `clients` used to be `allow read: if isAuthenticated()`, and this
+         * query used to run with no studio constraint at all — which is how a
+         * trainer at one location could search every client in the platform.
+         * The rule is now per-document, and Firestore rejects a whole query
+         * that could return a document failing it, so the studios have to be
+         * named here. See src/lib/tenancy.ts.
+         */
+        const studioIds = queryStudioIds(authTrainer, activeStudioId);
+        if (studioIds.length === 0) {
+          setDbSearchResults([]);
+          return;
+        }
+
         const clientsRef = collection(db, "clients");
         const q1 = query(
           clientsRef,
+          where("homeStudioId", "in", studioIds),
           where("firstName", ">=", prefixCapitalized),
           where("firstName", "<=", prefixCapitalized + "\uf8ff"),
           limit(30),
         );
         const q2 = query(
           clientsRef,
+          where("homeStudioId", "in", studioIds),
           where("lastName", ">=", prefixCapitalized),
           where("lastName", "<=", prefixCapitalized + "\uf8ff"),
           limit(30),

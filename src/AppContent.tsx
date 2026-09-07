@@ -2402,8 +2402,18 @@ export default function AppContent({
                                 Targeted Muscles
                               </p>
                               <div className="flex flex-wrap gap-1.5">
-                                {infoMachine.targetMuscles
-                                  ?.split(",")
+                                {/*
+                                  `targetMuscles` is a string on some machine
+                                  records and an array on others, and calling
+                                  .split on the array shape threw a TypeError
+                                  that took the whole dialog down. Normalised
+                                  here rather than at the source because both
+                                  shapes are already in Firestore.
+                                */}
+                                {(Array.isArray(infoMachine.targetMuscles)
+                                  ? infoMachine.targetMuscles
+                                  : (infoMachine.targetMuscles ?? "").split(","))
+                                  .filter((m) => m.trim())
                                   .map((m) => (
                                     <Badge
                                       key={m}

@@ -587,4 +587,135 @@ describe("Firestore Security Rules", () => {
       }),
     );
   });
+
+  // ── CROSS-STUDIO TENANCY (Sep 2026) ──────────────────────────────────
+  //
+  // clients and sessions were both `allow read: if isAuthenticated()`. These
+  // cover the policy that replaced it: your own studios, plus a client who
+  // has approved cross-training at one of them; and a session you may read
+  // if you may read its client, whatever studio it was hosted at.
+
+  it("lets a trainer read a client at their own studio", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "clients", "mine"), {
+        firstName: "Home",
+        lastName: "Client",
+        isActive: true,
+        remainingSessions: 5,
+        homeStudioId: "studioA",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerA", {
+      email: "trainera@test.com",
+    });
+    await assertSucceeds(getDoc(doc(ctx.firestore(), "clients", "mine")));
+  });
+
+  it("denies a trainer editing a client at another studio", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "clients", "theirs"), {
+        firstName: "Their",
+        lastName: "Client",
+        isActive: true,
+        remainingSessions: 5,
+        homeStudioId: "studioA",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerB", {
+      email: "trainerb@test.com",
+    });
+    await assertFails(
+      updateDoc(doc(ctx.firestore(), "clients", "theirs"), {
+        firstName: "Edited",
+        lastName: "Client",
+        isActive: true,
+        remainingSessions: 5,
+        homeStudioId: "studioA",
+      }),
+    );
+  });
+
+  it("lets a trainer read a session whose client they can read, at another studio", async () => {
+    // The point of scoping sessions by CLIENT rather than by studio: a
+    // cross-train client's history has to stay whole.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "clients", "crossClient"), {
+        firstName: "Cross",
+        lastName: "Client",
+        isActive: true,
+        remainingSessions: 5,
+        homeStudioId: "studioA",
+        approvedCrossTrainStudioIds: ["studioB"],
+      });
+      await setDoc(doc(db, "sessions", "sessionAtA"), {
+        hostedAtStudioId: "studioA",
+        clientId: "crossClient",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerB", {
+      email: "trainerb@test.com",
+    });
+    await assertSucceeds(getDoc(doc(ctx.firestore(), "sessions", "sessionAtA")));
+  });
+
+  it("denies a session whose client they cannot read", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "clients", "privateClient"), {
+        firstName: "Private",
+        lastName: "Client",
+        isActive: true,
+        remainingSessions: 5,
+        homeStudioId: "studioA",
+      });
+      await setDoc(doc(db, "sessions", "privateSession"), {
+        hostedAtStudioId: "studioA",
+        clientId: "privateClient",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerB", {
+      email: "trainerb@test.com",
+    });
+    await assertFails(
+      getDoc(doc(ctx.firestore(), "sessions", "privateSession")),
+    );
+  });
+
+  it("lets a trainer read their own session after moving studios", async () => {
+    // trainerB coached this at studioA and no longer works there.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "sessions", "myOldSession"), {
+        hostedAtStudioId: "studioA",
+        clientId: "someoneElse",
+        trainerId: "trainerB",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerB", {
+      email: "trainerb@test.com",
+    });
+    await assertSucceeds(getDoc(doc(ctx.firestore(), "sessions", "myOldSession")));
+  });
+
+  it("does not fall over on a legacy session with no studio and no client", async () => {
+    // Imports wrote sessions with hostedAtStudioId "" and no clientId. The
+    // rule must DENY these rather than erroring on a malformed document path.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "sessions", "legacySession"), {
+        hostedAtStudioId: "",
+        clientId: "",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerB", {
+      email: "trainerb@test.com",
+    });
+    await assertFails(getDoc(doc(ctx.firestore(), "sessions", "legacySession")));
+  });
+
+  it("lets an owner read across their studio", async () => {
+    const ctx = testEnv.authenticatedContext("ownerA", {
+      email: "ownera@test.com",
+    });
+    await assertSucceeds(getDoc(doc(ctx.firestore(), "sessions", "sessionA")));
+  });
 });

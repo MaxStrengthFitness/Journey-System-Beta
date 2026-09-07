@@ -71,26 +71,32 @@ export function useStudioExports(deps: StudioExportDeps) {
       const end = new Date(endDateStr);
       end.setHours(23, 59, 59, 999);
 
-      let q = query(
+      /*
+       * The studio filter moved from JavaScript into the query (tenancy pass,
+       * Sep 2026). It used to fetch every session in the platform for the date
+       * range and then drop the ones from other studios in memory — which was
+       * already the wrong shape (a month of network-wide sessions to export
+       * one studio's payroll) and is now also unreadable: `sessions` is scoped
+       * by rule, and Firestore rejects the whole query rather than filtering.
+       *
+       * An export with no studio selected exports nothing, deliberately. The
+       * alternative is asking for the network and being denied.
+       */
+      if (!activeStudioId) return [];
+
+      const q = query(
         collection(db, "sessions"),
+        where("hostedAtStudioId", "==", activeStudioId),
         where("createdAt", ">=", Timestamp.fromDate(start)),
         where("createdAt", "<=", Timestamp.fromDate(end)),
       );
 
       const snap = await getDocs(q);
-      let data = snap.docs.map(
+      const data = snap.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() }) as WorkoutSession,
       );
 
-      // Filter by status === 'Completed'
-      data = data.filter((s) => s.status === "Completed");
-
-      // Filter by activeStudioId if selected
-      if (activeStudioId) {
-        data = data.filter((s) => s.hostedAtStudioId === activeStudioId);
-      }
-
-      return data;
+      return data.filter((s) => s.status === "Completed");
     } catch (err: any) {
       console.error(err);
       toastError("Failed to fetch sessions: " + err.message);

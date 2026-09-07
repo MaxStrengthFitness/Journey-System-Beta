@@ -221,9 +221,9 @@ export function ClientProgressReportView({
     },
 
     highlights: [
-      { label: "", startValue: "", currentValue: "", featuredMetric: "weight" },
-      { label: "", startValue: "", currentValue: "", featuredMetric: "weight" },
-      { label: "", startValue: "", currentValue: "", featuredMetric: "weight" },
+      { label: "", startValue: "", currentValue: "" },
+      { label: "", startValue: "", currentValue: "" },
+      { label: "", startValue: "", currentValue: "" },
     ],
 
     performanceMatrix: {

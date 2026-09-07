@@ -707,6 +707,10 @@ export interface Client {
   consultationCompleted?: boolean;
   requiresConsultation?: boolean;
   firstSessionDate?: any;
+  /** The raw Mindbody string, kept beside the parsed date it came from. */
+  firstSessionDateRaw?: string;
+  /** Most recent session date, denormalised for the directory's column. */
+  lastSessionDate?: string;
   discoveryNotes?: string;
   currentMachineMetrics?: Record<string, CurrentMachineMetric>;
   createdAt?: any;
@@ -881,6 +885,19 @@ export interface WorkoutSession {
   routineId?: string;
   /** PHYSICAL LOCATION: Where the workout actually took place */
   hostedAtStudioId: string;
+  /*
+   * DECLARED SEP 2026. Everything below was already being written and read;
+   * none of it was on the type, so nothing checked a spelling and a rename
+   * would have failed silently. Optional because older documents predate them.
+   */
+  /** The routine this session followed, for the history and calendar labels. */
+  routineName?: string;
+  /**
+   * An open session started before a client was chosen. WorkoutTrackerView
+   * queries on this field, so a typo here is a query that silently matches
+   * nothing.
+   */
+  isUnassigned?: boolean;
   /** DATA ANCHOR: The client's home base (used for local reporting vs cross-studio usage) */
   clientHomeStudioId: string;
   /** Flag for sessions performed at a non-home studio location */

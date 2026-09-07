@@ -1,16 +1,34 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
+/**
+ * THE IDS ARE THE STORED VALUES, AND THEY ARE `ClientFeel` (Sep 2026).
+ *
+ * They used to be 'wiped' | 'good' | 'energized'. Those strings went straight
+ * into `session.clientFeel`, and the only thing that reads that field —
+ * `postFeelOf` in features/clinical-review/facts.ts — matches "Wiped Out" |
+ * "Good" | "Energized" and returns null for anything else. So every
+ * post-session feel a trainer recorded was dropped on the floor by the
+ * clinical review, silently, and the unit tests passed because their fixture
+ * used the Title Case spelling the UI never produced.
+ *
+ * The mismatch survived because VictoryHUDScreen declared its state as a
+ * THIRD vocabulary ("great" | "fatigued" | "sore" | ...) and reconciled the
+ * two with `as any`. Typing this against ClientFeel is what makes the three
+ * agree, and what would have caught it.
+ */
+import type { ClientFeel } from "../types";
+
 interface FeelToggleProps {
-  value: 'wiped' | 'good' | 'energized' | null;
-  onChange: (val: 'wiped' | 'good' | 'energized') => void;
+  value: ClientFeel | null;
+  onChange: (val: ClientFeel) => void;
 }
 
 export function FeelToggle({ value, onChange }: FeelToggleProps) {
   const options = [
-    { id: 'wiped', label: 'Wiped Out' },
-    { id: 'good', label: 'Good' },
-    { id: 'energized', label: 'Energized' },
+    { id: 'Wiped Out', label: 'Wiped Out' },
+    { id: 'Good', label: 'Good' },
+    { id: 'Energized', label: 'Energized' },
   ] as const;
 
   return (
