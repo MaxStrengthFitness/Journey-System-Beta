@@ -582,7 +582,15 @@ export const SELECTION_TEMPLATES: SelectionTemplate[] = [
     keywords: [],
     consult: ["m-leg-press", "m-compound-row", "m-lumbar"],
     firstWorkout: ["m-hip-abd", "m-lumbar", "m-compound-row", "m-leg-press"],
-    secondWorkout: ["m-hip-add", "m-dip", "m-compound-row", "m-pullover", "m-leg-press"],
+    /*
+     * Lumbar was missing here. The table's Second Workout cell for this row
+     * reads "Lumb, CR, SD, ABD/ADD, PO, LP" - six exercises. It was carried as
+     * five, and the one dropped was Lumbar, which CONSULT_TRIO in this same
+     * file establishes as one of the three consult movements that "become a
+     * core part of the client's routine moving forward". The table wraps
+     * across lines in the .txt conversion, which is how a cell lost an entry.
+     */
+    secondWorkout: ["m-lumbar", "m-compound-row", "m-dip", "m-hip-add", "m-pullover", "m-leg-press"],
     eventualA: ["m-hip-add", "m-dip", "m-compound-row", "m-torso-rotation", "m-overhead-press", "m-pullover", "m-leg-press"],
     eventualB: ["m-hip-abd", "m-pulldown", "m-chest-press", "m-leg-curl", "m-simple-row", "m-ext", "m-lumbar"],
   },
@@ -622,7 +630,17 @@ export const SELECTION_TEMPLATES: SelectionTemplate[] = [
     secondWorkout: ["m-hip-add", "m-compound-row", "m-leg-curl", "m-dip", "m-pulldown", "m-leg-press"],
     eventualA: ["m-hip-add", "m-compound-row", "m-chest-press", "m-torso-rotation", "m-leg-curl", "m-pullover", "m-leg-press"],
     eventualB: ["m-simple-row", "m-hip-abd", "m-dip", "m-leg-curl", "m-pulldown", "m-lumbar", "m-ext"],
-    notes: ["Leg Curl leads — knee flexion is generally better tolerated than deep flexion under load."],
+    /*
+     * The rationale that used to sit here - "Leg Curl leads, knee flexion is
+     * generally better tolerated than deep flexion under load" - is not in the
+     * corpus. The Exercise Selection Template lists "LC, LP, CR" for this row
+     * with no explanation, and Leg Curl.txt in fact warns in the other
+     * direction, that the knee-flexion force couple is unfamiliar and a LARGER
+     * gap is advised for knee issues. This file's own header says every
+     * constant traces to a document, so anatomical reasoning cannot be
+     * presented as doctrine here.
+     */
+    notes: ["The document gives this order without a stated reason. Leg Curl.txt separately advises a larger gap for knee issues."],
   },
   {
     id: "shoulder",
@@ -774,8 +792,15 @@ export const REP_RANGE_BY_LEVEL: Record<TraineeLevel, { min: number; max: number
  */
 export const EXERCISE_COUNT = {
   target: 7,
+  /*
+   * SIX, not five. "most clients typically perform at least 6 exercises per
+   * workout (after the initial 'learning curve' period of around 4 to 6
+   * workouts)" - Exercise Selection and Long-Term Programming.txt. Five was
+   * not in any document; the soft floor below already had 6 right, so the two
+   * disagreed with each other as well as with the source.
+   */
   /** Below this a routine is flagged as thin for an established client. */
-  min: 5,
+  min: 6,
   /** Above this the workout stops fitting the half-hour with real intensity. */
   max: 9,
   soft: { min: 6, max: 8 },

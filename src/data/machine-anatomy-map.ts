@@ -74,10 +74,23 @@ export const MACHINE_ANATOMY: Record<string, MachineAnatomyMap> = {
   'm-simple-row': {
     machineId: 'm-simple-row',
     preferredView: 'back',
-    primary: ['rhomboids', 'traps'],
-    secondary: ['lats', 'biceps'],
+    /*
+     * THE REAR DELT WAS MISSING, AND THE LATS AND BICEPS WERE INVENTED.
+     *
+     * "Posterior Deltoid (Rear Delt) - Shoulder horizontal Abduction /
+     *  Rhomboids / Trapezius", synergists "Infraspinatus / Erector Spinae"
+     *   - Comprehensive Equipment Overview / Simple Row.txt
+     *
+     * The Academy names the rear delt FIRST and lists neither lats nor biceps
+     * anywhere. academy.ts:404 already said so in prose ("Simple Row takes
+     * rear delt, traps and rhomboids") while this map said otherwise - and
+     * musclesOf() reads THIS file, so the routine builder's frequency
+     * accounting for the rear delt was wrong on every routine using it.
+     */
+    primary: ['delts-rear', 'rhomboids', 'traps'],
+    secondary: ['lower-back'],
     movementPattern: 'Upper Body: Horizontal Pull',
-    clinicalNote: 'Mid-back isolation focused on scapular retraction.',
+    clinicalNote: 'Scapular retraction and rear deltoid, not a lat movement.',
   },
 
   // ─── VERTICAL PUSH ────────────────────────────────
@@ -92,10 +105,21 @@ export const MACHINE_ANATOMY: Record<string, MachineAnatomyMap> = {
   'm-dip': {
     machineId: 'm-dip',
     preferredView: 'side',
-    primary: ['triceps'],
-    secondary: ['pecs', 'delts-front'],
+    /*
+     * PECS PRIMARY. This said triceps, which contradicted both the Academy and
+     * the app's own MACHINE_DATABASE - and adapters.ts gives this file's
+     * clinicalNote precedence over the database's target list, so the wrong
+     * one is what the Catalog showed.
+     *
+     * "Pectoralis Major - Costal and Sternal Heads (Chest/Pecs) - Shoulder
+     *  Flexion (from hyperextension), horizontal Adduction / Triceps - Elbow
+     *  Extension / Anterior Deltoid - Shoulder Flexion"
+     *   - Comprehensive Equipment Overview / Seated Dip.txt, in that order
+     */
+    primary: ['pecs'],
+    secondary: ['triceps', 'delts-front'],
     movementPattern: 'Upper Body: Vertical Push',
-    clinicalNote: 'Tricep-dominant push pattern with chest assistance.',
+    clinicalNote: 'Chest-dominant push, with triceps and anterior deltoid assisting.',
   },
 
   // ─── VERTICAL PULL ────────────────────────────────
@@ -120,10 +144,28 @@ export const MACHINE_ANATOMY: Record<string, MachineAnatomyMap> = {
   'm-lateral-raise': {
     machineId: 'm-lateral-raise',
     preferredView: 'front',
+    /*
+     * THE FIGURE CANNOT TELL THE THREE DELTOID HEADS APART.
+     *
+     * BODY_SLUG_MAP collapses delts-front and delts-rear onto one 'deltoids'
+     * region, so whichever id is used here paints the same blob. The id is
+     * therefore not the thing to get right - the NOTE is, and it used to say
+     * "medial deltoid isolation" while pairing it with delts-front, so the
+     * object contradicted itself.
+     *
+     * The Academy is unambiguous about which head this is:
+     *   "We are targeting the sides of the shoulders (middle deltoid) on this
+     *    movement." - MSF Upper Body - setup and instruction.txt
+     *   "Primary Muscles: Lateral Deltoid (shoulder abduction)"
+     *    - Set Up Machines/machine-setup-template.md
+     *
+     * If the figure ever gains a separate lateral-deltoid region, this entry
+     * and BODY_SLUG_MAP are the two places to change.
+     */
     primary: ['delts-front'],
     secondary: ['traps'],
     movementPattern: 'Upper Body: Isolation',
-    clinicalNote: 'Frontal-plane shoulder abduction — medial deltoid isolation.',
+    clinicalNote: 'Frontal-plane shoulder abduction — lateral (middle) deltoid.',
   },
 
   // ─── ARM ISOLATION ────────────────────────────────
