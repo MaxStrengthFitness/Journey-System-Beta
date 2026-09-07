@@ -200,3 +200,130 @@ live mechanism is `approvedCrossTrainStudioIds` on the client, edited in
 - **Section 6, Insights** — deferred by you, deliberately.
 - The two WCAG failures Round 1 found in the shared palette affect screens
   outside admin and are not yet fixed at the source.
+
+---
+
+# After the round: tenancy, the sweep, and Insights
+
+Three more commits landed on this branch after the eight phases above, and
+`master` now carries all of it.
+
+## The cross-studio tenancy gap — closed
+
+`clients` and `sessions` were both `allow read: if isAuthenticated()`. Any
+trainer at any studio could read every client record in the platform and every
+session ever recorded, for every franchise.
+
+**The machinery was already in `firestore.rules` and had never been wired to
+the two collections it was written for.** `isTrainerOfClientData` encodes
+exactly the policy `lib/permissions.ts` implements.
+
+**Sessions are scoped by client, not by studio.** The obvious rule — "the
+session's studio is one of mine" — is wrong here for two reasons:
+
+- Eighteen read paths query sessions by `clientId`. Scoping those by studio
+  would silently truncate the history of anyone who has trained at a second
+  location, and cross-training is a feature.
+- Sessions written before `hostedAtStudioId` was enforced carry `""`,
+  `"unknown"`, `"legacy"` or nothing. A studio-only rule would make those
+  unreadable by everyone including the owner.
+
+So the rule asks what the app asks: *can this trainer read the client?* A
+session can never be more visible than the person it is about.
+
+**Read is wider than write on clients**, deliberately. A cross-train client
+must be readable at the studio they are visiting; editing stays with the studio
+that owns the relationship.
+
+**The queries had to change first.** Firestore rejects an entire query if any
+document it would return fails the rule, so tightening rules alone would have
+blanked out the client directory, search, the workout tracker and the payroll
+export rather than securing anything. Eleven read paths now name their studios
+(`src/lib/tenancy.ts`, 15 tests) and four composite indexes support them.
+
+Two were bugs on their own terms: the tracker's unassigned-session probe was
+network-wide, so two studios with an open session could each adopt the other's;
+and the payroll export fetched every session in the platform for the date range
+and dropped the other studios' in memory.
+
+> **Behaviour change:** client search now finds only clients your studio holds.
+> "Global search" means every studio you may read, not the whole platform.
+> Cross-train clients still arrive through the schedule, by document id.
+
+## The error sweep — 42 typecheck errors down to 20
+
+Three were real bugs, not type noise.
+
+**Every post-session client feel was being discarded.** `FeelToggle` wrote
+`'wiped' | 'good' | 'energized'`; `postFeelOf` in the clinical review matches
+`"Wiped Out" | "Good" | "Energized"` and returns null otherwise. It survived
+because `VictoryHUDScreen` declared its state as a *third* vocabulary and
+reconciled them with `as any` — and the unit test fixture used the Title Case
+spelling the UI never produced. All three now speak `ClientFeel`, and the
+reader maps the legacy values so existing documents start counting without a
+migration.
+
+**A `.split()` on `targetMuscles`**, which is an array on some machine records —
+a TypeError that took down the machine info dialog.
+
+**`log.type === "Cardio"`** — nothing has ever written `type` onto an exercise
+log. A condition that can never be true reads as coverage.
+
+The rest were fields the code reads and writes that the types never declared
+(`routineName`, `isUnassigned`, `lastSessionDate`, `firstSessionDateRaw`), now
+declared so a rename cannot fail silently. Of the 20 remaining, 2 are in
+`harness/`, which is gitignored local scratch.
+
+## Insights (Section 6)
+
+The old screen read 500 clients, 1,000 sessions and 1,000 exercise logs
+unscoped — it would be rejected outright under the new rules.
+
+It now leads with **sentences**, not totals: sessions never closed out, a
+lopsided floor, who is not writing notes, machine variety, client return rate.
+Every claim has a minimum sample stated as a named constant, and below it the
+screen stays silent — a trainer who ran four sessions has not got a 25%
+completion problem, and one bad call like that is how a manager stops trusting
+a screen. Return rate is deliberately not attributed to individuals.
+
+One query: sessions only, one studio, one date range, capped at 1,500.
+
+---
+
+# Deploying this
+
+**The order matters.** Indexes must exist before the app asks for them, and the
+app must be scoped before the rules are tightened.
+
+```
+# 1. Indexes first — additive, breaks nothing, takes a few minutes to build.
+firebase deploy --only firestore:indexes --project prod
+
+# 2. Verify the rules while the indexes build. Expect 37 passing.
+npm run test:rules > rules-test.log 2>&1
+
+# 3. The app. Render auto-deploys on any commit to master.
+git push origin master
+
+# 4. Rules last. Until this runs, the app is simply stricter than it needs
+#    to be — which is the safe direction to be caught in.
+firebase deploy --only firestore:rules --project prod
+```
+
+If step 2 fails, stop before step 4 — steps 1 and 3 are safe on their own.
+
+**If the emulator will not start** ("port taken", or an empty log): a previous
+run is still holding 8080.
+
+```
+netstat -ano | findstr :8080
+taskkill /PID <the number at the end of that line> /F
+```
+
+## Still open
+
+- **`demo-mode-foundation`** is 10 commits, unmerged, and overlaps this work in
+  9 files including `firestore.rules` and two files these rounds deleted. It
+  needs a deliberate merge, not a fast-forward.
+- The two WCAG failures Round 1 found in the shared palette affect screens
+  outside admin and are not yet fixed at the source.
