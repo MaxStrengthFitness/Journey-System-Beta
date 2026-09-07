@@ -191,12 +191,20 @@ service cloud.firestore {
     // VALIDATORS & PROPERTY MATCHERS
     // ===============================================================
 
+    /**
+     * NOTE (Sep 2026): staging's `allow create` for trainers has no
+     * self-create clause at all, so production's selfCreatedRoleIsAllowed()
+     * guard has nothing to guard here — and the claim-at-first-sign-in flow
+     * cannot run on staging either. The two files have diverged since the
+     * studio roster and machineNotes rounds; reconciling them is its own
+     * piece of work and is listed in ADMIN-OVERHAUL-ROUND1.md.
+     */
+
     function isValidTrainer(data) {
       return hasRequiredFields(['fullName', 'initials', 'primaryHomeStudioId']) &&
              data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
              data.initials is string && data.initials.size() >= 2 && data.initials.size() <= 4 &&
              data.primaryHomeStudioId is string && data.primaryHomeStudioId.size() > 0 && data.primaryHomeStudioId.size() < 100 &&
-             (!('mindbody_ical_url' in data) || data.mindbody_ical_url == null || (data.mindbody_ical_url is string && data.mindbody_ical_url.size() < 500)) &&
              (!('role' in data) || data.role == null || data.role is string) &&
              (!('accessibleStudioIds' in data) || data.accessibleStudioIds == null || data.accessibleStudioIds is list) &&
              (!('activeGuestStudioIds' in data) || data.activeGuestStudioIds == null || data.activeGuestStudioIds is list) &&

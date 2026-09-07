@@ -323,7 +323,7 @@ export function StudioInventoryManager({
       )}
 
       <Dialog open={!!customDraft} onOpenChange={(o) => !o && setCustomDraft(null)}>
-        <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto">
+        <DialogContent className="max-h-[92dvh] sm:max-w-5xl lg:max-w-6xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="uppercase tracking-tight">
               Add a custom machine

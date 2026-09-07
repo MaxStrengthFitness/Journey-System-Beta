@@ -390,4 +390,332 @@ describe("Firestore Security Rules", () => {
       ),
     );
   });
+
+  // ── SELF-CREATED TRAINER DOCUMENTS (Admin Overhaul, Sep 2026) ─────────
+  //
+  // `allow create` has a bootstrap clause letting a signed-in person own
+  // trainers/{their uid} — the claim at first sign-in depends on it. But
+  // isValidTrainer placed no constraint on `role`, so any authenticated
+  // Google account could create a trainer document for ITSELF with role
+  // "Admin" and become a system administrator. The UPDATE rule has always
+  // refused that escalation; create never did.
+  //
+  // These four are the whole contract: the escalation is closed, and the two
+  // legitimate paths through that same clause still work.
+
+  it("denies a signed-in account making itself an Admin", async () => {
+    const ctx = testEnv.authenticatedContext("newguy", {
+      email: "newguy@test.com",
+    });
+    const db = ctx.firestore();
+    await assertFails(
+      setDoc(doc(db, "trainers", "newguy"), {
+        fullName: "New Guy",
+        initials: "NG",
+        role: "Admin",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+      }),
+    );
+  });
+
+  it("denies a signed-in account making itself a Founder or Overseer", async () => {
+    const db = testEnv
+      .authenticatedContext("newguy", { email: "newguy@test.com" })
+      .firestore();
+    const base = {
+      fullName: "New Guy",
+      initials: "NG",
+      primaryHomeStudioId: "studioA",
+      accessibleStudioIds: ["studioA"],
+    };
+    await assertFails(
+      setDoc(doc(db, "trainers", "newguy"), { ...base, role: "Founder" }),
+    );
+    await assertFails(
+      setDoc(doc(db, "trainers", "newguy"), { ...base, role: "Overseer" }),
+    );
+  });
+
+  it("still allows a signed-in account to create its own ordinary profile", async () => {
+    // This is the claim-at-first-sign-in path. Break it and an admin-created
+    // placeholder can never become a real account.
+    const ctx = testEnv.authenticatedContext("newguy", {
+      email: "newguy@test.com",
+    });
+    const db = ctx.firestore();
+    await assertSucceeds(
+      setDoc(doc(db, "trainers", "newguy"), {
+        fullName: "New Guy",
+        initials: "NG",
+        role: "LifeTransformer",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+      }),
+    );
+  });
+
+  it("still allows the owner's own bootstrap to mint an Admin profile", async () => {
+    // Exempted by email, mirroring the hard-coded bootstrap in
+    // useAuthInitialization.ts. Not new surface — the same surface, written
+    // down in the one place that can actually enforce it.
+    const ctx = testEnv.authenticatedContext("ownerBootstrap", {
+      email: "jurgensaj@gmail.com",
+    });
+    const db = ctx.firestore();
+    await assertSucceeds(
+      setDoc(doc(db, "trainers", "ownerBootstrap"), {
+        fullName: "System Admin",
+        initials: "SA",
+        role: "Admin",
+        primaryHomeStudioId: "system",
+        accessibleStudioIds: ["system"],
+      }),
+    );
+  });
+
+  // ── EQUIPMENT UPKEEP LOG (Admin Overhaul, Sep 2026) ───────────────────
+  //
+  // Any trainer may log work — the person who cleans the machine is the
+  // person on the floor. Nobody may rewrite an entry afterwards: an
+  // accountability log that can be edited is not one.
+
+  it("allows a trainer to log equipment upkeep", async () => {
+    const db = testEnv
+      .authenticatedContext("trainerA", { email: "trainera@test.com" })
+      .firestore();
+    await assertSucceeds(
+      setDoc(doc(db, "studios", "studioA", "upkeepLog", "u1"), {
+        machineId: "m-ext",
+        kind: "deep-clean",
+        at: "2026-09-06T14:00:00.000Z",
+        byId: "trainerA",
+        byName: "Trainer A",
+      }),
+    );
+  });
+
+  it("denies rewriting an upkeep entry after the fact", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), "studios", "studioA", "upkeepLog", "u1"),
+        { machineId: "m-ext", kind: "clean", at: "2026-09-06T14:00:00.000Z" },
+      );
+    });
+    const db = testEnv
+      .authenticatedContext("trainerA", { email: "trainera@test.com" })
+      .firestore();
+    await assertFails(
+      updateDoc(doc(db, "studios", "studioA", "upkeepLog", "u1"), {
+        kind: "deep-clean",
+      }),
+    );
+  });
+
+  it("denies a trainer deleting an upkeep entry, but allows a studio owner", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), "studios", "studioA", "upkeepLog", "u1"),
+        { machineId: "m-ext", kind: "clean", at: "2026-09-06T14:00:00.000Z" },
+      );
+    });
+    const trainerDb = testEnv
+      .authenticatedContext("trainerA", { email: "trainera@test.com" })
+      .firestore();
+    await assertFails(
+      deleteDoc(doc(trainerDb, "studios", "studioA", "upkeepLog", "u1")),
+    );
+
+    const ownerDb = testEnv
+      .authenticatedContext("ownerA", { email: "ownera@test.com" })
+      .firestore();
+    await assertSucceeds(
+      deleteDoc(doc(ownerDb, "studios", "studioA", "upkeepLog", "u1")),
+    );
+  });
+
+  // ── BUG REPORTS (Admin Overhaul R2 Phase 3) ──────────────────────
+  //
+  // useMyFeedback queries bug_reports filtered to the signed-in user so a
+  // trainer can see what became of their reports. The read rule was
+  // superadmin-only, so that listener was denied for everyone but the owner.
+  it("lets a trainer read their own bug report", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "bug_reports", "mine"), {
+        userId: "trainerA",
+        description: "Timer froze",
+        status: "open",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerA", {
+      email: "trainera@test.com",
+    });
+    await assertSucceeds(getDoc(doc(ctx.firestore(), "bug_reports", "mine")));
+  });
+
+  it("denies a trainer reading somebody else's bug report", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "bug_reports", "theirs"), {
+        userId: "someone-else",
+        description: "Timer froze",
+        status: "open",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerA", {
+      email: "trainera@test.com",
+    });
+    await assertFails(getDoc(doc(ctx.firestore(), "bug_reports", "theirs")));
+  });
+
+  it("denies a trainer changing the status on their own report", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "bug_reports", "mine"), {
+        userId: "trainerA",
+        description: "Timer froze",
+        status: "open",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerA", {
+      email: "trainera@test.com",
+    });
+    await assertFails(
+      updateDoc(doc(ctx.firestore(), "bug_reports", "mine"), {
+        status: "fixed",
+      }),
+    );
+  });
+
+  // ── CROSS-STUDIO TENANCY (Sep 2026) ──────────────────────────────────
+  //
+  // clients and sessions were both `allow read: if isAuthenticated()`. These
+  // cover the policy that replaced it: your own studios, plus a client who
+  // has approved cross-training at one of them; and a session you may read
+  // if you may read its client, whatever studio it was hosted at.
+
+  it("lets a trainer read a client at their own studio", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "clients", "mine"), {
+        firstName: "Home",
+        lastName: "Client",
+        isActive: true,
+        remainingSessions: 5,
+        homeStudioId: "studioA",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerA", {
+      email: "trainera@test.com",
+    });
+    await assertSucceeds(getDoc(doc(ctx.firestore(), "clients", "mine")));
+  });
+
+  it("denies a trainer editing a client at another studio", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "clients", "theirs"), {
+        firstName: "Their",
+        lastName: "Client",
+        isActive: true,
+        remainingSessions: 5,
+        homeStudioId: "studioA",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerB", {
+      email: "trainerb@test.com",
+    });
+    await assertFails(
+      updateDoc(doc(ctx.firestore(), "clients", "theirs"), {
+        firstName: "Edited",
+        lastName: "Client",
+        isActive: true,
+        remainingSessions: 5,
+        homeStudioId: "studioA",
+      }),
+    );
+  });
+
+  it("lets a trainer read a session whose client they can read, at another studio", async () => {
+    // The point of scoping sessions by CLIENT rather than by studio: a
+    // cross-train client's history has to stay whole.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "clients", "crossClient"), {
+        firstName: "Cross",
+        lastName: "Client",
+        isActive: true,
+        remainingSessions: 5,
+        homeStudioId: "studioA",
+        approvedCrossTrainStudioIds: ["studioB"],
+      });
+      await setDoc(doc(db, "sessions", "sessionAtA"), {
+        hostedAtStudioId: "studioA",
+        clientId: "crossClient",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerB", {
+      email: "trainerb@test.com",
+    });
+    await assertSucceeds(getDoc(doc(ctx.firestore(), "sessions", "sessionAtA")));
+  });
+
+  it("denies a session whose client they cannot read", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "clients", "privateClient"), {
+        firstName: "Private",
+        lastName: "Client",
+        isActive: true,
+        remainingSessions: 5,
+        homeStudioId: "studioA",
+      });
+      await setDoc(doc(db, "sessions", "privateSession"), {
+        hostedAtStudioId: "studioA",
+        clientId: "privateClient",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerB", {
+      email: "trainerb@test.com",
+    });
+    await assertFails(
+      getDoc(doc(ctx.firestore(), "sessions", "privateSession")),
+    );
+  });
+
+  it("lets a trainer read their own session after moving studios", async () => {
+    // trainerB coached this at studioA and no longer works there.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "sessions", "myOldSession"), {
+        hostedAtStudioId: "studioA",
+        clientId: "someoneElse",
+        trainerId: "trainerB",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerB", {
+      email: "trainerb@test.com",
+    });
+    await assertSucceeds(getDoc(doc(ctx.firestore(), "sessions", "myOldSession")));
+  });
+
+  it("does not fall over on a legacy session with no studio and no client", async () => {
+    // Imports wrote sessions with hostedAtStudioId "" and no clientId. The
+    // rule must DENY these rather than erroring on a malformed document path.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "sessions", "legacySession"), {
+        hostedAtStudioId: "",
+        clientId: "",
+      });
+    });
+    const ctx = testEnv.authenticatedContext("trainerB", {
+      email: "trainerb@test.com",
+    });
+    await assertFails(getDoc(doc(ctx.firestore(), "sessions", "legacySession")));
+  });
+
+  it("lets an owner read across their studio", async () => {
+    const ctx = testEnv.authenticatedContext("ownerA", {
+      email: "ownera@test.com",
+    });
+    await assertSucceeds(getDoc(doc(ctx.firestore(), "sessions", "sessionA")));
+  });
 });

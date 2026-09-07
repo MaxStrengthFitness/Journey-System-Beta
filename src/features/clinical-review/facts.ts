@@ -116,8 +116,20 @@ function stressOf(c: CheckIn | undefined): SessionFact["stress"] {
   return r as 1 | 2 | 3 | 4 | 5;
 }
 
+/**
+ * The stored post-session feel, in whichever spelling wrote it.
+ *
+ * Until Sep 2026 FeelToggle emitted 'wiped' | 'good' | 'energized' while this
+ * matched only the Title Case spellings, so every feel a trainer recorded was
+ * read as null and dropped. The toggle now writes ClientFeel; this maps the
+ * legacy values too, so the sessions already in Firestore start counting
+ * instead of needing a migration.
+ */
 function postFeelOf(v: unknown): PostFeel | null {
   if (v === "Wiped Out" || v === "Good" || v === "Energized") return v;
+  if (v === "wiped") return "Wiped Out";
+  if (v === "good") return "Good";
+  if (v === "energized") return "Energized";
   return null;
 }
 

@@ -1239,9 +1239,12 @@ export function ClientHistoryCalendar({
                           displayBorder =
                             "border-cta bg-cta/10 text-slate-800 dark:text-slate-200";
 
-                        const isCardio =
-                          machine?.name.toLowerCase().includes("cardio") ||
-                          log.type === "Cardio";
+                        // `log.type` was checked here too, but nothing has
+                        // ever written a `type` onto an exercise log — the
+                        // machine name is the only real signal.
+                        const isCardio = Boolean(
+                          machine?.name.toLowerCase().includes("cardio"),
+                        );
                         const isStaticHold = Boolean(currentData.isStaticHold);
                         const displayMetricType = isCardio
                           ? "Cardio"

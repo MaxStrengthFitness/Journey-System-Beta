@@ -1,25 +1,25 @@
 import React, { useState } from "react";
-import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine } from "../types";
-import { AdminMetricsDashboard } from "./AdminMetricsDashboard";
-import { AdminStudioManager } from "./AdminStudioManager";
-import { AdminUserDirectory } from "./AdminUserDirectory";
-import { AdminBugReports } from "./AdminBugReports";
-import { AdminHubAnnouncements } from "./AdminHubAnnouncements";
-import { InsightsDashboardView } from "./InsightsDashboardView";
+import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, ScheduleEntry } from "../types";
 // Deprecated (Sep 2026 UI overhaul): the Retention route is unmounted. The
 // component file stays on disk in case it is revived; nothing imports it here.
 // import { RetentionDashboardView } from "./RetentionDashboardView";
-import { MindbodyDashboard } from "./mindbody/MindbodyDashboard";
 import { AdminLimboQueue } from "./AdminLimboQueue";
-import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Bell, Webhook, Database } from "lucide-react";
+import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Database } from "lucide-react";
 import { AdminRoutineTemplatesTab } from "./routines/AdminRoutineTemplatesTab";
 import { cn } from "@/lib/utils";
+import "../features/admin/admin.css";
 
-import { AdminSystemClients } from "./AdminSystemClients";
 import { AdminMachinesTab } from "./machines/AdminMachinesTab";
-import { AdminDataReportsTab, AdminAlertsTab } from "../features/admin-data";
-import { IntegrationsHubView } from "./IntegrationsHubView";
+import { AdminDataReportsTab } from "../features/admin-data";
 import { AdminSystemToolsTab } from "./AdminSystemToolsTab";
+import { AdminOverviewTab } from "../features/admin/AdminOverviewTab";
+import { AdminStudiosTab } from "../features/admin/studios/AdminStudiosTab";
+import { AdminStaffTab } from "../features/admin/staff/AdminStaffTab";
+import { AdminClientsTab } from "../features/admin/clients/AdminClientsTab";
+import { AdminAnnouncementsTab } from "../features/admin/announcements/AdminAnnouncementsTab";
+import { AdminMindbodyTab } from "../features/admin/mindbody/AdminMindbodyTab";
+import { AdminBugReportsTab } from "../features/admin/bugs/AdminBugReportsTab";
+import { AdminInsightsTab } from "../features/admin/insights/AdminInsightsTab";
 
 interface Props {
   authTrainer: Trainer;
@@ -33,6 +33,12 @@ interface Props {
   clients?: Client[];
   sessions?: WorkoutSession[];
   machines?: Machine[];
+  /**
+   * Everything the live schedule hook has loaded for the active studio —
+   * today plus roughly a week ahead. The Overview needs it; nothing else on
+   * this screen does, which is why it is optional.
+   */
+  schedules?: ScheduleEntry[];
   newClientsCount?: number;
   onShowNewClients?: () => void;
   onUpdateStudio?: (id: string, updates: Partial<Studio>) => Promise<void>;
@@ -54,6 +60,8 @@ interface Props {
   onRestoreMachines?: () => void;
   onReorderTrainers?: () => void;
   onAppCleanse?: () => void;
+  /** Opens the full studio to-do screen from the Overview's task panel. */
+  onOpenStudioTasks?: () => void;
 }
 
 export function AdminDashboardView({
@@ -66,6 +74,7 @@ export function AdminDashboardView({
   clients = [],
   sessions = [],
   machines = [],
+  schedules = [],
   newClientsCount = 0,
   onShowNewClients,
   onUpdateStudio,
@@ -76,6 +85,7 @@ export function AdminDashboardView({
   onRestoreMachines,
   onReorderTrainers,
   onAppCleanse,
+  onOpenStudioTasks,
 }: Props) {
   type AdminTab =
     | "metrics"
@@ -85,12 +95,10 @@ export function AdminDashboardView({
     | "machines"
     | "routines"
     | "announcements"
-    | "alerts"
     | "data"
     | "bugs"
     | "insights"
     | "mindbody"
-    | "integrations"
     | "system"
     | "limbo";
   const [activeTab, setActiveTab] = useState<AdminTab>("metrics");
@@ -99,10 +107,11 @@ export function AdminDashboardView({
 
   const canSee = (id: AdminTab): boolean => {
     if (id === "users") return isFranchiseOwnerOrAdmin;
+    // Site id, location id, the webhook and the schedule pull: these
+    // credentials configure the whole Mindbody link. The separate
+    // "Integrations" tab folded in here in Round 2 Phase 2 - it was the same
+    // subject at the same permission tier, split across two screens.
     if (id === "mindbody") return isAdmin;
-    // Site id, auth key and the staff schedule import. Relocated out of the
-    // trainer hub (F): these credentials configure the whole Mindbody link.
-    if (id === "integrations") return isAdmin;
     // Seeds, restores and a full wipe. Admin only, obviously.
     if (id === "system") return isAdmin;
     // Releasing a booking assigns it to a studio, so this is admin-only for the
@@ -115,9 +124,6 @@ export function AdminDashboardView({
     // documents from one file picker, so both sit at the same tier as staff
     // management rather than one tap from a trainer's settings screen.
     if (id === "data") return isFranchiseOwnerOrAdmin;
-    // Arms outbound SMS/email to clients. Owner-and-above for the obvious
-    // reason: an accidental tap messages real people with nobody watching.
-    if (id === "alerts") return isFranchiseOwnerOrAdmin;
     if (id === "machines") return isFranchiseOwnerOrAdmin;
     // Studio leaders author their own location's templates, so this is
     // deliberately NOT gated to franchise-owner-or-admin the way machines
@@ -148,11 +154,11 @@ export function AdminDashboardView({
         { id: "metrics", label: "Overview", icon: <Activity className="w-4 h-4" /> },
         { id: "studios", label: "Studios", icon: <Building2 className="w-4 h-4" /> },
         { id: "users", label: "Staff & Roles", icon: <Users className="w-4 h-4" /> },
-        { id: "clients", label: "System Clients", icon: <Users className="w-4 h-4" /> },
-        { id: "machines", label: "Machines", icon: <Dumbbell className="w-4 h-4" /> },
-        { id: "routines", label: "Routine Templates", icon: <ClipboardList className="w-4 h-4" /> },
+        { id: "clients", label: "Clients", icon: <Users className="w-4 h-4" /> },
+        { id: "machines", label: "Catalog", icon: <Dumbbell className="w-4 h-4" /> },
+        { id: "routines", label: "Routines", icon: <ClipboardList className="w-4 h-4" /> },
         { id: "insights", label: "Insights", icon: <TrendingUp className="w-4 h-4" /> },
-        { id: "data", label: "Data & Reports", icon: <Download className="w-4 h-4" /> },
+        { id: "data", label: "Exports", icon: <Download className="w-4 h-4" /> },
       ],
     },
     {
@@ -161,7 +167,6 @@ export function AdminDashboardView({
       tier: "primary",
       tabs: [
         { id: "announcements", label: "Announcements", icon: <Megaphone className="w-4 h-4" /> },
-        { id: "alerts", label: "Alerts & Comms", icon: <Bell className="w-4 h-4" /> },
       ],
     },
     {
@@ -170,7 +175,6 @@ export function AdminDashboardView({
       tier: "secondary",
       tabs: [
         { id: "mindbody", label: "Mindbody", icon: <Zap className="w-4 h-4" /> },
-        { id: "integrations", label: "Integrations", icon: <Webhook className="w-4 h-4" /> },
         { id: "limbo", label: "Limbo", icon: <Inbox className="w-4 h-4" /> },
         { id: "bugs", label: "Bug Reports", icon: <Bug className="w-4 h-4" /> },
         { id: "system", label: "System Tools", icon: <Database className="w-4 h-4" /> },
@@ -190,27 +194,16 @@ export function AdminDashboardView({
         onClick={() => setActiveTab(tab.id)}
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "flex items-center gap-2.5 text-[11px] font-bold uppercase tracking-widest transition-colors cursor-pointer select-none whitespace-nowrap",
+          "adm adm-nav__btn flex items-center gap-2.5 text-[11px] font-bold uppercase tracking-widest transition-colors cursor-pointer select-none whitespace-nowrap",
+          isActive && "adm-nav__btn--active",
           orientation === "sidebar"
             ? // Minimal left border for the active item — no pill container.
-              cn(
-                "w-full h-10 px-3 border-l-2 text-left",
-                isActive
-                  ? "border-[#F06C22] text-[#F06C22] bg-slate-100/80 dark:bg-slate-800/50"
-                  : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/60 dark:hover:bg-slate-800/40",
-              )
+              "w-full h-10 px-3 border-l-2 text-left"
             : // Bottom border on the horizontal strip (portrait / narrow).
-              cn(
-                "h-11 px-3 border-b-2 shrink-0",
-                isActive
-                  ? "border-[#F06C22] text-[#F06C22]"
-                  : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100",
-              ),
+              "h-11 px-3 border-b-2 shrink-0",
         )}
       >
-        <span className={isActive ? "text-[#F06C22]" : "text-slate-400 dark:text-slate-500"}>
-          {tab.icon}
-        </span>
+        <span className="adm-nav__icon">{tab.icon}</span>
         {tab.label}
       </button>
     );
@@ -224,9 +217,7 @@ export function AdminDashboardView({
           .filter((g) => g.tier === "primary")
           .map((group, gIdx) => (
             <div key={group.id} className={cn(gIdx > 0 && "mt-5")}>
-              <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                {group.label}
-              </div>
+              <div className="adm-nav__group px-3 pb-1.5">{group.label}</div>
               <div className="flex flex-col">
                 {group.tabs.map((tab) => renderNavButton(tab, "sidebar"))}
               </div>
@@ -238,11 +229,9 @@ export function AdminDashboardView({
           .map((group) => (
             <div
               key={group.id}
-              className="mt-auto pt-5 border-t border-dashed border-slate-200 dark:border-slate-800"
+              className="adm-nav__rule mt-auto pt-5 border-t border-dashed"
             >
-              <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-600">
-                {group.label}
-              </div>
+              <div className="adm-nav__group px-3 pb-1.5">{group.label}</div>
               <div className="flex flex-col">
                 {group.tabs.map((tab) => renderNavButton(tab, "sidebar"))}
               </div>
@@ -255,9 +244,7 @@ export function AdminDashboardView({
         <div className="flex items-end gap-4 overflow-x-auto no-scrollbar">
           {groups.map((group, gIdx) => (
             <div key={group.id} className={cn("flex flex-col shrink-0", gIdx > 0 && "border-l border-slate-200 dark:border-slate-800 pl-4")}>
-              <span className="px-3 text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                {group.label}
-              </span>
+              <span className="adm-nav__group px-3 text-[9px]">{group.label}</span>
               <div className="flex">
                 {group.tabs.map((tab) => renderNavButton(tab, "strip"))}
               </div>
@@ -268,35 +255,46 @@ export function AdminDashboardView({
 
       <div className="flex-1 min-w-0 w-full">
         {activeTab === "metrics" && (
-          <AdminMetricsDashboard
-            onManageStudios={() => setActiveTab("studios")}
+          <AdminOverviewTab
+            authTrainer={authTrainer}
+            studios={studios}
+            activeStudioId={activeStudioId}
+            schedules={schedules}
+            sessions={sessions}
             clients={clients}
-            networks={networks}
+            onManageStudios={() => setActiveTab("studios")}
+            onOpenStudioTasks={onOpenStudioTasks}
+            onNavigateProfile={onNavigateProfile}
           />
         )}
         {activeTab === "users" && (
-          <AdminUserDirectory studios={studios} onRefresh={onRefresh} />
-        )}
-        {activeTab === "clients" && (
-          <AdminSystemClients clients={clients} studios={studios} />
-        )}
-        {activeTab === "studios" && (
-          <AdminStudioManager
-            authTrainer={authTrainer}
-            studios={studios}
-            networks={networks}
+          <AdminStaffTab
             trainers={trainers}
+            studios={studios}
+            activeStudioId={activeStudioId}
             isAdmin={isAdmin}
             onRefresh={onRefresh}
           />
         )}
-        {activeTab === "machines" && (
-          <AdminMachinesTab
+        {activeTab === "clients" && (
+          <AdminClientsTab
             studios={studios}
-            authTrainer={authTrainer}
-            isAdmin={isAdmin}
+            activeStudioId={activeStudioId}
+            onNavigateProfile={onNavigateProfile}
           />
         )}
+        {activeTab === "studios" && (
+          <AdminStudiosTab
+            authTrainer={authTrainer}
+            studios={studios}
+            networks={networks}
+            trainers={trainers}
+            clients={clients}
+            isAdmin={isAdmin}
+            onRefresh={onRefresh}
+          />
+        )}
+        {activeTab === "machines" && <AdminMachinesTab isAdmin={isAdmin} />}
         {activeTab === "routines" && (
           <AdminRoutineTemplatesTab
             studios={studios}
@@ -305,39 +303,32 @@ export function AdminDashboardView({
           />
         )}
         {activeTab === "insights" && (
-          <div className="bg-slate-50 dark:bg-slate-950 p-0 rounded-2xl overflow-hidden">
-            <InsightsDashboardView
-              clients={clients}
-              trainers={trainers}
-              machines={machines}
-              sessions={sessions}
-              newClientsCount={newClientsCount}
-              onShowNewClients={onShowNewClients}
-            />
-          </div>
+          <AdminInsightsTab
+            studios={studios}
+            trainers={trainers}
+            activeStudioId={activeStudioId ?? null}
+          />
         )}
         {/* "retention" tab removed — see the commented import at the top. */}
         {activeTab === "mindbody" && (
-          <div className="bg-slate-50 dark:bg-slate-950 p-0 rounded-2xl overflow-hidden">
-            <MindbodyDashboard />
-          </div>
+          <AdminMindbodyTab
+            studios={studios}
+            trainers={trainers}
+            clients={clients ?? []}
+            activeStudioId={activeStudioId ?? null}
+          />
         )}
         {activeTab === "announcements" && (
-          <AdminHubAnnouncements studios={studios} authTrainer={authTrainer} />
+          <AdminAnnouncementsTab
+            authTrainer={authTrainer}
+            studios={studios}
+            networks={networks}
+          />
         )}
         {activeTab === "limbo" && (
           <AdminLimboQueue studios={studios} clients={clients} />
         )}
-        {activeTab === "integrations" && (
-          <IntegrationsHubView
-            authTrainer={authTrainer}
-            activeStudioId={activeStudioId}
-            studios={studios}
-            trainers={trainers}
-            clients={clients}
-            onBack={() => setActiveTab("mindbody")}
-          />
-        )}
+        {/* "integrations" folded into the Mindbody tab above, Round 2 Phase 2. */}
 
         {activeTab === "data" && (
           <AdminDataReportsTab
@@ -350,11 +341,7 @@ export function AdminDashboardView({
           />
         )}
 
-        {activeTab === "alerts" && (
-          <AdminAlertsTab studios={studios} activeStudioId={activeStudioId} />
-        )}
-
-        {activeTab === "bugs" && <AdminBugReports />}
+        {activeTab === "bugs" && <AdminBugReportsTab studios={studios} />}
 
         {activeTab === "system" && (
           <AdminSystemToolsTab

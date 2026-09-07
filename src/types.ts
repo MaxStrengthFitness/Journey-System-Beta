@@ -132,17 +132,6 @@ export interface Owner {
   ownedStudioIds: string[];
 }
 
-export interface TrainerAvailability {
-  standard: {
-    [day: string]: { isOpen: boolean; slots: { start: string; end: string }[] };
-  };
-  overrides?: {
-    [date: string]: {
-      isOpen: boolean;
-      slots: { start: string; end: string }[];
-    };
-  };
-}
 
 /**
  * TRAINER & STAFF PROFILES
@@ -268,6 +257,31 @@ export interface Trainer {
   claimedFromId?: string | null;
   claimedAt?: string;
   authUid?: string;
+  /* ------------------------------------------------------------------ *
+   * TEMPORARY PROFILES (Sep 2026)
+   *
+   * Mindbody is the source of truth for people, and is also sometimes down,
+   * rate-limited, or not yet provisioned for a studio opening on Monday. A
+   * manager can mint a temporary record to keep working, and reconcile it
+   * against the real one later. See src/features/admin/provisional/.
+   * ------------------------------------------------------------------ */
+  /** True while this record has no Mindbody counterpart. */
+  provisional?: boolean;
+  provisionalSince?: string;
+  /** Trainer document id of whoever minted it. */
+  provisionalBy?: string;
+  provisionalReason?: string;
+  /**
+   * A merged temporary trainer is superseded by the surviving document, so it
+   * reuses the tombstone above (supersededByUid / supersededAt) rather than
+   * growing a second, near-identical one. Clients have no uid and use
+   * supersededById instead — see features/admin/provisional/provisional.ts,
+   * which reads either key.
+   */
+  /** Set on the SURVIVING record: where its history came from. */
+  mergedFromId?: string | null;
+  mergedAt?: string;
+
   fullName: string;
   nickname?: string;
   initials: string;
@@ -286,9 +300,7 @@ export interface Trainer {
   thirdPartyCalendarUrl?: string;
   certifications?: string[];
   employmentStartDate?: any;
-  availability?: TrainerAvailability;
   mindbodyStaffId?: string;
-  mindbody_ical_url?: string;
   legacy_filemaker_id?: string;
   createdAt?: any;
   order?: number;
@@ -351,7 +363,6 @@ export interface UpdateTrainerPayload {
   thirdPartyCalendarUrl?: string;
   certifications?: string[];
   mindbodyStaffId?: string;
-  mindbody_ical_url?: string;
   order?: number;
   /** The Start date picker in Edit Trainer had nowhere to land before. */
   employmentStartDate?: any;
@@ -564,6 +575,36 @@ export interface Client {
   preferredTodayRoutineId?: string;
   remainingSessions: number;
   legacy_filemaker_id?: string;
+  /* ------------------------------------------------------------------ *
+   * TEMPORARY PROFILES (Sep 2026)
+   *
+   * Mindbody is the source of truth for people, and is also sometimes down,
+   * rate-limited, or not yet provisioned for a studio opening on Monday. A
+   * manager can mint a temporary record to keep working, and reconcile it
+   * against the real one later. See src/features/admin/provisional/.
+   * ------------------------------------------------------------------ */
+  /** True while this record has no Mindbody counterpart. */
+  provisional?: boolean;
+  provisionalSince?: string;
+  /** Trainer document id of whoever minted it. */
+  provisionalBy?: string;
+  provisionalReason?: string;
+  /**
+   * Set on the TEMPORARY record once merged into a real one. Never deleted,
+   * so anything still holding the temporary id stays traceable.
+   */
+  supersededById?: string | null;
+  supersededAt?: string;
+  /** Set on the SURVIVING record: where its history came from. */
+  mergedFromId?: string | null;
+  mergedAt?: string;
+  /**
+   * LEGACY tombstone, from scripts/migrate-canonical-client-ids.ts. Read,
+   * never written: a document tombstoned by that script must not look live to
+   * the reconciliation workflow, which is what isMergedAway() is for.
+   */
+  migratedTo?: string | null;
+  migratedAt?: any;
   mindbody_name?: string;
   /** First 1000 chars of the client's Mindbody account notes (webhook-synced, read-only in app). */
   mindbodyNotes?: string;
@@ -666,6 +707,10 @@ export interface Client {
   consultationCompleted?: boolean;
   requiresConsultation?: boolean;
   firstSessionDate?: any;
+  /** The raw Mindbody string, kept beside the parsed date it came from. */
+  firstSessionDateRaw?: string;
+  /** Most recent session date, denormalised for the directory's column. */
+  lastSessionDate?: string;
   discoveryNotes?: string;
   currentMachineMetrics?: Record<string, CurrentMachineMetric>;
   createdAt?: any;
@@ -840,6 +885,19 @@ export interface WorkoutSession {
   routineId?: string;
   /** PHYSICAL LOCATION: Where the workout actually took place */
   hostedAtStudioId: string;
+  /*
+   * DECLARED SEP 2026. Everything below was already being written and read;
+   * none of it was on the type, so nothing checked a spelling and a rename
+   * would have failed silently. Optional because older documents predate them.
+   */
+  /** The routine this session followed, for the history and calendar labels. */
+  routineName?: string;
+  /**
+   * An open session started before a client was chosen. WorkoutTrackerView
+   * queries on this field, so a typo here is a query that silently matches
+   * nothing.
+   */
+  isUnassigned?: boolean;
   /** DATA ANCHOR: The client's home base (used for local reporting vs cross-studio usage) */
   clientHomeStudioId: string;
   /** Flag for sessions performed at a non-home studio location */
@@ -1332,25 +1390,32 @@ export interface Studio {
   /** MindBody Location ID for location-specific filtering when site IDs are shared */
   mindbodyLocationId?: string | number;
   locationType?: "corporate" | "franchise";
+  /**
+   * How this studio relates to Mindbody. "offline" means DELIBERATELY without
+   * it — a pre-launch floor, a demo area, or an account not provisioned yet —
+   * as opposed to someone leaving the Site ID blank by accident, which the
+   * old screen could not tell apart. See features/admin/provisional/types.ts.
+   */
+  mindbodyMode?: "linked" | "offline";
   createdAt?: any;
   networkId?: string; // Newly added to associate with a FranchiseNetwork
   machineSettings?: Record<string, Record<string, string>>; // studioStandardSettings per machine
-  retentionSettings?: {
-    atRiskThresholdDays: number;
-    miaThresholdDays: number;
-    autoExcludeAfterDays: number;
-    sleepPoorCountThreshold?: number;
-    poorMachineLogsThreshold?: number;
-    stressLowCountThreshold?: number;
-    stressLowValueThreshold?: number;
-    noStrengthGainsDays?: number;
-  };
   notificationSettings?: {
     bookingRemindersEnabled?: boolean;
     dailySummaryEnabled?: boolean;
   };
   autoSyncEnabled?: boolean;
   syncIntervalMinutes?: number;
+  /**
+   * SHARED sync lease, epoch ms. Every device at this studio reads the same
+   * value, so only one of them runs the pull — see features/admin/syncPolicy.
+   * A client clock, not serverTimestamp(): the lease has to be readable
+   * synchronously off the streamed studio document, and a 15-minute interval
+   * tolerates the few seconds of drift that costs.
+   */
+  lastScheduleSyncAt?: number;
+  /** Consecutive failed automatic syncs. Reset to 0 on success; drives backoff. */
+  scheduleSyncFailures?: number;
   brandColor?: string;
 }
 
@@ -1429,21 +1494,16 @@ export type View =
   | "profile"
   | "chart"
   | "progress-report"
-  | "clinical-review"
   | "trainer-profile"
-  | "progress-report"
   | "consultation-wizard"
   | "machine-knowledge"
   | "machine-anatomy"
   | "studio-tasks"
   | "client-directory"
   | "chart-importer"
-  | "leaderboard"
   | "admin-dashboard"
   | "franchise-dashboard"
-  | "retention"
-  | "mindbody"
-  | "purchases";
+  | "mindbody";
 
 export interface AuditLogEntry {
   id?: string;

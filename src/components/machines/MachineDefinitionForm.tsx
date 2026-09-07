@@ -448,7 +448,19 @@ export function MachineDefinitionForm({
   return (
     <Accordion
       type="multiple"
-      defaultValue={["identity", "musculature", "baseline"]}
+      // All eight open. Three of them used to be, which turned one machine
+      // into eight screens you expanded one at a time — and the modal was
+      // 384px wide, so there was no room to show more anyway. Now there is.
+      defaultValue={[
+        "identity",
+        "musculature",
+        "baseline",
+        "bodytype",
+        "checkpoints",
+        "execution",
+        "safety",
+        "dials",
+      ]}
       className="w-full"
     >
       {/* 1 ── Identity & taxonomy */}
@@ -457,7 +469,7 @@ export function MachineDefinitionForm({
           1 · Identity &amp; Kinematics
         </AccordionTrigger>
         <AccordionContent className="flex flex-col gap-4 pt-2">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <Field label="Machine name">
               <Input
                 value={value.name}

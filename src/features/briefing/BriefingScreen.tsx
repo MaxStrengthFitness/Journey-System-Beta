@@ -67,7 +67,6 @@ import {
   Trainer,
   Client,
   WorkoutSession,
-  TrainerFocus,
   FocusRecord,
   ExerciseLog,
   PreSessionCheckIn,
@@ -131,7 +130,6 @@ export interface BriefingScreenProps {
   onClose: () => void;
   machines: Machine[];
   routines: Routine[];
-  trainerFocuses: TrainerFocus[];
   focusRecords?: FocusRecord[];
   sessionNotes: SessionNote[];
   /** Used to resolve initials on legacy journal rows. */
@@ -152,7 +150,6 @@ export function BriefingScreen({
   onClose,
   machines,
   routines,
-  trainerFocuses,
   focusRecords = [],
   sessionNotes,
   trainers = [],

@@ -53,7 +53,6 @@ import {
   ExerciseLog,
   ClientMachineSetting,
   SessionType,
-  TrainerFocus,
   FocusRecord,
   SessionNote,
   Routine,
@@ -930,7 +929,6 @@ export function WorkoutTrackerView({
   setClientFormData,
   onOpenInfo,
   authTrainer,
-  trainerFocuses,
   isSyncing,
   setIsSyncing,
   schedules,
@@ -953,7 +951,6 @@ export function WorkoutTrackerView({
   setClientFormData: (v: any) => void;
   onOpenInfo: (m: Machine) => void;
   authTrainer: Trainer | null;
-  trainerFocuses: TrainerFocus[];
   isSyncing: boolean;
   setIsSyncing: (v: boolean) => void;
   isIntroSession?: boolean;
@@ -1493,8 +1490,15 @@ export function WorkoutTrackerView({
   // Special listener for unassigned sessions when no client is selected
   useEffect(() => {
     if (!clientId && user) {
+      /*
+       * Scoped to this studio (tenancy pass, Sep 2026). Unscoped, this picked
+       * up an in-progress unassigned session at ANY location — so two studios
+       * running an open session at once could each adopt the other's. It also
+       * cannot be read at all now that `sessions` is rule-scoped.
+       */
       const unassignedQuery = query(
         collection(db, "sessions"),
+        where("hostedAtStudioId", "==", contextActiveStudioId ?? "__none__"),
         where("isUnassigned", "==", true),
         where("status", "==", "In-Progress"),
         limit(1),
@@ -2958,7 +2962,6 @@ export function WorkoutTrackerView({
         }}
         machines={machines}
         routines={routines}
-        trainerFocuses={trainerFocuses.filter((f) => f.clientId === clientId)}
         focusRecords={focusRecords}
         sessionNotes={sessionNotes}
         trainers={trainers}

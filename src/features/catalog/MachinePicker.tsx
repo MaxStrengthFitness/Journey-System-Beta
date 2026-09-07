@@ -1,5 +1,12 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { accentVar } from "./accents";
+import {
+  GROUPING_LABEL,
+  GROUPING_MODES,
+  groupMachines,
+  searchMachines,
+} from "./grouping";
+import type { UpkeepStatus } from "../admin/upkeep/upkeepLog";
 import type { CatalogMachine, GroupingMode } from "./types";
 
 /**
@@ -31,12 +38,12 @@ export interface MachinePickerProps {
   autoFocusSearch?: boolean;
   /** Machines a trainer has reported a problem with. */
   flaggedIds?: Set<string>;
-}
-
-function groupOf(machine: CatalogMachine, mode: GroupingMode): string {
-  return mode === "movement"
-    ? machine.movementPattern || "Equipment"
-    : machine.anatomicalRegion || "Other";
+  /**
+   * Cleaning and service state per machine id, from features/admin/upkeep.
+   * Only "due" and "overdue" ever render — a badge on every row would make
+   * the two that need attention harder to find, not easier.
+   */
+  upkeep?: Record<string, UpkeepStatus>;
 }
 
 export function MachinePicker({
@@ -48,38 +55,18 @@ export function MachinePicker({
   variant = "rail",
   autoFocusSearch = false,
   flaggedIds,
+  upkeep,
 }: MachinePickerProps) {
   const [search, setSearch] = useState("");
 
-  const groups = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const matching = q
-      ? machines.filter(
-          (m) =>
-            m.name.toLowerCase().includes(q) ||
-            m.movementPattern.toLowerCase().includes(q) ||
-            m.anatomicalRegion.toLowerCase().includes(q) ||
-            m.targetMuscles.some((t) => t.toLowerCase().includes(q)),
-        )
-      : machines;
-
-    // Insertion order is the studio's own display order, which useCatalogMachines
-    // has already applied — so groups appear in the order their first machine
-    // does rather than in a hardcoded list that a studio cannot influence.
-    const buckets = new Map<string, CatalogMachine[]>();
-    for (const m of matching) {
-      const key = groupOf(m, grouping);
-      const list = buckets.get(key);
-      if (list) list.push(m);
-      else buckets.set(key, [m]);
-    }
-
-    return [...buckets.entries()].map(([key, list]) => ({
-      key,
-      label: key,
-      machines: list,
-    }));
-  }, [machines, grouping, search]);
+  // Bucketing and searching moved to grouping.ts in Round 2 Phase 6, so the
+  // Academy grouping is decided in one tested place rather than in a ternary
+  // here. The ordering rules live there too: roster order for the kinematic
+  // and regional groupings, the Academy's own order for the Academy one.
+  const groups = useMemo(
+    () => groupMachines(searchMachines(machines, search), grouping),
+    [machines, grouping, search],
+  );
 
   const total = groups.reduce((n, g) => n + g.machines.length, 0);
 
@@ -99,22 +86,17 @@ export function MachinePicker({
         />
         {onGroupingChange && (
           <div className="cat__segmented" role="group" aria-label="Group by">
-            <button
-              type="button"
-              className="cat__seg"
-              aria-pressed={grouping === "movement"}
-              onClick={() => onGroupingChange("movement")}
-            >
-              Kinematics
-            </button>
-            <button
-              type="button"
-              className="cat__seg"
-              aria-pressed={grouping === "region"}
-              onClick={() => onGroupingChange("region")}
-            >
-              Region
-            </button>
+            {GROUPING_MODES.map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                className="cat__seg"
+                aria-pressed={grouping === mode}
+                onClick={() => onGroupingChange(mode)}
+              >
+                {GROUPING_LABEL[mode]}
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -151,7 +133,9 @@ export function MachinePicker({
                   <span className="cat__item-name">{m.name}</span>
                   {(m.isStudioCustom ||
                     m.rosterStatus === "maintenance" ||
-                    flaggedIds?.has(m.id)) && (
+                    flaggedIds?.has(m.id) ||
+                    upkeep?.[m.id] === "due" ||
+                    upkeep?.[m.id] === "overdue") && (
                     <span className="cat__item-meta">
                       {m.isStudioCustom && (
                         <span className="cat__badge cat__badge--custom">
@@ -162,6 +146,12 @@ export function MachinePicker({
                         flaggedIds?.has(m.id)) && (
                         <span className="cat__badge cat__badge--maintenance">
                           {flaggedIds?.has(m.id) ? "Flagged" : "Maintenance"}
+                        </span>
+                      )}
+                      {(upkeep?.[m.id] === "due" ||
+                        upkeep?.[m.id] === "overdue") && (
+                        <span className="cat__badge cat__badge--upkeep">
+                          {upkeep[m.id] === "overdue" ? "Overdue" : "Due"}
                         </span>
                       )}
                     </span>
