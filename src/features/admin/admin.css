@@ -1513,3 +1513,348 @@
   text-transform: uppercase;
   color: var(--adm-ink-muted);
 }
+
+/* ==================================================================== *
+ * SYSTEM TOOLS
+ * ==================================================================== */
+
+.adm-tool__icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--adm-surface-3);
+  border: 1px solid var(--adm-border);
+  color: var(--adm-ink-muted);
+}
+
+.adm-tool--danger .adm-tool__icon {
+  background: var(--adm-alert-fill);
+  border-color: var(--adm-alert);
+  color: var(--adm-alert);
+}
+
+/* A panel that holds something irreversible. The border does the work; the
+   fill stays light so the text on it keeps its contrast. */
+.adm-panel--hazard {
+  border-color: var(--adm-alert);
+}
+
+.adm-panel--hazard .adm-panel__head {
+  background: var(--adm-alert-fill);
+}
+
+.adm-panel--hazard .adm-panel__title,
+.adm-panel--hazard .adm-panel__title svg {
+  color: var(--adm-alert);
+}
+
+/* ==================================================================== *
+ * SUB-NAVIGATION, CARD GRIDS AND ROUTINE TEMPLATES
+ * ==================================================================== */
+
+.adm-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (min-width: 640px) {
+  .adm-subnav {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+}
+
+.adm-subnav .adm-field {
+  min-width: 180px;
+}
+
+/* A segmented control for switching between two views of one screen. Distinct
+   from .adm-nav, which moves between screens — same app, different question. */
+.adm-segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--adm-border);
+  border-radius: 12px;
+  background: var(--adm-surface-2);
+}
+
+.adm-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* 40px keeps a thumb target on an iPad without making the control loud. */
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.adm-seg:hover {
+  color: var(--adm-ink);
+}
+
+.adm-seg[aria-selected="true"] {
+  background: var(--adm-surface);
+  color: var(--adm-ink);
+  box-shadow: 0 1px 2px var(--adm-shadow);
+}
+
+.adm-seg:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: -2px;
+}
+
+.adm-cards {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.adm-tpl {
+  display: flex;
+  flex-direction: column;
+}
+
+.adm-tpl .adm-panel__body {
+  flex: 1;
+  display: flex;
+}
+
+.adm-tpl__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.adm-tpl__name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--adm-ink);
+}
+
+.adm-tpl__desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--adm-ink-muted);
+}
+
+.adm-tpl__seq {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.adm-tpl__seq li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--adm-ink-2);
+  min-width: 0;
+}
+
+.adm-tpl__n {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--adm-surface-3);
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--adm-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.adm-tpl__note {
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--adm-warn-fill);
+  color: var(--adm-warn);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.adm-tpl__actions {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+.adm-tpl__actions .adm-btn:first-child {
+  flex: 1;
+}
+
+/* A dialog's own footer, so a modal built outside the kit still ends the same
+   way the kit's own SaveBar does. */
+.adm-dialog__actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--adm-border);
+  background: var(--adm-bg);
+}
+
+/* ==================================================================== *
+ * Limbo queue
+ *
+ * A parked Mindbody event is a card rather than a row: it carries three
+ * lines of evidence and an action that needs a picker, which is more than
+ * a row can hold without becoming a small form pretending to be a list.
+ * The amber left edge is the only thing on the admin surface that marks
+ * "unfiled" — it reads at a glance across a stack of them.
+ * ==================================================================== */
+
+.adm-limbo__list,
+.adm-limbo__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adm-limbo {
+  border: 1px solid var(--adm-border);
+  border-left: 3px solid var(--adm-warn);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface);
+  box-shadow: 0 1px 2px var(--adm-shadow);
+  padding: 14px;
+}
+
+.adm-limbo__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.adm-limbo__icon {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--adm-warn-fill);
+  color: var(--adm-warn);
+}
+
+.adm-limbo__id {
+  flex: 1;
+  min-width: 0;
+}
+
+.adm-limbo__titles {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.adm-limbo__name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--adm-ink);
+}
+
+.adm-limbo__facts {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+}
+
+.adm-limbo__fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--adm-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.adm-limbo__dim {
+  color: var(--adm-ink-faint);
+  font-weight: 500;
+}
+
+.adm-limbo__reason {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--adm-ink-2);
+  max-width: 68ch;
+}
+
+.adm-limbo__act {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--adm-border);
+}
+
+.adm-limbo__pick {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 240px;
+  flex: 1 1 240px;
+}
+
+/* Sits on the picker's baseline, not the card's, so "Lands at 7:00 AM EST"
+   reads as an answer to the studio just chosen. */
+.adm-limbo__lands {
+  padding-bottom: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--adm-ink-muted);
+}
+
+.adm-limbo__lands strong {
+  font-weight: 800;
+  color: var(--adm-ink);
+}
+
+.adm-limbo__go {
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .adm-limbo__go {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+  }
+}

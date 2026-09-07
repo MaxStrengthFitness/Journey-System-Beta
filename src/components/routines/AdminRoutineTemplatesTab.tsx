@@ -3,7 +3,7 @@ import {
   addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc,
 } from "firebase/firestore";
 import {
-  Building2, Globe2, Loader2, Pencil, Plus, Trash2, Upload,
+  Building2, ClipboardList, Globe2, Pencil, Plus, Trash2, Upload,
 } from "lucide-react";
 import { auth, db } from "../../firebase";
 import { RoutinePreset, RoutinePresetTier, Studio, Trainer } from "../../types";
@@ -12,11 +12,20 @@ import { OperationType, handleFirestoreError } from "../../lib/firestore-errors"
 import { canAuthorTier, normalizeRoutinePreset } from "../../lib/routine-templates";
 import { useToast } from "../../contexts/ToastContext";
 import { RoutineTemplateForm, emptyRoutineTemplate } from "./RoutineTemplateForm";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AdminButton,
+  AdminEmpty,
+  AdminField,
+  AdminHeader,
+  AdminPanel,
+  AdminRow,
+  AdminRows,
+  AdminScreen,
+  AdminSelect,
+} from "../../features/admin/primitives";
 
 /**
  * ROUTINE TEMPLATES — the admin hub's programming section.
@@ -232,141 +241,138 @@ export function AdminRoutineTemplatesTab({
   const canEditHere = subTab === "company" ? canCompany : canStudio;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-1 rounded-xl border border-slate-200/60 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900">
-          {subTabs.map((t) => {
-            const active = subTab === t.id;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setSubTab(t.id)}
-                className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all sm:text-[11px] ${
-                  active
-                    ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                }`}
-              >
-                {t.icon}
-                {t.label}
-              </button>
-            );
-          })}
+    <AdminScreen>
+      <AdminHeader
+        icon={<ClipboardList className="w-5 h-5" />}
+        title="Routine templates"
+        subtitle={
+          subTab === "company"
+            ? "The house standard. Every studio sees these, and they are what a trainer reaches for first."
+            : "Templates for this location only. Its owner or leader can add them; admins can edit any studio's."
+        }
+        actions={
+          <AdminButton
+            variant="hero"
+            disabled={!canEditHere || (subTab === "studio" && !studioId)}
+            onClick={() => openNew(subTab === "company" ? "company" : "studio")}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New {subTab === "company" ? "company standard" : "studio template"}
+          </AdminButton>
+        }
+      />
+
+      <div className="adm-subnav">
+        <div className="adm-segmented" role="tablist">
+          {subTabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={subTab === t.id}
+              className="adm-seg"
+              onClick={() => setSubTab(t.id)}
+            >
+              {t.icon}
+              {t.label}
+            </button>
+          ))}
         </div>
 
         {subTab === "studio" && sortedStudios.length > 0 && (
-          <select
-            value={studioId ?? ""}
-            onChange={(e) => setPickedStudioId(e.target.value)}
-            className="h-10 rounded-xl border border-border bg-background px-3 text-xs font-semibold"
-          >
-            {sortedStudios.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+          <AdminField label="Studio" htmlFor="rt-studio">
+            <AdminSelect
+              id="rt-studio"
+              value={studioId ?? ""}
+              onChange={(e) => setPickedStudioId(e.target.value)}
+            >
+              {sortedStudios.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </AdminSelect>
+          </AdminField>
         )}
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        {subTab === "company"
-          ? "The house standard. Every studio sees these, and they are what a trainer reaches for first. Admin-write only."
-          : "Templates for this location only. Its owner or leader can add them; admins can edit any studio's."}
-      </p>
-
-      <div className="flex justify-end">
-        <Button
-          className="min-h-10"
-          disabled={!canEditHere || (subTab === "studio" && !studioId)}
-          onClick={() => openNew(subTab === "company" ? "company" : "studio")}
-        >
-          <Plus className="mr-1.5 h-4 w-4" />
-          New {subTab === "company" ? "company standard" : "studio template"}
-        </Button>
-      </div>
-
       {list.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-          No {subTab === "company" ? "company standards" : "templates for this studio"} yet.
-        </p>
+        <AdminEmpty
+          title={`No ${subTab === "company" ? "company standards" : "templates for this studio"} yet`}
+        >
+          {canEditHere
+            ? "Create one above."
+            : "An admin can add them for this studio."}
+        </AdminEmpty>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="adm-cards">
           {list.map((p) => (
-            <Card key={p.id} className="flex flex-col">
-              <CardContent className="flex flex-1 flex-col gap-2 p-4">
-                <h4 className="text-sm font-bold">{p.name}</h4>
+            <AdminPanel key={p.id} className="adm-tpl">
+              <div className="adm-tpl__body">
+                <h4 className="adm-tpl__name">{p.name}</h4>
                 {p.description && (
-                  <p className="text-xs text-muted-foreground">{p.description}</p>
+                  <p className="adm-tpl__desc">{p.description}</p>
                 )}
-                <ol className="mt-1 flex flex-col gap-0.5 text-[11px] text-muted-foreground">
+                <ol className="adm-tpl__seq">
                   {p.machineIds.map((id, i) => (
-                    <li key={id} className="truncate">
-                      {i + 1}. {nameFor(id)}
+                    <li key={id}>
+                      <span className="adm-tpl__n">{i + 1}</span>
+                      {nameFor(id)}
                       {p.machineNotes?.[id] && (
-                        <span className="text-amber-600 dark:text-amber-500"> · note</span>
+                        <span className="adm-tpl__note">note</span>
                       )}
                     </li>
                   ))}
                 </ol>
-                <div className="mt-auto flex gap-2 pt-3">
-                  <Button
-                    size="sm" variant="outline" className="min-h-10 flex-1"
+                <div className="adm-tpl__actions">
+                  <AdminButton
+                    size="sm"
                     disabled={!canEditHere}
                     onClick={() => openEdit(p)}
                   >
-                    <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
-                  </Button>
-                  <Button
-                    size="sm" variant="ghost"
-                    className="min-h-10 text-destructive"
+                    <Pencil className="h-3.5 w-3.5" /> Edit
+                  </AdminButton>
+                  <AdminButton
+                    size="sm"
+                    variant="danger"
+                    busy={busyId === p.id}
                     disabled={!canEditHere || busyId === p.id}
                     onClick={() => handleDelete(p)}
                   >
-                    {busyId === p.id
-                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      : <Trash2 className="h-3.5 w-3.5" />}
-                  </Button>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </AdminButton>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </AdminPanel>
           ))}
         </div>
       )}
 
       {/* Trainer-saved presets, read-only, with promotion. */}
       {subTab === "studio" && trainerPresets.length > 0 && (
-        <div className="flex flex-col gap-3 border-t border-border pt-5">
-          <h4 className="text-sm font-bold uppercase tracking-wide">
-            Saved by trainers at this studio
-          </h4>
-          <p className="text-xs text-muted-foreground">
-            Ad-hoc presets trainers saved themselves. Promote one to make it an
-            official studio template; the trainer's original is left alone.
-          </p>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <AdminPanel
+          title="Saved by trainers at this studio"
+          subtitle="Ad-hoc presets trainers saved themselves. Promoting one makes it an official studio template; the trainer's original is left alone."
+          flush
+        >
+          <AdminRows>
             {trainerPresets.map((p) => (
-              <div
+              <AdminRow
                 key={p.id}
-                className="flex items-center gap-2 rounded-xl border border-border p-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-semibold">{p.name}</p>
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    {p.machineIds.length} machines · {p.createdByName ?? "a trainer"}
-                  </p>
-                </div>
-                <Button
-                  size="sm" variant="outline" className="min-h-10"
+                name={p.name}
+                meta={`${p.machineIds.length} machines · ${p.createdByName ?? "a trainer"}`}
+                trailing={
+                <AdminButton
+                  size="sm"
+                  busy={busyId === p.id}
                   disabled={!canStudio || busyId === p.id}
                   onClick={() => handlePromote(p)}
                 >
-                  {busyId === p.id
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    : <><Upload className="mr-1.5 h-3.5 w-3.5" /> Promote</>}
-                </Button>
-              </div>
+                  <Upload className="h-3.5 w-3.5" /> Promote
+                </AdminButton>
+                }
+              />
             ))}
-          </div>
-        </div>
+          </AdminRows>
+        </AdminPanel>
       )}
 
       <Dialog open={!!draft} onOpenChange={(o) => !o && close()}>
@@ -383,20 +389,24 @@ export function AdminRoutineTemplatesTab({
                 onChange={setDraft}
                 catalog={catalog}
               />
-              <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-background pt-3">
-                <Button variant="ghost" className="min-h-10" onClick={close}>
+              <div className="adm adm-dialog__actions">
+                <AdminButton variant="ghost" onClick={close}>
                   Cancel
-                </Button>
-                <Button className="min-h-10" onClick={handleSave} disabled={saving}>
-                  {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                </AdminButton>
+                <AdminButton
+                  variant="hero"
+                  onClick={handleSave}
+                  busy={saving}
+                  disabled={saving}
+                >
                   {editingId ? "Save changes" : "Create template"}
-                </Button>
+                </AdminButton>
               </div>
             </>
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminScreen>
   );
 }
 

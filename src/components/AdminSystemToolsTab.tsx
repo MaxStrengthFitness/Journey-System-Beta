@@ -12,6 +12,12 @@
  *
  * Ordered least to most destructive, and the wipe is separated by a divider
  * and painted as a hazard. Three of these are recoverable; one is not.
+ *
+ * On the admin kit as of Sep 2026. This screen was written before the kit
+ * existed and used shadcn's semantic tokens — bg-card, border-border,
+ * text-foreground — which is a perfectly good system, just not the one the
+ * other twelve tabs ended up on. Two coherent palettes on one screen still
+ * read as an inconsistency.
  */
 
 import React, { useState } from "react";
@@ -24,9 +30,16 @@ import {
   UserPlus,
 } from "lucide-react";
 import { httpsCallable } from "firebase/functions";
-import { Button } from "@/components/ui/button";
 import { functions } from "../firebase";
 import { useToast } from "../contexts/ToastContext";
+import {
+  AdminButton,
+  AdminHeader,
+  AdminPanel,
+  AdminRow,
+  AdminRows,
+  AdminScreen,
+} from "../features/admin/primitives";
 
 export interface AdminSystemToolsTabProps {
   onSeedDemoClient?: () => void;
@@ -51,37 +64,25 @@ function ToolRow({
   danger?: boolean;
 }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-6 sm:px-8 py-5">
-      <div
-        className={[
-          "w-10 h-10 rounded-xl flex items-center justify-center border shrink-0",
-          danger ? "bg-red-500/10 border-red-500/30" : "bg-muted border-border",
-        ].join(" ")}
-      >
-        <Icon className={danger ? "w-5 h-5 text-red-500" : "w-5 h-5 text-cta"} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-black uppercase tracking-widest text-foreground">
-          {title}
-        </p>
-        <p className="text-sm text-muted-foreground font-medium leading-relaxed">
-          {detail}
-        </p>
-      </div>
-      <Button
-        variant="outline"
-        onClick={onClick}
-        disabled={!onClick}
-        className={[
-          "h-11 px-5 rounded-2xl font-black uppercase text-[10px] tracking-widest shrink-0",
-          danger
-            ? "border-red-500/40 text-red-500 hover:bg-red-500/10"
-            : "border-border text-muted-foreground hover:text-foreground hover:bg-muted",
-        ].join(" ")}
-      >
-        {action}
-      </Button>
-    </div>
+    <AdminRow
+      className={danger ? "adm-tool adm-tool--danger" : "adm-tool"}
+      leading={
+        <span className="adm-tool__icon">
+          <Icon className="w-4 h-4" aria-hidden />
+        </span>
+      }
+      name={title}
+      meta={detail}
+      trailing={
+        <AdminButton
+          variant={danger ? "danger" : "quiet"}
+          onClick={onClick}
+          disabled={!onClick}
+        >
+          {action}
+        </AdminButton>
+      }
+    />
   );
 }
 
@@ -128,22 +129,15 @@ export function AdminSystemToolsTab({
   };
 
   return (
-    <section className="rounded-[32px] border border-border bg-card overflow-hidden">
-      <header className="flex items-center gap-4 px-6 sm:px-8 py-6 border-b border-border bg-background">
-        <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center border border-border shadow-inner shrink-0">
-          <Database className="w-6 h-6 text-cta" />
-        </div>
-        <div className="min-w-0">
-          <h3 className="text-xl sm:text-2xl font-black text-foreground italic tracking-tight">
-            System Tools
-          </h3>
-          <p className="text-muted-foreground font-medium uppercase text-[10px] sm:text-[11px] tracking-widest">
-            Seed, restore and reset
-          </p>
-        </div>
-      </header>
+    <AdminScreen>
+      <AdminHeader
+        icon={<Database className="w-5 h-5" />}
+        title="System tools"
+        subtitle="Seed, restore and reset. The last one cannot be undone."
+      />
 
-      <div className="divide-y divide-border">
+      <AdminPanel title="Everyday" flush>
+        <AdminRows>
         <ToolRow
           icon={UserPlus}
           title="Seed a demo client"
@@ -172,24 +166,33 @@ export function AdminSystemToolsTab({
           action="Restore"
           onClick={onRestoreMachines}
         />
-      </div>
+        </AdminRows>
+      </AdminPanel>
 
-      <div className="border-t-2 border-red-500/20 bg-red-500/[0.03]">
-        <p className="flex items-start gap-2.5 px-6 sm:px-8 pt-5 text-sm text-red-500 font-medium leading-relaxed">
-          <TriangleAlert className="w-4 h-4 mt-0.5 shrink-0" />
-          <span>
-            The action below cannot be undone and is not limited to one studio.
-          </span>
-        </p>
-        <ToolRow
-          icon={TriangleAlert}
-          title="Wipe and re-initialize"
-          detail="Permanently deletes every client, trainer, session, schedule, note and log, then re-creates the standard machines."
-          action="Wipe"
-          onClick={onAppCleanse}
-          danger
-        />
-      </div>
-    </section>
+      {/*
+        A separate panel rather than a divider inside the one above. The wipe
+        is not the fifth item on a list of tools; it is a different kind of
+        act, and the gap between the two panels is what says so before anyone
+        reads the warning.
+      */}
+      <AdminPanel
+        title="Destructive"
+        subtitle="Cannot be undone, and not limited to one studio."
+        icon={<TriangleAlert className="w-4 h-4" />}
+        className="adm-panel--hazard"
+        flush
+      >
+        <AdminRows>
+          <ToolRow
+            icon={TriangleAlert}
+            title="Wipe and re-initialize"
+            detail="Permanently deletes every client, trainer, session, schedule, note and log, then re-creates the standard machines."
+            action="Wipe"
+            onClick={onAppCleanse}
+            danger
+          />
+        </AdminRows>
+      </AdminPanel>
+    </AdminScreen>
   );
 }

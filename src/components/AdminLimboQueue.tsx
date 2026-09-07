@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CalendarClock,
-  Loader2,
+  Inbox,
   MapPin,
   RefreshCw,
   User,
@@ -20,15 +20,16 @@ import {
   isValidTimeZone,
   DEFAULT_TIME_ZONE,
 } from "../lib/studio-time";
-import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+  AdminBadge,
+  AdminButton,
+  AdminEmpty,
+  AdminHeader,
+  AdminNotice,
+  AdminScreen,
+  AdminSelect,
+  ConfirmDialog,
+} from "../features/admin/primitives";
 
 interface Props {
   key?: any;
@@ -45,6 +46,13 @@ interface Props {
  * timezone) was known. Choosing the studio here is what finally makes the time
  * readable, so this screen previews the converted time before anything is
  * written.
+ *
+ * Round 3 put this screen on the admin kit. Two things changed with it, both
+ * house rules the kit exists to hold: the studio picker is now the one admin
+ * select rather than the second implementation of one, and Dismiss routes
+ * through <ConfirmDialog>. Dismiss is the only control here that throws a
+ * booking away, and it used to commit on a single tap with a tooltip as its
+ * only warning.
  */
 export function AdminLimboQueue({ studios, clients = [] }: Props) {
   const [entries, setEntries] = useState<LimboEntry[]>([]);
@@ -53,6 +61,7 @@ export function AdminLimboQueue({ studios, clients = [] }: Props) {
   const [selectedStudio, setSelectedStudio] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [done, setDone] = useState<Record<string, string>>({});
+  const [pendingDismiss, setPendingDismiss] = useState<LimboEntry | null>(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -149,194 +158,184 @@ export function AdminLimboQueue({ studios, clients = [] }: Props) {
 
   const handleDismiss = async (entry: LimboEntry) => {
     setBusyId(entry.id!);
+    setError(null);
     try {
       await dismissLimboEntry(entry);
       setEntries((rows) => rows.filter((r) => r.id !== entry.id));
     } catch (e: any) {
       setError(e?.message || "Could not dismiss.");
     } finally {
+      // The dialog closes either way. A failure message rendered behind the
+      // scrim is a failure nobody reads.
+      setPendingDismiss(null);
       setBusyId(null);
     }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h2 className="text-xl font-black uppercase italic tracking-tight text-slate-900 dark:text-white">
-            Limbo Queue
-          </h2>
-          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 max-w-2xl mt-1">
-            Mindbody events that could not be matched to a studio. They are held
-            here rather than discarded — usually because a studio is missing its{" "}
-            <span className="font-mono">mindbodySiteId</span> or{" "}
-            <span className="font-mono">mindbodyLocationId</span> in Admin →
-            Studios. Assign a studio to release them.
-          </p>
-        </div>
-        <Button
-          onClick={load}
-          disabled={isLoading}
-          variant="outline"
-          className="rounded-xl font-black uppercase text-[11px] tracking-widest shrink-0"
-        >
-          <RefreshCw className={cn("w-4 h-4 mr-2", isLoading && "animate-spin")} />
-          Refresh
-        </Button>
-      </div>
+    <AdminScreen>
+      <AdminHeader
+        icon={<Inbox className="w-5 h-5" />}
+        title="Limbo Queue"
+        subtitle="Mindbody events that could not be matched to a studio. They are held here rather than discarded — usually because a studio is missing its Mindbody site or location id in Admin → Studios. Assign a studio to release them."
+        actions={
+          <AdminButton onClick={load} busy={isLoading}>
+            {!isLoading && <RefreshCw className="w-3.5 h-3.5" />}
+            Refresh
+          </AdminButton>
+        }
+      />
 
-      {error && (
-        <div className="rounded-2xl border-2 border-red-500/30 bg-red-500/5 p-4 text-sm font-bold text-red-600 dark:text-red-400">
-          {error}
-        </div>
-      )}
+      {error && <AdminNotice tone="alert">{error}</AdminNotice>}
 
       {Object.entries(done).map(([id, message]) => (
-        <div
-          key={id}
-          className="rounded-2xl border-2 border-emerald-500/30 bg-emerald-500/5 p-3 text-sm font-bold text-emerald-700 dark:text-emerald-400"
-        >
+        <AdminNotice key={id} tone="ok">
           {message}
-        </div>
+        </AdminNotice>
       ))}
 
       {isLoading ? (
-        <div className="flex items-center gap-2 p-8 justify-center text-slate-500">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span className="font-bold text-sm">Reading the queue…</span>
+        <div className="adm-limbo__loading">
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="adm-skeleton" style={{ height: 132 }} />
+          ))}
         </div>
       ) : entries.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 p-10 text-center">
-          <p className="font-black uppercase tracking-widest text-sm text-slate-500">
-            Nothing in Limbo
-          </p>
-          <p className="text-xs font-bold text-slate-400 mt-1">
-            Every Mindbody event has found its studio.
-          </p>
-        </div>
+        <AdminEmpty title="Nothing in Limbo">
+          Every Mindbody event has found its studio.
+        </AdminEmpty>
       ) : (
-        <div className="space-y-3">
+        <div className="adm-limbo__list">
           {entries.map((entry) => {
             const summary = entry.summary || {};
             const chosen = selectedStudio[entry.id!];
             const preview = previewTime(entry, chosen);
             const isBusy = busyId === entry.id;
+            const pickerId = `limbo-studio-${entry.id}`;
 
             return (
-              <div
-                key={entry.id}
-                className="rounded-2xl border-2 border-amber-500/30 bg-white dark:bg-surface-1 p-4 shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-                      <AlertTriangle className="w-4 h-4 text-amber-500" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-black text-slate-900 dark:text-white">
-                          {summary.clientName || "Unknown Client"}
-                        </span>
-                        <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500">
-                          {entry.kind}
-                        </span>
-                        {entry.source === "pull-sync" && (
-                          <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-400">
-                            Refresh Schedule
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-4 flex-wrap mt-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">
-                        {summary.rawStartDateTime && (
-                          <span className="inline-flex items-center gap-1">
-                            <CalendarClock className="w-3.5 h-3.5" />
-                            {summary.rawStartDateTime}
-                            <span className="text-slate-400 font-semibold">
-                              (studio local, unconverted)
-                            </span>
-                          </span>
-                        )}
-                        {summary.staffName && (
-                          <span className="inline-flex items-center gap-1">
-                            <User className="w-3.5 h-3.5" />
-                            {summary.staffName}
-                          </span>
-                        )}
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5" />
-                          site {entry.siteId ?? "—"}
-                          {entry.locationId ? ` / location ${entry.locationId}` : ""}
-                        </span>
-                      </div>
-
-                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-2 max-w-3xl">
-                        {entry.reason}
-                      </p>
-                    </div>
+              <article key={entry.id} className="adm-limbo">
+                <div className="adm-limbo__head">
+                  <div className="adm-limbo__icon">
+                    <AlertTriangle className="w-4 h-4" />
                   </div>
 
-                  <button
-                    onClick={() => handleDismiss(entry)}
+                  <div className="adm-limbo__id">
+                    <div className="adm-limbo__titles">
+                      <span className="adm-limbo__name">
+                        {summary.clientName || "Unknown Client"}
+                      </span>
+                      <AdminBadge>{entry.kind}</AdminBadge>
+                      {entry.source === "pull-sync" && (
+                        <AdminBadge tone="live">Refresh Schedule</AdminBadge>
+                      )}
+                    </div>
+
+                    <div className="adm-limbo__facts">
+                      {summary.rawStartDateTime && (
+                        <span className="adm-limbo__fact">
+                          <CalendarClock className="w-3.5 h-3.5" />
+                          {summary.rawStartDateTime}
+                          <span className="adm-limbo__dim">
+                            (studio local, unconverted)
+                          </span>
+                        </span>
+                      )}
+                      {summary.staffName && (
+                        <span className="adm-limbo__fact">
+                          <User className="w-3.5 h-3.5" />
+                          {summary.staffName}
+                        </span>
+                      )}
+                      <span className="adm-limbo__fact">
+                        <MapPin className="w-3.5 h-3.5" />
+                        site {entry.siteId ?? "—"}
+                        {entry.locationId ? ` / location ${entry.locationId}` : ""}
+                      </span>
+                    </div>
+
+                    <p className="adm-limbo__reason">{entry.reason}</p>
+                  </div>
+
+                  <AdminButton
+                    variant="ghost"
+                    size="sm"
+                    iconOnly
+                    onClick={() => setPendingDismiss(entry)}
                     disabled={isBusy}
                     title="Dismiss without releasing"
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+                    aria-label="Dismiss without releasing"
                   >
                     <X className="w-4 h-4" />
-                  </button>
+                  </AdminButton>
                 </div>
 
-                <div className="flex items-end gap-2 mt-4 flex-wrap">
-                  <div className="min-w-[220px]">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
+                <div className="adm-limbo__act">
+                  <div className="adm-limbo__pick">
+                    <label className="adm-label" htmlFor={pickerId}>
                       Assign studio
                     </label>
-                    <Select
+                    <AdminSelect
+                      id={pickerId}
                       value={chosen || ""}
-                      onValueChange={(v) =>
-                        setSelectedStudio((m) => ({ ...m, [entry.id!]: v }))
+                      onChange={(e) =>
+                        setSelectedStudio((m) => ({
+                          ...m,
+                          [entry.id!]: e.target.value,
+                        }))
                       }
                     >
-                      <SelectTrigger className="h-10 rounded-xl font-bold">
-                        <SelectValue placeholder="Choose a studio…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {studios.map((s) => (
-                          <SelectItem key={s.id} value={s.id!}>
-                            {s.name}
-                            {s.mindbodySiteId ? ` — site ${s.mindbodySiteId}` : " — no site id"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <option value="">Choose a studio…</option>
+                      {studios.map((s) => (
+                        <option key={s.id} value={s.id!}>
+                          {s.name}
+                          {s.mindbodySiteId
+                            ? ` — site ${s.mindbodySiteId}`
+                            : " — no site id"}
+                        </option>
+                      ))}
+                    </AdminSelect>
                   </div>
 
                   {preview && (
-                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 pb-2.5">
-                      Lands at{" "}
-                      <span className="text-slate-900 dark:text-white">
-                        {preview}
-                      </span>
-                    </div>
+                    <p className="adm-limbo__lands">
+                      Lands at <strong>{preview}</strong>
+                    </p>
                   )}
 
-                  <Button
+                  <AdminButton
+                    variant="hero"
                     onClick={() => handleRelease(entry)}
-                    disabled={!chosen || isBusy}
-                    className="h-10 rounded-xl bg-[#F06C22] hover:bg-[#d95d18] text-white font-black uppercase text-[11px] tracking-widest ml-auto"
+                    disabled={!chosen}
+                    busy={isBusy}
+                    className="adm-limbo__go"
                   >
-                    {isBusy ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : null}
-                    {entry.kind === "booking" ? "Release to schedule" : "Set home studio"}
-                  </Button>
+                    {entry.kind === "booking"
+                      ? "Release to schedule"
+                      : "Set home studio"}
+                  </AdminButton>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>
       )}
-    </div>
+
+      <ConfirmDialog
+        open={pendingDismiss !== null}
+        title="Dismiss this event?"
+        body={
+          pendingDismiss?.kind === "booking"
+            ? "The booking stays in Mindbody, but this app stops asking about it. It will not appear on anybody's schedule unless the next sync parks it here again."
+            : "This client keeps their Mindbody record, but this app stops asking which studio they belong to. They will have no home studio until one is set by hand."
+        }
+        confirmLabel="Dismiss"
+        destructive
+        busy={busyId !== null}
+        onConfirm={() => pendingDismiss && void handleDismiss(pendingDismiss)}
+        onCancel={() => setPendingDismiss(null)}
+      />
+    </AdminScreen>
   );
 }
 
