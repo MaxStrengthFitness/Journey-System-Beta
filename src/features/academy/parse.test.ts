@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_CUE_CHARS,
   MAX_HEADING_CHARS,
   classify,
   countWords,
@@ -7,8 +8,10 @@ import {
   normalise,
   orderFromFilename,
   parseDoc,
+  parseCueSheet,
   parseGlossary,
   parseQuickReference,
+  parseScripts,
   titleFromFilename,
   unwrap,
 } from "./parse";
@@ -281,5 +284,137 @@ describe("countWords", () => {
 
   it("is zero for nothing", () => {
     expect(countWords("   ")).toBe(0);
+  });
+});
+
+describe("parseCueSheet", () => {
+  const MOMENTS = ["To begin the exercise", "Speed of Motion"];
+  const sheet = [
+    "Exercise Instruction - Cues and Timing",
+    "**SEE INDIVIDUAL EXERCISE SCRIPTS FOR MORE SPECIFIC EXAMPLES**",
+    "To begin the exercise (gradual load up - pushing movement)",
+    "When you go to begin the exercise you should gradually add pressure at a level so minute that you know it will not move at first. Be patient and build force incrementally until you break inertia.",
+    "Slowly begin",
+    "Gradually load up.",
+    "Speed of Motion",
+    "Keep the same pace.",
+    "Slow and controlled",
+  ].join("\r\n");
+
+  it("groups cues under the moment in the set they belong to", () => {
+    const moments = parseCueSheet(sheet, MOMENTS);
+    expect(moments.map((m) => m.moment)).toEqual([
+      "Before you start",
+      "To begin the exercise (gradual load up - pushing movement)",
+      "Speed of Motion",
+    ]);
+  });
+
+  it("separates what you SAY from the explanation around it", () => {
+    // The whole point of the card: a trainer scanning for words mid-set should
+    // not have to read a paragraph about inertia to find "Gradually load up."
+    const m = parseCueSheet(sheet, MOMENTS)[1];
+    expect(m.phrases).toEqual(["Slowly begin", "Gradually load up."]);
+    expect(m.notes).toHaveLength(1);
+    expect(m.notes[0]).toContain("break inertia");
+  });
+
+  it("REGRESSION: a short unpunctuated CUE is not read as a heading", () => {
+    // "Slow and controlled" and "Speed of Motion" are the same shape. Only the
+    // supplied list tells them apart, which is why there is a supplied list.
+    const speed = parseCueSheet(sheet, MOMENTS)[2];
+    expect(speed.moment).toBe("Speed of Motion");
+    expect(speed.phrases).toContain("Slow and controlled");
+  });
+
+  it("matches a long heading by its opening, not the whole line", () => {
+    // Four real headings run past 75 characters carrying a list of machines.
+    const raw = [
+      "T",
+      "Lower Turnaround (movements where weight stack touches - ex. leg press, chest press) - most effective here",
+      "Barely touch, barely start",
+    ].join("\n");
+    const [m] = parseCueSheet(raw, ["Lower Turnaround"]);
+    expect(m.moment).toContain("Lower Turnaround");
+    expect(m.phrases).toEqual(["Barely touch, barely start"]);
+  });
+
+  it("treats a line longer than the cue limit as explanation", () => {
+    const long = "x".repeat(MAX_CUE_CHARS + 1);
+    const [m] = parseCueSheet(["T", "Moment", long].join("\n"), ["Moment"]);
+    expect(m.notes).toEqual([long]);
+    expect(m.phrases).toEqual([]);
+  });
+
+  it("keeps an aside that arrives before any heading rather than dropping it", () => {
+    const [m] = parseCueSheet(["T", "**SEE THE SCRIPTS**"].join("\n"), ["Moment"]);
+    expect(m.moment).toBe("Before you start");
+    expect(m.phrases).toEqual(["SEE THE SCRIPTS"]);
+  });
+
+  it("drops a moment that collected nothing", () => {
+    expect(parseCueSheet(["T", "Moment"].join("\n"), ["Moment"])).toEqual([]);
+  });
+});
+
+describe("parseScripts", () => {
+  const script = [
+    "LP  pg 1 of 2",
+    "Leg Press - Custom gap – lay back in seat, starts at LT",
+    "SETUP",
+    "Set back pad (P2 for most), set shoulder pads, set weight",
+    "“Have a seat, feet on frame below, butt back, lay back in the seat.”",
+    "LOAD UP + FIRST CONCENTRIC",
+    "“OK…hands on the handles, looking straight ahead.”",
+    "Observe closely, watching for a proper gradual load up.",
+    "LP pg 2 of 2",
+    "UPPER TURN",
+    "“Be ready to touch the end stop and immediately change directions.”",
+    "LC pg 1 of 2",
+    "Leg Curl - starts at LT",
+    "SETUP",
+    "Align the knee with the axis of rotation.",
+  ].join("\r\n");
+
+  it("splits one document into a script per machine", () => {
+    expect(parseScripts(script).map((s) => s.abbr)).toEqual(["LP", "LC"]);
+  });
+
+  it("REGRESSION: page 2 continues page 1 rather than starting a machine", () => {
+    // The page markers are the document's own per-machine boundaries, but a
+    // machine spans two of them. Treating each marker as a new machine would
+    // produce "LP" twice, each with half its script.
+    const lp = parseScripts(script).find((s) => s.abbr === "LP");
+    expect(lp!.beats.map((b) => b.beat)).toEqual([
+      "SETUP",
+      "LOAD UP + FIRST CONCENTRIC",
+      "UPPER TURN",
+    ]);
+  });
+
+  it("keeps the summary line the script opens with", () => {
+    const lp = parseScripts(script).find((s) => s.abbr === "LP");
+    expect(lp!.summary).toContain("Custom gap");
+  });
+
+  it("marks what the trainer SAYS apart from what they DO", () => {
+    const lp = parseScripts(script).find((s) => s.abbr === "LP");
+    const setup = lp!.beats.find((b) => b.beat === "SETUP")!;
+    expect(setup.lines[0]).toEqual({
+      spoken: false,
+      text: "Set back pad (P2 for most), set shoulder pads, set weight",
+    });
+    expect(setup.lines[1].spoken).toBe(true);
+  });
+
+  it("strips the quote marks once a line is marked as spoken", () => {
+    const lp = parseScripts(script).find((s) => s.abbr === "LP");
+    const setup = lp!.beats.find((b) => b.beat === "SETUP")!;
+    expect(setup.lines[1].text.startsWith("“")).toBe(false);
+    expect(setup.lines[1].text).toContain("Have a seat");
+  });
+
+  it("ignores anything before the first machine marker", () => {
+    expect(parseScripts("Some preamble\nwith no marker")).toEqual([]);
   });
 });

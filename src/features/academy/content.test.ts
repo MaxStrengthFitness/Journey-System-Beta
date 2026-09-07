@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import index from "./content/index.json";
 import cards from "./content/cards.json";
+import cues from "./content/cues.json";
+import scripts from "./content/scripts.json";
 import glossary from "./content/glossary.json";
 import intro from "./content/intro.json";
 import programming from "./content/programming.json";
@@ -151,5 +153,111 @@ describe("the glossary", () => {
       expect(e.term.length).toBeLessThanOrEqual(60);
       expect(e.definition.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("the cue phrasebook", () => {
+  it("found the real moments, not one blob", () => {
+    expect(cues.cues.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it("carries a usable number of phrases to say", () => {
+    const phrases = cues.cues.reduce((n, m) => n + m.phrases.length, 0);
+    expect(phrases).toBeGreaterThan(80);
+  });
+
+  it("REGRESSION: a cue is not promoted to a moment heading", () => {
+    // "Slow and controlled" is the same shape as "Speed of Motion". If shape
+    // decided, it would become an empty section instead of a phrase.
+    const speed = cues.cues.find((m) => m.moment.startsWith("Speed of Motion"));
+    expect(speed).toBeDefined();
+    expect(speed!.phrases).toContain("Slow and controlled");
+  });
+
+  it("keeps the long headings that carry a list of machines", () => {
+    const lower = cues.cues.filter((m) => m.moment.startsWith("Lower Turnaround"));
+    expect(lower.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("has no moment with nothing under it", () => {
+    for (const m of cues.cues) {
+      expect(m.phrases.length + m.notes.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("the per-machine scripts", () => {
+  it("covers all twenty machines across the three workouts", () => {
+    expect(scripts.scripts.length).toBe(20);
+    expect(new Set(scripts.scripts.map((s) => s.workout)).size).toBe(3);
+  });
+
+  it("maps every script to a machine the app knows", () => {
+    for (const s of scripts.scripts) {
+      expect(s.machineId).toBeTruthy();
+      expect(MACHINE_ANATOMY[s.machineId as string]).toBeDefined();
+    }
+  });
+
+  it("covers the two machines that have NO quick reference card", () => {
+    // 19 comprehensive overviews, 18 cards. For the Lateral Raise and the
+    // Triceps Extension the script is the app's only spoken instruction.
+    const carded = new Set(cards.cards.map((c) => c.machineId));
+    const scripted = new Set(scripts.scripts.map((s) => s.machineId));
+    expect(carded.has("m-lateral-raise")).toBe(false);
+    expect(scripted.has("m-lateral-raise")).toBe(true);
+    expect(carded.has("m-tricep-ext")).toBe(false);
+    expect(scripted.has("m-tricep-ext")).toBe(true);
+  });
+
+  it("kept each machine whole rather than splitting it at a page break", () => {
+    const ids = scripts.scripts.map((s) => s.machineId);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("separates spoken lines from instructor actions", () => {
+    const lp = scripts.scripts.find((s) => s.abbr === "LP")!;
+    const all = lp.beats.flatMap((b) => b.lines);
+    expect(all.some((l) => l.spoken)).toBe(true);
+    expect(all.some((l) => !l.spoken)).toBe(true);
+  });
+
+  it("keeps the beats the scripts are written in", () => {
+    const lp = scripts.scripts.find((s) => s.abbr === "LP")!;
+    const beats = lp.beats.map((b) => b.beat).join(" | ");
+    expect(beats).toContain("SETUP");
+    expect(beats).toContain("UPPER TURN");
+  });
+
+  it("strips the quote marks once a line is marked spoken", () => {
+    for (const s of scripts.scripts) {
+      for (const b of s.beats) {
+        for (const l of b.lines) {
+          expect(l.text.startsWith("\u201C")).toBe(false);
+        }
+      }
+    }
+  });
+});
+
+describe("the modules added in the second pass", () => {
+  it("carries the consultation, further reading and summaries", () => {
+    const ids = index.modules.map((m) => m.id);
+    expect(ids).toContain("consultation");
+    expect(ids).toContain("further");
+    expect(ids).toContain("summary");
+  });
+
+  it("REGRESSION: Further Reading has the largest document in the corpus", () => {
+    // MSF Fundamentals of High Intensity Exercise, 6,386 words. It sits loose
+    // at the root of Academy/ and the first build walked past it.
+    const further = index.modules.find((m) => m.id === "further")!;
+    const titles = further.topics.map((t) => t.title).join(" | ");
+    expect(titles).toContain("Fundamentals of High Intensity Exercise");
+  });
+
+  it("lists the modules in teaching order", () => {
+    const ns = index.modules.map((m) => m.n);
+    expect(ns).toEqual([...ns].sort((a, b) => a - b));
   });
 });

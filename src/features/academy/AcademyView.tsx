@@ -32,24 +32,28 @@ import {
   ClipboardList,
   GraduationCap,
   Layers,
+  MessageSquareQuote,
   Search,
   Type,
 } from "lucide-react";
 import {
   ACADEMY_INDEX,
   useAcademyCards,
+  useAcademyCues,
   useAcademyGlossary,
   useAcademyModule,
   useAcademyOverviews,
+  useAcademyScripts,
   useTopicSearch,
 } from "./useAcademyContent";
-import type { Block, QuickCard, Topic } from "./types";
+import type { Block, MachineScript, QuickCard } from "./types";
 import "./academy.css";
 
-type Tab = "learn" | "cards" | "glossary" | "deep";
+type Tab = "learn" | "cueing" | "cards" | "glossary" | "deep";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "learn", label: "Curriculum", icon: <GraduationCap className="w-4 h-4" /> },
+  { id: "cueing", label: "Cueing", icon: <MessageSquareQuote className="w-4 h-4" /> },
   { id: "cards", label: "At the machine", icon: <ClipboardList className="w-4 h-4" /> },
   { id: "glossary", label: "Glossary", icon: <Type className="w-4 h-4" /> },
   { id: "deep", label: "Deep dives", icon: <Layers className="w-4 h-4" /> },
@@ -70,7 +74,16 @@ export function AcademyView({ initialMachineId, onBack }: AcademyViewProps) {
   const [search, setSearch] = useState("");
 
   const { content, loading, failed } = useAcademyModule(moduleId);
-  const cards = useAcademyCards(tab === "cards");
+  const cards = useAcademyCards(tab === "cards" || Boolean(initialMachineId));
+  const cues = useAcademyCues(tab === "cueing");
+  /*
+   * The scripts load for the cueing tab AND whenever we arrived from a
+   * machine, because for the Lateral Raise and the Triceps Extension the
+   * script is the ONLY instruction the corpus carries — there is no quick
+   * reference card for either.
+   */
+  const scripts = useAcademyScripts(tab === "cueing" || Boolean(initialMachineId));
+  const [scriptId, setScriptId] = useState<string | null>(null);
   const glossary = useAcademyGlossary(tab === "glossary");
   const overviews = useAcademyOverviews(tab === "deep");
   const runSearch = useTopicSearch();
@@ -87,6 +100,11 @@ export function AcademyView({ initialMachineId, onBack }: AcademyViewProps) {
 
   const openTopic = content?.topics.find((t) => t.id === topicId) ?? null;
   const openOverview = overviews?.find((o) => o.id === overviewId) ?? null;
+  const openScript = scripts?.find((s) => s.id === scriptId) ?? null;
+  /** The script for the machine we arrived from, if it has one. */
+  const machineScript = initialMachineId
+    ? (scripts?.find((s) => s.machineId === initialMachineId) ?? null)
+    : null;
 
   /* ── a topic, open ───────────────────────────────────────────────── */
   if (openTopic) {
@@ -114,8 +132,31 @@ export function AcademyView({ initialMachineId, onBack }: AcademyViewProps) {
     );
   }
 
+  if (openScript) {
+    return <ScriptReader script={openScript} onBack={() => setScriptId(null)} />;
+  }
+
   if (openCard) {
-    return <CardReader card={openCard} onBack={() => { setCardId(null); onBack?.(); }} />;
+    return (
+      <CardReader
+        card={openCard}
+        script={machineScript}
+        onOpenScript={machineScript ? () => setScriptId(machineScript.id) : undefined}
+        onBack={() => {
+          setCardId(null);
+          onBack?.();
+        }}
+      />
+    );
+  }
+
+  /*
+   * Arrived from a machine that has no card. Two machines are in this
+   * position — the Lateral Raise and the Triceps Extension — and both have a
+   * full script, so going straight to it beats showing an empty list.
+   */
+  if (initialMachineId && machineScript && !openCard) {
+    return <ScriptReader script={machineScript} onBack={() => onBack?.()} />;
   }
 
   /* ── a module's topic list ───────────────────────────────────────── */
@@ -240,6 +281,59 @@ export function AcademyView({ initialMachineId, onBack }: AcademyViewProps) {
             </li>
           ))}
         </ol>
+      )}
+
+      {tab === "cueing" && (
+        <>
+          <p className="acd__note">
+            What to say, and when. The phrases are grouped by the moment in the
+            set they belong to; the scripts below are the full spoken
+            instruction for one machine, start to finish.
+          </p>
+          {!cues ? (
+            <p className="acd__empty">Loading…</p>
+          ) : (
+            <div className="acd__cues">
+              {cues.map((m) => (
+                <section key={m.moment} className="acd__moment">
+                  <h2>{m.moment}</h2>
+                  {m.notes.map((n, i) => (
+                    <p key={i} className="acd__cuenote">
+                      {n}
+                    </p>
+                  ))}
+                  <ul className="acd__phrases">
+                    {m.phrases.map((ph, i) => (
+                      <li key={i}>{ph}</li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          )}
+
+          <h2 className="acd__subhead">Full scripts, by machine</h2>
+          {!scripts ? (
+            <p className="acd__empty">Loading…</p>
+          ) : (
+            <div className="acd__cards">
+              {scripts.map((sc) => (
+                <button
+                  key={sc.id}
+                  type="button"
+                  className="acd__card"
+                  onClick={() => setScriptId(sc.id)}
+                >
+                  <span className="acd__cardabbr">{sc.abbr}</span>
+                  <span className="acd__cardtitle">
+                    {sc.summary?.split(/\s[-–]\s/)[0] ?? sc.abbr}
+                    <em className="acd__cardsub">{sc.workout}</em>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {tab === "cards" && (
@@ -372,7 +466,17 @@ function Reader({
   );
 }
 
-function CardReader({ card, onBack }: { card: QuickCard; onBack: () => void }) {
+function CardReader({
+  card,
+  script,
+  onOpenScript,
+  onBack,
+}: {
+  card: QuickCard;
+  script?: MachineScript | null;
+  onOpenScript?: () => void;
+  onBack: () => void;
+}) {
   return (
     <article className="acd acd--reader">
       <button type="button" className="acd__back" onClick={onBack}>
@@ -384,6 +488,16 @@ function CardReader({ card, onBack }: { card: QuickCard; onBack: () => void }) {
         {card.title.replace(/\s*[-–]\s*Quick Reference Guide\s*$/i, "")}
       </h1>
 
+      {onOpenScript && script && (
+        <button type="button" className="acd__scriptlink" onClick={onOpenScript}>
+          <MessageSquareQuote className="w-4 h-4" aria-hidden />
+          <span>
+            <strong>Full spoken script</strong>
+            <em>Word for word, setup through the last rep</em>
+          </span>
+        </button>
+      )}
+
       {card.sections.map((s) => (
         <section key={s.heading} className="acd__section">
           <h2>{s.heading}</h2>
@@ -392,6 +506,56 @@ function CardReader({ card, onBack }: { card: QuickCard; onBack: () => void }) {
               <li key={i}>{it}</li>
             ))}
           </ul>
+        </section>
+      ))}
+    </article>
+  );
+}
+
+/**
+ * A machine's script.
+ *
+ * The distinction the layout carries is the one the source makes: a quoted
+ * line is what the trainer SAYS, everything else is what they do or watch
+ * for. Rendering both as plain paragraphs would lose it, and a trainer
+ * rehearsing needs to know which words are theirs.
+ */
+function ScriptReader({
+  script,
+  onBack,
+}: {
+  script: MachineScript;
+  onBack: () => void;
+}) {
+  return (
+    <article className="acd acd--reader">
+      <button type="button" className="acd__back" onClick={onBack}>
+        <ArrowLeft className="w-3.5 h-3.5" />
+        Back
+      </button>
+      <p className="acd__eyebrow">{script.workout} · spoken script</p>
+      <h1 className="acd__title">{script.summary ?? script.abbr}</h1>
+      <p className="acd__meta">
+        Lines in <span className="acd__saidkey">quotes and colour</span> are said
+        out loud.
+      </p>
+
+      {script.beats.map((b) => (
+        <section key={b.beat} className="acd__section">
+          <h2>{b.beat}</h2>
+          <div className="acd__script">
+            {b.lines.map((l, i) =>
+              l.spoken ? (
+                <p key={i} className="acd__said">
+                  {l.text}
+                </p>
+              ) : (
+                <p key={i} className="acd__do">
+                  {l.text}
+                </p>
+              ),
+            )}
+          </div>
         </section>
       ))}
     </article>

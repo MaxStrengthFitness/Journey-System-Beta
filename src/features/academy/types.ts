@@ -74,3 +74,38 @@ export interface OverviewsFile {
     blocks: Block[];
   }[];
 }
+
+/** A moment in the set, and the words to say at it. */
+export interface CueMoment {
+  moment: string;
+  /** Short enough to say mid-set. These are the cues. */
+  phrases: string[];
+  /** The explanation around them. */
+  notes: string[];
+}
+
+export interface CuesFile {
+  cues: CueMoment[];
+}
+
+export interface ScriptLine {
+  /** True when this is words to say, not an instruction to the trainer. */
+  spoken: boolean;
+  text: string;
+}
+
+export interface MachineScript {
+  id: string;
+  abbr: string;
+  /** "Lower Body", "Upper Body", "Spine / Trunk / Core". */
+  workout: string;
+  machineId: string | null;
+  summary?: string;
+  beats: { beat: string; lines: ScriptLine[] }[];
+  lines: number;
+}
+
+export interface ScriptsFile {
+  scripts: MachineScript[];
+}
+

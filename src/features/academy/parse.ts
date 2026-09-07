@@ -332,3 +332,187 @@ export function orderFromFilename(name: string): number {
   const m = name.match(/\s(\d+)\s*[-–]/);
   return m ? parseInt(m[1], 10) : 999;
 }
+
+/* ------------------------------------------------------------------ *
+ * CUEING
+ * ------------------------------------------------------------------ */
+
+/**
+ * The cue sheet is a phrasebook, and its shape carries the distinction that
+ * matters: a heading names a MOMENT in the set ("Speed of Motion", "To begin
+ * the exercise - pulling movement"), a long line explains the principle, and
+ * the short lines under it are what the trainer actually says out loud.
+ *
+ * Keeping "say this" apart from "here is why" is the whole value. A trainer
+ * scanning for the words to use mid-set should not have to read a paragraph
+ * about inertia to find "Gradually load up."
+ */
+export interface CueMoment {
+  moment: string;
+  /** Lines short enough to be said. These are the cues. */
+  phrases: string[];
+  /** The explanation around them, when there is one. */
+  notes: string[];
+}
+
+/** Above this a line is an explanation, not something you say mid-set. */
+export const MAX_CUE_CHARS = 120;
+
+/**
+ * The moment headings, supplied by the caller rather than detected.
+ *
+ * SHAPE CANNOT SEPARATE THEM FROM THE CUES, and pretending otherwise produces
+ * a card that is wrong in the most misleading way. In this document:
+ *
+ *   Speed of Motion          a moment heading
+ *   Slow and controlled      a cue you say out loud
+ *   Slowly begin             a cue
+ *   Facial expressions       a moment heading
+ *
+ * All four are short, unpunctuated, sentence-case noun-or-verb phrases. No
+ * length rule, capitalisation rule or punctuation rule tells them apart, and
+ * four of the real headings run past 75 characters because they carry a
+ * parenthetical list of machines.
+ *
+ * So the headings are written down. This is ONE known document, the list is a
+ * dozen entries, and a list a person can check beats a heuristic that is
+ * quietly wrong. Matched by prefix so the long ones need only their opening.
+ */
+export function parseCueSheet(raw: string, momentHeadings: string[]): CueMoment[] {
+  const lines = normalise(raw)
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const isMomentHeading = (text: string) =>
+    momentHeadings.some((h) => text.toLowerCase().startsWith(h.toLowerCase()));
+
+  const out: CueMoment[] = [];
+  let current: CueMoment | null = null;
+
+  for (const line of lines.slice(1)) {
+    if (isNoise(line)) continue;
+    const stripped = line.replace(BULLET_PREFIX, "").trim();
+    // The conversion kept the source's asterisk emphasis, which marks an aside
+    // rather than a heading.
+    const bare = stripped.replace(/\*+/g, "").trim();
+    if (!bare) continue;
+
+    if (isMomentHeading(bare)) {
+      current = { moment: bare, phrases: [], notes: [] };
+      out.push(current);
+      continue;
+    }
+    if (!current) {
+      current = { moment: "Before you start", phrases: [], notes: [] };
+      out.push(current);
+    }
+    if (bare.length <= MAX_CUE_CHARS) current.phrases.push(bare);
+    else current.notes.push(bare);
+  }
+
+  return out.filter((m) => m.phrases.length > 0 || m.notes.length > 0);
+}
+
+/* ------------------------------------------------------------------ *
+ * THE WORKOUT SCRIPTS
+ * ------------------------------------------------------------------ */
+
+/**
+ * One machine's script, lifted out of a whole-workout document.
+ *
+ * The three workout files are the only place in the corpus with literal
+ * trainer dialogue, and they cover TWENTY machines — two more than the quick
+ * reference set, which has no card for the Triceps Extension and only a
+ * worked-example template for the Lateral Raise. So these are not a nicer
+ * rendering of something already shipped; for two machines they are the only
+ * instruction the app has.
+ */
+export interface ScriptLine {
+  /** True when this is words to say, not an instruction to the trainer. */
+  spoken: boolean;
+  text: string;
+}
+
+export interface ScriptBeat {
+  /** SETUP, LOAD UP + FIRST CONCENTRIC, UPPER TURN, and so on. */
+  beat: string;
+  lines: ScriptLine[];
+}
+
+export interface MachineScript {
+  abbr: string;
+  /** The subtitle the script opens with, when it has one. */
+  summary?: string;
+  beats: ScriptBeat[];
+}
+
+/**
+ * `LP  pg 1 of 2` — the page markers are not conversion noise. They are the
+ * document's own per-machine boundaries, and they are the only thing marking
+ * where one machine's script ends and the next begins.
+ */
+const PAGE_MARKER = /^([A-Za-z]{2,5})\s+pg\s*(\d+)\s*of\s*(\d+)\s*$/;
+
+/** A beat heading is ALL CAPS, which the scripts use consistently. */
+function isBeat(line: string): boolean {
+  const letters = line.replace(/[^A-Za-z]/g, "");
+  return (
+    letters.length >= 3 &&
+    letters === letters.toUpperCase() &&
+    line.length <= MAX_HEADING_CHARS
+  );
+}
+
+/** A quoted line is what the trainer says; everything else is what they do. */
+function isSpoken(line: string): boolean {
+  return /^["“]/.test(line.trim());
+}
+
+export function parseScripts(raw: string): MachineScript[] {
+  const lines = normalise(raw)
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const byAbbr = new Map<string, MachineScript>();
+  let current: MachineScript | null = null;
+  let beat: ScriptBeat | null = null;
+
+  for (const line of lines) {
+    const marker = line.match(PAGE_MARKER);
+    if (marker) {
+      const abbr = marker[1];
+      // Page 2 continues page 1 rather than starting a second machine.
+      const existing = byAbbr.get(abbr);
+      if (existing) {
+        current = existing;
+        beat = existing.beats[existing.beats.length - 1] ?? null;
+      } else {
+        current = { abbr, beats: [] };
+        byAbbr.set(abbr, current);
+        beat = null;
+      }
+      continue;
+    }
+    if (!current) continue;
+
+    if (isBeat(line)) {
+      beat = { beat: line, lines: [] };
+      current.beats.push(beat);
+      continue;
+    }
+    // The line straight after a marker, before any beat, is the summary.
+    if (!beat && !current.summary) {
+      current.summary = line;
+      continue;
+    }
+    if (!beat) {
+      beat = { beat: "Notes", lines: [] };
+      current.beats.push(beat);
+    }
+    beat.lines.push({ spoken: isSpoken(line), text: line.replace(/^["“]|["”]$/g, "").trim() });
+  }
+
+  return [...byAbbr.values()].filter((s) => s.beats.length > 0);
+}

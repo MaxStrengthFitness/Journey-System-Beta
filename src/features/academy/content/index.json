@@ -1,7 +1,7 @@
 {
   "generatedFrom": "docs/msf-academy",
-  "corpusHash": "ca8f36a2e134",
-  "totalWords": 77936,
+  "corpusHash": "ebc0897297b9",
+  "totalWords": 111666,
   "modules": [
     {
       "id": "intro",
@@ -562,9 +562,132 @@
           "words": 575
         }
       ]
+    },
+    {
+      "id": "consultation",
+      "n": 11,
+      "title": "Consultation and Articles",
+      "blurb": "The initial consultation script, and the two articles written to be read to a client.",
+      "topics": [
+        {
+          "id": "consultation-initial-consultation-and-articles-exercise-and-",
+          "title": "Initial Consultation and Articles - Exercise and its Role in Fat Loss",
+          "readingMinutes": 2,
+          "words": 404
+        },
+        {
+          "id": "consultation-initial-consultation-and-articles-internalizati",
+          "title": "Initial Consultation and Articles - Internalization Its All Inside",
+          "readingMinutes": 4,
+          "words": 704
+        },
+        {
+          "id": "consultation-initial-consultation-script-tour-preliminary-co",
+          "title": "Initial Consultation Script - Tour, Preliminary Considerations, Demo Workout, Conclusion",
+          "readingMinutes": 17,
+          "words": 3409
+        }
+      ]
+    },
+    {
+      "id": "further",
+      "n": 12,
+      "title": "Further Reading",
+      "blurb": "The standalone pieces — high-intensity fundamentals, the physiology, the clicker, variety.",
+      "topics": [
+        {
+          "id": "further-exercise-substitutes",
+          "title": "Exercise Substitutes",
+          "readingMinutes": 1,
+          "words": 73
+        },
+        {
+          "id": "further-exercise-variety",
+          "title": "Exercise Variety",
+          "readingMinutes": 2,
+          "words": 407
+        },
+        {
+          "id": "further-firming-toning-and-flexibility",
+          "title": "Firming, Toning, and Flexibility",
+          "readingMinutes": 2,
+          "words": 415
+        },
+        {
+          "id": "further-msf-fundamentals-of-high-intensity-exercise",
+          "title": "MSF Fundamentals of High Intensity Exercise",
+          "readingMinutes": 32,
+          "words": 6380
+        },
+        {
+          "id": "further-muscular-sufficiencyinsufficiency-from-trainual",
+          "title": "Muscular SufficiencyInsufficiency (from Trainual)",
+          "readingMinutes": 2,
+          "words": 322
+        },
+        {
+          "id": "further-registering-performance-use-of-the-clicker",
+          "title": "Registering Performance - Use of the Clicker",
+          "readingMinutes": 3,
+          "words": 671
+        },
+        {
+          "id": "further-research",
+          "title": "Research",
+          "readingMinutes": 5,
+          "words": 965
+        },
+        {
+          "id": "further-resistance-transfer-techniques",
+          "title": "Resistance Transfer Techniques",
+          "readingMinutes": 2,
+          "words": 428
+        },
+        {
+          "id": "further-the-physiology-of-resistance-training-developing-a-n",
+          "title": "The Physiology of Resistance Training (Developing a Narrative)",
+          "readingMinutes": 11,
+          "words": 2297
+        }
+      ]
+    },
+    {
+      "id": "summary",
+      "n": 13,
+      "title": "Executive Summary",
+      "blurb": "Condensed versions of modules 1 to 4. A faster way in, or a refresher.",
+      "topics": [
+        {
+          "id": "summary-introduction",
+          "title": "Introduction",
+          "readingMinutes": 24,
+          "words": 4873
+        },
+        {
+          "id": "summary-benefits-of-resistance-training",
+          "title": "Benefits of Resistance Training",
+          "readingMinutes": 16,
+          "words": 3205
+        },
+        {
+          "id": "summary-basic-principles-of-exercise",
+          "title": "Basic Principles of Exercise",
+          "readingMinutes": 20,
+          "words": 4042
+        },
+        {
+          "id": "summary-exercise-performance",
+          "title": "Exercise Performance",
+          "readingMinutes": 26,
+          "words": 5135
+        }
+      ]
     }
   ],
   "cardCount": 18,
+  "cueMomentCount": 14,
+  "cuePhraseCount": 123,
+  "scriptCount": 20,
   "overviewCount": 19,
   "glossaryCount": 52
 }

@@ -33,9 +33,11 @@ import { join, relative } from "node:path";
 import {
   countWords,
   orderFromFilename,
+  parseCueSheet,
   parseDoc,
   parseGlossary,
   parseQuickReference,
+  parseScripts,
   titleFromFilename,
 } from "../src/features/academy/parse";
 
@@ -136,6 +138,30 @@ const MODULES: {
     // Named "Academy 2" on disk, which is a collision with module 2.
     dirs: ["Academy 2"],
   },
+  {
+    id: "consultation",
+    n: 11,
+    title: "Consultation and Articles",
+    blurb: "The initial consultation script, and the two articles written to be read to a client.",
+    dirs: ["Academy/Academy - Initial Consultation and Articles"],
+  },
+  {
+    id: "further",
+    n: 12,
+    title: "Further Reading",
+    blurb: "The standalone pieces — high-intensity fundamentals, the physiology, the clicker, variety.",
+    // Loose files at the root of Academy/. Not part of the numbered
+    // curriculum, and left out of the first build for that reason — which
+    // dropped the largest single document in the corpus.
+    dirs: ["Academy"],
+  },
+  {
+    id: "summary",
+    n: 13,
+    title: "Executive Summary",
+    blurb: "Condensed versions of modules 1 to 4. A faster way in, or a refresher.",
+    dirs: ["Academy/MSF Academy - Executive Summary"],
+  },
 ];
 
 /**
@@ -175,7 +201,46 @@ const CARD_TO_MACHINE: Record<string, string> = {
   SD: "m-dip",
   SR: "m-simple-row",
   TR: "m-torso-rotation",
+  /*
+   * These two have NO quick reference card — the corpus has 19 comprehensive
+   * overviews and only 18 cards, and the Lateral Raise's only other source is
+   * a worked example inside a template. They do have full workout scripts, so
+   * for these two machines the script is the app's primary instruction.
+   */
+  LR: "m-lateral-raise",
+  Tri: "m-tricep-ext",
 };
+
+/**
+ * The section headings in the cue sheet, listed because shape cannot find
+ * them — "Speed of Motion" and "Slow and controlled" are the same shape, and
+ * one is a heading while the other is a cue. Matched by prefix, so the four
+ * that carry a parenthetical list of machines need only their opening.
+ * See parseCueSheet.
+ */
+const CUE_MOMENTS = [
+  "To begin the exercise",
+  "Speed of Motion",
+  "Confirmation of good technique",
+  "Facial expressions",
+  "Lower Turnaround",
+  "Upper Turnaround",
+  "To End an Exercise",
+  "Final descent",
+  "Carefully unload",
+  "Motivation",
+  "At the moment of apparent task failure",
+];
+
+const CUE_SHEET =
+  "Academy/Academy 9 - Exercise Instruction/Academy - Exercise Instruction - Cues and Timing.txt";
+const SCRIPT_DIR = "Workout Setups and Instruction";
+
+/** Abbreviation to machine id, tolerant of the corpus's inconsistent casing. */
+const ABBR_LOOKUP = new Map(
+  Object.entries(CARD_TO_MACHINE).map(([k, v]) => [k.toLowerCase(), v]),
+);
+const machineForAbbr = (abbr: string) => ABBR_LOOKUP.get(abbr.toLowerCase()) ?? null;
 
 const read = (p: string) => readFileSync(p, "utf8");
 const slug = (s: string) =>
@@ -282,6 +347,38 @@ function main() {
   writeFileSync(join(OUT, "glossary.json"), JSON.stringify({ glossary }, null, 0));
   console.log(`  Glossary — ${glossary.length} terms`);
 
+  // ── the cue phrasebook ─────────────────────────────────────────────
+  const cues = parseCueSheet(read(join(ROOT, CUE_SHEET)), CUE_MOMENTS);
+  writeFileSync(join(OUT, "cues.json"), JSON.stringify({ cues }, null, 0));
+  const cuePhrases = cues.reduce((n, m) => n + m.phrases.length, 0);
+  console.log(`  Cue sheet — ${cues.length} moments, ${cuePhrases} phrases`);
+
+  // ── the per-machine workout scripts ────────────────────────────────
+  const scripts: any[] = [];
+  for (const file of listTxt(SCRIPT_DIR)) {
+    // "MSF Lower Body - setup and instruction.txt" -> "Lower Body"
+    const workout = titleFromFilename(file)
+      .replace(/^MSF\s+/i, "")
+      .replace(/\s*-\s*setup and instruction$/i, "")
+      .replace(/_/g, " / ");
+    for (const sc of parseScripts(read(join(ROOT, SCRIPT_DIR, file)))) {
+      scripts.push({
+        ...sc,
+        id: slug(`${workout}-${sc.abbr}`),
+        workout,
+        // The cards spell it "Abd", the scripts "ABD". Same machine.
+        machineId: machineForAbbr(sc.abbr),
+        lines: sc.beats.reduce((n, b) => n + b.lines.length, 0),
+      });
+    }
+  }
+  scripts.sort((a, b) => a.workout.localeCompare(b.workout) || a.abbr.localeCompare(b.abbr));
+  writeFileSync(join(OUT, "scripts.json"), JSON.stringify({ scripts }, null, 0));
+  const unscripted = scripts.filter((s) => !s.machineId).map((s) => s.abbr);
+  console.log(
+    `  Workout scripts — ${scripts.length} machines${unscripted.length ? ` (unmapped: ${unscripted.join(", ")})` : ""}`,
+  );
+
   writeFileSync(
     join(OUT, "index.json"),
     JSON.stringify(
@@ -295,6 +392,9 @@ function main() {
         totalWords,
         modules: index,
         cardCount: cards.length,
+        cueMomentCount: cues.length,
+        cuePhraseCount: cuePhrases,
+        scriptCount: scripts.length,
         overviewCount: overviews.length,
         glossaryCount: glossary.length,
       },

@@ -15,7 +15,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import index from "./content/index.json";
-import type { AcademyIndex, ModuleContent, CardsFile, GlossaryFile, OverviewsFile } from "./types";
+import type {
+  AcademyIndex,
+  CardsFile,
+  CuesFile,
+  GlossaryFile,
+  ModuleContent,
+  OverviewsFile,
+  ScriptsFile,
+} from "./types";
 
 export const ACADEMY_INDEX = index as unknown as AcademyIndex;
 
@@ -37,6 +45,9 @@ const MODULE_LOADERS: Record<string, () => Promise<{ default: unknown }>> = {
   equipment: () => import("./content/equipment.json"),
   instruction: () => import("./content/instruction.json"),
   mastery: () => import("./content/mastery.json"),
+  consultation: () => import("./content/consultation.json"),
+  further: () => import("./content/further.json"),
+  summary: () => import("./content/summary.json"),
 };
 
 const cache = new Map<string, ModuleContent>();
@@ -116,6 +127,37 @@ export function useAcademyGlossary(enabled: boolean) {
     };
   }, [enabled, terms]);
   return terms;
+}
+
+/** The cue phrasebook and the per-machine scripts. One chunk each. */
+export function useAcademyCues(enabled: boolean) {
+  const [cues, setCues] = useState<CuesFile["cues"] | null>(null);
+  useEffect(() => {
+    if (!enabled || cues) return;
+    let live = true;
+    import("./content/cues.json").then((m) => {
+      if (live) setCues((m.default as unknown as CuesFile).cues);
+    });
+    return () => {
+      live = false;
+    };
+  }, [enabled, cues]);
+  return cues;
+}
+
+export function useAcademyScripts(enabled: boolean) {
+  const [scripts, setScripts] = useState<ScriptsFile["scripts"] | null>(null);
+  useEffect(() => {
+    if (!enabled || scripts) return;
+    let live = true;
+    import("./content/scripts.json").then((m) => {
+      if (live) setScripts((m.default as unknown as ScriptsFile).scripts);
+    });
+    return () => {
+      live = false;
+    };
+  }, [enabled, scripts]);
+  return scripts;
 }
 
 export function useAcademyOverviews(enabled: boolean) {
