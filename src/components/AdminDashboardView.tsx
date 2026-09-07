@@ -210,14 +210,23 @@ export function AdminDashboardView({
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-3 sm:p-6 animate-fade-in text-slate-900 dark:text-slate-100 flex flex-col lg:flex-row gap-4 lg:gap-8 items-start">
+    /*
+     * `adm` on the ROOT, not just on the buttons (Sep 2026).
+     *
+     * The nav buttons each carried the class individually, so --adm-* resolved
+     * on them and nowhere else — which is why the frame around the tabs was
+     * still painted in raw Tailwind slate while everything inside it used kit
+     * surfaces. Scoping once here is what makes the shell and its contents the
+     * same screen rather than two designs stacked.
+     */
+    <div className="adm adm-shell">
       {/* ───── Sidebar (iPad landscape and up) ───── */}
-      <aside className="hidden lg:flex w-52 xl:w-56 shrink-0 flex-col sticky top-0 self-start border-r border-slate-200 dark:border-slate-800 pr-2 min-h-[60dvh]">
+      <aside className="adm-shell__side">
         {groups
           .filter((g) => g.tier === "primary")
           .map((group, gIdx) => (
-            <div key={group.id} className={cn(gIdx > 0 && "mt-5")}>
-              <div className="adm-nav__group px-3 pb-1.5">{group.label}</div>
+            <div key={group.id} className={cn("adm-shell__group", gIdx > 0 && "adm-shell__group--spaced")}>
+              <div className="adm-nav__group">{group.label}</div>
               <div className="flex flex-col">
                 {group.tabs.map((tab) => renderNavButton(tab, "sidebar"))}
               </div>
@@ -229,9 +238,9 @@ export function AdminDashboardView({
           .map((group) => (
             <div
               key={group.id}
-              className="adm-nav__rule mt-auto pt-5 border-t border-dashed"
+              className="adm-nav__rule adm-shell__group adm-shell__group--pinned"
             >
-              <div className="adm-nav__group px-3 pb-1.5">{group.label}</div>
+              <div className="adm-nav__group">{group.label}</div>
               <div className="flex flex-col">
                 {group.tabs.map((tab) => renderNavButton(tab, "sidebar"))}
               </div>
@@ -240,11 +249,14 @@ export function AdminDashboardView({
       </aside>
 
       {/* ───── Two-tier horizontal strip (portrait / narrow) ───── */}
-      <div className="lg:hidden w-full border-b border-slate-200 dark:border-slate-800 -mt-1">
-        <div className="flex items-end gap-4 overflow-x-auto no-scrollbar">
+      <div className="adm-shell__strip">
+        <div className="adm-shell__striprow">
           {groups.map((group, gIdx) => (
-            <div key={group.id} className={cn("flex flex-col shrink-0", gIdx > 0 && "border-l border-slate-200 dark:border-slate-800 pl-4")}>
-              <span className="adm-nav__group px-3 text-[9px]">{group.label}</span>
+            <div
+              key={group.id}
+              className={cn("adm-shell__stripgroup", gIdx > 0 && "adm-shell__stripgroup--divided")}
+            >
+              <span className="adm-nav__group adm-shell__striplabel">{group.label}</span>
               <div className="flex">
                 {group.tabs.map((tab) => renderNavButton(tab, "strip"))}
               </div>
@@ -253,7 +265,7 @@ export function AdminDashboardView({
         </div>
       </div>
 
-      <div className="flex-1 min-w-0 w-full">
+      <div className="adm-shell__main">
         {activeTab === "metrics" && (
           <AdminOverviewTab
             authTrainer={authTrainer}

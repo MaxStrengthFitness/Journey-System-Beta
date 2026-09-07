@@ -123,6 +123,139 @@
   border-color: var(--adm-border);
 }
 
+/* ---------- Shell ---------------------------------------------------- *
+ *
+ * The frame every admin tab sits in. It used to be raw Tailwind — slate
+ * borders, slate ink — while the tabs inside it were all on --adm-* tokens,
+ * so the page had two palettes: one for the chrome and one for the content.
+ * In dark mode the seam was obvious, because the two sets of greys were
+ * picked by different people at different times.
+ *
+ * Nothing here is new design. It is the same layout expressed in the tokens
+ * the rest of the feature already uses, so a change to a token moves the
+ * whole screen instead of half of it.
+ * --------------------------------------------------------------------- */
+
+.adm-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 12px;
+  color: var(--adm-ink);
+}
+
+@media (min-width: 640px) {
+  .adm-shell {
+    padding: 24px;
+  }
+}
+
+/* Landscape and up: the nav becomes a rail beside the content. */
+@media (min-width: 1024px) {
+  .adm-shell {
+    flex-direction: row;
+    gap: 32px;
+  }
+}
+
+.adm-shell__side {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .adm-shell__side {
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    flex-shrink: 0;
+    width: 13rem;
+    /* Tall enough that the pinned System group has somewhere to sit. */
+    min-height: 60dvh;
+    padding-right: 8px;
+    border-right: 1px solid var(--adm-border);
+  }
+}
+
+@media (min-width: 1280px) {
+  .adm-shell__side {
+    width: 14rem;
+  }
+}
+
+.adm-shell__group {
+  display: flex;
+  flex-direction: column;
+}
+
+.adm-shell__group--spaced {
+  margin-top: 20px;
+}
+
+/* System Backend sits at the bottom, away from the daily work. */
+.adm-shell__group--pinned {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px dashed var(--adm-border);
+}
+
+.adm-shell__group .adm-nav__group {
+  padding: 0 12px 6px;
+}
+
+/* Portrait and narrow: a two-tier horizontal strip instead of the rail. */
+.adm-shell__strip {
+  width: 100%;
+  margin-top: -4px;
+  border-bottom: 1px solid var(--adm-border);
+}
+
+@media (min-width: 1024px) {
+  .adm-shell__strip {
+    display: none;
+  }
+}
+
+.adm-shell__striprow {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.adm-shell__striprow::-webkit-scrollbar {
+  display: none;
+}
+
+.adm-shell__stripgroup {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.adm-shell__stripgroup--divided {
+  padding-left: 16px;
+  border-left: 1px solid var(--adm-border);
+}
+
+.adm-shell__striplabel {
+  padding: 0 12px;
+  font-size: 9px;
+}
+
+.adm-shell__main {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+}
+
 /* ---------- Panel ---------------------------------------------------- */
 
 .adm-panel {
