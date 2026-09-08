@@ -1194,7 +1194,17 @@ export function WorkoutTrackerView({
             const data = { id: sSnap.id, ...sSnap.data() } as WorkoutSession;
             if (data.status === "In-Progress") {
               setCurrentSession(data);
-              setSessions([data]);
+              /* Merge, never replace. `sessions` feeds the history grid AND
+                 builds the exerciseLogs query below (its `where sessionId in`
+                 list), so replacing it with the single taken-over session blanked
+                 the client's whole history and every log with it. It also raced
+                 the client-scoped listener, which is what made the screen flicker
+                 between full and empty. That listener fills in the real history a
+                 beat later; this only needs to make sure the session being taken
+                 over is present until it does. */
+              setSessions((prev) =>
+                prev.some((s) => s.id === data.id) ? prev : [data, ...prev],
+              );
               setIsPreSessionMode(false);
               setShowRoutinePicker(false);
               // Clear it so we don't keep doing this if the trainer navigates away and back manually
