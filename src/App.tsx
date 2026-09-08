@@ -8,6 +8,7 @@ import { ToastProvider } from "./contexts/ToastContext";
 import AppContent from "./AppContent";
 import { useAuthInitialization } from "./hooks/useAuthInitialization";
 import { migrateClientMachineMetrics } from "./lib/migration-utils";
+import { getDefaultStudioId, setDefaultStudioId } from "./lib/default-studio";
 
 export default function App() {
   const {
@@ -26,7 +27,13 @@ export default function App() {
   } = useAuthInitialization();
 
   const handleLogout = async () => {
+    /* The pinned studio is a property of this device, not of the session --
+       a floor tablet should still open its own studio for the next trainer.
+       It is re-checked against that trainer's access before it is used, so
+       keeping it cannot grant anyone entry to somewhere they can't go. */
+    const pinnedStudioId = getDefaultStudioId();
     localStorage.clear();
+    setDefaultStudioId(pinnedStudioId);
     setAuthTrainer(null);
     setNetworks([]);
     setTokenRole(null);

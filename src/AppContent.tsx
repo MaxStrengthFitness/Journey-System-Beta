@@ -115,6 +115,10 @@ const TrainerProfileView = lazy(() =>
   })),
 );
 import { StudioSelectionView } from "./components/StudioSelectionView";
+import {
+  getDefaultStudioId,
+  setDefaultStudioId,
+} from "./lib/default-studio";
 import { withoutSuperseded } from "./features/trainer-identity/claim";
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 
@@ -548,7 +552,56 @@ export default function AppContent({
     setIsChangingStudio,
     isAdmin,
     setIsAuthenticated,
+    availableStudios,
   } = useActiveStudio();
+
+  /**
+   * Enter the studio pinned on this device, without stopping at the picker.
+   *
+   * A trainer who works the same floor every day should not have to answer the
+   * same question every morning, and a tablet bolted to one studio's wall
+   * should just open that studio. Pinning is per-device (see lib/default-studio)
+   * and set from the picker itself.
+   *
+   * Three things keep it from becoming a trap:
+   *  - `isChangingStudio` suppresses it, so "switch studio" in the header always
+   *    reaches the picker instead of bouncing straight back.
+   *  - The pin is re-checked against `availableStudios` every time, so revoked
+   *    access, a deleted studio, or a different trainer signing in on this
+   *    device falls through to the picker rather than entering somewhere they
+   *    are no longer allowed.
+   *  - It does NOT bypass the PIN screen: authentication is set exactly as the
+   *    picker sets it, so a trainer with a PIN still has to enter it.
+   */
+  useEffect(() => {
+    if (activeStudioId || isChangingStudio) return;
+    if (!authTrainer || studios.length === 0) return;
+
+    const pinned = getDefaultStudioId();
+    if (!pinned) return;
+
+    if (!studios.some((s) => s.id === pinned)) {
+      // Studio no longer exists — drop the stale pin rather than retrying.
+      setDefaultStudioId(null);
+      return;
+    }
+    if (!availableStudios.some((s) => s.id === pinned)) return;
+
+    setActiveStudioId(pinned);
+    localStorage.setItem("max_strength_trainer_id", authTrainer.id!);
+    const hasPin = authTrainer.pin || authTrainer.pinHash;
+    localStorage.setItem(
+      "max_strength_authenticated",
+      hasPin ? "false" : "true",
+    );
+    setIsAuthenticated(!hasPin);
+  }, [
+    activeStudioId,
+    isChangingStudio,
+    authTrainer,
+    studios,
+    availableStudios,
+  ]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [appMode, setAppMode] = useState<"trainer" | "admin">("trainer");
   const [currentView, setCurrentView] = useState<View>("clients");
