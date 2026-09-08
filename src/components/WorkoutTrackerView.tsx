@@ -915,6 +915,25 @@ const TRACKER_COL = {
 /** The two OLDEST history columns hide on iPad portrait to keep the row on-screen. */
 const historyVisibility = (i: number) => (i >= 3 ? "hidden lg:flex" : "flex");
 
+/**
+ * One canonical exerciseLogs document per (session, machine, side).
+ *
+ * The id is derived rather than random so that writing a set is idempotent: a
+ * single grid patch can call updateLogMultiple more than once for the same set
+ * in one tick (weight and reps arrive as separate calls), and the placeholder
+ * logs created at session start race with the snapshot that reports them. With
+ * a random id each of those paths would mint a *new* document for the same set.
+ * Deriving it means every path addresses the same doc, so create-or-update is
+ * safe to call as often as we like.
+ *
+ * Matches the key used for the local `logs` map, so the two cannot drift.
+ */
+export const logDocId = (
+  sessionId: string,
+  machineId: string,
+  side?: "Left" | "Right",
+) => `${sessionId}_${machineId}${side ? "_" + side : ""}`;
+
 export function WorkoutTrackerView({
   clientId,
   clients,
@@ -2152,23 +2171,23 @@ export function WorkoutTrackerView({
 
             // Create Left set
             if (prefilledLeft || defaultWeight) {
-              await addDoc(
-                collection(db, "exerciseLogs"),
+              await setDoc(
+                doc(db, "exerciseLogs", logDocId(docRef.id, mId, "Left")),
                 createLogPayload(prefilledLeft, mId, "Left", defaultWeight),
               );
             }
             // Create Right set
             if (prefilledRight || defaultWeight) {
-              await addDoc(
-                collection(db, "exerciseLogs"),
+              await setDoc(
+                doc(db, "exerciseLogs", logDocId(docRef.id, mId, "Right")),
                 createLogPayload(prefilledRight, mId, "Right", defaultWeight),
               );
             }
           } else {
             const prefilledLog = machineLastLogs[mId];
             if (prefilledLog || defaultWeight) {
-              await addDoc(
-                collection(db, "exerciseLogs"),
+              await setDoc(
+                doc(db, "exerciseLogs", logDocId(docRef.id, mId, undefined)),
                 createLogPayload(prefilledLog, mId, undefined, defaultWeight),
               );
             }
@@ -2424,14 +2443,87 @@ export function WorkoutTrackerView({
     updateLog(sessionId, machineId, "repQuality", quality, side);
   };
 
+  /**
+   * Saves a set. The write goes to Firestore immediately — it is not deferred
+   * to the end of the session.
+   *
+   * This used to touch React state only, leaving every rep entered during a
+   * session in memory alone until "finish" ran completeWorkoutSession. Three
+   * things fell out of that, all reported from the floor:
+   *   - This screen is mounted as {currentView === "workouts" && <.../>}, so
+   *     navigating away unmounted it and discarded the lot. Coming back showed
+   *     only the placeholder logs written at session start.
+   *   - A crash or a reload mid-session lost the same way.
+   *   - A second trainer taking the session over saw nothing, because the first
+   *     trainer's reps had never reached the database.
+   * The exerciseLogs snapshot below compounded it: it rebuilds the whole `logs`
+   * map from Firestore, so ANY log change quietly erased in-memory-only sets.
+   *
+   * Local state is still updated first so the HUD stays instant; the write
+   * follows and reconciles through the snapshot.
+   */
   const updateLogMultiple = (
     sessionId: string,
     machineId: string,
     updates: Partial<ExerciseLog>,
     side?: "Left" | "Right",
   ) => {
-    const key = `${sessionId}_${machineId}${side ? "_" + side : ""}`;
+    const key = logDocId(sessionId, machineId, side);
     const currentSettings = clientMachineSettings[machineId]?.settings || {};
+
+    /* Sessions started before this change have logs under random ids; keep
+       writing to those rather than stranding them behind a derived id. */
+    const existingId = logs[key]?.id;
+    const docId =
+      existingId && !String(existingId).startsWith("temp_")
+        ? String(existingId)
+        : key;
+    const logRef = doc(db, "exerciseLogs", docId);
+
+    setLogs((prev) => {
+      const prevLog = prev[key];
+      const updatedLog: ExerciseLog = {
+        ...(prevLog || {}),
+        sessionId,
+        clientId,
+        machineId,
+        ...(side ? { side } : {}),
+        ...updates,
+        id: docId,
+        machineSettings: currentSettings,
+        createdAt: prevLog?.createdAt ?? Timestamp.now(),
+      } as any;
+
+      return { ...prev, [key]: updatedLog };
+    });
+
+    /* undefined is rejected by Firestore, and callers pass partials — strip
+       before writing rather than trusting every call site. */
+    const payload: Record<string, any> = {
+      sessionId,
+      machineId,
+      machineSettings: currentSettings,
+      updatedAt: serverTimestamp(),
+    };
+    if (side) payload.side = side;
+    if (clientId) payload.clientId = clientId;
+    Object.entries(updates).forEach(([k, v]) => {
+      // `id` is the document's own name, never a field on it.
+      if (k !== "id" && v !== undefined) payload[k] = v;
+    });
+    if (!logs[key]) {
+      payload.createdAt = serverTimestamp();
+      payload.studioId =
+        selectedClient?.homeStudioId || contextActiveStudioId || "";
+      payload.homeStudioId = selectedClient?.homeStudioId || "";
+      payload.clientHomeStudioId = selectedClient?.homeStudioId || "";
+    }
+
+    /* merge so a set can be built up over several saves (weight now, reps a
+       moment later) without each write erasing the last. */
+    setDoc(logRef, payload, { merge: true }).catch((error) =>
+      handleFirestoreError(error, OperationType.WRITE, "exerciseLogs"),
+    );
 
     // Soft Lock Heartbeat: Update session activity timestamp
     if (currentSession?.id === sessionId) {
@@ -2439,24 +2531,6 @@ export function WorkoutTrackerView({
         lastHeartbeatAt: serverTimestamp(),
       }).catch(console.error);
     }
-
-    setLogs((prev) => {
-      const existing = prev[key];
-      const updatedLog: ExerciseLog = existing
-        ? { ...existing, ...updates, machineSettings: currentSettings }
-        : ({
-            id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`, // Temporary ID for local state
-            sessionId,
-            clientId,
-            machineId,
-            ...(side ? { side } : {}),
-            ...updates,
-            machineSettings: currentSettings,
-            createdAt: Timestamp.now(),
-          } as any);
-
-      return { ...prev, [key]: updatedLog };
-    });
   };
 
   const toggleMachine = async (machineId: string) => {
