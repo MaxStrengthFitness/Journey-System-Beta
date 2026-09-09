@@ -1048,6 +1048,58 @@ service cloud.firestore {
       // Delete stays with management and the author. resolveRequest is the
       // normal path and keeps the thread; deleting is for a post made in
       // error, and Firestore does not cascade to the replies subcollection.
+      /*
+       * THE PLAYBOOK — the studio's accumulated coaching knowledge.
+       *
+       * PATTERN-ONLY, ENFORCED HERE AND NOT JUST IN THE TYPE.
+       * `!('clientId' in request.resource.data)` is the load-bearing line. A
+       * playbook entry describes a physical complaint and a workaround, it is
+       * readable by every trainer at the studio, and it is built to LAST.
+       * Attach a name to that and you have a searchable health record about
+       * identifiable clients that anyone on the floor can browse -- a
+       * different thing from a session note, which is attached to care being
+       * delivered and read by the person delivering it.
+       *
+       * Putting the guard in the rule rather than only in TypeScript means a
+       * future well-meaning change cannot quietly reintroduce client links:
+       * the write would simply be refused. Same reasoning as the personal-task
+       * path split -- structural, not remembered.
+       *
+       * WRITES: the author edits their own; anyone may confirm. The
+       * confirmation branch uses affectedKeys().hasOnly(...) so a trainer
+       * saying "worked for me too" cannot also rewrite the answer. Ordered
+       * cheapest-first -- the two field checks cost nothing, and the
+       * expensive leader check only runs if both fail.
+       *
+       * DELETE is manager-only, and the app retires instead: a resolved
+       * request may point at an entry and the Catalog may be showing it
+       * against a machine, so deleting orphans both.
+       */
+      match /playbook/{entryId} {
+        allow read: if isAuthenticated();
+
+        allow create: if isAuthenticated()
+                      && isAnyAuthenticatedTrainer()
+                      && request.resource.data.authorId == request.auth.uid
+                      && request.resource.data.title is string
+                      && request.resource.data.title.size() <= 120
+                      && request.resource.data.worked is string
+                      && !('clientId' in request.resource.data);
+
+        allow update: if isAuthenticated()
+                      && isAnyAuthenticatedTrainer()
+                      && !('clientId' in request.resource.data)
+                      && (
+                           resource.data.authorId == request.auth.uid
+                        || request.resource.data.diff(resource.data)
+                             .affectedKeys()
+                             .hasOnly(['confirmations', 'lastConfirmedOn'])
+                        || isStudioOwnerOrHeadTrainer(studioId)
+                      );
+
+        allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
+      }
+
       match /taskRequests/{requestId} {
         allow read: if isAuthenticated();
 
@@ -1079,6 +1131,34 @@ service cloud.firestore {
           allow update, delete: if isSuperAdmin()
                                 || isStudioOwnerOrHeadTrainer(studioId)
                                 || resource.data.author.id == request.auth.uid;
+        }
+
+        /*
+         * INITIATIVE SUBMISSIONS — what each trainer logged against a
+         * manager's ask ("five progress reports each, by Friday").
+         *
+         * THE DOCUMENT ID IS THE TRAINER ID, and that is the whole
+         * authorisation story: `request.auth.uid == trainerId` needs no
+         * document read, no query constraint for a future caller to
+         * remember, and no way for one trainer to overwrite another's.
+         *
+         * That last point is why this is a subcollection rather than an array
+         * on the request. The Kaizen Roster is an array and is correct there
+         * because a roster has ONE writer. An initiative has nine writers on
+         * nine iPads at once, and whole-array writes would silently erase
+         * each other.
+         *
+         * Reads stay open to the studio: the point of an initiative is that
+         * everyone can see where the floor has got to.
+         */
+        match /submissions/{trainerId} {
+          allow read: if isAuthenticated() && isAnyAuthenticatedTrainer();
+          allow create, update: if isAuthenticated()
+                                && request.auth.uid == trainerId
+                                && request.resource.data.trainerId == trainerId;
+          allow delete: if isSuperAdmin()
+                        || isStudioOwnerOrHeadTrainer(studioId)
+                        || request.auth.uid == trainerId;
         }
       }
 
