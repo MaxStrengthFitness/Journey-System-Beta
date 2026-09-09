@@ -33,6 +33,7 @@ import { useToast } from "../contexts/ToastContext";
 import { isStudioLeader } from "../lib/permissions";
 import { getStudioClientCount } from "../lib/studio-roster-count";
 import { getDefaultStudioId, setDefaultStudioId } from "../lib/default-studio";
+import { releaseUiScrollLock } from "../lib/scroll-lock";
 
 interface StudioSelectionViewProps {
   studios: Studio[];
@@ -101,8 +102,8 @@ function StudioCard({
       className={cn(
         "bg-bg-dark-2 border rounded-[28px] p-6 shadow-xl flex flex-col relative overflow-hidden transition-colors",
         hasAccess
-          ? "border-slate-800/80 hover:border-[#F06C22]/40"
-          : "border-slate-800/50",
+          ? "border-div-d hover:border-[#F06C22]/50"
+          : "border-div-d/70",
       )}
     >
       <div
@@ -112,7 +113,7 @@ function StudioCard({
             ? "bg-[#F06C22]"
             : hasAccess
               ? "bg-linear-to-r from-[#F06C22]/40 to-transparent"
-              : "bg-linear-to-r from-zinc-700/40 to-transparent",
+              : "bg-linear-to-r from-ink-d3/30 to-transparent",
         )}
       />
 
@@ -121,8 +122,8 @@ function StudioCard({
           className={cn(
             "w-8 h-8 rounded-lg flex items-center justify-center border shrink-0",
             hasAccess
-              ? "bg-bg-dark-2 border-slate-800 text-zinc-400"
-              : "bg-bg-dark-3/40 border-slate-800/60 text-zinc-600",
+              ? "bg-bg-dark-3 border-div-d text-ink-d3"
+              : "bg-bg-dark-3 border-div-d text-ink-d3",
           )}
         >
           {hasAccess ? (
@@ -153,7 +154,7 @@ function StudioCard({
                 "h-7 px-2 rounded-full border flex items-center gap-1 text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer",
                 isPinned
                   ? "bg-[#F06C22] border-[#F06C22] text-white hover:bg-[#F06C22]/85"
-                  : "bg-transparent border-slate-700 text-zinc-500 hover:text-zinc-300 hover:border-slate-600",
+                  : "bg-transparent border-div-d text-ink-d3 hover:text-ink-d1 hover:border-ink-d3",
               )}
             >
               {isPinned ? (
@@ -175,14 +176,14 @@ function StudioCard({
       <h4 className="font-extrabold uppercase italic tracking-tight text-lg text-ink-d1 mb-1 leading-tight break-words">
         {studio.name}
       </h4>
-      <div className="flex items-start gap-1 text-zinc-500 mb-4">
+      <div className="flex items-start gap-1 text-ink-d3 mb-4">
         <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
         <span className="text-[11px] font-bold uppercase tracking-wider break-words">
           {studio.address || (hasAccess ? "Active territory" : "Location")}
         </span>
       </div>
       {networkName && (
-        <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 -mt-2 mb-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-ink-d3 -mt-2 mb-4">
           {networkName}
         </p>
       )}
@@ -191,8 +192,8 @@ function StudioCard({
           another location's roster size would be leaking it. */}
       {hasAccess && (
         <div className="grid grid-cols-2 gap-2 mb-5 mt-auto">
-          <div className="bg-bg-dark-3/40 border border-slate-800/60 rounded-2xl px-3 py-2.5">
-            <div className="flex items-center gap-1.5 text-zinc-500 mb-1">
+          <div className="bg-bg-dark-3 border border-div-d rounded-2xl px-3 py-2.5">
+            <div className="flex items-center gap-1.5 text-ink-d3 mb-1">
               <Users className="w-3 h-3" />
               <span className="text-[9px] font-black uppercase tracking-widest">
                 Active clients
@@ -200,14 +201,14 @@ function StudioCard({
             </div>
             <p className="text-xl font-black text-ink-d1 leading-none tabular-nums">
               {stats?.clients === null || stats?.clients === undefined ? (
-                <span className="text-zinc-600 text-sm">—</span>
+                <span className="text-ink-d3 text-sm">—</span>
               ) : (
                 stats.clients
               )}
             </p>
           </div>
-          <div className="bg-bg-dark-3/40 border border-slate-800/60 rounded-2xl px-3 py-2.5">
-            <div className="flex items-center gap-1.5 text-zinc-500 mb-1">
+          <div className="bg-bg-dark-3 border border-div-d rounded-2xl px-3 py-2.5">
+            <div className="flex items-center gap-1.5 text-ink-d3 mb-1">
               <UserCog className="w-3 h-3" />
               <span className="text-[9px] font-black uppercase tracking-widest">
                 Team
@@ -220,18 +221,18 @@ function StudioCard({
         </div>
       )}
 
-      <div className={cn("border-t border-slate-800/80 pt-4", !hasAccess && "mt-auto")}>
+      <div className={cn("border-t border-div-d pt-4", !hasAccess && "mt-auto")}>
         {hasAccess ? (
           <Button
             onClick={onEnter}
-            className="w-full bg-[#F06C22] hover:bg-[#F06C22]/90 text-ink-d1 font-black uppercase tracking-widest text-xs h-11 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full bg-cta-strong hover:bg-[#a02400] text-white font-black uppercase tracking-widest text-xs h-11 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
           >
             Enter Studio <ArrowRight className="w-4 h-4" />
           </Button>
         ) : isRequested ? (
           <Button
             disabled
-            className="w-full bg-bg-dark-3 text-ink-d3 font-black uppercase tracking-widest text-xs h-11 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
+            className="w-full bg-muted text-ink-d3 font-black uppercase tracking-widest text-xs h-11 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
           >
             <CheckCircle2 className="w-4 h-4" /> Access Requested
           </Button>
@@ -239,7 +240,7 @@ function StudioCard({
           <Button
             onClick={onRequestAccess}
             disabled={isRequesting}
-            className="w-full bg-bg-dark-3/50 hover:bg-bg-dark-3 text-slate-300 font-bold uppercase tracking-widest text-[11px] h-11 rounded-xl flex items-center justify-center gap-2 border border-div-d/50 cursor-pointer"
+            className="w-full bg-bg-dark-3 hover:bg-muted text-ink-d2 font-bold uppercase tracking-widest text-[11px] h-11 rounded-xl flex items-center justify-center gap-2 border border-div-d cursor-pointer"
           >
             {isRequesting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -277,6 +278,22 @@ export function StudioSelectionView({
   const [clientCounts, setClientCounts] = useState<Record<string, number | null>>(
     {},
   );
+
+  /*
+   * This screen is reached from a Radix menu item, and AppContent answers that
+   * with an early return — so the menu can be unmounted while still open and
+   * leave `pointer-events: none` on <body>. That is invisible with a mouse and
+   * completely freezes an iPad, which is why "can't scroll the studio list"
+   * only ever reproduced on tablets.
+   *
+   * AppContent now closes the menu before navigating; this is the belt to that
+   * pair of braces, and it is idempotent, so it costs nothing when nothing is
+   * stuck. It runs on EVERY mount because the leak can come from any overlay
+   * that was open when the switch happened, not just the trainer menu.
+   */
+  useEffect(() => {
+    releaseUiScrollLock();
+  }, []);
 
   const isAdminUser =
     isStudioLeader(authTrainer || null) ||
@@ -481,8 +498,14 @@ export function StudioSelectionView({
      * that scrolls internally — but this screen returns EARLY, before that
      * shell exists, so a `min-h-screen` page here simply grew past the viewport
      * with nothing able to scroll it. That was the "can't scroll this page" bug.
+     *
+     * `touch-pane` (index.css) is what makes the pane behave under a FINGER:
+     * an explicit `touch-action: pan-y` so iPadOS commits to vertical panning
+     * instead of waiting to see whether the gesture becomes something else,
+     * momentum scrolling for older iPadOS, and a 100vh height that `dvh`
+     * upgrades where it is supported rather than depending on it.
      */
-    <div className="h-[100dvh] overflow-y-auto overscroll-contain bg-bg-dark-2 text-ink-d1">
+    <div className="touch-pane overflow-y-auto overscroll-contain bg-background text-ink-d1">
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -493,7 +516,7 @@ export function StudioSelectionView({
           <h2 className="text-3xl font-black uppercase italic tracking-tight text-ink-d1 mb-2 leading-none">
             Choose Your Studio
           </h2>
-          <p className="text-zinc-500 font-bold uppercase tracking-widest text-[11px] max-w-md mt-1">
+          <p className="text-ink-d3 font-bold uppercase tracking-widest text-[11px] max-w-md mt-1">
             {authTrainer?.fullName
               ? `Welcome back, ${authTrainer.fullName.split(" ")[0]}`
               : "Where are you working today?"}
@@ -501,7 +524,7 @@ export function StudioSelectionView({
           {isAdminUser && onGoToAdmin && (
             <Button
               onClick={onGoToAdmin}
-              className="mt-4 bg-slate-800 hover:bg-slate-700 text-white font-bold uppercase text-[11px] tracking-widest px-4 h-9 rounded-xl border border-slate-700 flex items-center gap-2 cursor-pointer shadow-md"
+              className="mt-4 bg-bg-dark-3 hover:bg-muted text-ink-d1 font-bold uppercase text-[11px] tracking-widest px-4 h-9 rounded-xl border border-div-d flex items-center gap-2 cursor-pointer shadow-md"
             >
               <Shield className="w-3.5 h-3.5 text-[#F06C22]" /> Go To Admin Panel
             </Button>
@@ -511,13 +534,13 @@ export function StudioSelectionView({
         {/* ---- Your studios ---------------------------------------------- */}
         {mine.length > 0 && (
           <section className="mb-12">
-            <div className="flex items-center gap-3 border-b border-slate-800 pb-2 mb-5">
+            <div className="flex items-center gap-3 border-b border-div-d pb-2 mb-5">
               <div className="w-1.5 h-6 bg-[#F06C22] rounded-full" />
               <div>
                 <h3 className="text-xs font-black uppercase tracking-widest text-[#F06C22] italic">
                   Your Studios
                 </h3>
-                <p className="text-[11px] font-bold text-zinc-550 uppercase tracking-widest leading-none mt-0.5">
+                <p className="text-[11px] font-bold text-ink-d3 uppercase tracking-widest leading-none mt-0.5">
                   {mine.length} location{mine.length === 1 ? "" : "s"} you can
                   enter
                 </p>
@@ -536,20 +559,20 @@ export function StudioSelectionView({
               type="button"
               onClick={() => setShowOthers((v) => !v)}
               aria-expanded={showOthers}
-              className="w-full flex items-center gap-3 border-b border-slate-800 pb-2 mb-5 text-left cursor-pointer group"
+              className="w-full flex items-center gap-3 border-b border-div-d pb-2 mb-5 text-left cursor-pointer group"
             >
-              <div className="w-1.5 h-6 bg-zinc-700 rounded-full" />
+              <div className="w-1.5 h-6 bg-ink-d3 rounded-full" />
               <div className="flex-1">
-                <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500 italic group-hover:text-zinc-300 transition-colors">
+                <h3 className="text-xs font-black uppercase tracking-widest text-ink-d3 italic group-hover:text-ink-d2 transition-colors">
                   Other Locations
                 </h3>
-                <p className="text-[11px] font-bold text-zinc-550 uppercase tracking-widest leading-none mt-0.5">
+                <p className="text-[11px] font-bold text-ink-d3 uppercase tracking-widest leading-none mt-0.5">
                   {others.length} you don't have access to
                 </p>
               </div>
               <ChevronDown
                 className={cn(
-                  "w-4 h-4 text-zinc-500 transition-transform shrink-0",
+                  "w-4 h-4 text-ink-d3 transition-transform shrink-0",
                   showOthers && "rotate-180",
                 )}
               />
@@ -572,13 +595,13 @@ export function StudioSelectionView({
         )}
 
         {studios.length === 0 && (
-          <div className="py-20 px-6 text-center bg-bg-dark-2/60 rounded-[40px] border border-dashed border-slate-800 flex flex-col items-center justify-center gap-4">
+          <div className="py-20 px-6 text-center bg-bg-dark-2 rounded-[40px] border border-dashed border-div-d flex flex-col items-center justify-center gap-4">
             <Building2 className="w-12 h-12 text-[#F06C22] mx-auto" />
             <div>
-              <p className="text-base font-black uppercase tracking-widest text-white">
+              <p className="text-base font-black uppercase tracking-widest text-ink-d1">
                 No Authorized Studios Configuration Found
               </p>
-              <p className="text-xs uppercase tracking-wider text-slate-400 mt-1 max-w-md">
+              <p className="text-xs uppercase tracking-wider text-ink-d3 mt-1 max-w-md">
                 Database clean start complete. Access the Admin Panel to manage
                 studios, create location entries, configure Mindbody Site IDs,
                 and manage staff.
@@ -587,7 +610,7 @@ export function StudioSelectionView({
             {isAdminUser && onGoToAdmin && (
               <Button
                 onClick={onGoToAdmin}
-                className="mt-2 bg-[#F06C22] hover:bg-[#d95b16] text-white font-black uppercase tracking-widest text-xs h-12 px-8 rounded-xl shadow-lg shadow-[#F06C22]/20 flex items-center gap-2.5 cursor-pointer"
+                className="mt-2 bg-cta-strong hover:bg-[#a02400] text-white font-black uppercase tracking-widest text-xs h-12 px-8 rounded-xl shadow-lg shadow-[#F06C22]/20 flex items-center gap-2.5 cursor-pointer"
               >
                 <Shield className="w-4 h-4" /> Go To Admin Panel
               </Button>
@@ -597,19 +620,19 @@ export function StudioSelectionView({
 
         {/* A trainer with no access at all should not just see an empty page. */}
         {studios.length > 0 && mine.length === 0 && (
-          <div className="py-14 px-6 text-center bg-bg-dark-2/60 rounded-[40px] border border-dashed border-slate-800 flex flex-col items-center gap-3 mb-12">
-            <Lock className="w-9 h-9 text-zinc-600" />
-            <p className="text-sm font-black uppercase tracking-widest text-white">
+          <div className="py-14 px-6 text-center bg-bg-dark-2 rounded-[40px] border border-dashed border-div-d flex flex-col items-center gap-3 mb-12">
+            <Lock className="w-9 h-9 text-ink-d3" />
+            <p className="text-sm font-black uppercase tracking-widest text-ink-d1">
               No studio access yet
             </p>
-            <p className="text-xs uppercase tracking-wider text-slate-400 max-w-md">
+            <p className="text-xs uppercase tracking-wider text-ink-d3 max-w-md">
               Open "Other locations" above and request access to the studio you
               work from. A manager approves it from the Admin panel.
             </p>
             {!showOthers && (
               <Button
                 onClick={() => setShowOthers(true)}
-                className="mt-1 bg-[#F06C22] hover:bg-[#d95b16] text-white font-black uppercase tracking-widest text-[11px] h-10 px-6 rounded-xl cursor-pointer"
+                className="mt-1 bg-cta-strong hover:bg-[#a02400] text-white font-black uppercase tracking-widest text-[11px] h-10 px-6 rounded-xl cursor-pointer"
               >
                 Request Access
               </Button>
@@ -621,7 +644,7 @@ export function StudioSelectionView({
           <Button
             variant="ghost"
             onClick={onBack}
-            className="text-zinc-500 hover:text-ink-d1 font-black uppercase text-[11px] tracking-widest gap-2 bg-transparent cursor-pointer"
+            className="text-ink-d3 hover:text-ink-d1 font-black uppercase text-[11px] tracking-widest gap-2 bg-transparent cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
             Clear active session

@@ -74,6 +74,7 @@ import {
 } from "./types";
 import { OperationType, handleFirestoreError } from "./lib/firestore-errors";
 import { isSessionValid } from "./lib/utils";
+import { afterOverlayClose } from "./lib/scroll-lock";
 import { useToast } from "./contexts/ToastContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import AccessRequestView from "./components/AccessRequestView";
@@ -556,6 +557,20 @@ export default function AppContent({
   } = useActiveStudio();
 
   /**
+   * The trainer menu is CONTROLLED so that a menu item which swaps the whole
+   * screen can close it first.
+   *
+   * Every item in this menu changes `currentView` or `isChangingStudio`, and
+   * several of those are answered by an early return further down — which
+   * would tear the open menu out of the tree mid-close and leave Radix's
+   * `pointer-events: none` on <body>. On a PC that is invisible (the wheel
+   * still scrolls); on an iPad it freezes the next screen solid, because a
+   * touch can no longer hit-test its way to a scroll container. See
+   * lib/scroll-lock.ts.
+   */
+  const [trainerMenuOpen, setTrainerMenuOpen] = useState(false);
+
+  /**
    * Enter the studio pinned on this device, without stopping at the picker.
    *
    * A trainer who works the same floor every day should not have to answer the
@@ -722,10 +737,23 @@ export default function AppContent({
    * nothing extra: the roster rides on a document the app already subscribes
    * to, which is exactly why it is stored there.
    */
-  const kaizenClientIds = useMemo(() => {
-    const mine = trainers.find((t) => t.id === authTrainer?.id);
-    return new Set((mine?.kaizenRoster ?? []).map((e) => e.clientId));
-  }, [trainers, authTrainer?.id]);
+  /**
+   * The signed-in trainer's LIVE document.
+   *
+   * Anything that WRITES the Kaizen Roster must use this and not `authTrainer`.
+   * useKaizenRoster rewrites the whole array (see its own note on why), so
+   * adding from a sign-in-time snapshot would silently drop every entry added
+   * since sign-in. Reading is merely stale; writing is destructive.
+   */
+  const liveAuthTrainer = useMemo(
+    () => trainers.find((t) => t.id === authTrainer?.id) ?? authTrainer ?? null,
+    [trainers, authTrainer],
+  );
+
+  const kaizenClientIds = useMemo(
+    () => new Set((liveAuthTrainer?.kaizenRoster ?? []).map((e) => e.clientId)),
+    [liveAuthTrainer],
+  );
   /*
    * There is no announcements stream here on purpose. A second copy of
    * `useHubAnnouncements` used to run at this line and open a live listener
@@ -1736,8 +1764,18 @@ export default function AppContent({
     </div>
   );
 
+  /**
+   * Close the menu, let Radix finish releasing the document, THEN navigate.
+   * Every item below goes through this — not just Switch Studio — because they
+   * all land on a screen reached by an early return.
+   */
+  const menuNavigate = (go: () => void) => {
+    setTrainerMenuOpen(false);
+    afterOverlayClose(go);
+  };
+
   const headerTrainerDropdown = authTrainer ? (
-    <DropdownMenu>
+    <DropdownMenu open={trainerMenuOpen} onOpenChange={setTrainerMenuOpen}>
       <DropdownMenuTrigger className="w-8 h-8 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-primary text-primary-foreground shrink-0">
         {authTrainer.initials}
       </DropdownMenuTrigger>
@@ -1753,19 +1791,23 @@ export default function AppContent({
               </Label>
               <div className="flex bg-slate-100 dark:bg-bg-dark-3 p-1 rounded-xl">
                 <button
-                  onClick={() => {
-                    setAppMode("trainer");
-                    setCurrentView("clients");
-                  }}
+                  onClick={() =>
+                    menuNavigate(() => {
+                      setAppMode("trainer");
+                      setCurrentView("clients");
+                    })
+                  }
                   className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "trainer" ? "bg-white dark:bg-bg-dark shadow-sm text-sky-600 dark:text-sky-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
                 >
                   Trainer
                 </button>
                 <button
-                  onClick={() => {
-                    setAppMode("admin");
-                    setCurrentView("admin-dashboard" as any);
-                  }}
+                  onClick={() =>
+                    menuNavigate(() => {
+                      setAppMode("admin");
+                      setCurrentView("admin-dashboard" as any);
+                    })
+                  }
                   className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" ? "bg-white dark:bg-bg-dark shadow-sm text-orange-600 dark:text-orange-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
                 >
                   Admin
@@ -1777,10 +1819,12 @@ export default function AppContent({
             Active Profile
           </DropdownMenuLabel>
           <DropdownMenuItem
-            onClick={() => {
-              setSelectedProfileTrainerId(null);
-              setCurrentView("trainer-profile");
-            }}
+            onClick={() =>
+              menuNavigate(() => {
+                setSelectedProfileTrainerId(null);
+                setCurrentView("trainer-profile");
+              })
+            }
             className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900"
           >
             <UserCircle className="w-4 h-4 text-sky-500" />
@@ -1792,7 +1836,7 @@ export default function AppContent({
 
         <DropdownMenuGroup>
           <DropdownMenuItem
-            onClick={handleTrainerLock}
+            onClick={() => menuNavigate(handleTrainerLock)}
             className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-orange-500 hover:bg-orange-500/10 dark:bg-orange-600/10 focus:bg-orange-500/10 focus:text-orange-500 cursor-pointer"
           >
             <Lock className="w-4 h-4" />
@@ -1800,7 +1844,7 @@ export default function AppContent({
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            onClick={() => setIsChangingStudio(true)}
+            onClick={() => menuNavigate(() => setIsChangingStudio(true))}
             className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900"
           >
             <Building2 className="w-4 h-4 text-amber-500" />
@@ -1808,7 +1852,7 @@ export default function AppContent({
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            onClick={handleLogout}
+            onClick={() => menuNavigate(() => void handleLogout())}
             className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10 focus:text-rose-500 cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
@@ -1896,6 +1940,7 @@ export default function AppContent({
                     onStartOpenSession={startUnassignedSession}
                     authTrainer={authTrainer}
                     kaizenClientIds={kaizenClientIds}
+                    liveAuthTrainer={liveAuthTrainer}
                     onUpdateSessions={updateClientSessions}
                     onStartNewClientOnboarding={setNewClientOnboardingName}
                   />
