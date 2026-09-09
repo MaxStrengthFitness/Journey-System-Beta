@@ -170,6 +170,130 @@ service cloud.firestore {
       return clientId != null && clientId != '' && isTrainerOfClient(clientId);
     }
 
+    /* ====================================================================
+       EXPRESSION-BUDGET HELPERS  (Sep 9 2026)
+
+       Firestore caps a single rule evaluation at 1000 EXPRESSIONS. That is a
+       different budget from the 10-document-read limit, and it is the one the
+       sessions read rule was blowing: `npm run test:rules` failed with
+       "maximum of 1000 expressions to evaluate has been reached" on the
+       cross-studio branch -- the exact case the tenancy work exists to serve.
+
+       WHY THE OLD CHAIN WAS SO EXPENSIVE
+       Arguments are evaluated EAGERLY and nothing is memoised, so each helper
+       re-derives what the last one just computed:
+         getRole()                      -> up to 3 getTrainerData() call sites
+         isSuperAdmin()                 -> up to 3 getRole()  = ~9 more
+         isFranchiseOwnerOnly()         -> 2 getRole()        = ~6 more
+         isTrainerOfStudio(studioId)    -> ~15 (two helpers, each re-reading)
+         namedClientIsReadable(...)     -> all of the above AGAIN, per client
+       The document reads were cached; the expression count was not.
+
+       THE FIX: resolve the caller ONCE at the rule, then pass the role string
+       and the trainer map down into predicates that only do map lookups. No
+       function below reads a document except sessionClientIsReadable, which
+       reads exactly one client.
+
+       These are ADDITIVE. The originals above are untouched and every other
+       rule still uses them, so this round can only affect the sessions read
+       it was written for.
+       ==================================================================== */
+
+    function roleIsSuper(r) {
+      return r == 'Admin' || r == 'Founder' || r == 'Overseer';
+    }
+
+    function roleIsFranchise(r) {
+      return r == 'FranchiseOwner' || r == 'Owner';
+    }
+
+    function roleIsStudioLeader(r) {
+      return r == 'StudioOwner' || r == 'HeadTrainer' || r == 'StudioLeader';
+    }
+
+    /** The caller's trainer document, or null. One read, one call site. */
+    function callerTrainer() {
+      return trainerDocExistsByUID() ? getTrainerData() : null;
+    }
+
+    /** Works here, as a trainer. Pure map lookups against an already-read doc. */
+    function trainerWorksAt(t, studioId) {
+      return t != null && studioId != null && studioId != '' && (
+        t.get('primaryHomeStudioId', '') == studioId ||
+        t.get('accessibleStudioIds', []).hasAny([studioId]) ||
+        t.get('activeGuestStudioIds', []).hasAny([studioId])
+      );
+    }
+
+    /** Runs this location. Mirrors isStudioOwnerOrHeadTrainerOnly's DB branch. */
+    function trainerLeads(r, t, studioId) {
+      return studioId != null && studioId != '' && (
+        // The custom-claim fast path, carried over verbatim from
+        // isStudioOwnerOrHeadTrainerOnly. It never fires today because
+        // setCustomUserClaimsV2 has never been called -- but dropping it
+        // would silently change behaviour the day those claims get wired,
+        // which is itself the recommended follow-up to this fix.
+        ('studioId' in request.auth.token &&
+          request.auth.token.studioId != null &&
+          request.auth.token.studioId == studioId) ||
+        (t != null && roleIsStudioLeader(r) && (
+          t.get('primaryHomeStudioId', '') == studioId ||
+          t.get('ownedStudioIds', []).hasAny([studioId])
+        ))
+      );
+    }
+
+    /** homeStudioId, falling back to studioId. Mirrors getStudioIdFromData. */
+    function studioIdOf(d) {
+      return d.get('homeStudioId', d.get('studioId', ''));
+    }
+
+    /*
+     * Can this caller read this ALREADY-READ client document?
+     *
+     * The three cross-train checks come FIRST and are pure array work. The old
+     * order put the studio check first, so the cross-train case -- a client
+     * visiting from another location, which is precisely the case that failed
+     * -- paid for the whole expensive branch before reaching the cheap one
+     * that was going to say yes.
+     */
+    function clientIsReadableBy(c, r, t) {
+      return t != null && (
+        c.get('approvedCrossTrainStudioIds', []).hasAny([t.get('primaryHomeStudioId', '')]) ||
+        c.get('approvedCrossTrainStudioIds', []).hasAny(t.get('accessibleStudioIds', [])) ||
+        c.get('approvedCrossTrainStudioIds', []).hasAny(t.get('activeGuestStudioIds', [])) ||
+        trainerWorksAt(t, studioIdOf(c)) ||
+        trainerLeads(r, t, studioIdOf(c))
+      );
+    }
+
+    /*
+     * The one document read on this path. Guarded on a non-empty id first:
+     * isTrainerOfClient('') builds the malformed path /documents/clients/ and
+     * relies on short-circuit to never get there.
+     */
+    function sessionClientIsReadable(cid, r, t) {
+      return cid != null && cid != '' &&
+        exists(/databases/$(database)/documents/clients/$(cid)) &&
+        clientIsReadableBy(
+          get(/databases/$(database)/documents/clients/$(cid)).data, r, t);
+    }
+
+    /*
+     * SESSIONS ARE SCOPED BY CLIENT, NOT BY STUDIO -- unchanged policy, see the
+     * comment above match /sessions. A session is never more visible than the
+     * person it is about, and a legacy session with no studio and no client
+     * stays readable by its own trainer rather than by nobody.
+     */
+    function sessionIsReadable(s, r, t) {
+      return roleIsSuper(r) || roleIsFranchise(r) || (t != null && (
+        s.get('trainerId', '') == request.auth.uid ||
+        trainerWorksAt(t, s.get('hostedAtStudioId', '')) ||
+        trainerLeads(r, t, s.get('hostedAtStudioId', '')) ||
+        sessionClientIsReadable(s.get('clientId', ''), r, t)
+      ));
+    }
+
     function isTrainerOfStudioOrClient(studioId, clientId) {
       return isSuperAdmin() || isFranchiseOwnerOnly() || (
         isAuthenticated() && (
@@ -636,14 +760,10 @@ service cloud.firestore {
     // client path, which Firestore caches within one evaluation — two document
     // reads for the whole query, against a limit of ten.
     match /sessions/{sessionId} {
-      allow read: if isSuperAdmin()
-                  || isFranchiseOwnerOnly()
-                  || (isAnyAuthenticatedTrainer()
-                      && (resource.data.get('trainerId', '') == request.auth.uid
-                          || isTrainerOfStudio(
-                               resource.data.get('hostedAtStudioId', ''))
-                          || namedClientIsReadable(
-                               resource.data.get('clientId', ''))));
+      // Caller resolved ONCE and passed down; see the expression-budget
+      // helpers above. Same policy as before, ~1/10th the expression count.
+      allow read: if isAuthenticated()
+                  && sessionIsReadable(resource.data, getRole(), callerTrainer());
 
       allow create: if isValidSession(request.resource.data)
                     && (isSuperAdmin()
