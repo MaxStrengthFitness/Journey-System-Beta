@@ -25,6 +25,7 @@ import { db } from "../firebase";
 import { queryStudioIds } from "../lib/tenancy";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import SyncStatusBadge from "./mindbody/SyncStatusBadge";
+import { KaizenToggle } from "../features/trainer-profile/KaizenToggle";
 
 interface Props {
   clients: Client[];
@@ -39,6 +40,15 @@ interface Props {
    * caller derives this from the live `trainers` snapshot.
    */
   kaizenClientIds?: Set<string>;
+  /**
+   * The signed-in trainer's LIVE document, for the roster toggle on each row.
+   *
+   * Separate from `authTrainer` above and NOT interchangeable with it:
+   * useKaizenRoster rewrites the whole kaizenRoster array, so toggling from
+   * the sign-in-time snapshot would drop every entry added since sign-in.
+   * Absent means the rows render read-only marks, as before.
+   */
+  liveAuthTrainer?: Trainer | null;
   onUpdateSessions?: (
     clientId: string,
     current: number,
@@ -132,6 +142,7 @@ export function ClientDirectoryView({
   onStartOpenSession,
   authTrainer,
   kaizenClientIds,
+  liveAuthTrainer,
   onUpdateSessions,
   onStartNewClientOnboarding,
 }: Props) {
@@ -560,23 +571,46 @@ export function ClientDirectoryView({
                                   the red kaizen mark means "this rep needs
                                   work" in the session grid, and a client row
                                   must never blur the two. */}
-                              {client.id && kaizenClientIds?.has(client.id) && (
-                                <svg
-                                  width="13"
-                                  height="13"
-                                  viewBox="0 0 16 16"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth={2.2}
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  className="text-[#5b6770] dark:text-[#8b98a4] shrink-0"
-                                  role="img"
-                                  aria-label="On your Kaizen Roster"
+{/* When we have the live trainer document this is a TOGGLE, not
+                                  just a mark: flagging someone you are looking at was
+                                  previously only possible from your own profile screen,
+                                  which is why the roster felt unusable. Falls back to the
+                                  read-only mark when no live trainer was passed. */}
+                              {client.id && liveAuthTrainer ? (
+                                <span
+                                  // The row itself opens the client. Without this the
+                                  // toggle's click would also navigate away, and the
+                                  // reason dialog would unmount as it opened.
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="shrink-0"
                                 >
-                                  <polyline points="2,10 6,6 10,10" opacity={0.55} />
-                                  <polyline points="6,13 10,9 14,13" />
-                                </svg>
+                                  <KaizenToggle
+                                    trainer={liveAuthTrainer}
+                                    client={client}
+                                    variant="icon"
+                                    className="h-8 w-8 border-none bg-transparent"
+                                  />
+                                </span>
+                              ) : (
+                                client.id &&
+                                kaizenClientIds?.has(client.id) && (
+                                  <svg
+                                    width="13"
+                                    height="13"
+                                    viewBox="0 0 16 16"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth={2.2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="text-[#5b6770] dark:text-[#8b98a4] shrink-0"
+                                    role="img"
+                                    aria-label="On your Kaizen Roster"
+                                  >
+                                    <polyline points="2,10 6,6 10,10" opacity={0.55} />
+                                    <polyline points="6,13 10,9 14,13" />
+                                  </svg>
+                                )
                               )}
                             </span>
                             {isCrossTrainer ? (
