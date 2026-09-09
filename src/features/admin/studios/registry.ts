@@ -424,6 +424,37 @@ export interface StandardSetSeed<T extends SeedCandidate> {
  *     `duplicates` names it so that can happen — but no studio gets two leg
  *     extensions on its floor in the meantime.
  */
+/**
+ * Is this catalog machine part of the set a new studio starts with?
+ *
+ * ONE PREDICATE, because there were two and they disagreed. This module read
+ * `inStandardSet === false` (absent means INCLUDED), while
+ * StudioInventoryManager's shortcut read `c.inStandardSet && ...` (absent
+ * means EXCLUDED). Catalog documents seeded before that flag existed do not
+ * carry it — so the same catalog produced "every active machine" from one
+ * button and "nothing at all" from the other, which is exactly the "the
+ * default 20 machines fail to load" report.
+ *
+ * ABSENT MEANS INCLUDED is the right default: the flag was added to let a
+ * studio-specific oddity be kept OUT of the baseline, so opting out should be
+ * the thing you have to say.
+ *
+ * `status` is compared case-insensitively. Mindbody, the seed scripts and the
+ * machine editor have each written a different casing over this project's
+ * life, and an exact "active" match silently drops every record that says
+ * "Active" — which fails CLOSED, seeding nothing and reporting success.
+ */
+export function isStandardSetMachine(entry: {
+  inStandardSet?: boolean;
+  status?: string;
+}): boolean {
+  if (entry.inStandardSet === false) return false;
+  if (entry.status && String(entry.status).toLowerCase() !== "active") {
+    return false;
+  }
+  return true;
+}
+
 export function standardSetSeed<T extends SeedCandidate & { inStandardSet?: boolean; status?: string }>(
   catalog: T[],
   rosteredIds: Iterable<string>,
@@ -437,8 +468,7 @@ export function standardSetSeed<T extends SeedCandidate & { inStandardSet?: bool
   let alreadyPresent = 0;
 
   for (const entry of catalog) {
-    if (entry.inStandardSet === false) continue;
-    if (entry.status && entry.status !== "active") continue;
+    if (!isStandardSetMachine(entry)) continue;
 
     const canonical = canonicalMachineId(entry.id, entry.name);
     if (rostered.has(canonical)) {

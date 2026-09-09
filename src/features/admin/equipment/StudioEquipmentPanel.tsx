@@ -55,7 +55,18 @@ export function StudioEquipmentPanel({
 }: StudioEquipmentPanelProps) {
   const studioId = studio.id ?? "";
   const { success: toastSuccess } = useToast();
-  const { catalog } = useMachineCatalog();
+  /*
+   * `catalogLoading` was NOT read before, and that is the other half of "the
+   * standard set fails to load".
+   *
+   * useMachineCatalog is an onSnapshot subscription: on first render it
+   * returns an EMPTY array and only fills in when Firestore answers. The
+   * button was enabled from the first paint, so a tap in that window ran
+   * standardSetSeed over `[]`, wrote nothing, threw nothing, and printed
+   * "0 added" as though that were the answer. On studio wifi that window is
+   * comfortably long enough to click through.
+   */
+  const { catalog, loading: catalogLoading } = useMachineCatalog();
   const { rosterEntries, loading } = useStudioMachines(studioId, {
     includeInactive: true,
   });
@@ -106,6 +117,19 @@ export function StudioEquipmentPanel({
 
   const seedStandardSet = async () => {
     if (!studioId) return;
+    // Refuse rather than write nothing and call it success. An empty catalog
+    // is a real state (a fresh database, or rules refusing /machines), and it
+    // needs to say so — "0 added" reads as "this studio already has them".
+    if (catalogLoading) {
+      setSeedSummary("Still loading the machine catalog — try again in a moment.");
+      return;
+    }
+    if (catalog.length === 0) {
+      setSeedSummary(
+        "The machine catalog is empty, so there is nothing to copy. Seed it from Admin -> Machines first, or check that your account can read /machines.",
+      );
+      return;
+    }
     setSeeding(true);
     try {
       const snap = await getDocs(collection(db, "studios", studioId, "roster"));
@@ -131,6 +155,16 @@ export function StudioEquipmentPanel({
       }
       await batch.commit();
       const dupes = Object.values(duplicates).flat();
+      if (seed.length === 0 && alreadyPresent === 0) {
+        // Catalog had entries but none qualified. Almost always a status
+        // value the filter does not recognise, so name the cause instead of
+        // reporting a bare zero.
+        setSeedSummary(
+          `None of the ${catalog.length} catalog machines qualified for the standard set. ` +
+            `Check that they are marked active and not excluded with inStandardSet: false.`,
+        );
+        return;
+      }
       setSeedSummary(
         `${seed.length} added${alreadyPresent ? `, ${alreadyPresent} already on the floor` : ""}.${
           dupes.length
@@ -166,7 +200,11 @@ export function StudioEquipmentPanel({
       }
     >
       <div className="flex flex-wrap items-center gap-3">
-        <AdminButton variant="primary" busy={seeding} onClick={() => void seedStandardSet()}>
+        <AdminButton
+          variant="primary"
+          busy={seeding || catalogLoading}
+          onClick={() => void seedStandardSet()}
+        >
           <Sparkles className="w-3.5 h-3.5" />
           Add the standard set
         </AdminButton>

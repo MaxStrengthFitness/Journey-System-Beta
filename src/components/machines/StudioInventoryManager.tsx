@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { deleteDoc, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db, auth } from "../../firebase";
+import { isStandardSetMachine } from "../../features/admin/studios/registry";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -126,8 +127,15 @@ export function StudioInventoryManager({
   const adoptStandardSet = async () => {
     setBusy("__standard__");
     try {
+      /*
+       * Was `c.inStandardSet && c.status === "active"`, which is the OPPOSITE
+       * default to the Studios screen's version of the same button: a catalog
+       * document written before the flag existed has no `inStandardSet`, so
+       * this filter matched nothing and the button reported "Added 0 machines"
+       * as a success. Both now share isStandardSetMachine().
+       */
       const targets = catalog.filter(
-        (c) => c.inStandardSet && c.status === "active" && !rosteredIds.has(c.id),
+        (c) => isStandardSetMachine(c) && !rosteredIds.has(c.id),
       );
       await Promise.all(
         targets.map((c) =>
