@@ -570,8 +570,8 @@ export default function AppContent({
    *    access, a deleted studio, or a different trainer signing in on this
    *    device falls through to the picker rather than entering somewhere they
    *    are no longer allowed.
-   *  - It does NOT bypass the PIN screen: authentication is set exactly as the
-   *    picker sets it, so a trainer with a PIN still has to enter it.
+   *  - It sets the authentication flags exactly as the picker's own
+   *    onSelectTrainer does, so it grants nothing the manual path would not.
    */
   useEffect(() => {
     if (activeStudioId || isChangingStudio) return;

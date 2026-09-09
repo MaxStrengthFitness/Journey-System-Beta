@@ -59,6 +59,24 @@ import {
   PreSessionCheckIn,
 } from "../types";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
+import { logDocId } from "../lib/exercise-log-id";
+
+/**
+ * How long a set's Firestore write waits for the trainer to stop typing.
+ *
+ * The rep and weight fields in the Now bar are controlled inputs that call
+ * through on every keystroke, and every set now writes to ONE derived document
+ * id -- so an undebounced write-per-change puts "12" into reps as two writes to
+ * the same document milliseconds apart, against Firestore's ~1 sustained
+ * write/sec/document ceiling. Coalescing per document keeps the guarantee that
+ * matters (the set is in the database within a second of being entered) without
+ * hammering a single row.
+ */
+const LOG_WRITE_DEBOUNCE_MS = 600;
+/** ...but a trainer who keeps typing must not outrun the flush indefinitely. */
+const LOG_WRITE_MAX_WAIT_MS = 2500;
+/** The soft-lock heartbeat is a liveness signal; per-keystroke is pointless. */
+const HEARTBEAT_MIN_INTERVAL_MS = 30_000;
 import {
   matchesRoutineLetter,
   routineLetterOf,
@@ -914,25 +932,6 @@ const TRACKER_COL = {
 
 /** The two OLDEST history columns hide on iPad portrait to keep the row on-screen. */
 const historyVisibility = (i: number) => (i >= 3 ? "hidden lg:flex" : "flex");
-
-/**
- * One canonical exerciseLogs document per (session, machine, side).
- *
- * The id is derived rather than random so that writing a set is idempotent: a
- * single grid patch can call updateLogMultiple more than once for the same set
- * in one tick (weight and reps arrive as separate calls), and the placeholder
- * logs created at session start race with the snapshot that reports them. With
- * a random id each of those paths would mint a *new* document for the same set.
- * Deriving it means every path addresses the same doc, so create-or-update is
- * safe to call as often as we like.
- *
- * Matches the key used for the local `logs` map, so the two cannot drift.
- */
-export const logDocId = (
-  sessionId: string,
-  machineId: string,
-  side?: "Left" | "Right",
-) => `${sessionId}_${machineId}${side ? "_" + side : ""}`;
 
 export function WorkoutTrackerView({
   clientId,
@@ -2375,6 +2374,9 @@ export function WorkoutTrackerView({
   }) => {
     if (!currentSession?.id) return;
 
+    // Land anything still debounced before the finish batch reads local state.
+    flushAllLogWrites();
+
     setIsSyncing(true);
     try {
       const sessionLogs = Object.values(logs).filter(
@@ -2454,6 +2456,85 @@ export function WorkoutTrackerView({
   };
 
   /**
+   * Exercise-log writes waiting to be sent, coalesced per document.
+   *
+   * A ref rather than state on purpose: this must survive re-renders without
+   * causing them, and be readable synchronously from the unmount cleanup.
+   */
+  const pendingLogWritesRef = useRef<
+    Map<
+      string,
+      { payload: Record<string, any>; timer: any; firstQueuedAt: number }
+    >
+  >(new Map());
+  const lastHeartbeatWriteRef = useRef(0);
+
+  const flushLogWrite = React.useCallback((docId: string) => {
+    const pending = pendingLogWritesRef.current.get(docId);
+    if (!pending) return;
+    if (pending.timer) clearTimeout(pending.timer);
+    pendingLogWritesRef.current.delete(docId);
+
+    setDoc(
+      doc(db, "exerciseLogs", docId),
+      { ...pending.payload, updatedAt: serverTimestamp() },
+      { merge: true },
+    ).catch((error) =>
+      handleFirestoreError(error, OperationType.WRITE, "exerciseLogs"),
+    );
+  }, []);
+
+  const flushAllLogWrites = React.useCallback(() => {
+    Array.from(pendingLogWritesRef.current.keys()).forEach(flushLogWrite);
+  }, [flushLogWrite]);
+
+  const queueLogWrite = React.useCallback(
+    (docId: string, fields: Record<string, any>) => {
+      const now = Date.now();
+      const existing = pendingLogWritesRef.current.get(docId);
+      const firstQueuedAt = existing?.firstQueuedAt ?? now;
+      if (existing?.timer) clearTimeout(existing.timer);
+
+      const payload = { ...(existing?.payload || {}), ...fields };
+
+      if (now - firstQueuedAt >= LOG_WRITE_MAX_WAIT_MS) {
+        pendingLogWritesRef.current.set(docId, {
+          payload,
+          timer: null,
+          firstQueuedAt,
+        });
+        flushLogWrite(docId);
+        return;
+      }
+
+      pendingLogWritesRef.current.set(docId, {
+        payload,
+        timer: setTimeout(() => flushLogWrite(docId), LOG_WRITE_DEBOUNCE_MS),
+        firstQueuedAt,
+      });
+    },
+    [flushLogWrite],
+  );
+
+  /*
+   * Nothing may sit in the queue when this screen goes away -- leaving a
+   * session is the exact case this whole change exists to fix, so an unflushed
+   * buffer at unmount would reintroduce the bug in miniature. Firestore's SDK
+   * lives above this component, so a write issued here still completes after
+   * the component is gone.
+   */
+  useEffect(() => {
+    const flushNow = () => flushAllLogWrites();
+    window.addEventListener("beforeunload", flushNow);
+    document.addEventListener("visibilitychange", flushNow);
+    return () => {
+      window.removeEventListener("beforeunload", flushNow);
+      document.removeEventListener("visibilitychange", flushNow);
+      flushAllLogWrites();
+    };
+  }, [flushAllLogWrites]);
+
+  /**
    * Saves a set. The write goes to Firestore immediately — it is not deferred
    * to the end of the session.
    *
@@ -2488,7 +2569,6 @@ export function WorkoutTrackerView({
       existingId && !String(existingId).startsWith("temp_")
         ? String(existingId)
         : key;
-    const logRef = doc(db, "exerciseLogs", docId);
 
     setLogs((prev) => {
       const prevLog = prev[key];
@@ -2523,23 +2603,32 @@ export function WorkoutTrackerView({
     });
     if (!logs[key]) {
       payload.createdAt = serverTimestamp();
+      /* Same precedence as the session-start placeholder (hosting studio
+         first, client's home studio as the fallback). They disagreed, so a
+         cross-train session's logs were split between the two studios
+         depending on which writer got there first. */
       payload.studioId =
-        selectedClient?.homeStudioId || contextActiveStudioId || "";
+        contextActiveStudioId ||
+        authTrainer?.primaryHomeStudioId ||
+        selectedClient?.homeStudioId ||
+        "";
       payload.homeStudioId = selectedClient?.homeStudioId || "";
       payload.clientHomeStudioId = selectedClient?.homeStudioId || "";
     }
 
-    /* merge so a set can be built up over several saves (weight now, reps a
-       moment later) without each write erasing the last. */
-    setDoc(logRef, payload, { merge: true }).catch((error) =>
-      handleFirestoreError(error, OperationType.WRITE, "exerciseLogs"),
-    );
+    /* Queued, then merged, so a set built up over several calls (weight now,
+       reps a moment later) becomes ONE write rather than one per field. */
+    queueLogWrite(docId, payload);
 
-    // Soft Lock Heartbeat: Update session activity timestamp
+    // Soft Lock Heartbeat: throttled -- it marks the session alive, nothing more.
     if (currentSession?.id === sessionId) {
-      updateDoc(doc(db, "sessions", sessionId), {
-        lastHeartbeatAt: serverTimestamp(),
-      }).catch(console.error);
+      const now = Date.now();
+      if (now - lastHeartbeatWriteRef.current >= HEARTBEAT_MIN_INTERVAL_MS) {
+        lastHeartbeatWriteRef.current = now;
+        updateDoc(doc(db, "sessions", sessionId), {
+          lastHeartbeatAt: serverTimestamp(),
+        }).catch(console.error);
+      }
     }
   };
 

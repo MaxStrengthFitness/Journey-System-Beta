@@ -44,6 +44,21 @@ interface StudioSelectionViewProps {
   onBack: () => void;
 }
 
+/**
+ * Ceiling on how many studios get a roster count on this screen.
+ *
+ * hasAccessToStudio returns true for EVERY studio when the signed-in user is an
+ * Admin, Founder or Overseer -- so on a large franchise "Your studios" is the
+ * whole estate, and an uncapped Promise.all would fire one aggregation query
+ * per studio on the login screen. The cache's dedupe and TTL bound how OFTEN
+ * counts are fetched; only this bounds how MANY at once. Cards past the cap
+ * show "-" for clients, which the card already renders for "not known".
+ *
+ * The first N are the ones a trainer actually looks at: `mine` is sorted home
+ * studio, then pinned, then alphabetically, before this slice is taken.
+ */
+const MAX_COUNTED_STUDIOS = 12;
+
 type StudioStats = {
   /** Active clients whose home studio this is. Null = not known yet. */
   clients: number | null;
@@ -334,6 +349,7 @@ export function StudioSelectionView({
   const mineIdsKey = mine
     .map((s) => s.id)
     .filter(Boolean)
+    .slice(0, MAX_COUNTED_STUDIOS)
     .sort()
     .join(",");
 
