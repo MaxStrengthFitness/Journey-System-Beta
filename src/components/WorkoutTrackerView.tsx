@@ -59,6 +59,24 @@ import {
   PreSessionCheckIn,
 } from "../types";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
+import { logDocId } from "../lib/exercise-log-id";
+
+/**
+ * How long a set's Firestore write waits for the trainer to stop typing.
+ *
+ * The rep and weight fields in the Now bar are controlled inputs that call
+ * through on every keystroke, and every set now writes to ONE derived document
+ * id -- so an undebounced write-per-change puts "12" into reps as two writes to
+ * the same document milliseconds apart, against Firestore's ~1 sustained
+ * write/sec/document ceiling. Coalescing per document keeps the guarantee that
+ * matters (the set is in the database within a second of being entered) without
+ * hammering a single row.
+ */
+const LOG_WRITE_DEBOUNCE_MS = 600;
+/** ...but a trainer who keeps typing must not outrun the flush indefinitely. */
+const LOG_WRITE_MAX_WAIT_MS = 2500;
+/** The soft-lock heartbeat is a liveness signal; per-keystroke is pointless. */
+const HEARTBEAT_MIN_INTERVAL_MS = 30_000;
 import {
   matchesRoutineLetter,
   routineLetterOf,
@@ -1175,7 +1193,17 @@ export function WorkoutTrackerView({
             const data = { id: sSnap.id, ...sSnap.data() } as WorkoutSession;
             if (data.status === "In-Progress") {
               setCurrentSession(data);
-              setSessions([data]);
+              /* Merge, never replace. `sessions` feeds the history grid AND
+                 builds the exerciseLogs query below (its `where sessionId in`
+                 list), so replacing it with the single taken-over session blanked
+                 the client's whole history and every log with it. It also raced
+                 the client-scoped listener, which is what made the screen flicker
+                 between full and empty. That listener fills in the real history a
+                 beat later; this only needs to make sure the session being taken
+                 over is present until it does. */
+              setSessions((prev) =>
+                prev.some((s) => s.id === data.id) ? prev : [data, ...prev],
+              );
               setIsPreSessionMode(false);
               setShowRoutinePicker(false);
               // Clear it so we don't keep doing this if the trainer navigates away and back manually
@@ -2152,23 +2180,23 @@ export function WorkoutTrackerView({
 
             // Create Left set
             if (prefilledLeft || defaultWeight) {
-              await addDoc(
-                collection(db, "exerciseLogs"),
+              await setDoc(
+                doc(db, "exerciseLogs", logDocId(docRef.id, mId, "Left")),
                 createLogPayload(prefilledLeft, mId, "Left", defaultWeight),
               );
             }
             // Create Right set
             if (prefilledRight || defaultWeight) {
-              await addDoc(
-                collection(db, "exerciseLogs"),
+              await setDoc(
+                doc(db, "exerciseLogs", logDocId(docRef.id, mId, "Right")),
                 createLogPayload(prefilledRight, mId, "Right", defaultWeight),
               );
             }
           } else {
             const prefilledLog = machineLastLogs[mId];
             if (prefilledLog || defaultWeight) {
-              await addDoc(
-                collection(db, "exerciseLogs"),
+              await setDoc(
+                doc(db, "exerciseLogs", logDocId(docRef.id, mId, undefined)),
                 createLogPayload(prefilledLog, mId, undefined, defaultWeight),
               );
             }
@@ -2346,6 +2374,9 @@ export function WorkoutTrackerView({
   }) => {
     if (!currentSession?.id) return;
 
+    // Land anything still debounced before the finish batch reads local state.
+    flushAllLogWrites();
+
     setIsSyncing(true);
     try {
       const sessionLogs = Object.values(logs).filter(
@@ -2424,39 +2455,181 @@ export function WorkoutTrackerView({
     updateLog(sessionId, machineId, "repQuality", quality, side);
   };
 
+  /**
+   * Exercise-log writes waiting to be sent, coalesced per document.
+   *
+   * A ref rather than state on purpose: this must survive re-renders without
+   * causing them, and be readable synchronously from the unmount cleanup.
+   */
+  const pendingLogWritesRef = useRef<
+    Map<
+      string,
+      { payload: Record<string, any>; timer: any; firstQueuedAt: number }
+    >
+  >(new Map());
+  const lastHeartbeatWriteRef = useRef(0);
+
+  const flushLogWrite = React.useCallback((docId: string) => {
+    const pending = pendingLogWritesRef.current.get(docId);
+    if (!pending) return;
+    if (pending.timer) clearTimeout(pending.timer);
+    pendingLogWritesRef.current.delete(docId);
+
+    setDoc(
+      doc(db, "exerciseLogs", docId),
+      { ...pending.payload, updatedAt: serverTimestamp() },
+      { merge: true },
+    ).catch((error) =>
+      handleFirestoreError(error, OperationType.WRITE, "exerciseLogs"),
+    );
+  }, []);
+
+  const flushAllLogWrites = React.useCallback(() => {
+    Array.from(pendingLogWritesRef.current.keys()).forEach(flushLogWrite);
+  }, [flushLogWrite]);
+
+  const queueLogWrite = React.useCallback(
+    (docId: string, fields: Record<string, any>) => {
+      const now = Date.now();
+      const existing = pendingLogWritesRef.current.get(docId);
+      const firstQueuedAt = existing?.firstQueuedAt ?? now;
+      if (existing?.timer) clearTimeout(existing.timer);
+
+      const payload = { ...(existing?.payload || {}), ...fields };
+
+      if (now - firstQueuedAt >= LOG_WRITE_MAX_WAIT_MS) {
+        pendingLogWritesRef.current.set(docId, {
+          payload,
+          timer: null,
+          firstQueuedAt,
+        });
+        flushLogWrite(docId);
+        return;
+      }
+
+      pendingLogWritesRef.current.set(docId, {
+        payload,
+        timer: setTimeout(() => flushLogWrite(docId), LOG_WRITE_DEBOUNCE_MS),
+        firstQueuedAt,
+      });
+    },
+    [flushLogWrite],
+  );
+
+  /*
+   * Nothing may sit in the queue when this screen goes away -- leaving a
+   * session is the exact case this whole change exists to fix, so an unflushed
+   * buffer at unmount would reintroduce the bug in miniature. Firestore's SDK
+   * lives above this component, so a write issued here still completes after
+   * the component is gone.
+   */
+  useEffect(() => {
+    const flushNow = () => flushAllLogWrites();
+    window.addEventListener("beforeunload", flushNow);
+    document.addEventListener("visibilitychange", flushNow);
+    return () => {
+      window.removeEventListener("beforeunload", flushNow);
+      document.removeEventListener("visibilitychange", flushNow);
+      flushAllLogWrites();
+    };
+  }, [flushAllLogWrites]);
+
+  /**
+   * Saves a set. The write goes to Firestore immediately — it is not deferred
+   * to the end of the session.
+   *
+   * This used to touch React state only, leaving every rep entered during a
+   * session in memory alone until "finish" ran completeWorkoutSession. Three
+   * things fell out of that, all reported from the floor:
+   *   - This screen is mounted as {currentView === "workouts" && <.../>}, so
+   *     navigating away unmounted it and discarded the lot. Coming back showed
+   *     only the placeholder logs written at session start.
+   *   - A crash or a reload mid-session lost the same way.
+   *   - A second trainer taking the session over saw nothing, because the first
+   *     trainer's reps had never reached the database.
+   * The exerciseLogs snapshot below compounded it: it rebuilds the whole `logs`
+   * map from Firestore, so ANY log change quietly erased in-memory-only sets.
+   *
+   * Local state is still updated first so the HUD stays instant; the write
+   * follows and reconciles through the snapshot.
+   */
   const updateLogMultiple = (
     sessionId: string,
     machineId: string,
     updates: Partial<ExerciseLog>,
     side?: "Left" | "Right",
   ) => {
-    const key = `${sessionId}_${machineId}${side ? "_" + side : ""}`;
+    const key = logDocId(sessionId, machineId, side);
     const currentSettings = clientMachineSettings[machineId]?.settings || {};
 
-    // Soft Lock Heartbeat: Update session activity timestamp
-    if (currentSession?.id === sessionId) {
-      updateDoc(doc(db, "sessions", sessionId), {
-        lastHeartbeatAt: serverTimestamp(),
-      }).catch(console.error);
-    }
+    /* Sessions started before this change have logs under random ids; keep
+       writing to those rather than stranding them behind a derived id. */
+    const existingId = logs[key]?.id;
+    const docId =
+      existingId && !String(existingId).startsWith("temp_")
+        ? String(existingId)
+        : key;
 
     setLogs((prev) => {
-      const existing = prev[key];
-      const updatedLog: ExerciseLog = existing
-        ? { ...existing, ...updates, machineSettings: currentSettings }
-        : ({
-            id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`, // Temporary ID for local state
-            sessionId,
-            clientId,
-            machineId,
-            ...(side ? { side } : {}),
-            ...updates,
-            machineSettings: currentSettings,
-            createdAt: Timestamp.now(),
-          } as any);
+      const prevLog = prev[key];
+      const updatedLog: ExerciseLog = {
+        ...(prevLog || {}),
+        sessionId,
+        clientId,
+        machineId,
+        ...(side ? { side } : {}),
+        ...updates,
+        id: docId,
+        machineSettings: currentSettings,
+        createdAt: prevLog?.createdAt ?? Timestamp.now(),
+      } as any;
 
       return { ...prev, [key]: updatedLog };
     });
+
+    /* undefined is rejected by Firestore, and callers pass partials — strip
+       before writing rather than trusting every call site. */
+    const payload: Record<string, any> = {
+      sessionId,
+      machineId,
+      machineSettings: currentSettings,
+      updatedAt: serverTimestamp(),
+    };
+    if (side) payload.side = side;
+    if (clientId) payload.clientId = clientId;
+    Object.entries(updates).forEach(([k, v]) => {
+      // `id` is the document's own name, never a field on it.
+      if (k !== "id" && v !== undefined) payload[k] = v;
+    });
+    if (!logs[key]) {
+      payload.createdAt = serverTimestamp();
+      /* Same precedence as the session-start placeholder (hosting studio
+         first, client's home studio as the fallback). They disagreed, so a
+         cross-train session's logs were split between the two studios
+         depending on which writer got there first. */
+      payload.studioId =
+        contextActiveStudioId ||
+        authTrainer?.primaryHomeStudioId ||
+        selectedClient?.homeStudioId ||
+        "";
+      payload.homeStudioId = selectedClient?.homeStudioId || "";
+      payload.clientHomeStudioId = selectedClient?.homeStudioId || "";
+    }
+
+    /* Queued, then merged, so a set built up over several calls (weight now,
+       reps a moment later) becomes ONE write rather than one per field. */
+    queueLogWrite(docId, payload);
+
+    // Soft Lock Heartbeat: throttled -- it marks the session alive, nothing more.
+    if (currentSession?.id === sessionId) {
+      const now = Date.now();
+      if (now - lastHeartbeatWriteRef.current >= HEARTBEAT_MIN_INTERVAL_MS) {
+        lastHeartbeatWriteRef.current = now;
+        updateDoc(doc(db, "sessions", sessionId), {
+          lastHeartbeatAt: serverTimestamp(),
+        }).catch(console.error);
+      }
+    }
   };
 
   const toggleMachine = async (machineId: string) => {

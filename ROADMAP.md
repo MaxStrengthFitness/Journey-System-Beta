@@ -2,7 +2,7 @@
 
 A living document. We update it every working session — newest decisions at the top of each list. (Contractor-scope backend items live in PROJECT_TRACKER.md. The tablet walkthrough and cleanup pass live in TESTING-CHECKLIST.md.)
 
-_Last updated: Sep 6, 2026 — UI round merged, plus the two branches that had never reached `master`._
+_Last updated: Sep 8, 2026 — session-log persistence (a live data-loss bug) and the studio picker rebuild, on `fix/session-persistence-and-studio-picker`, not yet merged._
 
 ---
 
@@ -372,6 +372,29 @@ _Nav cleanup note (Sep 5): the `View` union in `types.ts` has a duplicate member
 Every completed round, in the order it was written. Nothing here has been edited except the headings: these were all titled "Now" and none of them are. Kept in full because the *why* in them is the most valuable thing in this repo — several of these entries are the only record of a root cause.
 
 Six of these rounds still carry an open **Verify on the iPad** box. Those boxes are the source material for `TESTING-CHECKLIST.md`; they stay here so the acceptance criteria sit next to the work they describe.
+
+### 💾 Shipped — Session-log persistence + studio picker rebuild (Sep 8) — branch `fix/session-persistence-and-studio-picker`, one commit per phase
+
+**Not yet merged. This branch contains a data-loss fix and should go out ahead of anything cosmetic.**
+
+Reported from the floor: taking over an active session blanked all session history, you could not leave a session and come back, and reps entered were at risk from any crash.
+
+**Root cause, and it was one thing.** `updateLogMultiple` wrote reps/weight/quality to React state *only*; the data reached Firestore once, at the end, via `completeWorkoutSession`. `WorkoutTrackerView` is mounted as `{currentView === "workouts" && <.../>}`, so navigating away unmounted it and destroyed the lot. A crash lost the same way, and a second trainer taking over saw nothing because the first trainer's work had never left their browser. The `exerciseLogs` snapshot compounded it — it rebuilds the whole `logs` map from Firestore, so *any* log change silently erased in-memory-only sets, no navigation required.
+
+Sets now write through as they are saved. Every `exerciseLogs` document takes a **derived id** — `` `${sessionId}_${machineId}_${side}` ``, `src/lib/exercise-log-id.ts` — so all three writers of that collection address the same document and create-or-update is idempotent. **Any future writer of `exerciseLogs` must use it**; a random `addDoc` id reintroduces duplicate rows for one set. Writes are coalesced per document (600ms debounce, 2.5s ceiling) and flushed on unmount, `beforeunload`, `visibilitychange`, and before the finish batch — the rep and weight fields are controlled inputs firing on every keystroke, and a derived id concentrates them all on one row. The soft-lock heartbeat is throttled to once per 30s.
+
+Separately, the takeover handler's `setSessions([data])` → merge. That array feeds the history grid *and* builds the `exerciseLogs` `where("sessionId","in",...)` list, so one assignment blanked both, and it raced the client-scoped listener — the "screen bugs out a bit".
+
+**The studio selector scroll trap is fixed, and it was exactly the cause predicted above**: a `min-h-screen` view returning *early*, before the app shell exists, under `index.css`'s `html, body { overflow: hidden }`, with no scroller of its own. It is now its own `h-[100dvh] overflow-y-auto` container — fixed by construction rather than by patching a height.
+
+The picker itself is rebuilt around access rather than franchise topology: "Your studios" first (home studio → pinned → alphabetical), other locations collapsed below with the Request Access flow intact, network names demoted to a card label, and the card markup — which existed as two drifting copies — reduced to one component. Each enterable studio shows active clients and team size; team size is free from trainers already in memory, active clients goes through `src/lib/studio-roster-count.ts`, built on the same dedupe/TTL/cooldown guards as `session-count-cache.ts` and capped at 12 studios per render, because `hasAccessToStudio` returns true for *every* studio for an Admin/Founder/Overseer. Any studio can be pinned as that device's default and entered automatically at login; the pin is re-checked against current access every time, suppressed by "switch studio", and survives logout because it describes the device, not the session.
+
+An adversarial review pass caught four defects in the above before they shipped (write-per-keystroke, a duplicate-document window via `useClientMutations`' walk-in placeholders, disagreeing `studioId` precedence between writers, and the uncapped count fan-out); all four are fixed in the fourth commit.
+
+`tsc` at the 20-error pre-existing baseline, `vite build` green, **1230 tests across 47 files green**. Both `vitest` and `vite build` now run from the Linux-side shell directly — the old scratch-harness workaround is obsolete.
+
+- [ ] **Verify on the iPad**: enter reps, navigate away mid-session, come back — the reps must still be there. Then take over an active session from another device and confirm the history columns survive.
+- [ ] Merge to `master` and `git push origin master` yourself — the container has no GitHub credentials, and pushing `master` deploys to Render.
 
 ### 🪪 Shipped — Client profile redesign (Sep 5) — branch `client-profile-redesign`, one commit per phase
 

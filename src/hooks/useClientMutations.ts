@@ -5,11 +5,13 @@ import {
   updateDoc,
   deleteDoc,
   doc,
+  setDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { Client, Trainer, Machine } from "../types";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
+import { logDocId } from "../lib/exercise-log-id";
 
 type ClientFormData = {
   firstName: string;
@@ -81,7 +83,11 @@ export function useClientMutations(
       });
 
       for (const mid of activeMachines) {
-        await addDoc(collection(db, "exerciseLogs"), {
+        /* Derived id, matching every other writer of this collection -- a
+           random one here would let a trainer who starts entering reps before
+           the logs snapshot arrives create a SECOND document for the same set,
+           and only one of the two would survive into the finished session. */
+        await setDoc(doc(db, "exerciseLogs", logDocId(docRef.id, mid)), {
           sessionId: docRef.id,
           machineId: mid,
           weight: "0",

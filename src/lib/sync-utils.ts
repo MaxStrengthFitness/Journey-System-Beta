@@ -212,14 +212,20 @@ export async function completeWorkoutSession(
     } else if (log.id) {
       const logRef = doc(db, 'exerciseLogs', log.id);
       const { id, ...logData } = log;
-      batch.update(logRef, {
+      /* set+merge, not update: sets are now written to Firestore as they are
+         saved (see updateLogMultiple), so by the time we finish, the document
+         normally exists — but if one of those writes failed, `update` would
+         throw on the missing doc and take the whole finish batch down with it.
+         Merging creates it instead, and is identical to update when it does
+         exist. */
+      batch.set(logRef, {
         ...cleanData(logData),
         clientId: selectedClient?.id || '',
         homeStudioId: homeStudioId,
         clientHomeStudioId: homeStudioId,
         studioId: logData.studioId || homeStudioId,
         updatedAt: serverTimestamp()
-      });
+      }, { merge: true });
     }
   }
 
