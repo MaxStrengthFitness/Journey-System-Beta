@@ -109,6 +109,12 @@ function buildCanonicalClientPayload(
   appt: MindbodyAppointment,
   mbClientId: string,
   studioId: string,
+  /**
+   * Earliest appointment we saw for this client anywhere in this sync window.
+   * Becomes `firstAppointmentDate`, which is what the profile card means by
+   * "Client since". Optional so existing callers and tests are unaffected.
+   */
+  earliestAppointment?: Date | null,
 ): Record<string, any> {
   const firstName = (appt.ClientFirstName || "").trim();
   const lastName = (appt.ClientLastName || "").trim();
@@ -129,6 +135,29 @@ function buildCanonicalClientPayload(
     createdBy: "mindbody:pull-sync",
     isMindbodyStub: false,
   };
+
+  /*
+   * CLIENT SINCE.
+   *
+   * `createdAt` above is when JOURNEY first heard of this person, and the
+   * profile card used to fall back to it -- so a member of eleven years read
+   * as joining the day we imported them.
+   *
+   * The client.created webhook writes the authoritative `firstAppointmentDate`
+   * and `mindbodyCreatedAt`, but Mindbody only fires it when a record CHANGES,
+   * so a long-standing client has never produced one. This is the best answer
+   * available from an appointment payload: the earliest booking in the window
+   * we just pulled.
+   *
+   * It is a CEILING, not the truth -- their real first visit may predate the
+   * window -- which is exactly why it is written with a floor-not-overwrite
+   * merge below and why the webhook's value always wins. scripts/
+   * backfill-client-since.ts is what fixes the ones already in the database.
+   */
+  if (earliestAppointment && !Number.isNaN(earliestAppointment.getTime())) {
+    payload.firstAppointmentDate = Timestamp.fromDate(earliestAppointment);
+    payload.firstAppointmentDateSource = "pull-sync:earliest-in-window";
+  }
 
   if (appt.ClientPhone) payload.phone = appt.ClientPhone;
   if (appt.ClientEmail) payload.email = appt.ClientEmail;
@@ -391,6 +420,25 @@ export async function syncMindbodySchedules(
     // Batched up front, the whole roster is created in a couple of commits and
     // the schedule rows written afterwards always resolve.
     // ------------------------------------------------------------------
+    /*
+     * Earliest booking per client across the WHOLE window, not just the
+     * appointment that happens to create them. The creating appointment is
+     * simply the first one the loop below reaches, which is arbitrary -- using
+     * it directly would record a client's first visit as whichever booking
+     * Mindbody returned first.
+     */
+    const earliestApptByClient = new Map<string, Date>();
+    for (const appt of appointments) {
+      const mbId = appt.ClientId ? String(appt.ClientId).trim() : "";
+      if (!mbId || !appt.StartDateTime) continue;
+      const when = new Date(appt.StartDateTime);
+      if (Number.isNaN(when.getTime())) continue;
+      const seen = earliestApptByClient.get(mbId);
+      if (!seen || when.getTime() < seen.getTime()) {
+        earliestApptByClient.set(mbId, when);
+      }
+    }
+
     const missingClients = new Map<string, MindbodyAppointment>();
     for (const appt of appointments) {
       const mbId = appt.ClientId ? String(appt.ClientId).trim() : "";
@@ -415,7 +463,12 @@ export async function syncMindbodySchedules(
       let created = 0;
       try {
         for (const [mbId, appt] of missingClients) {
-          const payload = buildCanonicalClientPayload(appt, mbId, targetStudioId);
+          const payload = buildCanonicalClientPayload(
+            appt,
+            mbId,
+            targetStudioId,
+            earliestApptByClient.get(mbId) ?? null,
+          );
           clientBatch.set(doc(db, "clients", mbId), payload, { merge: true });
           // Keep the in-memory roster in step so the loop below resolves them.
           allClients.push({ id: mbId, ...payload } as unknown as Client);

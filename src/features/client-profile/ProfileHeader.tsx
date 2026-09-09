@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn, parseSessionDate } from "../../lib/utils";
 import { formatStudioTime, toDate, zonedYMD } from "../../lib/studio-time";
+import { clientSinceLabel } from "../../lib/client-since";
 import type { Client, ScheduleEntry, WorkoutSession } from "../../types";
 import type { PackageSummary } from "./client-package";
 import { remainingLabel } from "./client-package";
@@ -89,11 +90,17 @@ function daysUntil(d: Date): string | null {
   return null;
 }
 
-function clientSince(client: Client): string | null {
-  const d = toDate(client.firstSessionDate) || toDate(client.firstAppointmentDate) || toDate(client.mindbodyCreatedAt) || toDate(client.createdAt);
-  if (!d) return null;
-  return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-}
+/*
+ * `clientSince` used to live here as a four-step fallback ending on
+ * client.createdAt -- the day the JOURNEY document was made. On a roster
+ * imported from Mindbody that last step fires for almost everyone, so the
+ * card confidently reported a member of eleven years as joining last month.
+ *
+ * The rule now lives in lib/client-since.ts, consults the contract and
+ * membership dates the commercial sync already writes, and returns its own
+ * LABEL -- so a Journey-only date renders as "In Journey since" and cannot
+ * pass itself off as a start date at the business.
+ */
 
 /* ------------------------------------------------------------------ */
 
@@ -206,7 +213,7 @@ export function ProfileHeader({
 
   /* ---- package ---- */
   const remaining = remainingLabel(pkg);
-  const since = clientSince(client);
+  const since = clientSinceLabel(client);
   const hasFlags = !!(client.notes || (client.clinicalFlags && client.clinicalFlags.length > 0));
   const initials = `${(client.firstName || "").charAt(0)}${(client.lastName || "").charAt(0)}`.toUpperCase();
 
@@ -251,7 +258,12 @@ export function ProfileHeader({
             <BrandTiles size={6} gap={2} />
             <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 truncate">
               <span>{studioName}</span>
-              {since && <span className="xl:hidden 2xl:inline">{studioName ? "  ·  " : ""}Client since {since}</span>}
+              {since && (
+                <span className="xl:hidden 2xl:inline">
+                  {studioName ? "  ·  " : ""}
+                  {since.label} {since.value}
+                </span>
+              )}
               {(client.experienceLevel || client.trainingPedigree) && (
                 <span className="xl:hidden 2xl:inline">  ·  {client.experienceLevel || client.trainingPedigree}</span>
               )}

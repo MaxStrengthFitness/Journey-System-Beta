@@ -76,7 +76,24 @@
     --color-amber: var(--amber);
     
     --font-display: 'Saira Condensed', var(--font-sans);
-    
+
+    /* ELEVATION.
+       These OVERRIDE Tailwind's built-in shadow scale rather than sitting
+       beside it, so every `shadow-sm/md/lg/xl/2xl` already written across the
+       app softens at once with no component edits. Tailwind's defaults are
+       pure black at fairly high alpha, which on a light ground reads as a
+       dirty smudge — the single biggest reason light mode looked "harsh and
+       dull". Ours are tinted with the ink colour and split into a tight
+       contact shadow plus a wide ambient one, which is what actually reads as
+       a raised surface. In dark mode they collapse to almost nothing (see
+       .dark below) because a shadow on a near-black ground is invisible
+       anyway; there, elevation comes from the surface getting LIGHTER. */
+    --shadow-sm:  var(--elev-1);
+    --shadow-md:  var(--elev-2);
+    --shadow-lg:  var(--elev-3);
+    --shadow-xl:  var(--elev-4);
+    --shadow-2xl: var(--elev-5);
+
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -116,30 +133,54 @@
 
 
 
+/* =====================================================================
+   LIGHT MODE  (Sep 9 2026 retune)
+
+   What was wrong, and what each change is for:
+
+   1. THE GROUND AND THE CARDS WERE THE SAME COLOUR. Ground was #F8FAFC and
+      a card was #FFFFFF — a 2% step. Nothing looked raised, so every card
+      edge had to be carried by a border, and the screen read as one flat
+      grey sheet. The ground now sits a real step below white (#EDF0F5), so
+      a white card is legible as a CARD before you notice its border.
+
+   2. IT WAS COLD. Everything was pure slate (hue ~212, high blue). Against
+      a #F06C22 brand that reads as clinical. The greys below are pulled a
+      few degrees off pure blue and desaturated, which is what reads as
+      "soft" rather than "grey".
+
+   3. SECONDARY TEXT WAS BELOW AA IN PRACTICE. #64748B on #F8FAFC is 4.7:1,
+      which passes on paper and fails in a bright studio at arm's length on
+      a tablet. Both muted inks are darkened; see the ratios noted inline.
+
+   4. THERE WAS NO ELEVATION SCALE AT ALL — see --elev-* below.
+
+   Contrast ratios quoted are against the ground (#EDF0F5) unless stated.
+   ===================================================================== */
 :root {
-    --background: #F8FAFC;
-    --foreground: #0F172A;
+    --background: #EDF0F5;
+    --foreground: #0F172A;          /* 15.8:1 — body copy */
     --card: #FFFFFF;
     --card-foreground: #0F172A;
     --popover: #FFFFFF;
     --elevated: #FFFFFF;
     --popover-foreground: #0F172A;
-    --primary: #115E8D;
+    --primary: #115E8D;             /* 6.2:1 on white */
     --primary-foreground: #FFFFFF;
     --brand: #115E8D;
     --brand-foreground: #FFFFFF;
     --action: #F06C22;
     --action-foreground: #FFFFFF;
-    --secondary: #68717A;
+    --secondary: #55606F;
     --secondary-foreground: #FFFFFF;
-    --muted: #F1F5F9;
-    --muted-foreground: #68717A;
-    --accent: #F1F5F9;
+    --muted: #E4E9F0;
+    --muted-foreground: #55606F;    /* 5.9:1 — was #68717A at 4.6:1 */
+    --accent: #E4E9F0;
     --accent-foreground: #115E8D;
-    --destructive: #EF4444;
+    --destructive: #D92D20;         /* 4.6:1 on white; #EF4444 was 3.3:1 */
     --destructive-foreground: #FFFFFF;
-    --border: #E2E8F0;
-    --input: #E2E8F0;
+    --border: #DCE3EC;              /* separators — decorative, low contrast is fine */
+    --input: #C3CEDC;               /* 3.1:1 — WCAG 1.4.11 wants 3:1 for a control's own boundary */
     --ring: #115E8D;
     --chart-1: #115E8D;
     --chart-2: #F06C22;
@@ -156,17 +197,43 @@
     --sidebar-border: #E2E8F0;
     --sidebar-ring: #115E8D;
     
-    /* JOURNEY SYSTEM BETA TOKENS — LIGHT MODE */
-    --bg-dark:     #FFFFFF;
-    --bg-dark-2:   #F8FAFC;
-    --bg-dark-3:   #F1F5F9;
-    --ink-d1:      #0F172A;
-    --ink-d2:      #334155;
-    --ink-d3:      #64748B;
-    --div-d:       #E2E8F0;
+    /* ---------------------------------------------------------------
+       ELEVATION SCALE. Two shadows per step on purpose: a tight, darker
+       contact shadow that anchors the element to the surface, and a wide,
+       soft ambient one that gives it height. One shadow alone always reads
+       as either a hard outline or a blur. Tinted with the ink colour
+       (15,23,42) rather than pure black so it stays in the palette.
+       --------------------------------------------------------------- */
+    --elev-1: 0 1px 2px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.05);
+    --elev-2: 0 1px 2px rgba(15,23,42,0.05), 0 3px 8px rgba(15,23,42,0.06);
+    --elev-3: 0 2px 4px rgba(15,23,42,0.05), 0 8px 20px rgba(15,23,42,0.08);
+    --elev-4: 0 4px 8px rgba(15,23,42,0.05), 0 16px 32px rgba(15,23,42,0.09);
+    --elev-5: 0 8px 16px rgba(15,23,42,0.06), 0 28px 56px rgba(15,23,42,0.12);
+
+    /* ---------------------------------------------------------------
+       JOURNEY SYSTEM BETA TOKENS — LIGHT MODE
+
+       THE LADDER WAS UPSIDE DOWN. In dark mode these read
+       bg-dark (page, darkest) -> bg-dark-2 (card) -> bg-dark-3 (raised),
+       each step LIGHTER. Light mode had bg-dark as pure white and each
+       step DARKER, so a component written as `bg-bg-dark-2` — which is a
+       card in dark mode — became a grey wash sitting on a white page.
+       That is the specific reason client cards had no contrast.
+
+       Light mode now keeps the same MEANING per rung: page, then card,
+       then raised. In light that means the page is tinted and the card is
+       white, which is the inverse of the colours but the same hierarchy.
+       --------------------------------------------------------------- */
+    --bg-dark:     #EDF0F5;   /* page ground */
+    --bg-dark-2:   #FFFFFF;   /* card / panel */
+    --bg-dark-3:   #F5F8FC;   /* raised or inset within a card */
+    --ink-d1:      #0F172A;   /* 15.8:1 on the ground */
+    --ink-d2:      #33404F;   /* 9.6:1  — secondary copy */
+    --ink-d3:      #55606F;   /* 5.9:1  — labels, meta; was 4.6:1 */
+    --div-d:       #DCE3EC;
 
     --surface-1:   #FFFFFF;
-    --surface-2:   #F8FAFC;
+    --surface-2:   #F5F8FC;
 
     --bg-l:        #0F172A;
     --bg-l-card:   #1E293B;
@@ -176,8 +243,13 @@
     --ink-l4:      #64748B;
     --div-l:       rgba(255,255,255,0.08);
 
-    --cta:         #F37427;
-    --cta-strong:  #E45F0F;
+    /* --cta is a FILL colour. White on it is 3.5:1, which is below AA for
+       small text, so any orange button carrying a label uses --cta-strong
+       (6.0:1 with white). Same call the admin round already made; this
+       lifts it to the app-wide token so the rest of the app stops failing
+       the check the admin screens now pass. */
+    --cta:         #F06C22;
+    --cta-strong:  #BC2C00;
     --cyan:        #38BDF8;
     --yellow:      #FCD661;
     --green:       #4FDB8E;
@@ -255,6 +327,16 @@
     --sidebar-accent-foreground: #38BDF8;
     --sidebar-border: #334155;
     --sidebar-ring: #38BDF8;
+
+    /* On a near-black ground a drop shadow is invisible — elevation there
+       comes from the SURFACE getting lighter (bg-dark -> -2 -> -3). Left at
+       the light-mode values, every `shadow-xl` in the app would be spending
+       paint on nothing and muddying the edges of dark cards. */
+    --elev-1: 0 1px 2px rgba(0,0,0,0.30);
+    --elev-2: 0 2px 6px rgba(0,0,0,0.35);
+    --elev-3: 0 6px 16px rgba(0,0,0,0.40);
+    --elev-4: 0 12px 28px rgba(0,0,0,0.45);
+    --elev-5: 0 20px 48px rgba(0,0,0,0.55);
 
     /* JOURNEY SYSTEM BETA TOKENS — DARK MODE */
     --bg-dark:     #0D1A2B;
@@ -350,5 +432,38 @@
   }
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* -------------------------------------------------------------------
+     A FULL-VIEWPORT PANE THAT SCROLLS UNDER A FINGER.
+
+     For any screen that is its own scroll container rather than living
+     inside the app shell — the studio picker is the one that bit us.
+     Three separate things, each fixing a different iPad failure:
+
+     1. height: 100vh FIRST, then 100dvh only where it is supported. An
+        unsupported unit invalidates the whole declaration, which would
+        leave the pane with height:auto — it grows past the viewport while
+        html/body are overflow:hidden, and then nothing scrolls at all.
+        Older iPadOS (< 15.4) has no dvh. This way it degrades to a
+        slightly-too-tall pane that still scrolls, instead of a dead one.
+
+     2. touch-action: pan-y tells Safari up front that this pane only ever
+        pans vertically. Without it the browser holds the first ~300ms of
+        the gesture open in case it turns into a pinch or a horizontal
+        swipe, which is felt as "the list is stuck, then it jumps".
+
+     3. -webkit-overflow-scrolling: touch restores momentum scrolling on
+        older iPadOS. It is a no-op on current versions and harmless.
+     ------------------------------------------------------------------- */
+  .touch-pane {
+    height: 100vh;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+  @supports (height: 100dvh) {
+    .touch-pane {
+      height: 100dvh;
+    }
   }
 }

@@ -56,3 +56,19 @@ test-output.txt
 prod-sdkconfig.json
 live-rules-*.rules
 .env.bak
+
+# Service account keys — these can read and write the ENTIRE database.
+# Added Sep 9 2026 for scripts/backfill-client-since.ts. Never commit one;
+# AJ is a collaborator on this repo, not its owner, so a leak is not his to undo.
+service-account.json
+serviceAccountKey.json
+*-service-account.json
+*firebase-adminsdk*.json
+# ^ leading wildcard is load-bearing: Google names the key
+#   <projectId>-firebase-adminsdk-<hash>.json, so a pattern anchored at
+#   "firebase-adminsdk" would NOT have matched the real filename.
+
+# One-off script reports (carry client names) and local command captures
+backups/
+typecheck-now.txt
+backfill-run.txt
