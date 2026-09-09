@@ -646,6 +646,13 @@ export interface Client {
   mindbodyCreatedAt?: any;
   /** Firestore Timestamp of the client's first visit to the site. */
   firstAppointmentDate?: any;
+  /**
+   * Where firstAppointmentDate came from, when it was NOT the webhook.
+   * Absent means the webhook wrote it and it is authoritative; a
+   * "pull-sync:" or "backfill:" value means it is the best available
+   * inference and a real webhook value should replace it.
+   */
+  firstAppointmentDateSource?: string;
   /** Mindbody's home location id for this client. */
   mindbodyHomeLocationId?: number | string;
   /** True while Mindbody flags the record as a prospect rather than a client. */
