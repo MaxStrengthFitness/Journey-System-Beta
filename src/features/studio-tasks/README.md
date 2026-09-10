@@ -329,3 +329,96 @@ instead of not seeing the button. **Restore the gate when RBAC lands.**
   ordered `expiresAt` bound and the composite index to match.
 - A reaction cannot be seen from Manage. "Six people saw the heads-up and
   nobody reacted" is a real signal and is currently invisible there.
+
+---
+
+## The Studio Hub (Sep 2026)
+
+The To-Do screen rebuilt as a community hub: *what the team is doing, what the
+team needs to do, and how the team has solved this before.*
+
+**Routing.** `StudioHubView` renders for `currentView === "studio-tasks"`.
+`StudioTasksView` is untouched and still reachable — append `?classic-todo` to
+the URL. One constant in `AppContent.tsx` decides, read once at module load.
+Delete both when the hub has had a full week on the floor.
+
+### Lanes are lifespan, chips are topic
+
+That is the whole information architecture, and it is the thing to argue with
+first if the screen feels wrong.
+
+| Lane | Lives for | Why it is a lane |
+|---|---|---|
+| **My shift** | Tonight | `ShiftStrip` — one row per template+shift, a count, a Mark all. Was 21 checkbox rows, 19 of which were one chore expanded per machine. |
+| **Clients waiting on us** | Until done | `ClientTasksLane` — a person is waiting. Primary action is *Open the flow*, not the tick. |
+| **The board** | Until answered | `RequestsLane` — the human content, ranked by heat via `buildBoard`. |
+| **Playbook** | Never expires | `PlaybookLane` — what the studio worked out. |
+
+A trainer between two 20-minute sessions asks "what dies today if I don't
+act", not "show me the Cleaning bucket". So lifespan is the skeleton; the
+topic chips (All / Clients / Equipment / Initiatives / Help) narrow **the
+board only**. MINE is a filter across every lane, not a fifth lane.
+
+### The playbook is a by-product, not a wiki
+
+Nobody running back-to-back sessions writes documentation. Ask them to and you
+get an empty wiki and a vague sense of failure. But they already answer each
+other, and that answer is currently thrown away when a request is resolved.
+
+So: `ResolveDialog` offers to keep the answer, with the title and machine
+pre-filled — the marginal cost of contributing is one checkbox on a thing you
+had already finished. The offer appears only once `draftFromRequest` returns
+non-null (12 characters); prompting someone to archive "yep, thanks" teaches
+them the prompt is noise.
+
+`resolve-flow.ts` orders the two writes, and **the order is load-bearing**:
+resolve first and uncaught (it is what the trainer asked for), playbook second
+and caught (it is a bonus they agreed to). One batch would let a rules
+rejection on the entry silently roll back a perfectly legal resolve.
+
+The other half of the loop is `MachinePlaybookCard`, in the Catalog's machine
+detail. Knowledge nobody finds at the moment of need is knowledge nobody
+wrote.
+
+**A playbook entry carries no `clientId`** — not in the type, not in the UI,
+and `firestore.rules` refuses the write. It describes a physical complaint and
+a workaround and is readable by everyone at the studio; attach a name and it
+becomes a searchable health record anyone on the floor can browse.
+
+### Initiatives
+
+A manager's ask ("five progress reports each by Friday") is a `taskRequests`
+document with `kind: "initiative"` and a `target`. Each trainer's log lives at
+`taskRequests/{id}/submissions/{trainerId}` — **the document id is the trainer
+id, and that is the entire authorisation story**: `request.auth.uid ==
+trainerId` needs no document read. It is a subcollection rather than an array
+because an initiative has nine writers on nine iPads and whole-array writes
+erase each other.
+
+`initiativeProgress` counts trainers who **met** the target, not entries
+logged: nine trainers doing one each is not "9 of 45 done". `studioRoster`
+supplies the denominator from `primaryHomeStudioId` only — sweeping in
+everyone with `accessibleStudioIds` puts guests in the denominator and makes a
+finished studio read as failing. A guest who does the work anyway still counts
+toward the studio total; they just are not chased for it.
+
+`InitiativeRollup` is read-only. A manager cannot tick a client off on a
+trainer's behalf — the rule would refuse the write, and a button that always
+fails is worse than no button.
+
+### Still open
+
+- **`kind: "initiative"` has no composer.** It is excluded from `KINDS`
+  deliberately (a trainer posting "everyone do five assessments" should not be
+  one tap away, and the quick composer has no room to ask for a target), but
+  that means there is currently **no UI that creates one** — it belongs in
+  ManagePanel. Until then an initiative can only be created directly in
+  Firestore.
+- **`useTaskActions` is used by the hub only.** `StudioTasksView` still
+  carries its own copies of the same write handlers. That duplication is
+  deliberate for the review window — nothing that works today goes through new
+  code — and comes out when the hub replaces it.
+- **The board's write rule is still wide.** Same caveat as the section above:
+  any authenticated trainer may write any field on a `taskRequests` document
+  except `createdBy`. `target` is now one of those fields.
+

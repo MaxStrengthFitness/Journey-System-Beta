@@ -31,8 +31,8 @@
  * This module is PURE. No Firestore, no React. The lane rules are the part
  * most likely to be argued with, so they are the part that gets tested.
  */
-import type { TaskRow, TaskShift, StudioTaskCategory } from "./types";
-import { upkeepRoleOf } from "./types";
+import type { TaskRow, TaskShift, StudioTaskCategory, TaskScope } from "./types";
+import { taskScopeOf, upkeepRoleOf } from "./types";
 import type { TaskRequest, RequestKind } from "./requests";
 
 /* ------------------------------------------------------------------ *
@@ -92,6 +92,12 @@ export function matchesTopic(r: TaskRequest, topic: BoardTopic): boolean {
  * 19-machine floor is 19 rows and the trainer wants to know 12 of 19, not
  * 1 of 1. But the group renders as ONE line until they ask to see inside.
  */
+/** Somebody who acted on a task. Same shape as TaskInstance's own fields. */
+export interface TaskActor {
+  id: string;
+  name: string;
+}
+
 export interface ShiftGroup {
   templateId: string;
   title: string;
@@ -106,6 +112,51 @@ export interface ShiftGroup {
   complete: boolean;
   /** True when this is a per-machine group, i.e. worth expanding at all. */
   expandable: boolean;
+
+  /* ── who ────────────────────────────────────────────────────────────
+   *
+   * Added Sep 2026, after a review found that the studio's shared list gave
+   * no attribution at all. `completedBy` had been written on every single
+   * tick since the feature shipped and was rendered in exactly ONE place —
+   * the manager's review panel. The people doing the work never saw who had
+   * done what, which on a shared list makes "someone else probably got it"
+   * the rational read.
+   *
+   * NONE OF THIS IS OWNERSHIP. AJ's call, and the model's original argument
+   * stands: a hard claim means a trainer claims the bins at 9am, gets pulled
+   * into a consultation, and the bin stays full because the app told everyone
+   * else it was handled. So a claim is advisory and the tick box stays live
+   * for everyone. This is attribution, not assignment.
+   */
+
+  /** "studio" — everyone here sees it. "personal" — only this trainer does. */
+  scope: TaskScope;
+  /**
+   * The one person a head trainer put on it, when every open row agrees.
+   * Null when nobody is assigned, or when the rows disagree — which happens
+   * only if someone assigned part of a group, and showing one of two names
+   * would be worse than showing none.
+   *
+   * ADVISORY. The tick box stays live for everyone; see TaskInstance.
+   */
+  assignedTo: TaskActor | null;
+  /** The one person on it, when exactly one has claimed. Null if 0 or many. */
+  claimedBy: TaskActor | null;
+  /** Open rows somebody has claimed. Lets the UI say "3 people are on it". */
+  claimedCount: number;
+  /** The one person who closed it, when a single trainer closed every done
+   *  row. Null when nobody has, or when several people shared it. */
+  completedBy: TaskActor | null;
+  /** Everyone who closed a row here, in first-seen order. */
+  finishers: TaskActor[];
+  /**
+   * The signed-in trainer has a stake: it is their private task, or they have
+   * claimed or closed something in it. Drives the Mine filter — which, before
+   * this round, could not narrow the shift strip at all because no row knew
+   * whose it was, even though the toggle's own comment claimed it narrowed
+   * "every lane at once".
+   */
+  mine: boolean;
 }
 
 /**
@@ -118,12 +169,20 @@ export interface ShiftGroup {
 export function shiftGroups(
   rows: TaskRow[],
   studioCategories?: StudioTaskCategory[],
+  opts: { trainerId?: string | null } = {},
 ): ShiftGroup[] {
+  const { trainerId = null } = opts;
   const byTemplate = new Map<string, TaskRow[]>();
   for (const row of rows) {
     // Key on template AND shift: am and pm are separate obligations against
     // the same template, and merging them would let "opened" satisfy "closed".
-    const key = `${row.templateId}__${row.shift}`;
+    //
+    // Scope is in the key too. Template ids are random and will not collide in
+    // practice, but a private task and a shared one merging into one row would
+    // be the worst possible bug in this file — a trainer ticking what they
+    // think is their own note and telling eight colleagues they cleaned the
+    // floor. Structural, not left to id uniqueness.
+    const key = `${taskScopeOf(row.template ?? {})}__${row.templateId}__${row.shift}`;
     const list = byTemplate.get(key);
     if (list) list.push(row);
     else byTemplate.set(key, [row]);
@@ -138,6 +197,61 @@ export function shiftGroups(
     // studio that skips the broken leg press does not sit at 18/19 forever.
     const skipped = list.filter((r) => r.status === "skipped").length;
     const total = list.length;
+
+    /*
+     * Distinct people, in first-seen order rather than a Set, so "Marcus and
+     * Priya" always reads the same way on every iPad looking at it.
+     *
+     * A claim is only counted while the row is still OPEN. Once it is closed
+     * the claim has served its purpose, and "Sarah's on it" beside a finished
+     * group is noise that outlives its own meaning.
+     */
+    const claimers = new Map<string, TaskActor>();
+    const finishers = new Map<string, TaskActor>();
+    const assignees = new Map<string, TaskActor>();
+    let claimedCount = 0;
+    let openCount = 0;
+    let assignedOpenCount = 0;
+    for (const r of list) {
+      const claimed = r.instance?.claimedBy;
+      if (claimed?.id && r.status === "open") {
+        claimers.set(claimed.id, claimed);
+        claimedCount += 1;
+      }
+      const finished = r.instance?.completedBy;
+      if (finished?.id && r.status === "done") {
+        finishers.set(finished.id, finished);
+      }
+      // Assignment is about work still to do, so only open rows are consulted.
+      // A group where one machine is left and Marcus has it still reads
+      // "Marcus", which is the useful answer at 8pm.
+      if (r.status === "open") {
+        openCount += 1;
+        const assigned = r.instance?.assignedTo;
+        if (assigned?.id) {
+          assignees.set(assigned.id, assigned);
+          assignedOpenCount += 1;
+        }
+      }
+    }
+    const claimerList = [...claimers.values()];
+    const finisherList = [...finishers.values()];
+    const assigneeList = [...assignees.values()];
+    /*
+     * EVERY open row agrees, and there is at least one.
+     *
+     * Not "at least one row is assigned" — a head trainer who put Sarah on one
+     * of nineteen machines has not made the group hers, and a header reading
+     * "Sarah's" over eighteen unassigned rows is a false statement about who
+     * is covering closing. A partly-assigned group names nobody and falls
+     * through to whatever the claims say.
+     */
+    const assignedTo =
+      assignees.size === 1 && openCount > 0 && assignedOpenCount === openCount
+        ? assigneeList[0]
+        : null;
+    const scope = taskScopeOf(first.template ?? {});
+
     groups.push({
       templateId: first.templateId,
       title: first.title,
@@ -149,6 +263,21 @@ export function shiftGroups(
       total,
       complete: done + skipped >= total,
       expandable: total > 1,
+      scope,
+      assignedTo,
+      // One name or none. Two people on a nineteen-machine wipe-down is a
+      // count, not a list — naming both in a 52px row truncates one of them.
+      claimedBy: claimerList.length === 1 ? claimerList[0] : null,
+      claimedCount,
+      completedBy: finisherList.length === 1 ? finisherList[0] : null,
+      finishers: finisherList,
+      mine: Boolean(
+        trainerId &&
+          (scope === "personal" ||
+            assignees.has(trainerId) ||
+            claimers.has(trainerId) ||
+            finishers.has(trainerId)),
+      ),
     });
   }
 
@@ -174,6 +303,72 @@ export function shiftTotals(groups: ShiftGroup[]): {
     total += g.total;
   }
   return { done, total, outstanding: Math.max(0, total - done) };
+}
+
+/**
+ * The rows the signed-in trainer has a stake in.
+ *
+ * Filtered at the ROW level, not the group level, and that is the point: on a
+ * nineteen-machine wipe-down where you claimed three, "Mine" should show three
+ * of three, not the whole group with a highlight. The denominator changing is
+ * correct — it is a different question.
+ *
+ * A personal task is always yours. A shared one becomes yours by claiming it
+ * or by closing it; there is no assignment, because nobody owns a studio task.
+ */
+export function mineRows(
+  rows: TaskRow[],
+  trainerId: string | null | undefined,
+): TaskRow[] {
+  if (!trainerId) return [];
+  return rows.filter((r) => {
+    if (taskScopeOf(r.template ?? {}) === "personal") return true;
+    // Assigned to you is the strongest form of "yours" on this screen — it is
+    // the only one somebody else decided.
+    if (r.status === "open" && r.instance?.assignedTo?.id === trainerId) {
+      return true;
+    }
+    if (r.instance?.claimedBy?.id === trainerId) return true;
+    if (r.status === "done" && r.instance?.completedBy?.id === trainerId) {
+      return true;
+    }
+    return false;
+  });
+}
+
+/**
+ * The attribution line for a group, in words.
+ *
+ * Kept here rather than in the component because it is the part with rules in
+ * it, and rules get tested. Returns null when there is nothing to say — an
+ * empty string would still take a line of height in the layout.
+ */
+export function shiftGroupCredit(group: ShiftGroup): string | null {
+  if (group.complete) {
+    if (group.completedBy) return `${group.completedBy.name} closed it`;
+    if (group.finishers.length > 1) {
+      return `${group.finishers.length} people closed it`;
+    }
+    return null;
+  }
+  /*
+   * Assignment outranks a claim, and both can be true at once.
+   *
+   * "Assigned to Marcus" and "Sarah is on it" is a real and useful state —
+   * Marcus was asked, Sarah picked it up — so when they disagree, both are
+   * said. When the assignee is also the claimer there is only one fact, and
+   * repeating the name would read as two people.
+   */
+  if (group.assignedTo) {
+    const claimer = group.claimedBy;
+    if (claimer && claimer.id !== group.assignedTo.id) {
+      return `${group.assignedTo.name}'s — ${claimer.name} is on it`;
+    }
+    return `${group.assignedTo.name}'s`;
+  }
+  if (group.claimedBy) return `${group.claimedBy.name} is on it`;
+  if (group.claimedCount > 0) return `${group.claimedCount} claimed`;
+  return null;
 }
 
 /* ------------------------------------------------------------------ *

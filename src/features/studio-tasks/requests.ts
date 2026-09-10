@@ -50,6 +50,7 @@ import {
 import { db } from "../../firebase";
 import { endOfStudioDay, studioDateKey } from "../../lib/studio-time";
 import type { TaskAuthor } from "./mutations";
+import type { InitiativeTarget } from "./initiatives";
 
 /**
  * What kind of ask this is.
@@ -60,13 +61,34 @@ import type { TaskAuthor } from "./mutations";
  * request typed as a question that turns into a cover request needs no
  * migration, just a different icon.
  */
-export type RequestKind = "cover" | "question" | "heads-up" | "help" | "other";
+/*
+ * "initiative" is the manager's ask, not a trainer's: "five progress reports
+ * each by Friday." It rides on the same collection as every other request
+ * because it has the same lifecycle -- it is posted, it is open until it is
+ * done, and it is read by the whole floor -- and because a separate
+ * collection would mean a second board, a second rule block, and a second
+ * place to look.
+ *
+ * What makes it different is `target`, below. Nothing enforces who may post
+ * one: the studios that need this are nine people who all know each other,
+ * and a rule that only a manager may post an initiative would need a role
+ * lookup on a write that is already cheap. If it is abused it is visible to
+ * everyone, with a name on it.
+ */
+export type RequestKind =
+  | "cover"
+  | "question"
+  | "heads-up"
+  | "help"
+  | "initiative"
+  | "other";
 
 export const REQUEST_KIND_LABEL: Record<RequestKind, string> = {
   cover: "Cover",
   question: "Question",
   "heads-up": "Heads-up",
   help: "Help",
+  initiative: "Initiative",
   other: "Other",
 };
 
@@ -75,6 +97,7 @@ export const REQUEST_KIND_HINT: Record<RequestKind, string> = {
   question: "Something I want another trainer's read on",
   "heads-up": "Something the studio should know",
   help: "A hand with something physical or right now",
+  initiative: "Something I need the whole team to do",
   other: "Anything else",
 };
 
@@ -185,6 +208,15 @@ export interface TaskRequest {
   title: string;
   detail?: string;
 
+  /**
+   * The ask, on an initiative. Absent on every other kind.
+   *
+   * Kept as one map rather than three loose fields so an initiative with no
+   * numeric target is expressible ("get familiar with the new InBody") and
+   * reads as an initiative without a per-trainer count.
+   */
+  target?: InitiativeTarget;
+
   /** Optional links that make a request actionable rather than chatty. */
   clientId?: string;
   machineId?: string;
@@ -272,6 +304,8 @@ export interface CreateRequestInput {
   clientId?: string;
   machineId?: string;
   sessionDate?: string;
+  /** Initiatives only. */
+  target?: InitiativeTarget;
   priority?: RequestPriority;
   /** Defaults to "none" - most asks stand until dealt with. */
   expiry?: ExpiryChoice;
@@ -292,6 +326,9 @@ export async function createRequest(input: CreateRequestInput): Promise<string> 
     ...(input.clientId ? { clientId: input.clientId } : {}),
     ...(input.machineId ? { machineId: input.machineId } : {}),
     ...(input.sessionDate ? { sessionDate: input.sessionDate } : {}),
+    // Only on an initiative. Writing an empty target on a question would make
+    // every request look like one to topicOf().
+    ...(kind === "initiative" && input.target ? { target: input.target } : {}),
 
     createdBy: author,
     createdAt: serverTimestamp(),

@@ -205,3 +205,49 @@ export function withoutEntry(
 ): SubmissionEntry[] {
   return entries.filter((e) => e.clientId !== clientId);
 }
+
+/* ------------------------------------------------------------------ *
+ * Who an initiative is actually addressed to
+ * ------------------------------------------------------------------ */
+
+/**
+ * The trainers a studio initiative counts against.
+ *
+ * PRIMARY HOME STUDIO ONLY, and that is the interesting decision.
+ * `accessibleStudioIds` and `activeGuestStudioIds` are wider, and using either
+ * would sweep in every trainer who has ever covered a shift here. They would
+ * each show as nought of five in the roll-up, the denominator would be wrong,
+ * and a manager reading "3 of 14 done" for a studio with six trainers would
+ * conclude the floor is failing when it is finished.
+ *
+ * A guest who does the work anyway is not lost: initiativeProgress appends a
+ * row for any submission from someone off the roster, so their entries count
+ * toward the studio's total. They just are not chased for it.
+ *
+ * Placeholder profiles (created for someone who has not signed in yet) are
+ * excluded — they cannot submit, so counting them guarantees the initiative
+ * never reads as complete.
+ */
+export function studioRoster(
+  trainers: {
+    id?: string;
+    fullName?: string;
+    primaryHomeStudioId?: string;
+    authUid?: string;
+    isActive?: boolean;
+    supersededByUid?: string | null;
+  }[],
+  studioId: string | null,
+): { id: string; name: string }[] {
+  if (!studioId) return [];
+  return trainers
+    .filter(
+      (t) =>
+        Boolean(t.id) &&
+        t.primaryHomeStudioId === studioId &&
+        t.isActive !== false &&
+        !t.supersededByUid,
+    )
+    .map((t) => ({ id: t.id!, name: t.fullName?.trim() || "A trainer" }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}

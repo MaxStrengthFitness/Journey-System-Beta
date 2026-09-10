@@ -28,11 +28,18 @@ import {
   Clock,
   MessageSquare,
   Plus,
+  Target,
 } from "lucide-react";
 import { formatStudioDate } from "../../lib/studio-time";
 import { useToast } from "../../contexts/ToastContext";
 import { useTaskCompliance } from "./useTaskCompliance";
 import { useStudioRequests } from "./useStudioRequests";
+import { createRequest } from "./requests";
+import { PostInitiativeDialog } from "./PostInitiativeDialog";
+import { InitiativeRollup } from "./InitiativeRollup";
+import { studioRoster } from "./initiatives";
+import type { InitiativeTarget } from "./initiatives";
+import type { Trainer } from "../../types";
 import { newTemplateId, saveTaskTemplate, type TaskAuthor } from "./mutations";
 import { categoryLabel } from "./types";
 import type { StudioTaskCategory, TaskRow, TaskTemplate } from "./types";
@@ -150,6 +157,12 @@ export interface ManagePanelProps {
   onNewTask?: () => void;
   /** Opens the full form on an existing one. */
   onEditTask?: (template: TaskTemplate) => void;
+  /**
+   * Everyone on the app. Filtered here to this studio's own team so an
+   * initiative can be measured, and so the composer can say out loud how many
+   * pieces of work the ask actually adds up to before it is posted.
+   */
+  trainers?: Trainer[];
 }
 
 export function ManagePanel({
@@ -160,11 +173,59 @@ export function ManagePanel({
   author,
   onNewTask,
   onEditTask,
+  trainers,
 }: ManagePanelProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   const { rows, dateKeys, loading } = useTaskCompliance(studioId, templates, 7);
   const { open: openRequests, expired } = useStudioRequests(studioId);
   const [busy, setBusy] = useState<string | null>(null);
+  const [posting, setPosting] = useState(false);
+  const [postingBusy, setPostingBusy] = useState(false);
+
+  const roster = studioRoster(trainers ?? [], studioId);
+
+  /*
+   * The initiatives already on the board. Split out rather than left in with
+   * the rest, because a manager reading "unanswered requests" is chasing
+   * other people's asks, and an initiative is their own — different question,
+   * different list.
+   */
+  const initiatives = openRequests.filter((r) => r.kind === "initiative");
+
+  const postInitiative = async (args: {
+    title: string;
+    detail?: string;
+    target: InitiativeTarget;
+  }) => {
+    if (!studioId || !author) {
+      toastError("No active studio.");
+      return;
+    }
+    setPostingBusy(true);
+    try {
+      await createRequest({
+        studioId,
+        author,
+        kind: "initiative",
+        title: args.title,
+        detail: args.detail,
+        target: args.target,
+        // Normal, not low: unlike the floating lane's default, an initiative
+        // IS meant to sit near the top until people have done it.
+        priority: "normal",
+        // Never auto-expires. A deadline lives in target.dueOn and is a
+        // statement to the team, not a rule that deletes the ask.
+        expiry: "none",
+      });
+      toastSuccess("Posted. The team will see it on the board.");
+      setPosting(false);
+    } catch (err) {
+      console.error("Initiative post failed:", err);
+      toastError("Could not post that. Check your connection and try again.");
+    } finally {
+      setPostingBusy(false);
+    }
+  };
 
   const studioTemplates = [...templates]
     .filter((t) => (t.scope ?? "studio") === "studio")
@@ -205,6 +266,15 @@ export function ManagePanel({
 
   return (
     <div className="stm">
+      {posting && (
+        <PostInitiativeDialog
+          open
+          onOpenChange={setPosting}
+          saving={postingBusy}
+          rosterSize={roster.length}
+          onPost={postInitiative}
+        />
+      )}
       {/* FIRST, because this is the thing a manager came here to do. The
           authoring surface used to live only behind a dialog opened from the
           board's own header - the screen built for the opposite job, closing
@@ -371,6 +441,68 @@ export function ManagePanel({
             </table>
           </div>
         )}
+      </section>
+
+      {/*
+        THE MANAGER'S OWN ASKS, above everyone else's.
+        This is the panel that makes `kind: "initiative"` reachable at all --
+        the board's quick composer excludes the kind on purpose, so before
+        this existed an initiative could only be created in Firestore by hand.
+      */}
+      <section className="stm__panel">
+        <header className="stm__head">
+          <Target size={14} aria-hidden />
+          <h2 className="stm__title">Team initiatives</h2>
+          <span className="stm__hint">
+            {roster.length > 0
+              ? `${roster.length} trainer${roster.length === 1 ? "" : "s"}`
+              : "No roster"}
+          </span>
+        </header>
+
+        {initiatives.length === 0 ? (
+          <p className="stm__empty">
+            Nothing asked of the team right now.
+          </p>
+        ) : (
+          <ul className="stm__list">
+            {initiatives.map((r) => (
+              <li key={r.id} className="stm__item">
+                <span className="stm__item-title">{r.title}</span>
+                <span className="stm__item-sub">
+                  {r.target?.perTrainer
+                    ? `${r.target.perTrainer} each`
+                    : "No number"}
+                  {r.target?.dueOn ? ` · by ${r.target.dueOn}` : ""}
+                  {` · posted ${ago(r.createdAt)} ago`}
+                </span>
+                {/*
+                  The roll-up is on the card, not behind a tap. For an
+                  initiative it IS the content -- an ask that hides who has
+                  done it is an ask nobody follows up on.
+                */}
+                <InitiativeRollup
+                  studioId={studioId}
+                  requestId={r.id}
+                  target={r.target}
+                  roster={roster}
+                  currentUserId={author?.id ?? null}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="stm__actions">
+          <button
+            type="button"
+            className="stm__preset"
+            onClick={() => setPosting(true)}
+            disabled={!studioId || !author}
+          >
+            <Plus size={13} aria-hidden /> Ask the team for something
+          </button>
+        </div>
       </section>
 
       <section className="stm__panel">

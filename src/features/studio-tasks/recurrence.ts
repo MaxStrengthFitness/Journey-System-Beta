@@ -29,6 +29,22 @@ export function weekdayOf(dateKey: string): number {
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
 
+/**
+ * N days after a studio-local 'YYYY-MM-DD', as another one.
+ *
+ * UTC arithmetic for the same reason weekdayOf parses as UTC: the key already
+ * NAMES a calendar day in the studio's timezone, and running it back through
+ * the device's local zone would shift it a day for anyone west of the studio.
+ * Date.UTC also rolls month and year ends for free, so no clamping is needed.
+ */
+export function addDays(dateKey: string, days: number): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d + days));
+  const mm = String(t.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(t.getUTCDate()).padStart(2, "0");
+  return `${t.getUTCFullYear()}-${mm}-${dd}`;
+}
+
 /** Day of month for a studio-local 'YYYY-MM-DD'. */
 export function dayOfMonthOf(dateKey: string): number {
   return Number(dateKey.split("-")[2]);
@@ -163,6 +179,61 @@ export function expandTemplate(
     }
   }
 
+  return out;
+}
+
+/**
+ * Take the rows of one group and repeat them forward over the next `days`.
+ *
+ * Round: Task assignment, Sep 2026. This is what lets a head trainer say
+ * "Marcus has closing this week" in one action instead of re-assigning every
+ * morning — which is the assignment nobody maintains, and the reason the old
+ * `assigneeTrainerId` on the TEMPLATE was deleted rather than wired.
+ *
+ * Projects the rows that are ALREADY ON SCREEN rather than re-expanding the
+ * template against the roster. Same machines, same shift, same titles, new
+ * dates — so what a head trainer assigns is exactly what they were looking at,
+ * and this needs no second read of the studio's machine list to stay in step
+ * with it.
+ *
+ * `days` counts calendar days from `fromDateKey` inclusive, not occurrences: a
+ * Tuesdays-and-Fridays template asked for 7 days returns the Tuesday and the
+ * Friday, which is what "this week" means to the person tapping it. Days the
+ * template is not due produce nothing.
+ *
+ * WRITING AHEAD IS SAFE, and it is worth saying why, because the model
+ * elsewhere leans on documents being absent:
+ *
+ *   - Instance ids are derived entirely from their coordinates, so assigning
+ *     ahead and then materializing on the day converge on ONE document.
+ *   - useStudioTasks joins with `instance?.status ?? "open"`, so an
+ *     assignment-only document with no status reads as open. Correct.
+ *   - useTaskCompliance treats a planned row with no document as never
+ *     touched, and only ever looks BACKWARDS. You cannot assign into the past,
+ *     so no historical row gains a document it did not have.
+ */
+export function repeatPlanForward(
+  rows: PlannedInstance[],
+  template: TaskTemplate,
+  fromDateKey: string,
+  days: number,
+): PlannedInstance[] {
+  if (rows.length === 0) return [];
+  const out: PlannedInstance[] = [];
+  for (let i = 0; i < Math.max(1, days); i += 1) {
+    const dateKey = addDays(fromDateKey, i);
+    // Day 0 is today, which is already due by definition — but a template can
+    // be edited between the plan being computed and this running, so it is
+    // checked like every other day rather than assumed.
+    if (!isTemplateDueOn(template, dateKey)) continue;
+    for (const row of rows) {
+      out.push({
+        ...row,
+        localDate: dateKey,
+        id: instanceId(row.templateId, dateKey, row.shift, row.machineId),
+      });
+    }
+  }
   return out;
 }
 

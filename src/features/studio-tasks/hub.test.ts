@@ -9,6 +9,8 @@ import {
   buildBoard,
   daysUntil,
   heatOf,
+  mineRows,
+  shiftGroupCredit,
   shiftGroups,
   shiftTotals,
   topicCounts,
@@ -17,6 +19,7 @@ import {
 import {
   initiativeProgress,
   myShare,
+  studioRoster,
   withEntry,
   withoutEntry,
 } from "./initiatives";
@@ -29,7 +32,9 @@ import {
   type PlaybookEntry,
 } from "./playbook";
 import type { TaskRequest } from "./requests";
-import type { TaskRow } from "./types";
+import type { PlannedInstance, TaskRow, TaskTemplate } from "./types";
+import { addDays, repeatPlanForward } from "./recurrence";
+import { outcomeMessage } from "./resolve-outcome";
 
 const TODAY = "2026-09-09";
 
@@ -460,5 +465,506 @@ describe("staleness", () => {
       entry({ id: "gone", lastConfirmedOn: "2023-01-01", retiredAt: 1 }),
     ];
     expect(needsReview(list, TODAY).map((e) => e.id)).toEqual(["older", "old"]);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+
+describe("outcomeMessage", () => {
+  it("names which half failed rather than saying something went wrong", () => {
+    // A trainer told only "that failed" resolves the same request twice.
+    const msg = outcomeMessage({ kind: "resolved-playbook-failed", error: new Error("x") });
+    expect(msg.tone).toBe("warning");
+    expect(msg.text.includes("Resolved")).toBe(true);
+    expect(msg.text.includes("playbook entry did not save")).toBe(true);
+  });
+
+  it("is quiet about the playbook when nothing was kept", () => {
+    expect(outcomeMessage({ kind: "resolved" })).toEqual({
+      tone: "success",
+      text: "Resolved.",
+    });
+  });
+
+  it("confirms both halves when both landed", () => {
+    const msg = outcomeMessage({ kind: "resolved-and-kept", entryId: "p1" });
+    expect(msg.tone).toBe("success");
+    expect(msg.text.includes("playbook")).toBe(true);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+
+describe("studioRoster", () => {
+  const trainers = [
+    { id: "t1", fullName: "Dana Reyes", primaryHomeStudioId: "s1" },
+    { id: "t2", fullName: "Marcus Hall", primaryHomeStudioId: "s1" },
+    // Covers shifts here but belongs to s2.
+    {
+      id: "t3",
+      fullName: "Guest Trainer",
+      primaryHomeStudioId: "s2",
+      accessibleStudioIds: ["s1", "s2"],
+    },
+  ];
+
+  it("counts only the studio's own team, not everyone with access", () => {
+    // The whole point: a guest in the denominator makes a finished studio
+    // read as failing.
+    const roster = studioRoster(trainers, "s1");
+    expect(roster.map((t) => t.id)).toEqual(["t1", "t2"]);
+  });
+
+  it("sorts by name so the roll-up does not reshuffle between renders", () => {
+    expect(studioRoster(trainers, "s1").map((t) => t.name)).toEqual([
+      "Dana Reyes",
+      "Marcus Hall",
+    ]);
+  });
+
+  it("drops deactivated and superseded profiles", () => {
+    // A placeholder nobody has claimed can never submit, so counting it
+    // guarantees the initiative never reads as complete.
+    const roster = studioRoster(
+      [
+        ...trainers,
+        { id: "t4", fullName: "Left In June", primaryHomeStudioId: "s1", isActive: false },
+        {
+          id: "t5",
+          fullName: "Old Doc",
+          primaryHomeStudioId: "s1",
+          supersededByUid: "t1",
+        },
+      ],
+      "s1",
+    );
+    expect(roster.map((t) => t.id)).toEqual(["t1", "t2"]);
+  });
+
+  it("is empty with no active studio rather than counting everybody", () => {
+    expect(studioRoster(trainers, null)).toEqual([]);
+  });
+
+  it("names an unnamed trainer rather than rendering a blank row", () => {
+    expect(
+      studioRoster([{ id: "t9", fullName: "  ", primaryHomeStudioId: "s1" }], "s1"),
+    ).toEqual([{ id: "t9", name: "A trainer" }]);
+  });
+});
+
+describe("the roll-up's denominator", () => {
+  const roster = [
+    { id: "t1", name: "Dana" },
+    { id: "t2", name: "Marcus" },
+  ];
+  const target = { perTrainer: 5 };
+
+  it("counts trainers who MET the target, not entries logged", () => {
+    // Nine trainers doing one each is not most of the way there.
+    const p = initiativeProgress(
+      [
+        { trainerId: "t1", trainerName: "Dana", count: 1, entries: [] },
+        { trainerId: "t2", trainerName: "Marcus", count: 1, entries: [] },
+      ],
+      roster,
+      target,
+    );
+    expect(p.met).toBe(0);
+    expect(p.totalEntries).toBe(2);
+    expect(p.ratio).toBe(0);
+  });
+
+  it("keeps a guest's work in the total but not in the denominator", () => {
+    const p = initiativeProgress(
+      [
+        {
+          trainerId: "guest",
+          trainerName: "Visiting Trainer",
+          count: 5,
+          entries: [],
+        },
+      ],
+      roster,
+      target,
+    );
+    // Three rows: both roster trainers plus the guest who actually did it.
+    expect(p.perTrainer).toHaveLength(3);
+    expect(p.totalEntries).toBe(5);
+    expect(p.met).toBe(1);
+  });
+
+  it("never divides by zero when the roster has not loaded", () => {
+    const p = initiativeProgress([], [], target);
+    expect(p.ratio).toBe(0);
+    expect(p.expected).toBe(0);
+  });
+});
+
+
+/* ------------------------------------------------------------------ *
+ * WHO — attribution on the shift strip (Sep 2026)
+ *
+ * The studio's shared list gave no attribution at all: completedBy was
+ * written on every tick and rendered only in the manager's panel, and
+ * toggleClaim was implemented with zero call sites. These lock the rules
+ * down, because "who did this" is the part people will argue about.
+ * ------------------------------------------------------------------ */
+
+const ME = { id: "me", name: "Me" };
+const SARAH = { id: "t2", name: "Sarah" };
+const PRIYA = { id: "t3", name: "Priya" };
+
+function machineRow(
+  n: number,
+  over: {
+    status?: "open" | "done" | "skipped";
+    claimedBy?: { id: string; name: string } | null;
+    completedBy?: { id: string; name: string } | null;
+    assignedTo?: { id: string; name: string } | null;
+    scope?: "studio" | "personal";
+    templateId?: string;
+  } = {},
+): TaskRow {
+  const {
+    status = "open",
+    claimedBy,
+    completedBy,
+    assignedTo,
+    scope,
+    templateId,
+  } = over;
+  return row({
+    id: `i${n}`,
+    templateId: templateId ?? "tpl1",
+    machineId: `m${n}`,
+    status,
+    template: (scope ? { scope, ownerId: "me" } : {}) as never,
+    instance: {
+      id: `i${n}`,
+      status,
+      claimedBy: claimedBy ?? null,
+      completedBy: completedBy ?? null,
+      assignedTo: assignedTo ?? null,
+    } as never,
+  });
+}
+
+describe("shift attribution", () => {
+  it("names the one person on a group", () => {
+    const [g] = shiftGroups([
+      machineRow(1, { claimedBy: SARAH }),
+      machineRow(2, { claimedBy: SARAH }),
+      machineRow(3),
+    ]);
+    expect(g.claimedBy).toEqual(SARAH);
+    expect(g.claimedCount).toBe(2);
+    expect(shiftGroupCredit(g)).toBe("Sarah is on it");
+  });
+
+  /* Two names will not fit a 52px row without truncating one of them, and
+     truncating a person's name is worse than counting them. */
+  it("counts rather than names when several people have claimed", () => {
+    const [g] = shiftGroups([
+      machineRow(1, { claimedBy: SARAH }),
+      machineRow(2, { claimedBy: PRIYA }),
+    ]);
+    expect(g.claimedBy).toBeNull();
+    expect(shiftGroupCredit(g)).toBe("2 claimed");
+  });
+
+  /* A claim has done its job once the row is closed. "Sarah's on it" beside a
+     finished group is noise that outlives its own meaning. */
+  it("stops counting a claim once the row is done", () => {
+    const [g] = shiftGroups([
+      machineRow(1, { status: "done", claimedBy: SARAH, completedBy: SARAH }),
+    ]);
+    expect(g.claimedCount).toBe(0);
+    expect(g.claimedBy).toBeNull();
+    expect(shiftGroupCredit(g)).toBe("Sarah closed it");
+  });
+
+  it("credits the several people who shared a group", () => {
+    const [g] = shiftGroups([
+      machineRow(1, { status: "done", completedBy: SARAH }),
+      machineRow(2, { status: "done", completedBy: PRIYA }),
+    ]);
+    expect(g.completedBy).toBeNull();
+    expect(g.finishers).toHaveLength(2);
+    expect(shiftGroupCredit(g)).toBe("2 people closed it");
+  });
+
+  it("says nothing when there is nothing to say", () => {
+    const [g] = shiftGroups([machineRow(1), machineRow(2)]);
+    expect(shiftGroupCredit(g)).toBeNull();
+  });
+
+  it("ignores an actor with no id", () => {
+    const [g] = shiftGroups([
+      machineRow(1, { claimedBy: { id: "", name: "Ghost" } }),
+    ]);
+    expect(g.claimedBy).toBeNull();
+    expect(g.claimedCount).toBe(0);
+  });
+});
+
+describe("shift tiers", () => {
+  /* The worst possible bug in this file: a trainer ticking what they think is
+     a private note and telling eight colleagues they cleaned the floor. */
+  it("never merges a personal group into a studio one", () => {
+    const groups = shiftGroups([
+      machineRow(1, { templateId: "same", scope: "studio" }),
+      machineRow(2, { templateId: "same", scope: "personal" }),
+    ]);
+    expect(groups).toHaveLength(2);
+    expect(groups.map((g) => g.scope).sort()).toEqual(["personal", "studio"]);
+  });
+
+  it("marks a studio group as studio by default", () => {
+    const [g] = shiftGroups([machineRow(1)]);
+    expect(g.scope).toBe("studio");
+  });
+});
+
+describe("mine", () => {
+  it("is false with nobody signed in", () => {
+    const [g] = shiftGroups([machineRow(1, { claimedBy: ME })]);
+    expect(g.mine).toBe(false);
+  });
+
+  it("is true when you claimed something in it", () => {
+    const [g] = shiftGroups([machineRow(1, { claimedBy: ME })], undefined, {
+      trainerId: "me",
+    });
+    expect(g.mine).toBe(true);
+  });
+
+  it("is true when you closed something in it", () => {
+    const [g] = shiftGroups(
+      [machineRow(1, { status: "done", completedBy: ME })],
+      undefined,
+      { trainerId: "me" },
+    );
+    expect(g.mine).toBe(true);
+  });
+
+  it("is false when it is only Sarah's", () => {
+    const [g] = shiftGroups([machineRow(1, { claimedBy: SARAH })], undefined, {
+      trainerId: "me",
+    });
+    expect(g.mine).toBe(false);
+  });
+
+  it("is always true for a personal task", () => {
+    const [g] = shiftGroups([machineRow(1, { scope: "personal" })], undefined, {
+      trainerId: "me",
+    });
+    expect(g.mine).toBe(true);
+  });
+});
+
+describe("mineRows", () => {
+  const rows = [
+    machineRow(1, { claimedBy: ME }),
+    machineRow(2, { status: "done", completedBy: ME }),
+    machineRow(3, { claimedBy: SARAH }),
+    machineRow(4),
+    machineRow(5, { scope: "personal" }),
+  ];
+
+  /* Filtered per ROW, not per group: on a nineteen-machine wipe-down where
+     you claimed three, Mine shows three of three. The denominator changing is
+     the point -- it is a different question. */
+  it("keeps only the rows you have a stake in", () => {
+    expect(mineRows(rows, "me").map((r) => r.id)).toEqual([
+      "i1",
+      "i2",
+      "i5",
+    ]);
+  });
+
+  it("returns nothing rather than everything when nobody is signed in", () => {
+    expect(mineRows(rows, null)).toEqual([]);
+  });
+
+  /* A row Sarah closed is hers, not yours, even though you can see it. */
+  it("does not claim someone else's finished work", () => {
+    const theirs = [machineRow(9, { status: "done", completedBy: SARAH })];
+    expect(mineRows(theirs, "me")).toEqual([]);
+  });
+
+  it("still reports honest totals for the slice it returns", () => {
+    const groups = shiftGroups(mineRows(rows, "me"), undefined, {
+      trainerId: "me",
+    });
+    expect(shiftTotals(groups)).toEqual({ done: 1, total: 3, outstanding: 2 });
+  });
+});
+
+
+/* ------------------------------------------------------------------ *
+ * ASSIGNMENT (Sep 2026)
+ *
+ * Head trainers can put a name on work. It is NOT a lock and it lives on the
+ * instance so it expires with the day — the template's old assigneeTrainerId
+ * was deleted rather than wired, precisely because a permanent name goes
+ * stale silently.
+ * ------------------------------------------------------------------ */
+
+describe("shift assignment", () => {
+  it("names the person a head trainer put on it", () => {
+    const [g] = shiftGroups([
+      machineRow(1, { assignedTo: SARAH }),
+      machineRow(2, { assignedTo: SARAH }),
+    ]);
+    expect(g.assignedTo).toEqual(SARAH);
+    expect(shiftGroupCredit(g)).toBe("Sarah's");
+  });
+
+  /* Assigning part of a group is possible; picking one of two names to show
+     would be worse than showing none. */
+  it("reports nobody when a group is assigned to two people", () => {
+    const [g] = shiftGroups([
+      machineRow(1, { assignedTo: SARAH }),
+      machineRow(2, { assignedTo: PRIYA }),
+    ]);
+    expect(g.assignedTo).toBeNull();
+  });
+
+  it("ignores an assignment on a row that is already done", () => {
+    const [g] = shiftGroups([
+      machineRow(1, { status: "done", assignedTo: SARAH, completedBy: SARAH }),
+    ]);
+    expect(g.assignedTo).toBeNull();
+  });
+
+  /* Marcus was asked, Sarah picked it up. Both are true and both are useful,
+     so both are said. */
+  it("says the assignee AND the claimer when they differ", () => {
+    const [g] = shiftGroups([
+      machineRow(1, { assignedTo: SARAH, claimedBy: PRIYA }),
+    ]);
+    expect(shiftGroupCredit(g)).toBe("Sarah's — Priya is on it");
+  });
+
+  it("does not repeat one person as two facts", () => {
+    const [g] = shiftGroups([
+      machineRow(1, { assignedTo: SARAH, claimedBy: SARAH }),
+    ]);
+    expect(shiftGroupCredit(g)).toBe("Sarah's");
+  });
+
+  it("outranks a bare claim", () => {
+    const [g] = shiftGroups([
+      machineRow(1, { assignedTo: SARAH }),
+      machineRow(2, { claimedBy: PRIYA }),
+    ]);
+    // Not every open row agrees on an assignee, so the group names nobody --
+    // and falls back to the claim rather than inventing one.
+    expect(g.assignedTo).toBeNull();
+    expect(shiftGroupCredit(g)).toBe("Priya is on it");
+  });
+
+  it("counts as yours, and as Mine", () => {
+    const [g] = shiftGroups([machineRow(1, { assignedTo: ME })], undefined, {
+      trainerId: "me",
+    });
+    expect(g.mine).toBe(true);
+    expect(mineRows([machineRow(1, { assignedTo: ME })], "me")).toHaveLength(1);
+  });
+
+  it("stops being yours once it is closed", () => {
+    const done = [
+      machineRow(1, { status: "done", assignedTo: ME, completedBy: SARAH }),
+    ];
+    expect(mineRows(done, "me")).toEqual([]);
+  });
+});
+
+describe("addDays", () => {
+  it("rolls a month end", () => {
+    expect(addDays("2026-09-30", 1)).toBe("2026-10-01");
+  });
+
+  it("rolls a year end", () => {
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+  });
+
+  it("handles a leap day", () => {
+    expect(addDays("2028-02-28", 1)).toBe("2028-02-29");
+  });
+
+  it("pads single digits", () => {
+    expect(addDays("2026-09-08", 1)).toBe("2026-09-09");
+  });
+
+  it("goes backwards too", () => {
+    expect(addDays("2026-09-01", -1)).toBe("2026-08-31");
+  });
+});
+
+describe("repeatPlanForward", () => {
+  const planned: PlannedInstance[] = [
+    {
+      id: "tpl1__2026-09-09__pm__m1",
+      templateId: "tpl1",
+      localDate: "2026-09-09",
+      shift: "pm",
+      machineId: "m1",
+      title: "Closing",
+      category: "cleaning",
+      kind: "machine",
+    },
+  ];
+  const daily = {
+    id: "tpl1",
+    active: true,
+    recurrence: { type: "daily" },
+  } as unknown as TaskTemplate;
+  // 2026-09-09 is a Wednesday; 3 = Wednesday under Date#getDay.
+  const weekly = {
+    id: "tpl1",
+    active: true,
+    recurrence: { type: "weekly", daysOfWeek: [3] },
+  } as unknown as TaskTemplate;
+
+  it("returns today only for one day", () => {
+    const out = repeatPlanForward(planned, daily, "2026-09-09", 1);
+    expect(out).toHaveLength(1);
+    expect(out[0].localDate).toBe("2026-09-09");
+  });
+
+  it("re-derives the id for each new date", () => {
+    const out = repeatPlanForward(planned, daily, "2026-09-09", 2);
+    expect(out.map((p) => p.id)).toEqual([
+      "tpl1__2026-09-09__pm__m1",
+      "tpl1__2026-09-10__pm__m1",
+    ]);
+  });
+
+  /* Days count calendar days, not occurrences -- "this week" on a Wednesdays
+     template is the Wednesdays inside it. */
+  it("skips days the template is not due", () => {
+    const out = repeatPlanForward(planned, weekly, "2026-09-09", 7);
+    expect(out.map((p) => p.localDate)).toEqual(["2026-09-09"]);
+  });
+
+  it("covers two occurrences over a fortnight", () => {
+    const out = repeatPlanForward(planned, weekly, "2026-09-09", 14);
+    expect(out.map((p) => p.localDate)).toEqual(["2026-09-09", "2026-09-16"]);
+  });
+
+  it("returns nothing for no rows", () => {
+    expect(repeatPlanForward([], daily, "2026-09-09", 7)).toEqual([]);
+  });
+
+  it("never returns fewer than one day's worth for a due template", () => {
+    expect(repeatPlanForward(planned, daily, "2026-09-09", 0)).toHaveLength(1);
+  });
+
+  /* An inactive template is due on no day at all, so a head trainer cannot
+     assign work that will never be generated. */
+  it("returns nothing for a retired template", () => {
+    const retired = { ...daily, active: false } as TaskTemplate;
+    expect(repeatPlanForward(planned, retired, "2026-09-09", 7)).toEqual([]);
   });
 });

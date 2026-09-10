@@ -214,6 +214,33 @@ export async function setManyTaskStatuses(params: {
  * are separate axes, and collapsing them would make "claimed" unfinishable by
  * anyone but the claimer, which is the failure this design exists to avoid.
  */
+function claimPayload(
+  planned: PlannedInstance,
+  loc: TaskLocation,
+  author: TaskAuthor | null,
+  claimed: boolean,
+): Record<string, unknown> {
+  return {
+    studioId: loc.studioId,
+    scope: loc.scope,
+    ...(loc.scope === "personal" ? { ownerId: loc.ownerId } : {}),
+    templateId: planned.templateId,
+    localDate: planned.localDate,
+    shift: planned.shift,
+    ...(planned.machineId ? { machineId: planned.machineId } : {}),
+
+    // Written so a claimed-but-never-completed row still renders from its
+    // own document if the template is later renamed or retired.
+    title: planned.title,
+    category: planned.category,
+    kind: planned.kind,
+
+    claimedBy: claimed ? author : null,
+    claimedAt: claimed ? serverTimestamp() : null,
+    updatedAt: serverTimestamp(),
+  };
+}
+
 export async function setTaskClaim(params: {
   location: TaskLocation;
   planned: PlannedInstance;
@@ -230,27 +257,127 @@ export async function setTaskClaim(params: {
 
   await setDoc(
     instanceDocRef(location, planned.id),
-    {
-      studioId: location.studioId,
-      scope: location.scope,
-      ...(location.scope === "personal" ? { ownerId: location.ownerId } : {}),
-      templateId: planned.templateId,
-      localDate: planned.localDate,
-      shift: planned.shift,
-      ...(planned.machineId ? { machineId: planned.machineId } : {}),
-
-      // Written so a claimed-but-never-completed row still renders from its
-      // own document if the template is later renamed or retired.
-      title: planned.title,
-      category: planned.category,
-      kind: planned.kind,
-
-      claimedBy: claimed ? author : null,
-      claimedAt: claimed ? serverTimestamp() : null,
-      updatedAt: serverTimestamp(),
-    },
+    claimPayload(planned, location, author, claimed),
     { merge: true },
   );
+}
+
+/**
+ * Put someone's name on work, or take it off.
+ *
+ * Round: Task assignment, Sep 2026.
+ *
+ * WRITES ONLY THE ASSIGNMENT FIELDS plus the identifying ones a document needs
+ * to render if it is being created here for the first time. It deliberately
+ * does NOT touch `status` or `claimedBy`: assigning is not doing, and a head
+ * trainer putting Marcus on closing must not silently drop the claim Sarah
+ * made an hour ago. The three axes stay independent, exactly as claim and
+ * status already do.
+ *
+ * `assignedBy` comes from the CALLER, never from the payload, so an assignment
+ * cannot be attributed to a manager who did not make it. firestore.rules gates
+ * these fields to studio leaders and head trainers; every other field of the
+ * document stays writable by any trainer, because closing a task is the
+ * floor's job and always was.
+ *
+ * Assigning ahead is safe — see futureInstancesOf in recurrence.ts for the
+ * three reasons, one of which is subtle.
+ */
+export async function setManyTaskAssignments(params: {
+  location: TaskLocation;
+  planned: PlannedInstance[];
+  /** Null clears the assignment. */
+  assignee: TaskAuthor | null;
+  /** The head trainer doing the assigning. */
+  assignedBy: TaskAuthor | null;
+}): Promise<number> {
+  const { location, planned, assignee, assignedBy } = params;
+  if (!location.studioId) {
+    throw new Error("No active studio — cannot assign a task.");
+  }
+  if (assignee && !assignedBy) {
+    throw new Error("Cannot assign a task without a signed-in trainer.");
+  }
+  if (planned.length === 0) return 0;
+
+  let written = 0;
+  for (let i = 0; i < planned.length; i += BATCH_LIMIT) {
+    const chunk = planned.slice(i, i + BATCH_LIMIT);
+    const batch = writeBatch(db);
+    for (const p of chunk) {
+      batch.set(
+        instanceDocRef(location, p.id),
+        {
+          studioId: location.studioId,
+          scope: location.scope,
+          ...(location.scope === "personal" ? { ownerId: location.ownerId } : {}),
+          templateId: p.templateId,
+          localDate: p.localDate,
+          shift: p.shift,
+          ...(p.machineId ? { machineId: p.machineId } : {}),
+
+          // Written so an assigned-but-untouched row still renders from its
+          // own document if the template is later renamed or retired.
+          title: p.title,
+          category: p.category,
+          kind: p.kind,
+
+          assignedTo: assignee,
+          assignedBy: assignee ? assignedBy : null,
+          assignedAt: assignee ? serverTimestamp() : null,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
+    await batch.commit();
+    written += chunk.length;
+  }
+  return written;
+}
+
+/**
+ * Claim or hand back a whole group in one batch.
+ *
+ * The group is the unit a trainer thinks in — "I've got closing", not "I've
+ * got the leg press, the chest press and seventeen others" — and a
+ * nineteen-machine wipe-down would otherwise be nineteen round trips fired
+ * from one tap. Chunked at BATCH_LIMIT exactly as setManyTaskStatuses is.
+ *
+ * Shares claimPayload with the single-row version rather than repeating it:
+ * the two writing different shapes to the same document is how a claimed row
+ * ends up rendering without a title after its template is renamed.
+ */
+export async function setManyTaskClaims(params: {
+  location: TaskLocation;
+  planned: PlannedInstance[];
+  author: TaskAuthor | null;
+  claimed: boolean;
+}): Promise<number> {
+  const { location, planned, author, claimed } = params;
+  if (!location.studioId) {
+    throw new Error("No active studio — cannot claim a task.");
+  }
+  if (claimed && !author) {
+    throw new Error("Cannot claim a task without a signed-in trainer.");
+  }
+  if (planned.length === 0) return 0;
+
+  let written = 0;
+  for (let i = 0; i < planned.length; i += BATCH_LIMIT) {
+    const chunk = planned.slice(i, i + BATCH_LIMIT);
+    const batch = writeBatch(db);
+    for (const p of chunk) {
+      batch.set(
+        instanceDocRef(location, p.id),
+        claimPayload(p, location, author, claimed),
+        { merge: true },
+      );
+    }
+    await batch.commit();
+    written += chunk.length;
+  }
+  return written;
 }
 
 // ── CATEGORIES (studio-authored) ─────────────────────────────────────────
