@@ -18,7 +18,6 @@ import {
   AlertTriangle,
   LogOut,
   UserCircle,
-  Dumbbell,
   ClipboardList,
   ChevronRight,
   MessageSquare,
@@ -40,6 +39,7 @@ import {
   RefreshCw,
   X,
   ListChecks,
+  Dumbbell,
   GraduationCap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -558,6 +558,11 @@ import { useSessions } from "./hooks/useSessions";
 import { useLiveSchedule } from "./hooks/useLiveSchedule";
 import { useClientMutations } from "./hooks/useClientMutations";
 import { StrongConfirmationModal } from "./components/StrongConfirmationModal";
+// Imported from the module, not the wiki barrel: the wiki is lazy-loaded.
+import {
+  WikiSectionsProvider,
+  type WikiSectionsValue,
+} from "./features/wiki/sections";
 
 export default function AppContent({
   user,
@@ -675,6 +680,40 @@ export default function AppContent({
     focus: "card" | "script";
     fromLabel?: string;
   } | null>(null);
+  /*
+   * LEARNING — the Catalog and the Academy share one bottom-bar button since
+   * Sep 10 2026 (features/wiki/sections.tsx). The button reopens whichever of
+   * the two was open last; the switch in the wiki's own top bar moves between
+   * them. Both keep their view names, so every existing link — a notification
+   * that opens a machine, the settings shortcut — still lands in the right one.
+   */
+  const [lastLearningView, setLastLearningView] = useState<
+    "machine-anatomy" | "academy"
+  >("machine-anatomy");
+  useEffect(() => {
+    if (currentView === "machine-anatomy" || currentView === "academy") {
+      setLastLearningView(currentView);
+    }
+  }, [currentView]);
+  const learningSections = useMemo<WikiSectionsValue>(
+    () => ({
+      sections: [
+        {
+          id: "machine-anatomy",
+          label: "Catalog",
+          icon: <Dumbbell size={14} aria-hidden />,
+        },
+        {
+          id: "academy",
+          label: "Academy",
+          icon: <GraduationCap size={14} aria-hidden />,
+        },
+      ],
+      active: currentView,
+      onSelect: (id) => setCurrentView(id as View),
+    }),
+    [currentView],
+  );
   const [newClientOnboardingName, setNewClientOnboardingName] = useState<
     string | null
   >(null);
@@ -2036,40 +2075,44 @@ export default function AppContent({
                     onSearchTermChange={setHubSearchTerm}
                   />
                 )}
-                {currentView === "machine-anatomy" && (
-                  <CatalogView
-                    machines={machines}
-                    authTrainer={authTrainer}
-                    openMachineId={catalogJump}
-                    onOpenedMachine={() => setCatalogJump(null)}
-                    onOpenAcademy={(machineId, focus, machineName) => {
-                      setAcademyJump({
-                        machineId,
-                        focus,
-                        fromLabel: machineName,
-                      });
-                      setCurrentView("academy");
-                    }}
-                  />
-                )}
-                {currentView === "academy" && (
-                  <AcademyWikiView
-                    jump={academyJump}
-                    onClearJump={() => setAcademyJump(null)}
-                    canManagePages={isStudioLeader(authTrainer)}
-                    author={
-                      authTrainer?.id
-                        ? {
-                            id: authTrainer.id,
-                            name: authTrainer.fullName ?? "",
-                          }
-                        : null
-                    }
-                    onOpenMachine={(machineId) => {
-                      setCatalogJump(machineId);
-                      setCurrentView("machine-anatomy");
-                    }}
-                  />
+                {(currentView === "machine-anatomy" ||
+                  currentView === "academy") && (
+                  <WikiSectionsProvider key="learning" value={learningSections}>
+                    {currentView === "machine-anatomy" ? (
+                      <CatalogView
+                        machines={machines}
+                        authTrainer={authTrainer}
+                        openMachineId={catalogJump}
+                        onOpenedMachine={() => setCatalogJump(null)}
+                        onOpenAcademy={(machineId, focus, machineName) => {
+                          setAcademyJump({
+                            machineId,
+                            focus,
+                            fromLabel: machineName,
+                          });
+                          setCurrentView("academy");
+                        }}
+                      />
+                    ) : (
+                      <AcademyWikiView
+                        jump={academyJump}
+                        onClearJump={() => setAcademyJump(null)}
+                        canManagePages={isStudioLeader(authTrainer)}
+                        author={
+                          authTrainer?.id
+                            ? {
+                                id: authTrainer.id,
+                                name: authTrainer.fullName ?? "",
+                              }
+                            : null
+                        }
+                        onOpenMachine={(machineId) => {
+                          setCatalogJump(machineId);
+                          setCurrentView("machine-anatomy");
+                        }}
+                      />
+                    )}
+                  </WikiSectionsProvider>
                 )}
                 {currentView === "studio-tasks" &&
                   (() => {
@@ -2360,25 +2403,21 @@ export default function AppContent({
                     : undefined
                 }
               />
-              <NavButton
-                active={currentView === "machine-anatomy"}
-                onClick={() => setCurrentView("machine-anatomy")}
-                icon={<Dumbbell className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="Catalog"
-              />
               {/*
-                Seven buttons now. NavButton takes `flex-1 min-w-0` so they
-                divide the bar evenly and the labels truncate rather than
-                overflowing on a narrow phone — this app is used on an iPad,
-                where there is room to spare. If seven proves too many, the
-                cheapest fix is folding Catalog and Academy into one slot; do
-                not shorten the labels, they are how people find the tab.
+                LEARNING — the Catalog and the Academy in one slot (Sep 10
+                2026). Six buttons again. NavButton takes `flex-1 min-w-0` so
+                they divide the bar evenly and the labels truncate rather than
+                overflowing on a narrow phone; do not shorten the labels, they
+                are how people find the tab. Which of the two it opens is
+                whichever was open last — see lastLearningView.
               */}
               <NavButton
-                active={currentView === "academy"}
-                onClick={() => setCurrentView("academy")}
+                active={
+                  currentView === "machine-anatomy" || currentView === "academy"
+                }
+                onClick={() => setCurrentView(lastLearningView)}
                 icon={<GraduationCap className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="Academy"
+                label="Learning"
               />
               <NavButton
                 active={currentView === "studio-tasks"}

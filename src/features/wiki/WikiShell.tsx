@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
 import { ArrowLeft, ChevronRight, Search } from "lucide-react";
+import {
+  WikiSectionSwitch,
+  activeSectionLabel,
+  trailRepeatsSection,
+  useWikiSections,
+} from "./sections";
 
 /**
  * THE WIKI SHELL — the chrome every Catalog and Academy screen sits inside.
@@ -71,6 +77,14 @@ export function WikiShell({
   className,
 }: WikiShellProps) {
   const up = crumbs.length > 1 ? crumbs[crumbs.length - 2] : null;
+  // Inside the Learning tab the bar also carries the Catalog | Academy switch
+  // — see ./sections. Outside it, `sections` is null and nothing below changes.
+  const sections = useWikiSections();
+  const sectionLabel = activeSectionLabel(sections);
+  const sectionRoot = sectionLabel
+    ? crumbs.find((c) => c.label === sectionLabel)
+    : undefined;
+  const hideTrail = trailRepeatsSection(crumbs, sections);
 
   return (
     <div className={`wk${className ? ` ${className}` : ""}`}>
@@ -86,34 +100,55 @@ export function WikiShell({
           </button>
         )}
 
+        {sections && (
+          <WikiSectionSwitch
+            value={sections}
+            onActiveTap={sectionRoot?.onClick}
+          />
+        )}
+
         {/* An <ol> rather than a row of buttons: the trail is an ordered
-            structure and screen readers announce it as one. */}
-        <nav className="wk__crumbs" aria-label="Breadcrumb">
-          <ol>
-            {crumbs.map((c, i) => {
-              const last = i === crumbs.length - 1;
-              return (
-                <li key={`${c.label}-${i}`}>
-                  {i > 0 && (
-                    <ChevronRight size={13} className="wk__crumb-sep" aria-hidden />
-                  )}
-                  {c.onClick && !last ? (
-                    <button type="button" className="wk__crumb" onClick={c.onClick}>
-                      {c.label}
-                    </button>
-                  ) : (
-                    <span
-                      className="wk__crumb wk__crumb--here"
-                      aria-current={last ? "page" : undefined}
-                    >
-                      {c.label}
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        </nav>
+            structure and screen readers announce it as one. On a Learning
+            section's index the trail would only repeat the switch, so an empty
+            spacer holds its place and keeps search on the right. */}
+        {hideTrail ? (
+          <div className="wk__crumbs" aria-hidden />
+        ) : (
+          <nav className="wk__crumbs" aria-label="Breadcrumb">
+            <ol>
+              {crumbs.map((c, i) => {
+                const last = i === crumbs.length - 1;
+                return (
+                  <li key={`${c.label}-${i}`}>
+                    {i > 0 && (
+                      <ChevronRight
+                        size={13}
+                        className="wk__crumb-sep"
+                        aria-hidden
+                      />
+                    )}
+                    {c.onClick && !last ? (
+                      <button
+                        type="button"
+                        className="wk__crumb"
+                        onClick={c.onClick}
+                      >
+                        {c.label}
+                      </button>
+                    ) : (
+                      <span
+                        className="wk__crumb wk__crumb--here"
+                        aria-current={last ? "page" : undefined}
+                      >
+                        {c.label}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </nav>
+        )}
 
         <div className="wk__bar-actions">
           {actions}

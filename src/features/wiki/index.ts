@@ -23,6 +23,16 @@ import "./wiki.css";
 
 export { WikiShell, type WikiCrumb, type WikiShellProps } from "./WikiShell";
 
+// The Learning tab's Catalog | Academy switch. AppContent imports this from
+// "./features/wiki/sections" directly, NOT from this barrel: the barrel pulls
+// the whole wiki (and wiki.css) into the first download.
+export {
+  WikiSectionsProvider,
+  useWikiSections,
+  type WikiSectionTab,
+  type WikiSectionsValue,
+} from "./sections";
+
 export {
   WikiArticle,
   WikiSection,
