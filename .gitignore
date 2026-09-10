@@ -70,5 +70,10 @@ serviceAccountKey.json
 
 # One-off script reports (carry client names) and local command captures
 backups/
+# Local command captures. Named per-run so a stale file can't be mistaken for
+# a fresh result -- which cost us a round trip on Sep 9.
 typecheck-now.txt
-backfill-run.txt
+typecheck-baseline.txt
+test-baseline.txt
+backfill*.txt
+gitstate.txt

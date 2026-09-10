@@ -30,6 +30,11 @@
 
 export type NotificationKind =
   | "task-completed"
+  /* A head trainer put your name on something. The one notification here that
+     is about work you have NOT done yet, which is why it is not filtered by
+     the volume rules in studio-tasks/notify.ts — being assigned is always
+     news, and it happens a handful of times a week rather than forty. */
+  | "task-assigned"
   | "request-claimed"
   | "request-replied"
   | "request-resolved"
