@@ -2,7 +2,7 @@
 
 A living document. We update it every working session — newest decisions at the top of each list. (Contractor-scope backend items live in PROJECT_TRACKER.md. The tablet walkthrough and cleanup pass live in TESTING-CHECKLIST.md.)
 
-_Last updated: Sep 10, 2026 — the wiki round (4 phases), the Academy flow pass, and attribution on the studio hub. All written to disk, none committed, none deployed. **Start at `RUN-THIS-MORNING.md`.**_
+_Last updated: Sep 10, 2026 (evening) — **everything went live**: the studio hub, the Catalog wiki, the new one-button Learning tab, the client History tab and Eastern-time dates, merged into `master` by `ship-sep10.ps1`. Record: **`GO-LIVE-SEP10.md`**. Not yet looked at on a real iPad._
 
 ---
 
@@ -103,6 +103,80 @@ Rules deployed to production (`prod` / `gen-lang-client-0731527386`), verified b
 
 ---
 
+## 🟢 Live — the Sep 10 go-live — `sep10-go-live` merged into `master`
+
+**AJ, Sep 10:** *"we are based in Ohio so we should go of est / i think we should combo acadamy and catalog into learning or something similar also / lets push everything to master and live"*
+
+The record — what shipped, the eleven commits, how to roll back — is **`GO-LIVE-SEP10.md`**.
+
+### Decisions (AJ, Sep 10)
+
+| Question | Chosen |
+| --- | --- |
+| Eastern time | **Going forward only.** New records store the Eastern day; saved sessions keep their UTC date (History places them by start time anyway). |
+| Catalog + Academy | **One "Learning" tab.** A Catalog / Academy switch in the wiki's top bar, on every page of both. |
+| Who runs the push | AJ's PC, from `ship-sep10.ps1`: two pasted lines (`prepare`, then `golive`), with Claude reading `ship-sep10.log` between them. Claude's computer control can see a terminal but cannot type into one. |
+| Demo Mode | **Left out.** It cannot merge cleanly — `DEMO-MODE-BRANCH.md`. |
+
+### Shipped
+
+- [x] **Eastern time** — `studioTodayKey()` / `studioDayKeyOf()` in `lib/studio-time.ts` replace `new Date().toISOString().split("T")[0]` wherever a calendar day is stored or bucketed: the live session, the consultation session, quick start, check-ins, progress reports, client events, the directory's last-performed date, exports, Insights, the Mindbody sync window. `studioDayKeyOf` leaves a plain `YYYY-MM-DD` alone — `new Date("2026-09-10")` is 8 PM the day before in Ohio. Left alone on purpose: the legacy CSV import (parses as local time already), the demo seeders, trainer start dates.
+- [x] **Learning** — `features/wiki/sections.tsx`: a context the shell reads, so both screens got the switch without touching their thirteen `WikiShell` call sites. Tapping the section you are in returns to its index; on an index the one-crumb trail is dropped because the switch already says it; on a phone the switch is icons only. The view names `machine-anatomy` and `academy` are unchanged, so notifications and the settings shortcut still land correctly.
+- [x] **Hub fixes** — the assign dialog was handed `{ id, name }` but read `fullName`, so every trainer showed and SAVED as "A trainer"; the bell had no `task-assigned` icon; `resolve-flow.ts` imported `TaskAuthor` from a file that does not export it. Plus the three hub files the evening's commit list missed (`AccessRequestView.tsx`, `notifications/types.ts`, `.gitignore`).
+- [x] `tsc` **20** (was 23, none new) · **1,443 tests** · `vite build` clean · every commit typechecked on its own · the commit stage rehearsed on a copy of the repo first.
+
+### Still open
+
+- [ ] **Verify on the iPad** — the Hub, the wiki, Learning and History are all live and none has been seen on the hardware.
+- [ ] **Demo Mode** — cherry-pick and rewrite per `DEMO-MODE-BRANCH.md`; `handleSeedDemoClient` stays live until then.
+- [ ] **Saved evening sessions** still carry a UTC `date`; the Journey grid shows them a day late. A correction script is possible but must not disturb the Mindbody matching.
+
+---
+
+## 📅 Now — the client History tab (Sep 10) — `features/client-history`, live Sep 10
+
+**The brief, in AJ's words:** *"the calendar view within that needs match the look of the calendar that the trainers use on the calendar tab … it currently only shows one month at a time, i want to be able to see all the months … calendar is supposed to be a visual repensation so the trainers can see when they took breaks, how much time they take in between, how consistent they are … i feel like we can upgrade the information thats on the list view and make it look like our app more"*
+
+The round doc — iPad checklist, what each commit contains, how to undo — is **`HISTORY-ROUND.md`**. Design notes: `src/features/client-history/README.md`.
+
+### The diagnosis — it could not show history however it was drawn
+
+- **The calendar only ever downloaded 30 sessions** (`limit(30)`) — about four months. Paging back showed empty months that were not empty.
+- **"Load More Sessions" did nothing.** It set `sessionLimit` in `ClientProfileView`, which no code read.
+- **List rows older than ~15 sessions read "No machines logged, 0 lb"** — the list borrowed the Journey grid's already-loaded sets.
+
+### Calls made this round — each one is a single constant to change
+
+| Call | Chosen | Where |
+| --- | --- | --- |
+| What counts as a break | 14+ days between visits | `BREAK_MIN_GAP_DAYS`, `model.ts` |
+| "Visits a week" window | the last 12 weeks | `RECENT_WINDOW_DAYS`, `model.ts` |
+| First load | newest 200 sessions; **Load full history** → 2,000 | `FIRST_WINDOW` / `FULL_WINDOW`, `useSessionHistory.ts` |
+| Trainer colours in the calendar grid | **no** — the grid answers *when*; *who* is in the list | `HistoryCalendar.tsx` |
+
+### Shipped to disk Sep 10
+
+- [x] **Every month at once**, as mini copies of the Calendar tab's month grid: 3 across in portrait (a year per screen at 834×1194), 4 on a 13" portrait, 6 in landscape. Blue = visit (the Week heatmap's blue), hatch = a break, sand = a Vacation / Snowbird / Medical event covers it, orange ring = today. Tap a day → that session; tap a month's name → the List at that month. Year headers stay pinned while their months scroll under them.
+- [x] **Four numbers on top** — visits a week, typical gap ("3–4 days", the 25th–75th percentile), breaks of 2+ weeks, longest break with its dates — and a crimson "No visit in 5 weeks" notice while a client is on one.
+- [x] **The list, rebuilt in the app's language:** day tile · trainer avatar in their calendar tone · S# · routine letter · time · one bar per machine in the Journey grid's rep-quality colours · stars / kaizens · machines that went up in weight · days since the last visit · note · volume against the last session on the **same routine**. Breaks are written between the rows. Sets load a month at a time as you scroll.
+- [x] **Session pop-up** re-coloured to the Journey grid; shows the check-in and "felt after" answers, read-only.
+- [x] **Fixed underneath:** the TSC toggle flipped one of the two timed flags (a hold could never go back, and its seconds were zeroed) · deleting a "Log past session" entry lowered counters it had never raised · delete could run before the sets had loaded, orphaning them · routine letters were blank on every live session (the live flow saves `routineId`, not the name) · the pop-up's "Client Status" box was never saved (removed) · evening sessions showed on the next day (History now takes a session's day from its start time, in studio time) · "Log past session" defaulted to the UTC date and accepted a "0026" year.
+- [x] `components/ClientHistoryCalendar.tsx` (1,775 lines) retired — its `git rm` is in the commit steps.
+- [x] **36 new tests**; suite **1,429 green**; `tsc` at the baseline, no new errors; `vite build` clean. Rendered in `harness/history.html` at 834×1194, 1024×1366, 1194×834 and 1366×1024, both themes. **No rules or index changes** — the listener is the same query shape as the old one.
+
+### Not yet verified — read before merging
+
+- [ ] **On a real iPad**, with the checklist in `HISTORY-ROUND.md` — especially a client who went on vacation and a client with 200+ sessions.
+- [ ] **Reads:** the tab now reads up to 200 session documents when opened (was 30). Worth a glance at the Firestore usage graph after a day of real use.
+
+### Found, not changed
+
+- [x] ~~**The live session writes `date` as the UTC day**~~ — fixed the same evening, going forward only (see the go-live above). Was: `WorkoutTrackerView.tsx` `startSession`, `new Date().toISOString().split("T")[0]`. Every session started after 8 PM Eastern (7 PM in winter) is stored as the next day. History works around it; the Journey grid's column dates do not. About a one-line fix with `studioDateKey`, in its own small round — sessions already saved keep the wrong day unless they are backfilled.
+- [ ] **"Log past session" stores trainer initials, not `trainerId`, and raises no counters.** A write-shape decision, left alone.
+- [x] ~~**Three typecheck errors in the uncommitted studio-hub work**~~ — fixed the same evening; the assign-dialog one was a real bug. — `NotificationBell` has no `task-assigned` icon (harmless: it falls back to the plain bell), `StudioHubView` hands `AssignDialog` a `{ id, name }` roster where it expects trainers, `resolve-flow.ts` imports a `TaskAuthor` that `./requests` does not export — and `RUN-THIS-MORNING.md` never adds `src/features/notifications/`.
+
+---
+
 ## 📚 Now — the Catalog as a wiki (Sep 10) — `features/wiki`
 
 **The brief, in AJ's words:** *"The catalog just doesn't really match [the Hub and the client profiles], and it also just feels really disorganised. Popping up the keyboard and popping up the catalog selector from the bottom really makes the screen jumbled on the iPad. It needs to be a good resource page that almost feels equivalent to a high quality video game resource wiki."*
@@ -118,7 +192,7 @@ Rules deployed to production (`prod` / `gen-lang-client-0731527386`), verified b
 
 | Question | Chosen |
 | --- | --- |
-| Shape | **Two tabs.** Catalog = the machine wiki; the Academy becomes its own top-level screen. Both on one shared shell so they cannot drift into two visual languages. |
+| Shape | **Two tabs.** Catalog = the machine wiki; the Academy becomes its own top-level screen. Both on one shared shell so they cannot drift into two visual languages. **Changed the same evening: one "Learning" tab with a Catalog / Academy switch** — see the go-live above. |
 | iPad navigation | **Page navigation, no sheet.** Index → full-page article → breadcrumb back. Search is a screen you deliberately go to. |
 | Admin editing | **Overlay + new pages.** The shipped 283k-word corpus stays a read-only baseline; admins add sections on top of it and author brand-new pages. |
 | Wiki feel | Infobox / stat block · colour-coded categories + icons · cross-links between pages · **"keeping the model of the muscles is key and all the info we have with it is fully necessary"** |
@@ -627,7 +701,7 @@ Month / Week / Day rebuilt in `src/features/calendar/` (spec in its README.md). 
 - [x] ~~Phase 4 — Day~~ — rotated 90°: horizontal trainer swimlanes on a shared time axis, so the whole day fits one screen and gaps are obvious. Axis derived from the day's real bookings. Tapping a lane expands that trainer's sessions with names (a 30-min block is one slot wide — no name fits, so don't truncate, disclose). Bookings whose trainer didn't resolve get an "Unassigned" block instead of vanishing.
 - [x] ~~Phase 5 — wire-in + spec~~ — `CalendarView` keeps only resolve + filter; the Mindbody trainer-matching heuristic is unchanged but now lives in one place instead of three drifted copies. Dead `axios` / `updateDoc` / `getDocs` imports removed.
 - [ ] **Verify on the iPad** — both themes; Month with a heavy Thursday; Week's delta on a week with no prior history loaded; the heatmap in dark mode; Day swimlanes in portrait (they scroll horizontally) and a lane expand; the nav arrows staying put stepping Aug → Sep → Oct.
-- [ ] Follow-ups: events only render in Month (they were never meaningful in the old week/day grids). `ClientHistoryCalendar.tsx` (1,643 lines) is a separate component still on the old patterns — fold it onto these tokens on a later pass. Decide whether the Day view should show a NOW line when viewing today.
+- [ ] Follow-ups: events only render in Month (they were never meaningful in the old week/day grids). ~~`ClientHistoryCalendar.tsx` (1,643 lines) is a separate component still on the old patterns — fold it onto these tokens on a later pass.~~ Done Sep 10: replaced by `features/client-history` on the `--cal-*` tokens (see the History tab round). Decide whether the Day view should show a NOW line when viewing today.
 
 ### 🧰 Shipped — Equipment tab dual-pane (Sep 3) — branch `equipment-dual-pane`, one commit per phase
 
