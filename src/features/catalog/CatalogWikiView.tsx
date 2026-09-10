@@ -1,0 +1,628 @@
+import { useEffect, useMemo, useState } from "react";
+import type { Machine, Trainer } from "../../types";
+import { useActiveStudio } from "../../ActiveStudioContext";
+import { useToast } from "../../contexts/ToastContext";
+import { useStudioMachineSettings } from "../../hooks/useStudioMachineSettings";
+import { isStudioLeader } from "../../lib/permissions";
+import {
+  WikiContents,
+  WikiGroup,
+  WikiIndexHeader,
+  WikiRow,
+  WikiSearch,
+  WikiShell,
+  WikiBadge,
+  StudioWikiPanel,
+  useStudioWiki,
+  accentForGroupKey,
+  accentForPattern,
+  groupElementId,
+  type WikiContentsCard,
+  type WikiCrumb,
+  type WikiSearchGroup,
+} from "../wiki";
+import {
+  MachineUpkeepCard,
+  MachinePlaybookCard,
+  TaskNoteDialog,
+  notifyTaskCompletion,
+  searchPlaybook,
+  setTaskStatus,
+  studioLocation,
+  useMachineUpkeep,
+  usePlaybook,
+  useStudioTasks,
+  type TaskRow,
+} from "../studio-tasks";
+import { useAcademyCards, useAcademyScripts } from "../academy/useAcademyContent";
+import { machinesForBodySlug } from "./anatomy";
+import {
+  dayKey,
+  groupKeyOf,
+  groupLabelOf,
+  groupMachines,
+  searchMachines,
+  upkeepByMachine,
+  upkeepEventsFrom,
+  GROUPING_LABEL,
+  GROUPING_MODES,
+} from "./grouping";
+import { MachineArticle } from "./MachineArticle";
+import { MachineFigure } from "./MachineFigure";
+import { StudioNotesCard } from "./StudioNotesCard";
+import { StudioSetupCard } from "./StudioSetupCard";
+import { useCatalogMachines } from "./useCatalogMachines";
+import { useSectionState } from "./useSectionState";
+import type { GroupingMode } from "./types";
+
+/**
+ * THE CATALOG, as a wiki.
+ *
+ * Round: Wiki Redesign, Sep 2026. Replaces CatalogView.
+ *
+ * WHAT THE BRIEF WAS
+ * ------------------
+ * "The catalog just doesn't really match [the Hub and the client profiles],
+ * and it also just feels really disorganised. Popping up the keyboard and
+ * popping up the catalog selector from the bottom really makes the screen
+ * jumbled on the iPad. It needs to be a good resource page that almost feels
+ * equivalent to a high quality video game resource wiki."
+ *
+ * THREE CAUSES, AND WHAT EACH ONE BECAME
+ * --------------------------------------
+ * 1. It did not match. Not colour — --cat-* and --st-* (the Hub) were already
+ *    the same hex values token for token. It was COMPOSITION: three panes and
+ *    a bottom sheet against the Hub's one padded column of cards. So this
+ *    view is one column of cards, built on features/wiki, which borrows the
+ *    Hub's own conventions down to the italic uppercase title.
+ *
+ * 2. It felt disorganised. There were five modes — landing, group filter,
+ *    picker, detail, Academy takeover — and three differently-worded ways
+ *    back, none of which said where you were. There are now two screens and
+ *    one breadcrumb.
+ *
+ * 3. The iPad jumble. `leaveLanding` called `setSheetOpen(true)` on stack
+ *    layouts and the sheet mounted the picker with `autoFocusSearch`, so
+ *    choosing a body group produced a sheet over the content plus a keyboard
+ *    over the sheet. There is no sheet in this file at all. Search is a
+ *    screen you deliberately go to.
+ *
+ * ROUTING
+ * -------
+ * `index` and `machine` are the two real screens; `search` and `academy` are
+ * places you go from them. All four are plain state rather than a router,
+ * because AppContent owns navigation for the whole app and adding a second
+ * routing system inside one tab is how a back button ends up meaning two
+ * different things.
+ *
+ * ONE LAYOUT, NOT TWO
+ * -------------------
+ * `useLayoutMode` is gone. The old file kept a `split` tree and a `stack`
+ * tree, which is exactly the drift the round before it was written to fix,
+ * and it came back anyway as two different pickers. The wiki has one tree;
+ * the only thing that changes at 1024px is CSS grid moving the infobox into a
+ * sticky column. Nothing renders differently, so nothing can drift.
+ */
+
+/** Machines shown under "Related" on an article. Six is two rows of chips. */
+const MAX_RELATED = 6;
+
+type Route =
+  | { kind: "index" }
+  | { kind: "machine"; id: string }
+  | { kind: "search" };
+
+export interface CatalogWikiViewProps {
+  /** The global list. Used only until this studio's roster is populated. */
+  machines: Machine[];
+  authTrainer?: Trainer | null;
+  /**
+   * Open this machine on arrival. Set by AppContent when a cross-link in the
+   * Academy tab points at a machine — the Catalog owns its own route, so the
+   * only way in from outside is to ask.
+   */
+  openMachineId?: string | null;
+  /** Called once `openMachineId` has been honoured, so it cannot re-fire. */
+  onOpenedMachine?: () => void;
+  /**
+   * Jump to the Academy tab at this machine's card or script. Owned by
+   * AppContent because it is a tab switch. When absent, the Academy
+   * cross-links are simply not offered — this screen never renders the
+   * Academy itself, which is the whole point of them being two tabs.
+   */
+  onOpenAcademy?: (
+    machineId: string,
+    focus: "card" | "script",
+    machineName: string,
+  ) => void;
+}
+
+export function CatalogWikiView({
+  machines,
+  authTrainer,
+  openMachineId,
+  onOpenedMachine,
+  onOpenAcademy,
+}: CatalogWikiViewProps) {
+  const { activeStudioId, activeStudio } = useActiveStudio();
+  const { machines: catalogMachines } = useCatalogMachines(
+    activeStudioId,
+    machines,
+  );
+
+  const [route, setRoute] = useState<Route>({ kind: "index" });
+  const [grouping, setGrouping] = useState<GroupingMode>("academy");
+  const [query, setQuery] = useState("");
+  const [view, setView] = useState<"front" | "back">("front");
+  const [gender, setGender] = useState<"male" | "female">("male");
+
+  const { isOpen, setOpen } = useSectionState();
+  const { success: toastSuccess, error: toastError } = useToast();
+
+  /*
+   * These four are read ONCE here and passed down, exactly as the old view
+   * did: each is a snapshot over the whole studio, and mounting them inside
+   * the article would tear down and rebuild every listener on every tap in
+   * the index — twenty-two teardowns while a trainer scrolls.
+   */
+  const { byMachineId: upkeepById } = useMachineUpkeep(activeStudioId);
+  const { settingsByMachineId } = useStudioMachineSettings(activeStudioId);
+  const { entries: playbookEntries } = usePlaybook(activeStudioId);
+  const { rows: todayTaskRows } = useStudioTasks(activeStudioId);
+  const { overlayFor } = useStudioWiki(activeStudioId);
+
+  const [noteRow, setNoteRow] = useState<TaskRow | null>(null);
+  const [upkeepBusy, setUpkeepBusy] = useState(false);
+
+  const canEditStudioSetup = isStudioLeader(authTrainer ?? null);
+  const author = authTrainer?.id
+    ? { id: authTrainer.id, name: authTrainer.fullName ?? "" }
+    : null;
+
+  /* ── derived state ─────────────────────────────────────────────── */
+
+  const selected = useMemo(
+    () =>
+      route.kind === "machine"
+        ? (catalogMachines.find((m) => m.id === route.id) ?? null)
+        : null,
+    [catalogMachines, route],
+  );
+
+  /*
+   * A selection can go stale — a machine leaves the roster, or the trainer
+   * switches studio. Fall back to the index rather than to the first machine:
+   * silently showing a DIFFERENT machine than the one you were reading is
+   * worse than showing the list you can choose from.
+   */
+  useEffect(() => {
+    if (route.kind !== "machine") return;
+    if (catalogMachines.length === 0) return;
+    if (catalogMachines.some((m) => m.id === route.id)) return;
+    setRoute({ kind: "index" });
+  }, [catalogMachines, route]);
+
+  /*
+   * A cross-link from the Academy tab. Honoured once and then cleared, so a
+   * re-render cannot yank a trainer who has since navigated away back to the
+   * machine they arrived on twenty taps ago.
+   */
+  useEffect(() => {
+    if (!openMachineId) return;
+    setRoute({ kind: "machine", id: openMachineId });
+    onOpenedMachine?.();
+  }, [openMachineId, onOpenedMachine]);
+
+  // Turn the figure to the side that actually shows the activation, on every
+  // path that can change the selection. Doing this in a click handler is what
+  // let the old carousel leave Hip Abduction on the anterior view, where none
+  // of its target muscles are visible.
+  const preferredView = selected?.anatomy.preferredView;
+  useEffect(() => {
+    if (preferredView) setView(preferredView);
+  }, [selected?.id, preferredView]);
+
+  const upkeepEvents = useMemo(() => upkeepEventsFrom(upkeepById), [upkeepById]);
+  const upkeepStatusById = useMemo(
+    () => upkeepByMachine(catalogMachines, upkeepEvents, dayKey()),
+    [catalogMachines, upkeepEvents],
+  );
+  const flaggedIds = useMemo(
+    () => new Set(Object.keys(upkeepById).filter((id) => upkeepById[id]?.flagged)),
+    [upkeepById],
+  );
+
+  const groups = useMemo(
+    () => groupMachines(catalogMachines, grouping),
+    [catalogMachines, grouping],
+  );
+
+  const machineTaskRows = useMemo(() => {
+    const map: Record<string, TaskRow[]> = {};
+    for (const r of todayTaskRows) {
+      if (!r.machineId) continue;
+      (map[r.machineId] ??= []).push(r);
+    }
+    return map;
+  }, [todayTaskRows]);
+
+  /*
+   * The Academy's per-machine cards and scripts, loaded only once a machine
+   * page is open. Two chunks, cached for the session — this is what turns
+   * "the Academy exists somewhere" into a link on the page you are reading.
+   */
+  const onMachine = route.kind === "machine";
+  const academyCards = useAcademyCards(onMachine);
+  const academyScripts = useAcademyScripts(onMachine);
+
+  /* ── actions ───────────────────────────────────────────────────── */
+
+  const openMachine = (id: string) => setRoute({ kind: "machine", id });
+  const openIndex = () => setRoute({ kind: "index" });
+
+  const runUpkeep = async (
+    row: TaskRow,
+    status: "done" | "open",
+    note?: string,
+    flagged?: boolean,
+  ) => {
+    if (!activeStudioId) return;
+    setUpkeepBusy(true);
+    try {
+      await setTaskStatus({
+        // Machine upkeep is always the studio's shared checklist, never a
+        // trainer's private list: the machine belongs to the location.
+        location: studioLocation(activeStudioId),
+        planned: row,
+        status,
+        author,
+        note,
+        flagged,
+      });
+      // The Catalog is where a broken pad actually gets noticed, so this path
+      // matters more than the board's: a trainer standing at the machine flags
+      // it here and the studio leader hears about it without anyone walking to
+      // the To-Do screen.
+      if (status === "done") {
+        await notifyTaskCompletion({ row, author, studioId: activeStudioId, flagged, note });
+      }
+      toastSuccess(status === "done" ? "Marked done." : "Re-opened.");
+    } catch (err) {
+      console.error("Failed to update machine upkeep:", err);
+      toastError("Could not save. Check your connection.");
+    } finally {
+      setUpkeepBusy(false);
+    }
+  };
+
+  /* ── empty roster ──────────────────────────────────────────────── */
+
+  if (catalogMachines.length === 0) {
+    return (
+      <div className="wk">
+        <div className="wk__scroll">
+          <div className="wk__placeholder">
+            <p className="wk__placeholder-title">No machines yet</p>
+            <p className="wk__placeholder-body">
+              {activeStudioId
+                ? `${activeStudio?.name ?? "This studio"} has no machines on its roster. Add equipment from Hub → Machine Settings.`
+                : "Select a studio to see its equipment."}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── search ────────────────────────────────────────────────────── */
+
+  if (route.kind === "search") {
+    const hits = searchMachines(catalogMachines, query);
+    const searchGroups: WikiSearchGroup[] = [
+      {
+        key: "machines",
+        label: "Machines",
+        items: hits.map((m) => ({
+          id: m.id,
+          title: m.name,
+          meta: m.movementPattern || m.anatomicalRegion,
+          accent: accentForPattern(m.movementPattern),
+        })),
+      },
+    ];
+
+    return (
+      <WikiSearch
+        value={query}
+        onChange={setQuery}
+        onClose={openIndex}
+        onPick={(id) => {
+          setQuery("");
+          openMachine(id);
+        }}
+        groups={searchGroups}
+        placeholder={`Search ${catalogMachines.length} machines…`}
+        idle={
+          <p className="wk__empty">
+            Search by name, movement pattern, region or muscle — “row”,
+            “posterior”, “glute”.
+          </p>
+        }
+      />
+    );
+  }
+
+  /* ── a machine ─────────────────────────────────────────────────── */
+
+  if (route.kind === "machine" && selected) {
+    const groupKey = groupKeyOf(selected, grouping);
+    const groupLabel = groupLabelOf(groupKey, grouping);
+
+    const crumbs: WikiCrumb[] = [
+      { label: "Catalog", onClick: openIndex },
+      { label: groupLabel, onClick: openIndex },
+      { label: selected.name },
+    ];
+
+    /*
+     * Related machines: the rest of this machine's movement pattern first,
+     * topped up from its wider group if that is thin. A machine on its own in
+     * a pattern is exactly the case where a lateral link is most useful, so
+     * falling back rather than showing nothing matters.
+     */
+    const samePattern = catalogMachines.filter(
+      (m) => m.id !== selected.id && m.movementPattern === selected.movementPattern,
+    );
+    const sameGroup = catalogMachines.filter(
+      (m) =>
+        m.id !== selected.id &&
+        !samePattern.some((s) => s.id === m.id) &&
+        groupKeyOf(m, grouping) === groupKey,
+    );
+    const related = [...samePattern, ...sameGroup]
+      .slice(0, MAX_RELATED)
+      .map((m) => ({
+        id: m.id,
+        label: m.name,
+        accent: accentForPattern(m.movementPattern),
+      }));
+
+    const card = academyCards?.find((c) => c.machineId === selected.id) ?? null;
+    const script = academyScripts?.find((s) => s.machineId === selected.id) ?? null;
+
+    const playbookHits = searchPlaybook(playbookEntries, "", { machineId: selected.id });
+
+    return (
+      <WikiShell
+        crumbs={crumbs}
+        onOpenSearch={() => setRoute({ kind: "search" })}
+      >
+        <MachineArticle
+          machine={selected}
+          isOpen={isOpen}
+          setOpen={setOpen}
+          isFlagged={Boolean(upkeepById[selected.id]?.flagged)}
+          upkeepStatus={upkeepStatusById[selected.id]}
+          onOpenMachine={openMachine}
+          related={related}
+          academy={{
+            onOpenCard:
+              card && onOpenAcademy
+                ? () => onOpenAcademy(selected.id, "card", selected.name)
+                : undefined,
+            onOpenScript:
+              script && onOpenAcademy
+                ? () => onOpenAcademy(selected.id, "script", selected.name)
+                : undefined,
+          }}
+          figure={
+            <MachineFigure
+              anatomy={selected.anatomy}
+              view={view}
+              gender={gender}
+              onViewChange={setView}
+              onGenderChange={setGender}
+              onRegionClick={(slug) => {
+                // Tapping a muscle group on the figure is a cross-link: it
+                // goes to a machine on THIS roster that trains it, or does
+                // nothing rather than dead-ending on one that isn't here.
+                const owned = new Set(catalogMachines.map((m) => m.id));
+                const target = machinesForBodySlug(slug).find((id) => owned.has(id));
+                if (target) openMachine(target);
+              }}
+            />
+          }
+          playbook={
+            playbookHits.length > 0 ? (
+              <MachinePlaybookCard
+                entries={playbookHits.map((h) => h.entry)}
+                currentUserId={authTrainer?.id ?? null}
+              />
+            ) : undefined
+          }
+          studioSetup={
+            <StudioSetupCard
+              machineId={selected.id}
+              machineName={selected.name}
+              studioId={activeStudioId}
+              setting={settingsByMachineId[selected.id]}
+              canEdit={canEditStudioSetup}
+              authorId={authTrainer?.id ?? null}
+            />
+          }
+          upkeep={
+            <MachineUpkeepCard
+              machineId={selected.id}
+              rows={machineTaskRows[selected.id] ?? []}
+              upkeep={upkeepById[selected.id]}
+              busy={upkeepBusy}
+              onComplete={(row) => {
+                if (row.status !== "done" && row.template?.requiresNote) {
+                  setNoteRow(row);
+                  return;
+                }
+                runUpkeep(row, row.status === "done" ? "open" : "done");
+              }}
+              onAddNote={setNoteRow}
+            />
+          }
+          studioWiki={
+            <StudioWikiPanel
+              studioId={activeStudioId}
+              studioName={activeStudio?.name}
+              targetType="machine"
+              targetId={selected.id}
+              targetName={selected.name}
+              overlay={overlayFor("machine", selected.id)}
+              author={author}
+              emptyLabel={`Add ${activeStudio?.name ?? "this studio"}'s note on this machine`}
+              placeholder="How we set this one up, who it does not suit, what to watch for. Ours sits two notches lower than the card says — that sort of thing."
+            />
+          }
+          studioNotes={
+            <StudioNotesCard
+              machineId={selected.id}
+              studioId={activeStudioId}
+              studioName={activeStudio?.name}
+              value={selected.studioNotes}
+              author={author}
+            />
+          }
+        />
+
+        <TaskNoteDialog
+          row={noteRow}
+          open={Boolean(noteRow)}
+          onOpenChange={(o) => !o && setNoteRow(null)}
+          onSubmit={(note, flagged) =>
+            noteRow ? runUpkeep(noteRow, "done", note, flagged) : undefined
+          }
+        />
+      </WikiShell>
+    );
+  }
+
+  /* ── the index ─────────────────────────────────────────────────── */
+
+  const needsUpkeep = catalogMachines.filter(
+    (m) => upkeepStatusById[m.id] === "due" || upkeepStatusById[m.id] === "overdue",
+  ).length;
+  const flaggedCount = catalogMachines.filter((m) => flaggedIds.has(m.id)).length;
+  const outOfService = catalogMachines.filter(
+    (m) => m.rosterStatus === "maintenance",
+  ).length;
+
+  const contents: WikiContentsCard[] = groups.map((g) => {
+    const due = g.machines.filter(
+      (m) => upkeepStatusById[m.id] === "due" || upkeepStatusById[m.id] === "overdue",
+    ).length;
+    const flagged = g.machines.filter((m) => flaggedIds.has(m.id)).length;
+    const notes: { label: string; tone: "warn" | "alert" }[] = [];
+    if (due > 0) notes.push({ label: `${due} due`, tone: "warn" });
+    if (flagged > 0) notes.push({ label: `${flagged} flagged`, tone: "alert" });
+    return {
+      key: g.key,
+      label: g.label,
+      accent: accentForGroupKey(g.key, grouping),
+      count: g.machines.length,
+      countLabel: `${g.machines.length} machine${g.machines.length === 1 ? "" : "s"}`,
+      notes,
+      target: groupElementId(g.key),
+    };
+  });
+
+  return (
+    <WikiShell
+      crumbs={[{ label: "Catalog" }]}
+      onOpenSearch={() => setRoute({ kind: "search" })}
+    >
+      <WikiIndexHeader
+        title="Catalog"
+        subtitle={`${catalogMachines.length} machine${catalogMachines.length === 1 ? "" : "s"}${activeStudio?.name ? ` at ${activeStudio.name}` : ""}. Every machine on this floor, what it trains, and how this studio runs it.`}
+        stats={[
+          { label: "On the roster", value: catalogMachines.length },
+          {
+            label: "Needs cleaning",
+            value: needsUpkeep,
+            tone: needsUpkeep > 0 ? "warn" : undefined,
+          },
+          {
+            label: "Flagged",
+            value: flaggedCount,
+            tone: flaggedCount > 0 ? "alert" : undefined,
+          },
+          { label: "Out of service", value: outOfService },
+        ]}
+      >
+        {/* Grouping is a property of the INDEX, not of a picker inside a
+            sheet. Changing it re-labels the contents and re-sorts the list in
+            place; nothing opens, closes or filters. */}
+        <div className="wk__seg" role="group" aria-label="Group machines by">
+          {GROUPING_MODES.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              className="wk__seg-btn"
+              aria-pressed={grouping === mode}
+              onClick={() => setGrouping(mode)}
+            >
+              {GROUPING_LABEL[mode]}
+            </button>
+          ))}
+        </div>
+      </WikiIndexHeader>
+
+      <WikiContents cards={contents} label="Contents" />
+
+      {groups.map((g) => (
+        <WikiGroup
+          key={g.key}
+          id={groupElementId(g.key)}
+          label={g.label}
+          accent={accentForGroupKey(g.key, grouping)}
+          count={g.machines.length}
+        >
+          {g.machines.map((m) => {
+            const status = upkeepStatusById[m.id];
+            const flagged = flaggedIds.has(m.id);
+            const showBadges =
+              m.isStudioCustom ||
+              m.rosterStatus === "maintenance" ||
+              flagged ||
+              status === "due" ||
+              status === "overdue";
+            return (
+              <WikiRow
+                key={m.id}
+                title={m.name}
+                meta={
+                  grouping === "movement"
+                    ? m.anatomicalRegion
+                    : m.movementPattern || m.anatomicalRegion
+                }
+                onClick={() => openMachine(m.id)}
+                badges={
+                  showBadges ? (
+                    <>
+                      {m.isStudioCustom && <WikiBadge tone="neutral">Studio</WikiBadge>}
+                      {(m.rosterStatus === "maintenance" || flagged) && (
+                        <WikiBadge tone={flagged ? "alert" : "warn"}>
+                          {flagged ? "Flagged" : "Out of service"}
+                        </WikiBadge>
+                      )}
+                      {(status === "due" || status === "overdue") && (
+                        <WikiBadge tone="warn">
+                          {status === "overdue" ? "Overdue" : "Due"}
+                        </WikiBadge>
+                      )}
+                    </>
+                  ) : undefined
+                }
+              />
+            );
+          })}
+        </WikiGroup>
+      ))}
+    </WikiShell>
+  );
+}
