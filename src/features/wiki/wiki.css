@@ -1,0 +1,1343 @@
+/* ==========================================================================
+   WIKI — the shared shell for the Catalog and the Academy
+   --------------------------------------------------------------------------
+   Round: Wiki Redesign, Sep 2026.
+
+   Deliberately built to the Studio Hub's conventions, because "the Catalog
+   doesn't match the rest of the app" was the brief and the Hub is the screen
+   AJ likes. Specifically borrowed, on purpose, so the two read as one product:
+
+     - the screen title: 15px / 900 / italic / uppercase  (.st__title)
+     - micro-labels: 11px / 800 / 0.14em tracking / uppercase / muted
+     - cards: 1px border + 14px radius + a two-part shadow
+     - 44px rows, 52px group rows — thumbed on an iPad, per Apple HIG
+     - ONE scroller, padded 1rem, with no bottom padding for a nav bar that
+       is a sibling and therefore not overlapping anything
+
+   Prefix is `.wk__`, so nothing here can collide with `.cat__` while the old
+   Catalog is still on disk as a rollback.
+
+   Tokens only — no hex values in this file. See wiki.tokens.css.
+   ========================================================================== */
+
+@import "./wiki.tokens.css";
+
+/* ------------------------------------------------------------------ *
+ * Root + the one scroller
+ * ------------------------------------------------------------------ */
+
+.wk {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--wk-bg);
+  color: var(--wk-ink);
+}
+
+.wk *,
+.wk *::before,
+.wk *::after {
+  box-sizing: border-box;
+}
+
+/* Children may not shrink: a column flex container compresses them to fit
+   BEFORE it lets itself scroll, and the overflow then paints under whatever
+   follows. Same trap studio-tasks.css documents. */
+.wk__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 1rem 1.5rem;
+}
+.wk__scroll > * { flex: none; }
+
+/* ------------------------------------------------------------------ *
+ * The bar: back, breadcrumb, search
+ * ------------------------------------------------------------------ */
+
+.wk__bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 52px;
+  padding: 0.5rem 1rem;
+  background: var(--wk-bg);
+  border-bottom: 1px solid var(--wk-border);
+}
+
+.wk__up {
+  flex: none;
+  width: var(--wk-tap);
+  height: var(--wk-tap);
+  margin-left: -0.5rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--wk-radius-pill);
+  background: transparent;
+  color: var(--wk-ink-2);
+  cursor: pointer;
+}
+.wk__up:hover { background: var(--wk-surface-2); }
+.wk__up:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; }
+
+.wk__crumbs {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* The trail can outgrow a phone. It scrolls horizontally rather than
+     wrapping, so the bar stays one row tall and the CURRENT page — the end of
+     the trail — is what stays in view. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.wk__crumbs::-webkit-scrollbar { display: none; }
+
+.wk__crumbs ol {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: nowrap;
+}
+.wk__crumbs li { display: inline-flex; align-items: center; gap: 0.125rem; }
+
+.wk__crumb {
+  border: 0;
+  background: none;
+  padding: 0.25rem 0.25rem;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--wk-ink-muted);
+  cursor: pointer;
+}
+.wk__crumb:hover { color: var(--wk-live-text); }
+.wk__crumb:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; border-radius: 4px; }
+
+.wk__crumb--here { color: var(--wk-ink); cursor: default; }
+.wk__crumb-sep { color: var(--wk-ink-faint); flex: none; }
+
+.wk__bar-actions { flex: none; display: flex; align-items: center; gap: 0.375rem; }
+
+.wk__searchbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 36px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--wk-border-strong);
+  border-radius: var(--wk-radius-pill);
+  background: var(--wk-surface);
+  color: var(--wk-ink-2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.wk__searchbtn:hover { border-color: var(--wk-live); color: var(--wk-live-text); }
+.wk__searchbtn:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; }
+
+/* The label is a luxury on a phone; the magnifier is not. */
+@media (max-width: 400px) {
+  .wk__searchbtn-label { display: none; }
+  .wk__searchbtn { padding: 0 0.625rem; }
+}
+
+/* ------------------------------------------------------------------ *
+ * Index — header and stats
+ * ------------------------------------------------------------------ */
+
+.wk__index-head { padding: 1rem 0 0.25rem; }
+
+/* The Hub's title voice, on purpose. */
+.wk__index-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--wk-ink);
+}
+
+.wk__index-sub {
+  margin: 0.25rem 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--wk-ink-muted);
+}
+
+.wk__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.875rem;
+}
+
+.wk__stat {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+  box-shadow: var(--wk-elev-1);
+}
+.wk__stat-value {
+  display: block;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--wk-ink);
+}
+.wk__stat-label {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wk-ink-muted);
+}
+/* The grouping switch, when a header carries one. */
+.wk__index-head > .wk__seg { margin-top: 0.875rem; }
+
+.wk__stat--warn  { border-color: var(--wk-warn-border); background: var(--wk-warn-fill); }
+.wk__stat--warn  .wk__stat-value { color: var(--wk-warn); }
+.wk__stat--alert { border-color: var(--wk-alert); background: var(--wk-alert-fill); }
+.wk__stat--alert .wk__stat-value { color: var(--wk-alert); }
+.wk__stat--ok    .wk__stat-value { color: var(--wk-ok); }
+
+/* ------------------------------------------------------------------ *
+ * Index — contents cards
+ * ------------------------------------------------------------------ */
+
+.wk__contents { margin-top: 1.25rem; }
+
+.wk__contents-label,
+.wk__section-note,
+.wk__infobox-label {
+  margin: 0 0 0.5rem;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--wk-ink-muted);
+}
+
+.wk__contents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.wk__cat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  min-height: 5.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--wk-border);
+  /* The category colour, as a left rule. Same device as the row stripe below
+     and the article eyebrow, so one hue means one thing on every surface. */
+  border-left: 3px solid var(--wk-accent, var(--wk-border-strong));
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+  box-shadow: var(--wk-elev-1);
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow 140ms ease, transform 140ms ease;
+}
+.wk__cat:hover { box-shadow: var(--wk-elev-2); transform: translateY(-1px); }
+.wk__cat:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
+
+.wk__cat-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 0.25rem;
+  border-radius: 9px;
+  background: var(--wk-accent-fill, var(--wk-surface-2));
+  color: var(--wk-accent, var(--wk-ink-2));
+}
+.wk__cat-label {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--wk-ink);
+  overflow-wrap: anywhere;
+}
+.wk__cat-count {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wk-ink-muted);
+}
+.wk__cat-notes { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.375rem; }
+
+/* ------------------------------------------------------------------ *
+ * Index — groups and rows
+ * ------------------------------------------------------------------ */
+
+.wk__group {
+  margin-top: 1.25rem;
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+  box-shadow: var(--wk-elev-1);
+  overflow: hidden;
+  /* Cleared by the sticky-ish bar when a contents card scrolls here. */
+  scroll-margin-top: 0.75rem;
+}
+
+.wk__group-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--wk-border);
+  background: var(--wk-accent-fill, var(--wk-surface-2));
+  color: var(--wk-accent, var(--wk-ink-2));
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.wk__group-label { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.wk__group-count {
+  flex: none;
+  min-width: 1.5rem;
+  padding: 0 0.375rem;
+  border-radius: var(--wk-radius-pill);
+  background: var(--wk-surface);
+  color: var(--wk-ink-2);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.wk__group-note {
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--wk-border);
+  background: var(--wk-surface);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--wk-ink-muted);
+}
+.wk__group-note button {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--wk-live-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.wk__row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  /* 52px: a comfortable iPad target that still fits eight rows above the
+     fold. Matches the Hub's group rows exactly. */
+  min-height: 52px;
+  padding: 0.5rem 0.875rem;
+  border: 0;
+  border-left: 3px solid transparent;
+  background: var(--wk-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wk__row + .wk__row { border-top: 1px solid var(--wk-border); }
+.wk__row:hover { background: var(--wk-surface-2); }
+.wk__row:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: -2px; }
+.wk__row[aria-current="true"] {
+  background: var(--wk-accent-fill, var(--wk-surface-2));
+  border-left-color: var(--wk-accent, var(--wk-live));
+}
+
+.wk__row-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.wk__row-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--wk-ink);
+  /* Machine names are never truncated anywhere in this app. */
+  overflow-wrap: anywhere;
+}
+.wk__row-meta {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--wk-ink-faint);
+}
+.wk__row-badges { flex: none; display: flex; flex-wrap: wrap; gap: 0.25rem; justify-content: flex-end; }
+.wk__row-chev { flex: none; color: var(--wk-ink-faint); }
+
+/* ------------------------------------------------------------------ *
+ * Badges
+ * ------------------------------------------------------------------ */
+
+.wk__badges { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.625rem; }
+
+.wk__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--wk-radius-pill);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.wk__badge--neutral { background: var(--wk-surface-2); border-color: var(--wk-border); color: var(--wk-ink-muted); }
+.wk__badge--live    { background: var(--wk-live-fill); border-color: var(--wk-live); color: var(--wk-live-text); }
+.wk__badge--ok      { background: var(--wk-ok-fill); border-color: var(--wk-ok); color: var(--wk-ok); }
+.wk__badge--warn    { background: var(--wk-warn-fill); border-color: var(--wk-warn-border); color: var(--wk-warn); }
+.wk__badge--alert   { background: var(--wk-alert-fill); border-color: var(--wk-alert); color: var(--wk-alert); }
+.wk__badge--accent  { background: var(--wk-accent-fill); border-color: var(--wk-accent); color: var(--wk-accent); }
+
+/* ------------------------------------------------------------------ *
+ * Article
+ * ------------------------------------------------------------------ */
+
+.wk__article { padding-bottom: 1rem; }
+
+.wk__article-head { padding: 1rem 0 0; }
+
+.wk__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0 0 0.25rem;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--wk-accent, var(--wk-ink-muted));
+}
+
+.wk__h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--wk-ink);
+  overflow-wrap: anywhere;
+}
+
+.wk__lede {
+  margin: 0.5rem 0 0;
+  max-width: var(--wk-measure);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--wk-ink-2);
+}
+
+.wk__grid { display: grid; gap: 1.25rem; margin-top: 1.25rem; }
+
+.wk__body { min-width: 0; display: flex; flex-direction: column; gap: 1.25rem; }
+
+/* ------------------------------------------------------------------ *
+ * Infobox
+ * ------------------------------------------------------------------ */
+
+.wk__infobox {
+  border: 1px solid var(--wk-border);
+  border-top: 3px solid var(--wk-accent, var(--wk-border-strong));
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+  box-shadow: var(--wk-elev-1);
+  overflow: hidden;
+}
+
+.wk__infobox-head {
+  margin: 0;
+  padding: 0.5rem 0.875rem;
+  border-bottom: 1px solid var(--wk-border);
+  background: var(--wk-accent-fill, var(--wk-surface-2));
+  color: var(--wk-accent, var(--wk-ink-2));
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.wk__infobox-figure {
+  padding: 0.75rem 0.875rem 0.25rem;
+  border-bottom: 1px solid var(--wk-border);
+}
+
+/* The anatomy figure.
+   An explicit height, not flex:1 — the infobox is a card, not a column with
+   spare height to divide, and aspect-ratio would resolve against a width the
+   SVG does not control. dvh, not vh: iPad Safari's toolbar collapses, and vh
+   assumes it already has, which is what pushes content under the bottom nav. */
+.wk__figure {
+  width: 100%;
+  height: 38dvh;
+  min-height: 240px;
+  max-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wk__figure > * { max-height: 100%; }
+.wk__figure svg { height: 100%; max-height: 100%; width: auto; max-width: 100%; }
+
+.wk__figure-controls { display: flex; justify-content: center; margin-top: 0.625rem; }
+
+.wk__infobox-body { padding: 0.875rem; display: flex; flex-direction: column; gap: 0.875rem; }
+.wk__infobox-group { display: flex; flex-direction: column; }
+.wk__infobox-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  padding: 0.625rem 0.875rem;
+  border-top: 1px solid var(--wk-border);
+  background: var(--wk-surface-2);
+}
+
+.wk__facts { margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.wk__fact { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: 0.5rem; align-items: baseline; }
+.wk__fact dt {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wk-ink-muted);
+}
+.wk__fact dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--wk-ink);
+  overflow-wrap: anywhere;
+}
+
+.wk__muscles { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.wk__muscle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.1875rem 0.5rem;
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius-pill);
+  background: var(--wk-surface-2);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--wk-ink-2);
+}
+.wk__muscle-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.wk__muscle--primary   .wk__muscle-dot { background: var(--wk-muscle-primary); }
+.wk__muscle--primary   { color: var(--wk-ink); font-weight: 700; }
+.wk__muscle--synergist .wk__muscle-dot { background: var(--wk-muscle-secondary); }
+
+/* ------------------------------------------------------------------ *
+ * Sections, prose, cues
+ * ------------------------------------------------------------------ */
+
+.wk__section {
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+  box-shadow: var(--wk-elev-1);
+  padding: 0.875rem 1rem 1rem;
+}
+
+.wk__h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  margin: 0 0 0.5rem;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wk-ink-2);
+}
+.wk__h2--quiet { color: var(--wk-ink-muted); }
+
+.wk__section-body { display: flex; flex-direction: column; gap: 0.625rem; }
+
+.wk__prose {
+  margin: 0;
+  max-width: var(--wk-measure);
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--wk-ink-2);
+}
+
+.wk__cues {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+  max-width: var(--wk-measure);
+}
+.wk__cues li {
+  position: relative;
+  padding-left: 1.125rem;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--wk-ink);
+}
+/* A rule rather than a bullet: these are things said out loud, and a quote-ish
+   mark reads as speech where a disc reads as a checklist. */
+.wk__cues li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.45em;
+  width: 3px;
+  height: 0.9em;
+  border-radius: 2px;
+  background: var(--wk-accent, var(--wk-live));
+}
+
+/* ------------------------------------------------------------------ *
+ * Foldables — tools, not reading
+ * ------------------------------------------------------------------ */
+
+.wk__fold {
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+  box-shadow: var(--wk-elev-1);
+  overflow: hidden;
+}
+
+.wk__fold-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  min-height: var(--wk-tap);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  list-style: none;
+  color: var(--wk-ink-2);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.wk__fold-summary::-webkit-details-marker { display: none; }
+.wk__fold-summary:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: -2px; }
+.wk__fold-title { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.wk__fold-meta { flex: none; color: var(--wk-ink-faint); font-size: 10px; }
+.wk__fold-chev { flex: none; color: var(--wk-ink-faint); transition: transform 140ms ease; }
+.wk__fold[open] .wk__fold-chev { transform: rotate(180deg); }
+.wk__fold-body { padding: 0 1rem 1rem; border-top: 1px solid var(--wk-border); padding-top: 0.875rem; }
+
+/* ------------------------------------------------------------------ *
+ * Clinical warnings — never folded. See ClinicalWarnings.tsx.
+ * ------------------------------------------------------------------ */
+
+.wk__warnings {
+  border: 1px solid var(--wk-warn-border);
+  border-left: 3px solid var(--wk-warn-strong);
+  border-radius: var(--wk-radius);
+  background: var(--wk-warn-fill);
+  padding: 0.75rem 1rem 0.875rem;
+}
+.wk__warnings-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  margin: 0 0 0.5rem;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--wk-warn);
+}
+.wk__warnings-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.4375rem; }
+.wk__warnings-list li {
+  position: relative;
+  padding-left: 1rem;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--wk-ink);
+  max-width: var(--wk-measure);
+}
+.wk__warnings-list li::before {
+  content: "";
+  position: absolute;
+  left: 0.25rem;
+  top: 0.55em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--wk-warn-strong);
+}
+.wk__warnings-more {
+  margin-top: 0.5rem;
+  min-height: 36px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--wk-warn-border);
+  border-radius: var(--wk-radius-pill);
+  background: transparent;
+  color: var(--wk-warn);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ *
+ * Cross-links
+ * ------------------------------------------------------------------ */
+
+.wk__seealso { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.wk__linkcard {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 56px;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--wk-border);
+  border-left: 3px solid var(--wk-accent, var(--wk-live));
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+  box-shadow: var(--wk-elev-1);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow 140ms ease, transform 140ms ease;
+}
+.wk__linkcard:hover { box-shadow: var(--wk-elev-2); transform: translateY(-1px); }
+.wk__linkcard:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
+.wk__linkcard-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--wk-accent-fill, var(--wk-live-fill));
+  color: var(--wk-accent, var(--wk-live-text));
+}
+.wk__linkcard-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.wk__linkcard-title { font-size: 14px; font-weight: 700; color: var(--wk-ink); overflow-wrap: anywhere; }
+.wk__linkcard-detail { font-size: 12px; line-height: 1.4; color: var(--wk-ink-muted); }
+.wk__linkcard-go { flex: none; color: var(--wk-ink-faint); }
+
+.wk__chips { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.wk__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 36px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius-pill);
+  background: var(--wk-surface);
+  color: var(--wk-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wk__chip:hover { border-color: var(--wk-accent, var(--wk-live)); background: var(--wk-accent-fill, var(--wk-live-fill)); }
+.wk__chip:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; }
+.wk__chip svg { color: var(--wk-accent, var(--wk-ink-faint)); }
+
+/* ------------------------------------------------------------------ *
+ * Segmented control
+ * --------------------------------------------------------------------
+ * Shell furniture rather than catalog furniture: the figure's
+ * anterior/posterior switch, the index's grouping switch and (later) the
+ * Academy's section switch are the same control, and three copies of it is
+ * three chances to drift. Matches the Hub's .st__filters exactly.
+ * ------------------------------------------------------------------ */
+
+.wk__seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--wk-border);
+  border-radius: 12px;
+  background: var(--wk-surface-2);
+}
+
+.wk__seg-btn {
+  min-height: 36px;
+  padding: 0 0.6875rem;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--wk-ink-muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.wk__seg-btn[aria-pressed="true"] {
+  background: var(--wk-surface);
+  color: var(--wk-ink);
+  box-shadow: 0 1px 2px var(--wk-shadow);
+}
+.wk__seg-btn:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; }
+
+.wk__seg-divider {
+  width: 1px;
+  align-self: stretch;
+  margin: 0.25rem 0.125rem;
+  background: var(--wk-border-strong);
+}
+
+/* ------------------------------------------------------------------ *
+ * Search screen
+ * ------------------------------------------------------------------ */
+
+/* The search screen is rendered INSTEAD of the shell, not inside it, so it
+   restates the root's two inherited properties rather than relying on `.wk`. */
+.wk__search {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--wk-bg);
+  color: var(--wk-ink);
+}
+
+.wk__search *,
+.wk__search *::before,
+.wk__search *::after { box-sizing: border-box; }
+
+.wk__search-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--wk-border);
+}
+
+.wk__search-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: var(--wk-tap);
+  padding: 0 0.75rem;
+  border: 1px solid var(--wk-border-strong);
+  border-radius: var(--wk-radius-pill);
+  background: var(--wk-surface);
+}
+.wk__search-field:focus-within { border-color: var(--wk-live); box-shadow: 0 0 0 3px var(--wk-live-fill); }
+.wk__search-icon { flex: none; color: var(--wk-ink-faint); }
+
+.wk__search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--wk-ink);
+  font: inherit;
+  /* 16px minimum, or iOS Safari zooms the whole page on focus — which on an
+     iPad in portrait is exactly the "jumbled" effect this round removes. */
+  font-size: 16px;
+  outline: none;
+}
+.wk__search-input::-webkit-search-cancel-button { display: none; }
+
+.wk__search-clear {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--wk-surface-3);
+  color: var(--wk-ink-2);
+  cursor: pointer;
+}
+
+.wk__search-results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.75rem 1rem 2rem;
+}
+
+.wk__search-group + .wk__search-group { margin-top: 1.25rem; }
+.wk__search-grouphead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wk-ink-muted);
+}
+.wk__search-count { font-variant-numeric: tabular-nums; color: var(--wk-ink-faint); }
+
+.wk__search-list {
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+  box-shadow: var(--wk-elev-1);
+  overflow: hidden;
+}
+
+.wk__hit {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 52px;
+  padding: 0.5rem 0.875rem;
+  border: 0;
+  border-left: 3px solid var(--wk-accent, transparent);
+  background: var(--wk-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wk__hit + .wk__hit { border-top: 1px solid var(--wk-border); }
+.wk__hit:hover { background: var(--wk-surface-2); }
+.wk__hit:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: -2px; }
+.wk__hit-icon { flex: none; color: var(--wk-accent, var(--wk-ink-faint)); }
+.wk__hit-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.wk__hit-title { font-size: 14px; font-weight: 600; color: var(--wk-ink); overflow-wrap: anywhere; }
+.wk__hit-meta {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--wk-ink-faint);
+}
+
+/* ------------------------------------------------------------------ *
+ * Empty / placeholder
+ * ------------------------------------------------------------------ */
+
+.wk__empty {
+  margin: 1.5rem 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--wk-ink-muted);
+  text-align: center;
+}
+
+.wk__placeholder {
+  margin: 2rem auto;
+  max-width: 26rem;
+  padding: 1.5rem;
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius-lg);
+  background: var(--wk-surface);
+  text-align: center;
+}
+.wk__placeholder-title { margin: 0 0 0.375rem; font-size: 15px; font-weight: 800; color: var(--wk-ink); }
+.wk__placeholder-body { margin: 0; font-size: 13px; line-height: 1.6; color: var(--wk-ink-muted); }
+
+/* ------------------------------------------------------------------ *
+ * Content blocks — the Academy corpus and studio-written pages
+ * ------------------------------------------------------------------ */
+
+.wk__blocks { display: flex; flex-direction: column; gap: 0.625rem; }
+
+.wk__h3 {
+  margin: 0.5rem 0 0;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--wk-ink);
+}
+.wk__h3:first-child { margin-top: 0; }
+
+.wk__h4 {
+  margin: 0.25rem 0 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--wk-ink-2);
+}
+
+.wk__bullet {
+  position: relative;
+  margin: 0;
+  padding-left: 1rem;
+  max-width: var(--wk-measure);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--wk-ink-2);
+}
+.wk__bullet::before {
+  content: "";
+  position: absolute;
+  left: 0.1875rem;
+  top: 0.6em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--wk-accent, var(--wk-ink-faint));
+}
+
+.wk__source {
+  margin: 0;
+  font-size: 11px;
+  color: var(--wk-ink-faint);
+}
+.wk__source code {
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--wk-surface-2);
+}
+
+/* ------------------------------------------------------------------ *
+ * Glossary terms, linked in the prose
+ * ------------------------------------------------------------------ */
+
+/* A dotted underline rather than a solid one: these are frequent, and a page
+   of solid links reads as a page of errors. The colour does the work. */
+.wk__term {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: var(--wk-live-text);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.wk__term:hover { background: var(--wk-live-fill); }
+.wk__term:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; border-radius: 3px; }
+
+/* The definition, in the flow of the article. Not a popover: a popover on an
+   iPad covers the sentence you were reading, and dismissing it is a second
+   decision nobody asked for. */
+.wk__termcard {
+  border: 1px solid var(--wk-live);
+  border-left: 3px solid var(--wk-live);
+  border-radius: var(--wk-radius);
+  background: var(--wk-live-fill);
+  padding: 0.75rem 1rem;
+}
+.wk__termcard-term {
+  margin: 0 0 0.25rem;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wk-live-text);
+}
+.wk__termcard-def {
+  margin: 0 0 0.5rem;
+  max-width: var(--wk-measure);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--wk-ink);
+}
+
+.wk__glossary { margin: 0; display: flex; flex-direction: column; gap: 0.625rem; }
+.wk__glossary-row {
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--wk-border);
+  scroll-margin-top: 1rem;
+}
+.wk__glossary-row--open { border-left-color: var(--wk-live); background: var(--wk-live-fill); }
+.wk__glossary-row dt {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--wk-ink);
+}
+.wk__glossary-row dd {
+  margin: 0.125rem 0 0;
+  max-width: var(--wk-measure);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--wk-ink-2);
+}
+
+/* ------------------------------------------------------------------ *
+ * Spoken scripts
+ * ------------------------------------------------------------------ */
+
+.wk__script { display: flex; flex-direction: column; gap: 0.5rem; }
+
+/* The distinction the layout carries is the one the source makes: a quoted
+   line is what the trainer SAYS, everything else is what they do or watch
+   for. Rendering both as plain paragraphs loses it, and a trainer rehearsing
+   needs to know which words are theirs. */
+.wk__said {
+  position: relative;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  max-width: var(--wk-measure);
+  border-left: 3px solid var(--wk-accent, var(--wk-live));
+  border-radius: 0 8px 8px 0;
+  background: var(--wk-accent-fill, var(--wk-live-fill));
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 600;
+  color: var(--wk-ink);
+}
+.wk__do {
+  margin: 0;
+  max-width: var(--wk-measure);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--wk-ink-muted);
+}
+
+/* ------------------------------------------------------------------ *
+ * The studio's own content
+ * ------------------------------------------------------------------ */
+
+.wk__studio {
+  border: 1px solid var(--wk-border-strong);
+  /* Dashed, and that is deliberate: it marks this block as written HERE
+     rather than shipped with the app, so a trainer can always tell the
+     studio's answer from the Academy's. */
+  border-style: dashed;
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+  padding: 0.75rem 1rem 0.875rem;
+}
+
+.wk__studio-head {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0 0 0.5rem;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wk-ink-muted);
+}
+
+.wk__studio-edit {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 32px;
+  padding: 0 0.625rem;
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius-pill);
+  background: var(--wk-surface-2);
+  color: var(--wk-ink-2);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.wk__studio-edit:hover { border-color: var(--wk-live); color: var(--wk-live-text); }
+
+.wk__studio-by {
+  margin: 0.625rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--wk-border);
+  font-size: 11px;
+  color: var(--wk-ink-faint);
+}
+
+.wk__addnote {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 56px;
+  padding: 0.625rem 0.875rem;
+  border: 1px dashed var(--wk-border-strong);
+  border-radius: var(--wk-radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wk__addnote:hover { border-color: var(--wk-live); background: var(--wk-live-fill); }
+.wk__addnote:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
+.wk__addnote svg { flex: none; color: var(--wk-ink-muted); }
+.wk__addnote span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.wk__addnote strong { font-size: 13px; font-weight: 700; color: var(--wk-ink); }
+.wk__addnote em { font-style: normal; font-size: 12px; line-height: 1.4; color: var(--wk-ink-muted); }
+
+/* ------------------------------------------------------------------ *
+ * The editor
+ * ------------------------------------------------------------------ */
+
+.wk__editor { display: flex; flex-direction: column; gap: 0.75rem; }
+.wk__field { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.wk__field-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--wk-ink-muted);
+}
+
+.wk__field-error { font-size: 12px; font-weight: 600; color: var(--wk-alert); }
+
+.wk__input,
+.wk__textarea {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--wk-border-strong);
+  border-radius: 10px;
+  background: var(--wk-surface);
+  color: var(--wk-ink);
+  font: inherit;
+  /* 16px minimum, or iOS Safari zooms the page on focus. */
+  font-size: 16px;
+  line-height: 1.5;
+}
+.wk__textarea { resize: vertical; min-height: 7rem; font-size: 15px; }
+.wk__input:focus,
+.wk__textarea:focus {
+  outline: none;
+  border-color: var(--wk-live);
+  box-shadow: 0 0 0 3px var(--wk-live-fill);
+}
+
+.wk__hint {
+  display: flex;
+  align-items: center;
+  gap: 0.3125rem;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--wk-ink-muted);
+}
+.wk__hint code {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--wk-surface-3);
+  font-size: 11px;
+}
+
+.wk__editor-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+.wk__btn {
+  min-height: var(--wk-tap);
+  padding: 0 1rem;
+  border: 1px solid var(--wk-border-strong);
+  border-radius: var(--wk-radius-pill);
+  background: var(--wk-surface);
+  color: var(--wk-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.wk__btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.wk__btn:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
+/* --wk-hero-text, not --wk-hero: white on the bright orange is 3.5:1, below
+   AA. The same call index.css makes for --cta vs --cta-strong. */
+.wk__btn--primary {
+  border-color: var(--wk-hero-text);
+  background: var(--wk-hero-text);
+  color: var(--wk-hero-on);
+}
+.wk__btn--quiet { border-color: transparent; background: transparent; color: var(--wk-ink-muted); }
+.wk__btn--quiet:hover { color: var(--wk-alert); }
+
+/* ------------------------------------------------------------------ *
+ * Split layout — 1024px, matching features/equipment's SPLIT_AT and the old
+ * catalog's, so every machine-related screen changes shape at the same
+ * moment. On an iPad Pro 11" that reads as an orientation switch.
+ * ------------------------------------------------------------------ */
+
+@media (min-width: 1024px) {
+  .wk__scroll { padding: 0 1.5rem 2rem; }
+  .wk__bar { padding: 0.5rem 1.5rem; }
+
+  .wk__index-title { font-size: 17px; }
+  .wk__h1 { font-size: 28px; }
+
+  /* The infobox becomes a sticky right-hand column. It is sticky rather than
+     a non-scrolling third pane: same effect — the model stays on screen —
+     with no second scroller and no fixed positioning to fight iOS momentum. */
+  .wk__grid {
+    grid-template-columns: minmax(0, 1fr) var(--wk-aside-w);
+    align-items: start;
+    gap: 1.5rem;
+  }
+  .wk__grid--full { grid-template-columns: minmax(0, 1fr); }
+
+  .wk__aside {
+    grid-column: 2;
+    grid-row: 1;
+    position: sticky;
+    top: 0.75rem;
+  }
+  .wk__body { grid-column: 1; grid-row: 1; }
+  .wk__grid--full .wk__body { grid-column: 1; }
+
+  .wk__contents-grid { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+
+  /* Shorter in the sticky column: the whole infobox — figure, specs, muscles,
+     status — has to fit one screen, or "sticky" just means the top of a tall
+     box is pinned while its useful half hangs below the fold. */
+  .wk__figure { height: 30dvh; min-height: 220px; max-height: 320px; }
+}
+
+/* ------------------------------------------------------------------ *
+ * Motion
+ * ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .wk__cat,
+  .wk__linkcard,
+  .wk__fold-chev { transition: none; }
+  .wk__cat:hover,
+  .wk__linkcard:hover { transform: none; }
+  /* WikiContents calls scrollIntoView({ behavior: "smooth" }); this makes the
+     browser honour the preference for it. */
+  .wk__scroll { scroll-behavior: auto; }
+}
