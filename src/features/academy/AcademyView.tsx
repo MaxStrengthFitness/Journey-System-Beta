@@ -62,11 +62,28 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 export interface AcademyViewProps {
   /** Open straight onto this machine's card. Set when arriving from a machine. */
   initialMachineId?: string | null;
+  /**
+   * WHICH document to open when arriving from a machine.
+   *
+   * Added with the Wiki Redesign (Sep 2026). A machine page now offers the
+   * quick card and the spoken script as two separate cross-links, and a link
+   * that says "Full spoken script" has to land on the script — arriving on
+   * the card instead teaches trainers not to trust the labels. Defaults to
+   * "card", which is the behaviour every existing caller already gets.
+   */
+  initialFocus?: "card" | "script";
   onBack?: () => void;
 }
 
-export function AcademyView({ initialMachineId, onBack }: AcademyViewProps) {
-  const [tab, setTab] = useState<Tab>(initialMachineId ? "cards" : "learn");
+export function AcademyView({
+  initialMachineId,
+  initialFocus = "card",
+  onBack,
+}: AcademyViewProps) {
+  const wantsScript = initialFocus === "script";
+  const [tab, setTab] = useState<Tab>(
+    initialMachineId ? (wantsScript ? "cueing" : "cards") : "learn",
+  );
   const [moduleId, setModuleId] = useState<string | null>(null);
   const [topicId, setTopicId] = useState<string | null>(null);
   const [cardId, setCardId] = useState<string | null>(null);
@@ -92,11 +109,15 @@ export function AcademyView({ initialMachineId, onBack }: AcademyViewProps) {
   /** Arriving from a machine opens that machine's card, not the list. */
   const openCard = useMemo(() => {
     if (cardId) return cards?.find((c) => c.id === cardId) ?? null;
+    /* Asked for the script, so do not auto-open the card. The no-card
+       fallback below then renders the script, and backing out of it returns
+       to the machine rather than dropping into a card nobody asked for. */
+    if (wantsScript) return null;
     if (initialMachineId) {
       return cards?.find((c) => c.machineId === initialMachineId) ?? null;
     }
     return null;
-  }, [cards, cardId, initialMachineId]);
+  }, [cards, cardId, initialMachineId, wantsScript]);
 
   const openTopic = content?.topics.find((t) => t.id === topicId) ?? null;
   const openOverview = overviews?.find((o) => o.id === overviewId) ?? null;
@@ -151,9 +172,10 @@ export function AcademyView({ initialMachineId, onBack }: AcademyViewProps) {
   }
 
   /*
-   * Arrived from a machine that has no card. Two machines are in this
-   * position — the Lateral Raise and the Triceps Extension — and both have a
-   * full script, so going straight to it beats showing an empty list.
+   * Arrived from a machine with no card to show — either the corpus has none
+   * (two machines are in this position, the Lateral Raise and the Triceps
+   * Extension, and both have a full script) or the caller asked for the
+   * script by name. Either way, going straight to it beats an empty list.
    */
   if (initialMachineId && machineScript && !openCard) {
     return <ScriptReader script={machineScript} onBack={() => onBack?.()} />;
