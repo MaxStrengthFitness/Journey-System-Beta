@@ -12,6 +12,7 @@ import { collection, getDocs, limit, orderBy, query, where } from "firebase/fire
 import { db } from "../../firebase";
 import type { JournalEntry } from "../../types/journal";
 import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
+import { studioDayKeyOf } from "../../lib/studio-time";
 
 export interface JournalSuggestion {
   id: string;
@@ -24,10 +25,11 @@ export interface JournalSuggestion {
   isOpen: boolean;
 }
 
+// The Eastern day the entry happened on. A UTC day put an evening incident
+// on the next day's session (Sep 2026).
 const toIso = (v: any): string => {
   try {
-    const d = v?.toDate ? v.toDate() : new Date(v);
-    return Number.isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
+    return studioDayKeyOf(v) ?? "";
   } catch {
     return "";
   }

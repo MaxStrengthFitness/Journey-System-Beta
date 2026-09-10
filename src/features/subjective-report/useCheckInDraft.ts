@@ -27,6 +27,7 @@ import {
   saveCheckInDraft,
 } from "./checkin-draft";
 import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
+import { studioTodayKey } from "../../lib/studio-time";
 
 export type CheckInSectionId = string;
 
@@ -119,7 +120,7 @@ export function useCheckInDraft(opts: {
           setDraftId(null);
           setAssessment({
             ...emptyAssessment({ bodyWeightLbs }),
-            completedAt: new Date().toISOString().split("T")[0],
+            completedAt: studioTodayKey(),
           });
           setReviewed([]);
           setStartedAt(null);
@@ -290,7 +291,7 @@ export function useCheckInDraft(opts: {
       setDraftId(null);
       setAssessment({
         ...emptyAssessment({ bodyWeightLbs }),
-        completedAt: new Date().toISOString().split("T")[0],
+        completedAt: studioTodayKey(),
       });
       setReviewed([]);
       setStartedAt(null);
@@ -315,7 +316,7 @@ export function useCheckInDraft(opts: {
       setDraftId(null);
       setAssessment({
         ...emptyAssessment({ bodyWeightLbs }),
-        completedAt: new Date().toISOString().split("T")[0],
+        completedAt: studioTodayKey(),
       });
       setReviewed([]);
       setStartedAt(null);

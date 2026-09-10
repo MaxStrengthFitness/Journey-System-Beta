@@ -29,6 +29,30 @@
  * added later to pre-materialize so the list is warm at open; it will write the
  * same ids and collide with nothing.
  *
+ * NOBODY OWNS A STUDIO TASK, AND THERE IS NO ASSIGNEE FIELD
+ * ---------------------------------------------------------
+ * `assigneeTrainerId?: string` sat on TaskTemplate from the first round with
+ * the comment "suggested owner, never enforced". It was never read and never
+ * written — one line, zero call sites — and it was removed in Sep 2026 rather
+ * than wired up, because wiring it was the wrong answer:
+ *
+ *   - It sat on the TEMPLATE, so "Sarah does the towels" meant every
+ *     occurrence forever, and went stale silently the day Sarah changed shift.
+ *   - A permanent name on a recurring chore is the assignment nobody
+ *     maintains. On a floor running back-to-back 20-minute sessions, the
+ *     manager who would have to re-point nine trainers' chores every week is
+ *     the manager who does it once.
+ *
+ * What replaced it is attribution, not assignment: `claimedBy` says who is on
+ * a thing RIGHT NOW and expires with the day (an instance is already
+ * per-localDate, so tomorrow's row starts unclaimed), and `completedBy` says
+ * who closed it. Both are advisory — the tick box stays live for everyone, for
+ * the reason spelled out on TaskInstance.claimedBy below.
+ *
+ * Assignment arrived a day later, and it went where that note said it should:
+ * `assignedTo` on the INSTANCE, written by head trainers and studio leaders,
+ * expiring with the day on its own. Do not put it back on the template.
+ *
  * localDate IS STUDIO-LOCAL
  * -------------------------
  * Always computed with lib/studio-time, never from the device clock. A trainer
@@ -271,8 +295,6 @@ export interface TaskTemplate {
   timeOfDay?: string;
   /** Completion is blocked until a note is written. For maintenance checks. */
   requiresNote?: boolean;
-  /** Suggested owner. Never enforced — anyone on the floor can close a task. */
-  assigneeTrainerId?: string;
 
   /**
    * Tell whoever created this task when someone finishes it. In-app only.
@@ -341,6 +363,36 @@ export interface TaskInstance {
    */
   claimedBy?: { id: string; name: string } | null;
   claimedAt?: unknown;
+
+  /**
+   * A head trainer put someone's name on this. ADVISORY, exactly like a claim.
+   *
+   * Round: Task assignment, Sep 2026.
+   *
+   * WHY IT IS ON THE INSTANCE AND NOT THE TEMPLATE
+   * The template used to carry `assigneeTrainerId` — see the note at the top
+   * of this file for why it was deleted. An assignment on a recurring template
+   * means "Sarah does the towels" forever, and it goes stale silently the day
+   * Sarah changes shift. An instance is already per-localDate, so an
+   * assignment expires on its own and tomorrow's row starts clean. Assigning a
+   * week ahead is writing seven documents, not one standing rule that rots.
+   *
+   * WHY IT DOES NOT LOCK ANYTHING
+   * Same argument as claimedBy: a name on a task is a statement of intent, not
+   * a permission. If Marcus is assigned closing and goes home sick, anyone can
+   * still close it, and the app must not be the reason nobody did. The UI
+   * shows the name and leaves the tick box live.
+   *
+   * WHO MAY WRITE IT
+   * Studio leaders and head trainers, enforced in firestore.rules on the
+   * assignment fields specifically — every other field of this document stays
+   * writable by any trainer, because closing a task is the floor's job.
+   * `assignedBy` is stamped from the caller, so an assignment cannot be
+   * attributed to a manager who did not make it.
+   */
+  assignedTo?: { id: string; name: string } | null;
+  assignedBy?: { id: string; name: string } | null;
+  assignedAt?: unknown;
 
   completedAt?: unknown;
   completedBy?: { id: string; name: string } | null;

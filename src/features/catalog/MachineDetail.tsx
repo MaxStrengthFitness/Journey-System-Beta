@@ -36,6 +36,17 @@ export interface MachineDetailProps {
   author?: { id: string; name: string } | null;
   /** Cleaning/maintenance card, owned by features/studio-tasks. */
   upkeep?: React.ReactNode;
+  /**
+   * This studio's own accumulated notes on this machine, owned by
+   * features/studio-tasks. Slotted for the same reason as the two below: the
+   * playbook is one snapshot over the whole collection and must not be torn
+   * down and rebuilt on every tap in the machine rail.
+   *
+   * Absent, or null, when the studio has written nothing about this machine —
+   * an empty "Playbook" section is a standing reproach and teaches trainers
+   * the section is never worth opening.
+   */
+  playbook?: React.ReactNode;
   /** This studio's settings for this machine. Slotted rather than mounted
    *  here so the settings document is read once by the host, not re-subscribed
    *  on every tap in the rail. */
@@ -57,6 +68,7 @@ export function MachineDetail({
   studioName,
   author,
   upkeep,
+  playbook,
   studioSetup,
   isFlagged,
   onOpenAcademy,
@@ -223,6 +235,24 @@ export function MachineDetail({
             {...section("studio-setup", false)}
           >
             {studioSetup}
+          </Section>
+        )}
+
+        {/*
+          Defaults OPEN, unlike every other reference section. The two things
+          read mid-machine are open by default (see `section` above) and this
+          is now one of them: it only renders when the studio has actually
+          written something about this machine, so an open section here is
+          always a section with content in it.
+        */}
+        {playbook && (
+          <Section
+            id="playbook"
+            title="Studio playbook"
+            icon={<BookOpen size={14} aria-hidden />}
+            {...section("playbook", true)}
+          >
+            {playbook}
           </Section>
         )}
 

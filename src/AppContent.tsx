@@ -18,7 +18,6 @@ import {
   AlertTriangle,
   LogOut,
   UserCircle,
-  Dumbbell,
   ClipboardList,
   ChevronRight,
   MessageSquare,
@@ -40,6 +39,8 @@ import {
   RefreshCw,
   X,
   ListChecks,
+  Dumbbell,
+  GraduationCap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -166,13 +167,52 @@ const ClientProgressReportView = lazy(() =>
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 import { FeedbackProvider, FeedbackButton } from "./features/feedback";
 import { NotificationBell } from "./features/notifications";
+// Type-only, and from the module rather than the barrel, so nothing about the
+// studio-tasks chunk is pulled into the initial bundle.
+import type { ClientTaskAction } from "./features/studio-tasks/types";
 const StudioTasksView = lazy(() =>
   import("./features/studio-tasks").then((m) => ({
     default: m.StudioTasksView,
   })),
 );
+/**
+ * The Studio Hub — the To-Do screen rebuilt as a community hub.
+ *
+ * Same chunk as StudioTasksView, so the classic escape hatch below costs no
+ * extra download.
+ */
+const StudioHubView = lazy(() =>
+  import("./features/studio-tasks").then((m) => ({
+    default: m.StudioHubView,
+  })),
+);
+
+/**
+ * THE ESCAPE HATCH — append ?classic-todo to the URL for the old screen.
+ *
+ * The hub is a redesign of a screen trainers use every shift, and it is being
+ * reviewed on an iPad in a live studio. If something about it does not work at
+ * 6am on a Tuesday, the fix has to be "add six characters to the URL", not
+ * "wait for a deploy". Read once at module load, so it cannot change under a
+ * render.
+ *
+ * Delete this and the StudioTasksView branch once the hub has had a full week.
+ */
+const CLASSIC_TODO =
+  typeof window !== "undefined" &&
+  window.location.search.includes("classic-todo");
 const CatalogView = lazy(() =>
   import("./features/catalog").then((m) => ({ default: m.CatalogView })),
+);
+/*
+ * The MSF Academy, its own tab since the Wiki Redesign (Sep 2026). Lazy for
+ * the same reason the Catalog is: the two share features/wiki, and the
+ * Academy additionally pulls a megabyte of generated corpus in chunks.
+ */
+const AcademyWikiView = lazy(() =>
+  import("./features/academy/AcademyWikiView").then((m) => ({
+    default: m.AcademyWikiView,
+  })),
 );
 import { MaxStrengthLogo } from "./components/MaxStrengthLogo";
 import { ThemeToggle } from "./components/ThemeToggle";
@@ -518,6 +558,11 @@ import { useSessions } from "./hooks/useSessions";
 import { useLiveSchedule } from "./hooks/useLiveSchedule";
 import { useClientMutations } from "./hooks/useClientMutations";
 import { StrongConfirmationModal } from "./components/StrongConfirmationModal";
+// Imported from the module, not the wiki barrel: the wiki is lazy-loaded.
+import {
+  WikiSectionsProvider,
+  type WikiSectionsValue,
+} from "./features/wiki/sections";
 
 export default function AppContent({
   user,
@@ -620,6 +665,55 @@ export default function AppContent({
   const [isSyncing, setIsSyncing] = useState(false);
   const [appMode, setAppMode] = useState<"trainer" | "admin">("trainer");
   const [currentView, setCurrentView] = useState<View>("clients");
+  /*
+   * CROSS-TAB LINKS between the Catalog and the Academy.
+   *
+   * Each screen owns its own internal route, which is what keeps them simple
+   * and keeps a back button meaning one thing. So the only way in from outside
+   * is to ASK, and these two pieces of state are that ask. Both are cleared by
+   * the receiving screen the moment they are honoured, so a later re-render
+   * cannot yank a trainer back to where they arrived twenty taps ago.
+   */
+  const [catalogJump, setCatalogJump] = useState<string | null>(null);
+  const [academyJump, setAcademyJump] = useState<{
+    machineId: string;
+    focus: "card" | "script";
+    fromLabel?: string;
+  } | null>(null);
+  /*
+   * LEARNING — the Catalog and the Academy share one bottom-bar button since
+   * Sep 10 2026 (features/wiki/sections.tsx). The button reopens whichever of
+   * the two was open last; the switch in the wiki's own top bar moves between
+   * them. Both keep their view names, so every existing link — a notification
+   * that opens a machine, the settings shortcut — still lands in the right one.
+   */
+  const [lastLearningView, setLastLearningView] = useState<
+    "machine-anatomy" | "academy"
+  >("machine-anatomy");
+  useEffect(() => {
+    if (currentView === "machine-anatomy" || currentView === "academy") {
+      setLastLearningView(currentView);
+    }
+  }, [currentView]);
+  const learningSections = useMemo<WikiSectionsValue>(
+    () => ({
+      sections: [
+        {
+          id: "machine-anatomy",
+          label: "Catalog",
+          icon: <Dumbbell size={14} aria-hidden />,
+        },
+        {
+          id: "academy",
+          label: "Academy",
+          icon: <GraduationCap size={14} aria-hidden />,
+        },
+      ],
+      active: currentView,
+      onSelect: (id) => setCurrentView(id as View),
+    }),
+    [currentView],
+  );
   const [newClientOnboardingName, setNewClientOnboardingName] = useState<
     string | null
   >(null);
@@ -1902,7 +1996,7 @@ export default function AppContent({
 
           {/* Main Content */}
           <main
-            className={`w-full max-w-full mx-auto relative ${currentView === "workouts" ? "flex-1 min-h-0 p-2 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950 flex flex-col" : currentView === "clients" || currentView === "client-directory" || currentView === "dashboard" || currentView === "machine-anatomy" || currentView === "studio-tasks" ? "flex-1 min-h-0 overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col" : "flex-1 min-h-0 p-6 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950"}`}
+            className={`w-full max-w-full mx-auto relative ${currentView === "workouts" ? "flex-1 min-h-0 p-2 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950 flex flex-col" : currentView === "clients" || currentView === "client-directory" || currentView === "dashboard" || currentView === "machine-anatomy" || currentView === "academy" || currentView === "studio-tasks" ? "flex-1 min-h-0 overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col" : "flex-1 min-h-0 p-6 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950"}`}
             style={
               currentView === "clients" ||
               currentView === "client-directory" ||
@@ -1981,18 +2075,55 @@ export default function AppContent({
                     onSearchTermChange={setHubSearchTerm}
                   />
                 )}
-                {currentView === "machine-anatomy" && (
-                  <CatalogView machines={machines} authTrainer={authTrainer} />
+                {(currentView === "machine-anatomy" ||
+                  currentView === "academy") && (
+                  <WikiSectionsProvider key="learning" value={learningSections}>
+                    {currentView === "machine-anatomy" ? (
+                      <CatalogView
+                        machines={machines}
+                        authTrainer={authTrainer}
+                        openMachineId={catalogJump}
+                        onOpenedMachine={() => setCatalogJump(null)}
+                        onOpenAcademy={(machineId, focus, machineName) => {
+                          setAcademyJump({
+                            machineId,
+                            focus,
+                            fromLabel: machineName,
+                          });
+                          setCurrentView("academy");
+                        }}
+                      />
+                    ) : (
+                      <AcademyWikiView
+                        jump={academyJump}
+                        onClearJump={() => setAcademyJump(null)}
+                        canManagePages={isStudioLeader(authTrainer)}
+                        author={
+                          authTrainer?.id
+                            ? {
+                                id: authTrainer.id,
+                                name: authTrainer.fullName ?? "",
+                              }
+                            : null
+                        }
+                        onOpenMachine={(machineId) => {
+                          setCatalogJump(machineId);
+                          setCurrentView("machine-anatomy");
+                        }}
+                      />
+                    )}
+                  </WikiSectionsProvider>
                 )}
-                {currentView === "studio-tasks" && (
-                  <StudioTasksView
-                    authTrainer={authTrainer}
-                    clients={clients}
-                    onOpenClientTask={(clientId, action) => {
-                      // A client task points at the screen where the work is
-                      // actually done, rather than being a tick that claims it
-                      // happened. 'inbody' has no screen of its own yet, so it
-                      // lands on the profile — the closest honest destination.
+                {currentView === "studio-tasks" &&
+                  (() => {
+                    // A client task points at the screen where the work is
+                    // actually done, rather than being a tick that claims it
+                    // happened. 'inbody' has no screen of its own yet, so it
+                    // lands on the profile — the closest honest destination.
+                    const openClientTask = (
+                      clientId: string,
+                      action?: ClientTaskAction,
+                    ) => {
                       setSelectedClientId(clientId);
                       setCurrentView(
                         action === "progress-report"
@@ -2001,9 +2132,22 @@ export default function AppContent({
                             ? "consultation-wizard"
                             : "profile",
                       );
-                    }}
-                  />
-                )}
+                    };
+                    return CLASSIC_TODO ? (
+                      <StudioTasksView
+                        authTrainer={authTrainer}
+                        clients={clients}
+                        onOpenClientTask={openClientTask}
+                      />
+                    ) : (
+                      <StudioHubView
+                        authTrainer={authTrainer}
+                        clients={clients}
+                        trainers={trainers}
+                        onOpenClientTask={openClientTask}
+                      />
+                    );
+                  })()}
                 {currentView === "workouts" && (
                   <WorkoutTrackerView
                     clientId={selectedClientId}
@@ -2259,11 +2403,21 @@ export default function AppContent({
                     : undefined
                 }
               />
+              {/*
+                LEARNING — the Catalog and the Academy in one slot (Sep 10
+                2026). Six buttons again. NavButton takes `flex-1 min-w-0` so
+                they divide the bar evenly and the labels truncate rather than
+                overflowing on a narrow phone; do not shorten the labels, they
+                are how people find the tab. Which of the two it opens is
+                whichever was open last — see lastLearningView.
+              */}
               <NavButton
-                active={currentView === "machine-anatomy"}
-                onClick={() => setCurrentView("machine-anatomy")}
-                icon={<Dumbbell className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="Catalog"
+                active={
+                  currentView === "machine-anatomy" || currentView === "academy"
+                }
+                onClick={() => setCurrentView(lastLearningView)}
+                icon={<GraduationCap className="w-5 h-5 sm:w-6 sm:h-6" />}
+                label="Learning"
               />
               <NavButton
                 active={currentView === "studio-tasks"}
@@ -2972,14 +3126,14 @@ function NavButton({
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center gap-0.5 transition-all duration-300 relative ${active ? `${activeColor} scale-105` : "text-[#68717A] hover:text-[#115E8D]"}`}
+      className={`flex flex-1 min-w-0 flex-col items-center gap-0.5 transition-all duration-300 relative ${active ? `${activeColor} scale-105` : "text-[#68717A] hover:text-[#115E8D]"}`}
     >
       <div
         className={`p-1 sm:p-1.5 rounded-lg transition-colors ${active ? activeBg : "bg-transparent"}`}
       >
         {icon}
       </div>
-      <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-tighter">
+      <span className="w-full text-center truncate text-[9px] sm:text-[11px] font-black uppercase tracking-tighter">
         {label}
       </span>
       {active && (

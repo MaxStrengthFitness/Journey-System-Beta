@@ -110,12 +110,28 @@ export default function AccessRequestView({
   };
 
   return (
-    <div className="min-h-screen bg-[#1c1d1f] flex flex-col items-center justify-center p-4 md:p-6 relative overflow-hidden text-white font-sans">
-      {/* Background Ambience */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#3a352c] via-[#1c1d1f] to-[#121212] opacity-85"></div>
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/hexellence.png')] opacity-5 mix-blend-overlay"></div>
-      <div className="absolute inset-0 shadow-[inset_0_0_120px_rgba(0,0,0,0.95)] pointer-events-none"></div>
+    /*
+     * A SCROLL PANE, NOT A min-h-screen BOX.
+     *
+     * index.css sets `html, body { overflow: hidden }` so the bounded 100dvh
+     * app shell never rubber-bands on iPadOS. This screen renders OUTSIDE that
+     * shell, so it had no scroller of its own — and with `overflow-hidden` on
+     * top of it, any part of the form past the first viewport was laid out and
+     * physically unreachable on a tablet. Same class of bug as the studio
+     * selection screen, same fix.
+     *
+     * `justify-center` is why the inner `min-h-full` wrapper is needed: on its
+     * own, centring an overflowing flex child clips the TOP of it, which is
+     * worse than the original bug because it hides the heading.
+     */
+    <div className="touch-pane overflow-y-auto overscroll-contain bg-[#1c1d1f] relative text-white font-sans">
+      {/* Background Ambience — fixed, so it covers the viewport rather than
+          scrolling away with a long form. */}
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#3a352c] via-[#1c1d1f] to-[#121212] opacity-85"></div>
+      <div className="fixed inset-0 bg-[url('https://www.transparenttextures.com/patterns/hexellence.png')] opacity-5 mix-blend-overlay"></div>
+      <div className="fixed inset-0 shadow-[inset_0_0_120px_rgba(0,0,0,0.95)] pointer-events-none"></div>
 
+      <div className="relative z-10 flex min-h-full flex-col items-center justify-center p-4 md:p-6">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
@@ -405,6 +421,7 @@ export default function AccessRequestView({
           )}
         </AnimatePresence>
       </motion.div>
+      </div>
     </div>
   );
 }

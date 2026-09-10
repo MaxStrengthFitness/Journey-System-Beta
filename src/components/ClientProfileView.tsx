@@ -18,7 +18,7 @@ import {
   startAfter,
 } from "firebase/firestore";
 import { db, auth } from "../firebase";
-import { studioHour, formatStudioTime } from "../lib/studio-time";
+import { studioHour, formatStudioTime, studioTodayKey } from "../lib/studio-time";
 import {
   User,
   Phone,
@@ -132,7 +132,7 @@ import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { WorkoutChartGrid } from "./WorkoutChartGrid";
 import { useToast } from "../contexts/ToastContext";
 import { StrongConfirmationModal } from "./StrongConfirmationModal";
-import { ClientHistoryCalendar } from "./ClientHistoryCalendar";
+import { ClientHistoryTab } from "../features/client-history";
 import { OccupationSelect } from "./OccupationSelect";
 import { getErgonomicRisk } from "../data/occupational-matrix";
 import {
@@ -312,7 +312,6 @@ export function ClientProfileView({
   const [isSavingToggle, setIsSavingToggle] = useState(false);
   const [historyPage, setHistoryPage] = useState(0);
   const [showFullChart, setShowFullChart] = useState(false);
-  const [sessionLimit, setSessionLimit] = useState(10);
   const [lastVisibleSession, setLastVisibleSession] = useState<any>(null);
   const [hasMoreSessions, setHasMoreSessions] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -498,7 +497,7 @@ export function ClientProfileView({
     type: any;
     notes: string;
   }>({
-    date: new Date().toISOString().split("T")[0],
+    date: studioTodayKey(),
     title: "",
     type: "Other",
     notes: "",
@@ -741,7 +740,7 @@ export function ClientProfileView({
         updatedAt: serverTimestamp(),
       });
       setNewEventForm({
-        date: new Date().toISOString().split("T")[0],
+        date: studioTodayKey(),
         title: "",
         type: "Other",
         notes: "",
@@ -1985,35 +1984,32 @@ export function ClientProfileView({
             hasQuotaError={hasQuotaError}
           />
         </TabsContent>
+        {/* Sep 2026 (History round): every month since the first visit, drawn
+            in the Calendar tab's language, plus a list that reads like the
+            rest of the profile. No `overflow-y-auto` and no bounded height
+            here — the PAGE scrolls, which is what lets the year and month
+            headers stay pinned while you read. The old "Load More Sessions"
+            button that lived below it set a state variable nothing read; the
+            tab now loads its own history, see features/client-history. */}
         <TabsContent
           value="history"
-          className="flex-1 min-h-100 relative pb-20 overflow-y-auto custom-scrollbar"
+          className="mt-0 pb-8 focus-visible:outline-none"
         >
-          <div className="space-y-6">
-            {clientId && (
-              <div className="flex flex-col gap-4">
-                <ClientHistoryCalendar
-                  clientId={clientId}
-                  clientHomeStudioId={client?.homeStudioId}
-                  machines={machines}
-                  trainers={trainers}
-                  user={user}
-                  allLogs={allLogs}
-                  clientEvents={client?.events || []}
-                />
-
-                <div className="flex justify-center pb-8">
-                  <Button
-                    variant="outline"
-                    onClick={() => setSessionLimit((prev) => prev + 30)}
-                    className="border-[#38BDF8]/50 text-[#38BDF8] hover:bg-[#38BDF8]/10 font-bold tracking-widest uppercase text-[11px] h-12 rounded-2xl px-6"
-                  >
-                    Load More Sessions
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+          {clientId && (
+            <ClientHistoryTab
+              clientId={clientId}
+              client={client}
+              machines={machines}
+              trainers={trainers}
+              routines={routines}
+              seedLogs={allLogs}
+              timeZone={
+                studios?.find((s) => s.id === client?.homeStudioId)?.timezone ||
+                undefined
+              }
+              disabled={!!hasQuotaError}
+            />
+          )}
         </TabsContent>
         <TabsContent
           value="clinical"

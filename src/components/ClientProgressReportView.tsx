@@ -98,6 +98,7 @@ import {
   type ReportStepId,
 } from "../features/progress-report";
 import { SubjectiveClientCopy, answeredCount } from "../features/subjective-report";
+import { studioTodayKey } from "../lib/studio-time";
 
 /** Firestore Timestamp | Date | ISO string → "Jan 15, 2026", or null. */
 const shortDate = (v: any): string | null => {
@@ -194,7 +195,7 @@ export function ClientProgressReportView({
     clientId: client.id!,
     trainerId: trainer.id!,
     trainerName: trainer.fullName,
-    date: new Date().toISOString().split("T")[0],
+    date: studioTodayKey(),
     isManual: false,
     status: "Draft",
 
@@ -305,8 +306,8 @@ export function ClientProgressReportView({
       previousGoalOutcome: null,
       previousGoalNote: "",
       nextGoal: "",
-      nextGoalTargetDate: addDays(new Date().toISOString().split("T")[0], 90),
-      followUpDate: addDays(new Date().toISOString().split("T")[0], 90),
+      nextGoalTargetDate: addDays(studioTodayKey(), 90),
+      followUpDate: addDays(studioTodayKey(), 90),
       checkpoints: [],
     },
     trainerNotes: "",

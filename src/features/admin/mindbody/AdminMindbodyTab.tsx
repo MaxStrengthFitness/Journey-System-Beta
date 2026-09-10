@@ -90,6 +90,7 @@ import {
   type LogLine,
   type StudioDiagnosis,
 } from "./diagnostics";
+import { studioTodayKey } from "../../../lib/studio-time";
 
 interface Props {
   studios: Studio[];
@@ -230,11 +231,11 @@ export function AdminMindbodyTab({
 
   /* ---------------- sync settings and manual pull ---------------- */
 
-  const todayStr = () => new Date().toISOString().slice(0, 10);
+  const todayStr = () => studioTodayKey();
   const futureStr = (days: number) => {
     const d = new Date();
     d.setDate(d.getDate() + days);
-    return d.toISOString().slice(0, 10);
+    return studioTodayKey(d);
   };
   const [startDate, setStartDate] = useState(todayStr);
   const [endDate, setEndDate] = useState(() => futureStr(30));

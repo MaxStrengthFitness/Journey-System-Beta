@@ -2,7 +2,7 @@
 
 A living document. We update it every working session — newest decisions at the top of each list. (Contractor-scope backend items live in PROJECT_TRACKER.md. The tablet walkthrough and cleanup pass live in TESTING-CHECKLIST.md.)
 
-_Last updated: Sep 8, 2026 — session-log persistence (a live data-loss bug) and the studio picker rebuild, on `fix/session-persistence-and-studio-picker`, not yet merged._
+_Last updated: Sep 10, 2026 (evening) — **everything went live**: the studio hub, the Catalog wiki, the new one-button Learning tab, the client History tab and Eastern-time dates, merged into `master` by `ship-sep10.ps1`. Record: **`GO-LIVE-SEP10.md`**. Not yet looked at on a real iPad._
 
 ---
 
@@ -100,6 +100,257 @@ Rules deployed to production (`prod` / `gen-lang-client-0731527386`), verified b
 ### Phase 7 — Demo mode + tutorials · *driven by the FileMaker cutover date*
 
 **Why last:** it is four different projects wearing one name and it needs a business decision, not a technical one. The decision list is in "Open — reported Sep 5" below.
+
+---
+
+## 🟢 Live — the Sep 10 go-live — `sep10-go-live` merged into `master`
+
+**AJ, Sep 10:** *"we are based in Ohio so we should go of est / i think we should combo acadamy and catalog into learning or something similar also / lets push everything to master and live"*
+
+The record — what shipped, the eleven commits, how to roll back — is **`GO-LIVE-SEP10.md`**.
+
+### Decisions (AJ, Sep 10)
+
+| Question | Chosen |
+| --- | --- |
+| Eastern time | **Going forward only.** New records store the Eastern day; saved sessions keep their UTC date (History places them by start time anyway). |
+| Catalog + Academy | **One "Learning" tab.** A Catalog / Academy switch in the wiki's top bar, on every page of both. |
+| Who runs the push | AJ's PC, from `ship-sep10.ps1`: two pasted lines (`prepare`, then `golive`), with Claude reading `ship-sep10.log` between them. Claude's computer control can see a terminal but cannot type into one. |
+| Demo Mode | **Left out.** It cannot merge cleanly — `DEMO-MODE-BRANCH.md`. |
+
+### Shipped
+
+- [x] **Eastern time** — `studioTodayKey()` / `studioDayKeyOf()` in `lib/studio-time.ts` replace `new Date().toISOString().split("T")[0]` wherever a calendar day is stored or bucketed: the live session, the consultation session, quick start, check-ins, progress reports, client events, the directory's last-performed date, exports, Insights, the Mindbody sync window. `studioDayKeyOf` leaves a plain `YYYY-MM-DD` alone — `new Date("2026-09-10")` is 8 PM the day before in Ohio. Left alone on purpose: the legacy CSV import (parses as local time already), the demo seeders, trainer start dates.
+- [x] **Learning** — `features/wiki/sections.tsx`: a context the shell reads, so both screens got the switch without touching their thirteen `WikiShell` call sites. Tapping the section you are in returns to its index; on an index the one-crumb trail is dropped because the switch already says it; on a phone the switch is icons only. The view names `machine-anatomy` and `academy` are unchanged, so notifications and the settings shortcut still land correctly.
+- [x] **Hub fixes** — the assign dialog was handed `{ id, name }` but read `fullName`, so every trainer showed and SAVED as "A trainer"; the bell had no `task-assigned` icon; `resolve-flow.ts` imported `TaskAuthor` from a file that does not export it. Plus the three hub files the evening's commit list missed (`AccessRequestView.tsx`, `notifications/types.ts`, `.gitignore`).
+- [x] `tsc` **20** (was 23, none new) · **1,443 tests** · `vite build` clean · every commit typechecked on its own · the commit stage rehearsed on a copy of the repo first.
+
+### Still open
+
+- [ ] **Verify on the iPad** — the Hub, the wiki, Learning and History are all live and none has been seen on the hardware.
+- [ ] **Demo Mode** — cherry-pick and rewrite per `DEMO-MODE-BRANCH.md`; `handleSeedDemoClient` stays live until then.
+- [ ] **Saved evening sessions** still carry a UTC `date`; the Journey grid shows them a day late. A correction script is possible but must not disturb the Mindbody matching.
+
+---
+
+## 📅 Now — the client History tab (Sep 10) — `features/client-history`, live Sep 10
+
+**The brief, in AJ's words:** *"the calendar view within that needs match the look of the calendar that the trainers use on the calendar tab … it currently only shows one month at a time, i want to be able to see all the months … calendar is supposed to be a visual repensation so the trainers can see when they took breaks, how much time they take in between, how consistent they are … i feel like we can upgrade the information thats on the list view and make it look like our app more"*
+
+The round doc — iPad checklist, what each commit contains, how to undo — is **`HISTORY-ROUND.md`**. Design notes: `src/features/client-history/README.md`.
+
+### The diagnosis — it could not show history however it was drawn
+
+- **The calendar only ever downloaded 30 sessions** (`limit(30)`) — about four months. Paging back showed empty months that were not empty.
+- **"Load More Sessions" did nothing.** It set `sessionLimit` in `ClientProfileView`, which no code read.
+- **List rows older than ~15 sessions read "No machines logged, 0 lb"** — the list borrowed the Journey grid's already-loaded sets.
+
+### Calls made this round — each one is a single constant to change
+
+| Call | Chosen | Where |
+| --- | --- | --- |
+| What counts as a break | 14+ days between visits | `BREAK_MIN_GAP_DAYS`, `model.ts` |
+| "Visits a week" window | the last 12 weeks | `RECENT_WINDOW_DAYS`, `model.ts` |
+| First load | newest 200 sessions; **Load full history** → 2,000 | `FIRST_WINDOW` / `FULL_WINDOW`, `useSessionHistory.ts` |
+| Trainer colours in the calendar grid | **no** — the grid answers *when*; *who* is in the list | `HistoryCalendar.tsx` |
+
+### Shipped to disk Sep 10
+
+- [x] **Every month at once**, as mini copies of the Calendar tab's month grid: 3 across in portrait (a year per screen at 834×1194), 4 on a 13" portrait, 6 in landscape. Blue = visit (the Week heatmap's blue), hatch = a break, sand = a Vacation / Snowbird / Medical event covers it, orange ring = today. Tap a day → that session; tap a month's name → the List at that month. Year headers stay pinned while their months scroll under them.
+- [x] **Four numbers on top** — visits a week, typical gap ("3–4 days", the 25th–75th percentile), breaks of 2+ weeks, longest break with its dates — and a crimson "No visit in 5 weeks" notice while a client is on one.
+- [x] **The list, rebuilt in the app's language:** day tile · trainer avatar in their calendar tone · S# · routine letter · time · one bar per machine in the Journey grid's rep-quality colours · stars / kaizens · machines that went up in weight · days since the last visit · note · volume against the last session on the **same routine**. Breaks are written between the rows. Sets load a month at a time as you scroll.
+- [x] **Session pop-up** re-coloured to the Journey grid; shows the check-in and "felt after" answers, read-only.
+- [x] **Fixed underneath:** the TSC toggle flipped one of the two timed flags (a hold could never go back, and its seconds were zeroed) · deleting a "Log past session" entry lowered counters it had never raised · delete could run before the sets had loaded, orphaning them · routine letters were blank on every live session (the live flow saves `routineId`, not the name) · the pop-up's "Client Status" box was never saved (removed) · evening sessions showed on the next day (History now takes a session's day from its start time, in studio time) · "Log past session" defaulted to the UTC date and accepted a "0026" year.
+- [x] `components/ClientHistoryCalendar.tsx` (1,775 lines) retired — its `git rm` is in the commit steps.
+- [x] **36 new tests**; suite **1,429 green**; `tsc` at the baseline, no new errors; `vite build` clean. Rendered in `harness/history.html` at 834×1194, 1024×1366, 1194×834 and 1366×1024, both themes. **No rules or index changes** — the listener is the same query shape as the old one.
+
+### Not yet verified — read before merging
+
+- [ ] **On a real iPad**, with the checklist in `HISTORY-ROUND.md` — especially a client who went on vacation and a client with 200+ sessions.
+- [ ] **Reads:** the tab now reads up to 200 session documents when opened (was 30). Worth a glance at the Firestore usage graph after a day of real use.
+
+### Found, not changed
+
+- [x] ~~**The live session writes `date` as the UTC day**~~ — fixed the same evening, going forward only (see the go-live above). Was: `WorkoutTrackerView.tsx` `startSession`, `new Date().toISOString().split("T")[0]`. Every session started after 8 PM Eastern (7 PM in winter) is stored as the next day. History works around it; the Journey grid's column dates do not. About a one-line fix with `studioDateKey`, in its own small round — sessions already saved keep the wrong day unless they are backfilled.
+- [ ] **"Log past session" stores trainer initials, not `trainerId`, and raises no counters.** A write-shape decision, left alone.
+- [x] ~~**Three typecheck errors in the uncommitted studio-hub work**~~ — fixed the same evening; the assign-dialog one was a real bug. — `NotificationBell` has no `task-assigned` icon (harmless: it falls back to the plain bell), `StudioHubView` hands `AssignDialog` a `{ id, name }` roster where it expects trainers, `resolve-flow.ts` imports a `TaskAuthor` that `./requests` does not export — and `RUN-THIS-MORNING.md` never adds `src/features/notifications/`.
+
+---
+
+## 📚 Now — the Catalog as a wiki (Sep 10) — `features/wiki`
+
+**The brief, in AJ's words:** *"The catalog just doesn't really match [the Hub and the client profiles], and it also just feels really disorganised. Popping up the keyboard and popping up the catalog selector from the bottom really makes the screen jumbled on the iPad. It needs to be a good resource page that almost feels equivalent to a high quality video game resource wiki."*
+
+### The diagnosis — it was never the colour
+
+`--cat-*` and `--st-*` (the Studio Hub) were **already the same hex values, token for token**. What differed was composition: three panes and a bottom sheet against the Hub's one padded column of cards. Two more causes underneath that:
+
+- **Five modes, three back buttons.** Landing → group filter → picker → detail → Academy takeover, with `"All body groups"` in the rail, `"Body groups"` in the sheet, and the Academy's own `onBack`. None said where you were.
+- **The iPad jumble was one line.** `leaveLanding()` called `setSheetOpen(true)` on stack layouts, and the sheet mounted `MachinePicker` with `autoFocusSearch` — so choosing a body group produced a sheet over the content *and* a keyboard over the sheet. On an 834px portrait iPad that leaves about a third of the screen showing what you asked for.
+
+### Decisions taken this round (AJ, Sep 10)
+
+| Question | Chosen |
+| --- | --- |
+| Shape | **Two tabs.** Catalog = the machine wiki; the Academy becomes its own top-level screen. Both on one shared shell so they cannot drift into two visual languages. **Changed the same evening: one "Learning" tab with a Catalog / Academy switch** — see the go-live above. |
+| iPad navigation | **Page navigation, no sheet.** Index → full-page article → breadcrumb back. Search is a screen you deliberately go to. |
+| Admin editing | **Overlay + new pages.** The shipped 283k-word corpus stays a read-only baseline; admins add sections on top of it and author brand-new pages. |
+| Wiki feel | Infobox / stat block · colour-coded categories + icons · cross-links between pages · **"keeping the model of the muscles is key and all the info we have with it is fully necessary"** |
+
+### Phase 1 + 2 — shipped to disk Sep 10
+
+- [x] **`src/features/wiki/`** — the shared shell. `WikiShell` (one breadcrumb, one back, one search button), `WikiArticle` / `WikiSection` / `WikiFoldable`, `Infobox`, `WikiIndex`, `WikiLinks`, `WikiSearch`, `categories.ts`, `wiki.css`, `wiki.tokens.css`. Built to the Hub's conventions on purpose — the italic uppercase title, the 11px/800/0.14em micro-labels, 14px-radius cards, 44/52px rows, one scroller padded `1rem`.
+- [x] **`CatalogWikiView`** replaces `CatalogView`. Two screens, not five. `useLayoutMode` is gone: **one render tree**, and the only thing 1024px changes is CSS grid moving the infobox into a sticky column. The old file kept a `split` tree and a `stack` tree and they drifted; that cannot happen again.
+- [x] **No `Sheet` anywhere in the Catalog.** Search is a route, which also sidesteps the leaked `pointer-events: none` recorded in the iPad/overlay notes.
+- [x] **The anatomy model is now full size in *both* layouts** — first block of the infobox on narrow, sticky beside the prose on wide. It used to condense to a 72px bar in portrait, which is the layout the app is actually used in.
+- [x] **Reading vs doing.** Setup, execution, contraindications, warnings and the studio playbook are *on the page*; upkeep, studio setup and studio notes fold away. `MachineDetail`'s nine collapsibles were a stack of closed drawers — and `useSectionState` is keyed per section, so closing "Execution" once emptied it on all 22 machines forever.
+- [x] **Cross-links.** Machine → Academy quick card, machine → spoken script (`AcademyView` gained an additive `initialFocus` prop so the script link lands on the script), machine → related machines, figure → a machine that trains the muscle you tapped.
+- [x] **Rollback is one line.** `features/catalog/index.ts` re-points `CatalogView`; the old screen is still on disk, still compiling, exported as `LegacyCatalogView`. `AcademyView` likewise stays on disk behind the new `AcademyWikiView`.
+
+### Not yet verified — read before merging
+
+**The desktop app's Linux VM share layer has been down since Sep 9** (`no Plan9 drive shares mounted`), so `tsc`, `vitest`, `vite build` and `git` could not be run against the project. What *was* verified, in a clean TypeScript 5.8 project with real `@types/react` and stubs for the app's own modules:
+
+- **`tsc --noEmit`: 0 errors** across all 22 new files, with `strict`, `noUnusedLocals` and `noUnusedParameters` on.
+- **`vitest`: 130/130 passing** — `studio-wiki.test.ts` (28), `glossary-links.test.tsx` (14), `academy-machines.test.ts` (20, against the real corpus JSON) and `hub.test.ts` (68, up from 46). Real runs of the real pure modules, not stubs.
+- CSS brace balance, `@import` ordering, and **no raw hex values in `wiki.css`** (tokens only, as the discipline requires).
+- All **37 lucide icon names** verified present in `lucide-react@0.546.0`.
+
+Stubs are not the real modules, so the run in `RUN-THIS-MORNING.md` is the one that counts.
+
+- [ ] **Work down `RUN-THIS-MORNING.md`.** PowerShell only — it does not need Claude's shell, which is the point.
+- [ ] **Deploy `firestore.rules`**, then `scripts/fetch-live-rules.ts` to prove what is actually live. Studio notes and new pages fail with permission-denied until this runs; everything else works without it.
+- [ ] **Commit per area on a branch** — nothing here is committed. Do not push: Render builds `master`, so a merge is a deploy.
+- [ ] **Look at it on the iPad, portrait and landscape.** This is the whole point of the round.
+
+### Phase 3 — the Academy as its own tab · shipped to disk Sep 10
+
+- [x] **`AcademyWikiView`** on `features/wiki`. Six ways in, because there are six reasons to come: this studio's own pages, the curriculum, the machine cards, the spoken scripts, the deep dives, and reference (cueing phrasebook + glossary). The old five tabs above the content are gone — the index lists everything and the contents cards scroll to a group, same call the Catalog index makes.
+- [x] **A seventh nav button, and the decision behind it.** AJ was asleep, so: Academy gets its own slot. `NavButton` now takes `flex-1 min-w-0` and the label truncates, so seven divide the bar evenly. On an iPad there is room to spare; on a 375px phone "Active Session" clips. **If that proves wrong, fold Catalog and Academy into one slot — do not shorten the labels, they are how people find the tab.**
+- [x] **Cross-tab links both ways.** Machine → card/script switches tab, and the breadcrumb reads *`Chest Press` › Academy › `card`* so there is a way home — a plain tab switch would have stranded the reader. Card ⇄ script, card/script → machine. `AppContent` owns the two jump states; each screen clears its own the moment it is honoured, so a re-render cannot yank a trainer back.
+- [x] **Glossary auto-linking.** Terms are linked where they are used, and the definition opens inline rather than in a popover that covers the sentence you were reading. Three rules keep it from becoming noise: whole words only (and nothing under 4 characters), longest term wins, and once per term per passage capped at six. The matcher is compiled once per glossary, not per paragraph — a 200-term alternation rebuilt for 400 blocks is measurable jank on an iPad. 14 tests, including the `lastIndex` bug that silently skips matches in alternating paragraphs.
+
+### The Academy flow pass · Sep 10, after a review of the first cut
+
+AJ asked whether the Academy's information flow made logical sense. It did not, in three ways,
+and checking the actual corpus rather than trusting the first design found a fourth.
+
+- [x] **The same twenty machines were listed three times.** 18 cards, 20 scripts, 19 deep dives —
+  all the same equipment. "Chest Press" appeared in three separate groups on one page, 57 rows to
+  reach 20 machines. `academy-machines.ts` joins them into **one row per machine**; the card is the
+  front door and the other two are links on it. That also gave the card page the deep-dive link it
+  was missing.
+- [x] **Ten of the eighteen card titles are not names.** They are the Academy's abbreviations —
+  "CP", "CR", "LC", "LE", "LP", "OH", "Pd", "PO", "Abs", "Lumbar" — so the first cut rendered a row
+  called **"Pd"**. Names now come from `MACHINE_DATABASE` via `CANONICAL_TO_DB_KEY`, which is the
+  same string the Catalog shows and inherits the contested-neck resolution (`m-neck` →
+  `cervical_extension`, the entry whose safety copy says NEVER take to failure).
+- [x] **The order was inverted for how it is used.** The 561-minute curriculum sat above the
+  30-second lookup, on a screen used mid-shift. Reordered by **how much time the reader has** —
+  the same "structure by lifespan" principle behind the Studio Hub: By machine → This studio →
+  Cueing & language → Curriculum.
+- [x] **The first screen was an empty box.** A studio leader with no pages saw a "This studio"
+  group containing "Nothing yet." at the very top, and its contents card read **"0 machines"** —
+  `WikiContents` hardcoded the noun, so under Curriculum it said "13 machines". `countLabel` is now
+  a prop, and the studio group is absent entirely until there is something in it.
+- [x] **Deep dives had no machine link at all** — overviews carry only a title, and the Academy's
+  titles disagree with the app's names on eight machines ("Chest Flye"/"Pec Fly",
+  "Pulldown (Torso Arm)"/"Torso Arm"). An alias index built from every name a machine is known by —
+  app name, database key, card title, card abbr, script head, script abbr — resolves **19 of 19**.
+- [x] **The "back to the machine" crumb went stale.** It was held in state, so arriving from the
+  Chest Press then opening a curriculum topic left "Chest Press ›" on an unrelated page. It is now
+  derived from the current route and cannot go stale.
+- [x] **The Executive Summary is surfaced.** Module 13 condenses modules 1–4 — the fastest way in,
+  filed last by the Academy's own numbering. The modules are *not* reordered (that sequence is
+  doctrine); a note at the top of the group points at it.
+- [x] **20 new tests, run against the real corpus JSON** rather than fixtures, so a
+  `build-academy-content.ts` rebuild that breaks the join fails loudly instead of quietly dropping
+  links. 62/62 green.
+
+What was deliberately left alone: the order *within* an article (title → lede → infobox → the
+Academy's content → this studio's note → cross-links). The studio overlay sits **after** the
+Academy's version because an overlay is a diff and only means something against the baseline it
+modifies.
+
+### Phase 4 — the studio's own content · shipped to disk Sep 10
+
+- [x] **One collection, `studios/{studioId}/wiki/{docId}`**, discriminated by `kind: "page" | "overlay"` — one rules block, one listener, one editor, rather than a second system beside `machineNotes` and `playbook`.
+  - **overlay** — a note ON something the app ships (machine, topic, card, script, deep dive). Deterministic doc id from the target, so two trainers editing the Chest Press note converge on one document instead of quietly writing two that contradict each other. **Any trainer may write one** — machineNotes posture, no override power over safety content.
+  - **page** — a subject the corpus does not cover. Studio leaders and above.
+- [x] **`kind` is pinned on update in the rule.** That single line is what stops an overlay — which anyone can write — being promoted into a page to escape the leader check. Branches ordered cheap-first: the `kind` comparison is free, `isStudioOwnerOrHeadTrainer()` resolves the caller through document reads, and the overlay case short-circuits before it. `!('clientId' in ...)` is enforced here too, same argument as the playbook.
+- [x] **The shipped corpus is never touched.** Overlays render beside the baseline, dashed-bordered, attributed and dated. A studio editing the Academy in place would fork the curriculum silently and the next trainer would have no way to tell whose words they were reading.
+- [x] **The editor is a plain textarea** — `## heading`, `- bullet`, everything else a paragraph. `parseBlocks`/`serialiseBlocks` are exact inverses, so save-and-reopen shows what you typed. Inline, never a dialog: a Base UI dialog that unmounts on an early return leaks `pointer-events: none` onto `<body>`, which presents as "the mouse works but the iPad is frozen".
+- [x] Retire, never delete — a machine article may link to a page and Firestore does not cascade. Hard delete stays with management, in the rule.
+- [ ] **Still open:** `mindbodyLimbo`, `routinePresets` and `studioMachineSettings` have no rules block. The `wiki` deploy does not make that worse (no rules = already denied) but it is the next deploy, so it is the moment to fix them.
+
+### The morning checklist
+
+`RUN-THIS-MORNING.md` at the repo root: typecheck → tests → build → look at it on the iPad →
+deploy rules → four commits, one per area. It also lists how to undo each piece.
+
+---
+
+## 🧑‍🤝‍🧑 Now — who does what on the studio hub (Sep 10)
+
+AJ asked for the same flow review applied to how tasks get assigned. The answer was that they
+are not assigned at all, in three different half-finished ways.
+
+### What was actually there
+
+| Mechanism | Where | Built? | Wired? |
+| --- | --- | --- | --- |
+| `assigneeTrainerId` on a template | `types.ts:275` | type only | **never read, never written — one line, zero call sites** |
+| `claimedBy` on a task instance | types, `mutations`, `useTaskActions` | fully | **`toggleClaim` had zero call sites** |
+| `claimedBy` on a request | `requests.ts`, `RequestsLane` | fully | fully — Claim / Drop / Take over |
+| `perTrainer` on an initiative | `initiatives.ts` | fully | fully |
+
+Requests and initiatives had real per-person accountability. The recurring studio tasks — the
+biggest block on the screen — had none, and both mechanisms that would have given it to them
+were built and never connected.
+
+### The four symptoms, all one root cause
+
+- **"My shift" was the STUDIO's list.** Nine trainers on nine iPads saw the same "2 / 21".
+- **It merged the two tiers invisibly.** `useStudioTasks` pulls the shared list and the trainer's
+  private one into one array ("Both tiers, one list"), and the strip rendered them identically —
+  so ticking a row eight colleagues can see looked exactly like ticking a private note. The data
+  model went to real lengths to keep those apart (separate paths, because a `scope` field cannot
+  be enforced on a Firestore LIST query).
+- **`completedBy` was written on every tick and shown in ONE place** — `ManagePanel:576`, the
+  manager's panel. The people doing the work never saw who did what.
+- **The Mine toggle's own comment claimed it "narrows every lane at once."** It was passed to two
+  lanes of four. It could not narrow the shift strip, because no row knew whose it was.
+
+### Decisions (AJ, Sep 10)
+
+**Nobody owns a studio task.** No assignment. The original argument stands and is quoted in the
+code: a hard claim means a trainer claims the bins at 9am, gets pulled into a consultation, and
+the bin stays full because the app told everyone else it was handled. What was missing was
+ATTRIBUTION, which is a different thing. Where naming someone else ever does land, it is
+manager-gated and belongs on the INSTANCE, never the template.
+
+### Shipped to disk Sep 10
+
+- [x] **`assigneeTrainerId` deleted**, with the reasoning recorded in the `types.ts` header so
+  nobody re-adds it: it sat on the TEMPLATE, so "Sarah does the towels" meant every occurrence
+  forever and went stale the day Sarah changed shift.
+- [x] **`ShiftGroup` gained `scope`, `claimedBy`, `claimedCount`, `completedBy`, `finishers`,
+  `mine`**, plus `shiftGroupCredit()` for the wording and `mineRows()` for the filter. One name
+  or a count — two names truncate in a 52px row.
+- [x] **Grouping keys on scope**, so a private task can never merge into a shared one. Structural,
+  not left to id uniqueness.
+- [x] **`toggleClaimGroup` + `setManyTaskClaims`** — the group is the unit a trainer thinks in
+  ("I've got closing", not "I've got the leg press and seventeen others"), and one tap on a
+  19-machine group is now one batched write, not 19 round trips. `claimPayload` is shared with
+  the single-row version so the two cannot drift.
+- [x] **The strip is headed "Today's shift"**, personal groups carry a **"Just you"** badge, and
+  Mine finally narrows it — at the ROW level, so claiming 3 of 19 shows 3 of 3.
+- [x] **22 new tests**, `hub.test.ts` 46 → 68, all 46 pre-existing still green.
+
+### Left open on purpose
+
+Assignment proper — "Marcus has closing this week" — was offered and declined for now. If it is
+ever wanted: on the instance, manager-written, expiring with the day.
 
 ---
 
@@ -450,7 +701,7 @@ Month / Week / Day rebuilt in `src/features/calendar/` (spec in its README.md). 
 - [x] ~~Phase 4 — Day~~ — rotated 90°: horizontal trainer swimlanes on a shared time axis, so the whole day fits one screen and gaps are obvious. Axis derived from the day's real bookings. Tapping a lane expands that trainer's sessions with names (a 30-min block is one slot wide — no name fits, so don't truncate, disclose). Bookings whose trainer didn't resolve get an "Unassigned" block instead of vanishing.
 - [x] ~~Phase 5 — wire-in + spec~~ — `CalendarView` keeps only resolve + filter; the Mindbody trainer-matching heuristic is unchanged but now lives in one place instead of three drifted copies. Dead `axios` / `updateDoc` / `getDocs` imports removed.
 - [ ] **Verify on the iPad** — both themes; Month with a heavy Thursday; Week's delta on a week with no prior history loaded; the heatmap in dark mode; Day swimlanes in portrait (they scroll horizontally) and a lane expand; the nav arrows staying put stepping Aug → Sep → Oct.
-- [ ] Follow-ups: events only render in Month (they were never meaningful in the old week/day grids). `ClientHistoryCalendar.tsx` (1,643 lines) is a separate component still on the old patterns — fold it onto these tokens on a later pass. Decide whether the Day view should show a NOW line when viewing today.
+- [ ] Follow-ups: events only render in Month (they were never meaningful in the old week/day grids). ~~`ClientHistoryCalendar.tsx` (1,643 lines) is a separate component still on the old patterns — fold it onto these tokens on a later pass.~~ Done Sep 10: replaced by `features/client-history` on the `--cal-*` tokens (see the History tab round). Decide whether the Day view should show a NOW line when viewing today.
 
 ### 🧰 Shipped — Equipment tab dual-pane (Sep 3) — branch `equipment-dual-pane`, one commit per phase
 

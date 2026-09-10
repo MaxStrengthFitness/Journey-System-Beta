@@ -1,0 +1,945 @@
+/* ==========================================================================
+   Client History — layout
+   --------------------------------------------------------------------------
+   The History tab speaks the Calendar tab's language on purpose: the same
+   tokens (--cal-*), the same shell, header and segmented control, the same
+   hairline month grid and the same blue the Week view's heatmap uses for
+   "busy". A trainer who knows one screen can read the other.
+
+   Colour budget, same as the rest of the profile:
+     blue   (--cal-heat-4/5)   a visit — neutral data, the thing being counted
+     hatch  (--hist-hatch)     a break of two weeks or more — absence, drawn
+     sand   (--hist-away-*)    away for a reason (vacation, snowbird, medical)
+     orange (--cal-hero)       today's ring, nothing else
+     crimson(--eq-alert)       "hasn't been in for N days" — the one that matters
+     green / grey / crimson    rep quality, from the Journey grid's own tokens
+
+   No hex values below the token block. Layout reacts to the width of the
+   History panel itself (container queries), not the window, because the
+   panel sits inside the profile's padding and max-width.
+
+   The --cal-*, --jg-* and --eq-* tokens are NOT re-imported here: main.tsx
+   loads calendar.css, journey-grid.css and equipment.css globally. A second
+   copy arriving later with the profile chunk would silently undo any token
+   override placed between the two.
+   ========================================================================== */
+
+:root {
+  --hist-visit:     var(--cal-heat-4);
+  --hist-visit-2:   var(--cal-heat-5);
+  --hist-visit-ink: var(--cal-heat-ink-hi);
+  --hist-today:     var(--cal-hero);
+  /* Hatch lines: slate at 30% so a break reads as texture, not as a colour. */
+  --hist-hatch:     rgba(91, 103, 112, 0.30);
+  /* Away: the calendar's amber tone 4, at fill / text / edge strength. */
+  --hist-away-fill: #f6ecd9;
+  --hist-away-ink:  #895306;   /* 5.9:1 on the fill */
+  --hist-away-edge: #a16207;
+}
+
+.dark,
+[data-theme="dark"] {
+  --hist-hatch:     rgba(139, 152, 164, 0.30);
+  --hist-away-fill: rgba(245, 158, 11, 0.15);
+  --hist-away-ink:  #fbbf24;
+  --hist-away-edge: #f59e0b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not([data-theme="light"]) {
+    --hist-hatch:     rgba(139, 152, 164, 0.30);
+    --hist-away-fill: rgba(245, 158, 11, 0.15);
+    --hist-away-ink:  #fbbf24;
+    --hist-away-edge: #f59e0b;
+  }
+}
+
+/* ---------- Shell ----------------------------------------------------- */
+
+.hist {
+  container-type: inline-size;
+  container-name: hist;
+}
+
+.hist-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hist-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 13px;
+  border-radius: 12px;
+  border: 1px solid var(--cal-border);
+  background: var(--cal-surface);
+  color: var(--cal-ink);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.hist-btn svg { color: var(--cal-live-text); flex: 0 0 auto; }
+.hist-btn:hover { background: var(--cal-surface-3); }
+.hist-btn:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 2px; }
+.hist-btn:disabled { opacity: 0.55; cursor: default; }
+
+/* The view switch is the Calendar tab's segmented control, a size up: it is
+   the first control a thumb looks for on this tab. */
+.hist .cal-seg__btn { height: 34px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- "Hasn't been in" notice ---------------------------------- */
+
+.hist-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-alert);
+  background: var(--eq-alert-fill);
+  color: var(--cal-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+.hist-notice svg { color: var(--eq-alert); flex: 0 0 auto; }
+.hist-notice b { color: var(--eq-alert); font-weight: 900; }
+.hist-notice__away { margin-left: auto; }
+
+/* ---------- Stats ------------------------------------------------------ */
+
+.hist-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+@container hist (min-width: 620px) {
+  .hist-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.hist-stat {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 11px 14px 12px;
+  border-radius: var(--cal-radius);
+  border: 1px solid var(--cal-border);
+  background: var(--cal-surface);
+}
+.hist-stat__label {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+}
+.hist-stat__value {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  line-height: 1;
+  min-width: 0;
+}
+.hist-stat__value b {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--cal-ink);
+  font-variant-numeric: tabular-nums;
+}
+.hist-stat__value span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+  white-space: nowrap;
+}
+.hist-stat__sub {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cal-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hist-stat--alert .hist-stat__value b { color: var(--eq-alert); }
+
+/* ---------- Legend ----------------------------------------------------- */
+
+.hist-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cal-ink-muted);
+}
+.hist-legend__item { display: inline-flex; align-items: center; gap: 6px; }
+.hist-legend__hint { margin-left: auto; color: var(--cal-ink-faint); }
+@container hist (max-width: 560px) { .hist-legend__hint { display: none; } }
+
+.hist-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid var(--cal-border);
+  background: var(--cal-surface);
+  flex: 0 0 auto;
+}
+.hist-swatch--visit { background: var(--hist-visit); border-color: transparent; }
+.hist-swatch--break {
+  background-image: repeating-linear-gradient(135deg, var(--hist-hatch) 0 1.5px, transparent 1.5px 4.5px);
+}
+.hist-swatch--away { background: var(--hist-away-fill); border-color: var(--hist-away-edge); }
+.hist-swatch--today { box-shadow: inset 0 0 0 2px var(--hist-today); border-color: transparent; }
+
+/* ---------- Year ------------------------------------------------------- */
+
+.hist-years { display: flex; flex-direction: column; gap: 18px; }
+.hist-year { display: flex; flex-direction: column; gap: 10px; }
+
+/* Sticky against the page's own scroller, so the year you are reading stays
+   named while its months scroll past. It needs an opaque background, and no
+   ancestor between it and the page may clip overflow.
+
+   `top` is the scroller's padding, negated. Every engine pins a sticky box
+   inside the scroll container's PADDING, so against the app's `p-6` main a
+   plain `top: 0` stuck 24px down, with months sliding past in the strip
+   above it. HistoryView measures the real padding into --hist-stick-top. */
+.hist-year__head,
+.hist-lmonth__head {
+  position: sticky;
+  top: var(--hist-stick-top, 0px);
+  z-index: 3;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 2px;
+  background: var(--cal-bg);
+}
+.hist-year__num {
+  font-size: 22px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--cal-ink);
+}
+.hist-year__meta,
+.hist-lmonth__count {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+  white-space: nowrap;
+}
+.hist-rule { flex: 1; height: 1px; align-self: center; background: var(--cal-border); min-width: 12px; }
+
+/* Twelve months divide by 2, 3, 4 and 6, so every column count keeps a year
+   in whole rows:
+     phone              2 across
+     iPad portrait      3 across  (834: a year is four rows, one screen)
+     13" portrait       4 across
+     any landscape      6 across  (a whole year in two rows — landscape is
+                                   short, and the year is the unit you read)
+   Landscape cells get small (~22px on an 11" iPad), so the card tightens up
+   there; the calendar is for reading the pattern, and every day is still a
+   tap target that opens its session. */
+.hist-months {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+@container hist (min-width: 540px)  { .hist-months { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@container hist (min-width: 860px)  { .hist-months { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@container hist (min-width: 1000px) {
+  .hist-months { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+  .hist-month { padding: 7px 6px 7px; gap: 5px; }
+  .hist-cell { font-size: 9.5px; }
+  .hist-month__count b { font-size: 15px; }
+}
+
+/* ---------- Month card -------------------------------------------------- */
+
+.hist-month {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 8px 9px;
+  border-radius: var(--cal-radius);
+  border: 1px solid var(--cal-border);
+  background: var(--cal-surface);
+}
+.hist-month__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2px;
+  min-height: 24px;
+}
+.hist-month__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--cal-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.hist-month__name svg { color: var(--cal-ink-faint); }
+.hist-month__name:hover,
+.hist-month__name:hover svg { color: var(--cal-live-text); }
+.hist-month__name:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 2px; }
+.hist-month__count {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  line-height: 1;
+}
+.hist-month__count b {
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--cal-ink);
+}
+.hist-month__count span {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cal-ink-faint);
+}
+.hist-month--quiet .hist-month__count b { font-size: 14px; color: var(--cal-ink-faint); }
+
+.hist-dow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: var(--cal-ink-faint);
+}
+
+/* The Calendar tab's month grid in miniature: 1px hairlines are the grid's
+   own background showing through a 1px gap. */
+.hist-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid var(--cal-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--cal-border);
+}
+.hist-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: var(--cal-surface);
+  color: var(--cal-ink-faint);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.hist-cell--blank,
+.hist-cell--before,
+.hist-cell--future { background: var(--cal-bg); }
+.hist-cell--before,
+.hist-cell--future { color: var(--cal-ink-faint); opacity: 0.55; }
+.hist-cell--rest { color: var(--cal-ink-muted); }
+.hist-cell--break {
+  background-color: var(--cal-surface);
+  background-image: repeating-linear-gradient(135deg, var(--hist-hatch) 0 1.5px, transparent 1.5px 5px);
+}
+.hist-cell--away { background: var(--hist-away-fill); color: var(--hist-away-ink); }
+.hist-cell--visit {
+  background: var(--hist-visit);
+  color: var(--hist-visit-ink);
+  font-weight: 900;
+  cursor: pointer;
+}
+.hist-cell--double { background: var(--hist-visit-2); }
+.hist-cell--visit:hover { filter: brightness(1.08); }
+.hist-cell--visit:focus-visible { outline: 2px solid var(--cal-ink); outline-offset: -2px; }
+.hist-cell--today { box-shadow: inset 0 0 0 2px var(--hist-today); color: var(--cal-ink); font-weight: 900; }
+.hist-cell--visit.hist-cell--today { color: var(--hist-visit-ink); }
+/* A client event on this day (progress report, alert, birthday): a corner
+   dot, clear of the number at every cell size. The event itself is named
+   under the month. */
+.hist-cell--marker::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--cal-hero);
+}
+.hist-cell--visit.hist-cell--marker::after { background: var(--hist-visit-ink); }
+
+.hist-month__events { display: flex; flex-direction: column; gap: 2px; padding: 1px 2px 0; }
+.hist-month__event {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--cal-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hist-month__event > i {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--cal-ink-muted);
+}
+.hist-month__event > span { overflow: hidden; text-overflow: ellipsis; }
+.hist-month__event--away { color: var(--hist-away-ink); }
+.hist-month__event--away > i { border-radius: 2px; background: var(--hist-away-edge); }
+
+/* ---------- Footer / empty ------------------------------------------- */
+
+.hist-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0 2px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cal-ink-muted);
+}
+.hist-foot b { color: var(--cal-ink); font-weight: 900; }
+
+/* ---------- List ------------------------------------------------------- */
+
+.hist-list { display: flex; flex-direction: column; gap: 14px; }
+.hist-lmonth { display: flex; flex-direction: column; gap: 6px; scroll-margin-top: 6px; }
+.hist-lmonth__name {
+  font-size: 18px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--cal-ink);
+}
+.hist-lmonth__year {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: var(--cal-ink-muted);
+}
+
+.hist-lcard {
+  border-radius: var(--cal-radius);
+  border: 1px solid var(--cal-border);
+  background: var(--cal-surface);
+  overflow: hidden;
+}
+
+.hist-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 68px;
+  padding: 10px 14px 10px 14px;
+  border: 0;
+  border-top: 1px solid var(--cal-border);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hist-lcard > :first-child { border-top: 0; }
+/* The trainer's calendar colour as a left edge — the Hub and the Day view
+   mark whose session it is the same way. */
+.hist-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--t-solid, var(--cal-border-strong));
+}
+.hist-row:hover { background: var(--cal-surface-2); }
+.hist-row:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; }
+
+.hist-date { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.hist-date__dow {
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+}
+.hist-date__num {
+  margin-top: 4px;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--cal-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.hist-main { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.hist-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px 8px;
+  min-width: 0;
+}
+
+.hist-line--note { flex-wrap: nowrap; }
+
+.hist-num {
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: var(--cal-live-fill);
+  color: var(--cal-live-text);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+.hist-routine {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--cal-ink);
+  color: var(--cal-surface);
+  font-size: 11px;
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1;
+}
+.hist-routine--none { background: var(--cal-surface-3); color: var(--cal-ink-muted); font-style: normal; }
+.hist-who { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.hist-who__name {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--cal-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 14ch;
+}
+.hist-avatar--unknown { background: var(--cal-surface-3); color: var(--cal-ink-muted); }
+.hist-time {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--cal-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hist-time--muted { color: var(--cal-ink-faint); }
+
+.hist-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--cal-border);
+  color: var(--cal-ink-muted);
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.hist-tag--live { border-color: var(--cal-live); color: var(--cal-live-text); }
+.hist-tag--open { border-color: var(--cal-hero); color: var(--cal-hero-text); }
+.hist-tag--away { border-color: var(--hist-away-edge); background: var(--hist-away-fill); color: var(--hist-away-ink); }
+
+/* One bar per machine, in the order they were done. The colours are the
+   Journey grid's own rep-quality edges, so green, grey and crimson mean
+   exactly what they mean in the grid. */
+.hist-strip { display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; }
+.hist-strip > i {
+  width: 7px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--jg-q-done-edge);
+}
+.hist-strip > i[data-q="3"] { background: var(--jg-q-max-edge); }
+.hist-strip > i[data-q="1"] { background: var(--jg-q-poor); }
+.hist-strip--waiting > i { background: var(--cal-surface-3); }
+
+.hist-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--cal-ink-muted);
+  white-space: nowrap;
+}
+.hist-meta b { color: var(--cal-ink-2); font-weight: 900; }
+.hist-meta--star { color: var(--jg-q-star); }
+.hist-meta--kaizen { color: var(--jg-q-poor-text); }
+.hist-meta--up { color: var(--jg-delta-up); }
+.hist-meta--up b { color: inherit; }
+
+.hist-note {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  font-style: italic;
+  color: var(--cal-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hist-vol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  width: 88px;
+  line-height: 1;
+}
+.hist-vol__label {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cal-ink-faint);
+}
+.hist-vol__num {
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--cal-ink);
+  font-variant-numeric: tabular-nums;
+}
+.hist-vol__num small { font-size: 10px; font-weight: 800; color: var(--cal-ink-muted); margin-left: 2px; }
+.hist-vol__delta { font-size: 11px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.hist-vol__delta--up { color: var(--jg-delta-up); }
+.hist-vol__delta--down { color: var(--cal-ink-faint); }
+
+@container hist (max-width: 540px) {
+  .hist-row { grid-template-columns: 40px minmax(0, 1fr); }
+  .hist-vol { display: none; }
+  .hist-who__name { display: none; }
+}
+
+/* A break is written into the list where it happened, in the same hatch the
+   calendar uses — so the two views mark absence identically. */
+.hist-break {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--cal-border);
+  background-color: var(--cal-bg);
+  background-image: repeating-linear-gradient(135deg, var(--hist-hatch) 0 1.5px, transparent 1.5px 6px);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cal-ink-muted);
+}
+.hist-break b {
+  color: var(--cal-ink);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.hist-break .hist-tag { margin-left: auto; }
+.hist-break--ongoing {
+  border: 1px solid var(--eq-alert);
+  border-radius: var(--cal-radius);
+  background-color: var(--eq-alert-fill);
+}
+.hist-break--ongoing b { color: var(--eq-alert); }
+
+/* ---------- Session detail: rep quality in the grid's colours --------- */
+
+.hist-set { border-width: 2px; border-style: solid; }
+.hist-set--max  { border-color: var(--jg-q-max-edge);  background: var(--jg-q-max-fill); }
+.hist-set--done { border-color: var(--jg-q-done-edge); background: var(--jg-q-done-fill); }
+.hist-set--poor { border-color: var(--jg-q-poor);      background: var(--jg-q-poor-fill); }
+.hist-set--none { border-color: var(--cal-border);     background: var(--cal-surface-2); }
+.hist-q-label--max  { color: var(--jg-q-max-text); }
+.hist-q-label--done { color: var(--cal-ink-muted); }
+.hist-q-label--poor { color: var(--jg-q-poor-text); }
+.hist-q-star   { color: var(--jg-q-star); }
+.hist-q-kaizen { color: var(--jg-q-poor); }
+.hist-q-btn[aria-pressed="true"].hist-q-btn--max  { border-color: var(--jg-q-max-edge);  background: var(--jg-q-max-fill);  color: var(--jg-q-max-text); }
+.hist-q-btn[aria-pressed="true"].hist-q-btn--done { border-color: var(--jg-q-done-edge); background: var(--jg-q-done-fill); color: var(--cal-ink); }
+.hist-q-btn[aria-pressed="true"].hist-q-btn--poor { border-color: var(--jg-q-poor);      background: var(--jg-q-poor-fill); color: var(--jg-q-poor-text); }
+
+/* ---------- Session detail dialog (hsd) -------------------------------
+   Same tokens as the tab behind it. The dialog renders in a portal, which is
+   fine: every token lives on :root. These rules are unlayered, so they win
+   over the dialog primitive's Tailwind utilities without !important. */
+
+.hsd { background: var(--cal-surface); color: var(--cal-ink); border: 1px solid var(--cal-border); }
+
+.hsd-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--cal-border);
+  background: var(--cal-surface-2);
+}
+.hsd-head__title { flex: 1 1 220px; min-width: 0; }
+.hsd-head__day {
+  font-size: 18px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  color: var(--cal-ink);
+}
+.hsd-head__sub {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+}
+.hsd-head__who { display: flex; align-items: center; gap: 8px; }
+.hsd-head__name { font-size: 13px; font-weight: 800; color: var(--cal-ink-2); }
+.hsd-head__actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.hsd-icon-btn { width: 40px; height: 40px; padding: 0; border-radius: 12px; color: var(--cal-ink-muted); }
+.hsd-icon-btn--danger { color: var(--eq-alert); }
+
+.hsd-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--cal-border);
+}
+.hsd-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--cal-ink-muted); }
+.hsd-chip b { font-weight: 900; color: var(--cal-ink); }
+.hsd-chip.hist-q-label--max b,
+.hsd-chip.hist-q-label--poor b { color: inherit; }
+.hsd-chip--end { margin-left: auto; }
+
+.hsd-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 18px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--cal-border);
+}
+.hsd-tab {
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid var(--cal-border);
+  background: var(--cal-surface);
+  color: var(--cal-ink-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.hsd-tab[aria-selected="true"] { border-color: var(--cal-live); background: var(--cal-live); color: var(--cal-live-on); }
+
+.hsd-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 18px 20px;
+}
+.hsd-empty { padding: 28px 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--cal-ink-muted); }
+
+.hsd-sets { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.hsd-set { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 12px; }
+.hsd-set--edited { box-shadow: 0 0 0 2px var(--cal-live); }
+.hsd-set__head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.hsd-set__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--cal-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hsd-set__tag {
+  padding: 1px 5px;
+  border-radius: 5px;
+  border: 1px solid var(--cal-border);
+  background: var(--cal-surface);
+  color: var(--cal-ink-muted);
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+.hsd-set__value { font-size: 13px; font-weight: 700; color: var(--cal-ink-2); }
+.hsd-set__value b { font-size: 15px; font-weight: 900; color: var(--cal-ink); }
+.hsd-set__quality { font-size: 10.5px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+.hsd-set__muted { color: var(--cal-ink-faint); font-style: italic; font-weight: 600; }
+
+.hsd-edit { display: flex; flex-direction: column; gap: 8px; }
+.hsd-toggle {
+  align-self: flex-start;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid var(--cal-border);
+  background: var(--cal-surface);
+  color: var(--cal-ink-muted);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.hsd-toggle[aria-pressed="true"] { border-color: var(--cal-live); background: var(--cal-live); color: var(--cal-live-on); }
+.hsd-stepper {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--cal-border);
+  background: var(--cal-surface);
+}
+.hsd-stepper button {
+  height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--cal-surface-2);
+  color: var(--cal-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.hsd-stepper label { display: flex; flex-direction: column; align-items: center; line-height: 1; min-width: 0; }
+.hsd-stepper input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--cal-ink);
+  text-align: center;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 900;
+}
+.hsd-stepper span { font-size: 9.5px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cal-ink-muted); }
+.hsd-qbtns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.hsd-qbtn {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--cal-border);
+  background: var(--cal-surface);
+  color: var(--cal-ink-muted);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.hsd-notes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 768px) { .hsd-notes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.hsd-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--cal-border);
+  background: var(--cal-bg);
+}
+.hsd-panel__title { font-size: 10.5px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cal-ink-muted); }
+.hsd-panel__text { font-size: 13px; line-height: 1.5; color: var(--cal-ink-2); white-space: pre-wrap; }
+.hsd-textarea { min-height: 120px; background: var(--cal-surface); color: var(--cal-ink); border-color: var(--cal-border); }
+.hsd-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; }
+.hsd-fact { min-width: 0; }
+.hsd-fact dt { font-size: 9.5px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cal-ink-muted); }
+.hsd-fact dd { margin: 2px 0 0; font-size: 13px; font-weight: 800; color: var(--cal-ink); text-transform: capitalize; }
+
+.hsd-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--cal-border);
+  background: var(--cal-surface-2);
+}
+.hsd-cancel { height: 48px; padding: 0 18px; border-radius: 12px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; font-size: 12px; }
+.hsd-save {
+  height: 48px;
+  padding: 0 26px;
+  border-radius: 12px;
+  background: var(--cal-live);
+  color: var(--cal-live-on);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+.hsd-save:hover { background: var(--cal-live-text); }

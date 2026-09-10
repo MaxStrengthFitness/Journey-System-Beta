@@ -16,6 +16,8 @@ import {
   calendarLabelKey,
   studioDayBoundsForKey,
   wallClockToInstant,
+  studioTodayKey,
+  studioDayKeyOf,
 } from "./studio-time";
 
 const ET = "America/New_York";
@@ -314,5 +316,47 @@ describe("formatting", () => {
     expect(formatStudioTime(null, ET)).toBe("--");
     expect(formatStudioDate(undefined, undefined, ET)).toBe("--");
     expect(formatStudioTime("nonsense", ET, "n/a")).toBe("n/a");
+  });
+});
+
+describe("studioTodayKey / studioDayKeyOf (Sep 2026: the app's day is the Eastern day)", () => {
+  it("keeps an 8:30 PM Eastern session on the Eastern day, where UTC had already rolled over", () => {
+    // 00:30 UTC on Wednesday the 9th is 8:30 PM EDT on Tuesday the 8th.
+    const evening = new Date("2026-09-09T00:30:00Z");
+    expect(evening.toISOString().split("T")[0]).toBe("2026-09-09"); // the old, wrong answer
+    expect(studioTodayKey(evening)).toBe("2026-09-08");
+  });
+
+  it("follows standard time in winter — 7:30 PM EST is still the same day", () => {
+    const winterEvening = new Date("2026-12-02T00:30:00Z"); // 7:30 PM EST, Dec 1
+    expect(studioTodayKey(winterEvening)).toBe("2026-12-01");
+  });
+
+  it("agrees with UTC during the day", () => {
+    expect(studioTodayKey(new Date("2026-09-08T15:00:00Z"))).toBe("2026-09-08");
+  });
+
+  it("never returns an empty value", () => {
+    expect(studioTodayKey(new Date("2026-09-08T15:00:00Z"), "Not/AZone")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("leaves a plain calendar day alone instead of reading it as UTC midnight", () => {
+    // new Date("2026-09-10") is 8 PM on the 9th in Ohio; a stored day must not move.
+    expect(studioDateKey("2026-09-10", ET)).toBe("2026-09-09");
+    expect(studioDayKeyOf("2026-09-10")).toBe("2026-09-10");
+    expect(studioDayKeyOf(" 2026-09-10 ")).toBe("2026-09-10");
+  });
+
+  it("converts real instants — Dates, ISO instants, Timestamps, millis", () => {
+    const iso = "2026-09-09T00:30:00.000Z";
+    expect(studioDayKeyOf(iso)).toBe("2026-09-08");
+    expect(studioDayKeyOf(new Date(iso))).toBe("2026-09-08");
+    expect(studioDayKeyOf({ toDate: () => new Date(iso) })).toBe("2026-09-08");
+    expect(studioDayKeyOf(Date.parse(iso))).toBe("2026-09-08");
+  });
+
+  it("returns null for nothing usable", () => {
+    expect(studioDayKeyOf(null)).toBeNull();
+    expect(studioDayKeyOf("not a date")).toBeNull();
   });
 });

@@ -37,6 +37,7 @@ import {
   Trainer,
   WorkoutSession,
 } from "../../types";
+import { studioDateKey, studioTodayKey } from "../../lib/studio-time";
 
 export interface StudioExportDeps {
   trainers: Trainer[];
@@ -52,10 +53,10 @@ export function useStudioExports(deps: StudioExportDeps) {
   const [exportStartDate, setExportStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
-    return d.toISOString().split("T")[0];
+    return studioTodayKey(d);
   });
   const [exportEndDate, setExportEndDate] = useState(
-    () => new Date().toISOString().split("T")[0],
+    () => studioTodayKey(),
   );
 
   const [isExportingPayroll, setIsExportingPayroll] = useState(false);
@@ -167,7 +168,7 @@ export function useStudioExports(deps: StudioExportDeps) {
           "Client Name": clientObj
             ? `${clientObj.firstName} ${clientObj.lastName}`
             : "Unknown Client",
-          "Session Date": dateObj.toISOString().split("T")[0],
+          "Session Date": studioDateKey(dateObj) ?? "",
           "Session Type": s.sessionType || "Standard",
           "Session Notes": s.notes || "",
         };
@@ -208,7 +209,7 @@ export function useStudioExports(deps: StudioExportDeps) {
       const attendanceData = schedules.map((s) => {
         const dateObj = s.startTime?.toDate?.() || new Date(s.startTime);
         return {
-          Date: dateObj.toISOString().split("T")[0],
+          Date: studioDateKey(dateObj) ?? "",
           "Start Time": dateObj.toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",

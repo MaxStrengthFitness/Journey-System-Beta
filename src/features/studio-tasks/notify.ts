@@ -54,6 +54,48 @@ export interface NotifyTaskCompletionParams {
   note?: string;
 }
 
+/**
+ * Tell someone a head trainer put their name on something.
+ *
+ * DELIBERATELY NOT SUBJECT TO THE VOLUME FILTERS ABOVE. Every one of those
+ * exists to stop receipts for work already done from drowning the bell. This
+ * is the opposite message: it is about work that has NOT happened, somebody
+ * else decided it was yours, and it happens a handful of times a week rather
+ * than forty times a day. A trainer who is not told they were assigned
+ * something has been assigned nothing.
+ *
+ * Silent in the two cases where there is no one to tell: assigning yourself,
+ * and clearing an assignment (the person who was holding it finds out from
+ * the screen, and a "you are no longer needed" notification is a worse
+ * message than none).
+ */
+export async function notifyTaskAssignment(params: {
+  row: { title: string; machineName?: string };
+  assignee: TaskAuthor | null;
+  assignedBy: TaskAuthor | null;
+  studioId: string | null;
+  /** How many days the assignment covers, for the body line. */
+  days?: number;
+}): Promise<void> {
+  const { row, assignee, assignedBy, studioId, days = 1 } = params;
+  if (!studioId || !assignee || !assignedBy) return;
+  if (assignee.id === assignedBy.id) return;
+
+  const machineSuffix = row.machineName ? ` — ${row.machineName}` : "";
+  await notify({
+    to: assignee.id,
+    actor: assignedBy,
+    kind: "task-assigned",
+    title: `${assignedBy.name} assigned you "${row.title}"${machineSuffix}`,
+    body:
+      days > 1
+        ? `For the next ${days} days. Anyone can still close it.`
+        : "For today. Anyone can still close it.",
+    studioId,
+    link: { view: "studio-tasks" },
+  });
+}
+
 export async function notifyTaskCompletion(
   params: NotifyTaskCompletionParams,
 ): Promise<void> {

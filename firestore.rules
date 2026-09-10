@@ -1026,9 +1026,59 @@ service cloud.firestore {
           if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
 
+      /*
+       * TASK INSTANCES — one day's occurrences.
+       *
+       * Checking one off is the whole job of a trainer on the floor, so any
+       * authenticated trainer may create and update them. Create is open
+       * because materialization is CLIENT-SIDE and the ids are derived
+       * deterministically from (template, date, shift, machine), so this
+       * cannot be used to invent unbounded documents.
+       *
+       * THE ASSIGNMENT FIELDS ARE THE EXCEPTION (round: Task assignment,
+       * Sep 2026). Putting someone else's name on work is a head trainer's
+       * act; closing the work is not. So `assignedTo` / `assignedBy` /
+       * `assignedAt` are gated to studio leaders and head trainers while
+       * every other field of the same document stays open to the floor.
+       *
+       * ORDERED CHEAPEST-FIRST, and here it genuinely matters: a studio does
+       * 30-40 completions a day and perhaps one assignment. `affectedKeys()`
+       * is field math and costs nothing; isStudioOwnerOrHeadTrainer() resolves
+       * the caller through document reads. Written this way, the expensive
+       * branch never evaluates on an ordinary tick. Getting this backwards is
+       * what blew the 1000-expression budget on the sessions rule in Sep 2026.
+       *
+       * NOT A LOCK, and the rule cannot make it one: an assigned task is still
+       * completable by anyone, because `status` is untouched by this gate.
+       * That is deliberate — a trainer assigned the bins who gets pulled into
+       * a consultation must not leave the bin full because the app said it was
+       * handled.
+       *
+       * Deleting history stays with management. A trainer who ticked the wrong
+       * box re-opens it, which keeps the audit trail rather than erasing it.
+       */
       match /taskInstances/{instanceId} {
         allow read: if isAuthenticated();
-        allow create, update: if isAuthenticated() && isAnyAuthenticatedTrainer();
+
+        allow create: if isAuthenticated()
+                      && isAnyAuthenticatedTrainer()
+                      && (
+                           !('assignedTo' in request.resource.data)
+                        || request.resource.data.assignedTo == null
+                        || isSuperAdmin()
+                        || isStudioOwnerOrHeadTrainer(studioId)
+                      );
+
+        allow update: if isAuthenticated()
+                      && isAnyAuthenticatedTrainer()
+                      && (
+                           !request.resource.data.diff(resource.data)
+                              .affectedKeys()
+                              .hasAny(['assignedTo', 'assignedBy', 'assignedAt'])
+                        || isSuperAdmin()
+                        || isStudioOwnerOrHeadTrainer(studioId)
+                      );
+
         allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
 
@@ -1048,6 +1098,131 @@ service cloud.firestore {
       // Delete stays with management and the author. resolveRequest is the
       // normal path and keeps the thread; deleting is for a post made in
       // error, and Firestore does not cascade to the replies subcollection.
+      /*
+       * THE PLAYBOOK — the studio's accumulated coaching knowledge.
+       *
+       * PATTERN-ONLY, ENFORCED HERE AND NOT JUST IN THE TYPE.
+       * `!('clientId' in request.resource.data)` is the load-bearing line. A
+       * playbook entry describes a physical complaint and a workaround, it is
+       * readable by every trainer at the studio, and it is built to LAST.
+       * Attach a name to that and you have a searchable health record about
+       * identifiable clients that anyone on the floor can browse -- a
+       * different thing from a session note, which is attached to care being
+       * delivered and read by the person delivering it.
+       *
+       * Putting the guard in the rule rather than only in TypeScript means a
+       * future well-meaning change cannot quietly reintroduce client links:
+       * the write would simply be refused. Same reasoning as the personal-task
+       * path split -- structural, not remembered.
+       *
+       * WRITES: the author edits their own; anyone may confirm. The
+       * confirmation branch uses affectedKeys().hasOnly(...) so a trainer
+       * saying "worked for me too" cannot also rewrite the answer. Ordered
+       * cheapest-first -- the two field checks cost nothing, and the
+       * expensive leader check only runs if both fail.
+       *
+       * DELETE is manager-only, and the app retires instead: a resolved
+       * request may point at an entry and the Catalog may be showing it
+       * against a machine, so deleting orphans both.
+       */
+      match /playbook/{entryId} {
+        allow read: if isAuthenticated();
+
+        allow create: if isAuthenticated()
+                      && isAnyAuthenticatedTrainer()
+                      && request.resource.data.authorId == request.auth.uid
+                      && request.resource.data.title is string
+                      && request.resource.data.title.size() <= 120
+                      && request.resource.data.worked is string
+                      && !('clientId' in request.resource.data);
+
+        allow update: if isAuthenticated()
+                      && isAnyAuthenticatedTrainer()
+                      && !('clientId' in request.resource.data)
+                      && (
+                           resource.data.authorId == request.auth.uid
+                        || request.resource.data.diff(resource.data)
+                             .affectedKeys()
+                             .hasOnly(['confirmations', 'lastConfirmedOn'])
+                        || isStudioOwnerOrHeadTrainer(studioId)
+                      );
+
+        allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
+      }
+
+      /*
+       * THE STUDIO'S OWN WIKI CONTENT.
+       * (round: Wiki Redesign Phase 4, Sep 2026 — see src/features/wiki/studio-wiki.ts)
+       *
+       * ONE COLLECTION, TWO AUTHORITIES, DISCRIMINATED BY `kind`.
+       *
+       *   kind == 'overlay'   a note ON something the app already ships: a
+       *                       machine, an Academy topic, a quick card. ANY
+       *                       trainer may write one. Same posture as
+       *                       machineNotes and for the same reason -- an
+       *                       overlay carries no override power over safety
+       *                       content, and the person who discovers that the
+       *                       left pad sticks is the person on the floor.
+       *
+       *   kind == 'page'      a whole page this studio authored. Studio
+       *                       leaders and above, because a new page is a claim
+       *                       about how the location operates.
+       *
+       * `kind` IS PINNED ON UPDATE. That single line is what stops an overlay
+       * -- which anyone can write -- from being promoted into a page and
+       * escaping the leader check. Without it the split above is decorative.
+       *
+       * ORDERED CHEAPEST-FIRST, deliberately. The `kind` comparison is a field
+       * read and costs nothing; isStudioOwnerOrHeadTrainer() resolves the
+       * caller through document reads. The overlay case is the common one and
+       * short-circuits before the expensive branch ever evaluates. The sessions
+       * rule blew Firestore's 1000-expression budget by getting this backwards
+       * -- see the Sep 9 round.
+       *
+       * TENANCY comes from the path, same as roster and machineNotes, so no
+       * get() is spent checking it. A trainer at studio A cannot write studio B.
+       *
+       * NO CLIENT IDS, enforced here and not only in TypeScript. This content
+       * is readable by every trainer at the studio and is built to LAST;
+       * attaching a client to it would quietly build a searchable health
+       * record anyone on the floor can browse. Same argument as the playbook
+       * above, same structural guard rather than a remembered convention.
+       *
+       * DELETE is manager-only. The app RETIRES instead: a machine article may
+       * be linking to a page and the Academy index may be listing it, and
+       * Firestore does not cascade.
+       */
+      match /wiki/{docId} {
+        allow read: if isAuthenticated();
+
+        allow create: if isAuthenticated()
+                      && isAnyAuthenticatedTrainer()
+                      && request.resource.data.authorId == request.auth.uid
+                      && request.resource.data.title is string
+                      && request.resource.data.title.size() <= 160
+                      && request.resource.data.kind in ['page', 'overlay']
+                      && !('clientId' in request.resource.data)
+                      && (
+                           request.resource.data.kind == 'overlay'
+                        || isSuperAdmin()
+                        || isStudioOwnerOrHeadTrainer(studioId)
+                      );
+
+        allow update: if isAuthenticated()
+                      && isAnyAuthenticatedTrainer()
+                      && request.resource.data.title is string
+                      && request.resource.data.title.size() <= 160
+                      && request.resource.data.kind == resource.data.kind
+                      && !('clientId' in request.resource.data)
+                      && (
+                           resource.data.kind == 'overlay'
+                        || isSuperAdmin()
+                        || isStudioOwnerOrHeadTrainer(studioId)
+                      );
+
+        allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
+      }
+
       match /taskRequests/{requestId} {
         allow read: if isAuthenticated();
 
@@ -1079,6 +1254,34 @@ service cloud.firestore {
           allow update, delete: if isSuperAdmin()
                                 || isStudioOwnerOrHeadTrainer(studioId)
                                 || resource.data.author.id == request.auth.uid;
+        }
+
+        /*
+         * INITIATIVE SUBMISSIONS — what each trainer logged against a
+         * manager's ask ("five progress reports each, by Friday").
+         *
+         * THE DOCUMENT ID IS THE TRAINER ID, and that is the whole
+         * authorisation story: `request.auth.uid == trainerId` needs no
+         * document read, no query constraint for a future caller to
+         * remember, and no way for one trainer to overwrite another's.
+         *
+         * That last point is why this is a subcollection rather than an array
+         * on the request. The Kaizen Roster is an array and is correct there
+         * because a roster has ONE writer. An initiative has nine writers on
+         * nine iPads at once, and whole-array writes would silently erase
+         * each other.
+         *
+         * Reads stay open to the studio: the point of an initiative is that
+         * everyone can see where the floor has got to.
+         */
+        match /submissions/{trainerId} {
+          allow read: if isAuthenticated() && isAnyAuthenticatedTrainer();
+          allow create, update: if isAuthenticated()
+                                && request.auth.uid == trainerId
+                                && request.resource.data.trainerId == trainerId;
+          allow delete: if isSuperAdmin()
+                        || isStudioOwnerOrHeadTrainer(studioId)
+                        || request.auth.uid == trainerId;
         }
       }
 

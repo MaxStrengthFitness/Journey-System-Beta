@@ -1,0 +1,179 @@
+/* ==========================================================================
+   WIKI — shared design tokens for the Catalog and the Academy
+   --------------------------------------------------------------------------
+   Round: Wiki Redesign, Sep 2026.
+
+   WHY THIS FILE EXISTS
+   --------------------
+   The Catalog "didn't feel like the rest of the app", and the cause was NOT
+   colour: --cat-* and --st-* (Studio Hub) were already the same hex values,
+   token for token. What differed was composition — three panes, a bottom
+   sheet, nine accordions — and the fact that two features owning two private
+   palettes means the next edit to either one is a drift waiting to happen.
+
+   So --wk-* is the shared vocabulary the Catalog and the Academy both speak.
+   Its values are deliberately IDENTICAL to --st-* today: adopting it changes
+   nothing visually on the Hub side, which is exactly what "make the Catalog
+   feel like the Hub" requires. From here, one edit moves both screens.
+
+   Contrast checked to WCAG 2.1 AA: body text >= 4.5:1, borders and non-text
+   UI >= 3:1. Ratios kept beside each value so a future edit can be re-checked.
+
+   NOTHING IN features/wiki WRITES A HEX VALUE. Same discipline as
+   features/catalog and features/studio-tasks.
+   ========================================================================== */
+
+:root {
+  /* ── geometry ─────────────────────────────────────────────────────── */
+  --wk-radius:     14px;
+  --wk-radius-lg:  20px;
+  --wk-radius-pill: 999px;
+  /* The reading column. 68ch is the upper end of the comfortable measure for
+     body prose; Academy topics run to 6,400 words and a full-width line on a
+     landscape iPad is genuinely hard to track back from. */
+  --wk-measure:    68ch;
+  /* The infobox column in split mode. Wide enough for the anatomy figure at a
+     size worth looking at — the model is the reason people open this screen. */
+  --wk-aside-w:    22rem;   /* 352 */
+  --wk-nav-w:      17.5rem; /* 280 */
+  --wk-tap:        44px;    /* Apple HIG minimum. Everything is thumbed. */
+
+  /* ── surfaces ─────────────────────────────────────────────────────── */
+  --wk-bg:            #f1f5f8;
+  --wk-surface:       #ffffff;
+  --wk-surface-2:     #e8eef2;
+  --wk-surface-3:     #dae1e6;
+  --wk-border:        #d3dadf;   /* 1.4:1 hairline                    */
+  --wk-border-strong: #a9b2b9;   /* 2.2:1 divider / control boundary  */
+
+  /* ── ink ──────────────────────────────────────────────────────────── */
+  --wk-ink:       #121c23;   /* 17.3:1 */
+  --wk-ink-2:     #3e4952;   /*  9.2:1 */
+  --wk-ink-muted: #5b6770;   /*  5.8:1 */
+  --wk-ink-faint: #848e95;   /*  3.3:1 — decorative only */
+
+  /* ── hero orange: the thing you are looking at ────────────────────── */
+  --wk-hero:      #ef5302;
+  --wk-hero-text: #bc2c00;   /* 6.0:1 on white — anything with a label */
+  --wk-hero-fill: #fde7dc;
+  --wk-hero-on:   #ffffff;
+
+  /* ── blue: anything you can act on ────────────────────────────────── */
+  --wk-live:      #0a548b;   /* 7.9:1 */
+  --wk-live-text: #034a84;   /* 9.1:1 */
+  --wk-live-fill: #e6eef3;
+
+  /* ── green: done / healthy ────────────────────────────────────────── */
+  --wk-ok:      #1c7a52;     /* 4.9:1 */
+  --wk-ok-fill: #e3f1ea;
+
+  /* ── amber: clinical warnings and upkeep. Never collapsed, so it has to
+        read at a glance without being shouty enough to be tuned out. ─── */
+  --wk-warn:        #8a5300;   /* 5.1:1 */
+  --wk-warn-strong: #b26a00;
+  --wk-warn-fill:   #fdf3e3;
+  --wk-warn-border: #e5c48f;   /* 3.0:1 */
+
+  /* ── red: flagged by a trainer ────────────────────────────────────── */
+  --wk-alert:      #a32014;    /* 6.6:1 */
+  --wk-alert-fill: #fdeceb;
+
+  --wk-focus-ring: var(--wk-live);
+  --wk-shadow:     rgba(18, 28, 35, 0.10);
+  /* Two shadows, never one: a tight contact shadow anchors the card and a
+     wide ambient one gives it height. One alone always reads as either a hard
+     outline or a blur. Same reasoning as --elev-* in index.css. */
+  --wk-elev-1: 0 1px 2px rgba(18, 28, 35, 0.06), 0 1px 3px rgba(18, 28, 35, 0.08);
+  --wk-elev-2: 0 1px 2px rgba(18, 28, 35, 0.06), 0 4px 12px rgba(18, 28, 35, 0.09);
+
+  /* ── category accents ─────────────────────────────────────────────────
+     ONE colour per movement family, carried on every surface that mentions
+     it: the index card, the row stripe, the article eyebrow, the infobox
+     header. That consistency is the whole of "colour-coded categories" —
+     a colour that means something different on two screens teaches nothing.
+     Values match --cat-accent-* so nothing shifts hue mid-migration. */
+  --wk-cat-push:      #ef5302;
+  --wk-cat-pull:      #0a548b;
+  --wk-cat-legs:      #1c7a52;
+  --wk-cat-posterior: #b26a00;
+  --wk-cat-trunk:     #8a4f9e;
+  --wk-cat-hips:      #b5306f;
+  --wk-cat-other:     #5b6770;
+
+  /* Tinted fills for the same six. Light mode uses a flat pastel because a
+     low-alpha wash over white goes muddy at these hues. */
+  --wk-cat-push-fill:      #fde7dc;
+  --wk-cat-pull-fill:      #e6eef3;
+  --wk-cat-legs-fill:      #e3f1ea;
+  --wk-cat-posterior-fill: #fdf3e3;
+  --wk-cat-trunk-fill:     #f2e9f6;
+  --wk-cat-hips-fill:      #fbe8f0;
+  --wk-cat-other-fill:     #eceff1;
+
+  /* ── the figure ───────────────────────────────────────────────────── */
+  --wk-muscle-primary:   #0a548b;
+  --wk-muscle-secondary: #6fb4e4;
+  --wk-muscle-base:      #9aa6ae;
+}
+
+.dark,
+[data-theme="dark"] {
+  --wk-bg:            #070b0f;
+  --wk-surface:       #0e151c;
+  --wk-surface-2:     #151e27;
+  --wk-surface-3:     #1d2833;
+  --wk-border:        #1f2a35;   /* 1.5:1 on surface */
+  --wk-border-strong: #3a4855;   /* 2.9:1 */
+
+  --wk-ink:       #eef3f7;   /* 15.8:1 on surface */
+  --wk-ink-2:     #b3c0cb;   /*  8.6:1 */
+  --wk-ink-muted: #8b98a4;   /*  5.4:1 */
+  --wk-ink-faint: #63707c;   /*  3.1:1 */
+
+  /* Dark is not a flip. Saturated pigment vibrates on near-black, so fills
+     become low-alpha washes and text tones lift instead of darken. */
+  --wk-hero:      #ff6a1f;
+  --wk-hero-text: #ff8c4d;   /* 7.2:1 on surface */
+  --wk-hero-fill: rgba(255, 106, 31, 0.14);
+
+  --wk-live:      #38bdf8;
+  --wk-live-text: #7dd3fc;   /* 9.4:1 */
+  --wk-live-fill: rgba(56, 189, 248, 0.12);
+
+  --wk-ok:      #34d399;
+  --wk-ok-fill: rgba(52, 211, 153, 0.12);
+
+  --wk-warn:        #fbbf24;   /* 10.4:1 on surface */
+  --wk-warn-strong: #fcd34d;
+  --wk-warn-fill:   rgba(251, 191, 36, 0.10);
+  --wk-warn-border: rgba(251, 191, 36, 0.32);
+
+  --wk-alert:      #fca5a5;   /* 8.1:1 */
+  --wk-alert-fill: rgba(248, 113, 113, 0.12);
+
+  --wk-shadow: rgba(0, 0, 0, 0.5);
+  /* On a near-black ground a drop shadow is wasted paint — elevation comes
+     from the surface getting lighter instead. Same call index.css makes. */
+  --wk-elev-1: 0 1px 1px rgba(0, 0, 0, 0.30);
+  --wk-elev-2: 0 1px 2px rgba(0, 0, 0, 0.40);
+
+  --wk-cat-push:      #ff6a1f;
+  --wk-cat-pull:      #38bdf8;
+  --wk-cat-legs:      #34d399;
+  --wk-cat-posterior: #fbbf24;
+  --wk-cat-trunk:     #c084fc;
+  --wk-cat-hips:      #f472b6;
+  --wk-cat-other:     #8b98a4;
+
+  --wk-cat-push-fill:      rgba(255, 106, 31, 0.14);
+  --wk-cat-pull-fill:      rgba(56, 189, 248, 0.12);
+  --wk-cat-legs-fill:      rgba(52, 211, 153, 0.12);
+  --wk-cat-posterior-fill: rgba(251, 191, 36, 0.10);
+  --wk-cat-trunk-fill:     rgba(192, 132, 252, 0.14);
+  --wk-cat-hips-fill:      rgba(244, 114, 182, 0.14);
+  --wk-cat-other-fill:     rgba(139, 152, 164, 0.12);
+
+  --wk-muscle-primary:   #0a548b;
+  --wk-muscle-secondary: #6fb4e4;
+  --wk-muscle-base:      #4b555c;
+}

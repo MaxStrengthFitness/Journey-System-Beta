@@ -28,7 +28,7 @@
  * of open-thread-type-send, which is the other half of the same problem.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -40,6 +40,7 @@ import {
   Repeat,
   Send,
   Sparkles,
+  Target,
   X,
 } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
@@ -60,17 +61,33 @@ import {
   type TaskRequest,
 } from "./requests";
 import { useRequestReplies, useStudioRequests } from "./useStudioRequests";
+import { buildBoard, type BoardTopic } from "./board";
+import { studioDateKey } from "../../lib/studio-time";
+import { ResolveDialog } from "./ResolveDialog";
+import { resolveAndMaybeKeep, outcomeMessage } from "./resolve-flow";
 import { notify } from "../notifications";
 import type { TaskAuthor } from "./mutations";
+import type { Client } from "../../types";
+import { InitiativeRollup } from "./InitiativeRollup";
+import { SubmitInitiativeDialog } from "./SubmitInitiativeDialog";
+import { saveSubmission, fetchSubmissions } from "./playbook-mutations";
+import type { SubmissionEntry } from "./initiatives";
 
 const KIND_ICON: Record<RequestKind, typeof MessageSquare> = {
   cover: Repeat,
   question: HelpCircle,
   "heads-up": Megaphone,
   help: HandHelping,
+  initiative: Target,
   other: MessageSquare,
 };
 
+/*
+ * "initiative" is deliberately NOT in the composer's kind picker.
+ * A trainer posting "everyone do five assessments" is not a thing that should
+ * be one tap away on the floor, and an initiative needs a target that this
+ * quick composer has no room to ask for. Managers post them from Manage.
+ */
 const KINDS: RequestKind[] = ["cover", "question", "heads-up", "help", "other"];
 const EXPIRIES: ExpiryChoice[] = ["none", "today", "3d", "1w"];
 
@@ -107,11 +124,52 @@ export interface RequestsLaneProps {
   author: TaskAuthor | null;
   /** Auth uid, for "is this mine". */
   currentUserId?: string | null;
+  /**
+   * Topic chip from the hub. Ordering and filtering come from board.ts so the
+   * hub's chips and this lane cannot disagree about what "Clients" means.
+   */
+  topic?: BoardTopic;
+  /** Narrow to what I wrote or claimed. */
+  mineOnly?: boolean;
+  /**
+   * The studio's trainers, for the initiative roll-up's denominator. Absent
+   * means initiative cards render without one rather than with a wrong one.
+   */
+  roster?: { id: string; name: string }[];
+  /** For the initiative submit picker. */
+  clients?: Client[];
 }
 
-export function RequestsLane({ studioId, author }: RequestsLaneProps) {
+export function RequestsLane({
+  studioId,
+  author,
+  currentUserId,
+  topic = "all",
+  mineOnly,
+  roster,
+  clients,
+}: RequestsLaneProps) {
   const { success: toastSuccess, error: toastError } = useToast();
-  const { open: openRequests } = useStudioRequests(studioId);
+  const { open: rawRequests } = useStudioRequests(studioId);
+
+  /*
+   * The lane used to render whatever order the snapshot arrived in. buildBoard
+   * ranks by HEAT -- cover first, then anything expiring, then unclaimed
+   * before claimed -- so the card that needs a person is the card at the top.
+   * Filtering lives here too, so the hub's chips drive one implementation.
+   */
+  const todayKey = studioDateKey(new Date()) ?? "";
+  const cards = useMemo(
+    () =>
+      buildBoard(rawRequests, {
+        todayKey,
+        trainerId: currentUserId ?? author?.id ?? null,
+        topic,
+        mineOnly,
+      }),
+    [rawRequests, todayKey, currentUserId, author?.id, topic, mineOnly],
+  );
+  const openRequests = useMemo(() => cards.map((c) => c.request), [cards]);
 
   const [composing, setComposing] = useState(false);
   const [kind, setKind] = useState<RequestKind>("cover");
@@ -172,18 +230,117 @@ export function RequestsLane({ studioId, author }: RequestsLaneProps) {
     }, mine ? "Handed back." : "You've got it.");
   };
 
-  const resolve = async (r: TaskRequest) => {
-    await run(async () => {
-      await resolveRequest({ studioId: studioId!, requestId: r.id, author });
+  /*
+   * Resolving used to call resolveRequest with NO resolution text, so the
+   * answer somebody had just worked out was discarded the moment the thread
+   * closed. That is the whole reason the studio kept solving the same problem
+   * twice, and the reason the playbook had nothing to feed on.
+   *
+   * Now it opens a dialog that asks what the answer was, and -- once there is
+   * enough of one to be worth keeping -- offers to put it in the playbook.
+   */
+  const [resolving, setResolving] = useState<TaskRequest | null>(null);
+
+  /*
+   * The initiative a trainer is logging against, plus what they already
+   * logged. Fetched on open rather than watched for every card: nine live
+   * listeners for a dialog that is open for twenty seconds is a lot of
+   * snapshot traffic for a screen that already runs three.
+   */
+  const [logging, setLogging] = useState<TaskRequest | null>(null);
+  const [myEntries, setMyEntries] = useState<SubmissionEntry[]>([]);
+  const [savingLog, setSavingLog] = useState(false);
+  const [loadingLogId, setLoadingLogId] = useState<string | null>(null);
+
+  /*
+   * FETCH BEFORE OPENING, not after.
+   *
+   * The dialog seeds its draft from `entries` once, on mount, which is right —
+   * it must not yank names out from under a trainer mid-pick. But that means
+   * opening it first and filling entries in later shows an empty picker to
+   * someone who logged three clients yesterday, and they re-pick all three.
+   * So the read happens first and the button shows that it is working.
+   */
+  const openLog = async (r: TaskRequest) => {
+    if (!studioId || !author?.id) return;
+    setLoadingLogId(r.id);
+    try {
+      const subs = await fetchSubmissions(studioId, r.id);
+      setMyEntries(subs.find((sx) => sx.trainerId === author.id)?.entries ?? []);
+    } catch (err) {
+      // Not fatal — open empty rather than blocking the log entirely, and say
+      // so, because silently losing yesterday's picks is the confusing case.
+      console.error("Could not load your initiative entries:", err);
+      setMyEntries([]);
+      toastError("Could not load what you logged before. Starting fresh.");
+    } finally {
+      setLoadingLogId(null);
+      setLogging(r);
+    }
+  };
+
+  const saveLog = async (entries: SubmissionEntry[]) => {
+    if (!studioId || !author?.id || !logging) return;
+    setSavingLog(true);
+    try {
+      await saveSubmission(
+        studioId,
+        logging.id,
+        { id: author.id, name: author.name },
+        entries,
+      );
+      toastSuccess(
+        entries.length === 0
+          ? "Cleared your entries."
+          : `Logged ${entries.length}.`,
+      );
+      setLogging(null);
+    } catch (err) {
+      console.error("Initiative submission failed:", err);
+      toastError("Could not log that. Check your connection.");
+    } finally {
+      setSavingLog(false);
+    }
+  };
+
+  const submitResolve = async (args: {
+    resolution: string;
+    playbook: Parameters<typeof resolveAndMaybeKeep>[0]["playbook"];
+  }) => {
+    const r = resolving;
+    if (!r || !studioId) return;
+    setBusy(true);
+    try {
+      const outcome = await resolveAndMaybeKeep({
+        studioId,
+        request: r,
+        author,
+        resolution: args.resolution,
+        playbook: args.playbook,
+      });
+      const msg = outcomeMessage(outcome);
+      if (msg.tone === "success") toastSuccess(msg.text);
+      else toastError(msg.text);
+
       await notify({
         to: r.createdBy.id,
         actor: author,
         kind: "request-resolved",
         title: `${author?.name} closed "${r.title}"`,
-        studioId: studioId!,
+        studioId,
         link: { view: "studio-tasks" },
       });
-    }, "Closed.");
+      setResolving(null);
+    } catch (err) {
+      console.error("Resolve failed:", err);
+      toastError("Could not close that. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resolve = async (r: TaskRequest) => {
+    setResolving(r);
   };
 
   /**
@@ -339,16 +496,34 @@ export function RequestsLane({ studioId, author }: RequestsLaneProps) {
                     </span>
                   </span>
 
-                  <button
-                    type="button"
-                    className="stq__act"
-                    onClick={() => void claim(r)}
-                    disabled={busy}
-                    aria-pressed={Boolean(mine)}
-                  >
-                    <Sparkles size={12} aria-hidden />
-                    {mine ? "Drop" : r.claimedBy ? "Take over" : "Claim"}
-                  </button>
+                  {/*
+                    An initiative is not claimable — it is addressed to
+                    everyone, and "Claim" on a thing nine people all have to do
+                    would mean the opposite of what it means everywhere else on
+                    this board. The primary action is logging your own share.
+                  */}
+                  {r.kind === "initiative" ? (
+                    <button
+                      type="button"
+                      className="stq__act"
+                      onClick={() => void openLog(r)}
+                      disabled={busy || !author?.id || loadingLogId === r.id}
+                    >
+                      <Target size={12} aria-hidden />
+                      {loadingLogId === r.id ? "Opening…" : "Log mine"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="stq__act"
+                      onClick={() => void claim(r)}
+                      disabled={busy}
+                      aria-pressed={Boolean(mine)}
+                    >
+                      <Sparkles size={12} aria-hidden />
+                      {mine ? "Drop" : r.claimedBy ? "Take over" : "Claim"}
+                    </button>
+                  )}
 
                   {isAuthor && (
                     <button
@@ -372,6 +547,22 @@ export function RequestsLane({ studioId, author }: RequestsLaneProps) {
                     Reply
                   </button>
                 </div>
+
+                {/*
+                  The roll-up sits on the card rather than behind a tap,
+                  because for an initiative it IS the content. A card that
+                  says only "five assessments each" and hides who has done
+                  them is the version of this feature that gets ignored.
+                */}
+                {r.kind === "initiative" && roster && (
+                  <InitiativeRollup
+                    studioId={studioId}
+                    requestId={r.id}
+                    target={r.target}
+                    roster={roster}
+                    currentUserId={currentUserId ?? author?.id ?? null}
+                  />
+                )}
 
                 {/* One row, always visible, never behind a menu. A reaction
                     that costs a tap to reveal costs the same as typing. */}
@@ -414,6 +605,35 @@ export function RequestsLane({ studioId, author }: RequestsLaneProps) {
             );
           })}
         </ul>
+      )}
+
+      {resolving && (
+        <ResolveDialog
+          open={!!resolving}
+          onOpenChange={(v) => !v && setResolving(null)}
+          request={resolving}
+          saving={busy}
+          onResolve={submitResolve}
+        />
+      )}
+
+      {/*
+        Mounted only while open, and keyed on the request, so the picker's
+        internal draft starts from THIS initiative's existing entries rather
+        than whatever was left in state from the last one.
+      */}
+      {logging && (
+        <SubmitInitiativeDialog
+          key={logging.id}
+          open
+          onOpenChange={(v) => !v && setLogging(null)}
+          target={logging.target}
+          title={logging.title}
+          clients={clients ?? []}
+          entries={myEntries}
+          saving={savingLog}
+          onSave={saveLog}
+        />
       )}
     </section>
   );

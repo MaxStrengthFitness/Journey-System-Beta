@@ -26,6 +26,7 @@ import { queryStudioIds } from "../lib/tenancy";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import SyncStatusBadge from "./mindbody/SyncStatusBadge";
 import { KaizenToggle } from "../features/trainer-profile/KaizenToggle";
+import { studioDateKey } from "../lib/studio-time";
 
 interface Props {
   clients: Client[];
@@ -685,8 +686,8 @@ export function ClientDirectoryView({
                                 .map((m: any) => {
                                   if (!m?.lastPerformedDate) return null;
                                   if (typeof m.lastPerformedDate === "string") return m.lastPerformedDate;
-                                  if (m.lastPerformedDate?.toDate) return m.lastPerformedDate.toDate().toISOString().split("T")[0];
-                                  if (m.lastPerformedDate instanceof Date) return m.lastPerformedDate.toISOString().split("T")[0];
+                                  if (m.lastPerformedDate?.toDate) return studioDateKey(m.lastPerformedDate.toDate());
+                                  if (m.lastPerformedDate instanceof Date) return studioDateKey(m.lastPerformedDate);
                                   return null;
                                 })
                                 .filter(Boolean) as string[];

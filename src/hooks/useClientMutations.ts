@@ -12,6 +12,7 @@ import { db } from "../firebase";
 import { Client, Trainer, Machine } from "../types";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { logDocId } from "../lib/exercise-log-id";
+import { studioTodayKey } from "../lib/studio-time";
 
 type ClientFormData = {
   firstName: string;
@@ -62,7 +63,7 @@ export function useClientMutations(
       .map((name) => machines.find((m) => m.name === name || m.fullName === name)?.id)
       .filter(Boolean) as string[];
 
-    const date = new Date().toISOString().split("T")[0];
+    const date = studioTodayKey();
     const activeStudioIdForSession = activeStudioId || authTrainer.primaryHomeStudioId;
 
     try {

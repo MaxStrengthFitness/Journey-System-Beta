@@ -21,6 +21,9 @@ import {
   notifyTaskCompletion,
   useMachineUpkeep,
   useStudioTasks,
+  usePlaybook,
+  searchPlaybook,
+  MachinePlaybookCard,
   type TaskRow,
 } from "../studio-tasks";
 import { useToast } from "../../contexts/ToastContext";
@@ -116,6 +119,13 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
   // rail. Studio settings moved into the Catalog this round - see
   // StudioSetupCard for why they are not a Trainer Settings shortcut.
   const { settingsByMachineId } = useStudioMachineSettings(activeStudioId);
+
+  /*
+   * Read once here, same as upkeep and studio settings. One snapshot over the
+   * studio's playbook, filtered per machine below — mounting it inside the
+   * detail pane would rebuild the listener on every tap in the rail.
+   */
+  const { entries: playbookEntries } = usePlaybook(activeStudioId);
   const canEditStudioSetup = isStudioLeader(authTrainer ?? null);
 
   const studioSetupFor = (machineId: string, machineName: string) => (
@@ -128,6 +138,22 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
       authorId={authTrainer?.id ?? null}
     />
   );
+  /*
+   * Returns null, not an empty card, when the studio has written nothing about
+   * this machine — MachineDetail then omits the section entirely rather than
+   * showing an empty one. See its `playbook` prop.
+   */
+  const playbookFor = (machineId: string) => {
+    const hits = searchPlaybook(playbookEntries, "", { machineId });
+    if (hits.length === 0) return null;
+    return (
+      <MachinePlaybookCard
+        entries={hits.map((h) => h.entry)}
+        currentUserId={authTrainer?.id ?? null}
+      />
+    );
+  };
+
   const { rows: todayTaskRows } = useStudioTasks(activeStudioId);
   const [noteRow, setNoteRow] = useState<TaskRow | null>(null);
   const [upkeepBusy, setUpkeepBusy] = useState(false);
@@ -375,6 +401,7 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
                 studioName={activeStudio?.name}
                 author={author}
                 upkeep={upkeepFor(selected.id)}
+                playbook={playbookFor(selected.id)}
                 studioSetup={studioSetupFor(selected.id, selected.name)}
                 isFlagged={Boolean(upkeepById[selected.id]?.flagged)}
                 onOpenAcademy={(id) => setAcademyFor(id)}
@@ -408,6 +435,7 @@ export function CatalogView({ machines, authTrainer }: CatalogViewProps) {
           studioName={activeStudio?.name}
           author={author}
           upkeep={upkeepFor(selected.id)}
+          playbook={playbookFor(selected.id)}
           studioSetup={studioSetupFor(selected.id, selected.name)}
           isFlagged={Boolean(upkeepById[selected.id]?.flagged)}
           onOpenAcademy={(id) => setAcademyFor(id)}

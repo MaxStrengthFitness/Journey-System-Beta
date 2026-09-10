@@ -33,6 +33,7 @@ import {
   MessageSquare,
   Sparkles,
   TriangleAlert,
+  UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,6 +54,7 @@ import type { HubAnnouncement, Trainer } from "../../types";
 
 const ICON: Record<NotificationKind, typeof Bell> = {
   "task-completed": Check,
+  "task-assigned": UserCheck,
   "request-claimed": Sparkles,
   "request-replied": MessageSquare,
   "request-resolved": CheckCheck,

@@ -8,7 +8,7 @@ and 1366×1024 in both themes. **Not yet looked at on a real iPad.**
 Files in this folder own the header. The other sections live where their
 data lives — `features/journey-grid`, `features/routines`,
 `features/equipment`, `features/clinical-review`, `components/journal`,
-`components/ClientHistoryCalendar.tsx` — and each of those has its own
+`features/client-history` — and each of those has its own
 README or header comment. This document is the *why* across all seven.
 
 ---

@@ -24,6 +24,7 @@ import { db } from "../../firebase";
 import type { Client, ProgressReport, Trainer } from "../../types";
 import type { SubjectiveAssessment } from "./types";
 import { snapshotForClient, summarize, type PreviousAssessmentRef } from "./scoring";
+import { studioTodayKey } from "../../lib/studio-time";
 
 export type CheckInOrigin = "pre_session" | "post_session" | "report";
 
@@ -104,7 +105,7 @@ export async function saveQuickCheckIn(opts: {
   sessionId?: string | null;
 }): Promise<string> {
   const { client, trainer, assessment, previous, origin, sessionId } = opts;
-  const date = assessment.completedAt || new Date().toISOString().split("T")[0];
+  const date = assessment.completedAt || studioTodayKey();
   const summary = summarize(assessment, previous);
   const shell = emptyReportShell(client, trainer, date);
 
