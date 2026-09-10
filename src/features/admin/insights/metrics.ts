@@ -38,6 +38,7 @@
  */
 
 import type { WorkoutSession } from "../../../types";
+import { studioDateKey } from "../../../lib/studio-time";
 
 /* ------------------------------------------------------------------ *
  * THRESHOLDS — stated, not buried
@@ -107,7 +108,8 @@ export function sessionDay(s: WorkoutSession): string | null {
   }
   const ms = millis(s.createdAt) ?? millis(s.startTime);
   if (ms === null) return null;
-  return new Date(ms).toISOString().slice(0, 10);
+  // The Eastern day, so an evening session counts on the day it happened.
+  return studioDateKey(ms);
 }
 
 /** Whoever ran it. Falls back to initials when no id was stamped. */

@@ -40,6 +40,7 @@ import { Client, Machine, Trainer } from "../types";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
 import { useActiveStudio } from "../ActiveStudioContext";
 import { useToast } from "../contexts/ToastContext";
+import { studioTodayKey } from "../lib/studio-time";
 
 interface ConsultationWizardProps {
   client: Client;
@@ -163,7 +164,7 @@ export function ConsultationWizard({
         authTrainer?.initials || trainers[0]?.initials || "??";
       const trainerName = authTrainer ? authTrainer.fullName : "";
       const trainerId = authTrainer?.id || "";
-      const date = new Date().toISOString().split("T")[0];
+      const date = studioTodayKey();
       const sessionRef = await addDoc(collection(db, "sessions"), {
         clientId: client.id,
         routineId: routineRef.id,

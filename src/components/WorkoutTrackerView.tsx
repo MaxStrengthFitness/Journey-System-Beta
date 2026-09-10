@@ -141,6 +141,7 @@ import { SessionJournalSidebar } from "./journal/SessionJournalSidebar";
 import { BriefingScreen } from "../features/briefing";
 import { VictoryHUDScreen } from "./VictoryHUDScreen";
 import { ConsultationSetupWizard } from "./ConsultationSetupWizard";
+import { studioTodayKey } from "../lib/studio-time";
 
 type RoutineType = "A" | "B" | "Free";
 
@@ -1888,7 +1889,7 @@ export function WorkoutTrackerView({
       authTrainer?.initials || trainers[0]?.initials || "??";
     const trainerName = authTrainer ? authTrainer.fullName : "";
     const trainerId = authTrainer?.id || "";
-    const date = new Date().toISOString().split("T")[0];
+    const date = studioTodayKey();
 
     try {
       let routineId: string | undefined = undefined;
@@ -3011,7 +3012,7 @@ export function WorkoutTrackerView({
         session: {
           id: currentSession.id,
           sessionNumber: currentSession.sessionNumber || sessions.length,
-          date: toIsoDate(currentSession.date || new Date().toISOString().slice(0, 10)),
+          date: toIsoDate(currentSession.date || studioTodayKey()),
           trainerInitials: (
             currentSession.trainerInitials ||
             authTrainer?.initials ||

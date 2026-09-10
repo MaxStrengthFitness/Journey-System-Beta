@@ -61,6 +61,7 @@ import {
   TextAreaField,
   TextField,
 } from "./DossierPrimitives";
+import { studioTodayKey } from "../../lib/studio-time";
 
 const SECTION_ICONS: Record<DossierSection, React.ReactNode> = {
   general: <User className="h-5 w-5" />,
@@ -207,7 +208,7 @@ export function ClientDossier({
       id: Math.random().toString(36).slice(2, 11),
       title: "",
       type: "Other",
-      date: new Date().toISOString().split("T")[0],
+      date: studioTodayKey(),
       priority: "Medium",
     };
     updateField("events", [...events, next]);

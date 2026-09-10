@@ -36,6 +36,7 @@ import type { Client, ProgressReport, Trainer } from "../../types";
 import type { SubjectiveAssessment } from "./types";
 import { snapshotForClient, summarize, type PreviousAssessmentRef } from "./scoring";
 import { emptyReportShell } from "./checkin-write";
+import { studioTodayKey } from "../../lib/studio-time";
 
 export interface OpenCheckIn {
   id: string;
@@ -163,7 +164,7 @@ export async function saveCheckInDraft(opts: {
     return draftId;
   }
 
-  const date = assessment.completedAt || new Date().toISOString().split("T")[0];
+  const date = assessment.completedAt || studioTodayKey();
   const ref = await addDoc(
     collection(db, "progressReports"),
     stripUndefined({
@@ -193,7 +194,7 @@ export async function finalizeCheckIn(opts: {
   previous: PreviousAssessmentRef | null;
 }): Promise<void> {
   const { draftId, client, assessment, previous } = opts;
-  const date = assessment.completedAt || new Date().toISOString().split("T")[0];
+  const date = assessment.completedAt || studioTodayKey();
   const summary = summarize(assessment, previous);
 
   await updateDoc(

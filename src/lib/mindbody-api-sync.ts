@@ -15,6 +15,7 @@ import {
   wallClockToInstant,
   isValidTimeZone,
   DEFAULT_TIME_ZONE,
+  studioTodayKey,
 } from "./studio-time";
 
 export interface MindbodySyncResult {
@@ -230,12 +231,10 @@ export async function syncMindbodySchedules(
     errors: [],
   };
   const now = new Date();
-  const start = startDate || now.toISOString().split("T")[0];
+  const start = startDate || studioTodayKey(now);
   const end =
     endDate ||
-    new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0];
+    studioTodayKey(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000));
 
   let targetTrainers = trainers;
   let staffIdsToFetch: string[] = [];

@@ -24,6 +24,7 @@ import { answeredCount, emptyAssessment, parseWeightLbs, type PreviousAssessment
 import { loadPreviousCheckIn, saveQuickCheckIn, type CheckInOrigin } from "./checkin-write";
 import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
 import { fmtDate } from "./ui";
+import { studioTodayKey } from "../../lib/studio-time";
 
 export interface QuickCheckInDialogProps {
   open: boolean;
@@ -61,7 +62,7 @@ export function QuickCheckInDialog({
     let cancelled = false;
     setAssessment({
       ...emptyAssessment({ bodyWeightLbs: bodyWeight }),
-      completedAt: new Date().toISOString().split("T")[0],
+      completedAt: studioTodayKey(),
     });
     setShowCoachView(false);
     loadPreviousCheckIn(client.id)

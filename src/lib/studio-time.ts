@@ -205,6 +205,46 @@ export function studioDateKey(
 }
 
 /**
+ * Today's calendar day in studio time — Eastern unless the active studio says
+ * otherwise — as `YYYY-MM-DD`. Never null, so it can stand in for the old
+ * `new Date().toISOString().split("T")[0]` one for one.
+ *
+ * Why that pattern had to go: `toISOString()` is UTC. From 8 PM Eastern (7 PM
+ * in winter) until midnight, UTC is already tomorrow, so a session started at
+ * 8:30 PM on Tuesday was saved as Wednesday. Sep 2026: the studios are in
+ * Ohio, so the app's day is the Eastern day.
+ */
+export function studioTodayKey(
+  now: Date = new Date(),
+  tz: string = activeTimeZone,
+): string {
+  // A bad zone must never stop a session from starting, so it falls back to
+  // Eastern rather than throwing out of Intl.
+  const zone = isValidTimeZone(tz) ? tz : DEFAULT_TIME_ZONE;
+  return studioDateKey(now, zone) ?? now.toISOString().slice(0, 10);
+}
+
+/**
+ * `YYYY-MM-DD` for any stored date value, read in studio time — except that a
+ * value which already IS a calendar day ("2026-09-10") comes back unchanged.
+ *
+ * That exception matters: `new Date("2026-09-10")` means midnight UTC, which in
+ * Ohio is 8 PM the day BEFORE, so passing a plain day through `studioDateKey`
+ * would move it back a day. Timestamps, Dates and full ISO instants are real
+ * moments and are converted; plain days are already days.
+ */
+export function studioDayKeyOf(
+  value: DateLike,
+  tz: string = activeTimeZone,
+): string | null {
+  if (typeof value === "string") {
+    const day = value.trim().match(/^(\d{4}-\d{2}-\d{2})$/);
+    if (day) return day[1];
+  }
+  return studioDateKey(value, isValidTimeZone(tz) ? tz : DEFAULT_TIME_ZONE);
+}
+
+/**
  * The instant at which the studio's calendar day begins.
  * Resolved in two passes because the offset itself depends on the instant —
  * a single pass lands an hour off on DST transition days.

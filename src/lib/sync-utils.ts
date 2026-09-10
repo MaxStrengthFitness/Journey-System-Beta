@@ -104,6 +104,7 @@ export function mapMindbodySessions(sessions: any[], trainers: Trainer[]): Parti
 import { Firestore, writeBatch, doc, collection, serverTimestamp, increment } from 'firebase/firestore';
 import { invalidateSessionCount } from './session-count-cache';
 import { completedSessionRollup } from './client-rollups';
+import { studioTodayKey } from "./studio-time";
 
 /**
  * Atomic Session Completion Engine
@@ -259,7 +260,7 @@ export async function completeWorkoutSession(
     const clientUpdates: any = {
       completedSessions: increment(1),
       sessionCount: currentSession.sessionNumber || increment(1),
-      lastSessionDate: new Date().toISOString().split('T')[0],
+      lastSessionDate: studioTodayKey(),
       updatedAt: serverTimestamp()
     };
 
