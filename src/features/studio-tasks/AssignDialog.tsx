@@ -6,7 +6,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Check, UserRound } from "lucide-react";
-import type { Trainer } from "../../types";
 import type { ShiftGroup, TaskActor } from "./board";
 import { SHIFT_LABEL } from "./types";
 
@@ -46,8 +45,13 @@ export interface AssignDialogProps {
   group: ShiftGroup | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** This studio's own team — see studioRoster for why it is home studio only. */
-  roster: Trainer[];
+  /**
+   * This studio's own team — see studioRoster for why it is home studio only.
+   * `{ id, name }`, the shape studioRoster returns. It was typed as `Trainer[]`
+   * and read `fullName`, which that shape does not have, so every row read
+   * "A trainer" and that is the name an assignment saved (fixed Sep 10 2026).
+   */
+  roster: TaskActor[];
   /** Signed-in trainer, so "you" reads as "you". */
   currentUserId?: string | null;
   onSubmit: (assignee: TaskActor | null, days: number) => void | Promise<void>;
@@ -116,7 +120,7 @@ export function AssignDialog({
             >
               {roster.map((t) => {
                 const isChosen = chosen === t.id;
-                const name = t.fullName ?? "A trainer";
+                const name = t.name || "A trainer";
                 return (
                   <button
                     key={t.id}
@@ -174,7 +178,7 @@ export function AssignDialog({
             <strong className="text-foreground">
               Anyone can still tick this off
             </strong>{" "}
-            — if {chosenTrainer?.fullName ?? "they"} get pulled into a session,
+            — if {chosenTrainer?.name || "they"} get pulled into a session,
             the floor still closes it.
           </p>
 
@@ -205,7 +209,7 @@ export function AssignDialog({
                 submit(
                   {
                     id: chosenTrainer.id,
-                    name: chosenTrainer.fullName ?? "A trainer",
+                    name: chosenTrainer.name || "A trainer",
                   },
                   days,
                 )

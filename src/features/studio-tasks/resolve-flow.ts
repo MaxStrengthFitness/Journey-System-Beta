@@ -18,7 +18,8 @@
 import { resolveRequest } from "./requests";
 import { savePlaybookEntry } from "./playbook-mutations";
 import type { PlaybookDraft } from "./playbook";
-import type { TaskAuthor } from "./requests";
+// TaskAuthor lives in ./mutations; ./requests imports it without re-exporting.
+import type { TaskAuthor } from "./mutations";
 import type { ResolveOutcome } from "./resolve-outcome";
 
 export type { ResolveOutcome } from "./resolve-outcome";
