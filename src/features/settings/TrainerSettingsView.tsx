@@ -328,16 +328,16 @@ export function TrainerSettingsView({
       {leader && (
         <Card
           icon={ShieldCheck}
-          title="Studio & admin tools"
+          title="Studio & operations tools"
           subtitle="Staff, reports, integrations and equipment"
         >
           <p className="text-sm text-muted-foreground font-medium leading-relaxed mb-3">
             Team management, data exports, Mindbody integration and the global
-            machine editor now live in the admin dashboard.
+            machine editor now live in the Operations dashboard.
           </p>
           <LinkRow
             icon={ShieldCheck}
-            label="Open admin dashboard"
+            label="Open Operations"
             onClick={setView ? () => setView("admin-dashboard") : undefined}
           />
         </Card>
