@@ -66,7 +66,10 @@ export function useLiveRenewal(
   options: { enabled?: boolean; machineNames?: Record<string, string> } = {},
 ): LiveRenewalState {
   const enabled = options.enabled !== false;
-  const { settings } = useRenewalSettings(client?.homeStudioId ?? null);
+  // Only listens while the screen that needs it is open.
+  const { settings, loading: settingsLoading } = useRenewalSettings(
+    enabled ? client?.homeStudioId ?? null : null,
+  );
   const [inputs, setInputs] = useState<Inputs | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -135,7 +138,9 @@ export function useLiveRenewal(
   }, [enabled, clientId, studioId, syncMark]);
 
   const live = useMemo(() => {
-    if (!client || !inputs) return null;
+    // Wait for the studio's own thresholds: a snapshot worked out against the
+    // defaults for a moment would flash the wrong answer.
+    if (!client || !inputs || settingsLoading) return null;
     const tz = getActiveTimeZone();
     const now = new Date();
     const today = studioTodayKey(now, tz);
@@ -151,8 +156,15 @@ export function useLiveRenewal(
       machineNames: options.machineNames,
       attendanceSince: attendanceSinceOf(inputs.earliestBooking, tz),
     });
-  }, [client, inputs, settings, options.machineNames]);
+  }, [client, inputs, settings, settingsLoading, options.machineNames]);
 
   const stored = client?.renewal ?? null;
-  return { live, stored, snapshot: live ?? stored, settings, loading, error };
+  return {
+    live,
+    stored,
+    snapshot: live ?? stored,
+    settings,
+    loading: loading || (enabled && settingsLoading),
+    error,
+  };
 }

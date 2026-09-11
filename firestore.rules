@@ -348,6 +348,57 @@ service cloud.firestore {
           && d.get('updatedBy', '') == request.auth.uid;
     }
 
+    /** What a trainer's conversation log may write on a renewal cycle. */
+    function renewalTrainerKeys() {
+      return ['clientId', 'clientName', 'cycleKey', 'packageKey', 'chargeDate',
+              'latestLeaning', 'latestConcerns', 'latestInterestedIn',
+              'needsLeader', 'lastTouchAt', 'lastTouchBy', 'lastTouchByName',
+              'touchCount'];
+    }
+
+    /** Leaders may also set the stage, the lead and the outcome. */
+    function renewalCycleKeys() {
+      return renewalTrainerKeys().concat([
+              'stage', 'leadTrainerId', 'outcome', 'outcomeAt', 'outcomeBy',
+              'nextCycleKey', 'primaryTrainerId', 'updatedAt', 'updatedBy']);
+    }
+
+    function renewalLeanings() {
+      return ['renewing', 'leaning-yes', 'unsure', 'leaning-no', 'not-renewing'];
+    }
+
+    /**
+     * A trainer logging a conversation: only the trainer fields change, and
+     * the conversation is signed by the person writing it.
+     */
+    function renewalTrainerWrite() {
+      return request.resource.data.get('lastTouchBy', '') == request.auth.uid
+          && request.resource.data.get('latestLeaning', 'unsure') in renewalLeanings()
+          && (resource == null
+                ? request.resource.data.keys().hasOnly(renewalTrainerKeys())
+                : request.resource.data.diff(resource.data).affectedKeys()
+                    .hasOnly(renewalTrainerKeys()));
+    }
+
+    function renewalLeaderWrite() {
+      return request.resource.data.keys().hasOnly(renewalCycleKeys())
+          && request.resource.data.get('stage', 'not-started') in ['not-started', 'talking', 'decided']
+          && (request.resource.data.get('outcome', null) == null ||
+              request.resource.data.outcome in
+                ['renewed', 'upgraded', 'downgraded', 'pay-as-you-go', 'lost']);
+    }
+
+    /** One logged conversation. Signed by its author; never edited. */
+    function renewalTouchValid(d) {
+      return d.keys().hasOnly(['clientId', 'authorId', 'authorName', 'at', 'leaning',
+                               'concerns', 'interestedIn', 'note', 'needsLeader'])
+          && d.authorId == request.auth.uid
+          && d.leaning in renewalLeanings()
+          && d.concerns is list && d.concerns.size() <= 8
+          && d.note is string && d.note.size() <= 500
+          && d.needsLeader is bool;
+    }
+
     function isTrainerOfStudioOrClient(studioId, clientId) {
       return isSuperAdmin() || isFranchiseOwnerOnly() || (
         isAuthenticated() && (
@@ -1022,6 +1073,44 @@ service cloud.firestore {
                     && renewalsManageable(studioId, getRole(), callerTrainer())
                     && renewalSettingsValid(request.resource.data);
         allow delete: if false;
+      }
+
+      // RENEWAL CYCLES AND CONVERSATIONS (Renewals round, Sep 2026).
+      //
+      //   renewals/{cycleKey}            one package term: the latest
+      //                                  conversation, and the leaders'
+      //                                  stage / lead / outcome
+      //   renewals/{cycleKey}/touches    one document per conversation
+      //
+      // Everyone who works at the studio reads them and may log a
+      // conversation; a trainer's write can touch only the conversation
+      // fields (renewalTrainerKeys). Stage, lead and outcome are for the
+      // studio's leaders. Per-trainer renewal RATES are computed from these in
+      // the Operations dashboard, which only leaders can open (AJ, Sep 10).
+      //
+      // A conversation is never edited — an accountability log that can be
+      // rewritten is not one — but a leader can delete a mistake. Cycles are
+      // history and are never deleted. The nightly job writes outcomes
+      // through the Admin SDK, which these rules do not govern.
+      match /renewals/{cycleKey} {
+        allow read: if isAuthenticated()
+                    && renewalsReadable(studioId, getRole(), callerTrainer());
+        allow create, update: if isAuthenticated() && (
+          (renewalsManageable(studioId, getRole(), callerTrainer()) && renewalLeaderWrite()) ||
+          (renewalsReadable(studioId, getRole(), callerTrainer()) && renewalTrainerWrite())
+        );
+        allow delete: if false;
+
+        match /touches/{touchId} {
+          allow read: if isAuthenticated()
+                      && renewalsReadable(studioId, getRole(), callerTrainer());
+          allow create: if isAuthenticated()
+                        && renewalsReadable(studioId, getRole(), callerTrainer())
+                        && renewalTouchValid(request.resource.data);
+          allow update: if false;
+          allow delete: if isAuthenticated()
+                        && renewalsManageable(studioId, getRole(), callerTrainer());
+        }
       }
 
       // STUDIO MACHINE ROSTER — what THIS location actually has

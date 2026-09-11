@@ -167,6 +167,12 @@ import {
   useTopTrainer,
 } from "../features/client-profile";
 import { isOnRoster, useKaizenRoster } from "../features/trainer-profile";
+import {
+  RenewalCardDialog,
+  SITUATION_TONE,
+  chipText,
+  renewalPromptDue,
+} from "../features/renewals";
 
 
 /** Sessions per Firestore page for the profile's history (see the Journey tab). */
@@ -382,6 +388,13 @@ export function ClientProfileView({
   };
 
   const client = clients.find((c) => c.id === clientId);
+  // Renewals round (Sep 2026): the package tile opens the Renewal card.
+  const [renewalOpen, setRenewalOpen] = useState(false);
+  const machineNames = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const m of machines ?? []) if (m.id && m.name) map[m.id] = m.name;
+    return map;
+  }, [machines]);
 
   /**
    * A PRIMITIVE summary of the loaded sessions, not the array itself.
@@ -1703,6 +1716,23 @@ export function ClientProfileView({
         }}
         onViewCurrentSession={() => setView("workouts")}
         onDiscardSession={() => setShowDiscardActiveSessionConfirm(true)}
+        renewal={
+          client.renewal
+            ? {
+                text: chipText(client.renewal, studioTodayKey()),
+                tone: SITUATION_TONE[client.renewal.situation],
+                attention: renewalPromptDue(client.renewal),
+                onOpen: () => setRenewalOpen(true),
+              }
+            : undefined
+        }
+      />
+      <RenewalCardDialog
+        open={renewalOpen}
+        onClose={() => setRenewalOpen(false)}
+        client={client}
+        trainer={liveAuthTrainer}
+        machineNames={machineNames}
       />
 
       <Tabs

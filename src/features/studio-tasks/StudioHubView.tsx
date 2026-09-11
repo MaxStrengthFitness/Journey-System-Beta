@@ -60,6 +60,7 @@ import { useStudioTaskCategories } from "./useStudioTaskCategories";
 import { useTaskActions } from "./useTaskActions";
 import { confirmPlaybookEntry, retirePlaybookEntry } from "./playbook-mutations";
 import type { PlaybookEntry } from "./playbook";
+import { RenewalsLane } from "../renewals/RenewalsLane";
 import "./studio-tasks.css";
 import "./studio-hub.css";
 
@@ -362,6 +363,16 @@ export function StudioHubView({
             onComplete={actions.complete}
             onReopen={actions.reopen}
             onOpenClientTask={onOpenClientTask}
+          />
+        )}
+
+        {/* Renewals round (Sep 2026): this week's clients with a renewal
+            conversation due, from their nightly snapshots. */}
+        {showClients && (
+          <RenewalsLane
+            studioId={activeStudioId ?? null}
+            clients={clients}
+            onOpenClient={onOpenClientTask ? (id) => onOpenClientTask(id) : undefined}
           />
         )}
 

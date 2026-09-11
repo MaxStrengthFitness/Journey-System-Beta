@@ -12,6 +12,9 @@ import {
   getDocs,
   addDoc,
   updateDoc,
+  writeBatch,
+  serverTimestamp,
+  increment,
 } from "firebase/firestore";
 import { describe, it, beforeAll, afterAll, beforeEach, expect } from "vitest";
 import * as fs from "fs";
@@ -807,5 +810,98 @@ describe("Firestore Security Rules", () => {
   it("denies creating a client that arrives with a renewal snapshot", async () => {
     const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
     await assertFails(setDoc(doc(ctx.firestore(), "clients", "newWithRenewal"), renewalClient));
+  });
+
+  // ── RENEWALS: conversations and cycles ─────────────────────────────────
+  //
+  // Trainers at the studio log conversations (a touch, plus the cycle's
+  // latest-of-each fields); only leaders set stage, lead and outcome.
+
+  const touch = (uid: string) => ({
+    clientId: "c1",
+    authorId: uid,
+    authorName: "Trainer A",
+    at: serverTimestamp(),
+    leaning: "unsure",
+    concerns: ["price"],
+    interestedIn: null,
+    note: "Worried about cost",
+    needsLeader: true,
+  });
+
+  const cyclePatch = (uid: string) => ({
+    clientId: "c1",
+    clientName: "Client One",
+    cycleKey: "9001",
+    packageKey: "committed",
+    chargeDate: "2026-11-14",
+    latestLeaning: "unsure",
+    latestConcerns: ["price"],
+    latestInterestedIn: null,
+    needsLeader: true,
+    lastTouchBy: uid,
+    lastTouchByName: "Trainer A",
+    lastTouchAt: serverTimestamp(),
+    touchCount: increment(1),
+  });
+
+  it("lets a trainer log a renewal conversation at their studio", async () => {
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    const db = ctx.firestore();
+    const cycle = doc(db, "studios", "studioA", "renewals", "9001");
+    const batch = writeBatch(db);
+    batch.set(doc(collection(cycle, "touches")), touch("trainerA"));
+    batch.set(cycle, cyclePatch("trainerA"), { merge: true });
+    await assertSucceeds(batch.commit());
+    await assertSucceeds(getDoc(cycle));
+  });
+
+  it("keeps another studio's trainers out of its renewals", async () => {
+    const ctx = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" });
+    const db = ctx.firestore();
+    const cycle = doc(db, "studios", "studioA", "renewals", "9001");
+    await assertFails(setDoc(cycle, cyclePatch("trainerB"), { merge: true }));
+    await assertFails(getDoc(cycle));
+  });
+
+  it("denies a trainer setting the stage or the outcome", async () => {
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    const cycle = doc(ctx.firestore(), "studios", "studioA", "renewals", "9001");
+    await assertFails(setDoc(cycle, { ...cyclePatch("trainerA"), stage: "decided" }, { merge: true }));
+    await assertFails(setDoc(cycle, { ...cyclePatch("trainerA"), outcome: "renewed" }, { merge: true }));
+  });
+
+  it("denies a conversation signed with someone else's name", async () => {
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    const cycle = doc(ctx.firestore(), "studios", "studioA", "renewals", "9001");
+    await assertFails(setDoc(doc(collection(cycle, "touches")), touch("ownerA")));
+    await assertFails(setDoc(cycle, cyclePatch("ownerA"), { merge: true }));
+  });
+
+  it("lets the studio's owner set stage and outcome", async () => {
+    const ctx = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" });
+    const cycle = doc(ctx.firestore(), "studios", "studioA", "renewals", "9001");
+    await assertSucceeds(
+      setDoc(
+        cycle,
+        { clientId: "c1", clientName: "Client One", cycleKey: "9001", stage: "decided", outcome: "upgraded", updatedBy: "ownerA" },
+        { merge: true },
+      ),
+    );
+  });
+
+  it("never lets a conversation be edited, and lets only a leader delete one", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "studios", "studioA", "renewals", "9001", "touches", "t1"), {
+        ...touch("trainerA"),
+        at: new Date(),
+      });
+    });
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    const path = ["studios", "studioA", "renewals", "9001", "touches", "t1"] as const;
+    await assertFails(updateDoc(doc(trainer, ...path), { note: "rewritten" }));
+    await assertFails(deleteDoc(doc(trainer, ...path)));
+    await assertSucceeds(deleteDoc(doc(owner, ...path)));
   });
 });

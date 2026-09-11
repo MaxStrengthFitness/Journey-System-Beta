@@ -193,3 +193,78 @@ export interface RenewalSnapshot {
   /** What is missing, in words: "No Mindbody contract on file — press Sync on the Mindbody card". */
   dataGaps: string[];
 }
+
+/* ------------------------------------------------------------------ *
+ * Conversations — studios/{studioId}/renewals/{cycleKey}[/touches/{id}]
+ * ------------------------------------------------------------------ */
+
+/** How the client is leaning, as the trainer heard it. */
+export type RenewalLeaning = "renewing" | "leaning-yes" | "unsure" | "leaning-no" | "not-renewing";
+
+/** What they are on the fence about. Price first: AJ, Sep 10 — the top reason clients leave. */
+export type RenewalConcern =
+  | "price"
+  | "commitment-length"
+  | "results"
+  | "schedule"
+  | "health"
+  | "travel"
+  | "trainer-fit"
+  | "other";
+
+/** What they said they might want next. */
+export type RenewalInterest = "same" | "longer" | "shorter" | "prepay" | "monthly";
+
+/** Where the leader has the conversation. Set by leaders only. */
+export type RenewalStage = "not-started" | "talking" | "decided";
+
+export type RenewalOutcome = "renewed" | "upgraded" | "downgraded" | "pay-as-you-go" | "lost";
+
+/**
+ * One renewal cycle (one package term) at a studio. Trainers write the
+ * `latest*`, `needsLeader` and `lastTouch*` fields as a side effect of
+ * logging a conversation; leaders own stage, lead and outcome.
+ */
+export interface RenewalCycle {
+  clientId: string;
+  clientName: string;
+  cycleKey: string;
+  packageKey: string | null;
+  /** Copied at the last conversation, for context in lists. */
+  chargeDate: string | null;
+  stage?: RenewalStage;
+  /** Trainer document id of whoever is leading the conversation. */
+  leadTrainerId?: string | null;
+  latestLeaning: RenewalLeaning | null;
+  latestConcerns: RenewalConcern[];
+  latestInterestedIn: RenewalInterest | null;
+  needsLeader: boolean;
+  lastTouchAt: unknown | null;
+  /** Sign-in uid of the last person to log a conversation. */
+  lastTouchBy: string | null;
+  lastTouchByName: string | null;
+  touchCount?: number;
+  outcome?: RenewalOutcome | null;
+  outcomeAt?: unknown | null;
+  /** "job" when the nightly job recorded it, else the leader's uid. */
+  outcomeBy?: string | null;
+  nextCycleKey?: string | null;
+  /** The trainer who coached most sessions this cycle — for leader-only rates. */
+  primaryTrainerId?: string | null;
+  updatedAt?: unknown;
+  updatedBy?: string;
+}
+
+/** One logged conversation. Never edited; a leader can delete a mistake. */
+export interface RenewalTouch {
+  clientId: string;
+  /** Sign-in uid. */
+  authorId: string;
+  authorName: string;
+  at: unknown;
+  leaning: RenewalLeaning;
+  concerns: RenewalConcern[];
+  interestedIn: RenewalInterest | null;
+  note: string;
+  needsLeader: boolean;
+}
