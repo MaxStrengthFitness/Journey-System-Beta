@@ -294,6 +294,60 @@ service cloud.firestore {
       ));
     }
 
+    /* ====================================================================
+       RENEWALS (Renewals round, Sep 2026)
+
+       Same shape as the helpers above: the caller is resolved ONCE at the
+       rule and the role string and trainer map are passed in, so these cost
+       map lookups, not document reads.
+
+         readable   - works at or runs this studio, or reaches every studio
+         manageable - runs this studio (a studio leader of it), or reaches
+                      every studio. Per-trainer renewal rates, the pipeline's
+                      stage / lead / outcome and the studio's renewal
+                      settings are for leaders only (AJ, Sep 10 2026).
+       ==================================================================== */
+
+    function renewalsReadable(studioId, r, t) {
+      return roleIsSuper(r) || roleIsFranchise(r) ||
+             trainerWorksAt(t, studioId) || trainerLeads(r, t, studioId);
+    }
+
+    function renewalsManageable(studioId, r, t) {
+      return roleIsSuper(r) || roleIsFranchise(r) || trainerLeads(r, t, studioId);
+    }
+
+    /** Absent, or a number inside [lo, hi]. */
+    function numberWithin(d, key, lo, hi) {
+      return !(key in d) || (d[key] is number && d[key] >= lo && d[key] <= hi);
+    }
+
+    /**
+     * studios/{s}/config/renewals. The app cleans every value again when it
+     * reads them (features/renewals/settings.ts), so this only has to keep
+     * out shapes that could never be right.
+     */
+    function renewalSettingsValid(d) {
+      return d.keys().hasOnly([
+               'conversationAtSessionsLeft', 'chargeWarnDays', 'chargeWarnMinBanked',
+               'horizonMonths', 'breakDays', 'lostAfterDays', 'payAsYouGoCountsAs',
+               'pauseDuringAwayEvents', 'packages', 'extraSessionNames',
+               'updatedAt', 'updatedBy'])
+          && numberWithin(d, 'conversationAtSessionsLeft', 0, 60)
+          && numberWithin(d, 'chargeWarnDays', 0, 180)
+          && numberWithin(d, 'chargeWarnMinBanked', 1, 100)
+          && numberWithin(d, 'horizonMonths', 1, 12)
+          && numberWithin(d, 'breakDays', 7, 90)
+          && numberWithin(d, 'lostAfterDays', 0, 365)
+          && (!('payAsYouGoCountsAs' in d) || d.payAsYouGoCountsAs in ['retained', 'lost'])
+          && (!('pauseDuringAwayEvents' in d) || d.pauseDuringAwayEvents is bool)
+          && (!('packages' in d) ||
+              (d.packages is list && d.packages.size() >= 1 && d.packages.size() <= 12))
+          && (!('extraSessionNames' in d) ||
+              (d.extraSessionNames is list && d.extraSessionNames.size() <= 40))
+          && d.get('updatedBy', '') == request.auth.uid;
+    }
+
     function isTrainerOfStudioOrClient(studioId, clientId) {
       return isSuperAdmin() || isFranchiseOwnerOnly() || (
         isAuthenticated() && (
@@ -939,6 +993,30 @@ service cloud.firestore {
                              // Allow any trainer to update their own studio's settings (notification toggles etc.)
                              (isAuthenticated() && isAnyAuthenticatedTrainer());
       allow delete: if isSuperAdmin();
+
+      // RENEWAL SETTINGS (Renewals round, Sep 2026).
+      //
+      //   config/renewals      the studio's thresholds and package table.
+      //                        Its leaders write it; everyone who works there
+      //                        reads it (the trainer-side screens measure
+      //                        against it).
+      //   config/renewalsSeen  names the nightly job met in this studio's
+      //                        Mindbody. Written by the job through the Admin
+      //                        SDK, which these rules do not govern; nobody
+      //                        writes it from the app.
+      //
+      // Reads are scoped to the studio, unlike roster/machineNotes: prices are
+      // commercial, and this round's rule is that new collections do not copy
+      // the open-read posture.
+      match /config/{configId} {
+        allow read: if isAuthenticated()
+                    && renewalsReadable(studioId, getRole(), callerTrainer());
+        allow create, update: if isAuthenticated()
+                    && configId == 'renewals'
+                    && renewalsManageable(studioId, getRole(), callerTrainer())
+                    && renewalSettingsValid(request.resource.data);
+        allow delete: if false;
+      }
 
       // STUDIO MACHINE ROSTER — what THIS location actually has
       // (round: Machine Creator & Studio Roster, Sep 2026).

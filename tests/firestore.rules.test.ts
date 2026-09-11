@@ -718,4 +718,58 @@ describe("Firestore Security Rules", () => {
     });
     await assertSucceeds(getDoc(doc(ctx.firestore(), "sessions", "sessionA")));
   });
+
+  // ── RENEWALS: studio settings (Renewals round, Sep 2026) ──────────────
+  //
+  // studios/{s}/config/renewals: the studio's leaders write it, everyone who
+  // works there reads it, nobody else sees it. config/renewalsSeen belongs to
+  // the nightly job (Admin SDK) and cannot be written from the app.
+
+  const validRenewalSettings = (uid: string) => ({
+    conversationAtSessionsLeft: 12,
+    breakDays: 14,
+    payAsYouGoCountsAs: "retained",
+    packages: [{ key: "committed", label: "Committed", sessions: 96, payments: 12 }],
+    updatedBy: uid,
+  });
+
+  it("lets a studio's owner save its renewal settings", async () => {
+    const ctx = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" });
+    await assertSucceeds(
+      setDoc(doc(ctx.firestore(), "studios", "studioA", "config", "renewals"), validRenewalSettings("ownerA")),
+    );
+  });
+
+  it("lets a trainer read their own studio's renewal settings but not change them", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "studios", "studioA", "config", "renewals"), validRenewalSettings("ownerA"));
+    });
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    const ref = doc(ctx.firestore(), "studios", "studioA", "config", "renewals");
+    await assertSucceeds(getDoc(ref));
+    await assertFails(setDoc(ref, validRenewalSettings("trainerA")));
+  });
+
+  it("keeps one studio's renewal settings from another studio's trainers", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "studios", "studioA", "config", "renewals"), validRenewalSettings("ownerA"));
+    });
+    const ctx = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" });
+    await assertFails(getDoc(doc(ctx.firestore(), "studios", "studioA", "config", "renewals")));
+  });
+
+  it("refuses settings outside their ranges, or signed by someone else", async () => {
+    const ctx = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" });
+    const ref = doc(ctx.firestore(), "studios", "studioA", "config", "renewals");
+    await assertFails(setDoc(ref, { ...validRenewalSettings("ownerA"), breakDays: 3 }));
+    await assertFails(setDoc(ref, validRenewalSettings("trainerA")));
+    await assertFails(setDoc(ref, { ...validRenewalSettings("ownerA"), surprise: true }));
+  });
+
+  it("keeps the nightly job's names list read-only from the app", async () => {
+    const ctx = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" });
+    await assertFails(
+      setDoc(doc(ctx.firestore(), "studios", "studioA", "config", "renewalsSeen"), { names: {} }),
+    );
+  });
 });

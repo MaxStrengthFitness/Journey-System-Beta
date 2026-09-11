@@ -4,7 +4,7 @@ import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, Sch
 // component file stays on disk in case it is revived; nothing imports it here.
 // import { RetentionDashboardView } from "./RetentionDashboardView";
 import { AdminLimboQueue } from "./AdminLimboQueue";
-import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Database } from "lucide-react";
+import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Database, CalendarClock } from "lucide-react";
 import { AdminRoutineTemplatesTab } from "./routines/AdminRoutineTemplatesTab";
 import { cn } from "@/lib/utils";
 import "../features/admin/admin.css";
@@ -20,6 +20,7 @@ import { AdminAnnouncementsTab } from "../features/admin/announcements/AdminAnno
 import { AdminMindbodyTab } from "../features/admin/mindbody/AdminMindbodyTab";
 import { AdminBugReportsTab } from "../features/admin/bugs/AdminBugReportsTab";
 import { AdminInsightsTab } from "../features/admin/insights/AdminInsightsTab";
+import { AdminRenewalsTab } from "../features/admin/renewals/AdminRenewalsTab";
 
 interface Props {
   authTrainer: Trainer;
@@ -89,6 +90,7 @@ export function AdminDashboardView({
 }: Props) {
   type AdminTab =
     | "metrics"
+    | "renewals"
     | "users"
     | "studios"
     | "clients"
@@ -152,6 +154,8 @@ export function AdminDashboardView({
       tier: "primary",
       tabs: [
         { id: "metrics", label: "Overview", icon: <Activity className="w-4 h-4" /> },
+        // Renewals round, Sep 2026. Every leader runs their own studio's.
+        { id: "renewals", label: "Renewals", icon: <CalendarClock className="w-4 h-4" /> },
         { id: "studios", label: "Studios", icon: <Building2 className="w-4 h-4" /> },
         { id: "users", label: "Staff & Roles", icon: <Users className="w-4 h-4" /> },
         { id: "clients", label: "Clients", icon: <Users className="w-4 h-4" /> },
@@ -277,6 +281,13 @@ export function AdminDashboardView({
             onManageStudios={() => setActiveTab("studios")}
             onOpenStudioTasks={onOpenStudioTasks}
             onNavigateProfile={onNavigateProfile}
+          />
+        )}
+        {activeTab === "renewals" && (
+          <AdminRenewalsTab
+            authTrainer={authTrainer}
+            studios={studios}
+            activeStudioId={activeStudioId ?? null}
           />
         )}
         {activeTab === "users" && (
