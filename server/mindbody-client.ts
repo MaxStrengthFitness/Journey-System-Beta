@@ -27,6 +27,8 @@ const MB_BASE = "https://api.mindbodyonline.com/public/v6";
 
 // Tokens expire after 60 minutes; they are refreshed at 55 for safety.
 const tokenCache: Record<string, { token: string; expiresAt: number }> = {};
+// Calls that start together share one token request instead of each issuing one.
+const tokenInFlight: Record<string, Promise<string> | undefined> = {};
 
 export function mindbodyConfigured(): boolean {
   return Boolean(
@@ -37,11 +39,23 @@ export function mindbodyConfigured(): boolean {
 }
 
 export async function getMindbodyToken(siteId: string): Promise<string> {
-  const now = Date.now();
   const cached = tokenCache[siteId];
-  if (cached && cached.expiresAt > now) {
+  if (cached && cached.expiresAt > Date.now()) {
     return cached.token;
   }
+  const pending = tokenInFlight[siteId];
+  if (pending) return pending;
+  const request = issueMindbodyToken(siteId);
+  tokenInFlight[siteId] = request;
+  try {
+    return await request;
+  } finally {
+    tokenInFlight[siteId] = undefined;
+  }
+}
+
+async function issueMindbodyToken(siteId: string): Promise<string> {
+  const now = Date.now();
 
   const apiKey = process.env.MINDBODY_API_KEY;
   const sourceName = process.env.MINDBODY_SOURCE_NAME;

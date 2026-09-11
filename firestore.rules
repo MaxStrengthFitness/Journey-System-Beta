@@ -653,7 +653,12 @@ service cloud.firestore {
                            getTrainerData().get('accessibleStudioIds', []),
                            getTrainerData().get('activeGuestStudioIds', [])));
 
+      // `renewal` is the renewal snapshot (Renewals round, Sep 2026). Only
+      // the nightly job writes it, through the Admin SDK, which these rules
+      // do not govern. Nobody writes it from the app — not even an admin — so
+      // an iPad holding an old copy of the client can never put it back.
       allow create: if isValidClient(request.resource.data)
+                    && !('renewal' in request.resource.data)
                     && (isSuperAdmin()
                         || (isAnyAuthenticatedTrainer()
                             && isTrainerOfStudio(
@@ -662,6 +667,7 @@ service cloud.firestore {
       // `resource.data` is the EXISTING document: a trainer may only edit a
       // client their own studio holds, whatever the incoming payload claims.
       allow update: if isValidClient(request.resource.data)
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['renewal'])
                     && (isSuperAdmin()
                         || (isAnyAuthenticatedTrainer()
                             && isTrainerOfStudio(

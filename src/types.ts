@@ -1,6 +1,7 @@
 /**
  * Roles defining system access levels across the organization.
  */
+import type { RenewalSnapshot } from "./features/renewals/types";
 import type {
   ClientSubjectiveSnapshot,
   SubjectiveAssessment,
@@ -771,6 +772,12 @@ export interface Client {
   currentMachineMetrics?: Record<string, CurrentMachineMetric>;
   createdAt?: any;
   retentionMeta?: ClientRetentionMeta;
+  /**
+   * The renewal snapshot (Renewals round, Sep 2026): both clocks, the
+   * situation, flags and proof. Written ONLY by the nightly job
+   * (server/renewals-job.ts); firestore.rules refuses it from the app.
+   */
+  renewal?: RenewalSnapshot;
 }
 
 export interface Machine {

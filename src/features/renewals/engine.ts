@@ -876,7 +876,8 @@ export function sameSnapshot(a: RenewalSnapshot | null | undefined, b: RenewalSn
   return stableStringify(strip(a)) === stableStringify(strip(b));
 }
 
-function stableStringify(value: unknown): string {
+/** JSON with sorted keys and no undefined — for "did anything change?" checks. */
+export function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value ?? null);
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
   const obj = value as Record<string, unknown>;

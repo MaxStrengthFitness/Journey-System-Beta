@@ -10,7 +10,7 @@
     "dev": "tsx server.ts",
     "prebuild": "node scripts/setup-firebase-config.cjs",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-    "build:backend": "esbuild server/worker.ts server/cron-daily-reminders.ts server/cron-weekly-coach-report.ts server/cron-leaderboards.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outdir=dist --out-extension:.js=.cjs",
+    "build:backend": "esbuild server/worker.ts server/cron-daily-reminders.ts server/cron-weekly-coach-report.ts server/cron-leaderboards.ts server/cron-renewals.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outdir=dist --out-extension:.js=.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
@@ -20,6 +20,7 @@
     "cron:reminders": "node dist/cron-daily-reminders.cjs",
     "cron:coach-report": "node dist/cron-weekly-coach-report.cjs",
     "cron:leaderboards": "node dist/cron-leaderboards.cjs",
+    "cron:renewals": "node dist/cron-renewals.cjs",
     "test:rules": "firebase emulators:exec --project demo-ai-studio \"vitest run tests/firestore.rules.test.ts\""
   },
   "dependencies": {

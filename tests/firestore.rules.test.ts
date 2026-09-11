@@ -772,4 +772,40 @@ describe("Firestore Security Rules", () => {
       setDoc(doc(ctx.firestore(), "studios", "studioA", "config", "renewalsSeen"), { names: {} }),
     );
   });
+
+  // ── RENEWALS: the snapshot is the nightly job's alone ─────────────────
+
+  const renewalClient = {
+    firstName: "Renewal",
+    lastName: "Client",
+    isActive: true,
+    remainingSessions: 0,
+    homeStudioId: "studioA",
+    renewal: { situation: "on-track", sessionsLeft: 9 },
+  };
+
+  it("lets a trainer edit their client without touching the renewal snapshot", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "clients", "renewalClient"), renewalClient);
+    });
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    await assertSucceeds(updateDoc(doc(ctx.firestore(), "clients", "renewalClient"), { globalNotes: "Prefers mornings" }));
+  });
+
+  it("denies anyone in the app rewriting the renewal snapshot", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "clients", "renewalClient"), renewalClient);
+    });
+    for (const uid of ["trainerA", "ownerA"]) {
+      const ctx = testEnv.authenticatedContext(uid, { email: `${uid}@test.com` });
+      await assertFails(
+        updateDoc(doc(ctx.firestore(), "clients", "renewalClient"), { renewal: { situation: "lapsed" } }),
+      );
+    }
+  });
+
+  it("denies creating a client that arrives with a renewal snapshot", async () => {
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    await assertFails(setDoc(doc(ctx.firestore(), "clients", "newWithRenewal"), renewalClient));
+  });
 });
