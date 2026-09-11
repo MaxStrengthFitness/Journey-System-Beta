@@ -2,7 +2,7 @@
  * RENEWALS — every snapshot as words.
  *
  * "Sentences, not scores" (CLAUDE.md): the screens never show a renewal as a
- * number or a colour on its own. Each situation has one sentence, built here
+ * number or a color on its own. Each situation has one sentence, built here
  * from the snapshot, so the chip, the card, the pipeline and the Brief all say
  * the same thing the same way.
  */

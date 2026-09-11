@@ -1,0 +1,148 @@
+/* ==========================================================================
+   Operations → Renewals — the Brief overlay and the options table.
+   Renewals round, Sep 2026. Colors come from admin.tokens.css only.
+   ========================================================================== */
+
+@import "../admin.tokens.css";
+
+/* The Brief: a full-height sheet over the dashboard. Its own scroll
+   container, so it pans on an iPad (see index.css .touch-pane). */
+.adm-brief-scrim {
+  position: fixed;
+  inset: 0;
+  /* 50, not the confirm scrim's 60: the "Log a conversation" dialog opens
+     from inside the Brief and sits at z-50 (components/ui/dialog.tsx). It
+     mounts later, so at the same level it lands on top; at 60 it would open
+     behind the Brief. Toasts sit far above either. */
+  z-index: 50;
+  display: flex;
+  justify-content: flex-end;
+  /* Same scrim as .adm-scrim (admin.css). */
+  background: rgba(7, 11, 15, 0.62);
+}
+
+.adm-brief {
+  width: 100%;
+  max-width: 880px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--adm-bg);
+  border-left: 1px solid var(--adm-border);
+  box-shadow: 0 18px 48px var(--adm-shadow);
+}
+
+.adm-brief__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--adm-border);
+  background: var(--adm-surface);
+}
+
+.adm-brief__title {
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.adm-brief__sub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--adm-ink-muted);
+}
+
+.adm-brief__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  padding: 16px 18px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adm-brief__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.adm-brief__situation {
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 800;
+  background: var(--adm-surface-2);
+}
+
+.adm-brief__situation--ok { background: var(--adm-ok-fill); color: var(--adm-ok); }
+.adm-brief__situation--warn { background: var(--adm-warn-fill); color: var(--adm-warn); }
+.adm-brief__situation--alert { background: var(--adm-alert-fill); color: var(--adm-alert); }
+
+.adm-brief__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.adm-brief__controls .adm-field {
+  min-width: 180px;
+}
+
+/* The pipeline's filters are long, plain-English labels: let them wrap
+   rather than run off an iPad in portrait. */
+.adm-segmented.adm-segmented--wrap {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+/* Options: the studio's package table applied to this client. */
+.adm-options-wrap {
+  overflow-x: auto;
+}
+
+.adm-options {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.adm-options th,
+.adm-options td {
+  padding: 10px 12px;
+  text-align: right;
+  border-bottom: 1px solid var(--adm-border);
+  white-space: nowrap;
+}
+
+.adm-options th:first-child,
+.adm-options td:first-child {
+  text-align: left;
+}
+
+.adm-options th {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}
+
+.adm-options tr.is-current td {
+  background: var(--adm-surface-2);
+  font-weight: 800;
+}
+
+.adm-options .is-saving {
+  color: var(--adm-ok);
+  font-weight: 800;
+}

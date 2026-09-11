@@ -288,6 +288,8 @@ export function AdminDashboardView({
             authTrainer={authTrainer}
             studios={studios}
             activeStudioId={activeStudioId ?? null}
+            trainers={trainers}
+            machines={machines}
           />
         )}
         {activeTab === "users" && (
