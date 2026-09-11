@@ -39,6 +39,11 @@ function getEnv(key) {
  * until the staff branch is DEPLOYED: before it existed, `isClientEvent` was a
  * catch-all and a staff event would have been written into the `clients`
  * collection.
+ *
+ * clientContract.* and clientMembershipAssignment.* added Sep 2026 (Renewals
+ * round). Their handlers were written Aug 29 (the isCommercialEvent branch);
+ * they only work once `firebase deploy --only functions` has shipped that
+ * code, so deploy the functions BEFORE running this with the new list.
  */
 const EVENT_IDS = [
   'client.created',
@@ -49,7 +54,41 @@ const EVENT_IDS = [
   'staff.created',
   'staff.updated',
   'staff.deactivated',
+  'clientContract.created',
+  'clientContract.updated',
+  'clientContract.cancelled',
+  'clientMembershipAssignment.created',
+  'clientMembershipAssignment.cancelled',
 ];
+
+/*
+ * Options (Renewals round, Sep 2026):
+ *   --site <id>     the SiteId header to send. Default 5746957 (Solon).
+ *                   29068 is westlake / Strongsville / Willoughby. Run
+ *                   scripts/check-mindbody-client-collisions.ts FIRST: until
+ *                   it comes back clean, events from 29068 could land on the
+ *                   wrong person's record.
+ *   --list          look only: print the subscriptions Mindbody reports for
+ *                   that site header and change nothing. Run this for 29068
+ *                   before anything else -- if it shows the SAME subscription
+ *                   id as Solon, one subscription already covers both sites.
+ *   --show-secret   print the signing secret in full. Off by default so it
+ *                   can't end up in a screenshot.
+ */
+const args = process.argv.slice(2);
+const argValue = (name) => {
+  const i = args.indexOf(`--${name}`);
+  return i >= 0 ? args[i + 1] : undefined;
+};
+const LIST_ONLY = args.includes('--list');
+const SHOW_SECRET = args.includes('--show-secret');
+const SITE_ID = String(argValue('site') || '5746957').trim();
+
+function maskSecret(secret) {
+  if (!secret) return '(none returned)';
+  const s = String(secret);
+  return s.length <= 8 ? '********' : `${s.slice(0, 4)}...${s.slice(-4)} (run with --show-secret to see it)`;
+}
 
 async function main() {
   // No hardcoded fallback: this key was previously committed in plain text.
@@ -58,7 +97,11 @@ async function main() {
     console.error('Missing MINDBODY_API_KEY in .env -- add it before running this script.');
     process.exit(1);
   }
-  const siteId = '5746957';
+  const siteId = SITE_ID;
+  if (!/^-?\d+$/.test(siteId)) {
+    console.error(`--site must be a Mindbody site number, got "${siteId}".`);
+    process.exit(1);
+  }
   const webhookUrl = 'https://us-central1-gen-lang-client-0731527386.cloudfunctions.net/mindbodyWebhook';
 
   console.log(`Starting Webhook Sync for Site ID: ${siteId}...`);
@@ -92,6 +135,17 @@ async function main() {
           : (Array.isArray(responseData.subscriptions) 
             ? responseData.subscriptions 
             : [])));
+    if (LIST_ONLY) {
+      console.log(`Subscriptions Mindbody reports for SiteId ${siteId}: ${subList.length}`);
+      for (const s of subList) {
+        const events = s.EventIds || s.eventIds || [];
+        console.log(`  ${s.SubscriptionId || s.subscriptionId || s.id}  ${s.Status || s.status}  ${s.WebhookUrl || s.webhookUrl}`);
+        console.log(`    events: ${events.join(', ')}`);
+      }
+      console.log('Look-only (--list): nothing was changed.');
+      return;
+    }
+
     let subscription = subList.find(s => s.WebhookUrl === webhookUrl || s.webhookUrl === webhookUrl);
 
     let subscriptionId;
@@ -133,7 +187,7 @@ async function main() {
 
     console.log('--------------------------------------------------');
     console.log(`Subscription ID: ${subscriptionId}`);
-    console.log(`Signing Secret (HMAC Key): ${signingSecret}`);
+    console.log(`Signing Secret (HMAC Key): ${SHOW_SECRET ? signingSecret : maskSecret(signingSecret)}`);
     console.log('--------------------------------------------------');
 
     // 2. Activate Subscription
@@ -163,7 +217,8 @@ async function main() {
     }
 
     console.log('Subscription is now ACTIVE!');
-    console.log('Please copy the signing secret above and set it as MINDBODY_WEBHOOK_SECRET in your Firebase/Google Cloud Secret Manager.');
+    console.log('If this created a NEW subscription, its signing secret must be set as MINDBODY_WEBHOOK_SECRET');
+    console.log('(Firebase / Google Cloud Secret Manager). An existing subscription keeps its old secret.');
 
   } catch (error) {
     console.error('Network or Execution error:', error);

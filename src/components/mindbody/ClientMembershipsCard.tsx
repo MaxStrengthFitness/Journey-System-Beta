@@ -1,6 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { BadgeCheck, FileText, RefreshCw, Ban } from "lucide-react";
-import { Client, MindbodyContract, MindbodyMembership } from "../../types";
+import { BadgeCheck, FileText, RefreshCw, Ban, Ticket } from "lucide-react";
+import {
+  Client,
+  MindbodyContract,
+  MindbodyMembership,
+  MindbodyService,
+} from "../../types";
 import {
   formatMindbodyDate,
   daysUntil,
@@ -93,6 +98,36 @@ const MembershipRow: React.FC<{ membership: MindbodyMembership }> = ({
         </div>
       </div>
       <StatusPill active={active} />
+    </div>
+  );
+};
+
+/**
+ * One pricing option (Renewals round, Sep 2026): where MSF's remaining
+ * sessions live — "144 PIF, 109 of 144 left", or one of the 8-session options
+ * a monthly client gains with each payment.
+ */
+const ServiceRow: React.FC<{ service: MindbodyService }> = ({ service }) => {
+  const left =
+    typeof service.remaining === "number"
+      ? `${service.remaining}${typeof service.count === "number" ? ` of ${service.count}` : ""} left`
+      : null;
+  const expires = formatMindbodyDate(service.expirationDate);
+  return (
+    <div className={`${CARD} flex items-center justify-between gap-4`}>
+      <div className="flex items-center gap-3 min-w-0">
+        <Ticket className="w-5 h-5 text-[#38BDF8] shrink-0" />
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-slate-800 dark:text-slate-200 break-words">
+            {service.name || `Pricing option #${service.serviceId}`}
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-0.5">
+            {[left, expires ? `Expires ${expires}` : null, service.current === false ? "Not current in MindBody" : null]
+              .filter(Boolean)
+              .join(" • ") || `MBO ID ${service.serviceId}`}
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
@@ -221,11 +256,12 @@ export const ClientMembershipsCard: React.FC<ClientMembershipsCardProps> = ({
         mindbodyClientId,
       });
 
-      if (result.contracts === 0 && result.memberships === 0) {
-        toastSuccess("MindBody returned no contracts or memberships.");
+      const services = result.services ?? 0;
+      if (result.contracts === 0 && result.memberships === 0 && services === 0) {
+        toastSuccess("MindBody returned no contracts, pricing options or memberships.");
       } else {
         toastSuccess(
-          `Synced ${result.memberships} membership${result.memberships === 1 ? "" : "s"} and ${result.contracts} contract${result.contracts === 1 ? "" : "s"}.${
+          `Synced ${services} pricing option${services === 1 ? "" : "s"}, ${result.contracts} contract${result.contracts === 1 ? "" : "s"} and ${result.memberships} membership${result.memberships === 1 ? "" : "s"}.${
             result.partial ? " (One MindBody endpoint failed.)" : ""
           }`,
         );
@@ -268,6 +304,17 @@ export const ClientMembershipsCard: React.FC<ClientMembershipsCardProps> = ({
     };
   }, [client.mindbodyMemberships, client.mindbodyContracts]);
 
+  // Pricing options with sessions left first, then the most recent.
+  const services = useMemo(() => {
+    const list = Object.values(client.mindbodyServices || {});
+    const time = (v: unknown) => toDateSafe(v as any)?.getTime() ?? 0;
+    return list.sort(
+      (a, b) =>
+        Number((b.remaining ?? 0) > 0) - Number((a.remaining ?? 0) > 0) ||
+        time(b.activeDate) - time(a.activeDate),
+    );
+  }, [client.mindbodyServices]);
+
   return (
     <div className="space-y-8">
       <div className="space-y-4">
@@ -283,7 +330,7 @@ export const ClientMembershipsCard: React.FC<ClientMembershipsCardProps> = ({
               disabled={isSyncing || !canSync}
               title={
                 canSync
-                  ? "Pull contracts and memberships from MindBody"
+                  ? "Pull contracts, pricing options and memberships from MindBody"
                   : "Needs a MindBody ID on the client and a Site ID on their home studio"
               }
               className="h-6 text-[11px] font-bold uppercase tracking-widest text-[#38BDF8] hover:text-[#0ea5e9] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5 cursor-pointer"
@@ -304,6 +351,24 @@ export const ClientMembershipsCard: React.FC<ClientMembershipsCardProps> = ({
           </div>
         ) : (
           <p className={EMPTY}>No active memberships synced from MindBody.</p>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        <p className={SECTION_LABEL}>Pricing Options</p>
+
+        {services.length > 0 ? (
+          <div className="space-y-3">
+            {services.map((sv) => (
+              <ServiceRow key={String(sv.serviceId)} service={sv} />
+            ))}
+          </div>
+        ) : (
+          <p className={EMPTY}>
+            {client.mindbodyServicesSyncedAt
+              ? "MindBody shows no pricing options for this client."
+              : "Pricing options appear after a Sync."}
+          </p>
         )}
       </div>
 

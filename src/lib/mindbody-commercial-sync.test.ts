@@ -5,12 +5,14 @@ import { Timestamp } from "firebase/firestore";
 vi.mock("../firebase", () => ({ db: {} }));
 
 const setDocMock = vi.fn();
+const updateDocMock = vi.fn();
 vi.mock("firebase/firestore", async (importOriginal) => {
   const actual = await importOriginal<typeof import("firebase/firestore")>();
   return {
     ...actual,
     doc: vi.fn((_db: unknown, col: string, id: string) => ({ path: `${col}/${id}` })),
     setDoc: (...args: unknown[]) => setDocMock(...args),
+    updateDoc: (...args: unknown[]) => updateDocMock(...args),
     serverTimestamp: () => "SERVER_TS",
   };
 });
@@ -18,6 +20,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 const {
   mapContracts,
   mapMemberships,
+  mapServices,
   syncClientCommercialData,
 } = await import("./mindbody-commercial-sync");
 
@@ -115,10 +118,23 @@ describe("mapMemberships", () => {
   });
 });
 
+describe("mapServices", () => {
+  it("maps a pricing option with its balance, dates read as UTC", () => {
+    const out = mapServices(
+      [{ serviceId: 555, name: "144 PIF", count: 144, remaining: 109, expirationDate: "2027-08-01T00:00:00" }],
+      "SERVER_TS",
+    );
+    expect(out["555"]).toMatchObject({ serviceId: 555, name: "144 PIF", count: 144, remaining: 109 });
+    expect(out["555"].expirationDate).toEqual(Timestamp.fromDate(new Date("2027-08-01T00:00:00Z")));
+  });
+});
+
 describe("syncClientCommercialData", () => {
   beforeEach(() => {
     setDocMock.mockReset();
     setDocMock.mockResolvedValue(undefined);
+    updateDocMock.mockReset();
+    updateDocMock.mockResolvedValue(undefined);
   });
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -143,7 +159,9 @@ describe("syncClientCommercialData", () => {
       mindbodyClientId: "100000009",
     });
 
-    expect(result).toEqual({ memberships: 1, contracts: 1, partial: false });
+    // An older server sends no pricing options: nothing written, reported as unknown.
+    expect(result).toEqual({ memberships: 1, contracts: 1, services: null, partial: false });
+    expect(updateDocMock).not.toHaveBeenCalled();
     expect(setDocMock).toHaveBeenCalledTimes(1);
     const [ref, updates, options] = setDocMock.mock.calls[0];
     // Writes to the app's own doc id, not to clients/{mindbodyClientId}.
@@ -153,6 +171,40 @@ describe("syncClientCommercialData", () => {
     expect(updates.mindbodyMemberships["12"].membershipName).toBe(
       "Gold Level Member",
     );
+  });
+
+  it("replaces the pricing-option map whole, in a second write", async () => {
+    stubFetch(true, {
+      contracts: [],
+      memberships: [],
+      services: [{ serviceId: 555, name: "144 PIF", count: 144, remaining: 109 }],
+      partial: false,
+    });
+
+    const result = await syncClientCommercialData({
+      clientDocId: "abc123",
+      siteId: 5746957,
+      mindbodyClientId: "100000009",
+    });
+
+    expect(result.services).toBe(1);
+    expect(updateDocMock).toHaveBeenCalledTimes(1);
+    const [ref, patch] = updateDocMock.mock.calls[0];
+    expect(ref).toEqual({ path: "clients/abc123" });
+    // updateDoc REPLACES the field: a used-up pricing option cannot linger.
+    expect(patch.mindbodyServices["555"]).toMatchObject({ name: "144 PIF", remaining: 109 });
+    expect(patch.mindbodyServicesSyncedAt).toBe("SERVER_TS");
+  });
+
+  it("writes no pricing options when that Mindbody call failed", async () => {
+    stubFetch(true, { contracts: [], memberships: [], services: null, partial: true });
+    const result = await syncClientCommercialData({
+      clientDocId: "abc123",
+      siteId: 5746957,
+      mindbodyClientId: "100000009",
+    });
+    expect(result.services).toBeNull();
+    expect(updateDocMock).not.toHaveBeenCalled();
   });
 
   it("omits an empty map rather than writing one that would look authoritative", async () => {

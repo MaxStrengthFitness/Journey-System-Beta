@@ -515,7 +515,52 @@ export interface MindbodyContract {
    * name and never overwrites the boolean.
    */
   autopayStatus?: string;
+  /**
+   * Pull-sync only (Renewals round, Sep 2026): the charges Mindbody has
+   * scheduled on this contract, soonest first as Mindbody sends them. The last
+   * one is when the package's billing ends. Replaced on every pull.
+   */
+  upcomingAutopayEvents?: MindbodyAutopayEvent[];
   /** Firestore Timestamp of the last Mindbody API pull that touched this. */
+  lastPullSyncAt?: any;
+}
+
+/** One scheduled autopay charge on a contract. */
+export interface MindbodyAutopayEvent {
+  /** Firestore Timestamp (UTC midnight of the charge day). */
+  scheduleDate: any;
+  chargeAmount: number | null;
+  /** "CreditCard", "DebitAccount", "Other"... as Mindbody names it. */
+  paymentMethod?: string;
+}
+
+/**
+ * A Mindbody pricing option the client holds — Mindbody's API calls it a
+ * ClientService. This is where remaining sessions live at MSF: a paid-in-full
+ * client holds one ("144 PIF", 109 of 144 left); a monthly client gains an
+ * 8-session one with each payment ("48 Sessions - 2X Week"); complimentary
+ * sessions arrive as "Session Comp". Keyed by the ClientService id.
+ *
+ * Pull-sync only, and the whole map is REPLACED on each successful pull (see
+ * lib/mindbody-commercial-map.ts). Written by the Sync button and the nightly
+ * renewals job; read-only in the app.
+ */
+export interface MindbodyService {
+  serviceId: number | string;
+  /** The pricing option's name in Mindbody, e.g. "48 Sessions - 2X Week". */
+  name?: string;
+  /** Sessions it came with. */
+  count?: number | null;
+  /** Sessions left on it. */
+  remaining?: number | null;
+  /** Firestore Timestamps. */
+  activeDate?: any;
+  expirationDate?: any;
+  paymentDate?: any;
+  /** Mindbody's own "still usable" flag. */
+  current?: boolean;
+  programName?: string;
+  siteId?: number | string;
   lastPullSyncAt?: any;
 }
 
@@ -614,6 +659,10 @@ export interface Client {
   mindbodyContracts?: Record<string, MindbodyContract>;
   /** Firestore Timestamp of the last Mindbody contract/membership pull. */
   mindbodyCommercialSyncedAt?: any;
+  /** Mindbody pricing options keyed by ClientService id. Pull-synced, replaced whole. */
+  mindbodyServices?: Record<string, MindbodyService>;
+  /** Firestore Timestamp of the last successful pricing-option pull. */
+  mindbodyServicesSyncedAt?: any;
 
   /* ------------------------------------------------------------------ *
    * MINDBODY-OWNED IDENTITY & COMPLIANCE (Sep 2026)

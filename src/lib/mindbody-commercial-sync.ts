@@ -1,6 +1,12 @@
-import { doc, setDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, Timestamp, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
-import { MindbodyContract, MindbodyMembership } from "../types";
+import { MindbodyContract, MindbodyMembership, MindbodyService } from "../types";
+import { authedFetch } from "./authed-fetch";
+import {
+  mapContractRecords,
+  mapMembershipRecords,
+  mapServiceRecords,
+} from "./mindbody-commercial-map";
 
 /**
  * Pulls a client's Mindbody contracts and active memberships and mirrors them
@@ -17,64 +23,24 @@ import { MindbodyContract, MindbodyMembership } from "../types";
  * currently active, so treating an absent record as cancelled would wrongly
  * void a membership any time the API returned a partial or paginated result.
  * Cancellations stay the webhook's job.
+ *
+ * Pricing options (`mindbodyServices`, Renewals round, Sep 2026) are the one
+ * exception: that map is REPLACED on each successful pull, because it holds
+ * the client's session balance and a used-up pricing option that drops out of
+ * Mindbody's list must not keep counting. See lib/mindbody-commercial-map.ts.
  */
 
-/** Mindbody's pull API sends dates without a zone; treat them as UTC so they
- *  agree with the webhook's true-UTC timestamps and never shift a calendar day. */
-function toTimestamp(value: unknown): Timestamp | null {
-  if (typeof value !== "string" || !value.trim()) return null;
-  const raw = value.trim();
-  const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw) ? raw : `${raw}Z`;
-  const parsed = new Date(normalized);
-  return Number.isNaN(parsed.getTime()) ? null : Timestamp.fromDate(parsed);
-}
-
-/** Firestore map keys cannot contain path characters. */
-function toMapKey(value: unknown): string | null {
-  if (typeof value !== "string" && typeof value !== "number") return null;
-  const key = String(value).trim();
-  if (!key || /[.~*/[\]]/.test(key)) return null;
-  return key;
-}
+const toFirestoreTimestamp = (d: Date) => Timestamp.fromDate(d);
 
 /** Maps the server route's contract rows into Firestore records. Exported for tests. */
 export function mapContracts(
   rows: any[] | undefined,
   now: unknown,
 ): Record<string, Partial<MindbodyContract>> {
-  const contracts: Record<string, Partial<MindbodyContract>> = {};
-
-  for (const c of rows || []) {
-    const key = toMapKey(c.clientContractId);
-    if (!key) continue;
-
-    const record: Partial<MindbodyContract> = {
-      clientContractId: c.clientContractId,
-      status: "Active",
-      lastPullSyncAt: now,
-    };
-    // Only real values are written: an undefined would blow away a field the
-    // webhook had already filled in.
-    if (c.contractName) record.contractName = String(c.contractName);
-    if (c.autopayStatus) record.autopayStatus = String(c.autopayStatus);
-    if (c.siteId !== null && c.siteId !== undefined) record.siteId = c.siteId;
-    if (
-      c.originationLocationId !== null &&
-      c.originationLocationId !== undefined
-    ) {
-      record.originationLocationId = c.originationLocationId;
-    }
-    const startDate = toTimestamp(c.startDate);
-    if (startDate) record.startDate = startDate;
-    const endDate = toTimestamp(c.endDate);
-    if (endDate) record.endDate = endDate;
-    const agreementDate = toTimestamp(c.agreementDate);
-    if (agreementDate) record.agreementDate = agreementDate;
-
-    contracts[key] = record;
-  }
-
-  return contracts;
+  return mapContractRecords(rows, now, toFirestoreTimestamp) as Record<
+    string,
+    Partial<MindbodyContract>
+  >;
 }
 
 /** Maps the server route's membership rows into Firestore records. Exported for tests. */
@@ -82,39 +48,29 @@ export function mapMemberships(
   rows: any[] | undefined,
   now: unknown,
 ): Record<string, Partial<MindbodyMembership>> {
-  const memberships: Record<string, Partial<MindbodyMembership>> = {};
+  return mapMembershipRecords(rows, now, toFirestoreTimestamp) as Record<
+    string,
+    Partial<MindbodyMembership>
+  >;
+}
 
-  for (const m of rows || []) {
-    const key = toMapKey(m.membershipId);
-    if (!key) continue;
-
-    const record: Partial<MindbodyMembership> = {
-      membershipId: m.membershipId,
-      // This endpoint returns active memberships only.
-      status: "Active",
-      cancelledAt: null,
-      lastPullSyncAt: now,
-    };
-    if (m.membershipName) record.membershipName = String(m.membershipName);
-    if (m.programName) record.programName = String(m.programName);
-    if (m.siteId !== null && m.siteId !== undefined) record.siteId = m.siteId;
-    if (typeof m.count === "number") record.sessionCount = m.count;
-    if (typeof m.remaining === "number") record.sessionsRemaining = m.remaining;
-    const activeDate = toTimestamp(m.activeDate);
-    if (activeDate) record.activeDate = activeDate;
-    const expirationDate = toTimestamp(m.expirationDate);
-    if (expirationDate) record.expirationDate = expirationDate;
-
-    memberships[key] = record;
-  }
-
-  return memberships;
+/** Maps the server route's pricing-option rows into Firestore records. Exported for tests. */
+export function mapServices(
+  rows: any[] | undefined,
+  now: unknown,
+): Record<string, Partial<MindbodyService>> {
+  return mapServiceRecords(rows, now, toFirestoreTimestamp) as Record<
+    string,
+    Partial<MindbodyService>
+  >;
 }
 
 export interface CommercialSyncResult {
   memberships: number;
   contracts: number;
-  /** True when one of the two Mindbody endpoints failed but the other worked. */
+  /** Pricing options written; null when that Mindbody call failed (nothing was written). */
+  services: number | null;
+  /** True when one of the Mindbody endpoints failed but another worked. */
   partial: boolean;
 }
 
@@ -128,7 +84,7 @@ export async function syncClientCommercialData(params: {
 }): Promise<CommercialSyncResult> {
   const { clientDocId, siteId, mindbodyClientId } = params;
 
-  const res = await fetch("/api/mindbody/client-commercial", {
+  const res = await authedFetch("/api/mindbody/client-commercial", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -147,6 +103,8 @@ export async function syncClientCommercialData(params: {
   const payload = (await res.json()) as {
     contracts?: any[];
     memberships?: any[];
+    /** Absent from an older server; null when that call failed. */
+    services?: any[] | null;
     partial?: boolean;
   };
 
@@ -166,9 +124,21 @@ export async function syncClientCommercialData(params: {
   // and every webhook-written field on this document survive untouched.
   await setDoc(doc(db, "clients", clientDocId), updates, { merge: true });
 
+  // Replaced, not merged — and only when the pricing-option call worked.
+  let serviceCount: number | null = null;
+  if (Array.isArray(payload.services)) {
+    const services = mapServices(payload.services, now);
+    await updateDoc(doc(db, "clients", clientDocId), {
+      mindbodyServices: services,
+      mindbodyServicesSyncedAt: now,
+    });
+    serviceCount = Object.keys(services).length;
+  }
+
   return {
     memberships: Object.keys(memberships).length,
     contracts: Object.keys(contracts).length,
+    services: serviceCount,
     partial: Boolean(payload.partial),
   };
 }

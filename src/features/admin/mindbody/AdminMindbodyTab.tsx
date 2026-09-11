@@ -63,6 +63,7 @@ import type { Client, Studio, Trainer } from "../../../types";
 import { useToast } from "../../../contexts/ToastContext";
 import { useMindbodyHealth } from "../../../contexts/MindbodyHealthContext";
 import { syncMindbodySchedules } from "../../../lib/mindbody-api-sync";
+import { authedFetch } from "../../../lib/authed-fetch";
 import firebaseConfig from "../../../../firebase-applet-config.json";
 import {
   AdminBadge,
@@ -174,7 +175,7 @@ export function AdminMindbodyTab({
     setChecking(true);
     setCheckResult(null);
     try {
-      const res = await fetch("/api/mindbody/locations", {
+      const res = await authedFetch("/api/mindbody/locations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ siteId: String(selected.mindbodySiteId) }),
@@ -208,7 +209,7 @@ export function AdminMindbodyTab({
     }
     setTestingWebhook(true);
     try {
-      const res = await fetch("/api/mindbody/test-webhook", {
+      const res = await authedFetch("/api/mindbody/test-webhook", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ siteId: selected.mindbodySiteId }),

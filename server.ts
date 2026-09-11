@@ -15,6 +15,8 @@ import {
   processLegacyChart,
   extractMachineSettingsFromImage,
 } from "./server/gemini.ts";
+import { getMindbodyToken, pullClientCommercial } from "./server/mindbody-client.ts";
+import { requireStaff } from "./server/auth.ts";
 
 // Error Handling: Prevent process crash on unhandled rejections
 process.on("unhandledRejection", (reason, promise) => {
@@ -27,63 +29,6 @@ process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err);
   process.exit(1);
 });
-
-// Mindbody User Token Cache
-// Tokens expire after 60 minutes; we refresh at 55 minutes for safety
-const tokenCache: Record<string, { token: string; expiresAt: number }> = {};
-
-async function getMindbodyToken(siteId: string): Promise<string> {
-  const now = Date.now();
-  const cached = tokenCache[siteId];
-  if (cached && cached.expiresAt > now) {
-    return cached.token;
-  }
-
-  const apiKey = process.env.MINDBODY_API_KEY;
-  const sourceName = process.env.MINDBODY_SOURCE_NAME;
-  const sourcePassword = process.env.MINDBODY_SOURCE_PASSWORD;
-
-  if (!apiKey || !sourceName || !sourcePassword) {
-    throw new Error(
-      "MINDBODY_API_KEY, MINDBODY_SOURCE_NAME, and MINDBODY_SOURCE_PASSWORD must be set in .env",
-    );
-  }
-
-  const response = await fetch(
-    "https://api.mindbodyonline.com/public/v6/usertoken/issue",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Api-Key": apiKey,
-        SiteId: String(siteId),
-      },
-      body: JSON.stringify({
-        Username: `_${sourceName}`,
-        Password: sourcePassword,
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Mindbody Token Error:", response.status, errorText);
-    throw new Error(`Failed to issue Mindbody token: ${errorText}`);
-  }
-
-  const data = await response.json();
-  if (!data.AccessToken) {
-    throw new Error("No AccessToken in Mindbody token response");
-  }
-
-  // Cache for 55 minutes (tokens expire at 60 min)
-  tokenCache[siteId] = {
-    token: data.AccessToken,
-    expiresAt: now + 55 * 60 * 1000,
-  };
-
-  return data.AccessToken;
-}
 
 async function startServer() {
   const app = express();
@@ -384,6 +329,18 @@ async function startServer() {
         .json({ error: error.message || "Failed to sync calendar" });
     }
   });
+
+  // Every Mindbody route needs a signed-in staff member at a studio on the
+  // site it names (Renewals round, Sep 2026). The two testing tools are for
+  // system administrators only. See server/auth.ts.
+  const staffOnly = requireStaff();
+  const adminOnly = requireStaff({ requireSuper: true });
+  const ADMIN_ONLY_MINDBODY_PATHS = new Set(["/issueUserToken", "/test-webhook"]);
+  app.use("/api/mindbody", (req, res, next) =>
+    ADMIN_ONLY_MINDBODY_PATHS.has(req.path)
+      ? adminOnly(req, res, next)
+      : staffOnly(req, res, next),
+  );
 
   // Mindbody Sandbox Testing Endpoint — issue user token
   app.post("/api/mindbody/issueUserToken", async (req, res) => {
@@ -1097,17 +1054,21 @@ async function startServer() {
   });
 
   /**
-   * Pulls a client's contracts and active memberships from Mindbody.
+   * Pulls a client's contracts, pricing options and active memberships from
+   * Mindbody (server/mindbody-client.ts does the calling).
    *
    * The `clientContract.*` / `clientMembershipAssignment.*` webhooks only fire
    * on future changes and only reach the live project, so this is how existing
    * clients (and any non-live environment) get populated. The response is
    * shaped to match the webhook's Firestore records so both writers agree.
+   *
+   * `services` (pricing options, with each one's remaining sessions) and each
+   * contract's `upcomingAutopayEvents` were added in the Renewals round. A
+   * list that failed to load comes back as null — unknown, not empty.
    */
   app.post("/api/mindbody/client-commercial", async (req, res) => {
     try {
-      const mindbodyApiKey = process.env.MINDBODY_API_KEY;
-      if (!mindbodyApiKey) {
+      if (!process.env.MINDBODY_API_KEY) {
         return res
           .status(500)
           .json({ error: "MINDBODY_API_KEY environment variable is not set." });
@@ -1119,75 +1080,20 @@ async function startServer() {
         return res.status(400).json({ error: "mindbodyClientId is required" });
       }
 
-      const site = String(siteId).trim();
-      const clientId = String(mindbodyClientId).trim();
-      const userToken = await getMindbodyToken(site);
-
-      const mbHeaders = {
-        "Content-Type": "application/json",
-        "Api-Key": mindbodyApiKey,
-        SiteId: site,
-        Authorization: userToken,
-      };
-
-      const callMindbody = async (path: string) => {
-        const url = `https://api.mindbodyonline.com/public/v6/client/${path}?ClientId=${encodeURIComponent(clientId)}&Limit=100`;
-        const r = await fetch(url, { method: "GET", headers: mbHeaders });
-        if (!r.ok) {
-          const text = await r.text();
-          console.warn(`Mindbody ${path} failed (Site ${site}):`, r.status, text);
-          return { ok: false as const, error: text, data: null as any };
-        }
-        return { ok: true as const, error: "", data: await r.json() };
-      };
-
-      // Fetched independently: a client can hold contracts but no membership,
-      // and one endpoint failing should not blank the other.
-      const [contractsRes, membershipsRes] = await Promise.all([
-        callMindbody("clientcontracts"),
-        callMindbody("activeclientmemberships"),
-      ]);
-
-      if (!contractsRes.ok && !membershipsRes.ok) {
-        return res.status(502).json({
-          error: `MindBody API Response: ${contractsRes.error || membershipsRes.error}`,
-        });
-      }
-
-      const contracts = (contractsRes.data?.Contracts || []).map((c: any) => ({
-        // Mindbody's ClientContract `Id` IS the clientContractId the webhook
-        // keys on, so pull-synced and webhook-synced records land on the
-        // same map entry instead of duplicating.
-        clientContractId: c.Id,
-        contractName: c.ContractName || "",
-        agreementDate: c.AgreementDate || null,
-        startDate: c.StartDate || null,
-        endDate: c.EndDate || null,
-        // The pull API exposes AutopayStatus, not the webhook's boolean
-        // isAutoRenewing, so it is reported under its own name and never
-        // overwrites a value a webhook already supplied.
-        autopayStatus: c.AutopayStatus || "",
-        originationLocationId: c.OriginationLocationId ?? null,
-        siteId: c.SiteId ?? Number(site),
-      }));
-
-      const memberships = (membershipsRes.data?.ClientMemberships || []).map(
-        (m: any) => ({
-          membershipId: m.Id,
-          membershipName: m.Name || "",
-          activeDate: m.ActiveDate || null,
-          expirationDate: m.ExpirationDate || null,
-          count: m.Count ?? null,
-          remaining: m.Remaining ?? null,
-          programName: m.Program?.Name || "",
-          siteId: m.SiteId ?? Number(site),
-        }),
+      const pull = await pullClientCommercial(
+        String(siteId).trim(),
+        String(mindbodyClientId).trim(),
       );
 
+      if (!pull.contracts && !pull.memberships && !pull.services) {
+        return res.status(502).json({ error: `MindBody API Response: ${pull.error}` });
+      }
+
       return res.json({
-        contracts,
-        memberships,
-        partial: !contractsRes.ok || !membershipsRes.ok,
+        contracts: pull.contracts ?? [],
+        memberships: pull.memberships ?? [],
+        services: pull.services,
+        partial: !pull.contracts || !pull.memberships || !pull.services,
       });
     } catch (error: any) {
       console.error("Error fetching MindBody client commercial data:", error);

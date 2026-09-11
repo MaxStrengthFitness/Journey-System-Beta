@@ -37,6 +37,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { db } from "../../../firebase";
+import { authedFetch } from "../../../lib/authed-fetch";
 import type { Studio, Trainer, UserRole } from "../../../types";
 import { ROLE_LABELS } from "../../../types";
 import { useToast } from "../../../contexts/ToastContext";
@@ -145,7 +146,7 @@ export function AdminStaffTab({
     setStaffStatus("Loading staff from Mindbody…");
     void (async () => {
       try {
-        const res = await fetch("/api/mindbody/staff", {
+        const res = await authedFetch("/api/mindbody/staff", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ siteId: String(siteId) }),

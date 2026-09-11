@@ -1,8 +1,10 @@
 /**
  * One place where every server-side process gets its Firestore handle.
  *
- * server.ts (the web service) deliberately does NOT use this — it never touches
- * Firestore. The background worker and the cron jobs do, and they run somewhere
+ * server.ts (the web service) deliberately does NOT use this — it holds no
+ * database key. (Its sign-in check, server/auth.ts, reads two kinds of
+ * document AS THE SIGNED-IN USER through the REST API, under the security
+ * rules.) The background worker and the cron jobs do, and they run somewhere
  * that has no Application Default Credentials: Render has no `gcloud` login and
  * no GCP metadata server. Without an explicit credential the Admin SDK throws
  * "Could not load the default credentials" the first time you read a collection,

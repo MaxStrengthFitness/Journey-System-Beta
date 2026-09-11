@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { authedFetch } from "../../../lib/authed-fetch";
 
 export type MindbodyLocation = { id: string; name: string };
 
@@ -57,7 +58,7 @@ export function useMindbodyLocations(siteId: string): MindbodyLocationsState {
     const timer = setTimeout(async () => {
       setState((s) => ({ ...s, loading: true, status: "Looking up locations…" }));
       try {
-        const res = await fetch("/api/mindbody/locations", {
+        const res = await authedFetch("/api/mindbody/locations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ siteId: trimmed }),
