@@ -144,8 +144,10 @@ export async function updateCycleAsLeader(
   const uid = signedInUid();
   const extra: Record<string, unknown> = {};
   if ("outcome" in patch) {
-    extra.outcomeAt = patch.outcome ? serverTimestamp() : null;
-    extra.outcomeBy = patch.outcome ? uid : null;
+    // A leader's call, even "none": signed by the leader, so the nightly job
+    // leaves this cycle alone from now on (outcomes.ts, outcomePatch).
+    extra.outcomeAt = serverTimestamp();
+    extra.outcomeBy = uid;
     if (!patch.outcome) extra.closedOn = null;
     // Only a renewal has a next package; a leader's lost or pay-as-you-go
     // replaces whatever the job had linked.

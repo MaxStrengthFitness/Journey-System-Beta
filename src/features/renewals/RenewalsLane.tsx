@@ -39,8 +39,9 @@ export function RenewalsLane({
     if (!studioId) return;
     return onSnapshot(
       query(collection(db, "studios", studioId, "renewals"), where("needsLeader", "==", true)),
-      (snap) =>
-        setNeedsLeader(new Set(snap.docs.map((d) => (d.data() as RenewalCycle).clientId).filter(Boolean))),
+      // Keyed by client AND cycle: a flag left on a package that has since
+      // been replaced must not keep the client here forever.
+      (snap) => setNeedsLeader(new Set(snap.docs.map((d) => `${(d.data() as RenewalCycle).clientId}|${d.id}`))),
       () => setNeedsLeader(new Set()),
     );
   }, [studioId]);
@@ -52,7 +53,7 @@ export function RenewalsLane({
       .filter((c) => {
         if (!c.id || seen.has(c.id) || c.homeStudioId !== studioId) return false;
         seen.add(c.id);
-        return renewalPromptDue(c.renewal) || needsLeader.has(c.id);
+        return renewalPromptDue(c.renewal) || needsLeader.has(`${c.id}|${c.renewal?.cycleKey ?? ""}`);
       })
       .sort(
         (a, b) =>
@@ -73,7 +74,7 @@ export function RenewalsLane({
         {rows.slice(0, SHOW).map((c) => {
           const what = [
             c.renewal ? chipText(c.renewal, today) : null,
-            needsLeader.has(c.id!) ? "a leader was asked to follow up" : null,
+            needsLeader.has(`${c.id}|${c.renewal?.cycleKey ?? ""}`) ? "a leader was asked to follow up" : null,
           ]
             .filter(Boolean)
             .join(" · ");

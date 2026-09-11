@@ -88,7 +88,7 @@ export function situationSentence(s: RenewalSnapshot, today: string): string {
         s.paymentMode === "monthly" && s.chargeDate ? billingEnds(s, today) : null,
         s.paymentMode === "prepaid" ? "paid in full" : null,
         s.paymentMode === "sessions-only" ? "billing finished, using banked sessions" : null,
-        s.pacePerWeek !== null ? "on pace" : "pace not known yet",
+        s.pacePerWeek === null ? "pace not known yet" : s.pacePerWeek === 0 ? "no visits in 8 weeks" : "on pace",
       ];
       return parts.filter(Boolean).join(" · ");
     }

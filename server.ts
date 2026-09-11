@@ -335,9 +335,11 @@ async function startServer() {
   // system administrators only. See server/auth.ts.
   const staffOnly = requireStaff();
   const adminOnly = requireStaff({ requireSuper: true });
-  const ADMIN_ONLY_MINDBODY_PATHS = new Set(["/issueUserToken", "/test-webhook"]);
+  // Compared the way Express matches routes — ignoring case and a trailing
+  // slash — so "/Test-Webhook/" can't slip past as a staff-only path.
+  const ADMIN_ONLY_MINDBODY_PATHS = new Set(["/issueusertoken", "/test-webhook"]);
   app.use("/api/mindbody", (req, res, next) =>
-    ADMIN_ONLY_MINDBODY_PATHS.has(req.path)
+    ADMIN_ONLY_MINDBODY_PATHS.has(req.path.replace(/\/+$/, "").toLowerCase())
       ? adminOnly(req, res, next)
       : staffOnly(req, res, next),
   );

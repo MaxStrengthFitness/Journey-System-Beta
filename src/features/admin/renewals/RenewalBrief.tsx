@@ -211,7 +211,9 @@ export function RenewalBrief({
                         ? cycle.outcomeBy === "job"
                           ? "Recorded overnight from Mindbody. Change it if that's wrong."
                           : "Recorded by a leader."
-                        : "Renewals and losses Mindbody shows are recorded overnight."
+                        : cycle?.outcomeBy && cycle.outcomeBy !== "job"
+                          ? "Cleared by a leader, so the nightly job won't record one."
+                          : "Renewals and losses Mindbody shows are recorded overnight."
                     }
                   >
                     <AdminSelect

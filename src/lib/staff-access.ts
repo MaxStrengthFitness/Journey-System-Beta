@@ -145,10 +145,14 @@ export function decideMindbodyAccess(
       error: "Only a system administrator can use this Mindbody tool.",
     };
   }
-  const site =
-    typeof request.siteId === "string" || typeof request.siteId === "number"
-      ? String(request.siteId).trim()
-      : "";
+  const raw = request.siteId;
+  // A site must be a plain id. Anything else (an array, an object) would be
+  // coerced by the route into SOME site — String(["29068"]) is "29068" — so
+  // it is refused, never read as "no site".
+  if (raw !== undefined && raw !== null && raw !== "" && typeof raw !== "string" && typeof raw !== "number") {
+    return { ok: false, status: 403, error: "That Mindbody site isn't valid." };
+  }
+  const site = raw === undefined || raw === null ? "" : String(raw).trim();
   if (!site || access.allSites) return ALLOWED;
   if (access.siteIds.includes(site)) return ALLOWED;
   return {

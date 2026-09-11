@@ -324,6 +324,66 @@ describe("after billing ends", () => {
     expect(ended("2026-07-01").situation).toBe("lapsed");
   });
 
+  it("never calls someone lapsed while they keep coming in", () => {
+    // The contract ended Jun 1; they still train twice a week on something
+    // the package table doesn't know.
+    const snap = buildRenewalSnapshot(
+      input({
+        client: client({
+          mindbodyContracts: { "1": contract({ id: 1, startDate: "2025-06-01", endDate: "2026-06-01" }) },
+          mindbodyServices: { a: service(1, "96 Sessions - 2X Week", 0) },
+        }),
+        attendance: visitsAt(2, "2026-06-01"),
+      }),
+    );
+    expect(snap.situation).toBe("ended");
+    expect(snap.focusDate).toBe(snap.lastVisitDate);
+  });
+
+  it("says 'not enough data' rather than ended when unmatched sessions are on hand", () => {
+    const snap = buildRenewalSnapshot(
+      input({
+        client: client({
+          mindbodyContracts: { "1": contract({ id: 1, startDate: "2025-06-01", endDate: "2026-06-01" }) },
+          mindbodyServices: {
+            a: service(1, "96 Sessions - 2X Week", 0),
+            b: service(2, "144 Sessions PIF Special", 100, { count: 144 }),
+          },
+        }),
+        attendance: [],
+      }),
+    );
+    expect(snap.situation).toBe("unknown");
+    expect(snap.dataGaps.join(" ")).toContain("144 Sessions PIF Special");
+  });
+
+  it("remembers a last visit older than the job's window", () => {
+    const snap = buildRenewalSnapshot(
+      input({
+        client: client({ mindbodyServices: { a: service(1, "144 PIF", 0, { count: 144 }) } }),
+        attendance: [],
+        lastVisitHint: "2026-05-01",
+      }),
+    );
+    expect(snap.lastVisitDate).toBe("2026-05-01");
+    // Used up May 1, more than 30 days ago: the win-back list, not "unknown".
+    expect(snap.situation).toBe("lapsed");
+    expect(snap.focusDate).toBe("2026-05-01");
+  });
+
+  it("keeps a due paid-in-full client in the pipeline with no pace to project from", () => {
+    const snap = buildRenewalSnapshot(
+      input({
+        client: client({ mindbodyServices: { a: service(1, "144 PIF", 5, { count: 144, activeDate: "2025-04-01" }) } }),
+        attendance: [],
+        lastVisitHint: "2026-07-01",
+      }),
+    );
+    expect(snap.conversationDue).toBe(true);
+    expect(snap.runOutDate).toBeNull();
+    expect(snap.focusDate).toBe("2026-07-01");
+  });
+
   it("treats a renewal already on the books as the package", () => {
     const snap = buildRenewalSnapshot(
       input({

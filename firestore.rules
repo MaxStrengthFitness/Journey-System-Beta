@@ -380,6 +380,11 @@ service cloud.firestore {
     function renewalTrainerWrite() {
       return request.resource.data.get('lastTouchBy', '') == request.auth.uid
           && request.resource.data.get('latestLeaning', 'unsure') in renewalLeanings()
+          // Only as a side effect of logging a conversation, now: stamped by
+          // the server, and counted one at a time.
+          && request.resource.data.get('lastTouchAt', null) == request.time
+          && request.resource.data.get('touchCount', 0) ==
+               (resource == null ? 0 : resource.data.get('touchCount', 0)) + 1
           && (resource == null
                 ? request.resource.data.keys().hasOnly(renewalTrainerKeys())
                 : request.resource.data.diff(resource.data).affectedKeys()
@@ -402,6 +407,7 @@ service cloud.firestore {
       return d.keys().hasOnly(['clientId', 'authorId', 'authorName', 'at', 'leaning',
                                'concerns', 'interestedIn', 'note', 'needsLeader'])
           && d.authorId == request.auth.uid
+          && d.at == request.time
           && d.leaning in renewalLeanings()
           && d.concerns is list && d.concerns.size() <= 8
           && d.note is string && d.note.size() <= 500

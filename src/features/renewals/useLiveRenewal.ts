@@ -44,6 +44,8 @@ import type { RenewalSettings, RenewalSnapshot } from "./types";
 const DAY_MS = 86_400_000;
 
 interface Inputs {
+  /** Whose bookings these are: a screen that switches clients in place must never mix two people. */
+  clientId: string;
   schedules: ScheduleEntry[];
   sessions: WorkoutSession[];
   earliestBooking: unknown;
@@ -118,6 +120,7 @@ export function useLiveRenewal(
       .then(([schedules, sessions, earliest]) => {
         if (cancelled) return;
         setInputs({
+          clientId,
           schedules: schedules.docs.map((d) => d.data() as ScheduleEntry),
           sessions: sessions.docs.map((d) => d.data() as WorkoutSession),
           earliestBooking: earliest.empty ? null : earliest.docs[0].get("startTime"),
@@ -140,7 +143,7 @@ export function useLiveRenewal(
   const live = useMemo(() => {
     // Wait for the studio's own thresholds: a snapshot worked out against the
     // defaults for a moment would flash the wrong answer.
-    if (!client || !inputs || settingsLoading) return null;
+    if (!client || !inputs || inputs.clientId !== client.id || settingsLoading) return null;
     const tz = getActiveTimeZone();
     const now = new Date();
     const today = studioTodayKey(now, tz);
@@ -155,6 +158,7 @@ export function useLiveRenewal(
       sessionFeel: feelFromSessions(inputs.sessions, tz),
       machineNames: options.machineNames,
       attendanceSince: attendanceSinceOf(inputs.earliestBooking, tz),
+      lastVisitHint: client.renewal?.lastVisitDate ?? null,
     });
   }, [client, inputs, settings, settingsLoading, options.machineNames]);
 

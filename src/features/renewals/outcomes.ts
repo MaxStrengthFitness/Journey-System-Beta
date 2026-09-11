@@ -178,8 +178,9 @@ export function outcomePatch(
   c: OutcomeCandidate,
   existing: Pick<RenewalCycle, "outcome" | "outcomeBy" | "nextCycleKey"> | null | undefined,
 ): OutcomePatch | null {
+  // A leader has spoken — an outcome, or clearing one — and that stands.
+  if (existing?.outcomeBy && existing.outcomeBy !== "job") return null;
   const has = Boolean(existing?.outcome);
-  if (has && existing?.outcomeBy !== "job") return null;
   if (c.outcome === null) {
     // Only ever undo the job's own "lost".
     if (!has || existing?.outcome !== "lost") return null;

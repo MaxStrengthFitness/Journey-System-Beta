@@ -123,6 +123,14 @@ describe("decideMindbodyAccess", () => {
     expect(decideMindbodyAccess(admin, { requireSuper: true }).ok).toBe(true);
   });
 
+  it("refuses a site that isn't a plain id, even for someone with every site", () => {
+    // String(["29068"]) is "29068": an array must never read as "no site".
+    const d = decideMindbodyAccess(solonTrainer, { siteId: ["29068"] });
+    expect(d.ok).toBe(false);
+    expect(d.status).toBe(403);
+    expect(decideMindbodyAccess(solonTrainer, { siteId: { site: "29068" } }).ok).toBe(false);
+  });
+
   it("allows a call that names no site (the route itself then refuses it)", () => {
     expect(decideMindbodyAccess(solonTrainer, {}).ok).toBe(true);
   });

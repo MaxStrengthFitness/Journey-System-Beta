@@ -164,18 +164,30 @@ async function loadAccess(uid: string, claimRole: unknown, idToken: string): Pro
 }
 
 /**
- * May this caller open this client? Used when a trainer asks about a client
- * whose home studio is on another site (an approved cross-train client): the
- * caller may pull Mindbody data for a client the database already lets them
- * read. One REST read, with the caller's own token, so the rules decide.
+ * The Mindbody site of a client this caller may open, or null. Used when a
+ * trainer asks about a client whose home studio is on another site (an
+ * approved cross-train client). The read is made with the caller's own token,
+ * so the security rules decide whether they may open the client at all; the
+ * answer is the site of THAT client's home studio, which the request must
+ * name — so the check can't be pointed at one client to pull another.
+ * A Mindbody client's document id is their Mindbody id (CLAUDE.md).
  */
-async function callerCanReadClient(clientDocId: string, idToken: string): Promise<boolean> {
-  if (!/^[A-Za-z0-9_-]{1,120}$/.test(clientDocId)) return false;
-  const { status } = await restGet(
-    `${documentsBase()}/clients/${encodeURIComponent(clientDocId)}?mask.fieldPaths=homeStudioId`,
+async function readableClientSite(mindbodyClientId: string, idToken: string): Promise<string | null> {
+  if (!/^[A-Za-z0-9_-]{1,120}$/.test(mindbodyClientId)) return null;
+  const { status, body } = await restGet(
+    `${documentsBase()}/clients/${encodeURIComponent(mindbodyClientId)}?mask.fieldPaths=homeStudioId`,
     idToken,
   );
-  return status === 200;
+  if (status !== 200) return null;
+  const home = decodeRestFields(body?.fields).homeStudioId;
+  if (typeof home !== "string" || !home) return null;
+  const sites = await loadStudioSites(idToken);
+  return sites[home] ?? null;
+}
+
+/** A plain id — a string or a number — or absent. Anything else is refused. */
+function plainIdOrAbsent(v: unknown): boolean {
+  return v === undefined || v === null || v === "" || typeof v === "string" || typeof v === "number";
 }
 
 /* ------------------------------------------------------------------ *
@@ -222,24 +234,39 @@ export function requireStaff(options: RequireStaffOptions = {}) {
         .json({ error: "Couldn't confirm your account just now. Try again in a minute." });
     }
 
-    const siteId = req.body?.siteId;
+    // The routes turn these into strings; only plain ids may reach them.
+    const body = req.body && typeof req.body === "object" ? req.body : null;
+    if (body && (!plainIdOrAbsent(body.siteId) || !plainIdOrAbsent(body.mindbodyClientId))) {
+      return res.status(400).json({ error: "That request names an invalid Mindbody site or client." });
+    }
+    if (body && (typeof body.siteId === "string" || typeof body.siteId === "number")) {
+      body.siteId = String(body.siteId).trim();
+    }
+    const siteId = body?.siteId;
     let decision = decideMindbodyAccess(access, {
       siteId,
       requireSuper: options.requireSuper,
     });
 
-    // A cross-train client lives on another site: allowed when the database
-    // already lets this caller open that client.
-    const clientDocId = req.body?.clientDocId ?? req.body?.mindbodyClientId;
+    // A cross-train client lives on another site: allowed when the caller may
+    // open that exact client AND the request names that client's own site.
+    // Only a lookup by id: the name search is dropped on this path, so it
+    // can't be used to find someone else on the other site.
+    const mbClient = body?.mindbodyClientId;
     if (
       !decision.ok &&
       access &&
       !options.requireSuper &&
-      (typeof clientDocId === "string" || typeof clientDocId === "number")
+      typeof siteId === "string" &&
+      siteId !== "" &&
+      (typeof mbClient === "string" || typeof mbClient === "number") &&
+      String(mbClient).trim() !== ""
     ) {
       try {
-        if (await callerCanReadClient(String(clientDocId), idToken)) {
+        const clientSite = await readableClientSite(String(mbClient).trim(), idToken);
+        if (clientSite && clientSite === siteId) {
           decision = { ok: true, status: 200, error: "" };
+          delete body.clientName;
         }
       } catch {
         // Leave the refusal standing.

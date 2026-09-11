@@ -43,6 +43,14 @@ function snap(over: Partial<RenewalSnapshot>): RenewalSnapshot {
   };
 }
 
+describe("pace in the sentence", () => {
+  it("never says 'on pace' when there have been no visits", () => {
+    expect(situationSentence(snap({ paymentMode: "prepaid", pacePerWeek: 0 }), TODAY)).toBe(
+      "9 sessions left · paid in full · no visits in 8 weeks",
+    );
+  });
+});
+
 describe("a renewal already signed", () => {
   it("says so instead of prompting a conversation", () => {
     const renewed = snap({ renewalOnBooks: { cycleKey: "9002", packageKey: "transformed", startsOn: "2026-11-15" } });

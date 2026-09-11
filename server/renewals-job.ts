@@ -52,7 +52,7 @@ import {
   normalizeRenewalSettings,
   type PackageNameIndex,
 } from "../src/features/renewals/settings.ts";
-import { mindbodyIdOf, namesSeenFrom, pullRank } from "../src/features/renewals/job-plan.ts";
+import { mindbodyIdOf, namesSeenFrom, pullOrder, pullRank } from "../src/features/renewals/job-plan.ts";
 import type { Client, ScheduleEntry, WorkoutSession } from "../src/types.ts";
 import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "../src/features/renewals/types.ts";
 
@@ -199,6 +199,7 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
       machineNames,
       attendanceSince: run.attendanceSince,
       nameIndex: run.nameIndex,
+      lastVisitHint: client.renewal?.lastVisitDate ?? null,
     });
   };
 
@@ -247,7 +248,13 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
         })),
       )
       .filter((x) => x.rank !== null)
-      .sort((a, b) => (a.rank as number) - (b.rank as number));
+      .sort((a, b) =>
+        pullOrder(
+          { rank: a.rank as number, focusDate: a.run.snapshots.get(a.c.id!)!.focusDate },
+          { rank: b.rank as number, focusDate: b.run.snapshots.get(b.c.id!)!.focusDate },
+          a.run.today,
+        ),
+      );
     const chosen = candidates.slice(0, Math.max(0, options.maxPulls ?? DEFAULT_MAX_PULLS));
     log(`${candidates.length} clients could use a Mindbody pull; pulling ${chosen.length} tonight.`);
 

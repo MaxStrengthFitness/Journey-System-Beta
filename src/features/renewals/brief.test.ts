@@ -53,7 +53,7 @@ describe("the Brief", () => {
     expect(journeyLines(client, snap, DEFAULT_RENEWAL_SETTINGS)).toEqual([
       "Trained in 11 of the last 12 weeks",
       "Comes 1.5× a week",
-      "Used 60 of 96 sessions on this package",
+      "About 60 of 96 sessions used on this package",
     ]);
   });
 

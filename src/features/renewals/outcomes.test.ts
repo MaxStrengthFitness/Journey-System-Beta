@@ -130,8 +130,9 @@ describe("the job's candidates", () => {
 describe("what the job writes", () => {
   const lost = { cycleKey: "A", outcome: "lost" as const, packageKey: "committed", nextCycleKey: null, nextPackageKey: null, closedOn: "2026-07-20" };
 
-  it("never overwrites a leader's outcome", () => {
+  it("never overwrites a leader's outcome — or a leader clearing one", () => {
     expect(outcomePatch(lost, { outcome: "pay-as-you-go", outcomeBy: "leader-uid" })).toBeNull();
+    expect(outcomePatch(lost, { outcome: null, outcomeBy: "leader-uid" })).toBeNull();
   });
 
   it("writes a new outcome, and not the same one twice", () => {

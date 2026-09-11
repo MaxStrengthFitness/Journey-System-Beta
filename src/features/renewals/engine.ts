@@ -122,6 +122,12 @@ export interface RenewalEngineInput {
   attendanceSince: string | null;
   /** Reuse one index per studio when building many snapshots. */
   nameIndex?: PackageNameIndex;
+  /**
+   * The last visit an earlier snapshot saw (`renewal.lastVisitDate`). The
+   * nightly job reads a fixed 90-day window of bookings, so without this a
+   * client's last visit would be forgotten once it aged out of the window.
+   */
+  lastVisitHint?: string | null;
 }
 
 /* ------------------------------------------------------------------ *
@@ -540,7 +546,13 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
   const visitDays = new Set(
     attendance.filter((a) => a.kind === "visit" && a.day <= today).map((a) => a.day),
   );
-  const lastVisitDate = Array.from(visitDays).sort().pop() ?? null;
+  const hint =
+    typeof input.lastVisitHint === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(input.lastVisitHint) &&
+    input.lastVisitHint <= today
+      ? input.lastVisitHint
+      : null;
+  const lastVisitDate = maxKey(Array.from(visitDays).sort().pop() ?? null, hint);
   const nextBookingDate =
     attendance
       .filter((a) => a.kind === "booked" && a.day >= today)
@@ -708,11 +720,12 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
 
   /* ---- Has the package ended? ---- */
   // Nothing running and no package sessions left: it ended when the last
-  // contract did, or — for a used-up paid-in-full package — at the last visit.
+  // contract did — or later, at the last visit, if they kept coming in (a
+  // used-up paid-in-full package, drop-ins, sessions bought some other way).
+  // Someone still walking in is never "lapsed".
   let endedOn: string | null = null;
   if (!current && !sessionsOnly && (contracts.lastEnded || balance.packageService)) {
-    const lastUse = balance.packageService ? lastVisitDate : null;
-    endedOn = maxKey(contracts.lastEnded?.end ?? null, lastUse);
+    endedOn = maxKey(contracts.lastEnded?.end ?? null, lastVisitDate);
   }
 
   /* ---- Situation ---- */
@@ -720,6 +733,11 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
   if (awayNow.away) {
     // Snowbirds are not churn (AJ): away wins over everything.
     situation = "away";
+  } else if (endedOn && balance.unmatched.length > 0) {
+    // Sessions on hand on a pricing option the studio hasn't matched: maybe
+    // the next package, maybe drop-ins. The app can't tell, so it says so
+    // (the data gap names the option) rather than calling them ended or lost.
+    situation = "unknown";
   } else if (endedOn) {
     situation = daysBetween(endedOn, today) > settings.lostAfterDays ? "lapsed" : "ended";
   } else if (!tier || sessionsLeft === null) {
@@ -762,6 +780,9 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
   else if (paymentMode === "monthly") focusDate = minKey(chargeDate, runOutDate);
   else if (paymentMode) focusDate = runOutDate;
   else focusDate = null;
+  // A conversation that's due must be findable in the pipeline even with no
+  // pace to project a run-out date from (paid in full, no recent visits).
+  if (!focusDate && conversationDue) focusDate = lastVisitDate ?? today;
 
   /* ---- Flags, each with its evidence ---- */
   if (current && /suspend/i.test(current.contract.autopayStatus ?? "")) {

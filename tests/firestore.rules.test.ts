@@ -871,6 +871,15 @@ describe("Firestore Security Rules", () => {
     await assertFails(setDoc(cycle, { ...cyclePatch("trainerA"), outcome: "renewed" }, { merge: true }));
   });
 
+  it("denies a backdated conversation, or a count bumped by more than one", async () => {
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    const db = ctx.firestore();
+    const cycle = doc(db, "studios", "studioA", "renewals", "9001");
+    await assertFails(setDoc(doc(collection(cycle, "touches")), { ...touch("trainerA"), at: new Date("2026-01-01") }));
+    await assertFails(setDoc(cycle, { ...cyclePatch("trainerA"), touchCount: increment(5) }, { merge: true }));
+    await assertFails(setDoc(cycle, { ...cyclePatch("trainerA"), lastTouchAt: new Date("2026-01-01") }, { merge: true }));
+  });
+
   it("denies a conversation signed with someone else's name", async () => {
     const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
     const cycle = doc(ctx.firestore(), "studios", "studioA", "renewals", "9001");

@@ -10,6 +10,7 @@
 import { mindbodyDayKey } from "./engine";
 import { daysBetween } from "../client-history/model";
 import { normalizeMindbodyName, type PackageNameIndex } from "./settings";
+import { LAPSED_LOOKBACK_DAYS } from "./pipeline";
 import type { Client } from "../../types";
 import type { RenewalNamesSeen, RenewalSnapshot } from "./types";
 
@@ -21,11 +22,18 @@ export const STALE_AFTER_DAYS = 30;
 /** Two calls a client: contracts and pricing options. */
 export const CALLS_PER_PULL = 2;
 
-/** The Mindbody id to ask about, or null when there is none to ask. */
+/**
+ * The Mindbody id to ask about, or null when there is none to ask. A Mindbody
+ * client's document id IS their Mindbody id, but only a numeric one is trusted
+ * as such: a Firestore auto-id belongs to a client Mindbody has never heard
+ * of, and asking about it would spend two calls on nothing, every night.
+ */
 export function mindbodyIdOf(client: Client): string | null {
   if (client.provisional || client.supersededById || client.migratedTo) return null;
-  const id = String(client.mindbodyClientId || client.mindbodyId || client.id || "").trim();
-  return /^[A-Za-z0-9_-]{1,40}$/.test(id) ? id : null;
+  const explicit = String(client.mindbodyClientId || client.mindbodyId || "").trim();
+  if (explicit) return /^[A-Za-z0-9_-]{1,40}$/.test(explicit) ? explicit : null;
+  const docId = String(client.id || "").trim();
+  return /^\d{1,20}$/.test(docId) ? docId : null;
 }
 
 /**
@@ -50,9 +58,13 @@ export function pullRank(params: {
   const active = Boolean(current.lastVisitDate || current.nextBookingDate);
 
   if (age === null) return active ? 1 : 3;
+  // "Near" looks both ways, but not forever back: a package that ended
+  // longer ago than the lapsed list is history, refreshed monthly like anyone.
+  const toFocus = current.focusDate ? daysBetween(today, current.focusDate) : null;
   if (
-    current.focusDate &&
-    daysBetween(today, current.focusDate) <= NEAR_WINDOW_DAYS &&
+    toFocus !== null &&
+    toFocus <= NEAR_WINDOW_DAYS &&
+    toFocus >= -LAPSED_LOOKBACK_DAYS &&
     age >= NEAR_WINDOW_REFRESH_DAYS
   ) {
     return 0;
@@ -94,4 +106,18 @@ export function unmatchedNames(
   return Object.values(names)
     .filter((n) => !index.tierFor(n.name) && !index.isExtraSessions(n.name))
     .sort((a, b) => b.clients - a.clients);
+}
+
+/**
+ * Tonight's pull order: by rank, then — within a rank — the nearest renewal
+ * first, so the clients whose conversation is closest never wait behind
+ * everyone else as the studio grows.
+ */
+export function pullOrder(
+  a: { rank: number; focusDate: string | null },
+  b: { rank: number; focusDate: string | null },
+  today: string,
+): number {
+  const near = (d: string | null) => (d ? Math.abs(daysBetween(today, d)) : Number.MAX_SAFE_INTEGER);
+  return a.rank - b.rank || near(a.focusDate) - near(b.focusDate);
 }

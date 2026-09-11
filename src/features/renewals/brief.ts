@@ -64,8 +64,10 @@ export function journeyLines(client: Client, s: RenewalSnapshot | null, settings
     lines.push(paceSentence(s));
     const tier = tierOf(settings, s.packageKey);
     if (tier && s.sessionsLeft !== null && s.sessionsLeftSource === "mindbody" && s.paymentMode !== "sessions-only") {
+      // "About": sessions left can include complimentary ones and a few
+      // carried over, so this is the package's count less what's left.
       const used = tier.sessions - s.sessionsLeft;
-      if (used >= 0 && used <= tier.sessions) lines.push(`Used ${used} of ${tier.sessions} sessions on this package`);
+      if (used >= 0 && used <= tier.sessions) lines.push(`About ${used} of ${tier.sessions} sessions used on this package`);
     }
   }
   return lines;
