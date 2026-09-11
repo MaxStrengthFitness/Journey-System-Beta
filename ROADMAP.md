@@ -2,7 +2,7 @@
 
 A living document. We update it every working session — newest decisions at the top of each list. (Contractor-scope backend items live in PROJECT_TRACKER.md. The tablet walkthrough and cleanup pass live in TESTING-CHECKLIST.md.)
 
-_Last updated: Sep 10, 2026 (evening) — **everything went live**: the studio hub, the Catalog wiki, the new one-button Learning tab, the client History tab and Eastern-time dates, merged into `master` by `ship-sep10.ps1`. Record: **`GO-LIVE-SEP10.md`**. Not yet looked at on a real iPad._
+_Last updated: Sep 11, 2026 — **the Operations Dashboard + Renewals round is built** on `operations-renewals`: nine phases, the review's fixes and docs, one commit each, shipped by `ship-renewals.ps1`. Record and runbook: **`RENEWALS-ROUND.md`**. Before that, Sep 10 (evening): the studio hub, the Catalog wiki, Learning, client History and Eastern-time dates went live (`GO-LIVE-SEP10.md`). Neither round has been seen on a real iPad._
 
 ---
 
@@ -100,6 +100,51 @@ Rules deployed to production (`prod` / `gen-lang-client-0731527386`), verified b
 ### Phase 7 — Demo mode + tutorials · *driven by the FileMaker cutover date*
 
 **Why last:** it is four different projects wearing one name and it needs a business decision, not a technical one. The decision list is in "Open — reported Sep 5" below.
+
+---
+
+## 🔁 Ready to ship — Operations Dashboard + Renewals (Sep 11) — branch `operations-renewals`, one commit per phase
+
+**AJ, Sep 10–11:** rename the Admin Dashboard to the Operations Dashboard; a proactive renewals tool that combines Mindbody contracts with workout, progress and feel data and flags clients 1, 2 and 3 months out; a planning and upsell view for leaders; trainers in with slightly fewer privileges. *"here are 2 photos of a PIF and monthly, dont worry about card declines for now, studios should have their own LookinBody Web account and everything else is golden"*
+
+The plan is **`OPERATIONS-RENEWALS-PROPOSAL.md`** (§10 answers, §11 what changed). Shipping, the iPad checklist and rollback are in **`RENEWALS-ROUND.md`**. The code map is `src/features/renewals/README.md`.
+
+### Decisions (AJ, Sep 10–11)
+
+| Question | Chosen |
+| --- | --- |
+| Name | **Operations Dashboard**; the new tab is **Renewals** |
+| When to talk | 10 sessions left, and 30 days before a charge with 4+ banked. Lost 30 days after the end; pay-as-you-go counts as kept. **Every threshold is a studio setting** |
+| Who sees rates and prices | Studio leaders and up only. Trainers log conversations and see the renewal line |
+| Declined cards | Out of scope for now |
+| InBody | Typed in from the printout. Each studio has its own LookinBody Web account for a later import |
+| Outreach | None |
+
+### Built (commits on `operations-renewals`)
+
+- [x] **0** — Every `/api/mindbody/*` route needs a staff sign-in. The pull now also fetches pricing options and scheduled charges. Added a collision-check script and a webhook script that can look before it registers.
+- [x] **1** — "Admin" is called "Operations" (labels only).
+- [x] **2** — Each studio's renewal settings and package table, with rules.
+- [x] **3** — The engine: two clocks, one situation, flags, proof and package options. Pure and tested.
+- [x] **4** — The nightly job (Render cron `journey-cron-renewals`), live single-client snapshots, the rule that only the job writes the snapshot, and an index.
+- [x] **5** — Conversations: the Renewal card, the post-session prompt, the briefing line, the Hub lane, My renewals.
+- [x] **6** — Operations → Renewals: the Pipeline and the Renewal Brief.
+- [x] **7** — InBody in the app: entry, the body-composition card, the client summary, and a progress-report section.
+- [x] **8** — Outcomes: recorded overnight or by a leader, plus the leader-only Outcomes view by package, trainer and studio.
+- [x] **9** — Fixes from an independent review. The Mindbody gate is stricter: a cross-train request is tied to its own client and site, sites must be plain ids, and the admin paths match regardless of case. Also: no false "lapsed" for clients still coming in, prepaid clients stay findable, Mindbody calls are spent better, leaders' cleared outcomes stick, and conversations can't be backdated.
+
+### Not yet verified — read before merging
+
+- [ ] **AJ's own runs.** `tsc`, `vitest`, `vite build`, `build:backend` and `test:rules` — the ship script's check and rules stages. The cloud checks used type stubs, because the proxy blocks `npm ci` there.
+- [ ] **The iPad pass** — `RENEWALS-ROUND.md` §5.
+- [ ] **The first nightly run.** Dry-run it from the PC first (`npx tsx scripts/run-renewals.ts --pull`) and read the log.
+
+### Still open
+
+- [ ] **Security, found by the review, not changed — needs AJ's OK.** A trainer can edit their own role and studio lists on `trainers/{uid}`, and any trainer can edit any `studios/{id}`, including `mindbodySiteId`. The fix is a short rules round; see `RENEWALS-ROUND.md` §9.
+- [ ] Run the client-ID collision check, then subscribe the contract and membership webhooks (Cloud Functions deploy first).
+- [ ] The first Mindbody backfill takes about three nights at 300 clients a night.
+- [ ] A LookinBody import (one API key per studio) and reading the printout from a photo.
 
 ---
 
