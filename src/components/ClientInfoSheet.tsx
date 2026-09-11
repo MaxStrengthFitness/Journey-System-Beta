@@ -347,6 +347,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
         onSyncMindbody={handleSyncMindbody}
         isSyncingMb={isSyncingMb}
         scroll={inline ? "page" : "inner"}
+        authTrainer={authTrainer}
       />
 
       {/* Sticky Footer */}

@@ -2,6 +2,7 @@
  * Roles defining system access levels across the organization.
  */
 import type { RenewalSnapshot } from "./features/renewals/types";
+import type { InBodySummary } from "./features/inbody/types";
 import type {
   ClientSubjectiveSnapshot,
   SubjectiveAssessment,
@@ -778,6 +779,12 @@ export interface Client {
    * (server/renewals-job.ts); firestore.rules refuses it from the app.
    */
   renewal?: RenewalSnapshot;
+  /**
+   * The first InBody scan against the latest (Renewals round, Sep 2026).
+   * Rewritten by the app with every scan saved, corrected or removed; the
+   * scans themselves are clients/{id}/inbodyScans. See features/inbody.
+   */
+  inbodySummary?: InBodySummary;
 }
 
 export interface Machine {

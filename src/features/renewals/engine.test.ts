@@ -496,6 +496,45 @@ describe("proof", () => {
     );
     expect(snap.proof.machinesImproved).toBeNull();
   });
+
+  it("carries the InBody change the app keeps on the client, once there are two scans", () => {
+    const latest = { weightLb: 172.4, skeletalMuscleMassLb: 68.1, bodyFatMassLb: 53.8, percentBodyFat: 31.2 };
+    const two = buildRenewalSnapshot(
+      input({
+        client: client({
+          inbodySummary: {
+            scanCount: 2,
+            firstTestedAt: "2026-01-15",
+            latestTestedAt: "2026-09-02",
+            latest,
+            weightLbChange: -3.8,
+            muscleLbChange: 2.3,
+            bodyFatLbChange: -5.1,
+            bodyFatPctChange: -2.2,
+          },
+        }),
+      }),
+    );
+    expect(two.proof.inbody).toEqual({ muscleLbChange: 2.3, bodyFatPctChange: -2.2, since: "2026-01-15" });
+
+    const one = buildRenewalSnapshot(
+      input({
+        client: client({
+          inbodySummary: {
+            scanCount: 1,
+            firstTestedAt: "2026-09-02",
+            latestTestedAt: "2026-09-02",
+            latest,
+            weightLbChange: null,
+            muscleLbChange: null,
+            bodyFatLbChange: null,
+            bodyFatPctChange: null,
+          },
+        }),
+      }),
+    );
+    expect(one.proof.inbody).toBeNull();
+  });
 });
 
 describe("pickContracts", () => {

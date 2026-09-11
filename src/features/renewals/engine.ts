@@ -455,13 +455,16 @@ export function proofFor(params: {
     }
   }
 
-  const summary = (client as Client & { inbodySummary?: any }).inbodySummary;
+  // Written by the app beside the scans (features/inbody). Still checked
+  // field by field: the document is data, and a hand edit shouldn't crash
+  // the nightly job.
+  const summary = client.inbodySummary;
   const inbody =
     summary && typeof summary.muscleLbChange === "number" && typeof summary.bodyFatPctChange === "number"
       ? {
           muscleLbChange: summary.muscleLbChange,
           bodyFatPctChange: summary.bodyFatPctChange,
-          since: String(summary.firstTestedAt ?? summary.since ?? ""),
+          since: String(summary.firstTestedAt ?? ""),
         }
       : null;
 

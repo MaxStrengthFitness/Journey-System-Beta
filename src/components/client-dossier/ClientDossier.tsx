@@ -50,6 +50,7 @@ import type {
 import { CLINICAL_FLAGS_MATRIX } from "../../data/clinical-matrix";
 import { OccupationSelect } from "../OccupationSelect";
 import { ClientMembershipsCard } from "../mindbody/ClientMembershipsCard";
+import { InBodyCard } from "../../features/inbody/InBodyCard";
 import { ClientSnapshot, activeContract } from "./ClientSnapshot";
 import { JournalRail } from "./JournalRail";
 import {
@@ -109,6 +110,8 @@ export interface ClientDossierProps {
    * of its own — the page scrolls, and the jump rail sticks alongside it.
    */
   scroll?: "inner" | "page";
+  /** Who is signed in: decides whether the InBody card offers "Add scan". */
+  authTrainer?: Trainer | null;
 }
 
 export function ClientDossier({
@@ -124,6 +127,7 @@ export function ClientDossier({
   onSyncMindbody,
   isSyncingMb = false,
   scroll = "inner",
+  authTrainer = null,
 }: ClientDossierProps) {
   const pageScroll = scroll === "page";
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -534,6 +538,10 @@ export function ClientDossier({
                 <TextField label="Height" value={val("height")} onChange={set("height")} placeholder={`e.g. 5'4"`} />
                 <TextField label="Weight" value={val("weight")} onChange={set("weight")} placeholder="lbs" />
               </FieldGroup>
+
+              {/* Renewals round, Sep 2026: InBody scans save on their own —
+                  not through this form's Save bar. See features/inbody. */}
+              <InBodyCard client={client} authTrainer={authTrainer} />
 
               <div className="flex flex-col gap-2.5">
                 <FieldLabel>Clinical flags</FieldLabel>

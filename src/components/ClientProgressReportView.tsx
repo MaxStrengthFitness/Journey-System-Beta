@@ -99,6 +99,7 @@ import {
 } from "../features/progress-report";
 import { SubjectiveClientCopy, answeredCount } from "../features/subjective-report";
 import { studioTodayKey } from "../lib/studio-time";
+import { InBodyReportSection } from "../features/inbody/InBodyReportSection";
 
 /** Firestore Timestamp | Date | ISO string → "Jan 15, 2026", or null. */
 const shortDate = (v: any): string | null => {
@@ -1259,6 +1260,11 @@ export function ClientProgressReportView({
             {report.machineProgression && (
               <MachineProgressionCard value={report.machineProgression} />
             )}
+
+            {/* 2c. BODY COMPOSITION (Renewals round, Sep 2026) — read live
+                from the client's InBody scans up to this report's date, never
+                copied into the report: see features/inbody. */}
+            <InBodyReportSection clientId={client.id} reportDate={report.date} />
 
             {/* 3. REINSTATED 4 P'S MATRIX - THE CENTERPIECE */}
             {!report.isCheckInOnly && (

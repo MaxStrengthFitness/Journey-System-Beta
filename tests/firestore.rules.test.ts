@@ -904,4 +904,116 @@ describe("Firestore Security Rules", () => {
     await assertFails(deleteDoc(doc(trainer, ...path)));
     await assertSucceeds(deleteDoc(doc(owner, ...path)));
   });
+
+  // ── INBODY SCANS: health data, scoped like sessions ─────────────────────
+  //
+  // Every scan write is a batch with the client's inbodySummary, so each test
+  // writes both halves the way the app does.
+
+  const inbodyClient = {
+    firstName: "InBody",
+    lastName: "Client",
+    isActive: true,
+    remainingSessions: 0,
+    homeStudioId: "studioA",
+  };
+
+  const scanData = (uid: string) => ({
+    testedAt: "2026-09-02",
+    device: "InBody 270S",
+    source: "manual",
+    studioId: "studioA",
+    enteredBy: uid,
+    enteredByName: "Trainer A",
+    createdAt: serverTimestamp(),
+    weightLb: 172.4,
+    skeletalMuscleMassLb: 68.1,
+    bodyFatMassLb: 53.8,
+    percentBodyFat: 31.2,
+    bmi: 27.8,
+    totalBodyWaterLb: null,
+    dryLeanMassLb: null,
+    fatFreeMassLb: null,
+    basalMetabolicRateKcal: null,
+    smi: null,
+    phaseAngle: null,
+    segmentalLean: null,
+  });
+
+  const summary = { scanCount: 1, firstTestedAt: "2026-09-02", latestTestedAt: "2026-09-02" };
+
+  async function seedInBody(withScan = false) {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "clients", "inbodyClient"), inbodyClient);
+      if (withScan) {
+        await setDoc(doc(db, "clients", "inbodyClient", "inbodyScans", "s1"), {
+          ...scanData("trainerA"),
+          createdAt: new Date(),
+        });
+      }
+      // A second trainer at studio A, who did not enter the scan.
+      await setDoc(doc(db, "trainers", "trainerA2"), {
+        fullName: "Trainer A2",
+        initials: "A2",
+        role: "LifeTransformer",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+      });
+    });
+  }
+
+  it("lets a trainer at the client's studio add a scan and its summary, and read them", async () => {
+    await seedInBody();
+    const db = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const batch = writeBatch(db);
+    batch.set(doc(db, "clients", "inbodyClient", "inbodyScans", "new1"), scanData("trainerA"));
+    batch.update(doc(db, "clients", "inbodyClient"), { inbodySummary: summary, weight: "172" });
+    await assertSucceeds(batch.commit());
+    await assertSucceeds(getDocs(collection(db, "clients", "inbodyClient", "inbodyScans")));
+  });
+
+  it("keeps another studio's trainers from reading or adding scans", async () => {
+    await seedInBody(true);
+    const db = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(getDoc(doc(db, "clients", "inbodyClient", "inbodyScans", "s1")));
+    await assertFails(getDocs(collection(db, "clients", "inbodyClient", "inbodyScans")));
+    await assertFails(setDoc(doc(db, "clients", "inbodyClient", "inbodyScans", "new1"), scanData("trainerB")));
+  });
+
+  it("denies a scan signed with someone else's name, or with impossible numbers", async () => {
+    await seedInBody();
+    const db = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const ref = doc(db, "clients", "inbodyClient", "inbodyScans", "new1");
+    await assertFails(setDoc(ref, scanData("ownerA")));
+    await assertFails(setDoc(ref, { ...scanData("trainerA"), skeletalMuscleMassLb: 130 }));
+    await assertFails(setDoc(ref, { ...scanData("trainerA"), visceralFat: 9 }));
+  });
+
+  it("lets a correction be signed, but never changes who entered a scan", async () => {
+    await seedInBody(true);
+    const db = testEnv.authenticatedContext("trainerA2", { email: "trainera2@test.com" }).firestore();
+    const ref = doc(db, "clients", "inbodyClient", "inbodyScans", "s1");
+    await assertSucceeds(
+      updateDoc(ref, { bodyFatMassLb: 53.6, updatedBy: "trainerA2", updatedAt: serverTimestamp() }),
+    );
+    await assertFails(
+      updateDoc(ref, { enteredBy: "trainerA2", updatedBy: "trainerA2", updatedAt: serverTimestamp() }),
+    );
+  });
+
+  it("lets only whoever entered a scan, or a leader, remove it", async () => {
+    await seedInBody(true);
+    const path = ["clients", "inbodyClient", "inbodyScans", "s1"] as const;
+    const other = testEnv.authenticatedContext("trainerA2", { email: "trainera2@test.com" }).firestore();
+    const author = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertFails(deleteDoc(doc(other, ...path)));
+    await assertSucceeds(deleteDoc(doc(author, ...path)));
+  });
+
+  it("lets the studio's owner remove a scan someone else entered", async () => {
+    await seedInBody(true);
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(deleteDoc(doc(owner, "clients", "inbodyClient", "inbodyScans", "s1")));
+  });
 });
