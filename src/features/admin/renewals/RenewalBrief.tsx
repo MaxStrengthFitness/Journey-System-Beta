@@ -50,9 +50,10 @@ import {
   leaningLabel,
 } from "../../renewals/conversation";
 import { gainSentence, healthLines, journeyLines, strengthGains } from "../../renewals/brief";
+import { OUTCOMES, closedOnFor } from "../../renewals/outcomes";
 import { optionsFor, upgradeVerdict } from "../../renewals/options";
 import { useClinicalReport, buildReport, rangeForPreset } from "../../clinical-review";
-import type { RenewalStage } from "../../renewals/types";
+import type { RenewalOutcome, RenewalStage } from "../../renewals/types";
 import "./renewals.css";
 
 export interface RenewalBriefProps {
@@ -198,6 +199,38 @@ export function RenewalBrief({
                       {leadOptions.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.fullName}
+                        </option>
+                      ))}
+                    </AdminSelect>
+                  </AdminField>
+                  <AdminField
+                    label="Outcome"
+                    htmlFor="brief-outcome"
+                    hint={
+                      cycle?.outcome
+                        ? cycle.outcomeBy === "job"
+                          ? "Recorded overnight from Mindbody. Change it if that's wrong."
+                          : "Recorded by a leader."
+                        : "Renewals and losses Mindbody shows are recorded overnight."
+                    }
+                  >
+                    <AdminSelect
+                      id="brief-outcome"
+                      value={cycle?.outcome ?? ""}
+                      disabled={saving}
+                      onChange={(e) => {
+                        const outcome = (e.target.value || null) as RenewalOutcome | null;
+                        void setCycle({
+                          outcome,
+                          closedOn: outcome ? closedOnFor(s, today) : null,
+                          ...(outcome ? { primaryTrainerId: cycle?.primaryTrainerId ?? s.primaryTrainerId ?? null } : {}),
+                        });
+                      }}
+                    >
+                      <option value="">Not recorded</option>
+                      {OUTCOMES.map((o) => (
+                        <option key={o.key} value={o.key}>
+                          {o.label}
                         </option>
                       ))}
                     </AdminSelect>

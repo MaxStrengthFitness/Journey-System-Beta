@@ -123,7 +123,11 @@ export async function logRenewalConversation(params: {
   await batch.commit();
 }
 
-/** A leader's change to a cycle: stage, who is leading, the outcome, or clearing "needs a leader". */
+/**
+ * A leader's change to a cycle: stage, who is leading, the outcome, or
+ * clearing "needs a leader". An outcome carries the day the package closed
+ * (for "outcomes this quarter") and, when known, who coached them most.
+ */
 export async function updateCycleAsLeader(
   studioId: string,
   cycleKey: string,
@@ -133,6 +137,8 @@ export async function updateCycleAsLeader(
     leadTrainerId: string | null;
     needsLeader: boolean;
     outcome: RenewalOutcome | null;
+    closedOn: string | null;
+    primaryTrainerId: string | null;
   }>,
 ): Promise<void> {
   const uid = signedInUid();
@@ -140,6 +146,13 @@ export async function updateCycleAsLeader(
   if ("outcome" in patch) {
     extra.outcomeAt = patch.outcome ? serverTimestamp() : null;
     extra.outcomeBy = patch.outcome ? uid : null;
+    if (!patch.outcome) extra.closedOn = null;
+    // Only a renewal has a next package; a leader's lost or pay-as-you-go
+    // replaces whatever the job had linked.
+    if (patch.outcome !== "renewed" && patch.outcome !== "upgraded" && patch.outcome !== "downgraded") {
+      extra.nextCycleKey = null;
+      extra.nextPackageKey = null;
+    }
   }
   await setDoc(
     cycleRef(studioId, cycleKey),

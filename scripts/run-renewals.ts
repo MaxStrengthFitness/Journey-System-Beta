@@ -6,6 +6,9 @@
  * Round: Renewals (Sep 2026). Use it for the first backfill, to see what a
  * night would do before the cron job does it, or to refresh one studio now.
  *
+ * It also records how packages ended (renewed, upgraded, downgraded, lost) on
+ * the studios' renewal cycles — features/renewals/outcomes.ts.
+ *
  * USAGE (PowerShell, from the project folder)
  *   npx tsx scripts/run-renewals.ts                    # dry run, no Mindbody calls
  *   npx tsx scripts/run-renewals.ts --pull             # dry run, WITH Mindbody pulls (read-only)
@@ -25,7 +28,11 @@ async function main() {
   const pull = commit || hasFlag("pull");
   const maxPulls = flag("max-pulls") !== undefined ? Number(flag("max-pulls")) : undefined;
   const db = connectFirestore();
-  console.log(commit ? "COMMIT: snapshots and pulled Mindbody data will be written." : "DRY RUN: nothing will be written.");
+  console.log(
+    commit
+      ? "COMMIT: snapshots, renewal outcomes and pulled Mindbody data will be written."
+      : "DRY RUN: nothing will be written.",
+  );
   await runRenewals({
     db,
     dryRun: !commit,

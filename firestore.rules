@@ -356,11 +356,17 @@ service cloud.firestore {
               'touchCount'];
     }
 
-    /** Leaders may also set the stage, the lead and the outcome. */
+    /**
+     * Leaders may also set the stage, the lead and the outcome. EVERY field
+     * the nightly job writes must be listed here too: a leader's write is
+     * checked against the whole document, so one unlisted job field would
+     * lock leaders out of that cycle for good.
+     */
     function renewalCycleKeys() {
       return renewalTrainerKeys().concat([
               'stage', 'leadTrainerId', 'outcome', 'outcomeAt', 'outcomeBy',
-              'nextCycleKey', 'primaryTrainerId', 'updatedAt', 'updatedBy']);
+              'nextCycleKey', 'nextPackageKey', 'closedOn', 'primaryTrainerId',
+              'updatedAt', 'updatedBy']);
     }
 
     function renewalLeanings() {
@@ -385,7 +391,10 @@ service cloud.firestore {
           && request.resource.data.get('stage', 'not-started') in ['not-started', 'talking', 'decided']
           && (request.resource.data.get('outcome', null) == null ||
               request.resource.data.outcome in
-                ['renewed', 'upgraded', 'downgraded', 'pay-as-you-go', 'lost']);
+                ['renewed', 'upgraded', 'downgraded', 'pay-as-you-go', 'lost'])
+          && (request.resource.data.get('closedOn', null) == null ||
+              (request.resource.data.closedOn is string &&
+               request.resource.data.closedOn.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')));
     }
 
     /** One logged conversation. Signed by its author; never edited. */

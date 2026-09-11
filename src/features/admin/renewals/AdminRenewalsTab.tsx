@@ -2,9 +2,11 @@
  * Operations → Renewals.
  *
  * Round: Renewals (Sep 2026). See OPERATIONS-RENEWALS-PROPOSAL.md §4.2 and
- * docs/business/renewals.md. Two views of one studio: the Pipeline (who is
- * coming up, and what to do next — tap anyone for their Renewal Brief) and
- * the studio's Settings (when to talk, the package table, name matching).
+ * docs/business/renewals.md. Three views of one studio: the Pipeline (who is
+ * coming up, and what to do next — tap anyone for their Renewal Brief),
+ * Outcomes (what happened to the packages that closed, by package, trainer
+ * and studio) and the studio's Settings (when to talk, the package table,
+ * name matching).
  *
  * One studio at a time — the studio the dashboard is working in, or, for
  * someone who runs several, the one picked here. Every leader sees their own
@@ -12,12 +14,13 @@
  */
 
 import React, { useMemo, useState } from "react";
-import { CalendarClock, ListChecks, SlidersHorizontal } from "lucide-react";
+import { BarChart3, CalendarClock, ListChecks, SlidersHorizontal } from "lucide-react";
 import type { Client, Machine, Studio, Trainer } from "../../../types";
 import { AdminHeader, AdminNotice, AdminScreen, AdminSelect } from "../primitives";
 import { RenewalSettingsPanel } from "./RenewalSettingsPanel";
 import { RenewalsPipeline } from "./RenewalsPipeline";
 import { RenewalBrief } from "./RenewalBrief";
+import { RenewalOutcomesPanel } from "./RenewalOutcomesPanel";
 import { canManageRenewals, leadsStudio, worksAt } from "../../renewals/permissions";
 import { useRenewalNamesSeen, useRenewalSettings } from "../../renewals/useRenewalSettings";
 import { buildPackageNameIndex } from "../../renewals/settings";
@@ -33,7 +36,7 @@ export interface AdminRenewalsTabProps {
   machines: Machine[];
 }
 
-type RenewalsView = "pipeline" | "settings";
+type RenewalsView = "pipeline" | "outcomes" | "settings";
 
 export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainers, machines }: AdminRenewalsTabProps) {
   const manageable = useMemo(
@@ -120,6 +123,16 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
               type="button"
               role="tab"
               className="adm-seg"
+              aria-selected={view === "outcomes"}
+              onClick={() => setView("outcomes")}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              Outcomes
+            </button>
+            <button
+              type="button"
+              role="tab"
+              className="adm-seg"
               aria-selected={view === "settings"}
               onClick={() => setView("settings")}
             >
@@ -142,6 +155,15 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
                 onOpenBrief={setBriefClient}
               />
             </div>
+          )}
+          {!loading && view === "outcomes" && (
+            <RenewalOutcomesPanel
+              key={studioId}
+              studioId={studioId}
+              settings={settings}
+              studios={manageable}
+              trainers={trainers}
+            />
           )}
           {!loading && (
             <div hidden={view !== "settings"}>

@@ -34,6 +34,27 @@ describe("lanes", () => {
     expect(laneOf(snap({ conversationDue: true }), null, S, TODAY)).toBe("talk-now");
     expect(laneOf(snap({ situation: "ended", focusDate: "2026-09-01" }), null, S, TODAY)).toBe("talk-now");
     expect(laneOf(snap({ conversationDue: true }), { stage: "decided" } as RenewalCycle, S, TODAY)).toBe("coming-up");
+    // Decided on an ended package: nothing coming up about it.
+    expect(laneOf(snap({ situation: "ended", focusDate: "2026-09-01" }), { stage: "decided" } as RenewalCycle, S, TODAY)).toBeNull();
+  });
+
+  it("follows the outcome once one is recorded", () => {
+    const due = snap({ conversationDue: true });
+    const ended = snap({ situation: "ended", focusDate: "2026-09-01" });
+    expect(laneOf(due, { outcome: "upgraded" } as RenewalCycle, S, TODAY)).toBeNull();
+    expect(laneOf(ended, { outcome: "lost", outcomeBy: "leader" } as RenewalCycle, S, TODAY)).toBe("lapsed");
+    expect(laneOf(ended, { outcome: "pay-as-you-go" } as RenewalCycle, S, TODAY)).toBe("lapsed");
+    expect(nextStep(ended, { outcome: "pay-as-you-go" } as RenewalCycle, S, TODAY)).toBe("On single sessions — offer a package");
+    expect(nextStep(due, { outcome: "renewed" } as RenewalCycle, S, TODAY)).toBe("Renewal recorded");
+    // Signed in Mindbody before tonight's job could record it: already off the list.
+    expect(
+      laneOf(
+        snap({ situation: "will-bank", chargeWarning: true, renewalOnBooks: { cycleKey: "2", packageKey: "committed", startsOn: "2026-11-15" } }),
+        null,
+        S,
+        TODAY,
+      ),
+    ).toBeNull();
   });
 
   it("plans ahead inside the studio's horizon only", () => {

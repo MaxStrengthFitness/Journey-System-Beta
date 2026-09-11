@@ -22,7 +22,8 @@ export function BriefingRenewalLine({ client }: { client: Client }) {
   const { cycle } = useRenewalCycle(s ? client.homeStudioId : null, s?.cycleKey ?? null);
   const today = studioTodayKey();
   const latest = latestLine(cycle, today);
-  const inWindow = renewalPromptDue(s) || s?.situation === "will-bank";
+  // Already renewed (the next package is signed): no line unless there's a conversation to recall.
+  const inWindow = !s?.renewalOnBooks && (renewalPromptDue(s) || s?.situation === "will-bank");
   if (!s || (!inWindow && !latest)) return null;
 
   return (

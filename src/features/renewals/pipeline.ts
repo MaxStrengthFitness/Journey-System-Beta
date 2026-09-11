@@ -37,7 +37,7 @@ export const LANE_HINTS: Record<PipelineLane, string> = {
   "before-charge": "Will auto-renew with sessions still banked. Talk first, then decide in Mindbody whether to move the renewal.",
   "talk-now": "Few sessions left, or the package has ended, and nothing decided yet.",
   "coming-up": "Packages ending in the months ahead.",
-  lapsed: "No new package since the studio's lost rule. A win-back list.",
+  lapsed: "No new package since the studio's lost rule, or recorded as lost or pay-as-you-go. A win-back list.",
   away: "Vacation, snowbird, medical or paused. Nothing to do until they're back.",
 };
 
@@ -55,14 +55,21 @@ export function laneOf(
   today: string,
 ): PipelineLane | null {
   if (s.situation === "away") return "away";
-  if (s.situation === "lapsed") {
-    return s.focusDate && daysBetween(s.focusDate, today) <= LAPSED_LOOKBACK_DAYS ? "lapsed" : null;
-  }
+  // The next package is already signed: the renewal is done.
+  if (s.renewalOnBooks) return null;
+  const outcome = cycle?.outcome ?? null;
+  // Renewed, upgraded or downgraded: done — the next package shows up on its own.
+  if (outcome === "renewed" || outcome === "upgraded" || outcome === "downgraded") return null;
+  const recent = Boolean(s.focusDate && daysBetween(s.focusDate, today) <= LAPSED_LOOKBACK_DAYS);
+  if (s.situation === "lapsed") return recent ? "lapsed" : null;
+  // Recorded as lost or pay-as-you-go before the lost rule fired: win-back.
+  if ((outcome === "lost" || outcome === "pay-as-you-go") && s.situation === "ended") return recent ? "lapsed" : null;
   if (s.situation === "unknown") return null;
   const decided = effectiveStage(cycle) === "decided";
   if (s.chargeWarning && !decided) return "before-charge";
   if ((s.situation === "ended" || s.conversationDue) && !decided) return "talk-now";
-  if (s.focusDate && s.focusDate <= horizonEnd(settings, today)) return "coming-up";
+  // Ahead only: a decided package that has already ended isn't "coming up".
+  if (s.focusDate && s.focusDate >= today && s.focusDate <= horizonEnd(settings, today)) return "coming-up";
   return null;
 }
 
@@ -86,6 +93,9 @@ export function nextStep(
 ): string {
   const talked = Boolean(cycle?.lastTouchAt);
   if (cycle?.needsLeader) return "A leader was asked to follow up";
+  if (cycle?.outcome === "pay-as-you-go") return "On single sessions — offer a package";
+  if (cycle?.outcome === "lost") return "Recorded as lost — win-back: reach out in person";
+  if (cycle?.outcome) return "Renewal recorded";
   if (effectiveStage(cycle) === "decided") return "Decided — record the outcome";
   if (s.situation === "away") {
     return s.awayUntil ? `Back around ${dayLabel(s.awayUntil, today)}` : "Paused";

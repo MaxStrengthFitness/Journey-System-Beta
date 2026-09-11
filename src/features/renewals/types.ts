@@ -147,6 +147,11 @@ export interface RenewalSnapshot {
   computedAt?: unknown;
   /** The renewal cycle this describes: a contract id, or "pif-<pricing option>". */
   cycleKey: string | null;
+  /**
+   * The next package, already signed while this one runs. The renewal
+   * conversation is over, so no one is prompted to start it.
+   */
+  renewalOnBooks: { cycleKey: string; packageKey: string | null; startsOn: string } | null;
   clientContractId: string | null;
   packageKey: string | null;
   /** "Committed · 12 months". */
@@ -190,6 +195,11 @@ export interface RenewalSnapshot {
   nextBookingDate: string | null;
   /** Trainers who coached this client in the last 60 days — powers "My renewals". */
   coachIds: string[];
+  /**
+   * Who coached the most visits over the last 90 days. A closed package's
+   * outcome is attributed to them in the leader-only renewal rates.
+   */
+  primaryTrainerId: string | null;
   /** What is missing, in words: "No Mindbody contract on file — press Sync on the Mindbody card". */
   dataGaps: string[];
 }
@@ -249,6 +259,10 @@ export interface RenewalCycle {
   /** "job" when the nightly job recorded it, else the leader's uid. */
   outcomeBy?: string | null;
   nextCycleKey?: string | null;
+  /** The package that followed, when the outcome is a renewal. */
+  nextPackageKey?: string | null;
+  /** YYYY-MM-DD the package closed — what "outcomes this quarter" counts by. */
+  closedOn?: string | null;
   /** The trainer who coached most sessions this cycle — for leader-only rates. */
   primaryTrainerId?: string | null;
   updatedAt?: unknown;

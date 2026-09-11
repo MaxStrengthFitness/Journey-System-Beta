@@ -10,6 +10,7 @@ function snap(over: Partial<RenewalSnapshot>): RenewalSnapshot {
   return {
     version: 1,
     cycleKey: "9001",
+    renewalOnBooks: null,
     clientContractId: "9001",
     packageKey: "committed",
     packageLabel: "Committed · 12 months",
@@ -36,10 +37,22 @@ function snap(over: Partial<RenewalSnapshot>): RenewalSnapshot {
     lastVisitDate: "2026-09-10",
     nextBookingDate: "2026-09-14",
     coachIds: ["t1"],
+    primaryTrainerId: "t1",
     dataGaps: [],
     ...over,
   };
 }
+
+describe("a renewal already signed", () => {
+  it("says so instead of prompting a conversation", () => {
+    const renewed = snap({ renewalOnBooks: { cycleKey: "9002", packageKey: "transformed", startsOn: "2026-11-15" } });
+    expect(chipText(renewed, TODAY)).toBe("9 left · renewed · next starts Nov 15");
+    expect(situationSentence(renewed, TODAY)).toBe("Renewed — the next package starts Nov 15 · 9 sessions left on this one");
+    expect(situationSentence({ ...renewed, situation: "will-bank", bankedAtCharge: 12 }, TODAY)).toBe(
+      "Renewed — the next package starts Nov 15, with about 12 sessions still banked · 9 sessions left on this one",
+    );
+  });
+});
 
 describe("sentences", () => {
   it("writes the proposal's four situations as sentences", () => {

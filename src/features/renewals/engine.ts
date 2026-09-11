@@ -66,6 +66,11 @@ export const MISSED_WINDOW_DAYS = 30;
 export const MISSED_MIN = 2;
 /** "My renewals" covers clients a trainer coached this recently. */
 export const COACH_WINDOW_DAYS = 60;
+/**
+ * A package's outcome is attributed to whoever coached the most visits over
+ * this window — long enough to still see a lapsed client's last months.
+ */
+export const PRIMARY_TRAINER_WINDOW_DAYS = 90;
 /** "Rough patch": of the last 4 sessions with a check-in... */
 export const ROUGH_PATCH_LOOKBACK = 4;
 /** ...this many were wiped out or low energy / mood. */
@@ -254,6 +259,20 @@ export interface ContractPick {
   lastEnded: ContractView | null;
   /** One that starts after today — a renewal already on the books. */
   upcoming: ContractView | null;
+}
+
+/**
+ * A newer contract already signed while the current one runs — a renewal on
+ * the books. Its start must be after the current contract's, so a stray old
+ * contract never reads as a renewal.
+ */
+export function renewalOnTheBooks(
+  pick: Pick<ContractPick, "current" | "upcoming">,
+): { cycleKey: string; packageKey: string | null; startsOn: string } | null {
+  const { current, upcoming } = pick;
+  if (!current || !upcoming || upcoming.id === current.id || !upcoming.start) return null;
+  if (current.start && upcoming.start <= current.start) return null;
+  return { cycleKey: upcoming.id, packageKey: upcoming.tier?.key ?? null, startsOn: upcoming.start };
 }
 
 /**
@@ -536,6 +555,7 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
         .filter((id) => id && id !== "legacy-trainer"),
     ),
   ).sort();
+  const primaryTrainerId = primaryTrainerOf(attendance, addDays(today, -PRIMARY_TRAINER_WINDOW_DAYS), today);
   if (!attendanceSince) {
     dataGaps.push("No bookings have been synced for this studio yet, so pace can't be measured.");
   }
@@ -721,11 +741,15 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     situation = "on-track";
   }
 
+  // The next package already signed while this one runs: the conversation
+  // happened and went well, so nobody should be prompted to start it.
+  const renewalOnBooks = renewalOnTheBooks(contracts);
   const conversationDue =
     sessionsLeft !== null &&
     sessionsLeft <= settings.conversationAtSessionsLeft &&
     situation !== "lapsed" &&
-    situation !== "away";
+    situation !== "away" &&
+    !renewalOnBooks;
   const chargeWarning =
     situation === "will-bank" &&
     chargeDate !== null &&
@@ -829,6 +853,7 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
   return {
     version: ENGINE_VERSION,
     cycleKey,
+    renewalOnBooks,
     clientContractId: current ? current.id : contracts.lastEnded?.id ?? null,
     packageKey: tier?.key ?? null,
     packageLabel,
@@ -862,8 +887,36 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     lastVisitDate,
     nextBookingDate,
     coachIds,
+    primaryTrainerId,
     dataGaps: Array.from(new Set(dataGaps)),
   };
+}
+
+/**
+ * The trainer who coached the most of these visits — one per day per
+ * trainer, so a booking and its workout don't count twice — with the more
+ * recent breaking a tie. Null when no visit in the window names a trainer.
+ */
+export function primaryTrainerOf(attendance: AttendanceRow[], since: string, until: string): string | null {
+  const days = new Map<string, Set<string>>();
+  for (const a of attendance) {
+    if (a.kind !== "visit" || !a.trainerId || a.day < since || a.day > until) continue;
+    const id = String(a.trainerId);
+    if (!id || id === "legacy-trainer") continue;
+    const set = days.get(id) ?? new Set<string>();
+    set.add(a.day);
+    days.set(id, set);
+  }
+  let best: { id: string; count: number; last: string } | null = null;
+  for (const [id, set] of days) {
+    const last = Array.from(set).sort().pop() ?? "";
+    const better =
+      !best ||
+      set.size > best.count ||
+      (set.size === best.count && (last > best.last || (last === best.last && id < best.id)));
+    if (better) best = { id, count: set.size, last };
+  }
+  return best?.id ?? null;
 }
 
 /**

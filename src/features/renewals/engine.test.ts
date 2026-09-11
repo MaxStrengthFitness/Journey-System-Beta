@@ -4,6 +4,7 @@ import {
   computePace,
   mindbodyDayKey,
   pickContracts,
+  primaryTrainerOf,
   sameSnapshot,
   type AttendanceRow,
   type RenewalEngineInput,
@@ -534,6 +535,53 @@ describe("proof", () => {
       }),
     );
     expect(one.proof.inbody).toBeNull();
+  });
+});
+
+describe("a renewal on the books", () => {
+  it("stops the conversation prompt once the next package is signed", () => {
+    // Billing ends in 20 days with 8 sessions left: the conversation is due.
+    const end = addDays(TODAY, 20);
+    const base = client({
+      mindbodyContracts: {
+        "9001": contract({ id: 9001, contractName: "96 Sessions - 2X Week", startDate: addDays(end, -(12 * 28 - 1)), endDate: end }),
+      },
+      mindbodyServices: { "1": service(1, "96 Sessions - 2X Week", 8) },
+    });
+    const before = buildRenewalSnapshot(input({ client: base, attendance: visitsAt(2, "2026-06-01") }));
+    expect(before.conversationDue).toBe(true);
+    expect(before.renewalOnBooks).toBeNull();
+
+    const signed = client({
+      ...base,
+      mindbodyContracts: {
+        ...base.mindbodyContracts,
+        "9002": contract({ id: 9002, contractName: "144 Sessions - 2X Week", startDate: addDays(end, 1), endDate: "2028-05-01" }),
+      },
+    });
+    const after = buildRenewalSnapshot(input({ client: signed, attendance: visitsAt(2, "2026-06-01") }));
+    expect(after.cycleKey).toBe("9001");
+    expect(after.renewalOnBooks).toEqual({ cycleKey: "9002", packageKey: "transformed", startsOn: addDays(end, 1) });
+    expect(after.conversationDue).toBe(false);
+  });
+});
+
+describe("primaryTrainerOf", () => {
+  it("names whoever coached the most days in the window, the latest breaking a tie", () => {
+    const rows: AttendanceRow[] = [
+      { day: "2026-08-01", kind: "visit", trainerId: "ann" },
+      { day: "2026-08-01", kind: "visit", trainerId: "ann" }, // booking + workout, same day
+      { day: "2026-08-05", kind: "visit", trainerId: "bo" },
+      { day: "2026-08-09", kind: "visit", trainerId: "ann" },
+      { day: "2026-08-20", kind: "visit", trainerId: "bo" },
+      { day: "2026-09-01", kind: "visit", trainerId: "legacy-trainer" },
+      { day: "2026-09-02", kind: "booked", trainerId: "cy" },
+      { day: "2026-01-02", kind: "visit", trainerId: "cy" },
+    ];
+    // ann and bo both have 2 days; bo's is more recent. cy's visit is outside the window.
+    expect(primaryTrainerOf(rows, "2026-06-13", TODAY)).toBe("bo");
+    expect(primaryTrainerOf(rows.slice(0, 4), "2026-06-13", TODAY)).toBe("ann");
+    expect(primaryTrainerOf([], "2026-06-13", TODAY)).toBeNull();
   });
 });
 

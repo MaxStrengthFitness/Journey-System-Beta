@@ -890,6 +890,37 @@ describe("Firestore Security Rules", () => {
     );
   });
 
+  it("lets the owner record an outcome with its closing day, even on a cycle the nightly job wrote", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      // Every field the job writes (server/renewals-job.ts).
+      await setDoc(doc(context.firestore(), "studios", "studioA", "renewals", "9001"), {
+        clientId: "c1",
+        clientName: "Client One",
+        cycleKey: "9001",
+        packageKey: "committed",
+        outcome: "lost",
+        outcomeBy: "job",
+        outcomeAt: new Date(),
+        nextCycleKey: null,
+        nextPackageKey: null,
+        closedOn: "2026-07-20",
+        primaryTrainerId: "trainerA",
+      });
+    });
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    const cycle = doc(owner, "studios", "studioA", "renewals", "9001");
+    await assertSucceeds(
+      setDoc(
+        cycle,
+        { outcome: "pay-as-you-go", outcomeBy: "ownerA", closedOn: "2026-07-20", nextCycleKey: null, nextPackageKey: null, updatedBy: "ownerA" },
+        { merge: true },
+      ),
+    );
+    await assertFails(setDoc(cycle, { closedOn: "last July" }, { merge: true }));
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertFails(setDoc(doc(trainer, "studios", "studioA", "renewals", "9001"), { closedOn: "2026-08-01" }, { merge: true }));
+  });
+
   it("never lets a conversation be edited, and lets only a leader delete one", async () => {
     await testEnv.withSecurityRulesDisabled(async (context) => {
       await setDoc(doc(context.firestore(), "studios", "studioA", "renewals", "9001", "touches", "t1"), {

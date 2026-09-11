@@ -10,7 +10,10 @@
  *   2. Pull Mindbody (contracts + pricing options) for the clients who most
  *      need it, across all studios — near a renewal, never pulled, or a month
  *      stale — inside a nightly budget, and rebuild those snapshots.
- *   3. Write clients/{id}.renewal only where it changed, and the names each
+ *   3. Record how packages ended (renewed, upgraded, downgraded, lost) on
+ *      their renewal cycles — features/renewals/outcomes.ts decides; a
+ *      leader's outcome is never overwritten.
+ *   4. Write clients/{id}.renewal only where it changed, and the names each
  *      studio's Mindbody uses (config/renewalsSeen) for the settings screen.
  *
  * FIXED WINDOWS. Bookings from 90 days back to 30 ahead and workouts from the
@@ -24,6 +27,7 @@
 import {
   FieldValue,
   Timestamp,
+  type DocumentReference,
   type Firestore,
   type WriteBatch,
 } from "firebase-admin/firestore";
@@ -31,6 +35,12 @@ import { mindbodyConfigured, pullClientCommercial } from "./mindbody-client.ts";
 import { mapContractRecords, mapServiceRecords } from "../src/lib/mindbody-commercial-map.ts";
 import { DEFAULT_TIME_ZONE, isValidTimeZone, studioTodayKey } from "../src/lib/studio-time.ts";
 import { buildRenewalSnapshot, sameSnapshot, stableStringify } from "../src/features/renewals/engine.ts";
+import {
+  CYCLE_KEY_PATTERN,
+  outcomeCandidate,
+  outcomePatch,
+  type OutcomeCandidate,
+} from "../src/features/renewals/outcomes.ts";
 import {
   attendanceFromSchedules,
   attendanceFromSessions,
@@ -44,7 +54,7 @@ import {
 } from "../src/features/renewals/settings.ts";
 import { mindbodyIdOf, namesSeenFrom, pullRank } from "../src/features/renewals/job-plan.ts";
 import type { Client, ScheduleEntry, WorkoutSession } from "../src/types.ts";
-import type { RenewalSettings, RenewalSnapshot } from "../src/features/renewals/types.ts";
+import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "../src/features/renewals/types.ts";
 
 const DAY_MS = 86_400_000;
 const BATCH_LIMIT = 400;
@@ -69,6 +79,8 @@ export interface RenewalsRunSummary {
   studios: number;
   clients: number;
   snapshotsWritten: number;
+  /** Renewal cycles whose outcome was recorded (or taken back) tonight. */
+  outcomesWritten: number;
   pulls: number;
   pullFailures: number;
   mindbodyCalls: number;
@@ -124,6 +136,7 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
     studios: 0,
     clients: 0,
     snapshotsWritten: 0,
+    outcomesWritten: 0,
     pulls: 0,
     pullFailures: 0,
     mindbodyCalls: 0,
@@ -287,7 +300,62 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
     });
   }
 
-  /* ================= 3. Write what changed ================= */
+  /* ================= 3. Outcomes: how packages ended ================= */
+  // Before the snapshots on purpose: if this fails, tonight's snapshots
+  // aren't written either, so tomorrow sees the same change and records it.
+  for (const run of runs) {
+    const found: Array<{ c: Client; cand: OutcomeCandidate; ref: DocumentReference }> = [];
+    for (const c of run.clients) {
+      const cand = outcomeCandidate({
+        stored: c.renewal ?? null,
+        next: run.snapshots.get(c.id!)!,
+        settings: run.settings,
+        today: run.today,
+      });
+      if (!cand || !CYCLE_KEY_PATTERN.test(cand.cycleKey)) continue;
+      found.push({ c, cand, ref: db.doc(`studios/${run.id}/renewals/${cand.cycleKey}`) });
+    }
+    if (found.length === 0) continue;
+
+    // Only the cycles a decision touches are read, in groups.
+    const existing: Array<Partial<RenewalCycle> | null> = [];
+    for (let i = 0; i < found.length; i += 100) {
+      const docs = await db.getAll(...found.slice(i, i + 100).map((f) => f.ref));
+      docs.forEach((d) => existing.push(d.exists ? (d.data() as Partial<RenewalCycle>) : null));
+    }
+
+    const writes: Array<(batch: WriteBatch) => void> = [];
+    found.forEach(({ c, cand, ref }, i) => {
+      const had = existing[i];
+      const patch = outcomePatch(cand, had as RenewalCycle | null);
+      if (!patch) return;
+      let fields: Record<string, unknown>;
+      if (patch.outcome) {
+        // Attributed to whoever coached the closing package most: last
+        // night's snapshot saw its final weeks.
+        const primary = c.renewal?.primaryTrainerId ?? run.snapshots.get(c.id!)!.primaryTrainerId ?? null;
+        fields = {
+          clientId: c.id,
+          clientName: `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim(),
+          cycleKey: cand.cycleKey,
+          ...(had?.packageKey ? {} : { packageKey: cand.packageKey }),
+          ...patch,
+          outcomeAt: FieldValue.serverTimestamp(),
+          ...(had?.primaryTrainerId ? {} : { primaryTrainerId: primary }),
+        };
+      } else {
+        fields = { ...patch, outcomeAt: null };
+      }
+      writes.push((batch) => batch.set(ref, fields, { merge: true }));
+    });
+    summary.outcomesWritten += writes.length;
+    if (!dryRun) await commitInBatches(db, writes);
+    if (writes.length > 0) {
+      log(`${run.name}: ${writes.length} renewal outcome${writes.length === 1 ? "" : "s"} ${dryRun ? "would be recorded" : "recorded"}.`);
+    }
+  }
+
+  /* ================= 4. Write what changed ================= */
   for (const run of runs) {
     const writes: Array<(batch: WriteBatch) => void> = [];
     for (const c of run.clients) {
@@ -321,6 +389,7 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
   log(
     `Done${dryRun ? " (dry run — nothing written)" : ""}. ${summary.clients} clients, ` +
       `${summary.snapshotsWritten} snapshots ${dryRun ? "would change" : "written"}, ` +
+      `${summary.outcomesWritten} outcomes ${dryRun ? "would be recorded" : "recorded"}, ` +
       `${summary.pulls} Mindbody pulls (${summary.mindbodyCalls} calls, ${summary.pullFailures} failed). ` +
       `Situations: ${Object.entries(summary.bySituation)
         .map(([k, v]) => `${k} ${v}`)

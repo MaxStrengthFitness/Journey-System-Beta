@@ -60,6 +60,7 @@ export function chipText(s: RenewalSnapshot | null | undefined, today: string): 
       return "Renewal: Mindbody data missing";
     default: {
       const left = s.sessionsLeft !== null ? `${s.sessionsLeft} left` : null;
+      if (s.renewalOnBooks) return [left, `renewed · next starts ${dayLabel(s.renewalOnBooks.startsOn, today)}`].filter(Boolean).join(" · ");
       const when =
         s.paymentMode === "monthly" && s.chargeDate
           ? billingEnds(s, today)
@@ -73,6 +74,13 @@ export function chipText(s: RenewalSnapshot | null | undefined, today: string): 
 
 /** The fuller sentence for the card, the pipeline row and the Brief. */
 export function situationSentence(s: RenewalSnapshot, today: string): string {
+  const live = s.situation === "on-track" || s.situation === "will-bank" || s.situation === "will-run-out";
+  if (live && s.renewalOnBooks) {
+    const banked =
+      s.situation === "will-bank" && s.bankedAtCharge ? `, with about ${sessions(s.bankedAtCharge)} still banked` : "";
+    const left = s.sessionsLeft !== null ? ` · ${sessions(s.sessionsLeft)} left on this one` : "";
+    return `Renewed — the next package starts ${dayLabel(s.renewalOnBooks.startsOn, today)}${banked}${left}`;
+  }
   switch (s.situation) {
     case "on-track": {
       const parts = [

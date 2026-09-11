@@ -60,6 +60,8 @@ describe("conversations", () => {
     expect(effectiveStage(null)).toBe("not-started");
     expect(effectiveStage({ lastTouchAt: new Date() })).toBe("talking");
     expect(effectiveStage({ stage: "decided", lastTouchAt: new Date() })).toBe("decided");
+    // An outcome on record is a decision, whoever recorded it.
+    expect(effectiveStage({ stage: "talking", lastTouchAt: new Date(), outcome: "renewed" })).toBe("decided");
   });
 
   it("sums up the latest conversation in one line", () => {
@@ -80,6 +82,15 @@ describe("conversations", () => {
     expect(renewalPromptDue({ ...base, conversationDue: true, sessionsLeft: 9 })).toBe(true);
     expect(promptText({ ...base, conversationDue: true, sessionsLeft: 9 })).toBe("Renewal: 9 left. Talk about it today?");
     expect(renewalPromptDue({ ...base, situation: "away", conversationDue: true })).toBe(false);
+    // The next package is already signed: nothing to prompt, even with sessions banked.
+    expect(
+      renewalPromptDue({
+        ...base,
+        situation: "will-bank",
+        chargeWarning: true,
+        renewalOnBooks: { cycleKey: "9002", packageKey: "committed", startsOn: "2026-11-15" },
+      }),
+    ).toBe(false);
     expect(promptText({ ...base, situation: "will-bank", chargeWarning: true, bankedAtCharge: 16 })).toBe(
       "Auto-renews with about 16 sessions banked. Talk about it today?",
     );

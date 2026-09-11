@@ -67,7 +67,11 @@ export const interestLabel = (k: RenewalInterest | null | undefined) =>
   INTERESTS.find((i) => i.key === k)?.label ?? "";
 
 /** Stage as the pipeline shows it: a logged conversation means "talking" until a leader says otherwise. */
-export function effectiveStage(cycle: Pick<RenewalCycle, "stage" | "lastTouchAt"> | null | undefined): RenewalStage {
+export function effectiveStage(
+  cycle: (Pick<RenewalCycle, "stage" | "lastTouchAt"> & { outcome?: RenewalCycle["outcome"] }) | null | undefined,
+): RenewalStage {
+  // An outcome on record — a leader's, or the nightly job's — is a decision.
+  if (cycle?.outcome) return "decided";
   if (cycle?.stage) return cycle.stage;
   return cycle?.lastTouchAt ? "talking" : "not-started";
 }
@@ -171,6 +175,8 @@ export function latestLine(cycle: RenewalCycle | null | undefined, today: string
 export function renewalPromptDue(s: RenewalSnapshot | null | undefined): boolean {
   if (!s) return false;
   if (s.situation === "away" || s.situation === "lapsed" || s.situation === "unknown") return false;
+  // Already renewed: the next package is signed. Nothing to prompt.
+  if (s.renewalOnBooks) return false;
   return s.conversationDue || s.chargeWarning || s.situation === "ended";
 }
 
