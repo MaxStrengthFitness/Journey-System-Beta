@@ -1021,7 +1021,7 @@ export function ClientsView({
                 />
                 <DayStat
                   value={openTaskCount}
-                  label="To-do"
+                  label="Tasks"
                   icon={<ListChecks className="w-3.5 h-3.5" />}
                   tone={
                     openTaskCount > 0

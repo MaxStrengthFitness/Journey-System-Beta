@@ -39,8 +39,8 @@ import {
   Search,
   RefreshCw,
   X,
-  ListChecks,
   GraduationCap,
+  NotebookPen,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -176,14 +176,14 @@ const StudioTasksView = lazy(() =>
   })),
 );
 /**
- * The Studio Hub — the To-Do screen rebuilt as a community hub.
- *
- * Same chunk as StudioTasksView, so the classic escape hatch below costs no
- * extra download.
+ * The Planner (Learning + Planner round, Sep 2026) — what was the To-Do
+ * screen: the studio hub as its Studio tab, plus My tasks and Notes. The view
+ * id is still "studio-tasks", because notifications already stored in
+ * trainers' bells link to it.
  */
-const StudioHubView = lazy(() =>
-  import("./features/studio-tasks").then((m) => ({
-    default: m.StudioHubView,
+const PlannerView = lazy(() =>
+  import("./features/planner").then((m) => ({
+    default: m.PlannerView,
   })),
 );
 
@@ -2107,7 +2107,7 @@ export default function AppContent({
                         onOpenClientTask={openClientTask}
                       />
                     ) : (
-                      <StudioHubView
+                      <PlannerView
                         authTrainer={authTrainer}
                         clients={clients}
                         trainers={trainers}
@@ -2387,8 +2387,8 @@ export default function AppContent({
               <NavButton
                 active={currentView === "studio-tasks"}
                 onClick={() => setCurrentView("studio-tasks")}
-                icon={<ListChecks className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="To-Do"
+                icon={<NotebookPen className="w-5 h-5 sm:w-6 sm:h-6" />}
+                label="Planner"
               />
               <NavButton
                 active={currentView === "calendar"}

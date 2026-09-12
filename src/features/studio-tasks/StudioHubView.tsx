@@ -83,6 +83,13 @@ export interface StudioHubViewProps {
    * is a pointer at the screen where the work is actually done.
    */
   onOpenClientTask?: (clientId: string, action?: ClientTaskAction) => void;
+  /**
+   * Rendered as the Planner's Studio tab (Learning + Planner round, Sep 2026).
+   * The Planner's masthead already names the studio and the day, so the
+   * hub's own title and date give way to one line saying what this tab is.
+   * Everything below the header is unchanged.
+   */
+  embedded?: boolean;
 }
 
 export function StudioHubView({
@@ -90,6 +97,7 @@ export function StudioHubView({
   clients,
   trainers,
   onOpenClientTask,
+  embedded = false,
 }: StudioHubViewProps) {
   const { activeStudioId, activeStudio } = useActiveStudio();
   const { success: toastSuccess, error: toastError } = useToast();
@@ -241,17 +249,23 @@ export function StudioHubView({
   return (
     <div className="st">
       <div className="st__scroll touch-pane">
-        <header className="st__head">
-          <div>
-            <h1 className="st__title">Studio hub</h1>
-            <span className="st__date">
-              {activeStudio?.name ?? "Studio"} ·{" "}
-              {formatStudioDate(
-                todayKey ? `${todayKey}T12:00:00` : new Date(),
-                { weekday: "short", month: "short", day: "numeric" },
-              )}
-            </span>
-          </div>
+        <header className={cn("st__head", embedded && "st__head--embedded")}>
+          {embedded ? (
+            <p className="st__sub-title">
+              Shared with everyone at {activeStudio?.name ?? "this studio"}
+            </p>
+          ) : (
+            <div>
+              <h1 className="st__title">Studio hub</h1>
+              <span className="st__date">
+                {activeStudio?.name ?? "Studio"} ·{" "}
+                {formatStudioDate(
+                  todayKey ? `${todayKey}T12:00:00` : new Date(),
+                  { weekday: "short", month: "short", day: "numeric" },
+                )}
+              </span>
+            </div>
+          )}
 
           {/*
             MINE sits in the header rather than among the topic chips because
