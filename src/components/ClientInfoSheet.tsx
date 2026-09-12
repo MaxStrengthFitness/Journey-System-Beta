@@ -49,6 +49,8 @@ interface ClientInfoSheetProps {
   onOpenJournal?: () => void;
   /** Jump the user to the progress-report archive. */
   onOpenReports?: () => void;
+  /** Switch to the Planner (Goals → Plans from the team → Write a plan). */
+  onOpenPlanner?: () => void;
 }
 
 export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
@@ -63,6 +65,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
   trainers = [],
   onOpenJournal,
   onOpenReports,
+  onOpenPlanner,
 }) => {
   const inline = variant === "inline";
   const { success: toastSuccess, error: toastError } = useToast();
@@ -344,6 +347,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
         defaultSection={LEGACY_TAB_TO_SECTION[defaultTab || ""] || "general"}
         onOpenJournal={onOpenJournal}
         onOpenReports={onOpenReports}
+        onOpenPlanner={onOpenPlanner}
         onSyncMindbody={handleSyncMindbody}
         isSyncingMb={isSyncingMb}
         scroll={inline ? "page" : "inner"}

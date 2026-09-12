@@ -12,7 +12,7 @@ He picked the name **Planner**.
 | --- | --- | --- |
 | Studio | The studio hub, unchanged (`features/studio-tasks/StudioHubView`, `embedded`) | `studios/{s}/task*`, `taskRequests`, `playbook` |
 | My tasks | A trainer's own list (`MyTasksPanel`) | `trainers/{uid}/task*` — private by path, since the Settings-tiers round |
-| Notes | Folders and notes, linked to clients (Phase 3) | `trainers/{uid}/notes`, `noteFolders` |
+| Notes | A trainer's own notes, in folders, linked to clients; one can be shared onto a client's record (`notes/`, with its own README) | `trainers/{uid}/notes`, `noteFolders`; shared copies at `clients/{id}/sharedNotes` |
 
 ## Decisions
 
@@ -30,6 +30,7 @@ He picked the name **Planner**.
   - My tasks lists them on their own, in three groups: open, in time order; done today; and studio tasks a head trainer assigned to you today.
   - Creating and editing uses the existing `TaskManager` in its personal-only mode. Nothing new is stored.
 - **The tab is remembered for the session** (module state, not storage). A fresh load starts on Studio, where the shift strip is.
+- **A client's profile can open the Planner** at a note: **Write a plan**, or **Edit in your Planner** on a shared note. The profile leaves its request in `intent.ts`, and the Planner reads it when it mounts. That avoids threading more state through AppContent, since the Planner is not mounted while the profile is showing.
 
 ## Files
 
@@ -37,4 +38,6 @@ He picked the name **Planner**.
 | --- | --- |
 | `PlannerView.tsx` | The masthead and tabs |
 | `MyTasksPanel.tsx` + `my-tasks.ts` | My tasks, and its pure sorting |
+| `notes/` | The Notes tab — see `notes/README.md` |
+| `intent.ts` | Opening the Planner at a note from a client's profile |
 | `planner.css` | On the Studio Hub's `--st-*` tokens |

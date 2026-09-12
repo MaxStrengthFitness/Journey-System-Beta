@@ -51,6 +51,7 @@ import { CLINICAL_FLAGS_MATRIX } from "../../data/clinical-matrix";
 import { OccupationSelect } from "../OccupationSelect";
 import { ClientMembershipsCard } from "../mindbody/ClientMembershipsCard";
 import { InBodyCard } from "../../features/inbody/InBodyCard";
+import { SharedNotesCard } from "../../features/planner/notes/SharedNotesCard";
 import { ClientSnapshot, activeContract } from "./ClientSnapshot";
 import { JournalRail } from "./JournalRail";
 import {
@@ -112,6 +113,8 @@ export interface ClientDossierProps {
   scroll?: "inner" | "page";
   /** Who is signed in: decides whether the InBody card offers "Add scan". */
   authTrainer?: Trainer | null;
+  /** Switch to the Planner — "Write a plan" on Goals → Plans from the team. */
+  onOpenPlanner?: () => void;
 }
 
 export function ClientDossier({
@@ -128,6 +131,7 @@ export function ClientDossier({
   isSyncingMb = false,
   scroll = "inner",
   authTrainer = null,
+  onOpenPlanner,
 }: ClientDossierProps) {
   const pageScroll = scroll === "page";
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -595,6 +599,14 @@ export function ClientDossier({
               blurb={DOSSIER_SECTIONS[3].blurb}
               icon={SECTION_ICONS.goals}
             >
+              {/* Learning + Planner round, Sep 2026: plans trainers shared
+                  from their Planner. Read-only here — see features/planner/notes. */}
+              <SharedNotesCard
+                client={client}
+                authTrainer={authTrainer ?? null}
+                onOpenPlanner={onOpenPlanner}
+              />
+
               <FieldGroup cols={1}>
                 <TextAreaField
                   label={`The original "why"`}

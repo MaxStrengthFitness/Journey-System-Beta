@@ -1,11 +1,13 @@
-import { useState } from "react";
-import { NotebookPen, UserRound, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { NotebookPen, StickyNote, UserRound, Users } from "lucide-react";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
 import type { Client, Trainer } from "../../types";
 import { StudioHubView } from "../studio-tasks/StudioHubView";
 import type { ClientTaskAction } from "../studio-tasks/types";
 import { MyTasksPanel } from "./MyTasksPanel";
+import { NotesPanel } from "./notes/NotesPanel";
+import { clearPlannerIntent, peekPlannerIntent } from "./intent";
 import "../studio-tasks/studio-tasks.css";
 import "../studio-tasks/studio-hub.css";
 import "./planner.css";
@@ -21,17 +23,19 @@ import "./planner.css";
  *
  *   Studio    the studio hub, exactly as it was (StudioHubView)
  *   My tasks  a trainer's own list, which existed but had no screen
- *   Notes     folders and notes, linked to clients (Phase 3)
+ *   Notes     a trainer's own notes, in folders, linked to clients; one can
+ *             be shared onto a client's record (./notes)
  *
  * The view id stays "studio-tasks": notifications already stored in trainers'
  * bells link to it, and a rename there would strand every one of them.
  *
  * The tab is remembered for the session (module state, not storage): a
  * trainer who lives in My tasks comes back to it; a fresh load starts on
- * Studio, where the shift strip is.
+ * Studio, where the shift strip is. Arriving from a client's profile (Write
+ * a plan, or Edit on a shared note — ./intent.ts) opens Notes.
  */
 
-export type PlannerTab = "studio" | "mine";
+export type PlannerTab = "studio" | "mine" | "notes";
 
 let rememberedTab: PlannerTab = "studio";
 
@@ -45,6 +49,7 @@ export interface PlannerViewProps {
 const TABS: { id: PlannerTab; label: string; icon: any }[] = [
   { id: "studio", label: "Studio", icon: Users },
   { id: "mine", label: "My tasks", icon: UserRound },
+  { id: "notes", label: "Notes", icon: StickyNote },
 ];
 
 export function PlannerView({
@@ -54,10 +59,20 @@ export function PlannerView({
   onOpenClientTask,
 }: PlannerViewProps) {
   const { activeStudio } = useActiveStudio();
-  const [tab, setTab] = useState<PlannerTab>(rememberedTab);
+  // A request from a client's profile, read on arrival — see ./intent.ts.
+  // Held until the trainer changes tab, so Notes acts on it exactly once.
+  const [intent, setIntent] = useState(peekPlannerIntent);
+  useEffect(() => {
+    clearPlannerIntent(intent);
+  }, [intent]);
+  const [tab, setTab] = useState<PlannerTab>(() => {
+    if (intent) rememberedTab = "notes";
+    return rememberedTab;
+  });
   const choose = (next: PlannerTab) => {
     rememberedTab = next;
     setTab(next);
+    setIntent(null);
   };
 
   const todayKey = studioDateKey(new Date()) ?? "";
@@ -114,6 +129,14 @@ export function PlannerView({
             authTrainer={authTrainer}
             clients={clients}
             onOpenClientTask={onOpenClientTask}
+          />
+        )}
+        {tab === "notes" && (
+          <NotesPanel
+            authTrainer={authTrainer}
+            clients={clients}
+            intent={intent}
+            onOpenClient={onOpenClientTask ? (clientId) => onOpenClientTask(clientId) : undefined}
           />
         )}
       </div>

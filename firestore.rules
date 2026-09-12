@@ -655,6 +655,58 @@ service cloud.firestore {
         && !ownsTrainerDoc(trainerId);
     }
 
+    /* PLANNER NOTES (Learning + Planner round, Sep 2026). The limits match
+       src/features/planner/notes/types.ts. These are shape checks on a
+       trainer's OWN documents — privacy is the path, below — so a bad write
+       from an old app version cannot leave a note the Planner cannot read. */
+    function noteKindValid(k) {
+      return k in ['note', 'plan', 'routine', 'retention', 'injury'];
+    }
+
+    function trainerNoteValid(d) {
+      return d.keys().hasOnly(['title', 'body', 'kind', 'folderId', 'clientIds', 'clientNames',
+                               'pinned', 'sharedWith', 'createdAt', 'updatedAt'])
+          && d.keys().hasAll(['title', 'body', 'kind', 'folderId', 'clientIds', 'clientNames',
+                              'pinned', 'sharedWith', 'createdAt', 'updatedAt'])
+          && d.title is string && d.title.size() > 0 && d.title.size() <= 160
+          && d.body is string && d.body.size() <= 10000
+          && noteKindValid(d.kind)
+          && (d.folderId == null || (d.folderId is string && d.folderId.size() <= 200))
+          && d.clientIds is list && d.clientIds.size() <= 10
+          && d.clientNames is map && d.clientNames.size() <= 10
+          && d.pinned is bool
+          // Shared means about exactly that one client -- the same rule the
+          // Planner enforces, so a copy can never carry other clients' names.
+          && (d.sharedWith == null || (d.sharedWith is string
+                                       && d.clientIds.size() == 1
+                                       && d.clientIds[0] == d.sharedWith))
+          && d.createdAt is timestamp
+          && d.updatedAt is timestamp;
+    }
+
+    function noteFolderValid(d) {
+      return d.keys().hasOnly(['name', 'createdAt', 'updatedAt'])
+          && d.keys().hasAll(['name', 'createdAt', 'updatedAt'])
+          && d.name is string && d.name.size() > 0 && d.name.size() <= 60
+          && d.createdAt is timestamp
+          && d.updatedAt is timestamp;
+    }
+
+    /* A shared note's copy on a client's record. Signed by the caller and
+       stamped with this write's time, so neither can be faked; the whole
+       document is checked on every write (the app always overwrites it). */
+    function sharedNoteValid(d, clientId) {
+      return d.keys().hasOnly(['clientId', 'title', 'body', 'kind', 'authorId', 'authorName', 'updatedAt'])
+          && d.keys().hasAll(['clientId', 'title', 'body', 'kind', 'authorId', 'authorName', 'updatedAt'])
+          && d.clientId == clientId
+          && d.title is string && d.title.size() > 0 && d.title.size() <= 160
+          && d.body is string && d.body.size() <= 10000
+          && noteKindValid(d.kind)
+          && d.authorId == request.auth.uid
+          && d.authorName is string && d.authorName.size() <= 80
+          && d.updatedAt == request.time;
+    }
+
     match /trainers/{trainerId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && 
@@ -715,6 +767,24 @@ service cloud.firestore {
 
       match /taskInstances/{instanceId} {
         allow read, write: if isAuthenticated() && request.auth.uid == trainerId;
+      }
+
+      // PLANNER NOTES (Learning + Planner round, Sep 2026) -- a trainer's own
+      // notes and folders. Private by PATH, for the same reason as the task
+      // lists above, and more so: a note can name a client and describe an
+      // injury. Nobody else reads these, a studio owner included. A note the
+      // author wants the team to see is COPIED onto the client's record
+      // (clients/{id}/sharedNotes, below); this tree never opens up.
+      match /notes/{noteId} {
+        allow read, delete: if isAuthenticated() && request.auth.uid == trainerId;
+        allow create, update: if isAuthenticated() && request.auth.uid == trainerId
+                              && trainerNoteValid(request.resource.data);
+      }
+
+      match /noteFolders/{folderId} {
+        allow read, delete: if isAuthenticated() && request.auth.uid == trainerId;
+        allow create, update: if isAuthenticated() && request.auth.uid == trainerId
+                              && noteFolderValid(request.resource.data);
       }
 
       // IN-APP NOTIFICATIONS (round: Settings tiers & Task Board, Sep 2026).
@@ -841,6 +911,39 @@ service cloud.firestore {
       allow delete: if isAuthenticated()
                     && inbodyWritable(clientId, getRole(), callerTrainer()) && (
                       resource.data.get('enteredBy', '') == request.auth.uid ||
+                      isSuperAdmin() ||
+                      isStudioOwnerOrHeadTrainerOnly(inbodyClientStudio(clientId)));
+    }
+
+    // SHARED NOTES (Learning + Planner round, Sep 2026) -- a note a trainer
+    // shared from their Planner, copied onto the client's record. Shown in
+    // the profile under Goals -> Plans from the team.
+    //
+    // Read like InBody scans: whoever can open the client. Written like one
+    // too (inbodyWritable): putting something on a client's record is for
+    // the studio that holds them. Only the author rewrites a copy -- the
+    // app overwrites it whole on every save, so the full shape is checked.
+    //
+    // Delete: the author, always (it is theirs to take back, even after
+    // moving studio); the studio's leaders and administrators (someone has
+    // to be able to take a note off a record). `resource == null` lets the
+    // author's Planner delete a copy a leader already removed, in the same
+    // batch as the note itself, without the whole batch being refused.
+    match /clients/{clientId}/sharedNotes/{noteId} {
+      allow read: if isAuthenticated() && (
+                    roleIsSuper(getRole()) || roleIsFranchise(getRole()) ||
+                    sessionClientIsReadable(clientId, getRole(), callerTrainer()));
+
+      allow create: if inbodyWritable(clientId)
+                    && sharedNoteValid(request.resource.data, clientId);
+
+      allow update: if inbodyWritable(clientId)
+                    && resource.data.get('authorId', '') == request.auth.uid
+                    && sharedNoteValid(request.resource.data, clientId);
+
+      allow delete: if isAuthenticated() && (
+                      resource == null ||
+                      resource.data.get('authorId', '') == request.auth.uid ||
                       isSuperAdmin() ||
                       isStudioOwnerOrHeadTrainerOnly(inbodyClientStudio(clientId)));
     }
