@@ -103,14 +103,14 @@ export function MachineProgressionStep({
         <div className="flex gap-2">
           <button
             type="button"
-            className="h-9 rounded-xl border border-slate-200 px-3 text-[11px] font-black uppercase tracking-wider text-[#0A2E46] dark:border-slate-700 dark:text-white"
+            className="h-9 rounded-xl border border-border px-3 text-[11px] font-black uppercase tracking-wider text-[#0A2E46] dark:text-white"
             onClick={() => onChange({ ...value, rows, includedMachineIds: rows.map((r) => r.machineId) })}
           >
             Show all
           </button>
           <button
             type="button"
-            className="h-9 rounded-xl border border-slate-200 px-3 text-[11px] font-black uppercase tracking-wider text-[#0A2E46] dark:border-slate-700 dark:text-white"
+            className="h-9 rounded-xl border border-border px-3 text-[11px] font-black uppercase tracking-wider text-[#0A2E46] dark:text-white"
             onClick={() => onChange({ ...value, rows, includedMachineIds: [] })}
           >
             Clear
@@ -118,7 +118,7 @@ export function MachineProgressionStep({
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
+      <div className="overflow-x-auto rounded-2xl border border-border">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-[#68717A] dark:bg-slate-800/60">
             <tr>
@@ -135,7 +135,7 @@ export function MachineProgressionStep({
               const on = value.includedMachineIds.includes(r.machineId);
               const delta = r.currentWeight - r.startWeight;
               const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
-              const tone = delta > 0 ? "text-emerald-600" : delta < 0 ? "text-rose-500" : "text-slate-400";
+              const tone = delta > 0 ? "text-emerald-600" : delta < 0 ? "text-rose-500" : "text-muted-foreground";
               return (
                 <tr
                   key={r.machineId}

@@ -1770,7 +1770,7 @@ export default function AppContent({
               setHubSearchTerm("");
               hubSearchInputRef.current?.focus();
             }}
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-md text-slate-400 hover:text-foreground"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
           >
             <X className="w-4 h-4" />
           </button>
@@ -1799,7 +1799,7 @@ export default function AppContent({
    * features/notifications/useHubAnnouncements.ts.
    */
   const headerIconClass =
-    "relative h-9 w-9 sm:h-10 sm:w-10 rounded-full shrink-0 inline-flex items-center justify-center transition-colors outline-none hover:bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-50 focus-visible:ring-2 focus-visible:ring-cyan disabled:opacity-50";
+    "relative h-9 w-9 sm:h-10 sm:w-10 rounded-full shrink-0 inline-flex items-center justify-center transition-colors outline-none hover:bg-transparent text-muted-foreground hover:text-slate-900 dark:hover:text-slate-50 focus-visible:ring-2 focus-visible:ring-cyan disabled:opacity-50";
 
   const headerRightControls = (
     <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
@@ -1855,7 +1855,7 @@ export default function AppContent({
         variant="ghost"
         size="icon"
         onClick={() => setCurrentView("trainer-hub")}
-        className={`${headerIconClass} ${currentView === "trainer-hub" ? "text-slate-900 dark:text-white" : "active:text-orange-500"}`}
+        className={`${headerIconClass} ${currentView === "trainer-hub" ? "text-foreground" : "active:text-orange-500"}`}
         title="Trainer Control Hub"
         aria-label="Trainer Control Hub"
       >
@@ -1916,7 +1916,7 @@ export default function AppContent({
               </div>
             </div>
           )}
-          <DropdownMenuLabel className="font-black uppercase text-[11px] tracking-widest px-3 py-2 text-slate-500 dark:text-slate-400">
+          <DropdownMenuLabel className="font-black uppercase text-[11px] tracking-widest px-3 py-2 text-muted-foreground">
             Active Profile
           </DropdownMenuLabel>
           <DropdownMenuItem

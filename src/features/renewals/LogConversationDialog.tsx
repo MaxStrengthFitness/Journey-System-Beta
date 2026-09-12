@@ -65,7 +65,7 @@ function Chip({
         "min-h-11 rounded-xl border px-3.5 text-[13px] font-bold transition-colors",
         on
           ? "border-sky-600 bg-sky-600 text-white dark:border-sky-400 dark:bg-sky-500"
-          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
+          : "border-border bg-card text-slate-700 hover:border-slate-300 dark:text-slate-200",
       )}
     >
       {children}
@@ -73,7 +73,7 @@ function Chip({
   );
 }
 
-const LABEL = "text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400";
+const LABEL = "text-[11px] font-bold uppercase tracking-widest text-muted-foreground";
 
 export function LogConversationDialog({
   open,
@@ -204,7 +204,7 @@ export function LogConversationDialog({
                 value={draft.note}
                 onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
                 placeholder="What did they say? e.g. wants to see the InBody first"
-                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-800 outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="w-full rounded-xl border border-border bg-card p-3 text-sm text-slate-800 outline-none focus:border-sky-500 dark:text-slate-100"
               />
             </div>
 
@@ -216,7 +216,7 @@ export function LogConversationDialog({
                 "flex min-h-12 w-full items-center justify-between rounded-xl border px-4 text-left text-sm font-bold transition-colors",
                 draft.needsLeader
                   ? "border-amber-500 bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300"
-                  : "border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
+                  : "border-border bg-card text-slate-700 dark:text-slate-200",
               )}
             >
               <span>A leader should follow up</span>

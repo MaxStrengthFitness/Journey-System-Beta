@@ -151,7 +151,7 @@ import {
   AccordionContent,
 } from "@/components/ui/accordion";
 import { useActiveSessionCheck } from "../hooks/useActiveSessionCheck";
-import { useStudioMachineSettings } from "../hooks/useStudioMachineSettings";
+import { useStudioMachines } from "../hooks/useStudioMachines";
 import { resolveMachineOrder } from "../data/machine-display-order";
 import {
   RecentJourneyView,
@@ -334,8 +334,19 @@ export function ClientProfileView({
   // any legacy machine.order value. This is a flat display-order concern
   // only — separate from the kinematic MOVEMENT_PATTERN_ORDER grouping
   // used by the Edit Routine drawer and Catalog, which is untouched here.
-  const { settingsByMachineId: studioMachineSettingsById } =
-    useStudioMachineSettings(activeStudioId);
+  // ORDERING, unified Sep 12 2026. This used to read
+  // studioMachineSettings/{studioId}_{machineId}.order - a collection that
+  // turned out to hold ZERO documents in production, because the editor that
+  // wrote it (TrainerControlHubView) was deleted in the Sep 5 settings round
+  // and never replaced. So this screen and the Active Session were sorting by
+  // a field nothing could set, while the Catalog sorted by the roster's own
+  // `order`. Two different orders for one studio, and no way to change either.
+  // Now both read the roster, which is the single answer to "what equipment
+  // does this location have, and in what order does it run".
+  // byId is keyed by machineId and its `order` is already resolved through
+  // resolveMachineOrder, so passing it as the override is idempotent: an
+  // unrostered machine yields undefined and falls back to the code default.
+  const { byId: studioFloorById } = useStudioMachines(activeStudioId);
 
   // Discard Session (round: In-Progress dropdown) — lets a trainer scrap
   // someone else's abandoned/stuck in-progress session right from the
@@ -1180,12 +1191,12 @@ export function ClientProfileView({
         resolveMachineOrder(
           a.id,
           a.order,
-          a.id ? studioMachineSettingsById[a.id]?.order : undefined,
+          a.id ? studioFloorById[a.id]?.order : undefined,
         ) -
         resolveMachineOrder(
           b.id,
           b.order,
-          b.id ? studioMachineSettingsById[b.id]?.order : undefined,
+          b.id ? studioFloorById[b.id]?.order : undefined,
         ),
     );
     const currentStudio = studios?.find((st) => st.id === activeStudioId);
@@ -1225,7 +1236,7 @@ export function ClientProfileView({
     machines,
     allLogs,
     clientSettings,
-    studioMachineSettingsById,
+    studioFloorById,
     studios,
     activeStudioId,
   ]);
@@ -1856,7 +1867,7 @@ export function ClientProfileView({
           >
             <DialogContent
               showCloseButton={false}
-              className="rounded-2xl max-w-md p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+              className="rounded-2xl max-w-md p-6 bg-card border-slate-200 dark:border-slate-800"
             >
               <DialogHeader>
                 <DialogTitle className="text-lg font-bold uppercase tracking-tight text-slate-950 dark:text-white font-display italic">
@@ -1877,7 +1888,7 @@ export function ClientProfileView({
                   className="rounded-xl border-div-l bg-slate-50/50 dark:bg-slate-950/20 text-xs text-slate-800 dark:text-neutral-200 resize-none"
                 />
                 <div className="flex justify-between items-center text-[10px]">
-                  <span className="text-slate-400 font-medium">
+                  <span className="text-muted-foreground font-medium">
                     Be brief and clinical for Sandra's logs.
                   </span>
                   <span
@@ -1921,7 +1932,7 @@ export function ClientProfileView({
             onOpenChange={(v) => !isDiscardingActiveSession && setShowDiscardActiveSessionConfirm(v)}
           >
             <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
-              <div className="bg-white dark:bg-bg-dark p-8 text-slate-900 dark:text-white space-y-3">
+              <div className="bg-white dark:bg-bg-dark p-8 text-foreground space-y-3">
                 <div
                   className={cn(
                     "w-12 h-12 rounded-2xl flex items-center justify-center mb-2 transition-all",
@@ -1941,7 +1952,7 @@ export function ClientProfileView({
                     ? "Discarding Session..."
                     : "Discard Active Session?"}
                 </h3>
-                <p className="text-slate-500 dark:text-slate-400 font-medium text-sm leading-relaxed">
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
                   {isDiscardingActiveSession
                     ? "Scrapping all logged sets, timers, and notes. Cleaning database records..."
                     : `This will end and permanently clear the session ${
@@ -2312,7 +2323,7 @@ export function ClientProfileView({
               if (active && payload && payload.length) {
                 const data = payload[0].payload;
                 return (
-                  <div className="bg-[#0A2E46] border border-slate-200 dark:border-slate-700 p-3 rounded-lg shadow-xl min-w-50">
+                  <div className="bg-[#0A2E46] border border-border p-3 rounded-lg shadow-xl min-w-50">
                     <p className="text-[11px] uppercase tracking-widest text-[#68717A] mb-2">
                       {data.date}
                     </p>
@@ -2432,7 +2443,7 @@ export function ClientProfileView({
               <div className="space-y-6">
                 {/* Average Growth Summary Card */}
                 {machineGrowths.length > 0 && (
-                  <Card className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 border-l-4 border-l-[#10b981]">
+                  <Card className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-card border-l-4 border-l-[#10b981]">
                     <CardContent className="p-6 flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full bg-[#10b981]/10 flex items-center justify-center">
@@ -2457,8 +2468,8 @@ export function ClientProfileView({
                   </Card>
                 )}
 
-                <Card className="rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden bg-white dark:bg-slate-900">
-                  <CardHeader className="p-8 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+                <Card className="rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden bg-card">
+                  <CardHeader className="p-8 border-b border-slate-100 dark:border-slate-800 bg-card">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                       <div>
                         <CardTitle className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46] dark:text-slate-200 flex items-center gap-2">
@@ -2472,12 +2483,12 @@ export function ClientProfileView({
 
                       {/* Compare Machines Dropdown */}
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-900 dark:text-white transition-colors h-9 px-4 py-2">
+                        <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap border border-border bg-slate-50 dark:bg-slate-800 text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-foreground transition-colors h-9 px-4 py-2">
                           Compare Machines ({selectedChartMachines.length})
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                           align="end"
-                          className="w-70 p-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 max-h-100 overflow-y-auto"
+                          className="w-70 p-2 bg-card border-slate-200 dark:border-slate-800 max-h-100 overflow-y-auto"
                         >
                           {machines
                             .filter((m) => seenMachines.has(m.id!))
@@ -2686,7 +2697,7 @@ export function ClientProfileView({
             const CustomVolumeTooltip = ({ active, payload, label }: any) => {
               if (active && payload && payload.length) {
                 return (
-                  <div className="bg-[#0A2E46] border border-slate-200 dark:border-slate-700 p-3 rounded-lg shadow-xl min-w-30">
+                  <div className="bg-[#0A2E46] border border-border p-3 rounded-lg shadow-xl min-w-30">
                     <p className="text-[11px] uppercase tracking-widest text-[#68717A] mb-1">
                       {label}
                     </p>
@@ -3025,7 +3036,7 @@ export function ClientProfileView({
                     if (active && payload && payload.length) {
                       const data = payload[0].payload;
                       return (
-                        <div className="bg-[#0A2E46] border border-slate-200 dark:border-slate-700 p-4 rounded-xl shadow-xl">
+                        <div className="bg-[#0A2E46] border border-border p-4 rounded-xl shadow-xl">
                           <p className="font-bold uppercase text-sm mb-2">
                             {data.machineName}
                           </p>
@@ -3179,8 +3190,8 @@ export function ClientProfileView({
         <TabsContent value="details_disabled" className="hidden">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
             {/* 1. The "Why" (Goals & Motivation) */}
-            <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-              <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-700">
+            <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-800 border-border">
+              <CardHeader className="p-8 border-b border-border">
                 <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                   The 'Why' (Goals & Motivation)
                 </CardTitle>
@@ -3201,7 +3212,7 @@ export function ClientProfileView({
                         discoveryNotes: e.target.value,
                       }))
                     }
-                    className="min-h-25 rounded-2xl font-bold p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus-visible:ring-[#38BDF8] resize-none"
+                    className="min-h-25 rounded-2xl font-bold p-4 bg-card border-border focus-visible:ring-[#38BDF8] resize-none"
                     placeholder="Context from initial contact..."
                   />
                 </div>
@@ -3217,7 +3228,7 @@ export function ClientProfileView({
                         globalNotes: e.target.value,
                       }))
                     }
-                    className="min-h-35 rounded-2xl font-bold p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
+                    className="min-h-35 rounded-2xl font-bold p-4 bg-card border-border focus-visible:ring-[#38BDF8]"
                     placeholder="What are we really solving for? (e.g. 'I want to be able to pick up my grandkids without back pain')..."
                   />
                 </div>
@@ -3225,8 +3236,8 @@ export function ClientProfileView({
             </Card>
 
             {/* 2. Lifestyle & Environment */}
-            <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-              <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-700">
+            <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-800 border-border">
+              <CardHeader className="p-8 border-b border-border">
                 <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                   Lifestyle & Environment
                 </CardTitle>
@@ -3274,10 +3285,10 @@ export function ClientProfileView({
                       setInfoForm((f) => ({ ...f, activityLevel: v as any }))
                     }
                   >
-                    <SelectTrigger className="w-full h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
+                    <SelectTrigger className="w-full h-12 bg-card border-border font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
                       <SelectValue placeholder="Select an option…" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl">
+                    <SelectContent className="bg-slate-50 dark:bg-slate-800 border-border rounded-xl">
                       <SelectItem value="Sedentary">Sedentary</SelectItem>
                       <SelectItem value="Light">Light</SelectItem>
                       <SelectItem value="Moderate">Moderate</SelectItem>
@@ -3297,10 +3308,10 @@ export function ClientProfileView({
                       setInfoForm((f) => ({ ...f, recoveryMetric: v as any }))
                     }
                   >
-                    <SelectTrigger className="w-full h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
+                    <SelectTrigger className="w-full h-12 bg-card border-border font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
                       <SelectValue placeholder="Select an option…" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl">
+                    <SelectContent className="bg-slate-50 dark:bg-slate-800 border-border rounded-xl">
                       <SelectItem value="Poor">Poor</SelectItem>
                       <SelectItem value="Average">Average</SelectItem>
                       <SelectItem value="Optimal">Optimal</SelectItem>
@@ -3318,10 +3329,10 @@ export function ClientProfileView({
                       setInfoForm((f) => ({ ...f, trainingPedigree: v as any }))
                     }
                   >
-                    <SelectTrigger className="w-full h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
+                    <SelectTrigger className="w-full h-12 bg-card border-border font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
                       <SelectValue placeholder="Select an option…" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl">
+                    <SelectContent className="bg-slate-50 dark:bg-slate-800 border-border rounded-xl">
                       <SelectItem value="Novice">
                         Novice (No lifting experience)
                       </SelectItem>
@@ -3341,8 +3352,8 @@ export function ClientProfileView({
             </Card>
 
             {/* 3. The Clinical Baseline (Medical) */}
-            <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 lg:col-span-2">
-              <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-700">
+            <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-800 border-border lg:col-span-2">
+              <CardHeader className="p-8 border-b border-border">
                 <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                   The Clinical Baseline (Medical)
                 </CardTitle>
@@ -3366,7 +3377,7 @@ export function ClientProfileView({
                     <div className="space-y-6">
                       {infoForm.clinicalFlags &&
                         infoForm.clinicalFlags.length > 0 && (
-                          <div className="w-full flex flex-col gap-2 mb-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                          <div className="w-full flex flex-col gap-2 mb-4 bg-card p-4 rounded-2xl border border-border shadow-sm">
                             <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-400">
                               Active Health Flags
                             </Label>
@@ -3421,7 +3432,7 @@ export function ClientProfileView({
                                           ) || false;
 
                                         const unselectedStyles =
-                                          "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:bg-slate-800 transition-colors px-3 py-1.5 rounded-full text-xs font-medium";
+                                          "bg-card border border-border text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:bg-slate-800 transition-colors px-3 py-1.5 rounded-full text-xs font-medium";
 
                                         let selectedStyles = "";
                                         if (
@@ -3494,7 +3505,7 @@ export function ClientProfileView({
                                   clinicalNotes: e.target.value,
                                 }))
                               }
-                              className="min-h-50 rounded-2xl font-bold p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus-visible:ring-[#38BDF8] transition-all"
+                              className="min-h-50 rounded-2xl font-bold p-4 bg-card border-border focus-visible:ring-[#38BDF8] transition-all"
                               placeholder="Detail any orthopedic history or clinical considerations..."
                             />
                           </div>
@@ -3507,9 +3518,9 @@ export function ClientProfileView({
             </Card>
 
             {/* 4. Client Information */}
-            <Card className="rounded-[40px] shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 flex flex-col h-full">
+            <Card className="rounded-[40px] shadow-sm bg-card border-slate-200 dark:border-slate-800 flex flex-col h-full">
               <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-800">
-                <CardTitle className="text-2xl font-bold uppercase tracking-tighter text-slate-900 dark:text-white">
+                <CardTitle className="text-2xl font-bold uppercase tracking-tighter text-foreground">
                   Client Information
                 </CardTitle>
                 <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-500">
@@ -3519,7 +3530,7 @@ export function ClientProfileView({
               <CardContent className="p-8 flex-1">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
-                    <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                       Full Name
                     </Label>
                     <div className="flex gap-3">
@@ -3549,7 +3560,7 @@ export function ClientProfileView({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                       Email
                     </Label>
                     <Input
@@ -3562,7 +3573,7 @@ export function ClientProfileView({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                       Age
                     </Label>
                     <Input
@@ -3579,7 +3590,7 @@ export function ClientProfileView({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                       Package Tier
                     </Label>
                     <Select
@@ -3591,7 +3602,7 @@ export function ClientProfileView({
                       <SelectTrigger className="h-14 md:h-16 text-lg sm:text-xl rounded-2xl font-bold px-5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus-visible:ring-[#F06C22] shadow-sm text-slate-900 dark:text-slate-100 data-placeholder:text-slate-400">
                         <SelectValue placeholder="Select an option…" />
                       </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold p-2">
+                      <SelectContent className="bg-card border-slate-200 dark:border-slate-800 font-bold p-2">
                         <SelectItem
                           value="None"
                           className="h-12 text-sm sm:text-base"
@@ -3621,7 +3632,7 @@ export function ClientProfileView({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                       Start Date
                     </Label>
                     <Input
@@ -3681,8 +3692,8 @@ export function ClientProfileView({
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div className="lg:col-span-1 space-y-6">
-              <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 overflow-hidden">
-                <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-700 flex flex-row items-center justify-between">
+              <Card className="rounded-[40px] shadow-xl bg-slate-50 dark:bg-slate-800 border-border overflow-hidden">
+                <CardHeader className="p-8 border-b border-border flex flex-row items-center justify-between">
                   <div>
                     <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                       Reminders
@@ -3693,7 +3704,7 @@ export function ClientProfileView({
                   </div>
                 </CardHeader>
                 <CardContent className="p-8 space-y-6">
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 shadow-sm">
+                  <div className="bg-card border border-border rounded-3xl p-6 shadow-sm">
                     <div className="grid grid-cols-1 gap-4 mb-4">
                       <div className="space-y-2">
                         <Label className="text-[11px] font-medium uppercase tracking-wide opacity-70 text-slate-800 dark:text-slate-400 ml-1">
@@ -3705,10 +3716,10 @@ export function ClientProfileView({
                             setNewEventForm({ ...newEventForm, type: v })
                           }
                         >
-                          <SelectTrigger className="w-full h-12 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
+                          <SelectTrigger className="w-full h-12 bg-slate-50 dark:bg-slate-800 border-border font-bold rounded-2xl focus-visible:ring-[#38BDF8]">
                             <SelectValue placeholder="Select Type..." />
                           </SelectTrigger>
-                          <SelectContent className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl">
+                          <SelectContent className="bg-slate-50 dark:bg-slate-800 border-border rounded-xl">
                             <SelectItem value="Progress Report">
                               Progress Report
                             </SelectItem>
@@ -3739,7 +3750,7 @@ export function ClientProfileView({
                               date: e.target.value,
                             }))
                           }
-                          className="h-12 rounded-2xl font-bold px-4 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
+                          className="h-12 rounded-2xl font-bold px-4 bg-slate-50 dark:bg-slate-800 border-border focus-visible:ring-[#38BDF8]"
                         />
                       </div>
                     </div>
@@ -3756,7 +3767,7 @@ export function ClientProfileView({
                           }))
                         }
                         placeholder="Brief description..."
-                        className="h-12 rounded-2xl font-bold px-4 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-[#38BDF8]"
+                        className="h-12 rounded-2xl font-bold px-4 bg-slate-50 dark:bg-slate-800 border-border focus-visible:ring-[#38BDF8]"
                       />
                     </div>
                     <div className="space-y-2 mb-6">
@@ -3771,7 +3782,7 @@ export function ClientProfileView({
                             notes: e.target.value,
                           }))
                         }
-                        className="min-h-20 rounded-3xl font-medium p-4 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-[#38BDF8] resize-none"
+                        className="min-h-20 rounded-3xl font-medium p-4 bg-slate-50 dark:bg-slate-800 border-border focus-visible:ring-[#38BDF8] resize-none"
                         placeholder="Optional details..."
                       />
                     </div>
@@ -3802,7 +3813,7 @@ export function ClientProfileView({
                         .map((event) => (
                           <div
                             key={event.id}
-                            className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl group transition-all hover:bg-slate-50 shadow-sm"
+                            className="flex flex-col gap-2 p-4 bg-card border border-slate-200 dark:border-slate-800 rounded-3xl group transition-all hover:bg-slate-50 shadow-sm"
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex flex-col">
@@ -3837,7 +3848,7 @@ export function ClientProfileView({
                               </div>
                             </div>
                             {event.notes && (
-                              <p className="text-xs text-slate-500 dark:text-slate-600 mt-1 font-medium bg-white dark:bg-slate-900 p-3 flex rounded-xl">
+                              <p className="text-xs text-slate-500 dark:text-slate-600 mt-1 font-medium bg-card p-3 flex rounded-xl">
                                 {event.notes}
                               </p>
                             )}
@@ -3957,7 +3968,7 @@ export function ClientProfileView({
                 </CardContent>
               </Card>
 
-              <Card className="rounded-[40px] shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+              <Card className="rounded-[40px] shadow-sm bg-card border-slate-200 dark:border-slate-800">
                 <CardHeader className="p-8 border-b border-slate-200 dark:border-slate-800">
                   <CardTitle className="text-xl font-bold uppercase italic tracking-tighter">
                     Account Actions
@@ -4078,7 +4089,7 @@ export function ClientProfileView({
       <Dialog open={isDeleting} onOpenChange={setIsDeleting}>
         <DialogContent
           showCloseButton={false}
-          className="rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-2xl p-0 overflow-hidden max-w-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+          className="rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-2xl p-0 overflow-hidden max-w-sm bg-card text-foreground"
         >
           <div className="bg-red-600 p-8 flex flex-col items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center animate-pulse">
@@ -4093,7 +4104,7 @@ export function ClientProfileView({
               </p>
             </div>
           </div>
-          <div className="p-8 space-y-6 text-center bg-white dark:bg-slate-900">
+          <div className="p-8 space-y-6 text-center bg-card">
             <p className="text-sm font-medium text-muted-foreground leading-relaxed">
               Are you absolutely sure you want to delete{" "}
               <span className="font-bold text-foreground">
@@ -4144,7 +4155,7 @@ export function ClientProfileView({
       >
         <DialogContent
           showCloseButton={false}
-          className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 sm:max-w-xs text-slate-900 dark:text-white"
+          className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-card shadow-2xl p-6 sm:max-w-xs text-foreground"
         >
           <DialogHeader>
             <DialogTitle className="text-xl font-bold uppercase italic tracking-tighter">
@@ -4163,7 +4174,7 @@ export function ClientProfileView({
                 type="number"
                 value={sessionCountInput}
                 onChange={(e) => setSessionCountInput(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-lg h-12 focus-visible:ring-[#38BDF8]"
+                className="bg-slate-50 dark:bg-slate-800 border-border font-bold text-lg h-12 focus-visible:ring-[#38BDF8]"
                 placeholder="0"
               />
             </div>
@@ -4171,7 +4182,7 @@ export function ClientProfileView({
               <Button
                 variant="outline"
                 onClick={() => setIsEditingSessionCount(false)}
-                className="flex-1 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-bold uppercase tracking-widest text-[11px]"
+                className="flex-1 border-border bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-bold uppercase tracking-widest text-[11px]"
               >
                 Cancel
               </Button>

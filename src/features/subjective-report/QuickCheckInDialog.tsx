@@ -110,16 +110,16 @@ export function QuickCheckInDialog({
       aria-label="Client check-in"
     >
       {/* header */}
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-card px-4 py-3 dark:border-slate-800">
         <div className="flex min-w-0 items-center gap-3">
           <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0A548B]/10 text-[#0A548B] dark:bg-[#6fb1e6]/15 dark:text-[#6fb1e6]">
             <HeartPulse className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <h2 className="truncate text-base font-black uppercase italic tracking-tight text-slate-900 dark:text-white">
+            <h2 className="truncate text-base font-black uppercase italic tracking-tight text-foreground">
               Client Check-in · {client.firstName} {client.lastName}
             </h2>
-            <p className="truncate text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+            <p className="truncate text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               {origin === "pre_session" ? "Before the session" : origin === "post_session" ? "After the session" : "Standalone"}
               {" · "}
               {previous ? `compared with ${fmtDate(previous.date)}` : "first check-in"}
@@ -152,7 +152,7 @@ export function QuickCheckInDialog({
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
         <div className="mx-auto max-w-5xl space-y-4">
           {showCoachView && (
-            <div className="rounded-2xl bg-white p-4 dark:bg-slate-900">
+            <div className="rounded-2xl bg-card p-4">
               <SubjectiveDashboard assessment={assessment} previous={previous} machines={machines} />
             </div>
           )}
@@ -169,8 +169,8 @@ export function QuickCheckInDialog({
       </div>
 
       {/* footer */}
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
-        <p className="hidden min-w-0 flex-1 text-[12px] leading-snug text-slate-500 sm:block dark:text-slate-400">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-card px-4 py-3 dark:border-slate-800">
+        <p className="hidden min-w-0 flex-1 text-[12px] leading-snug text-muted-foreground sm:block">
           Saves as a check-in on {client.firstName}'s journal. Open it later and press{" "}
           <b>Build the full report</b> to turn it into the 90-day progress report.
         </p>

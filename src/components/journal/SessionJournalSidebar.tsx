@@ -103,10 +103,10 @@ export function SessionJournalSidebar({
       >
         <div className="flex shrink-0 items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
           <div className="flex flex-col">
-            <h2 className="flex items-center gap-2 text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">
+            <h2 className="flex items-center gap-2 text-xl font-black uppercase tracking-tighter text-foreground">
               <NotebookPen className="h-5 w-5 text-orange-500" /> Session notes
             </h2>
-            <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               Filed to {clientFirstName || "the client"}&apos;s journal
               {defaultMachineName ? ` · now on ${defaultMachineName}` : ""}
             </p>
@@ -118,7 +118,7 @@ export function SessionJournalSidebar({
             aria-label="Close notes"
             className="rounded-full hover:bg-white dark:hover:bg-surface-1/10"
           >
-            <X className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+            <X className="h-5 w-5 text-muted-foreground" />
           </Button>
         </div>
 
@@ -136,14 +136,14 @@ export function SessionJournalSidebar({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+              <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
                 This session
               </span>
-              {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />}
+              {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
             </div>
             {entries.length === 0 && !isLoading ? (
               <div className="rounded-2xl border border-dashed border-slate-200 py-10 text-center dark:border-slate-800">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                   Nothing logged yet this session
                 </p>
               </div>

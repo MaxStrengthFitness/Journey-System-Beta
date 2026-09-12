@@ -72,14 +72,24 @@ export function useCatalogMachines(
 
     const { machines: deduped, collisions } = dedupeMachines(legacyMachines);
 
+    // Sort BEFORE adapting, so the legacy machine's own `order` field is
+    // still in hand. This used to call resolveMachineOrder(a.id, undefined),
+    // dropping the second argument, which meant any machine missing from
+    // DEFAULT_MACHINE_DISPLAY_ORDER fell to 999 and sorted last even when its
+    // machines/{id} document carried a perfectly good order. That is exactly
+    // what happened to the Leg Extension while it was filed as `m-leg-ext`:
+    // not in the map, own order ignored, bottom of the list. There is no
+    // per-studio override to pass here - this branch only runs when the
+    // roster is EMPTY - but the catalog's own order is real and now counts.
     const machines = deduped
-      .map((m) => fromLegacyMachine(m, opts))
+      .slice()
       .sort(
         (a, b) =>
-          resolveMachineOrder(a.id, undefined) -
-            resolveMachineOrder(b.id, undefined) ||
-          a.name.localeCompare(b.name),
-      );
+          resolveMachineOrder(a.id, a.order) -
+            resolveMachineOrder(b.id, b.order) ||
+          (a.name ?? "").localeCompare(b.name ?? ""),
+      )
+      .map((m) => fromLegacyMachine(m, opts));
 
     return { machines, source: "global", loading, collisions } as
       UseCatalogMachinesResult & { collisions: Record<string, string[]> };

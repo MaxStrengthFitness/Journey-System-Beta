@@ -52,14 +52,14 @@ const TONE_CLASS: Record<string, string> = {
   neutral: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
 };
 
-const LABEL = "text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400";
+const LABEL = "text-[11px] font-bold uppercase tracking-widest text-muted-foreground";
 
 function Fact({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+    <div className="rounded-xl border border-slate-200 bg-card p-3 dark:border-slate-800">
       <p className={LABEL}>{label}</p>
       <p className="mt-1 text-[15px] font-bold text-slate-900 dark:text-slate-50">{value}</p>
-      {sub && <p className="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">{sub}</p>}
+      {sub && <p className="mt-0.5 text-[12px] text-muted-foreground">{sub}</p>}
     </div>
   );
 }
@@ -174,7 +174,7 @@ export function RenewalCardDialog({ open, onClose, client, trainer, machineNames
                   <p className={LABEL}>What the app can't see yet</p>
                   <ul className="space-y-1">
                     {s.dataGaps.map((g) => (
-                      <li key={g} className="text-[13px] text-slate-500 dark:text-slate-400">
+                      <li key={g} className="text-[13px] text-muted-foreground">
                         • {g}
                       </li>
                     ))}
@@ -189,7 +189,7 @@ export function RenewalCardDialog({ open, onClose, client, trainer, machineNames
                 )}
                 {touchesError && <p className="text-[12px] text-amber-700">{touchesError}</p>}
                 {touches.length === 0 ? (
-                  <p className="text-[13px] text-slate-500 dark:text-slate-400">Nobody has logged a conversation yet.</p>
+                  <p className="text-[13px] text-muted-foreground">Nobody has logged a conversation yet.</p>
                 ) : (
                   <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
                     {touches.map((t) => (
@@ -203,7 +203,7 @@ export function RenewalCardDialog({ open, onClose, client, trainer, machineNames
                             </span>
                           )}
                         </p>
-                        <p className="text-[12px] text-slate-500 dark:text-slate-400">
+                        <p className="text-[12px] text-muted-foreground">
                           {t.authorName}
                           {studioDateKey((t.at ?? null) as any) ? ` · ${dayLabel(studioDateKey(t.at as any), today)}` : ""}
                           {t.interestedIn ? ` · interested in ${interestLabel(t.interestedIn).toLowerCase()}` : ""}

@@ -161,7 +161,7 @@ export default function AccessRequestView({
         </div>
 
         <div className="text-center mb-8">
-          <div className="inline-flex p-3 rounded-2xl bg-[#ff9800]/10 border border-[#ff9800]/20 mb-4 text-[#ff9800]">
+          <div className="inline-flex p-3 rounded-2xl bg-action/10 border border-action/20 mb-4 text-action">
             <Info className="w-8 h-8" />
           </div>
           <h2 className="text-2xl font-black uppercase tracking-widest mb-2 bg-clip-text text-transparent bg-gradient-to-r from-slate-100 to-slate-300">
@@ -198,7 +198,7 @@ export default function AccessRequestView({
                     }}
                   />
                   <div>
-                    <span className="text-xs uppercase tracking-wider text-[#ff9800] font-black block">
+                    <span className="text-xs uppercase tracking-wider text-action font-black block">
                       Account Signed In
                     </span>
                     <span className="text-sm font-bold text-slate-200 block truncate">
@@ -221,7 +221,7 @@ export default function AccessRequestView({
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Enter your full name"
-                    className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-[#ff9800] transition-colors text-sm"
+                    className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-action transition-colors text-sm"
                   />
                 </div>
               </div>
@@ -240,7 +240,7 @@ export default function AccessRequestView({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email address"
-                    className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-[#ff9800] transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-action transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -257,7 +257,7 @@ export default function AccessRequestView({
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="Enter phone number"
-                    className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-[#ff9800] transition-colors text-sm"
+                    className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-action transition-colors text-sm"
                   />
                 </div>
               </div>
@@ -298,7 +298,7 @@ export default function AccessRequestView({
                       <select
                         value={roleRequested}
                         onChange={(e) => setRoleRequested(e.target.value)}
-                        className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-[#ff9800] transition-colors text-sm appearance-none cursor-pointer"
+                        className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-action transition-colors text-sm appearance-none cursor-pointer"
                       >
                         <option value="Trainer">Performance Trainer / LifeTransformer</option>
                         <option value="StudioOwner">Studio Owner / Franchise Member</option>
@@ -320,7 +320,7 @@ export default function AccessRequestView({
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                         placeholder="Provide details about your studio association or request."
-                        className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-[#ff9800] transition-colors text-sm resize-none"
+                        className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-action transition-colors text-sm resize-none"
                       />
                     </div>
                   </div>

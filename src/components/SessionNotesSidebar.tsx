@@ -114,11 +114,11 @@ export function SessionNotesSidebar({
       >
         <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex flex-col">
-            <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter flex items-center gap-2">
+            <h2 className="text-xl font-black text-foreground uppercase tracking-tighter flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-orange-500" /> Session
               Notes
             </h2>
-            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">
+            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
               HUD Communication Panel
             </p>
           </div>
@@ -128,15 +128,15 @@ export function SessionNotesSidebar({
             onClick={onClose}
             className="rounded-full hover:bg-white dark:hover:bg-surface-1/10"
           >
-            <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+            <X className="w-5 h-5 text-muted-foreground" />
           </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-slate-50/20">
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
-              <History className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-              <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+              <History className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
                 Note History
               </span>
             </div>
@@ -154,7 +154,7 @@ export function SessionNotesSidebar({
                           {note.trainerInitials}
                         </span>
                       </div>
-                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight">
+                      <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-tight">
                         Active Trainer
                       </span>
                     </div>
@@ -188,7 +188,7 @@ export function SessionNotesSidebar({
             <div className="space-y-2">
               <div className="flex items-center gap-2 mb-1">
                 <Edit3 className="w-3.5 h-3.5 text-orange-500" />
-                <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
                   Tactical Update
                 </span>
               </div>
@@ -196,7 +196,7 @@ export function SessionNotesSidebar({
                 placeholder="Injury notes, performance tweaks, or mood updates..."
                 value={noteContent}
                 onChange={(e) => setNoteContent(e.target.value)}
-                className="min-h-[120px] rounded-2xl bg-slate-50/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-700 focus:border-orange-500 shadow-inner resize-none"
+                className="min-h-[120px] rounded-2xl bg-slate-50/50 border-slate-200 dark:border-slate-800 text-foreground placeholder:text-slate-700 focus:border-orange-500 shadow-inner resize-none"
               />
             </div>
 

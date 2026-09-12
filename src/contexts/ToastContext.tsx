@@ -139,7 +139,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 </div>
                 <button
                   onClick={() => removeToast(t.id)}
-                  className="text-slate-400 hover:text-slate-200 transition-colors p-0.5 rounded-lg hover:bg-white/5"
+                  className="text-muted-foreground hover:text-slate-200 transition-colors p-0.5 rounded-lg hover:bg-white/5"
                 >
                   <X className="w-4 h-4" />
                 </button>

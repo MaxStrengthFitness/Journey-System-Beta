@@ -131,7 +131,7 @@ export const ActiveSessionTimer = memo(function ActiveSessionTimer({
       <div className="flex flex-col items-start leading-none justify-center">
         <span
           className={cn(
-            "font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5",
+            "font-black uppercase tracking-wider text-muted-foreground mb-0.5",
             isMobile ? "text-[8px]" : "text-[10px]",
           )}
         >

@@ -31,7 +31,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export function MachineEfficacyChart({ data }: { data?: any[] }) {
   if (!data || data.length === 0) {
-    return <div className="text-slate-400 text-xs text-center flex items-center justify-center h-full font-bold uppercase tracking-widest">No Data Available</div>;
+    return <div className="text-muted-foreground text-xs text-center flex items-center justify-center h-full font-bold uppercase tracking-widest">No Data Available</div>;
   }
 
   // Use up to top 8 machines to prevent crowding

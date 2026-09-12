@@ -521,7 +521,7 @@ export function EditRoutineDrawer({
       <DialogContent
         showCloseButton={false}
         style={dialogPositionStyle}
-        className="w-[97vw] sm:max-w-[97vw] xl:max-w-[1360px] max-h-[94dvh] overflow-hidden flex flex-col p-0 gap-0 bg-white dark:bg-slate-900 rounded-2xl border border-div-l"
+        className="w-[97vw] sm:max-w-[97vw] xl:max-w-[1360px] max-h-[94dvh] overflow-hidden flex flex-col p-0 gap-0 bg-card rounded-2xl border border-div-l"
       >
         <DialogHeader className="p-5 sm:p-6 pb-4 border-b border-div-l shrink-0 space-y-4">
           <div className="flex items-start justify-between gap-4">
@@ -624,7 +624,7 @@ export function EditRoutineDrawer({
 
             <div className="flex-1 min-w-0 lg:border-l lg:pl-4 border-div-l/40">
               <div className="flex items-start justify-between gap-3 mb-2">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground font-mono">
                   Preset Routines
                 </h3>
                 {machineIds.length > 0 && !showSavePresetInput && (
@@ -645,7 +645,7 @@ export function EditRoutineDrawer({
                     value={presetNameDraft}
                     onChange={(e) => setPresetNameDraft(e.target.value)}
                     placeholder={`e.g., ${studioName || "Studio"} Beginner Circuit`}
-                    className="h-8 rounded-lg text-xs bg-white dark:bg-slate-900"
+                    className="h-8 rounded-lg text-xs bg-card"
                   />
                   <Button
                     size="sm"
@@ -766,7 +766,7 @@ export function EditRoutineDrawer({
             focused and the VisualViewport reports a shrunk (keyboard-
             covered) viewport, the whole dialog shifts up so this stays
             visible above an on-screen tablet keyboard. */}
-        <div className="border-t border-div-l shrink-0 bg-white dark:bg-slate-900">
+        <div className="border-t border-div-l shrink-0 bg-card">
           <div className="px-5 sm:px-6 pt-4 pb-3">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-neutral-350 mb-2 font-display">
               Notes — Why are you making this change?{" "}
@@ -779,10 +779,10 @@ export function EditRoutineDrawer({
               onBlur={() => setNotesFocused(false)}
               placeholder="e.g., Decreasing spinal load post L4 herniation flare-up; swapping leg press for leg extension today."
               rows={2}
-              className="rounded-xl border-div-l bg-white dark:bg-slate-900 resize-none text-xs text-slate-800 dark:text-neutral-100"
+              className="rounded-xl border-div-l bg-card resize-none text-xs text-slate-800 dark:text-neutral-100"
             />
             <div className="flex justify-between items-center mt-2">
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[10px] text-muted-foreground">
                 Provide a brief clinical rationale for{" "}
                 {client?.firstName ? `${client.firstName}'s` : "the client's"}{" "}
                 profile logs.
@@ -844,11 +844,11 @@ function PresetPillRow({
 }) {
   return (
     <div className="min-w-0">
-      <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">
+      <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
         {icon} <span className="truncate">{label}</span>
       </div>
       {presets.length === 0 ? (
-        <p className="text-[10px] text-slate-400 italic">
+        <p className="text-[10px] text-muted-foreground italic">
           {emptyText || "None yet."}
         </p>
       ) : (
@@ -856,7 +856,7 @@ function PresetPillRow({
           {presets.map((p) => (
             <div
               key={p.id}
-              className="group flex items-center gap-1 pl-2.5 pr-1.5 h-7 rounded-full border border-div-l/50 bg-white dark:bg-slate-900 text-[10px] font-bold uppercase tracking-tight text-slate-700 dark:text-neutral-300"
+              className="group flex items-center gap-1 pl-2.5 pr-1.5 h-7 rounded-full border border-div-l/50 bg-card text-[10px] font-bold uppercase tracking-tight text-slate-700 dark:text-neutral-300"
               title={`${p.machineIds.length} machine${p.machineIds.length === 1 ? "" : "s"}`}
             >
               <button
@@ -865,7 +865,7 @@ function PresetPillRow({
                 className="flex items-center gap-1 hover:text-cyan"
               >
                 <span className="truncate max-w-32">{p.name}</span>
-                <span className="text-slate-400 font-mono normal-case">
+                <span className="text-muted-foreground font-mono normal-case">
                   ({p.machineIds.length})
                 </span>
               </button>

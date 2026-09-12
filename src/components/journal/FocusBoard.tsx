@@ -168,8 +168,8 @@ export function FocusBoard({
             </span>
           )}
 
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[10px] uppercase tracking-wider text-slate-400">
-            <span className="font-bold text-slate-500 dark:text-slate-400">
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            <span className="font-bold text-muted-foreground">
               {focus.trainerInitials}
             </span>
             <span aria-hidden>·</span>
@@ -187,7 +187,7 @@ export function FocusBoard({
               <button
                 type="button"
                 onClick={() => onCheckIn(focus)}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-[10px] font-black uppercase tracking-wider text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-800"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-slate-50 px-2.5 text-[10px] font-black uppercase tracking-wider text-slate-600 transition-colors hover:bg-slate-100 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 <MessageSquarePlus className="h-3 w-3" /> Check in
               </button>
@@ -204,7 +204,7 @@ export function FocusBoard({
                   <button
                     type="button"
                     onClick={() => onExtend(focus)}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-[10px] font-black uppercase tracking-wider text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-800"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-slate-50 px-2.5 text-[10px] font-black uppercase tracking-wider text-slate-600 transition-colors hover:bg-slate-100 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-800"
                   >
                     <RotateCw className="h-3 w-3" /> Extend
                   </button>
@@ -226,7 +226,7 @@ export function FocusBoard({
             <button
               type="button"
               onClick={() => setExpandedId(isOpen ? null : focus.id)}
-              className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-200"
+              className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-slate-600 dark:hover:text-slate-200"
             >
               <ChevronDown className={cn("h-3 w-3 transition-transform", isOpen && "rotate-180")} />
               {checkIns.length} check-in{checkIns.length === 1 ? "" : "s"}
@@ -237,7 +237,7 @@ export function FocusBoard({
             <ol className="mt-2 space-y-2 border-l border-slate-200 pl-3 dark:border-slate-800">
               {checkIns.map((c) => (
                 <li key={c.id} className="text-[11px] leading-snug">
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-slate-400">
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
                     {c.authorInitials} · {relativeDay(toDate(c.occurredAt))}
                   </span>
                   <p className="text-slate-700 dark:text-slate-200">{c.body}</p>
@@ -254,10 +254,10 @@ export function FocusBoard({
     <section>
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+          <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
             Coaching focus
           </h3>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-muted-foreground">
             What each coach is working on with this client.
           </p>
         </div>
@@ -274,7 +274,7 @@ export function FocusBoard({
 
       {isCreating && (
         <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70">
-          <p className="mb-2 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          <p className="mb-2 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             Pick a P
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -290,7 +290,7 @@ export function FocusBoard({
                     "h-10 rounded-xl border px-3 text-[11px] font-black uppercase tracking-wider transition-all",
                     on
                       ? v.chip
-                      : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400 dark:hover:bg-slate-800",
+                      : "border-slate-200 bg-slate-50 text-muted-foreground hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:bg-slate-800",
                   )}
                 >
                   {c}
@@ -298,7 +298,7 @@ export function FocusBoard({
               );
             })}
           </div>
-          <p className="mt-1.5 text-[11px] italic text-slate-400">
+          <p className="mt-1.5 text-[11px] italic text-muted-foreground">
             {FOCUS_BLURBS[draftCategory]}
           </p>
 
@@ -327,7 +327,7 @@ export function FocusBoard({
             <button
               type="button"
               onClick={() => setIsCreating(false)}
-              className="h-10 rounded-xl px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="h-10 rounded-xl px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground hover:text-slate-600 dark:hover:text-slate-200"
             >
               Cancel
             </button>
@@ -345,10 +345,10 @@ export function FocusBoard({
 
       {active.length === 0 && !isCreating ? (
         <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-center dark:border-slate-800">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             No active focus
           </p>
-          <p className="mt-1 text-[11px] text-slate-400">
+          <p className="mt-1 text-[11px] text-muted-foreground">
             Set one so the next coach knows what you are working on.
           </p>
         </div>
@@ -363,7 +363,7 @@ export function FocusBoard({
           <button
             type="button"
             onClick={() => setShowPassed((v) => !v)}
-            className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-200"
+            className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-slate-600 dark:hover:text-slate-200"
           >
             <ChevronDown className={cn("h-3 w-3 transition-transform", showPassed && "rotate-180")} />
             {closed.length} past focus{closed.length === 1 ? "" : "es"}

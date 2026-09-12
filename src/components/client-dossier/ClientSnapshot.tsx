@@ -127,7 +127,7 @@ export function ClientSnapshot({
       <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center">
         {/* identity */}
         <div className="flex min-w-0 shrink-0 items-center gap-3 lg:w-64">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-300 bg-slate-200 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-300 bg-slate-200 text-muted-foreground dark:border-slate-700 dark:bg-slate-800">
             {client.photoUrl ? (
               <img
                 src={client.photoUrl}
@@ -142,10 +142,10 @@ export function ClientSnapshot({
             )}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-base font-black uppercase italic tracking-tight text-slate-900 dark:text-white">
+            <p className="truncate text-base font-black uppercase italic tracking-tight text-foreground">
               {client.firstName} {client.lastName}
             </p>
-            <p className="truncate font-mono text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <p className="truncate font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               {identity || "No demographics on file"}
             </p>
           </div>

@@ -324,7 +324,7 @@ export function WorkoutChartGrid({
     });
 
   return (
-    <div className="fixed inset-0 bg-slate-50 dark:bg-[#0A2E46] z-100 flex flex-col overflow-hidden font-sans text-slate-900 dark:text-white">
+    <div className="fixed inset-0 bg-slate-50 dark:bg-[#0A2E46] z-100 flex flex-col overflow-hidden font-sans text-foreground">
       {/* High-Impact Header - Optimized for iPad Contrast */}
       <header className="h-20 bg-white dark:bg-[#0e171e] px-6 sm:px-8 flex items-center justify-between shrink-0 border-b-4 border-[#F06C22]">
         <div className="flex items-center gap-6">
@@ -338,7 +338,7 @@ export function WorkoutChartGrid({
           </Button>
 
           <div className="space-y-0.5">
-            <h1 className="text-2xl sm:text-3xl font-bold italic tracking-tighter uppercase text-slate-900 dark:text-white leading-none">
+            <h1 className="text-2xl sm:text-3xl font-bold italic tracking-tighter uppercase text-foreground leading-none">
               {client.firstName} {client.lastName}
             </h1>
             <div className="flex items-center gap-3">
@@ -410,17 +410,17 @@ export function WorkoutChartGrid({
                 placeholder="SEARCH MACHINES..."
                 value={machineSearchQuery}
                 onChange={(e) => setMachineSearchQuery(e.target.value)}
-                className="h-10 bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl px-4 pl-10 text-[11px] font-bold uppercase tracking-widest text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#F06C22] w-50"
+                className="h-10 bg-slate-100 dark:bg-slate-800 border-2 border-border rounded-xl px-4 pl-10 text-[11px] font-bold uppercase tracking-widest text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#F06C22] w-50"
               />
               <Dumbbell className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             </div>
           </div>
 
           <div className="text-right">
-            <p className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none mb-1">
+            <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-widest leading-none mb-1">
               Historical Span
             </p>
-            <p className="text-lg sm:text-2xl font-bold italic text-slate-900 dark:text-white tracking-tighter leading-none">
+            <p className="text-lg sm:text-2xl font-bold italic text-foreground tracking-tighter leading-none">
               {sessions.length} Sessions
             </p>
           </div>
@@ -487,7 +487,7 @@ export function WorkoutChartGrid({
               {/* Sticky Corner Corner */}
               <th className="sticky left-0 z-50 w-45 sm:w-50 h-12.5 bg-slate-100 dark:bg-[#0e171e] border-r border-b border-slate-200 dark:border-[#F06C22]/20 px-3 sm:px-4 text-left shadow-md">
                 <div className="flex flex-col">
-                  <h3 className="text-[12px] sm:text-[14px] font-bold italic uppercase tracking-tighter text-slate-900 dark:text-white leading-none">
+                  <h3 className="text-[12px] sm:text-[14px] font-bold italic uppercase tracking-tighter text-foreground leading-none">
                     Machine & Setup
                   </h3>
                 </div>
@@ -507,15 +507,15 @@ export function WorkoutChartGrid({
                 return (
                   <th
                     key={session.id || idx}
-                    className="w-21 h-12.5 bg-slate-100 dark:bg-slate-800 border-r border-b border-slate-200 dark:border-slate-700 px-1 text-center group transition-colors hover:bg-slate-200 dark:hover:bg-slate-700 relative"
+                    className="w-21 h-12.5 bg-slate-100 dark:bg-slate-800 border-r border-b border-border px-1 text-center group transition-colors hover:bg-slate-200 dark:hover:bg-slate-700 relative"
                   >
                     <div className="flex flex-col items-center justify-center space-y-1">
-                      <div className="bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-700 rounded-md px-2 py-0.5 shadow-sm group-hover:border-[#F06C22]/50 transition-colors">
+                      <div className="bg-card border border-slate-250 dark:border-slate-700 rounded-md px-2 py-0.5 shadow-sm group-hover:border-[#F06C22]/50 transition-colors">
                         <span className="text-[#F06C22] font-bold tabular-nums text-[11px] leading-none">
                           {sessionNum.toString().padStart(2, "0")}
                         </span>
                       </div>
-                      <p className="text-[11px] font-bold tracking-tighter text-slate-500 dark:text-slate-400 tabular-nums leading-none uppercase">
+                      <p className="text-[11px] font-bold tracking-tighter text-muted-foreground tabular-nums leading-none uppercase">
                         {new Date(
                           parseSessionDate(session.date),
                         ).toLocaleDateString("en-US", {
@@ -532,7 +532,7 @@ export function WorkoutChartGrid({
                 (_, i) => (
                   <th
                     key={`empty-h-${i}`}
-                    className="w-21 h-12.5 bg-slate-50 dark:bg-[#0e171e]/50 border-r border-b border-slate-200 dark:border-slate-700 opacity-20"
+                    className="w-21 h-12.5 bg-slate-50 dark:bg-[#0e171e]/50 border-r border-b border-border opacity-20"
                   />
                 ),
               )}
@@ -579,7 +579,7 @@ export function WorkoutChartGrid({
                       </div>
 
                       {/* Settings Component */}
-                      <div className="flex flex-wrap gap-x-2 gap-y-0 bg-slate-100 dark:bg-slate-900/50 px-1 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 transition-all group/settings mt-0.5">
+                      <div className="flex flex-wrap gap-x-2 gap-y-0 bg-slate-100 dark:bg-slate-900/50 px-1 py-0.5 rounded-md border border-border transition-all group/settings mt-0.5">
                         {(() => {
                           const studioObj = studios?.find(
                             (s) => s.id === activeStudioId,
@@ -619,7 +619,7 @@ export function WorkoutChartGrid({
                     return (
                       <td
                         key={session.id}
-                        className="w-21 px-1 border-r border-slate-200 dark:border-slate-700 text-center align-middle hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                        className="w-21 px-1 border-r border-border text-center align-middle hover:bg-slate-100 dark:hover:bg-slate-700/50"
                       >
                         {log ? (
                           log.reps === "0" && log.seconds === "0" ? (
@@ -631,7 +631,7 @@ export function WorkoutChartGrid({
                           ) : (
                             <div className="flex flex-col items-center justify-center">
                               <div className="flex items-baseline gap-0.5">
-                                <span className="text-[14px] font-bold tracking-tighter text-slate-900 dark:text-white tabular-nums leading-none">
+                                <span className="text-[14px] font-bold tracking-tighter text-foreground tabular-nums leading-none">
                                   {log.weight}
                                 </span>
                               </div>
@@ -650,7 +650,7 @@ export function WorkoutChartGrid({
                                       ? log.seconds || "--"
                                       : log.reps || "--"}
                                 </span>
-                                <span className="text-[7px] font-bold uppercase text-slate-400 tabular-nums">
+                                <span className="text-[7px] font-bold uppercase text-muted-foreground tabular-nums">
                                   {log.repsLeft !== undefined &&
                                   log.repsRight !== undefined
                                     ? ""
@@ -686,7 +686,7 @@ export function WorkoutChartGrid({
                   }).map((_, i) => (
                     <td
                       key={`empty-c-${i}`}
-                      className="w-21 bg-slate-50 dark:bg-[#0e171e]/2 border-r border-slate-200 dark:border-slate-700"
+                      className="w-21 bg-slate-50 dark:bg-[#0e171e]/2 border-r border-border"
                     />
                   ))}
                 </tr>
@@ -697,7 +697,7 @@ export function WorkoutChartGrid({
       </div>
 
       {/* FOOTER / STATUS BAR */}
-      <footer className="h-16 bg-white dark:bg-[#0A2E46] border-t border-slate-200 dark:border-slate-700 px-8 flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest shrink-0">
+      <footer className="h-16 bg-white dark:bg-[#0A2E46] border-t border-border px-8 flex items-center justify-between text-muted-foreground text-[11px] font-bold uppercase tracking-widest shrink-0">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-[#F06C22]" />

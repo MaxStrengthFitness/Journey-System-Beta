@@ -34,7 +34,7 @@ export function FieldLabel({
   const meta = source && source !== "coach" ? SOURCE_META[source] : null;
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+      <span className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
         {children}
       </span>
       {meta && (
@@ -87,7 +87,7 @@ export function TextField({
         onChange={(e) => onChange(e.target.value)}
         className={inputBase}
       />
-      {hint && <p className="text-[10.5px] leading-tight text-slate-400">{hint}</p>}
+      {hint && <p className="text-[10.5px] leading-tight text-muted-foreground">{hint}</p>}
     </div>
   );
 }
@@ -120,7 +120,7 @@ export function TextAreaField({
           "h-auto resize-y py-3 leading-relaxed",
         )}
       />
-      {hint && <p className="text-[10.5px] leading-tight text-slate-400">{hint}</p>}
+      {hint && <p className="text-[10.5px] leading-tight text-muted-foreground">{hint}</p>}
     </div>
   );
 }
@@ -155,7 +155,7 @@ export function SelectField({
           </option>
         ))}
       </select>
-      {hint && <p className="text-[10.5px] leading-tight text-slate-400">{hint}</p>}
+      {hint && <p className="text-[10.5px] leading-tight text-muted-foreground">{hint}</p>}
     </div>
   );
 }
@@ -208,7 +208,7 @@ export function ReadOnlyField({
           {empty ? "Not synced" : value}
         </span>
       </div>
-      {hint && <p className="text-[10.5px] leading-tight text-slate-400">{hint}</p>}
+      {hint && <p className="text-[10.5px] leading-tight text-muted-foreground">{hint}</p>}
     </div>
   );
 }
@@ -246,10 +246,10 @@ export function DossierSectionShell({
             <span className="mt-0.5 shrink-0 text-[#38BDF8] opacity-80">{icon}</span>
           )}
           <div className="min-w-0">
-            <h3 className="text-xl font-black uppercase italic tracking-tight text-slate-900 dark:text-white">
+            <h3 className="text-xl font-black uppercase italic tracking-tight text-foreground">
               {title}
             </h3>
-            <p className="text-[12px] text-slate-500 dark:text-slate-400">{blurb}</p>
+            <p className="text-[12px] text-muted-foreground">{blurb}</p>
           </div>
         </div>
         {!!noteCount && (
@@ -276,7 +276,7 @@ export function FieldGroup({
   return (
     <div className="flex flex-col gap-3">
       {title && (
-        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
           {title}
         </span>
       )}

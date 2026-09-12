@@ -83,7 +83,7 @@ const RENEWAL_TONE: Record<RenewalTileState["tone"], string> = {
   ok: "text-emerald-700 dark:text-emerald-400",
   warn: "text-amber-700 dark:text-amber-400",
   alert: "text-rose-700 dark:text-rose-400",
-  neutral: "text-slate-500 dark:text-slate-400",
+  neutral: "text-muted-foreground",
 };
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -166,7 +166,7 @@ function Stat({
         className,
       )}
     >
-      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 leading-none">{label}</span>
+      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">{label}</span>
       <span className="flex items-center gap-2 min-w-0 text-[15px] font-bold leading-tight text-slate-900 dark:text-slate-50">
         {icon && <span className="shrink-0 text-slate-400 dark:text-slate-500 [&>svg]:w-4 [&>svg]:h-4">{icon}</span>}
         <span className="min-w-0 flex items-center gap-2 [&>.truncate]:min-w-0">{children}</span>
@@ -282,12 +282,12 @@ export function ProfileHeader({
         </Avatar>
 
         <div className="min-w-0 flex-1 xl:max-w-[240px] 2xl:max-w-[320px]">
-          <h1 className="text-2xl md:text-[26px] xl:text-[28px] font-black tracking-tight leading-none text-slate-900 dark:text-white truncate">
+          <h1 className="text-2xl md:text-[26px] xl:text-[28px] font-black tracking-tight leading-none text-foreground truncate">
             {client.firstName} {client.lastName}
           </h1>
           <div className="mt-1.5 flex items-center gap-2.5 min-w-0">
             <BrandTiles size={6} gap={2} />
-            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 truncate">
+            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground truncate">
               <span>{studioName}</span>
               {since && (
                 <span className="xl:hidden 2xl:inline">
@@ -330,7 +330,7 @@ export function ProfileHeader({
               kaizen.busy && "opacity-50",
               kaizen.isOn
                 ? "border-transparent bg-[#0a548b]/10 text-[#034a84] dark:bg-[#4a9fd8]/15 dark:text-[#7cc0ee]"
-                : "border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-[#034a84] dark:hover:text-[#7cc0ee]",
+                : "border-slate-200 dark:border-slate-800 text-muted-foreground hover:text-[#034a84] dark:hover:text-[#7cc0ee]",
             )}
           >
             <svg
@@ -357,7 +357,7 @@ export function ProfileHeader({
               <span className="hidden sm:inline">In progress</span>
               <span className="text-white/80 text-xs not-italic font-sans font-bold">({activeInProgressSession.trainerInitials})</span>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2 bg-card border-slate-200 dark:border-slate-800">
               <div className="px-3 py-2 mb-2 border-b border-slate-200 dark:border-slate-800">
                 <p className="text-[11px] font-medium uppercase text-amber-500 tracking-widest">Active session detected</p>
                 <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200 mt-1">
@@ -422,11 +422,11 @@ export function ProfileHeader({
               : undefined
           }
         >
-          {topTrainer.top?.name ? <span className="truncate">{topTrainer.top.name}</span> : <span className="text-slate-400 font-medium">Not yet</span>}
+          {topTrainer.top?.name ? <span className="truncate">{topTrainer.top.name}</span> : <span className="text-muted-foreground font-medium">Not yet</span>}
         </Stat>
 
         <Stat label="Last session" icon={<History />} sub={lastMs ? relativeDays(lastMs) ?? undefined : undefined}>
-          {lastLabel ?? <span className="text-slate-400 font-medium">No sessions yet</span>}
+          {lastLabel ?? <span className="text-muted-foreground font-medium">No sessions yet</span>}
         </Stat>
 
         <Stat
@@ -435,11 +435,11 @@ export function ProfileHeader({
           sub={
             nextDate && daysUntil(nextDate) && nextDay !== "Today" && nextDay !== "Tomorrow" ? (
               <span className="inline-flex items-center gap-2">
-                <span className="text-slate-400">{daysUntil(nextDate)}</span>
+                <span className="text-muted-foreground">{daysUntil(nextDate)}</span>
               </span>
             ) : nextDate ? (
               <span className="inline-flex items-center gap-2">
-                <span className="text-slate-400">{MONTHS[nextDate.getMonth()]} {nextDate.getDate()}</span>
+                <span className="text-muted-foreground">{MONTHS[nextDate.getMonth()]} {nextDate.getDate()}</span>
               </span>
             ) : undefined
           }
@@ -455,7 +455,7 @@ export function ProfileHeader({
               )}
             </>
           ) : (
-            <span className="text-slate-400 font-medium italic">Not scheduled</span>
+            <span className="text-muted-foreground font-medium italic">Not scheduled</span>
           )}
         </Stat>
 

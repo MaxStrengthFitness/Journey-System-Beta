@@ -265,13 +265,13 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
           // No `overflow-hidden` in the inline variant: it would cut the
           // sticky jump rail and the sticky save bar out of the page scroll.
           ? `flex flex-col rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${className || ""}`
-          : "fixed inset-0 z-100 flex flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-none overflow-hidden m-0 animate-in fade-in zoom-in-[0.98] duration-200"
+          : "fixed inset-0 z-100 flex flex-col bg-card text-foreground border-none overflow-hidden m-0 animate-in fade-in zoom-in-[0.98] duration-200"
       }
     >
       {inline ? (
         /* Slim inline bar: the tab already says "Details", so no title here. */
         <div className="px-4 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900/60">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2 min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 min-w-0">
             <span className="text-[#0a548b] dark:text-[#8cc4f2] truncate">
               {client.firstName} {client.lastName}
             </span>
@@ -289,7 +289,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
               window.dispatchEvent(new CustomEvent("open-bulk-import"));
             }}
             variant="outline"
-            className="h-9 rounded-xl border-slate-200 dark:border-slate-700 text-[10px] font-bold uppercase tracking-widest px-3 flex items-center gap-2 shrink-0"
+            className="h-9 rounded-xl border-border text-[10px] font-bold uppercase tracking-widest px-3 flex items-center gap-2 shrink-0"
           >
             <Maximize className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Migration Hub (OCR)</span>
@@ -298,15 +298,15 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
       ) : (
       <div className="p-6 md:px-10 md:py-8 border-b border-slate-200 dark:border-slate-800 flex flex-row items-start justify-between gap-2 shadow-sm bg-slate-50 dark:bg-slate-900">
         <div>
-          <h2 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white">
+          <h2 className="text-3xl font-black uppercase italic tracking-tighter text-foreground">
             Client Information
           </h2>
           <p className="text-sm font-bold uppercase tracking-widest text-[#38BDF8] flex items-center gap-2 mt-1">
             {client.firstName} {client.lastName}
             {client.mindbodyId && (
               <>
-                <span className="text-slate-400 text-[10px]">•</span>
-                <span className="text-slate-500 dark:text-slate-400">
+                <span className="text-muted-foreground text-[10px]">•</span>
+                <span className="text-muted-foreground">
                   MBO ID: {client.mindbodyId}
                 </span>
               </>
@@ -329,7 +329,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
             variant="ghost"
             size="icon"
             onClick={() => onOpenChange(false)}
-            className="rounded-xl w-12 h-12 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+            className="rounded-xl w-12 h-12 text-muted-foreground hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
           >
             <X className="w-6 h-6" />
           </Button>

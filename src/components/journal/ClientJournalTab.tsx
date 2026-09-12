@@ -278,7 +278,7 @@ export function ClientJournalTab({
   const filterRail = (
     <div className="space-y-4">
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -288,7 +288,7 @@ export function ClientJournalTab({
       </div>
 
       <div>
-        <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
           Type
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -321,7 +321,7 @@ export function ClientJournalTab({
 
       {coaches.length > 1 && (
         <div>
-          <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             Coach
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -343,7 +343,7 @@ export function ClientJournalTab({
       )}
 
       <div>
-        <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
           When
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -359,7 +359,7 @@ export function ClientJournalTab({
         <button
           type="button"
           onClick={clearFilters}
-          className="inline-flex h-9 items-center gap-1.5 rounded-xl px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-200"
+          className="inline-flex h-9 items-center gap-1.5 rounded-xl px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-slate-600 dark:hover:text-slate-200"
         >
           <X className="h-3 w-3" /> Clear filters
         </button>
@@ -401,7 +401,7 @@ export function ClientJournalTab({
           <a
             key={area.id}
             href={`#${area.id}`}
-            className="shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-500 transition-colors hover:border-[#F06C22]/40 hover:text-[#F06C22] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+            className="shrink-0 rounded-xl border border-slate-200 bg-card px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground transition-colors hover:border-[#F06C22]/40 hover:text-[#F06C22] dark:border-slate-800"
           >
             {area.label}
           </a>
@@ -478,7 +478,7 @@ export function ClientJournalTab({
                   "inline-flex h-10 items-center gap-1.5 rounded-xl border px-3.5 text-[11px] font-black uppercase tracking-wider transition-colors",
                   filtersActive
                     ? "border-[#F06C22]/30 bg-[#F06C22]/10 text-[#F06C22]"
-                    : "border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400",
+                    : "border-slate-200 bg-slate-50 text-muted-foreground dark:border-slate-800 dark:bg-slate-800/40",
                 )}
               >
                 <Filter className="h-3.5 w-3.5" />
@@ -493,16 +493,16 @@ export function ClientJournalTab({
             </div>
 
             <div className="flex items-baseline justify-between gap-2">
-              <h4 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+              <h4 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                 Timeline
               </h4>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 {visible.length} of {entries.length}
               </span>
             </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 py-16 text-slate-400 dark:border-slate-800">
+          <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 py-16 text-muted-foreground dark:border-slate-800">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="text-xs font-bold uppercase tracking-wider">Loading journal</span>
           </div>
@@ -511,10 +511,10 @@ export function ClientJournalTab({
             {entries.length === 0 ? (
               <>
                 <BookOpen className="mb-3 h-9 w-9 text-slate-300 dark:text-slate-700" />
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Nothing logged yet
                 </p>
-                <p className="mt-1 max-w-xs text-[11px] text-slate-400">
+                <p className="mt-1 max-w-xs text-[11px] text-muted-foreground">
                   Write the first entry above. Consultation notes, incidents and
                   session notes from elsewhere in the app land here automatically.
                 </p>
@@ -522,13 +522,13 @@ export function ClientJournalTab({
             ) : (
               <>
                 <Clock className="mb-3 h-9 w-9 text-slate-300 dark:text-slate-700" />
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   No entries match these filters
                 </p>
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="mt-3 h-10 rounded-xl border border-slate-200 px-4 text-[11px] font-black uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                  className="mt-3 h-10 rounded-xl border border-border px-4 text-[11px] font-black uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
                   Clear filters
                 </button>
@@ -540,7 +540,7 @@ export function ClientJournalTab({
             {grouped.map((group) => (
               <section key={group.label}>
                 <div className="mb-2 flex items-center gap-3">
-                  <h4 className="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                  <h4 className="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">
                     {group.label}
                   </h4>
                   <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
@@ -610,12 +610,12 @@ function JournalArea({
   return (
     <section id={id} className="scroll-mt-16">
       <div className="mb-3 flex items-baseline gap-3">
-        <h3 className="font-display text-lg font-black uppercase italic tracking-tight text-slate-900 dark:text-white">
+        <h3 className="font-display text-lg font-black uppercase italic tracking-tight text-foreground">
           {title}
         </h3>
         <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
       </div>
-      <p className="mb-3 text-[11px] font-medium text-slate-500 dark:text-slate-400">{blurb}</p>
+      <p className="mb-3 text-[11px] font-medium text-muted-foreground">{blurb}</p>
       {children}
     </section>
   );
@@ -644,16 +644,16 @@ function ReferenceShelf({
         className="flex w-full items-center justify-between gap-2 text-left"
       >
         <span>
-          <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+          <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
             Intake &amp; imported
           </span>
-          <span className="block text-[11px] text-slate-400">
+          <span className="block text-[11px] text-muted-foreground">
             {entries.length} read-only {entries.length === 1 ? "note" : "notes"}
           </span>
         </span>
         <ChevronDown
           className={cn(
-            "h-4 w-4 shrink-0 text-slate-400 transition-transform",
+            "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
             open && "rotate-180",
           )}
         />
@@ -694,7 +694,7 @@ function FilterChip({
         on
           ? activeClass ||
               "border-[#F06C22]/30 bg-[#F06C22]/10 text-[#F06C22]"
-          : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400 dark:hover:bg-slate-800",
+          : "border-slate-200 bg-slate-50 text-muted-foreground hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:bg-slate-800",
       )}
     >
       {children}

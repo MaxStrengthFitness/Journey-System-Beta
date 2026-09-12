@@ -33,7 +33,7 @@ const CARD =
   "p-5 border border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-800/60 shadow-sm";
 
 const EMPTY =
-  "text-xs text-slate-500 dark:text-slate-400 font-medium italic px-1";
+  "text-xs text-muted-foreground font-medium italic px-1";
 
 /** Small uppercase key/value pair matching the Admin tab's field rhythm. */
 const MetaItem: React.FC<{ label: string; value: React.ReactNode }> = ({
@@ -41,7 +41,7 @@ const MetaItem: React.FC<{ label: string; value: React.ReactNode }> = ({
   value,
 }) => (
   <div className="space-y-1">
-    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
       {label}
     </p>
     <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
@@ -55,7 +55,7 @@ const StatusPill: React.FC<{ active: boolean }> = ({ active }) => (
     className={`shrink-0 px-3 py-1 rounded-xl text-[10px] font-extrabold uppercase tracking-widest border ${
       active
         ? "bg-[#38BDF8]/15 text-[#0284c7] dark:text-[#38BDF8] border-[#38BDF8]/40"
-        : "bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700"
+        : "bg-slate-200 dark:bg-slate-800 text-muted-foreground border-slate-300 dark:border-slate-700"
     }`}
   >
     {active ? "Active" : "Cancelled"}
@@ -78,7 +78,7 @@ const MembershipRow: React.FC<{ membership: MindbodyMembership }> = ({
           <p className="text-sm font-bold text-slate-800 dark:text-slate-200 break-words">
             {membership.membershipName || `Membership #${membership.membershipId}`}
           </p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
             MBO ID {membership.membershipId}
             {membership.programName ? ` • ${membership.programName}` : ""}
             {typeof membership.sessionsRemaining === "number"
@@ -121,7 +121,7 @@ const ServiceRow: React.FC<{ service: MindbodyService }> = ({ service }) => {
           <p className="text-sm font-bold text-slate-800 dark:text-slate-200 break-words">
             {service.name || `Pricing option #${service.serviceId}`}
           </p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
             {[left, expires ? `Expires ${expires}` : null, service.current === false ? "Not current in MindBody" : null]
               .filter(Boolean)
               .join(" • ") || `MBO ID ${service.serviceId}`}
@@ -152,7 +152,7 @@ const ContractCard: React.FC<{ contract: MindbodyContract }> = ({
             <p className="text-sm font-bold text-slate-800 dark:text-slate-200 break-words">
               {contract.contractName || `Contract #${contract.clientContractId}`}
             </p>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
               Client contract {contract.clientContractId}
               {contract.soldByStaffName
                 ? ` • Sold by ${contract.soldByStaffName}`
@@ -207,7 +207,7 @@ const ContractCard: React.FC<{ contract: MindbodyContract }> = ({
       )}
 
       {!active && formatMindbodyDate(contract.cancelledAt) && (
-        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
           Cancelled {formatMindbodyDate(contract.cancelledAt)}
         </p>
       )}
