@@ -619,6 +619,44 @@ service cloud.firestore {
           && (!('learningLink' in d) || learningLinkValid(d.learningLink));
     }
 
+    /**
+     * The update rule for hub_announcements, extracted so getRole() is called
+     * once (via let) instead of 7+ times through canPostAnnouncements /
+     * isSuperAdmin / isFranchiseOwnerOnly — each of those calls getRole(),
+     * and stacking them blows Firestore's 1000-expression budget.
+     * let statements are valid inside function bodies but not in allow conditions.
+     */
+    function hubAnnouncementUpdateAllowed() {
+      let r = getRole();
+      return (
+        (
+          // Everyone who was there is still there, and the
+          // only name added is the caller's own.
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy'])
+          && request.resource.data.readBy is list
+          && request.resource.data.readBy.toSet()
+               .hasAll(resource.data.get('readBy', []).toSet())
+          && request.resource.data.readBy.toSet()
+               .difference(resource.data.get('readBy', []).toSet())
+               .hasOnly([request.auth.uid])
+        ) || (
+          // Lengths are checked on create only, so a notice written before
+          // the limits can still be taken down. A studio owner changes only
+          // their own notices; the Operations tab's people, any. The author
+          // and the reach stay what they were allowed to be.
+          (roleIsSuper(r) || roleIsFranchise(r) || r == 'StudioOwner')
+          && (resource.data.get('authorId', '') == request.auth.uid
+              || roleIsSuper(r) || roleIsFranchise(r))
+          && request.resource.data.get('authorId', '') == resource.data.get('authorId', '')
+          && (roleIsSuper(r) || roleIsFranchise(r)
+              || !reachesEveryStudio(request.resource.data))
+          && isValidHubAnnouncement(request.resource.data)
+          && (!('learningLink' in request.resource.data)
+              || learningLinkValid(request.resource.data.learningLink))
+        )
+      );
+    }
+
     // ===============================================================
     // COLLECTION ENDPOINTS SECURITY PATHS
     // ===============================================================
@@ -1932,40 +1970,7 @@ service cloud.firestore {
                     && (isSuperAdmin() || isFranchiseOwnerOnly()
                         || !reachesEveryStudio(request.resource.data))
                     && announcementShapeValid(request.resource.data);
-      allow update: if isAuthenticated() && (
-                      // Compute role once — the old form called getRole() 7+
-                      // times via canPostAnnouncements / isSuperAdmin /
-                      // isFranchiseOwnerOnly, blowing the 1000-expression budget.
-                      let r = getRole();
-                      in (
-                        (
-                          // Everyone who was there is still there, and the
-                          // only name added is the caller's own.
-                          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy'])
-                          && request.resource.data.readBy is list
-                          && request.resource.data.readBy.toSet()
-                               .hasAll(resource.data.get('readBy', []).toSet())
-                          && request.resource.data.readBy.toSet()
-                               .difference(resource.data.get('readBy', []).toSet())
-                               .hasOnly([request.auth.uid])
-                        ) || (
-                          // Lengths are checked on create only, so a notice
-                          // written before the limits can still be taken down.
-                          // A studio owner changes only their own notices;
-                          // the Operations tab's people, any. The author and
-                          // the reach stay what they were allowed to be.
-                          (roleIsSuper(r) || roleIsFranchise(r) || r == 'StudioOwner')
-                          && (resource.data.get('authorId', '') == request.auth.uid
-                              || roleIsSuper(r) || roleIsFranchise(r))
-                          && request.resource.data.get('authorId', '') == resource.data.get('authorId', '')
-                          && (roleIsSuper(r) || roleIsFranchise(r)
-                              || !reachesEveryStudio(request.resource.data))
-                          && isValidHubAnnouncement(request.resource.data)
-                          && (!('learningLink' in request.resource.data)
-                              || learningLinkValid(request.resource.data.learningLink))
-                        )
-                      )
-                    );
+      allow update: if isAuthenticated() && hubAnnouncementUpdateAllowed();
       allow delete: if isSuperAdmin() || isFranchiseOwner() || 
                     (resource.data.studioId != null && isStudioOwnerOrHeadTrainer(resource.data.studioId));
     }
