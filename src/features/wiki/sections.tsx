@@ -47,6 +47,26 @@ export interface WikiSectionsValue {
   /** The id of the section on screen. */
   active: string;
   onSelect: (id: string) => void;
+
+  /*
+   * THE MASTHEAD (Learning + Planner round, Sep 11 2026). AJ: "the learning
+   * section just doesn't feel like it has a good header". Nothing on screen
+   * was titled Learning, the section switch shared one crowded bar with the
+   * breadcrumb, and each half had its own search. When `title` is set the
+   * shell renders a proper masthead instead: the title, the sections and ONE
+   * search on the first row, and the trail — only where there is one — on a
+   * row of its own. Without it the shell renders exactly as it did before.
+   */
+  /** "Learning". Setting it switches the shell to the masthead layout. */
+  title?: string;
+  /** A glyph before the title. */
+  titleIcon?: ReactNode;
+  /** Tapping the title: the section's front page. */
+  onHome?: () => void;
+  /** One search for everything in the tab. Wins over each screen's own. */
+  onSearch?: () => void;
+  /** What the search button says. */
+  searchLabel?: string;
 }
 
 const WikiSectionsContext = createContext<WikiSectionsValue | null>(null);

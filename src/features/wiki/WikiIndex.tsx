@@ -204,13 +204,28 @@ export interface WikiRowProps {
   title: string;
   /** The line under the title — pattern, region, reading time. */
   meta?: string;
+  /**
+   * The entry's catalog code, shown as a chip before the title: the Academy's
+   * own abbreviation for a machine ("CP", "LP", "Pd"). Trainers already say
+   * these on the floor — the Academy writes routines as "ADD, SD, CR, TR" —
+   * so a code beside every name is what makes the list read like a system
+   * catalog rather than a menu. Optional: an entry without one lines up by
+   * the title as before.
+   */
+  code?: string | null;
+  /**
+   * A third column on a wide screen only (1024px and up): the primary
+   * muscles, say. Hidden below that, where the row has no room for it and
+   * the article is one tap away.
+   */
+  detail?: string;
   badges?: ReactNode;
   onClick: () => void;
   /** Highlights the row a split-layout reader is currently on. */
   current?: boolean;
 }
 
-export function WikiRow({ title, meta, badges, onClick, current }: WikiRowProps) {
+export function WikiRow({ title, meta, code, detail, badges, onClick, current }: WikiRowProps) {
   return (
     <button
       type="button"
@@ -218,11 +233,19 @@ export function WikiRow({ title, meta, badges, onClick, current }: WikiRowProps)
       aria-current={current ? "true" : undefined}
       onClick={onClick}
     >
+      {code && (
+        <span className="wk__row-code" aria-hidden>
+          {code}
+        </span>
+      )}
       <span className="wk__row-main">
         <span className="wk__row-title">{title}</span>
         {meta && <span className="wk__row-meta">{meta}</span>}
       </span>
       {badges && <span className="wk__row-badges">{badges}</span>}
+      {/* After the badges, so on a wide screen the detail is a true column:
+          same edge on every row, whatever badges a row happens to carry. */}
+      {detail && <span className="wk__row-detail">{detail}</span>}
       <ChevronRight size={16} className="wk__row-chev" aria-hidden />
     </button>
   );

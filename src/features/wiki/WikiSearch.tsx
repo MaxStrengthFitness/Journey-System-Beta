@@ -41,6 +41,8 @@ export interface WikiSearchItem {
   /** The line under the title — a category, a module, a reading time. */
   meta?: string;
   accent?: WikiAccent;
+  /** A catalog code, as on WikiRow ("CP"). */
+  code?: string | null;
 }
 
 export interface WikiSearchGroup {
@@ -160,7 +162,13 @@ export function WikiSearch({
                         style={accentStyle(accent)}
                         onClick={() => onPick(item.id, g.key)}
                       >
-                        <Icon size={15} className="wk__hit-icon" aria-hidden />
+                        {item.code ? (
+                          <span className="wk__row-code" aria-hidden>
+                            {item.code}
+                          </span>
+                        ) : (
+                          <Icon size={15} className="wk__hit-icon" aria-hidden />
+                        )}
                         <span className="wk__hit-main">
                           <span className="wk__hit-title">{item.title}</span>
                           {item.meta && (

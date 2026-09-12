@@ -35,6 +35,7 @@ import {
   type TaskRow,
 } from "../studio-tasks";
 import { useAcademyCards, useAcademyScripts } from "../academy/useAcademyContent";
+import { abbr } from "../routine-builder/academy";
 import { machinesForBodySlug } from "./anatomy";
 import {
   dayKey,
@@ -44,8 +45,6 @@ import {
   searchMachines,
   upkeepByMachine,
   upkeepEventsFrom,
-  GROUPING_LABEL,
-  GROUPING_MODES,
 } from "./grouping";
 import { MachineArticle } from "./MachineArticle";
 import { MachineFigure } from "./MachineFigure";
@@ -107,6 +106,29 @@ import type { GroupingMode } from "./types";
 /** Machines shown under "Related" on an article. Six is two rows of chips. */
 const MAX_RELATED = 6;
 
+/**
+ * The index's grouping switch, in the wiki's own order and words.
+ *
+ * Category first, because it is the default and the vocabulary a trainer
+ * plans in. It was labelled "Academy", which put a second "Academy" a few
+ * pixels under the Learning tab's Academy section — one word, two meanings.
+ * The legacy picker keeps GROUPING_MODES / GROUPING_LABEL as they were.
+ */
+const WIKI_GROUPINGS: { mode: GroupingMode; label: string }[] = [
+  { mode: "academy", label: "Category" },
+  { mode: "movement", label: "Kinematics" },
+  { mode: "region", label: "Region" },
+];
+
+/** The primary muscles, without the parenthetical detail, for the wide row. */
+function musclesLine(targetMuscles: string[]): string {
+  return targetMuscles
+    .slice(0, 3)
+    .map((t) => t.replace(/\s*\([^)]*\)\s*/g, " ").trim())
+    .filter(Boolean)
+    .join(" · ");
+}
+
 type Route =
   | { kind: "index" }
   | { kind: "machine"; id: string }
@@ -125,6 +147,12 @@ export interface CatalogWikiViewProps {
   /** Called once `openMachineId` has been honoured, so it cannot re-fire. */
   onOpenedMachine?: () => void;
   /**
+   * Open the index scrolled to this category (an Academy category key). Set
+   * by the Learning front page's category tiles. Cleared the same way.
+   */
+  openGroupKey?: string | null;
+  onOpenedGroup?: () => void;
+  /**
    * Jump to the Academy tab at this machine's card or script. Owned by
    * AppContent because it is a tab switch. When absent, the Academy
    * cross-links are simply not offered — this screen never renders the
@@ -142,6 +170,8 @@ export function CatalogWikiView({
   authTrainer,
   openMachineId,
   onOpenedMachine,
+  openGroupKey,
+  onOpenedGroup,
   onOpenAcademy,
 }: CatalogWikiViewProps) {
   const { activeStudioId, activeStudio } = useActiveStudio();
@@ -213,6 +243,21 @@ export function CatalogWikiView({
     onOpenedMachine?.();
   }, [openMachineId, onOpenedMachine]);
 
+  /*
+   * A category to scroll the index to: from the front page's tiles, or from
+   * the category crumb on a machine page. Held until the index has rendered,
+   * because the group's element does not exist before it has.
+   */
+  const [pendingGroup, setPendingGroup] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openGroupKey) return;
+    setGrouping("academy");
+    setRoute({ kind: "index" });
+    setPendingGroup(openGroupKey);
+    onOpenedGroup?.();
+  }, [openGroupKey, onOpenedGroup]);
+
   // Turn the figure to the side that actually shows the activation, on every
   // path that can change the selection. Doing this in a click handler is what
   // let the old carousel leave Hip Abduction on the anterior view, where none
@@ -236,6 +281,19 @@ export function CatalogWikiView({
     () => groupMachines(catalogMachines, grouping),
     [catalogMachines, grouping],
   );
+
+  useEffect(() => {
+    if (!pendingGroup || route.kind !== "index") return;
+    const target = groupElementId(pendingGroup);
+    // After paint: the index has only just been rendered in place of the page.
+    // Cleared INSIDE the frame: clearing it here would re-render, run this
+    // effect's cleanup and cancel the frame before it ever fired.
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(target)?.scrollIntoView({ block: "start" });
+      setPendingGroup(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pendingGroup, route, groups]);
 
   const machineTaskRows = useMemo(() => {
     const map: Record<string, TaskRow[]> = {};
@@ -298,19 +356,19 @@ export function CatalogWikiView({
   /* ── empty roster ──────────────────────────────────────────────── */
 
   if (catalogMachines.length === 0) {
+    // Inside the shell, so the Learning masthead (and with it the way to the
+    // other sections) is still there on an empty studio.
     return (
-      <div className="wk">
-        <div className="wk__scroll">
-          <div className="wk__placeholder">
-            <p className="wk__placeholder-title">No machines yet</p>
-            <p className="wk__placeholder-body">
-              {activeStudioId
-                ? `${activeStudio?.name ?? "This studio"} has no machines on its roster. Add equipment from Hub → Machine Settings.`
-                : "Select a studio to see its equipment."}
-            </p>
-          </div>
+      <WikiShell crumbs={[{ label: "Catalog" }]}>
+        <div className="wk__placeholder">
+          <p className="wk__placeholder-title">No machines yet</p>
+          <p className="wk__placeholder-body">
+            {activeStudioId
+              ? `${activeStudio?.name ?? "This studio"} has no machines on its roster. Add equipment from Hub → Machine Settings.`
+              : "Select a studio to see its equipment."}
+          </p>
         </div>
-      </div>
+      </WikiShell>
     );
   }
 
@@ -325,6 +383,7 @@ export function CatalogWikiView({
         items: hits.map((m) => ({
           id: m.id,
           title: m.name,
+          code: abbr(m.id),
           meta: m.movementPattern || m.anatomicalRegion,
           accent: accentForPattern(m.movementPattern),
         })),
@@ -360,7 +419,13 @@ export function CatalogWikiView({
 
     const crumbs: WikiCrumb[] = [
       { label: "Catalog", onClick: openIndex },
-      { label: groupLabel, onClick: openIndex },
+      {
+        label: groupLabel,
+        onClick: () => {
+          openIndex();
+          setPendingGroup(groupKey);
+        },
+      },
       { label: selected.name },
     ];
 
@@ -537,8 +602,8 @@ export function CatalogWikiView({
       onOpenSearch={() => setRoute({ kind: "search" })}
     >
       <WikiIndexHeader
-        title="Catalog"
-        subtitle={`${catalogMachines.length} machine${catalogMachines.length === 1 ? "" : "s"}${activeStudio?.name ? ` at ${activeStudio.name}` : ""}. Every machine on this floor, what it trains, and how this studio runs it.`}
+        title={activeStudio?.name ? `Machines at ${activeStudio.name}` : "Machines"}
+        subtitle={`${catalogMachines.length} machine${catalogMachines.length === 1 ? "" : "s"}, each with its Academy code. What every machine on this floor trains, how ${activeStudio?.name ?? "this studio"} sets it up, and how it is running today.`}
         stats={[
           { label: "On the roster", value: catalogMachines.length },
           {
@@ -558,7 +623,7 @@ export function CatalogWikiView({
             sheet. Changing it re-labels the contents and re-sorts the list in
             place; nothing opens, closes or filters. */}
         <div className="wk__seg" role="group" aria-label="Group machines by">
-          {GROUPING_MODES.map((mode) => (
+          {WIKI_GROUPINGS.map(({ mode, label }) => (
             <button
               key={mode}
               type="button"
@@ -566,7 +631,7 @@ export function CatalogWikiView({
               aria-pressed={grouping === mode}
               onClick={() => setGrouping(mode)}
             >
-              {GROUPING_LABEL[mode]}
+              {label}
             </button>
           ))}
         </div>
@@ -595,11 +660,13 @@ export function CatalogWikiView({
               <WikiRow
                 key={m.id}
                 title={m.name}
+                code={abbr(m.id)}
                 meta={
                   grouping === "movement"
                     ? m.anatomicalRegion
                     : m.movementPattern || m.anatomicalRegion
                 }
+                detail={musclesLine(m.targetMuscles)}
                 onClick={() => openMachine(m.id)}
                 badges={
                   showBadges ? (

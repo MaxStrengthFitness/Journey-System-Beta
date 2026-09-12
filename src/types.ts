@@ -1571,6 +1571,9 @@ export type View =
   /* The MSF Academy, its own tab since the Wiki Redesign (Sep 2026). It used
      to be a pane rendered inside "machine-anatomy". */
   | "academy"
+  /* Learning's front page (Learning + Planner round, Sep 2026). The Catalog
+     and the Academy are its other two sections — features/learning. */
+  | "learning"
   | "studio-tasks"
   | "client-directory"
   | "chart-importer"

@@ -86,6 +86,24 @@ export function WikiShell({
     : undefined;
   const hideTrail = trailRepeatsSection(crumbs, sections);
 
+  if (sections?.title) {
+    return (
+      <MastheadShell
+        sections={sections}
+        crumbs={crumbs}
+        up={up}
+        sectionRoot={sectionRoot}
+        hideTrail={hideTrail}
+        onOpenSearch={sections.onSearch ?? onOpenSearch}
+        searchLabel={sections.searchLabel ?? searchLabel}
+        actions={actions}
+        className={className}
+      >
+        {children}
+      </MastheadShell>
+    );
+  }
+
   return (
     <div className={`wk${className ? ` ${className}` : ""}`}>
       <header className="wk__bar">
@@ -165,6 +183,131 @@ export function WikiShell({
           )}
         </div>
       </header>
+
+      <div className="wk__scroll">{children}</div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * The masthead layout (Learning + Planner round, Sep 11 2026)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Two rows instead of one.
+ *
+ * Row one is the same on every page of the tab: the title (tap it for the
+ * front page), the sections, and one search. Row two is where you are and
+ * what you can do here — the trail and the page's actions — and it only
+ * exists when there is something to put in it, so a section's front page
+ * has one quiet bar rather than two.
+ *
+ * Why not one row: the old bar carried a back arrow, the section switch, the
+ * breadcrumb, the page actions and search. On a portrait iPad the breadcrumb
+ * was what gave way, so the one thing that says where you are was the first
+ * thing to scroll out of sight.
+ */
+function MastheadShell({
+  sections,
+  crumbs,
+  up,
+  sectionRoot,
+  hideTrail,
+  onOpenSearch,
+  searchLabel,
+  actions,
+  className,
+  children,
+}: {
+  sections: NonNullable<ReturnType<typeof useWikiSections>>;
+  crumbs: WikiCrumb[];
+  up: WikiCrumb | null;
+  sectionRoot: WikiCrumb | undefined;
+  hideTrail: boolean;
+  onOpenSearch?: () => void;
+  searchLabel: string;
+  actions?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  const showSub = !hideTrail || Boolean(actions);
+
+  return (
+    <div className={`wk wk--mast${className ? ` ${className}` : ""}`}>
+      <header className="wk__mast">
+        <button
+          type="button"
+          className="wk__mast-home"
+          onClick={sections.onHome}
+          aria-label={`${sections.title} — front page`}
+        >
+          {sections.titleIcon}
+          <span className="wk__mast-title">{sections.title}</span>
+        </button>
+
+        <WikiSectionSwitch
+          value={sections}
+          onActiveTap={sectionRoot?.onClick ?? sections.onHome}
+        />
+
+        {onOpenSearch && (
+          <button
+            type="button"
+            className="wk__mast-search"
+            onClick={onOpenSearch}
+            aria-label={searchLabel}
+          >
+            <Search size={15} aria-hidden />
+            <span className="wk__mast-search-label">{searchLabel}</span>
+          </button>
+        )}
+      </header>
+
+      {showSub && (
+        <div className="wk__bar wk__bar--sub">
+          {!hideTrail && up?.onClick && (
+            <button
+              type="button"
+              className="wk__up"
+              onClick={up.onClick}
+              aria-label={`Back to ${up.label}`}
+            >
+              <ArrowLeft size={16} aria-hidden />
+            </button>
+          )}
+          {hideTrail ? (
+            <div className="wk__crumbs" aria-hidden />
+          ) : (
+            <nav className="wk__crumbs" aria-label="Breadcrumb">
+              <ol>
+                {crumbs.map((c, i) => {
+                  const last = i === crumbs.length - 1;
+                  return (
+                    <li key={`${c.label}-${i}`}>
+                      {i > 0 && (
+                        <ChevronRight size={13} className="wk__crumb-sep" aria-hidden />
+                      )}
+                      {c.onClick && !last ? (
+                        <button type="button" className="wk__crumb" onClick={c.onClick}>
+                          {c.label}
+                        </button>
+                      ) : (
+                        <span
+                          className="wk__crumb wk__crumb--here"
+                          aria-current={last ? "page" : undefined}
+                        >
+                          {c.label}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            </nav>
+          )}
+          {actions && <div className="wk__bar-actions">{actions}</div>}
+        </div>
+      )}
 
       <div className="wk__scroll">{children}</div>
     </div>

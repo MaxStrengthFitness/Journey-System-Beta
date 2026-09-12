@@ -156,7 +156,13 @@ export interface AcademyJump {
   /** The machine's name, for the "back to the machine" crumb. */
   fromLabel?: string;
   ref?: LearningRef;
+  /** Open the index scrolled to one of its four groups (the front page's tiles). */
+  group?: AcademyGroupKey;
+  /** Open the page editor, for someone allowed to write pages. */
+  newPage?: boolean;
 }
+
+export type AcademyGroupKey = "machines" | "studio" | "language" | "curriculum";
 
 /** The module a topic belongs to, from the index that ships with the app. */
 function moduleOfTopic(topicId: string): string | null {
@@ -293,9 +299,40 @@ export function AcademyWikiView({
 
   /** A glossary term to open once the glossary chunk has arrived. */
   const [pendingTerm, setPendingTerm] = useState<string | null>(null);
+  /** An index group to scroll to once the index has rendered. */
+  const [pendingGroup, setPendingGroup] = useState<AcademyGroupKey | null>(null);
+
+  useEffect(() => {
+    if (!pendingGroup || route.kind !== "index") return;
+    const target = groupElementId(pendingGroup);
+    // Cleared INSIDE the frame: clearing it here would re-render, run this
+    // effect's cleanup and cancel the frame before it ever fired.
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(target)?.scrollIntoView({ block: "start" });
+      setPendingGroup(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pendingGroup, route]);
 
   useEffect(() => {
     if (!jump) return;
+
+    if (jump.group) {
+      setRoute({ kind: "index" });
+      setCameFrom(null);
+      setPendingGroup(jump.group);
+      onClearJump?.();
+      return;
+    }
+
+    if (jump.newPage) {
+      if (canManagePages && author) {
+        setEditingPageId(null);
+        setRoute({ kind: "newPage" });
+      }
+      onClearJump?.();
+      return;
+    }
 
     // A link to one exact page. No chunk needs to be waiting for this: each
     // page shows its own loading state, and a page that has since moved says
@@ -334,7 +371,7 @@ export function AcademyWikiView({
     }
     setCameFrom(jump);
     onClearJump?.();
-  }, [jump, cards, scripts, machines, onClearJump]);
+  }, [jump, cards, scripts, machines, onClearJump, canManagePages, author]);
 
   useEffect(() => {
     if (!pendingTerm || !glossary) return;
