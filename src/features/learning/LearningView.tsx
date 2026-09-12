@@ -9,6 +9,7 @@ import {
   type AcademyGroupKey,
   type AcademyJump,
 } from "../academy/AcademyWikiView";
+import type { CatalogScope } from "../machine-db/ScopeSwitch";
 import { LearningHome } from "./LearningHome";
 import { LearningSearch } from "./LearningSearch";
 import { canWriteStudioPages } from "./permissions";
@@ -64,6 +65,7 @@ export function LearningView({
 
   const [catalogJump, setCatalogJump] = useState<string | null>(null);
   const [catalogGroup, setCatalogGroup] = useState<string | null>(null);
+  const [catalogScope, setCatalogScope] = useState<CatalogScope | null>(null);
   const [academyJump, setAcademyJump] = useState<AcademyJump | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -149,6 +151,11 @@ export function LearningView({
             onOpen={openRef}
             onOpenSearch={() => setSearchOpen(true)}
             onOpenCatalog={openCatalog}
+            onOpenDatabase={() => {
+              setSearchOpen(false);
+              setCatalogScope("msf");
+              onViewChange("machine-anatomy");
+            }}
             onOpenAcademy={openAcademy}
             onNewPage={() => {
               setAcademyJump({ newPage: true });
@@ -164,6 +171,8 @@ export function LearningView({
             onOpenedMachine={() => setCatalogJump(null)}
             openGroupKey={catalogGroup}
             onOpenedGroup={() => setCatalogGroup(null)}
+            openScope={catalogScope}
+            onOpenedScope={() => setCatalogScope(null)}
             onOpenAcademy={(machineId, focus, machineName) => {
               setAcademyJump({ machineId, focus, fromLabel: machineName });
               onViewChange("academy");

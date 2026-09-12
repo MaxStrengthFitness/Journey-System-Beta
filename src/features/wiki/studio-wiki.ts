@@ -124,6 +124,15 @@ export interface StudioWikiDoc {
    */
   retiredAt?: unknown;
   retiredBy?: string;
+
+  /**
+   * Shared with every MSF studio (machine overlays only — Learning + Planner
+   * round). `sharedKeys` are the machine lineages it is filed under and
+   * `studioName` credits it; see features/machine-db.
+   */
+  shared?: boolean;
+  sharedKeys?: string[];
+  studioName?: string;
 }
 
 export interface StudioWikiDraft {

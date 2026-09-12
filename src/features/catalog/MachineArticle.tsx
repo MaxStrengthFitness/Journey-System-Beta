@@ -101,6 +101,20 @@ export interface MachineArticleProps {
    * snapshot over the studio's whole wiki collection, read once by the host.
    */
   studioWiki?: ReactNode;
+  /**
+   * What other MSF studios shared about this machine — a NetworkNotes, from
+   * features/machine-db. Directly after this studio's own note, which is the
+   * same kind of writing from nearer home.
+   */
+  network?: ReactNode;
+  /**
+   * A card above everything else: in the MSF machine database, whether this
+   * studio has the machine and the way to add it; on a studio's own machine,
+   * the switch that lists it in the database.
+   */
+  notice?: ReactNode;
+  /** Badges the host adds — "Shared by Solon", "On your floor". */
+  extraBadges?: ReactNode;
 
   /** Which foldables are open, persisted per section by the host. */
   isOpen: (id: string, fallback: boolean) => boolean;
@@ -120,6 +134,9 @@ export function MachineArticle({
   studioSetup,
   studioNotes,
   studioWiki,
+  network,
+  notice,
+  extraBadges,
   isOpen,
   setOpen,
 }: MachineArticleProps) {
@@ -160,7 +177,13 @@ export function MachineArticle({
       lede={machine.clinicalNote || undefined}
       badges={
         <>
-          {machine.isStudioCustom && <WikiBadge tone="neutral">Added by this studio</WikiBadge>}
+          {machine.isStudioCustom && (
+            <WikiBadge tone="neutral">
+              {machine.adoptedFrom ? `Copied from ${machine.adoptedFrom.studioName}` : "Added by this studio"}
+            </WikiBadge>
+          )}
+          {machine.shared && <WikiBadge tone="live">Shared with all MSF studios</WikiBadge>}
+          {extraBadges}
           {machine.rosterStatus === "maintenance" && <WikiBadge tone="warn">Out of service</WikiBadge>}
           {machine.rosterStatus === "inactive" && <WikiBadge tone="neutral">Inactive</WikiBadge>}
           {isFlagged && <WikiBadge tone="alert">Flagged by a trainer</WikiBadge>}
@@ -171,6 +194,7 @@ export function MachineArticle({
           )}
         </>
       }
+      notice={notice}
       aside={
         <Infobox
           title="At a glance"
@@ -253,6 +277,8 @@ export function MachineArticle({
         collapsibles were.
       */}
       {studioWiki}
+
+      {network}
 
       {hasAcademy && (
         <WikiSeeAlso title="In the MSF Academy">

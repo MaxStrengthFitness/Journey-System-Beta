@@ -42,6 +42,12 @@ export interface WikiArticleProps {
   lede?: string;
   /** Status pills under the lede — flagged, out of service, studio-added. */
   badges?: ReactNode;
+  /**
+   * A card under the badges, above the infobox and the body — so on an iPad
+   * in portrait it is read before the figure, not after it. The machine
+   * database's "on your floor / add it" card (Learning + Planner round).
+   */
+  notice?: ReactNode;
   /** The infobox column. Sticky on wide screens, first on narrow ones. */
   aside?: ReactNode;
   children: ReactNode;
@@ -53,6 +59,7 @@ export function WikiArticle({
   title,
   lede,
   badges,
+  notice,
   aside,
   children,
 }: WikiArticleProps) {
@@ -72,6 +79,7 @@ export function WikiArticle({
         <h1 className="wk__h1">{title}</h1>
         {lede && <p className="wk__lede">{lede}</p>}
         {badges && <div className="wk__badges">{badges}</div>}
+        {notice && <div className="wk__notice">{notice}</div>}
       </header>
 
       <div className={`wk__grid${aside ? "" : " wk__grid--full"}`}>

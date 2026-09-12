@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { PencilLine, Plus, Building2 } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
 import { WikiBlocks } from "./WikiArticle";
@@ -59,6 +59,12 @@ export interface StudioWikiPanelProps {
   emptyLabel?: string;
   /** Placeholder text in the editor, tuned per target type by the caller. */
   placeholder?: string;
+  /**
+   * Beside Edit, on a written note: the machine page's "Share with all MSF
+   * studios" switch (features/machine-db). The caller decides where sharing
+   * applies — only machine notes are shared.
+   */
+  headerAction?: ReactNode;
 }
 
 export function StudioWikiPanel({
@@ -71,6 +77,7 @@ export function StudioWikiPanel({
   author,
   emptyLabel,
   placeholder,
+  headerAction,
 }: StudioWikiPanelProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   const [editing, setEditing] = useState(false);
@@ -183,6 +190,7 @@ export function StudioWikiPanel({
             Edit
           </button>
         )}
+        {headerAction}
       </p>
 
       <WikiBlocks blocks={overlay.blocks} />

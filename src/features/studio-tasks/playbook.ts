@@ -81,6 +81,16 @@ export interface PlaybookEntry {
   /** Retired, not deleted: something linked to it and history is not ours to erase. */
   retiredAt?: unknown;
   retiredBy?: string;
+
+  /**
+   * Shared with every MSF studio, shown on the machine's page there
+   * (Learning + Planner round). Safe because an entry never names a client.
+   * `sharedKeys` are the machine lineages it is filed under; `studioName`
+   * credits it. See features/machine-db.
+   */
+  shared?: boolean;
+  sharedKeys?: string[];
+  studioName?: string;
 }
 
 export interface PlaybookDraft {

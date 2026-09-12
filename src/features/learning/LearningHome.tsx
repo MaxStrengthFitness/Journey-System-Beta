@@ -3,6 +3,7 @@ import {
   BookOpen,
   ChevronRight,
   ClipboardList,
+  Database,
   GraduationCap,
   MessageSquareQuote,
   Plus,
@@ -61,6 +62,8 @@ export interface LearningHomeProps {
   onOpen: (ref: LearningRef) => void;
   onOpenSearch: () => void;
   onOpenCatalog: (groupKey?: string) => void;
+  /** The Catalog's other scope: every MSF machine (features/machine-db). */
+  onOpenDatabase?: () => void;
   onOpenAcademy: (group?: AcademyGroupKey) => void;
   onNewPage: () => void;
 }
@@ -71,6 +74,7 @@ export function LearningHome({
   onOpen,
   onOpenSearch,
   onOpenCatalog,
+  onOpenDatabase,
   onOpenAcademy,
   onNewPage,
 }: LearningHomeProps) {
@@ -214,6 +218,18 @@ export function LearningHome({
                 </article>
               );
             })}
+          </div>
+        )}
+
+        {onOpenDatabase && (
+          <div className="lh__links lh__links--one">
+            <WikiLinkCard
+              accent="other"
+              icon={<Database size={16} aria-hidden />}
+              title="All MSF machines"
+              detail={`Every machine in the MSF catalog, and the ones studios have made and shared — with what other studios wrote about each. Add one to ${studioName}'s floor from its page.`}
+              onClick={onOpenDatabase}
+            />
           </div>
         )}
       </section>

@@ -54,6 +54,18 @@ export interface CatalogMachine {
 
   /** Studio-scoped, from studios/{id}/machineNotes. Empty until one is written. */
   studioNotes: string;
+
+  // ── the MSF machine database (Learning + Planner round, Sep 2026) ──
+  /**
+   * The key notes shared between studios are filed under: the MSF id for an
+   * MSF machine, the lineage (`basedOn`) for a studio's own. Equals
+   * ResolvedMachine.comparisonKey. Absent: use `id`.
+   */
+  comparisonKey?: string;
+  /** This studio listed it in the database (its own machines only). */
+  shared?: boolean;
+  /** Copied from another studio's shared machine. */
+  adoptedFrom?: { studioId: string; machineId: string; studioName: string } | null;
 }
 
 /** A machine grouped under a heading in the picker. */

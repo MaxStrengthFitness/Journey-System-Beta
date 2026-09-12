@@ -539,6 +539,11 @@
   text-transform: uppercase;
   white-space: nowrap;
 }
+/* Under the badges: a card read before the infobox and the body — the
+   machine database's "on your floor / add it" card. */
+.wk__notice { margin-top: 0.875rem; }
+.wk__notice > * { margin-bottom: 0; }
+
 .wk__badge--neutral { background: var(--wk-surface-2); border-color: var(--wk-border); color: var(--wk-ink-muted); }
 .wk__badge--live    { background: var(--wk-live-fill); border-color: var(--wk-live); color: var(--wk-live-text); }
 .wk__badge--ok      { background: var(--wk-ok-fill); border-color: var(--wk-ok); color: var(--wk-ok); }

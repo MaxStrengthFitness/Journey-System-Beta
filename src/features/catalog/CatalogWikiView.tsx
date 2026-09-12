@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { Building2 } from "lucide-react";
 import type { Machine, Trainer } from "../../types";
+import { auth } from "../../firebase";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useStudioMachineSettings } from "../../hooks/useStudioMachineSettings";
@@ -35,6 +37,18 @@ import {
   type TaskRow,
 } from "../studio-tasks";
 import { useAcademyCards, useAcademyScripts } from "../academy/useAcademyContent";
+import { canWriteStudioPages, leadsStudioPerRules } from "../learning/permissions";
+import {
+  MachineDatabase,
+  NetworkNotes,
+  ScopeSwitch,
+  ShareToggle,
+  setMachineShared,
+  setNoteShared,
+  setTipShared,
+  sharedKeysFor,
+  type CatalogScope,
+} from "../machine-db";
 import { abbr } from "../routine-builder/academy";
 import { machinesForBodySlug } from "./anatomy";
 import {
@@ -134,6 +148,13 @@ type Route =
   | { kind: "machine"; id: string }
   | { kind: "search" };
 
+/**
+ * Which list the Catalog shows — this studio's floor, or every MSF machine
+ * (Learning + Planner round, features/machine-db). Remembered for the
+ * session, like the Planner's tab; a fresh load starts on the floor.
+ */
+let rememberedScope: CatalogScope = "floor";
+
 export interface CatalogWikiViewProps {
   /** The global list. Used only until this studio's roster is populated. */
   machines: Machine[];
@@ -152,6 +173,9 @@ export interface CatalogWikiViewProps {
    */
   openGroupKey?: string | null;
   onOpenedGroup?: () => void;
+  /** Open the index in this scope — the front page's "All MSF machines" card. */
+  openScope?: CatalogScope | null;
+  onOpenedScope?: () => void;
   /**
    * Jump to the Academy tab at this machine's card or script. Owned by
    * AppContent because it is a tab switch. When absent, the Academy
@@ -172,14 +196,21 @@ export function CatalogWikiView({
   onOpenedMachine,
   openGroupKey,
   onOpenedGroup,
+  openScope,
+  onOpenedScope,
   onOpenAcademy,
 }: CatalogWikiViewProps) {
   const { activeStudioId, activeStudio } = useActiveStudio();
-  const { machines: catalogMachines } = useCatalogMachines(
+  const { machines: catalogMachines, source: floorSource } = useCatalogMachines(
     activeStudioId,
     machines,
   );
 
+  const [scope, setScopeState] = useState<CatalogScope>(rememberedScope);
+  const setScope = (next: CatalogScope) => {
+    rememberedScope = next;
+    setScopeState(next);
+  };
   const [route, setRoute] = useState<Route>({ kind: "index" });
   const [grouping, setGrouping] = useState<GroupingMode>("academy");
   const [query, setQuery] = useState("");
@@ -208,6 +239,57 @@ export function CatalogWikiView({
   const author = authTrainer?.id
     ? { id: authTrainer.id, name: authTrainer.fullName ?? "" }
     : null;
+
+  /* ── the MSF machine database: scope, and sharing ─────────────── */
+
+  const studioName = activeStudio?.name ?? "this studio";
+  // firestore.rules: roster writes are isSuperAdmin() || the studio's leaders.
+  const canManageFloor = canWriteStudioPages(authTrainer ?? null, activeStudioId);
+  const uid = auth.currentUser?.uid ?? null;
+  const [sharing, setSharing] = useState<string | null>(null);
+
+  const runShare = async (key: string, on: boolean, work: () => Promise<void>) => {
+    setSharing(key);
+    try {
+      await work();
+      toastSuccess(on ? "Shared with every MSF studio." : "No longer shared with other studios.");
+    } catch (err) {
+      console.error("Failed to change sharing:", err);
+      toastError("Could not change sharing. Check your connection.");
+    } finally {
+      setSharing(null);
+    }
+  };
+
+  const scopeSwitch = (
+    <ScopeSwitch
+      scope={scope}
+      studioName={activeStudio?.name ?? "this studio"}
+      onChange={(next) => {
+        setScope(next);
+        setRoute({ kind: "index" });
+      }}
+    />
+  );
+
+  /* Grouping is a property of the INDEX, not of a picker inside a sheet.
+     Changing it re-labels the contents and re-sorts the list in place;
+     nothing opens, closes or filters. Shared by both scopes. */
+  const groupingControl = (
+    <div className="wk__seg" role="group" aria-label="Group machines by">
+      {WIKI_GROUPINGS.map(({ mode, label }) => (
+        <button
+          key={mode}
+          type="button"
+          className="wk__seg-btn"
+          aria-pressed={grouping === mode}
+          onClick={() => setGrouping(mode)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
 
   /* ── derived state ─────────────────────────────────────────────── */
 
@@ -239,6 +321,7 @@ export function CatalogWikiView({
    */
   useEffect(() => {
     if (!openMachineId) return;
+    setScope("floor");
     setRoute({ kind: "machine", id: openMachineId });
     onOpenedMachine?.();
   }, [openMachineId, onOpenedMachine]);
@@ -251,7 +334,15 @@ export function CatalogWikiView({
   const [pendingGroup, setPendingGroup] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!openScope) return;
+    setScope(openScope);
+    setRoute({ kind: "index" });
+    onOpenedScope?.();
+  }, [openScope, onOpenedScope]);
+
+  useEffect(() => {
     if (!openGroupKey) return;
+    setScope("floor");
     setGrouping("academy");
     setRoute({ kind: "index" });
     setPendingGroup(openGroupKey);
@@ -353,6 +444,29 @@ export function CatalogWikiView({
     }
   };
 
+  /* ── all MSF machines ───────────────────────────────────────────── */
+
+  if (scope === "msf") {
+    return (
+      <MachineDatabase
+        legacyMachines={machines}
+        floor={catalogMachines}
+        floorSource={floorSource}
+        studioId={activeStudioId}
+        studioName={studioName}
+        authTrainer={authTrainer ?? null}
+        scopeSwitch={scopeSwitch}
+        grouping={grouping}
+        groupingControl={groupingControl}
+        onOpenFloorMachine={(id) => {
+          setScope("floor");
+          setRoute({ kind: "machine", id });
+        }}
+        onOpenAcademy={onOpenAcademy}
+      />
+    );
+  }
+
   /* ── empty roster ──────────────────────────────────────────────── */
 
   if (catalogMachines.length === 0) {
@@ -360,6 +474,7 @@ export function CatalogWikiView({
     // other sections) is still there on an empty studio.
     return (
       <WikiShell crumbs={[{ label: "Catalog" }]}>
+        <div className="wk__index-head">{scopeSwitch}</div>
         <div className="wk__placeholder">
           <p className="wk__placeholder-title">No machines yet</p>
           <p className="wk__placeholder-body">
@@ -456,6 +571,10 @@ export function CatalogWikiView({
     const script = academyScripts?.find((s) => s.machineId === selected.id) ?? null;
 
     const playbookHits = searchPlaybook(playbookEntries, "", { machineId: selected.id });
+    const overlay = overlayFor("machine", selected.id);
+    // Sharing a tip: its author, or a leader — the playbook update rule.
+    const canShareTip = (authorId: string) =>
+      Boolean(uid && authorId === uid) || leadsStudioPerRules(authTrainer ?? null, activeStudioId);
 
     return (
       <WikiShell
@@ -502,6 +621,24 @@ export function CatalogWikiView({
               <MachinePlaybookCard
                 entries={playbookHits.map((h) => h.entry)}
                 currentUserId={authTrainer?.id ?? null}
+                renderAction={(entry) =>
+                  activeStudioId && canShareTip(entry.authorId) ? (
+                    <ShareToggle
+                      shared={entry.shared === true}
+                      busy={sharing === `t:${entry.id}`}
+                      onToggle={() =>
+                        runShare(`t:${entry.id}`, entry.shared !== true, () =>
+                          setTipShared(activeStudioId, entry.id, entry.shared !== true, {
+                            keys: sharedKeysFor(entry.machineIds, catalogMachines),
+                            studioName,
+                          }),
+                        )
+                      }
+                    />
+                  ) : entry.shared ? (
+                    <span className="pbm__tag">Shared with all MSF studios</span>
+                  ) : null
+                }
               />
             ) : undefined
           }
@@ -538,8 +675,24 @@ export function CatalogWikiView({
               targetType="machine"
               targetId={selected.id}
               targetName={selected.name}
-              overlay={overlayFor("machine", selected.id)}
+              overlay={overlay}
               author={author}
+              headerAction={
+                overlay && author && activeStudioId ? (
+                  <ShareToggle
+                    shared={overlay.shared === true}
+                    busy={sharing === `n:${overlay.id}`}
+                    onToggle={() =>
+                      runShare(`n:${overlay.id}`, overlay.shared !== true, () =>
+                        setNoteShared(activeStudioId, overlay.id, overlay.shared !== true, {
+                          keys: sharedKeysFor([selected.id], catalogMachines),
+                          studioName,
+                        }),
+                      )
+                    }
+                  />
+                ) : undefined
+              }
               emptyLabel={`Add ${activeStudio?.name ?? "this studio"}'s note on this machine`}
               placeholder="How we set this one up, who it does not suit, what to watch for. Ours sits two notches lower than the card says — that sort of thing."
             />
@@ -552,6 +705,39 @@ export function CatalogWikiView({
               value={selected.studioNotes}
               author={author}
             />
+          }
+          network={
+            <NetworkNotes
+              lineageKey={selected.comparisonKey || selected.id}
+              ownStudioId={activeStudioId}
+              machineName={selected.name}
+            />
+          }
+          notice={
+            // A machine this studio made: its leaders can list it in the
+            // database. A copy of another studio's is listed by its original.
+            selected.isStudioCustom && !selected.adoptedFrom && canManageFloor && activeStudioId ? (
+              <section className="mdb-adopt" aria-label="Share this machine">
+                <p className="mdb-adopt__line">
+                  <Building2 size={14} aria-hidden />
+                  {studioName}'s own machine.
+                </p>
+                <ShareToggle
+                  shared={selected.shared === true}
+                  busy={sharing === `m:${selected.id}`}
+                  onToggle={() =>
+                    runShare(`m:${selected.id}`, selected.shared !== true, () =>
+                      setMachineShared(activeStudioId, selected.id, selected.shared !== true, studioName),
+                    )
+                  }
+                />
+                <p className="mdb-adopt__why">
+                  {selected.shared
+                    ? "Listed in All MSF machines: every studio can read it, and add a copy to their floor."
+                    : "Share it to list it in All MSF machines, where every studio can read it and add a copy to their floor."}
+                </p>
+              </section>
+            ) : undefined
           }
         />
 
@@ -602,6 +788,7 @@ export function CatalogWikiView({
       onOpenSearch={() => setRoute({ kind: "search" })}
     >
       <WikiIndexHeader
+        lead={scopeSwitch}
         title={activeStudio?.name ? `Machines at ${activeStudio.name}` : "Machines"}
         subtitle={`${catalogMachines.length} machine${catalogMachines.length === 1 ? "" : "s"}, each with its Academy code. What every machine on this floor trains, how ${activeStudio?.name ?? "this studio"} sets it up, and how it is running today.`}
         stats={[
@@ -619,22 +806,7 @@ export function CatalogWikiView({
           { label: "Out of service", value: outOfService },
         ]}
       >
-        {/* Grouping is a property of the INDEX, not of a picker inside a
-            sheet. Changing it re-labels the contents and re-sorts the list in
-            place; nothing opens, closes or filters. */}
-        <div className="wk__seg" role="group" aria-label="Group machines by">
-          {WIKI_GROUPINGS.map(({ mode, label }) => (
-            <button
-              key={mode}
-              type="button"
-              className="wk__seg-btn"
-              aria-pressed={grouping === mode}
-              onClick={() => setGrouping(mode)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {groupingControl}
       </WikiIndexHeader>
 
       <WikiContents cards={contents} label="Contents" />
@@ -671,7 +843,9 @@ export function CatalogWikiView({
                 badges={
                   showBadges ? (
                     <>
-                      {m.isStudioCustom && <WikiBadge tone="neutral">Studio</WikiBadge>}
+                      {m.isStudioCustom && (
+                        <WikiBadge tone={m.shared ? "live" : "neutral"}>{m.shared ? "Studio · shared" : "Studio"}</WikiBadge>
+                      )}
                       {(m.rosterStatus === "maintenance" || flagged) && (
                         <WikiBadge tone={flagged ? "alert" : "warn"}>
                           {flagged ? "Flagged" : "Out of service"}

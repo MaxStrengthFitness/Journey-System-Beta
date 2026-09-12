@@ -226,6 +226,10 @@ export function resolveMachine(
     catalogStatus: catalog?.status,
     comparisonKey,
     overriddenFields,
+    // The MSF machine database (Learning + Planner round): carried through
+    // untouched, so the Catalog can show and toggle them.
+    ...(entry.shared === true ? { shared: true } : {}),
+    ...(entry.source === "custom" && entry.adoptedFrom ? { adoptedFrom: entry.adoptedFrom } : {}),
   };
 }
 

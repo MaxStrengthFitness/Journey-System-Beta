@@ -286,6 +286,11 @@
   grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
   gap: 0.5rem;
 }
+/* One card under the Catalog's tiles: the way into All MSF machines. */
+.lh__links--one {
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 0.625rem;
+}
 
 .lh__start {
   display: flex;

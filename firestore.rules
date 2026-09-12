@@ -707,6 +707,33 @@ service cloud.firestore {
           && d.updatedAt == request.time;
     }
 
+    /* STUDIO CONTENT WRITES (Learning + Planner round, Sep 2026).
+       Someone who works at, or runs, this studio -- or an administrator or a
+       franchise owner. Before this round the machine notes, upkeep log,
+       playbook and wiki blocks below accepted any signed-in trainer at ANY
+       studio (their comments said the path enforced tenancy; nothing checked
+       the path). Now the path does. */
+    function writesForStudio(studioId) {
+      return isSuperAdmin() || isFranchiseOwnerOnly() || isTrainerOfStudio(studioId);
+    }
+
+    /* The "Share with all MSF studios" fields on a playbook tip or a machine
+       note (features/machine-db). Shape only: whether it may be shared is
+       the same question as whether it may be edited. */
+    function sharedFieldsValid(d) {
+      return (!('shared' in d) || d.shared is bool)
+          && (!('sharedKeys' in d) || (d.sharedKeys is list && d.sharedKeys.size() <= 10))
+          && (!('studioName' in d) || (d.studioName is string && d.studioName.size() <= 80));
+    }
+
+    /* Only a studio's OWN machine can be listed in the database: a catalog
+       entry is already in it, and a copy adopted from another studio is
+       listed by its original. */
+    function rosterShareValid(d) {
+      return d.get('shared', false) != true
+          || (d.get('source', '') == 'custom' && !('adoptedFrom' in d));
+    }
+
     match /trainers/{trainerId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && 
@@ -1352,7 +1379,10 @@ service cloud.firestore {
       // tracked in ROADMAP.md.
       match /roster/{machineId} {
         allow read: if isAuthenticated();
-        allow create, update, delete:
+        allow create, update:
+          if (isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId))
+             && rosterShareValid(request.resource.data);
+        allow delete:
           if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
 
@@ -1370,7 +1400,8 @@ service cloud.firestore {
       // spent on the check. A trainer at studio A cannot write studio B.
       match /machineNotes/{machineId} {
         allow read: if isAuthenticated();
-        allow create, update: if isAuthenticated() && isAnyAuthenticatedTrainer();
+        allow create, update: if isAuthenticated() && isAnyAuthenticatedTrainer()
+                              && writesForStudio(studioId);
         allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
 
@@ -1391,7 +1422,8 @@ service cloud.firestore {
       // can be rewritten is not one — but a manager can delete a mistake.
       match /upkeepLog/{entryId} {
         allow read: if isAuthenticated();
-        allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
+        allow create: if isAuthenticated() && isAnyAuthenticatedTrainer()
+                      && writesForStudio(studioId);
         allow update: if false;
         allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
@@ -1528,18 +1560,22 @@ service cloud.firestore {
                       && request.resource.data.title is string
                       && request.resource.data.title.size() <= 120
                       && request.resource.data.worked is string
-                      && !('clientId' in request.resource.data);
+                      && !('clientId' in request.resource.data)
+                      && sharedFieldsValid(request.resource.data)
+                      && writesForStudio(studioId);
 
         allow update: if isAuthenticated()
                       && isAnyAuthenticatedTrainer()
                       && !('clientId' in request.resource.data)
+                      && sharedFieldsValid(request.resource.data)
                       && (
                            resource.data.authorId == request.auth.uid
                         || request.resource.data.diff(resource.data)
                              .affectedKeys()
                              .hasOnly(['confirmations', 'lastConfirmedOn'])
                         || isStudioOwnerOrHeadTrainer(studioId)
-                      );
+                      )
+                      && writesForStudio(studioId);
 
         allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
@@ -1596,11 +1632,13 @@ service cloud.firestore {
                       && request.resource.data.title.size() <= 160
                       && request.resource.data.kind in ['page', 'overlay']
                       && !('clientId' in request.resource.data)
+                      && sharedFieldsValid(request.resource.data)
                       && (
                            request.resource.data.kind == 'overlay'
                         || isSuperAdmin()
                         || isStudioOwnerOrHeadTrainer(studioId)
-                      );
+                      )
+                      && writesForStudio(studioId);
 
         allow update: if isAuthenticated()
                       && isAnyAuthenticatedTrainer()
@@ -1608,11 +1646,13 @@ service cloud.firestore {
                       && request.resource.data.title.size() <= 160
                       && request.resource.data.kind == resource.data.kind
                       && !('clientId' in request.resource.data)
+                      && sharedFieldsValid(request.resource.data)
                       && (
                            resource.data.kind == 'overlay'
                         || isSuperAdmin()
                         || isStudioOwnerOrHeadTrainer(studioId)
-                      );
+                      )
+                      && writesForStudio(studioId);
 
         allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
@@ -1688,6 +1728,31 @@ service cloud.firestore {
         allow create, update, delete:
           if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
+    }
+
+    // THE MSF MACHINE DATABASE (Learning + Planner round, Sep 2026).
+    //
+    // Collection-group reads over what studios chose to share: their own
+    // machines (roster), their machine notes (wiki overlays) and their tips
+    // (playbook). A collection-group query is judged by these rules alone,
+    // and only one filtered on `shared == true` can pass -- so nothing a
+    // studio did not share is listed to another. (A direct read of any of
+    // these documents is still governed by the studios/{studioId} block,
+    // which already lets any signed-in user read them.)
+    //
+    // Administrators may list rosters unfiltered: the catalog editor counts
+    // the studios still running a machine before retiring it.
+    match /{path=**}/roster/{machineId} {
+      allow read: if isAuthenticated()
+                  && (resource.data.shared == true || isSuperAdmin());
+    }
+
+    match /{path=**}/playbook/{entryId} {
+      allow read: if isAuthenticated() && resource.data.shared == true;
+    }
+
+    match /{path=**}/wiki/{docId} {
+      allow read: if isAuthenticated() && resource.data.shared == true;
     }
 
     // NETWORKS: Regional Franchise Groupings

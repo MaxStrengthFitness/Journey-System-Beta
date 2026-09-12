@@ -15,6 +15,9 @@ import {
   writeBatch,
   serverTimestamp,
   increment,
+  collectionGroup,
+  query,
+  where,
 } from "firebase/firestore";
 import { describe, it, beforeAll, afterAll, beforeEach, expect } from "vitest";
 import * as fs from "fs";
@@ -1220,5 +1223,158 @@ describe("Firestore Security Rules", () => {
     await assertFails(deleteDoc(doc(colleague, ...path)));
     const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
     await assertSucceeds(deleteDoc(doc(owner, ...path)));
+  });
+
+  // ── THE MSF MACHINE DATABASE: studio content, sharing, and the lists ────
+  //
+  // Round: Learning + Planner, Sep 2026. Also closes the hole where any
+  // signed-in trainer could write another studio's machine notes, upkeep
+  // log, playbook and wiki.
+
+  async function seedMachineDb() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "studios", "studioA", "roster", "sm-studioA-sled"), {
+        machineId: "sm-studioA-sled",
+        studioId: "studioA",
+        source: "custom",
+        status: "active",
+        definition: { name: "Sled Push" },
+      });
+      await setDoc(doc(db, "studios", "studioA", "roster", "m-leg-press"), {
+        machineId: "m-leg-press",
+        studioId: "studioA",
+        source: "catalog",
+        basedOn: "m-leg-press",
+        status: "active",
+      });
+      await setDoc(doc(db, "studios", "studioA", "playbook", "tipShared"), {
+        studioId: "studioA",
+        title: "Knees on the leg press",
+        situation: "Knee pain at the bottom",
+        worked: "Seat one notch back",
+        machineIds: ["m-leg-press"],
+        tags: [],
+        authorId: "trainerA",
+        authorName: "Trainer A",
+        shared: true,
+        sharedKeys: ["m-leg-press"],
+        studioName: "Studio A",
+      });
+      await setDoc(doc(db, "studios", "studioA", "playbook", "tipPrivate"), {
+        studioId: "studioA",
+        title: "Not shared",
+        situation: "",
+        worked: "Stays here",
+        machineIds: ["m-leg-press"],
+        tags: [],
+        authorId: "trainerA",
+        authorName: "Trainer A",
+      });
+    });
+  }
+
+  it("keeps a studio's machine notes, upkeep, tips and notes to the people who work there", async () => {
+    await seedMachineDb();
+    const outsider = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(setDoc(doc(outsider, "studios", "studioA", "machineNotes", "m-leg-press"), { notes: "Mine now" }));
+    await assertFails(setDoc(doc(outsider, "studios", "studioA", "upkeepLog", "u1"), { machineId: "m-leg-press", kind: "clean" }));
+    await assertFails(
+      setDoc(doc(outsider, "studios", "studioA", "playbook", "p1"), {
+        title: "Planted",
+        worked: "x",
+        authorId: "trainerB",
+      }),
+    );
+    await assertFails(
+      setDoc(doc(outsider, "studios", "studioA", "wiki", "machine__m-leg-press"), {
+        kind: "overlay",
+        title: "Leg Press",
+        authorId: "trainerB",
+        blocks: [],
+      }),
+    );
+
+    const insider = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(setDoc(doc(insider, "studios", "studioA", "machineNotes", "m-leg-press"), { notes: "Pad sticks" }));
+    await assertSucceeds(setDoc(doc(insider, "studios", "studioA", "upkeepLog", "u1"), { machineId: "m-leg-press", kind: "clean" }));
+    await assertSucceeds(
+      setDoc(doc(insider, "studios", "studioA", "wiki", "machine__m-leg-press"), {
+        kind: "overlay",
+        title: "Leg Press",
+        authorId: "trainerA",
+        blocks: [{ kind: "para", text: "Two notches lower here." }],
+        shared: true,
+        sharedKeys: ["m-leg-press"],
+        studioName: "Studio A",
+      }),
+    );
+  });
+
+  it("lets a studio's leaders list their own machine in the database, and nothing else", async () => {
+    await seedMachineDb();
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(
+      updateDoc(doc(owner, "studios", "studioA", "roster", "sm-studioA-sled"), { shared: true, sharedStudioName: "Studio A" }),
+    );
+    // An MSF machine is already in the database.
+    await assertFails(updateDoc(doc(owner, "studios", "studioA", "roster", "m-leg-press"), { shared: true }));
+    // A copy of another studio's machine is listed by its original.
+    await assertFails(
+      setDoc(doc(owner, "studios", "studioA", "roster", "sm-studioA-rope"), {
+        machineId: "sm-studioA-rope",
+        studioId: "studioA",
+        source: "custom",
+        status: "active",
+        definition: { name: "Rope" },
+        adoptedFrom: { studioId: "studioB", machineId: "sm-studioB-rope", studioName: "Studio B" },
+        shared: true,
+      }),
+    );
+    // Trainers do not decide what the studio publishes.
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertFails(updateDoc(doc(trainer, "studios", "studioA", "roster", "sm-studioA-sled"), { shared: true }));
+  });
+
+  it("lists what studios shared to every trainer, and nothing they did not", async () => {
+    await seedMachineDb();
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), "studios", "studioA", "roster", "sm-studioA-sled"), { shared: true });
+    });
+    const other = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertSucceeds(getDocs(query(collectionGroup(other, "roster"), where("shared", "==", true))));
+    await assertFails(getDocs(collectionGroup(other, "roster")));
+    await assertSucceeds(
+      getDocs(
+        query(
+          collectionGroup(other, "playbook"),
+          where("shared", "==", true),
+          where("sharedKeys", "array-contains", "m-leg-press"),
+        ),
+      ),
+    );
+    await assertFails(getDocs(query(collectionGroup(other, "playbook"), where("sharedKeys", "array-contains", "m-leg-press"))));
+    await assertSucceeds(getDocs(query(collectionGroup(other, "wiki"), where("shared", "==", true))));
+  });
+
+  it("checks the shape of the share fields, and lets a tip's author share it", async () => {
+    await seedMachineDb();
+    const author = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const ref = doc(author, "studios", "studioA", "playbook", "tipPrivate");
+    await assertFails(updateDoc(ref, { shared: "yes" }));
+    await assertFails(updateDoc(ref, { shared: true, sharedKeys: "m-leg-press" }));
+    await assertSucceeds(updateDoc(ref, { shared: true, sharedKeys: ["m-leg-press"], studioName: "Studio A" }));
+    // A colleague who did not write it cannot publish it.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "trainers", "trainerA2"), {
+        fullName: "Trainer A2",
+        initials: "A2",
+        role: "LifeTransformer",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+      });
+    });
+    const colleague = testEnv.authenticatedContext("trainerA2", { email: "trainera2@test.com" }).firestore();
+    await assertFails(updateDoc(doc(colleague, "studios", "studioA", "playbook", "tipShared"), { shared: false, sharedKeys: [] }));
   });
 });

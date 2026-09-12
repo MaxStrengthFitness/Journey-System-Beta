@@ -516,6 +516,25 @@ interface RosterEntryBase {
 
   updatedAt?: any;
   updatedBy?: string;
+
+  /**
+   * Listed in the MSF machine database for every studio to read and adopt
+   * (Learning + Planner round, Sep 2026). Custom machines only — the rules
+   * refuse it on a catalog entry, which is already in the database. Set by
+   * the studio's leaders, like everything else on this document.
+   */
+  shared?: boolean;
+  /** The sharing studio's name, as the database shows it to other studios. */
+  sharedStudioName?: string;
+  sharedAt?: any;
+  sharedBy?: string;
+}
+
+/** Where an adopted machine came from: another studio's shared machine. */
+export interface AdoptedFrom {
+  studioId: string;
+  machineId: string;
+  studioName: string;
 }
 
 /** (a) Picked from the default set, tuned to taste. */
@@ -546,6 +565,12 @@ export interface RosterEntryCustom extends RosterEntryBase {
   basedOn?: string;
   /** Complete and self-contained; the studio authors all of it. */
   definition: MachineDefinition;
+  /**
+   * Adopted from another studio's shared machine: a COPY, taken once. The
+   * original studio's later edits do not follow it. `basedOn` carries the
+   * original's lineage, so notes shared about it reach this copy too.
+   */
+  adoptedFrom?: AdoptedFrom;
 }
 
 export type StudioMachineRosterEntry =
@@ -615,4 +640,9 @@ export interface ResolvedMachine extends MachineDefinition {
   /** Which definition fields this studio deliberately changed. Drives the
    *  "overridden" badge in the roster manager. */
   overriddenFields: MachineDefinitionField[];
+
+  /** Listed in the MSF machine database (custom machines only). */
+  shared?: boolean;
+  /** Copied from another studio's shared machine. */
+  adoptedFrom?: AdoptedFrom;
 }

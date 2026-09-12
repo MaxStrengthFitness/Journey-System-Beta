@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { ArrowLeft, ChevronRight, Search } from "lucide-react";
 import {
   WikiSectionSwitch,
@@ -184,7 +184,7 @@ export function WikiShell({
         </div>
       </header>
 
-      <div className="wk__scroll">{children}</div>
+      <PageScroller pageKey={crumbs.map((c) => c.label).join(" / ")}>{children}</PageScroller>
     </div>
   );
 }
@@ -309,7 +309,34 @@ function MastheadShell({
         </div>
       )}
 
-      <div className="wk__scroll">{children}</div>
+      <PageScroller pageKey={crumbs.map((c) => c.label).join(" / ")}>{children}</PageScroller>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * The one scroller
+ * ------------------------------------------------------------------ */
+
+/**
+ * `.wk__scroll`, which starts every new page at its top.
+ *
+ * Learning + Planner round, Sep 2026. Every screen in both wikis returns a
+ * WikiShell at the same place in the tree, so React kept the same scroller
+ * element from page to page — and its scroll position with it. Opening a
+ * machine from low on the index landed halfway down the article, below its
+ * title and warnings. A different trail is a different page, so the scroller
+ * goes back to the top; the same trail re-rendering (new data, a grouping
+ * change, search closing) leaves it where the reader put it.
+ */
+function PageScroller({ pageKey, children }: { pageKey: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (ref.current) ref.current.scrollTop = 0;
+  }, [pageKey]);
+  return (
+    <div className="wk__scroll" ref={ref}>
+      {children}
     </div>
   );
 }

@@ -1,0 +1,236 @@
+/* ==========================================================================
+   THE MSF MACHINE DATABASE — the Catalog's second scope, the share switch,
+   and "From other MSF studios".
+   --------------------------------------------------------------------------
+   Round: Learning + Planner, Sep 2026. On the wiki's --wk-* tokens
+   (features/wiki/wiki.tokens.css); no hex here. Every tap target is 40px or
+   more.
+   ========================================================================== */
+
+/* ── the scope switch, above the index title ─────────────────────────── */
+
+.mdb-scope {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 0 0 0.875rem;
+  padding: 2px;
+  border: 1px solid var(--wk-border);
+  border-radius: 12px;
+  background: var(--wk-surface-2);
+}
+.mdb-scope__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0 0.875rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--wk-ink-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.mdb-scope__btn svg { flex: none; }
+.mdb-scope__btn[aria-pressed="true"] {
+  background: var(--wk-surface);
+  color: var(--wk-live-text);
+  box-shadow: 0 1px 2px var(--wk-shadow);
+}
+.mdb-scope__btn:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; }
+
+/* ── the share switch ─────────────────────────────────────────────────── */
+
+.mdb-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 40px;
+  padding: 0 0.75rem;
+  border: 1px dashed var(--wk-border-strong);
+  border-radius: var(--wk-radius-pill);
+  background: transparent;
+  color: var(--wk-ink-2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.mdb-share svg { flex: none; }
+.mdb-share--on {
+  border-style: solid;
+  border-color: var(--wk-live);
+  background: var(--wk-live-fill);
+  color: var(--wk-live-text);
+}
+.mdb-share:disabled { opacity: 0.55; cursor: default; }
+.mdb-share:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
+
+/* Inside a studio note's header row the switch sits at the end. */
+.wk__studio-head .mdb-share { margin-left: 0.25rem; }
+.wk__studio-head .wk__studio-edit + .mdb-share { margin-left: 0.375rem; }
+
+/* ── the card above a machine page ────────────────────────────────────── */
+
+.mdb-adopt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+}
+.mdb-adopt__line {
+  flex: 1 1 16rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--wk-ink);
+}
+.mdb-adopt__line svg { flex: none; color: var(--wk-ink-muted); }
+.mdb-adopt__from { font-weight: 600; color: var(--wk-ink-muted); }
+.mdb-adopt__why {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--wk-ink-muted);
+}
+
+.mdb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 40px;
+  padding: 0 0.875rem;
+  border: 1px solid var(--wk-border-strong);
+  border-radius: var(--wk-radius-pill);
+  background: var(--wk-surface);
+  color: var(--wk-live-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.mdb-btn svg { flex: none; }
+.mdb-btn--primary {
+  border-color: var(--wk-live);
+  background: var(--wk-live);
+  color: var(--wk-surface);
+}
+.mdb-btn:disabled { opacity: 0.55; cursor: default; }
+.mdb-btn:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
+
+/* ── a quiet line on the index ────────────────────────────────────────── */
+
+.mdb-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  padding: 0.75rem 0.875rem;
+  border: 1px dashed var(--wk-border-strong);
+  border-radius: var(--wk-radius);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--wk-ink-muted);
+}
+.mdb-note svg { flex: none; margin-top: 2px; }
+
+/* ── From other MSF studios ───────────────────────────────────────────── */
+
+.mdb-net {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mdb-net__card {
+  padding: 0.75rem 1rem 0.875rem;
+  border: 1px solid var(--wk-border);
+  border-left: 3px solid var(--wk-live);
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+}
+.mdb-net__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0 0 0.5rem;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--wk-ink-muted);
+}
+.mdb-net__head svg { flex: none; }
+.mdb-net__studio { color: var(--wk-ink); }
+.mdb-net__kind::before { content: "·"; margin-right: 0.375rem; }
+.mdb-net__title {
+  margin: 0 0 0.375rem;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--wk-ink);
+  overflow-wrap: anywhere;
+}
+.mdb-net__tip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.125rem;
+  margin: 0;
+}
+.mdb-net__tip dt {
+  margin-top: 0.375rem;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wk-ink-muted);
+}
+.mdb-net__tip dd {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--wk-ink-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mdb-net__confirms {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0.5rem 0 0;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--wk-ok);
+}
+.mdb-net__by {
+  margin: 0.625rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--wk-border);
+  font-size: 11px;
+  color: var(--wk-ink-muted);
+}
+.mdb-net__error {
+  margin: 1rem 0;
+  font-size: 12px;
+  color: var(--wk-ink-muted);
+}

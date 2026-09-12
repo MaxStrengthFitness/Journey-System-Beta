@@ -37,11 +37,17 @@ export interface WikiStat {
 }
 
 export function WikiIndexHeader({
+  lead,
   title,
   subtitle,
   stats,
   children,
 }: {
+  /**
+   * Above the title: a switch between what the index lists — the Catalog's
+   * "At this studio | All MSF machines" (Learning + Planner round).
+   */
+  lead?: ReactNode;
   title: string;
   subtitle?: string;
   /**
@@ -54,6 +60,7 @@ export function WikiIndexHeader({
 }) {
   return (
     <header className="wk__index-head">
+      {lead}
       <h1 className="wk__index-title">{title}</h1>
       {subtitle && <p className="wk__index-sub">{subtitle}</p>}
       {stats && stats.length > 0 && (
