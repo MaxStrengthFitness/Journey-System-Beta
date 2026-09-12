@@ -734,6 +734,23 @@ service cloud.firestore {
           || (d.get('source', '') == 'custom' && !('adoptedFrom' in d));
     }
 
+    /* A comment on a Learning page (features/comments). No client field
+       exists to fill: hasOnly is the guard, as on the playbook and wiki. */
+    function commentValid(d, studioId) {
+      return d.keys().hasOnly(['studioId', 'targetKey', 'target', 'body', 'authorId',
+                               'authorName', 'mentions', 'createdAt', 'editedAt'])
+          && d.keys().hasAll(['studioId', 'targetKey', 'target', 'body', 'authorId',
+                              'authorName', 'mentions', 'createdAt'])
+          && d.studioId == studioId
+          && d.targetKey is string && d.targetKey.size() > 0 && d.targetKey.size() <= 300
+          && d.target is map
+          && d.body is string && d.body.size() > 0 && d.body.size() <= 2000
+          && d.authorId is string
+          && d.authorName is string && d.authorName.size() <= 80
+          && d.mentions is list && d.mentions.size() <= 10
+          && d.createdAt is timestamp;
+    }
+
     match /trainers/{trainerId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && 
@@ -1727,6 +1744,41 @@ service cloud.firestore {
         allow read: if isAuthenticated();
         allow create, update, delete:
           if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
+      }
+
+      // COMMENTS ON LEARNING PAGES (Learning + Planner round, Sep 2026).
+      //
+      // AJ chose "own studio": a studio's comments are read and written by
+      // the people who work at (or run) it -- the path is the tenancy, and
+      // unlike the older blocks above, this one checks it on READ as well.
+      // Tagging someone rings their bell through the notifications rule; it
+      // gives them nothing here they could not already read.
+      //
+      // The author may correct the words and the tags (signed with editedAt);
+      // nothing else about a comment changes. The author, the studio's
+      // leaders and administrators may take one down.
+      match /comments/{commentId} {
+        allow read: if isAuthenticated() && writesForStudio(studioId);
+
+        allow create: if isAuthenticated() && isAnyAuthenticatedTrainer()
+                      && writesForStudio(studioId)
+                      && commentValid(request.resource.data, studioId)
+                      && request.resource.data.authorId == request.auth.uid
+                      && request.resource.data.createdAt == request.time
+                      && !('editedAt' in request.resource.data);
+
+        allow update: if isAuthenticated()
+                      && resource.data.authorId == request.auth.uid
+                      && writesForStudio(studioId)
+                      && commentValid(request.resource.data, studioId)
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['body', 'mentions', 'editedAt'])
+                      && request.resource.data.editedAt == request.time;
+
+        allow delete: if isAuthenticated() && (
+                        resource.data.authorId == request.auth.uid ||
+                        isSuperAdmin() ||
+                        isStudioOwnerOrHeadTrainer(studioId));
       }
     }
 

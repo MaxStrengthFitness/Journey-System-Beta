@@ -2077,6 +2077,7 @@ export default function AppContent({
                     onViewChange={setCurrentView}
                     machines={machines}
                     authTrainer={authTrainer}
+                    trainers={trainers}
                     jump={learningJump}
                     onJumpHandled={clearLearningJump}
                   />

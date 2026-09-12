@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, Dumbbell, GraduationCap, LayoutGrid } from "lucide-react";
 import type { Machine, Trainer } from "../../types";
 import { useActiveStudio } from "../../ActiveStudioContext";
+import { auth } from "../../firebase";
+import { CommentsProvider, mentionablePeople, type CommentsContextValue } from "../comments";
 import { WikiSectionsProvider, type WikiSectionsValue } from "../wiki";
 import { CatalogView } from "../catalog";
 import {
@@ -48,6 +50,8 @@ export interface LearningViewProps {
   /** The global machine list. The Catalog uses it until a roster exists. */
   machines: Machine[];
   authTrainer: Trainer | null;
+  /** Everyone's trainer profile — the people a comment can tag are picked from these. */
+  trainers?: Trainer[];
   /** A page to open, from outside the tab. Cleared once honoured. */
   jump: LearningRef | null;
   onJumpHandled: () => void;
@@ -58,10 +62,11 @@ export function LearningView({
   onViewChange,
   machines,
   authTrainer,
+  trainers,
   jump,
   onJumpHandled,
 }: LearningViewProps) {
-  const { activeStudioId } = useActiveStudio();
+  const { activeStudioId, activeStudio } = useActiveStudio();
 
   const [catalogJump, setCatalogJump] = useState<string | null>(null);
   const [catalogGroup, setCatalogGroup] = useState<string | null>(null);
@@ -70,6 +75,22 @@ export function LearningView({
   const [searchOpen, setSearchOpen] = useState(false);
 
   const canWritePages = canWriteStudioPages(authTrainer, activeStudioId);
+
+  /* Comments (Learning + Planner round): this studio's thread on every page,
+     and the people here who can be tagged. The Auth uid, never the trainer
+     document's id — the rules pin a comment's author to it. */
+  const uid = auth.currentUser?.uid ?? null;
+  const comments = useMemo<CommentsContextValue>(
+    () => ({
+      studioId: activeStudioId,
+      studioName: activeStudio?.name ?? "this studio",
+      author: uid ? { id: uid, name: authTrainer?.fullName ?? "" } : null,
+      people: mentionablePeople(trainers ?? [], activeStudioId, uid),
+      // firestore.rules: a comment comes down by its author, a leader, or an admin.
+      isLeaderHere: canWritePages,
+    }),
+    [activeStudioId, activeStudio?.name, uid, authTrainer?.fullName, trainers, canWritePages],
+  );
   const author = useMemo(
     () =>
       authTrainer?.id ? { id: authTrainer.id, name: authTrainer.fullName ?? "" } : null,
@@ -140,6 +161,7 @@ export function LearningView({
   );
 
   return (
+    <CommentsProvider value={comments}>
     <WikiSectionsProvider value={sections}>
       {/* Hidden, not unmounted, while search is open: closing search returns
           the trainer to the page they left, not to its section's index. */}
@@ -201,5 +223,6 @@ export function LearningView({
         />
       )}
     </WikiSectionsProvider>
+    </CommentsProvider>
   );
 }

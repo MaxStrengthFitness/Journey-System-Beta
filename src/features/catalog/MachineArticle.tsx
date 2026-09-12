@@ -115,6 +115,8 @@ export interface MachineArticleProps {
   notice?: ReactNode;
   /** Badges the host adds — "Shared by Solon", "On your floor". */
   extraBadges?: ReactNode;
+  /** This studio's comments on the machine, at the foot of the page. */
+  comments?: ReactNode;
 
   /** Which foldables are open, persisted per section by the host. */
   isOpen: (id: string, fallback: boolean) => boolean;
@@ -137,6 +139,7 @@ export function MachineArticle({
   network,
   notice,
   extraBadges,
+  comments,
   isOpen,
   setOpen,
 }: MachineArticleProps) {
@@ -352,6 +355,8 @@ export function MachineArticle({
           {studioNotes}
         </WikiFoldable>
       )}
+
+      {comments}
     </WikiArticle>
   );
 }

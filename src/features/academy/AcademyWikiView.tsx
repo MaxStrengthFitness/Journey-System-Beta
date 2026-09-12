@@ -45,6 +45,7 @@ import {
   type WikiCrumb,
   type WikiSearchGroup,
 } from "../wiki";
+import { CommentsPanel } from "../comments";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import {
@@ -765,6 +766,11 @@ export function AcademyWikiView({
               </div>
             </WikiSeeAlso>
           )}
+
+          <CommentsPanel
+            target={{ kind: "studio-page", id: page.id, studioId: page.studioId || activeStudioId || "" }}
+            title={page.title}
+          />
         </WikiArticle>
       </WikiShell>
     );
@@ -839,6 +845,11 @@ export function AcademyWikiView({
                 Source: <code>{topic.source}</code>
               </p>
             )}
+
+            <CommentsPanel
+              target={{ kind: "academy-topic", id: topic.id, moduleId: route.moduleId }}
+              title={topic.title}
+            />
           </WikiArticle>
         )}
       </WikiShell>
@@ -966,6 +977,8 @@ export function AcademyWikiView({
             />
 
             {machineSeeAlso(entry, "card")}
+
+            <CommentsPanel target={{ kind: "academy-card", id: card.id }} title={entry?.name ?? card.abbr} />
           </WikiArticle>
         )}
       </WikiShell>
@@ -1040,6 +1053,8 @@ export function AcademyWikiView({
             />
 
             {machineSeeAlso(entry, "script")}
+
+            <CommentsPanel target={{ kind: "academy-script", id: script.id }} title={entry?.name ?? script.abbr} />
           </WikiArticle>
         )}
       </WikiShell>
@@ -1092,6 +1107,8 @@ export function AcademyWikiView({
               author={author ?? null}
             />
             {machineSeeAlso(entry, "overview")}
+
+            <CommentsPanel target={{ kind: "academy-overview", id: overview.id }} title={entry?.name ?? overview.title} />
           </WikiArticle>
         )}
       </WikiShell>

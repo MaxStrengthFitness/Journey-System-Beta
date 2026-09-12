@@ -38,6 +38,7 @@ import {
 } from "../studio-tasks";
 import { useAcademyCards, useAcademyScripts } from "../academy/useAcademyContent";
 import { canWriteStudioPages, leadsStudioPerRules } from "../learning/permissions";
+import { CommentsPanel } from "../comments";
 import {
   MachineDatabase,
   NetworkNotes,
@@ -713,6 +714,7 @@ export function CatalogWikiView({
               machineName={selected.name}
             />
           }
+          comments={<CommentsPanel target={{ kind: "machine", id: selected.id }} title={selected.name} />}
           notice={
             // A machine this studio made: its leaders can list it in the
             // database. A copy of another studio's is listed by its original.

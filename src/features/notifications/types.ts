@@ -40,7 +40,10 @@ export type NotificationKind =
   | "request-claimed"
   | "request-replied"
   | "request-resolved"
-  | "machine-flagged";
+  | "machine-flagged"
+  /* Someone tagged you in a comment on a Learning page (Learning + Planner
+     round). The link carries the page as a Learning ref. */
+  | "comment-mention";
 
 /** Where tapping the notification should land. */
 export interface NotificationLink {

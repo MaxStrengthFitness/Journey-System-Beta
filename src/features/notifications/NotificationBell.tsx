@@ -26,6 +26,7 @@
 
 import React, { useState } from "react";
 import {
+  AtSign,
   Bell,
   Check,
   CheckCheck,
@@ -59,6 +60,7 @@ const ICON: Record<NotificationKind, typeof Bell> = {
   "request-replied": MessageSquare,
   "request-resolved": CheckCheck,
   "machine-flagged": TriangleAlert,
+  "comment-mention": AtSign,
 };
 
 function ago(v: unknown): string {

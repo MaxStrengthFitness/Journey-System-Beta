@@ -1377,4 +1377,91 @@ describe("Firestore Security Rules", () => {
     const colleague = testEnv.authenticatedContext("trainerA2", { email: "trainera2@test.com" }).firestore();
     await assertFails(updateDoc(doc(colleague, "studios", "studioA", "playbook", "tipShared"), { shared: false, sharedKeys: [] }));
   });
+
+  // ── COMMENTS ON LEARNING PAGES: the studio's own, read and written there ─
+
+  const commentData = (uid: string, over: Record<string, unknown> = {}) => ({
+    studioId: "studioA",
+    targetKey: "machine:m-leg-press",
+    target: { kind: "machine", id: "m-leg-press", title: "Leg Press" },
+    body: "Seat pin sticks again — @Trainer A2 can you look?",
+    authorId: uid,
+    authorName: "Trainer A",
+    mentions: [{ id: "trainerA2", name: "Trainer A2" }],
+    createdAt: serverTimestamp(),
+    ...over,
+  });
+
+  async function seedComments() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "trainers", "trainerA2"), {
+        fullName: "Trainer A2",
+        initials: "A2",
+        role: "LifeTransformer",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+      });
+      await setDoc(doc(db, "studios", "studioA", "comments", "c1"), { ...commentData("trainerA"), createdAt: new Date() });
+    });
+  }
+
+  it("lets the people at a studio read and post its comments, and nobody else", async () => {
+    await seedComments();
+    const a = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(setDoc(doc(a, "studios", "studioA", "comments", "c2"), commentData("trainerA")));
+    await assertSucceeds(
+      getDocs(query(collection(a, "studios", "studioA", "comments"), where("targetKey", "==", "machine:m-leg-press"))),
+    );
+
+    const b = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(getDoc(doc(b, "studios", "studioA", "comments", "c1")));
+    await assertFails(getDocs(collection(b, "studios", "studioA", "comments")));
+    await assertFails(setDoc(doc(b, "studios", "studioA", "comments", "c3"), commentData("trainerB", { authorName: "B" })));
+  });
+
+  it("refuses a comment in someone else's name, with a back-dated time, or carrying a client", async () => {
+    await seedComments();
+    const a = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const ref = doc(a, "studios", "studioA", "comments", "c4");
+    await assertFails(setDoc(ref, commentData("trainerA2")));
+    await assertFails(setDoc(ref, commentData("trainerA", { createdAt: new Date("2026-01-01") })));
+    await assertFails(setDoc(ref, commentData("trainerA", { clientId: "notesClient" })));
+    await assertFails(setDoc(ref, commentData("trainerA", { body: "" })));
+  });
+
+  it("lets only the author correct a comment, and only its words and tags", async () => {
+    await seedComments();
+    const path = ["studios", "studioA", "comments", "c1"] as const;
+    const author = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(updateDoc(doc(author, ...path), { body: "Fixed now.", mentions: [], editedAt: serverTimestamp() }));
+    await assertFails(updateDoc(doc(author, ...path), { targetKey: "machine:m-other", editedAt: serverTimestamp() }));
+    const colleague = testEnv.authenticatedContext("trainerA2", { email: "trainera2@test.com" }).firestore();
+    await assertFails(updateDoc(doc(colleague, ...path), { body: "Not yours", editedAt: serverTimestamp() }));
+  });
+
+  it("lets the author or a studio leader take a comment down", async () => {
+    await seedComments();
+    const path = ["studios", "studioA", "comments", "c1"] as const;
+    const colleague = testEnv.authenticatedContext("trainerA2", { email: "trainera2@test.com" }).firestore();
+    await assertFails(deleteDoc(doc(colleague, ...path)));
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(deleteDoc(doc(owner, ...path)));
+  });
+
+  it("lets a tag ring the tagged person's bell", async () => {
+    await seedComments();
+    const a = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(
+      setDoc(doc(a, "trainers", "trainerA2", "notifications", "n1"), {
+        kind: "comment-mention",
+        title: "Trainer A tagged you on Leg Press",
+        studioId: "studioA",
+        link: { view: "machine-anatomy", learning: { kind: "machine", id: "m-leg-press", title: "Leg Press" } },
+        actor: { id: "trainerA", name: "Trainer A" },
+        createdAt: serverTimestamp(),
+        readAt: null,
+      }),
+    );
+  });
 });

@@ -40,6 +40,7 @@ import {
 import { useSharedMachines } from "./hooks";
 import { adoptMachine } from "./mutations";
 import { NetworkNotes } from "./NetworkNotes";
+import { CommentsPanel } from "../comments";
 import "./machine-db.css";
 
 /**
@@ -320,6 +321,7 @@ export function MachineDatabase({
             />
           }
           network={<NetworkNotes lineageKey={e.lineageKey} ownStudioId={studioId} machineName={e.machine.name} />}
+          comments={<CommentsPanel target={{ kind: "machine", id: e.machine.id }} title={e.machine.name} />}
         />
       </WikiShell>
     );
