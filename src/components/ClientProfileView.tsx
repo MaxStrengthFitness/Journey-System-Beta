@@ -151,7 +151,7 @@ import {
   AccordionContent,
 } from "@/components/ui/accordion";
 import { useActiveSessionCheck } from "../hooks/useActiveSessionCheck";
-import { useStudioMachineSettings } from "../hooks/useStudioMachineSettings";
+import { useStudioMachines } from "../hooks/useStudioMachines";
 import { resolveMachineOrder } from "../data/machine-display-order";
 import {
   RecentJourneyView,
@@ -334,8 +334,19 @@ export function ClientProfileView({
   // any legacy machine.order value. This is a flat display-order concern
   // only — separate from the kinematic MOVEMENT_PATTERN_ORDER grouping
   // used by the Edit Routine drawer and Catalog, which is untouched here.
-  const { settingsByMachineId: studioMachineSettingsById } =
-    useStudioMachineSettings(activeStudioId);
+  // ORDERING, unified Sep 12 2026. This used to read
+  // studioMachineSettings/{studioId}_{machineId}.order - a collection that
+  // turned out to hold ZERO documents in production, because the editor that
+  // wrote it (TrainerControlHubView) was deleted in the Sep 5 settings round
+  // and never replaced. So this screen and the Active Session were sorting by
+  // a field nothing could set, while the Catalog sorted by the roster's own
+  // `order`. Two different orders for one studio, and no way to change either.
+  // Now both read the roster, which is the single answer to "what equipment
+  // does this location have, and in what order does it run".
+  // byId is keyed by machineId and its `order` is already resolved through
+  // resolveMachineOrder, so passing it as the override is idempotent: an
+  // unrostered machine yields undefined and falls back to the code default.
+  const { byId: studioFloorById } = useStudioMachines(activeStudioId);
 
   // Discard Session (round: In-Progress dropdown) — lets a trainer scrap
   // someone else's abandoned/stuck in-progress session right from the
@@ -1180,12 +1191,12 @@ export function ClientProfileView({
         resolveMachineOrder(
           a.id,
           a.order,
-          a.id ? studioMachineSettingsById[a.id]?.order : undefined,
+          a.id ? studioFloorById[a.id]?.order : undefined,
         ) -
         resolveMachineOrder(
           b.id,
           b.order,
-          b.id ? studioMachineSettingsById[b.id]?.order : undefined,
+          b.id ? studioFloorById[b.id]?.order : undefined,
         ),
     );
     const currentStudio = studios?.find((st) => st.id === activeStudioId);
@@ -1225,7 +1236,7 @@ export function ClientProfileView({
     machines,
     allLogs,
     clientSettings,
-    studioMachineSettingsById,
+    studioFloorById,
     studios,
     activeStudioId,
   ]);
