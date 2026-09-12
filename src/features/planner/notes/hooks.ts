@@ -160,8 +160,10 @@ export function useSharedCopy(clientId: string | null, noteId: string | null): S
       doc(sharedNotesRef(clientId), noteId),
       { includeMetadataChanges: true },
       (snap) => {
+        // Capture metadata before exists() narrows snap's type to never in the else branch.
+        const fromCache = snap.metadata.fromCache;
         if (snap.exists()) setStatus("present");
-        else if (!snap.metadata.fromCache) setStatus("missing");
+        else if (!fromCache) setStatus("missing");
       },
       (err: any) => setStatus(err?.code === "permission-denied" ? "unreadable" : "checking"),
     );
