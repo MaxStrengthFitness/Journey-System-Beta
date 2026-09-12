@@ -32,6 +32,8 @@ import type { WikiAccent } from "../wiki/categories";
 
 export type LearningSearchGroupKey =
   | "catalog"
+  /** Machines other studios made and shared (the MSF machine database). */
+  | "network"
   | "academy-machines"
   | "academy"
   | "topics"
@@ -41,6 +43,7 @@ export type LearningSearchGroupKey =
 /** The order groups appear in. Machines first: the thirty-second lookup. */
 export const SEARCH_GROUP_ORDER: LearningSearchGroupKey[] = [
   "catalog",
+  "network",
   "academy-machines",
   "studio",
   "academy",

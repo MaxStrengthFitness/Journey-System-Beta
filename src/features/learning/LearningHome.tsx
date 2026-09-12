@@ -81,9 +81,9 @@ export function LearningHome({
   const { activeStudioId, activeStudio } = useActiveStudio();
   const studioName = activeStudio?.name ?? "This studio";
 
-  const { machines: catalog } = useCatalogMachines(activeStudioId, machines);
+  const { machines: catalog, loading: floorLoading } = useCatalogMachines(activeStudioId, machines);
   const { byMachineId: upkeepById } = useMachineUpkeep(activeStudioId);
-  const { pages } = useStudioWiki(activeStudioId);
+  const { pages, loading: pagesLoading, error: pagesError } = useStudioWiki(activeStudioId);
 
   const tiles = useMemo(() => homeCategoryTiles(catalog), [catalog]);
   const status = useMemo(() => {
@@ -121,8 +121,16 @@ export function LearningHome({
 
         <ul className="lh__facts" aria-label="What is in Learning">
           <li>
-            <strong>{catalog.length}</strong> {catalog.length === 1 ? "machine" : "machines"} at{" "}
-            {studioName}
+            {/* Not counted until the floor has loaded: before then the list
+                can be the whole MSF catalog standing in for it. */}
+            {floorLoading ? (
+              <>Counting {studioName}'s machines…</>
+            ) : (
+              <>
+                <strong>{catalog.length}</strong> {catalog.length === 1 ? "machine" : "machines"} at{" "}
+                {studioName}
+              </>
+            )}
           </li>
           <li>
             <strong>{facts.modules}</strong> Academy modules
@@ -133,9 +141,11 @@ export function LearningHome({
           <li>
             <strong>{facts.glossary}</strong> glossary terms
           </li>
-          <li>
-            <strong>{pages.length}</strong> {pages.length === 1 ? "page" : "pages"} written here
-          </li>
+          {!pagesLoading && !pagesError && (
+            <li>
+              <strong>{pages.length}</strong> {pages.length === 1 ? "page" : "pages"} written here
+            </li>
+          )}
         </ul>
       </section>
 
@@ -311,7 +321,11 @@ export function LearningHome({
           )}
         </header>
 
-        {recent.length === 0 ? (
+        {pagesError ? (
+          <p className="wk__empty">{pagesError}</p>
+        ) : pagesLoading ? (
+          <p className="wk__empty">Loading {studioName}'s pages…</p>
+        ) : recent.length === 0 ? (
           <p className="wk__empty">
             Nothing written at {studioName} yet. Studio leaders can add pages — the
             studio's own way of doing things, kept beside the Academy, never on top

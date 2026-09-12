@@ -215,6 +215,8 @@ export function useClientDoc(clientId: string | null): ClientDocState {
 export interface ClientSearchState {
   results: Client[];
   searching: boolean;
+  /** The search itself failed: the results say nothing about who exists. */
+  failed?: boolean;
 }
 
 /**
@@ -235,7 +237,10 @@ export function useClientSearch(
 
   useEffect(() => {
     const t = term.trim().toLowerCase();
-    const alpha = t.replace(/[^a-z]/g, "");
+    // The first word's letters: "Al Smith" searches "al", not "als" — the
+    // prefix used to run across the space (review fix). The other words
+    // still narrow the results below.
+    const alpha = (t.split(/\s+/)[0] ?? "").replace(/[^a-z]/g, "");
     const prefix = alpha.slice(0, 3);
     const studioIds = studioKey ? studioKey.split(",") : [];
     if (!prefix || studioIds.length === 0) {
@@ -262,7 +267,7 @@ export function useClientSearch(
         if (live) setState({ results, searching: false });
       } catch (err) {
         console.warn("[notes] client search failed:", err);
-        if (live) setState({ results: [], searching: false });
+        if (live) setState({ results: [], searching: false, failed: true });
       }
     }, 300);
     return () => {

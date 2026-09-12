@@ -47,7 +47,7 @@ export function MyTasksPanel({ authTrainer, clients, onOpenClientTask }: MyTasks
   // The Firebase Auth uid, not authTrainer.id — personal tasks live at
   // trainers/{uid}/task*. Same reasoning as StudioHubView.
   const ownerId = auth.currentUser?.uid ?? null;
-  const { rows, templates, loading } = useStudioTasks(activeStudioId, { ownerId, clientNames });
+  const { rows, templates, loading, error } = useStudioTasks(activeStudioId, { ownerId, clientNames });
 
   const author = authTrainer?.id
     ? { id: authTrainer.id, name: authTrainer.fullName ?? "A trainer" }
@@ -70,6 +70,7 @@ export function MyTasksPanel({ authTrainer, clients, onOpenClientTask }: MyTasks
 
   const nothingToday =
     !loading &&
+    !error &&
     buckets.open.length === 0 &&
     buckets.done.length === 0 &&
     buckets.assigned.length === 0;
@@ -155,6 +156,7 @@ export function MyTasksPanel({ authTrainer, clients, onOpenClientTask }: MyTasks
           </div>
         </div>
 
+        {error && <p className="sh__loading">{error}</p>}
         {loading && rows.length === 0 ? (
           <p className="sh__loading">Loading today…</p>
         ) : nothingToday ? (

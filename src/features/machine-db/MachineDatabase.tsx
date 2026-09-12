@@ -36,6 +36,7 @@ import {
   planAdoption,
   searchDatabase,
   type DatabaseEntry,
+  type RosterEntryLite,
 } from "./database";
 import { useSharedMachines } from "./hooks";
 import { adoptMachine } from "./mutations";
@@ -70,6 +71,8 @@ export interface MachineDatabaseProps {
   floor: CatalogMachine[];
   /** "global": the studio has no roster yet, and the floor is the whole catalog. */
   floorSource: "roster" | "global";
+  /** The floor is still loading: nothing can be said yet about what is on it. */
+  floorLoading?: boolean;
   studioId: string | null;
   studioName: string;
   authTrainer: Trainer | null;
@@ -89,6 +92,7 @@ export function MachineDatabase({
   legacyMachines,
   floor,
   floorSource,
+  floorLoading = false,
   studioId,
   studioName,
   authTrainer,
@@ -111,8 +115,20 @@ export function MachineDatabase({
 
   const { machines: shared, error: sharedError, loading: sharedLoading } = useSharedMachines(true);
   // Every id on the roster, whatever its status, so a copy never collides.
-  const { rosterEntries } = useStudioMachines(studioId, { includeInactive: true });
+  const { rosterEntries, loading: rosterLoading } = useStudioMachines(studioId, { includeInactive: true });
   const takenIds = useMemo(() => new Set(rosterEntries.map((e) => e.machineId)), [rosterEntries]);
+  // Switched-off entries too: adding one of those back switches it on (planAdoption).
+  const roster = useMemo<RosterEntryLite[]>(
+    () =>
+      rosterEntries.map((r) => ({
+        machineId: r.machineId,
+        status: r.status,
+        adoptedFrom: (r as { adoptedFrom?: RosterEntryLite["adoptedFrom"] }).adoptedFrom ?? null,
+      })),
+    [rosterEntries],
+  );
+  // Until both have loaded, "on your floor" and "not on your floor" are both guesses.
+  const floorKnown = !floorLoading && !rosterLoading;
 
   const msf = useMemo(() => {
     const { machines } = dedupeMachines(legacyMachines);
@@ -129,8 +145,8 @@ export function MachineDatabase({
   }, [legacyMachines]);
 
   const entries = useMemo(
-    () => buildDatabase({ msf, shared, floor, studioId }),
-    [msf, shared, floor, studioId],
+    () => buildDatabase({ msf, shared, floor: floorKnown ? floor : [], studioId }),
+    [msf, shared, floor, floorKnown, studioId],
   );
   const counts = useMemo(() => databaseCounts(entries), [entries]);
   const groups = useMemo(() => groupDatabase(entries, grouping), [entries, grouping]);
@@ -173,12 +189,16 @@ export function MachineDatabase({
   const openEntry = (key: string) => setRoute({ kind: "machine", key });
 
   const adopt = async (e: DatabaseEntry) => {
-    const plan = planAdoption(e, { studioId, studioName, floorSource, takenIds });
-    if (!plan.ok || !studioId) return;
+    const plan = planAdoption(e, { studioId, studioName, floorSource, takenIds, roster });
+    if (!plan.ok || !studioId || !floorKnown) return;
     setAdopting(true);
     try {
       await adoptMachine(studioId, plan);
-      toastSuccess(`${e.machine.name} is on ${studioName}'s floor.`);
+      toastSuccess(
+        plan.reactivates
+          ? `${e.machine.name} is back on ${studioName}'s floor.`
+          : `${e.machine.name} is on ${studioName}'s floor.`,
+      );
     } catch (err) {
       console.error("[machine-db] adopt failed:", err);
       toastError("Could not add it. Adding machines is for studio leaders.");
@@ -261,9 +281,16 @@ export function MachineDatabase({
 
     const card = e.origin === "msf" ? academyCards?.find((c) => c.machineId === e.machine.id) : null;
     const script = e.origin === "msf" ? academyScripts?.find((s) => s.machineId === e.machine.id) : null;
-    const plan = planAdoption(e, { studioId, studioName, floorSource, takenIds });
+    const plan = planAdoption(e, { studioId, studioName, floorSource, takenIds, roster });
 
-    const notice = (
+    const notice = !floorKnown ? (
+      <section className="mdb-adopt" aria-label={`${e.machine.name} at ${studioName}`}>
+        <p className="mdb-adopt__line">
+          <Building2 size={14} aria-hidden />
+          Checking {studioName}'s floor…
+        </p>
+      </section>
+    ) : (
       <section className="mdb-adopt" aria-label={`${e.machine.name} at ${studioName}`}>
         <p className="mdb-adopt__line">
           <Building2 size={14} aria-hidden />
@@ -286,9 +313,17 @@ export function MachineDatabase({
               onClick={() => adopt(e)}
             >
               <Plus size={14} aria-hidden />
-              {adopting ? "Adding…" : `Add to ${studioName}'s floor`}
+              {adopting
+                ? "Adding…"
+                : plan.reactivates
+                  ? `Put it back on ${studioName}'s floor`
+                  : `Add to ${studioName}'s floor`}
             </button>
-            {e.origin === "studio" && e.sharedBy && (
+            {plan.reactivates ? (
+              <p className="mdb-adopt__why">
+                {studioName} switched this machine off. Putting it back brings its local setup with it.
+              </p>
+            ) : e.origin === "studio" && e.sharedBy && (
               <p className="mdb-adopt__why">
                 Adds {studioName}'s own copy of {e.sharedBy.studioName}'s machine. Changes they make later won't
                 follow it, and anything either studio shares about it shows on both.
@@ -354,15 +389,19 @@ export function MachineDatabase({
   }));
 
   return (
-    <WikiShell crumbs={[{ label: "Catalog" }]} onOpenSearch={() => setRoute({ kind: "search" })}>
+    <WikiShell
+      crumbs={[{ label: "Catalog" }]}
+      scrollKey="Catalog / All MSF machines"
+      onOpenSearch={() => setRoute({ kind: "search" })}
+    >
       <WikiIndexHeader
         lead={scopeSwitch}
         title="All MSF machines"
         subtitle={`Every machine in the MSF catalog, and the machines studios have made and shared. Open one to read it, see what other studios wrote about it, and ${canAdopt ? `add it to ${studioName}'s floor` : `see whether ${studioName} has it`}.`}
         stats={[
           { label: "MSF catalog", value: counts.msf },
-          { label: "Shared by studios", value: counts.studio },
-          { label: `On ${studioName}'s floor`, value: counts.onFloor },
+          { label: "Shared by studios", value: sharedLoading ? "…" : counts.studio },
+          { label: `On ${studioName}'s floor`, value: floorKnown ? counts.onFloor : "…" },
         ]}
       >
         {groupingControl}

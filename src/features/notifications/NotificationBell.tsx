@@ -95,8 +95,10 @@ export interface NotificationBellProps {
   /**
    * Where a notification's link should take the app. `learning` is the raw
    * Learning ref from the link, if it has one; the app parses it.
+   * `studioId` is the studio it happened at: a comment thread, a flag or a
+   * studio page belongs to one studio, so the app checks it is the one open.
    */
-  onNavigate?: (view: string, id?: string, learning?: unknown) => void;
+  onNavigate?: (view: string, id?: string, learning?: unknown, studioId?: string) => void;
   className?: string;
 }
 
@@ -135,7 +137,7 @@ export function NotificationBell({
       markNotificationRead(uid, n.id).catch(() => {});
     }
     if (n.link && onNavigate) {
-      onNavigate(n.link.view, n.link.id, n.link.learning);
+      onNavigate(n.link.view, n.link.id, n.link.learning, n.studioId || undefined);
       setOpen(false);
     }
   };
@@ -234,7 +236,13 @@ export function NotificationBell({
                             <button
                               type="button"
                               onClick={() => {
-                                onNavigate("learning", undefined, page);
+                                // A studio's own page opens only at that studio.
+                                onNavigate(
+                                  "learning",
+                                  undefined,
+                                  page,
+                                  page.kind === "studio-page" ? page.studioId : undefined,
+                                );
                                 setOpen(false);
                               }}
                               className="mt-2 inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-xl border border-cta/40 bg-cta/10 px-3 text-left text-[11px] font-black uppercase tracking-widest text-cta"

@@ -174,6 +174,15 @@ describe("reading notes", () => {
     expect(folderCounts(notes)).toEqual({ byFolder: { f1: 1 }, unfiled: 3 });
   });
 
+  it("puts a note whose folder was deleted in Unfiled, once the folders are known", () => {
+    const stray = [...notes, note("stray", { folderId: "gone" })];
+    const known = new Set(["f1"]);
+    expect(folderCounts(stray, known)).toEqual({ byFolder: { f1: 1 }, unfiled: 4 });
+    expect(notesInView(stray, { kind: "unfiled" }, "all", "", () => "", known).map((n) => n.id)).toContain("stray");
+    // Before the folders have loaded, nothing is guessed.
+    expect(folderCounts(stray)).toEqual({ byFolder: { f1: 1, gone: 1 }, unfiled: 3 });
+  });
+
   it("excerpts one line", () => {
     expect(excerpt("Line one\n\nline   two")).toBe("Line one line two");
     expect(excerpt("x".repeat(200), 10)).toBe("xxxxxxxxx…");

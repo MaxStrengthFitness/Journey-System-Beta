@@ -228,8 +228,43 @@ export function databaseCounts(entries: DatabaseEntry[]): DatabaseCounts {
  * ------------------------------------------------------------------ */
 
 export type AdoptionPlan =
-  | { ok: true; machineId: string; entry: Record<string, unknown>; reason?: undefined }
-  | { ok: false; reason: string; machineId?: undefined; entry?: undefined };
+  | {
+      ok: true;
+      machineId: string;
+      entry: Record<string, unknown>;
+      /** Switches back on a machine the studio switched off, rather than adding one. */
+      reactivates?: boolean;
+      reason?: undefined;
+    }
+  | { ok: false; reason: string; machineId?: undefined; entry?: undefined; reactivates?: undefined };
+
+/** A roster entry as planAdoption reads it: every status, switched-off ones included. */
+export interface RosterEntryLite {
+  machineId: string;
+  status?: string;
+  adoptedFrom?: { studioId: string; machineId: string } | null;
+}
+
+/**
+ * The roster entry that already stands for this database entry at the studio,
+ * whatever its status: the MSF machine itself, the studio's own machine, or
+ * its copy of another studio's. Null when the studio has never had it.
+ */
+export function existingRosterEntry(
+  e: DatabaseEntry,
+  studioId: string | null,
+  roster: RosterEntryLite[],
+): string | null {
+  if (!studioId) return null;
+  if (e.origin === "msf") return roster.some((r) => r.machineId === e.machine.id) ? e.machine.id : null;
+  const src = e.shared;
+  if (!src) return null;
+  if (src.studioId === studioId) return roster.some((r) => r.machineId === src.machineId) ? src.machineId : null;
+  const copy = roster.find(
+    (r) => r.adoptedFrom?.studioId === src.studioId && r.adoptedFrom?.machineId === src.machineId,
+  );
+  return copy?.machineId ?? null;
+}
 
 /**
  * What adopting an entry would write to this studio's roster — or why it
@@ -248,6 +283,12 @@ export function planAdoption(
     floorSource: "roster" | "global";
     /** Every id on the roster, whatever its status — a new copy must not collide. */
     takenIds: Set<string>;
+    /**
+     * The whole roster, switched-off entries included. A machine the studio
+     * switched off is still on it, and adding it again switches it back on
+     * rather than making a second copy (or a copy of the studio's own).
+     */
+    roster?: RosterEntryLite[];
   },
 ): AdoptionPlan {
   if (!ctx.studioId) return { ok: false, reason: "Pick a studio first." };
@@ -259,6 +300,9 @@ export function planAdoption(
     };
   }
   if (e.retired) return { ok: false, reason: "Retired from the MSF catalog, so it can't be added to a floor." };
+
+  const existing = existingRosterEntry(e, ctx.studioId, ctx.roster ?? []);
+  if (existing) return { ok: true, machineId: existing, entry: { status: "active" }, reactivates: true };
 
   if (e.origin === "msf") {
     const id = e.machine.id;

@@ -35,6 +35,7 @@ export function LearningLinkPicker({
   onChange: (next: StoredLearningRef | null) => void;
   /** Whose machines and pages to offer: the target studio, else the admin's own. */
   studioId: string | null;
+  /** On for an announcement to one studio: its pages, and its own floor's machines. */
   includeStudioPages: boolean;
 }) {
   const [query, setQuery] = useState("");
@@ -44,6 +45,9 @@ export function LearningLinkPicker({
     studioId,
     includeStudioPages,
     enabled: open,
+    // Reaching other studios: the MSF catalog, not one studio's floor, whose
+    // own machines would open nowhere else (review fix).
+    machineScope: includeStudioPages ? "floor" : "msf",
   });
   const hits = useMemo(() => {
     if (!query.trim()) return [];

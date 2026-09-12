@@ -19,6 +19,12 @@ interface ActiveStudioContextType {
   activeStudio: Studio | null;
   setActiveStudioId: (id: string | null) => void;
   availableStudios: Studio[];
+  /**
+   * Every studio, as loaded for the app (Learning + Planner round). For
+   * naming a studio from its own document — never from what a shared item
+   * says about itself.
+   */
+  studios: Studio[];
   isChangingStudio: boolean;
   setIsChangingStudio: (val: boolean) => void;
   isAdmin: boolean;
@@ -218,6 +224,7 @@ export function ActiveStudioProvider({
         activeStudio,
         setActiveStudioId,
         availableStudios,
+        studios,
         isChangingStudio,
         setIsChangingStudio,
         isAdmin,

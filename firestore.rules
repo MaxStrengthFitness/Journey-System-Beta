@@ -606,6 +606,12 @@ service cloud.firestore {
       return isSuperAdmin() || isFranchiseOwnerOnly() || getRole() == 'StudioOwner';
     }
 
+    /* Everyone at every studio. Only the Operations tab offers it, so only
+       its people may send one; the Franchise hub never offers it. */
+    function reachesEveryStudio(d) {
+      return d.get('targetScope', '') == 'universal' || d.get('studioId', '') == 'all';
+    }
+
     function announcementShapeValid(d) {
       return isValidHubAnnouncement(d)
           && d.title is string && d.title.size() <= 200
@@ -758,6 +764,17 @@ service cloud.firestore {
     function rosterShareValid(d) {
       return d.get('shared', false) != true
           || (d.get('source', '') == 'custom' && !('adoptedFrom' in d));
+    }
+
+    /* ...and a copy stays a copy: an update can't drop `adoptedFrom` and list
+       it in the same write (review fix). The studio it names is the one its
+       path names, so a shared machine can't claim another studio. */
+    function rosterWriteValid(studioId) {
+      return rosterShareValid(request.resource.data)
+          && request.resource.data.get('studioId', studioId) == studioId
+          && (resource == null
+              || !('adoptedFrom' in resource.data)
+              || request.resource.data.get('shared', false) != true);
     }
 
     /* A comment on a Learning page (features/comments). No client field
@@ -1424,7 +1441,7 @@ service cloud.firestore {
         allow read: if isAuthenticated();
         allow create, update:
           if (isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId))
-             && rosterShareValid(request.resource.data);
+             && rosterWriteValid(studioId);
         allow delete:
           if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
@@ -1595,7 +1612,11 @@ service cloud.firestore {
        * against a machine, so deleting orphans both.
        */
       match /playbook/{entryId} {
-        allow read: if isAuthenticated();
+        // The studio's own people (review fix, Learning + Planner round).
+        // Other studios read only what is shared, through the
+        // {path=**}/playbook rule below; this read used to hand every
+        // signed-in user every studio's unshared tips.
+        allow read: if isAuthenticated() && writesForStudio(studioId);
 
         allow create: if isAuthenticated()
                       && isAnyAuthenticatedTrainer()
@@ -1666,7 +1687,9 @@ service cloud.firestore {
        * Firestore does not cascade.
        */
       match /wiki/{docId} {
-        allow read: if isAuthenticated();
+        // As the playbook: the studio's own people; other studios read only
+        // what is shared, through {path=**}/wiki below (review fix).
+        allow read: if isAuthenticated() && writesForStudio(studioId);
 
         allow create: if isAuthenticated()
                       && isAnyAuthenticatedTrainer()
@@ -1902,6 +1925,10 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated()
                     && canPostAnnouncements()
+                    // Posted as yourself (review fix: the author was free text).
+                    && request.resource.data.authorId == request.auth.uid
+                    && (isSuperAdmin() || isFranchiseOwnerOnly()
+                        || !reachesEveryStudio(request.resource.data))
                     && announcementShapeValid(request.resource.data);
       allow update: if isAuthenticated() && (
                       (
@@ -1917,7 +1944,15 @@ service cloud.firestore {
                       ) || (
                         // Lengths are checked on create only, so a notice
                         // written before the limits can still be taken down.
+                        // A studio owner changes only their own notices;
+                        // the Operations tab's people, any. The author and
+                        // the reach stay what they were allowed to be.
                         canPostAnnouncements()
+                        && (resource.data.get('authorId', '') == request.auth.uid
+                            || isSuperAdmin() || isFranchiseOwnerOnly())
+                        && request.resource.data.get('authorId', '') == resource.data.get('authorId', '')
+                        && (isSuperAdmin() || isFranchiseOwnerOnly()
+                            || !reachesEveryStudio(request.resource.data))
                         && isValidHubAnnouncement(request.resource.data)
                         && (!('learningLink' in request.resource.data)
                             || learningLinkValid(request.resource.data.learningLink))

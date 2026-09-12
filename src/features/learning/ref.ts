@@ -34,6 +34,8 @@
  * PURE MODULE — no React, no Firestore.
  */
 
+import { clipText } from "../../lib/clip-text";
+
 export type LearningRef =
   | { kind: "machine"; id: string }
   | { kind: "academy-card"; id: string }
@@ -140,7 +142,7 @@ function cleanTitle(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const v = value.replace(/\s+/g, " ").trim();
   if (!v) return undefined;
-  return v.length > LEARNING_TITLE_MAX ? `${v.slice(0, LEARNING_TITLE_MAX - 1)}…` : v;
+  return v.length > LEARNING_TITLE_MAX ? `${clipText(v, LEARNING_TITLE_MAX - 1)}…` : v;
 }
 
 /**

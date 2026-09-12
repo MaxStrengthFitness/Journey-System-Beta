@@ -11,6 +11,8 @@ describe("reading what other studios shared", () => {
     expect(tipFromDoc("t1", null, { ...base, worked: "  " })).toBeNull();
     // An older entry without studioId falls back to its path.
     expect(tipFromDoc("t1", "westlake", { ...base, studioId: undefined })?.studioId).toBe("westlake");
+    // And the path wins over what the document says about itself.
+    expect(tipFromDoc("t1", "westlake", base)?.studioId).toBe("westlake");
   });
 
   it("takes a shared machine note, never a page or a note on the Academy", () => {

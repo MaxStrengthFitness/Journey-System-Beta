@@ -8,17 +8,41 @@
  * could not be loaded rather than pretending nobody shared anything.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { collectionGroup, limit, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebase";
+import { useActiveStudio } from "../../ActiveStudioContext";
 import { resolveMachine } from "../../lib/resolve-machine";
 import type { RosterEntryCustom } from "../../types/machines";
 import { fromResolvedMachine } from "../catalog/adapters";
 import type { SharedStudioMachine } from "./database";
 import { noteFromWikiDoc, tipFromDoc, type NetworkItem } from "./network";
 
-/** The studio a collection-group document sits under: studios/{id}/… */
-const studioFromPath = (ref: { parent: { parent: { id: string } | null } }) => ref.parent.parent?.id ?? null;
+/**
+ * The studio a collection-group document sits under: studios/{id}/…, else
+ * null. The path, never the document's own `studioId` field: only people at
+ * that studio can write under its path, while the field says whatever the
+ * writer typed (review, Learning + Planner round).
+ */
+type PathRef = { parent: { parent: { id: string; parent: { id: string } } | null } };
+const studioFromPath = (ref: PathRef): string | null => {
+  const studio = ref.parent.parent;
+  return studio && studio.parent.id === "studios" ? studio.id : null;
+};
+
+/**
+ * A studio's name from its own document, falling back to the name the shared
+ * item carries (for a studio this device hasn't loaded). The carried name is
+ * free text its writer chose.
+ */
+function useStudioNameOf(): (studioId: string, carried: string) => string {
+  const { studios } = useActiveStudio();
+  return useCallback(
+    (studioId: string, carried: string) =>
+      (studios ?? []).find((s) => s.id === studioId)?.name?.trim() || carried,
+    [studios],
+  );
+}
 
 export interface SharedMachinesState {
   machines: SharedStudioMachine[];
@@ -41,7 +65,7 @@ export function useSharedMachines(enabled: boolean): SharedMachinesState {
         const machines: SharedStudioMachine[] = [];
         for (const d of snap.docs) {
           const data = d.data() as Partial<RosterEntryCustom> & { sharedStudioName?: string };
-          const studioId = data.studioId || studioFromPath(d.ref as never);
+          const studioId = studioFromPath(d.ref as never);
           if (!studioId || data.source !== "custom" || !data.definition?.name) continue;
           const entry = { ...data, machineId: d.id, studioId, status: data.status ?? "active" } as RosterEntryCustom;
           const resolved = resolveMachine(entry);
@@ -64,7 +88,14 @@ export function useSharedMachines(enabled: boolean): SharedMachinesState {
       },
     );
   }, [enabled]);
-  return state;
+  const nameOf = useStudioNameOf();
+  return useMemo(
+    () => ({
+      ...state,
+      machines: state.machines.map((m) => ({ ...m, studioName: nameOf(m.studioId, m.studioName) })),
+    }),
+    [state, nameOf],
+  );
 }
 
 export interface NetworkNotesState {
@@ -108,7 +139,10 @@ export function useNetworkNotes(lineageKey: string | null): NetworkNotesState {
       (snap) =>
         setTips({
           items: snap.docs
-            .map((d) => tipFromDoc(d.id, studioFromPath(d.ref as never), d.data()))
+            .map((d) => {
+              const studioId = studioFromPath(d.ref as never);
+              return studioId ? tipFromDoc(d.id, studioId, d.data()) : null;
+            })
             .filter((x): x is NonNullable<typeof x> => x !== null),
           ready: true,
           error: null,
@@ -128,7 +162,10 @@ export function useNetworkNotes(lineageKey: string | null): NetworkNotesState {
       (snap) =>
         setNotes({
           items: snap.docs
-            .map((d) => noteFromWikiDoc(d.id, studioFromPath(d.ref as never), d.data()))
+            .map((d) => {
+              const studioId = studioFromPath(d.ref as never);
+              return studioId ? noteFromWikiDoc(d.id, studioId, d.data()) : null;
+            })
             .filter((x): x is NonNullable<typeof x> => x !== null),
           ready: true,
           error: null,
@@ -144,8 +181,13 @@ export function useNetworkNotes(lineageKey: string | null): NetworkNotesState {
     };
   }, [lineageKey]);
 
+  const nameOf = useStudioNameOf();
+  const items = useMemo(
+    () => [...notes.items, ...tips.items].map((i) => ({ ...i, studioName: nameOf(i.studioId, i.studioName) })),
+    [notes.items, tips.items, nameOf],
+  );
   return {
-    items: [...notes.items, ...tips.items],
+    items,
     loading: !tips.ready || !notes.ready,
     error: tips.error ?? notes.error,
   };

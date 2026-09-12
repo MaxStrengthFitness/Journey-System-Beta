@@ -26,8 +26,11 @@ export function useComments(studioId: string | null, targetKey: string | null): 
       return;
     }
     setState({ comments: [], loading: true, error: null });
+    // The newest 200, then read oldest first (sortComments). Oldest-first
+    // with the limit would drop the newest — the one just posted — once a
+    // page passed 200. The index in firestore.indexes.json is descending.
     return onSnapshot(
-      query(commentsRef(studioId), where("targetKey", "==", targetKey), orderBy("createdAt", "asc"), limit(200)),
+      query(commentsRef(studioId), where("targetKey", "==", targetKey), orderBy("createdAt", "desc"), limit(200)),
       (snap) =>
         setState({
           comments: sortComments(

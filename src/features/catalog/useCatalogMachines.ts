@@ -38,6 +38,11 @@ export interface UseCatalogMachinesResult {
   machines: CatalogMachine[];
   /** Which source produced them — surfaced so the UI can say so if it wants. */
   source: "roster" | "global";
+  /**
+   * The studio's roster or the catalog is still loading. While true the list
+   * may be the global fallback, or a roster short of its catalog machines —
+   * never conclude "not on this floor" from it.
+   */
   loading: boolean;
 }
 
@@ -54,10 +59,14 @@ export function useCatalogMachines(
 
     if (resolved.length > 0) {
       // useStudioMachines has already sorted by the studio's own order.
+      // `loading` passes through here too (Learning + Planner round): a
+      // roster that arrives before the catalog is missing its catalog-based
+      // machines until the catalog lands, and callers must not treat that
+      // partial list as the studio's floor.
       return {
         machines: resolved.map((m) => fromResolvedMachine(m, opts)),
         source: "roster",
-        loading: false,
+        loading,
       };
     }
 

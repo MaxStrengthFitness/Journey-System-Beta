@@ -31,7 +31,13 @@ import {
  */
 export interface UseStudioWikiResult {
   docs: StudioWikiDoc[];
+  /** True until THIS studio's documents have arrived (or failed). */
   loading: boolean;
+  /**
+   * The read failed. The lists are then empty, and a screen must say it
+   * couldn't load them — never that nothing is written.
+   */
+  error: string | null;
   /** The single overlay attached to one target, or null. See targetDocId. */
   overlayFor: (type: WikiTargetType, id: string) => StudioWikiDoc | null;
   /** Live studio-authored pages, retired ones excluded. */
@@ -39,20 +45,31 @@ export interface UseStudioWikiResult {
 }
 
 export function useStudioWiki(studioId: string | null): UseStudioWikiResult {
-  const [docs, setDocs] = useState<StudioWikiDoc[]>([]);
-  const [loading, setLoading] = useState(false);
+  /*
+   * Learning + Planner round (review): the documents are held WITH the studio
+   * they belong to. After a studio switch the old studio's pages used to stay
+   * until the new snapshot, and a read that failed kept them for good, so a
+   * link could be stamped with one studio and a page of another. And loading
+   * started false, so "that page is gone" flashed before the first snapshot.
+   */
+  const [held, setHeld] = useState<{
+    studioId: string | null;
+    docs: StudioWikiDoc[];
+    error: string | null;
+  }>({ studioId: null, docs: [], error: null });
 
   useEffect(() => {
     if (!studioId) {
-      setDocs([]);
+      setHeld({ studioId: null, docs: [], error: null });
       return;
     }
-    setLoading(true);
     const unsub = onSnapshot(
       collection(db, "studios", studioId, "wiki"),
       (snap) => {
-        setDocs(
-          snap.docs.map((d) => {
+        setHeld({
+          studioId,
+          error: null,
+          docs: snap.docs.map((d) => {
             const data = d.data() as Partial<StudioWikiDoc>;
             /*
              * Defaulted at the door, not at every use site. A document written
@@ -68,8 +85,7 @@ export function useStudioWiki(studioId: string | null): UseStudioWikiResult {
               tags: data.tags ?? [],
             } as StudioWikiDoc;
           }),
-        );
-        setLoading(false);
+        });
       },
       (error) => {
         handleFirestoreError(
@@ -77,11 +93,20 @@ export function useStudioWiki(studioId: string | null): UseStudioWikiResult {
           OperationType.GET,
           `studios/${studioId}/wiki`,
         );
-        setLoading(false);
+        setHeld({
+          studioId,
+          docs: [],
+          error: "Couldn't load this studio's pages. Check the connection.",
+        });
       },
     );
     return () => unsub();
   }, [studioId]);
+
+  const current = held.studioId === studioId;
+  const docs = current ? held.docs : NO_DOCS;
+  const loading = Boolean(studioId) && !current;
+  const error = current ? held.error : null;
 
   const overlayFor = useCallback(
     (type: WikiTargetType, id: string) =>
@@ -97,5 +122,7 @@ export function useStudioWiki(studioId: string | null): UseStudioWikiResult {
     [docs],
   );
 
-  return { docs, loading, overlayFor, pages };
+  return { docs, loading, error, overlayFor, pages };
 }
+
+const NO_DOCS: StudioWikiDoc[] = [];

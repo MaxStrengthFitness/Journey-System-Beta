@@ -15,9 +15,12 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
   writeBatch,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
@@ -115,13 +118,15 @@ const BATCH_LIMIT = 400;
  * Deletes a folder. Its notes are kept: they move to Unfiled first, and the
  * folder goes in the last batch, so an interrupted delete leaves a folder
  * that is merely emptier — never notes pointing at a folder that is gone.
+ *
+ * The notes to move are read fresh from the database, not taken from the
+ * screen (review fix): the screen's list is capped at the newest 500, and a
+ * note deleted on another iPad would still be in it — and one update to a
+ * note that is gone fails the whole batch.
  */
-export async function deleteNoteFolder(
-  uid: string,
-  folder: Pick<NoteFolder, "id">,
-  notesInFolder: Pick<TrainerNote, "id">[],
-): Promise<void> {
-  const moves = notesInFolder.map((n) => doc(notesRef(uid), n.id));
+export async function deleteNoteFolder(uid: string, folder: Pick<NoteFolder, "id">): Promise<void> {
+  const inFolder = await getDocs(query(notesRef(uid), where("folderId", "==", folder.id)));
+  const moves = inFolder.docs.map((d) => d.ref);
   for (let i = 0; i < moves.length; i += BATCH_LIMIT) {
     const batch = writeBatch(db);
     for (const ref of moves.slice(i, i + BATCH_LIMIT)) batch.update(ref, { folderId: null });

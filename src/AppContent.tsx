@@ -584,7 +584,7 @@ export default function AppContent({
   handleLogout: () => Promise<void>;
   tokenRole: string | null;
 }) {
-  const { success: toastSuccess, error: toastError } = useToast();
+  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
   const { theme } = useTheme();
   const {
     activeStudioId,
@@ -1822,7 +1822,7 @@ export default function AppContent({
         trainerId={authTrainer?.id}
         authTrainer={authTrainer}
         className={headerIconClass}
-        onNavigate={(view, id, learning) => {
+        onNavigate={(view, id, learning, atStudioId) => {
           // A Learning page wins: it names the exact page. The machine-flagged
           // link predates Learning refs and stores { view, id }; before this
           // the id was dropped and it opened the Catalog's front page.
@@ -1832,6 +1832,18 @@ export default function AppContent({
               ? ({ kind: "machine", id } as LearningRef)
               : null);
           if (ref) {
+            // A comment thread, a flag or a studio's own page belongs to the
+            // studio it happened at. Opened here it would show this studio's
+            // instead, so say where it was rather than show the wrong one.
+            if (atStudioId && activeStudioId && atStudioId !== activeStudioId) {
+              const where =
+                studios.find((s) => s.id === atStudioId)?.name ?? "another studio";
+              toastInfo(
+                `That was at ${where}. Switch to ${where} to see it there.`,
+                6000,
+              );
+              return;
+            }
             openLearning(ref);
             return;
           }

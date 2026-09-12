@@ -212,6 +212,7 @@ export function SharedNotesCard({ client, authTrainer, onOpenPlanner }: SharedNo
                           type="button"
                           disabled={busy}
                           onClick={() => setConfirming(null)}
+                          autoFocus
                           className="inline-flex min-h-10 items-center rounded-xl border border-slate-200 px-3 text-[11px] font-black uppercase tracking-widest text-slate-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300"
                         >
                           Keep it

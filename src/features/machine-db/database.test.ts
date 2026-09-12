@@ -157,6 +157,44 @@ describe("planAdoption", () => {
     expect(why(planAdoption(byKey("m-pulldown"), { ...ctx, floorSource: "global" }))).toMatch(/hasn't been set up/);
     expect(planAdoption(byKey("m-pulldown"), { ...ctx, studioId: null }).ok).toBe(false);
   });
+
+  it("switches a machine the studio switched off back on, rather than adding it twice", () => {
+    const off = (machineId: string, adoptedFrom?: { studioId: string; machineId: string }) => ({
+      machineId,
+      status: "inactive",
+      adoptedFrom: adoptedFrom ?? null,
+    });
+    const back = { entry: { status: "active" }, reactivates: true };
+
+    // An MSF machine the studio said it doesn't have.
+    expect(planAdoption(byKey("m-pulldown"), { ...ctx, roster: [off("m-pulldown")] })).toMatchObject({
+      ok: true,
+      machineId: "m-pulldown",
+      ...back,
+    });
+
+    // Its copy of Solon's sled: the same copy comes back, not a "-2".
+    const copy = off("sm-westlake-sled-push", { studioId: "solon", machineId: "sm-solon-sled" });
+    expect(
+      planAdoption(byKey("solon/sm-solon-sled"), {
+        ...ctx,
+        takenIds: new Set([copy.machineId]),
+        roster: [copy],
+      }),
+    ).toMatchObject({ ok: true, machineId: "sm-westlake-sled-push", ...back });
+
+    // Its own shared machine: the original comes back; the studio never copies itself.
+    const ownDb = buildDatabase({
+      msf: MSF,
+      shared: [shared("westlake", "Westlake", "sm-westlake-rope", "Rope Pull")],
+      floor: [],
+      studioId: "westlake",
+    });
+    const own = ownDb.find((e) => e.key === "westlake/sm-westlake-rope")!;
+    expect(
+      planAdoption(own, { ...ctx, takenIds: new Set(["sm-westlake-rope"]), roster: [off("sm-westlake-rope")] }),
+    ).toMatchObject({ ok: true, machineId: "sm-westlake-rope", ...back });
+  });
 });
 
 describe("sharing keys", () => {

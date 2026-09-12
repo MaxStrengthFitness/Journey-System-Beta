@@ -45,6 +45,7 @@ export function LearningSearch({ machines, onClose, onOpen }: LearningSearchProp
 
   const label: Record<LearningSearchGroupKey, string> = {
     catalog: `Machines at ${studioName}`,
+    network: "Shared by other MSF studios",
     "academy-machines": "Academy — machine cards & scripts",
     studio: `${studioName}'s pages`,
     academy: "Academy — modules & reference",
@@ -84,8 +85,9 @@ export function LearningSearch({ machines, onClose, onOpen }: LearningSearchProp
       idle={
         <div className="wk__empty">
           <p>
-            One search for everything in Learning: {studioName}'s machines, the MSF
-            Academy, and the pages {studioName} has written.
+            One search for everything in Learning: {studioName}'s machines, the ones
+            other MSF studios have shared, the MSF Academy, and the pages{" "}
+            {studioName} has written.
           </p>
           <p>
             Try an Academy code (<strong>CP</strong>, <strong>LP</strong>), a

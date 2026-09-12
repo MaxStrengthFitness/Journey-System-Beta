@@ -202,10 +202,11 @@ export function CatalogWikiView({
   onOpenAcademy,
 }: CatalogWikiViewProps) {
   const { activeStudioId, activeStudio } = useActiveStudio();
-  const { machines: catalogMachines, source: floorSource } = useCatalogMachines(
-    activeStudioId,
-    machines,
-  );
+  const {
+    machines: catalogMachines,
+    source: floorSource,
+    loading: floorLoading,
+  } = useCatalogMachines(activeStudioId, machines);
 
   const [scope, setScopeState] = useState<CatalogScope>(rememberedScope);
   const setScope = (next: CatalogScope) => {
@@ -317,12 +318,16 @@ export function CatalogWikiView({
   const [dbJump, setDbJump] = useState<string | null>(null);
   useEffect(() => {
     if (route.kind !== "machine") return;
-    if (catalogMachines.length === 0) return;
+    // Until the floor has loaded, the list is the global fallback (which has
+    // none of the studio's own machines) or a roster short of its catalog
+    // machines, so "not on this floor" can't be concluded yet.
+    if (floorLoading || catalogMachines.length === 0) return;
     if (catalogMachines.some((m) => m.id === route.id)) return;
     setDbJump(route.id);
-    setScope("msf");
+    // Not remembered: the next visit opens on the floor, as the reader left it.
+    setScopeState("msf");
     setRoute({ kind: "index" });
-  }, [catalogMachines, route]);
+  }, [catalogMachines, route, floorLoading]);
 
   /*
    * A cross-link from the Academy tab. Honoured once and then cleared, so a
@@ -384,7 +389,9 @@ export function CatalogWikiView({
   );
 
   useEffect(() => {
-    if (!pendingGroup || route.kind !== "index") return;
+    // Held until the floor has loaded: the group may exist only in the
+    // studio's own list ("Not in the Academy categories").
+    if (!pendingGroup || route.kind !== "index" || floorLoading) return;
     const target = groupElementId(pendingGroup);
     // After paint: the index has only just been rendered in place of the page.
     // Cleared INSIDE the frame: clearing it here would re-render, run this
@@ -394,7 +401,7 @@ export function CatalogWikiView({
       setPendingGroup(null);
     });
     return () => cancelAnimationFrame(frame);
-  }, [pendingGroup, route, groups]);
+  }, [pendingGroup, route, groups, floorLoading]);
 
   const machineTaskRows = useMemo(() => {
     const map: Record<string, TaskRow[]> = {};
@@ -462,6 +469,7 @@ export function CatalogWikiView({
         legacyMachines={machines}
         floor={catalogMachines}
         floorSource={floorSource}
+        floorLoading={floorLoading}
         studioId={activeStudioId}
         studioName={studioName}
         authTrainer={authTrainer ?? null}

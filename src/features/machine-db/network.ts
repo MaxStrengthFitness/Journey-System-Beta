@@ -48,9 +48,14 @@ export type NetworkItem = NetworkTip | NetworkNote;
 
 const str = (v: unknown, max = 4000) => (typeof v === "string" ? v.slice(0, max) : "");
 
-/** The studio a collection-group document belongs to: its own field, else its path. */
+/**
+ * The studio a collection-group document belongs to: its path. Only a
+ * trainer at that studio can write under it, so the path can't be faked; the
+ * document's own `studioId` field could be, and is read only when no path is
+ * known.
+ */
 function studioOf(d: Record<string, unknown>, fromPath: string | null): string {
-  return str(d.studioId, 200) || fromPath || "";
+  return fromPath || str(d.studioId, 200) || "";
 }
 
 /** A shared playbook entry, or null when it should not be shown. */

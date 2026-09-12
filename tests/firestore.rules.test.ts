@@ -1357,6 +1357,51 @@ describe("Firestore Security Rules", () => {
     await assertSucceeds(getDocs(query(collectionGroup(other, "wiki"), where("shared", "==", true))));
   });
 
+  it("keeps unshared tips and notes with their studio, while shared ones stay readable", async () => {
+    await seedMachineDb();
+    const other = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(getDocs(collection(other, "studios", "studioA", "playbook")));
+    await assertFails(getDoc(doc(other, "studios", "studioA", "playbook", "tipPrivate")));
+    await assertSucceeds(getDoc(doc(other, "studios", "studioA", "playbook", "tipShared")));
+    await assertFails(getDocs(collection(other, "studios", "studioA", "wiki")));
+
+    const insider = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(getDocs(collection(insider, "studios", "studioA", "playbook")));
+    await assertSucceeds(getDocs(collection(insider, "studios", "studioA", "wiki")));
+  });
+
+  it("keeps an adopted copy a copy, and a roster entry at its own studio", async () => {
+    await seedMachineDb();
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "studios", "studioA", "roster", "sm-studioA-rope"), {
+        machineId: "sm-studioA-rope",
+        studioId: "studioA",
+        source: "custom",
+        status: "active",
+        definition: { name: "Rope" },
+        adoptedFrom: { studioId: "studioB", machineId: "sm-studioB-rope", studioName: "Studio B" },
+      });
+    });
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    const copy = doc(owner, "studios", "studioA", "roster", "sm-studioA-rope");
+    // Dropping the lineage and listing it in one write is still listing a copy.
+    await assertFails(
+      setDoc(copy, {
+        machineId: "sm-studioA-rope",
+        studioId: "studioA",
+        source: "custom",
+        status: "active",
+        definition: { name: "Rope" },
+        shared: true,
+      }),
+    );
+    // Switching it off and on is fine.
+    await assertSucceeds(updateDoc(copy, { status: "inactive" }));
+    await assertSucceeds(updateDoc(copy, { status: "active" }));
+    // A roster entry names the studio its path names.
+    await assertFails(updateDoc(doc(owner, "studios", "studioA", "roster", "sm-studioA-sled"), { studioId: "studioB" }));
+  });
+
   it("checks the shape of the share fields, and lets a tip's author share it", async () => {
     await seedMachineDb();
     const author = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
@@ -1506,6 +1551,50 @@ describe("Firestore Security Rules", () => {
     });
     await assertSucceeds(setDoc(doc(owner, "hub_announcements", "o1"), mine));
     await assertSucceeds(updateDoc(doc(owner, "hub_announcements", "o1"), { isActive: false }));
+  });
+
+  it("posts announcements as their author, and keeps every-studio notices to the Operations tab's people", async () => {
+    await seedAnnouncements();
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "trainers", "franchiseX"), {
+        fullName: "Franchise X",
+        initials: "FX",
+        role: "FranchiseOwner",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA", "studioB"],
+      });
+    });
+    const admin = testEnv.authenticatedContext("adminX", { email: "adminx@test.com" }).firestore();
+    // Nobody posts under someone else's name.
+    await assertFails(
+      setDoc(doc(admin, "hub_announcements", "imp"), announcement({ authorId: "ownerA", authorName: "Owner A" })),
+    );
+
+    const franchise = testEnv.authenticatedContext("franchiseX", { email: "franchisex@test.com" }).firestore();
+    await assertSucceeds(
+      setDoc(doc(franchise, "hub_announcements", "f1"), announcement({ authorId: "franchiseX", authorName: "Franchise X" })),
+    );
+
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    // The Franchise hub never offers "everyone".
+    await assertFails(
+      setDoc(doc(owner, "hub_announcements", "o-all"), announcement({ authorId: "ownerA", authorName: "Owner A" })),
+    );
+    // And a studio owner changes only their own notices.
+    await assertFails(updateDoc(doc(owner, "hub_announcements", "a1"), { isActive: false }));
+    // The Operations tab's people can take any notice down.
+    await assertSucceeds(updateDoc(doc(franchise, "hub_announcements", "a1"), { isActive: false }));
+  });
+
+  it("marks a notice read even when it was written without a readBy list", async () => {
+    await seedAnnouncements();
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const bare: Record<string, unknown> = announcement();
+      delete bare.readBy;
+      await setDoc(doc(context.firestore(), "hub_announcements", "bare"), bare);
+    });
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(updateDoc(doc(trainer, "hub_announcements", "bare"), { readBy: ["trainerA"] }));
   });
 
   it("lets anyone mark an announcement read for themselves, and only themselves", async () => {

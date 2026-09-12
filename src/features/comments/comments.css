@@ -168,7 +168,7 @@
   text-align: left;
   cursor: pointer;
 }
-.cm__picker [aria-selected="true"] .cm__pick,
+.cm__picker .is-active .cm__pick,
 .cm__pick:hover { background: var(--wk-surface-2); }
 .cm__hint { margin: 0.375rem 0 0; font-size: 12px; color: var(--wk-ink-muted); }
 

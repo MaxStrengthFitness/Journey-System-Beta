@@ -27,6 +27,7 @@
  */
 
 import type { StoredLearningRef } from "../learning/ref";
+import { clipText } from "../../lib/clip-text";
 
 export const COMMENT_MAX = 2000;
 export const MENTIONS_MAX = 10;
@@ -81,12 +82,18 @@ type TrainerLike = {
  * not a profile nobody can sign in to yet (an unclaimed placeholder, or one a
  * claim has replaced) — a tag there would ring a bell nobody hears.
  */
-export function mentionablePeople(trainers: TrainerLike[], studioId: string | null, selfId: string | null): MentionPerson[] {
+export function mentionablePeople(
+  trainers: TrainerLike[],
+  studioId: string | null,
+  /** The author's ids: the sign-in id, and the profile id where an older account's differs. */
+  self: string | null | Array<string | null | undefined>,
+): MentionPerson[] {
   if (!studioId) return [];
+  const selfIds = new Set((Array.isArray(self) ? self : [self]).filter((id): id is string => Boolean(id)));
   const out: MentionPerson[] = [];
   const seen = new Set<string>();
   for (const t of trainers) {
-    if (!t?.id || seen.has(t.id) || t.id === selfId) continue;
+    if (!t?.id || seen.has(t.id) || selfIds.has(t.id)) continue;
     if (t.pendingClaim || t.supersededByUid) continue;
     const here =
       t.primaryHomeStudioId === studioId ||
@@ -116,8 +123,9 @@ export function initialsOf(name: string): string {
 
 /**
  * The tag being typed at the caret, if any: an "@" at the start or after a
- * space, then up to 30 characters of a name (letters, spaces, apostrophes,
- * hyphens and dots — "Jo Anne O'Neil-Smith"), with the caret at its end.
+ * space, then up to 30 characters of a name (letters, spaces, apostrophes —
+ * straight, or the curly one an iPad types — hyphens and dots: "Jo Anne
+ * O'Neil-Smith"), with the caret at its end.
  */
 export function activeMention(body: string, caret: number): { start: number; query: string } | null {
   const before = body.slice(0, Math.max(0, Math.min(caret, body.length)));
@@ -125,24 +133,52 @@ export function activeMention(body: string, caret: number): { start: number; que
   if (at === -1) return null;
   if (at > 0 && !/\s/.test(before[at - 1])) return null;
   const query = before.slice(at + 1);
-  if (query.length > 30 || /[\n\r]/.test(query) || !/^[\p{L}' .-]*$/u.test(query)) return null;
+  if (query.length > 30 || /[\n\r]/.test(query) || !/^[\p{L}'\u2019 .-]*$/u.test(query)) return null;
   // Two spaces in a row means the sentence moved on.
   if (/\s\s/.test(query)) return null;
   return { start: at, query };
 }
 
-/** People whose name matches what has been typed after the "@". */
+/** A letter or digit: what may not follow a name for "@Name" to be a whole tag. */
+const NAME_CHAR = /[\p{L}\p{N}]/u;
+
+/** Lower case, without accents or curly apostrophes: "José O’Neil" → "jose o'neil". */
+function foldName(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\u2019/g, "'")
+    .toLowerCase();
+}
+
+/** People whose name matches what has been typed after the "@". Accents don't matter. */
 export function mentionMatches(people: MentionPerson[], query: string, limit = 6): MentionPerson[] {
-  const q = query.trim().toLowerCase();
+  const q = foldName(query.trim());
   if (!q) return people.slice(0, limit);
   const words = q.split(/\s+/);
   return people
     .filter((p) => {
-      const name = p.name.toLowerCase();
+      const name = foldName(p.name);
       const parts = name.split(/\s+/);
       return words.every((w) => parts.some((part) => part.startsWith(w)) || name.startsWith(q));
     })
     .slice(0, limit);
+}
+
+/**
+ * "@Sam Kim, can you" — the tag is finished and the sentence went on: the
+ * text after the "@" starts with someone's whole name and carries on past
+ * it. The picker closes then, rather than hunting for "Sam Kim, can you".
+ */
+export function tagIsFinished(people: MentionPerson[], query: string): boolean {
+  const q = foldName(query);
+  // Still typing someone's name — "Jo Anne" on the way to "Jo Anne Smith",
+  // even with a "Jo" at the studio.
+  if (people.some((p) => foldName(p.name).startsWith(q))) return false;
+  return people.some((p) => {
+    const name = foldName(p.name);
+    return q.length > name.length && q.startsWith(name) && !NAME_CHAR.test(q.charAt(name.length));
+  });
 }
 
 /** The body with the typed tag replaced by the person's name, and where the caret goes. */
@@ -158,18 +194,32 @@ export function insertMention(
 }
 
 /**
- * Who a comment tags: the people picked while typing whose "@Name" is still
- * in the text. De-duplicated, capped, in the order they were picked.
+ * Whether the text tags this name: "@Name" not running on into a longer
+ * name. "@Sam Kim" is not in "@Sam Kimball", while "@Sam Kim's" and
+ * "@Sam Kim," are.
  */
-export function mentionsIn(body: string, picked: Mention[]): Mention[] {
+export function hasTag(body: string, name: string): boolean {
+  if (!name) return false;
+  const token = `@${name}`;
+  for (let i = body.indexOf(token); i !== -1; i = body.indexOf(token, i + 1)) {
+    if (!NAME_CHAR.test(body.charAt(i + token.length))) return true;
+  }
+  return false;
+}
+
+/**
+ * Who a comment tags: the people picked while typing whose "@Name" is still
+ * in the text. De-duplicated, capped at `max`, in the order they were picked.
+ */
+export function mentionsIn(body: string, picked: Mention[], max = MENTIONS_MAX): Mention[] {
   const out: Mention[] = [];
   const seen = new Set<string>();
   for (const p of picked) {
     if (seen.has(p.id) || !p.name) continue;
-    if (!body.includes(`@${p.name}`)) continue;
+    if (!hasTag(body, p.name)) continue;
     seen.add(p.id);
     out.push({ id: p.id, name: p.name.slice(0, 80) });
-    if (out.length >= MENTIONS_MAX) break;
+    if (out.length >= max) break;
   }
   return out;
 }
@@ -197,7 +247,12 @@ export function commentSegments(body: string, mentions: Mention[]): CommentSegme
   let text = "";
   let i = 0;
   while (i < body.length) {
-    const hit = body[i] === "@" ? names.find((n) => body.startsWith(n.token, i)) : undefined;
+    const hit =
+      body[i] === "@"
+        ? names.find(
+            (n) => body.startsWith(n.token, i) && !NAME_CHAR.test(body.charAt(i + n.token.length)),
+          )
+        : undefined;
     if (hit) {
       if (text) out.push({ kind: "text", text });
       text = "";
@@ -228,7 +283,7 @@ export function mentionTitle(authorName: string, pageLabel: string): string {
 /** The first bit of the comment, for the bell. */
 export function commentExcerpt(body: string, max = 160): string {
   const flat = body.replace(/\s+/g, " ").trim();
-  return flat.length > max ? `${flat.slice(0, max - 1).trimEnd()}…` : flat;
+  return flat.length > max ? `${clipText(flat, max - 1).trimEnd()}…` : flat;
 }
 
 function millis(v: unknown): number {

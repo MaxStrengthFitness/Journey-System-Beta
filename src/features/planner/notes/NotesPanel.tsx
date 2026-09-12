@@ -134,7 +134,12 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
   const saved = selected ? notes.find((n) => n.id === selected) ?? null : null;
   const restored = selected ? stashedDraft(uid, selected) : null;
   const isPendingNew = Boolean(selected && pendingNew?.id === selected);
-  const editorOpen = Boolean(selected && (saved || restored || isPendingNew));
+  // An unsaved edit to a SAVED note waits for the notes to load: saving it
+  // before the saved version is known would lose what the save compares
+  // against — whether it was shared, and with whom — and leave a copy on a
+  // client's record after Share was switched off (review fix).
+  const restoredReady = Boolean(restored && (restored.isNew || !loading));
+  const editorOpen = Boolean(selected && (saved || restoredReady || isPendingNew));
 
   // A new note, once its save comes back, is simply a note.
   useEffect(() => {
@@ -166,13 +171,19 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
 
   /* ----------------------------- list ----------------------------- */
 
+  // The folders that exist, once known: a note left pointing at a deleted
+  // folder counts as Unfiled (see inAFolder in notes.ts).
+  const folderIds = useMemo(
+    () => (loading || error ? undefined : new Set(folders.map((f) => f.id))),
+    [folders, loading, error],
+  );
   const items = useMemo(
-    () => noteListItems(notes, stashedDrafts(uid), view, kind, queryText, nameOf),
+    () => noteListItems(notes, stashedDrafts(uid), view, kind, queryText, nameOf, folderIds),
     // stashVersion stands in for the stash, which lives outside React.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [notes, uid, view, kind, queryText, nameOf, stashVersion],
+    [notes, uid, view, kind, queryText, nameOf, folderIds, stashVersion],
   );
-  const counts = useMemo(() => folderCounts(notes), [notes]);
+  const counts = useMemo(() => folderCounts(notes, folderIds), [notes, folderIds]);
   const pinnedCount = useMemo(() => notes.filter((n) => n.pinned).length, [notes]);
   const sharedCount = useMemo(() => notes.filter((n) => n.sharedWith).length, [notes]);
   const activeFolder = view.kind === "folder" ? folders.find((f) => f.id === view.folderId) ?? null : null;
@@ -248,7 +259,9 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
           <NewFolder uid={uid} onCreated={(id) => setView({ kind: "folder", folderId: id })} onError={setPanelError} />
         </nav>
 
-        {view.kind === "folder" && (
+        {/* Not before the folders have loaded: "this folder is gone" would
+            be a guess. */}
+        {view.kind === "folder" && !loading && !error && (
           <FolderBar
             key={view.folderId}
             uid={uid}
@@ -606,14 +619,14 @@ function FolderBar({
               disabled={busy}
               onClick={() =>
                 run(async () => {
-                  await deleteNoteFolder(uid!, folder, notesInFolder);
+                  await deleteNoteFolder(uid!, folder);
                   onGone();
                 })
               }
             >
               {busy ? "Deleting…" : "Delete folder"}
             </button>
-            <button type="button" className="pl__btn" disabled={busy} onClick={() => setMode("idle")}>
+            <button type="button" className="pl__btn" disabled={busy} onClick={() => setMode("idle")} autoFocus>
               Keep it
             </button>
           </div>

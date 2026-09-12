@@ -19,10 +19,15 @@
 
 import type { Trainer } from "../../types";
 
-type TrainerLike = Pick<Trainer, "role" | "primaryHomeStudioId" | "ownedStudioIds"> | null | undefined;
+type TrainerLike =
+  | (Pick<Trainer, "role" | "primaryHomeStudioId" | "ownedStudioIds"> &
+      Partial<Pick<Trainer, "accessibleStudioIds" | "activeGuestStudioIds">>)
+  | null
+  | undefined;
 
 const SUPER_ROLES = new Set(["Admin", "Founder", "Overseer"]);
 const STUDIO_LEADER_ROLES = new Set(["StudioOwner", "HeadTrainer", "StudioLeader"]);
+const FRANCHISE_ROLES = new Set(["FranchiseOwner", "Owner"]);
 
 /** firestore.rules isSuperAdmin(). */
 export function isSuperRole(trainer: TrainerLike): boolean {
@@ -37,6 +42,34 @@ export function leadsStudioPerRules(trainer: TrainerLike, studioId: string | nul
   if (!trainer || !studioId || !trainer.role || !STUDIO_LEADER_ROLES.has(trainer.role)) return false;
   return (
     trainer.primaryHomeStudioId === studioId || (trainer.ownedStudioIds ?? []).includes(studioId)
+  );
+}
+
+/**
+ * firestore.rules isTrainerOfStudioOnly(studioId): the studio is their home,
+ * one they can reach, or one they are a guest at.
+ */
+export function worksAtStudioPerRules(trainer: TrainerLike, studioId: string | null | undefined): boolean {
+  if (!trainer || !studioId) return false;
+  return (
+    trainer.primaryHomeStudioId === studioId ||
+    (trainer.accessibleStudioIds ?? []).includes(studioId) ||
+    (trainer.activeGuestStudioIds ?? []).includes(studioId)
+  );
+}
+
+/**
+ * firestore.rules writesForStudio(studioId): machine notes, the upkeep log,
+ * playbook tips, studio notes on pages, and comments. Someone who works at or
+ * runs the studio, a franchise owner, or a super admin.
+ */
+export function writesForStudioPerRules(trainer: TrainerLike, studioId: string | null | undefined): boolean {
+  if (!trainer || !studioId) return false;
+  return (
+    isSuperRole(trainer) ||
+    Boolean(trainer.role && FRANCHISE_ROLES.has(trainer.role)) ||
+    leadsStudioPerRules(trainer, studioId) ||
+    worksAtStudioPerRules(trainer, studioId)
   );
 }
 

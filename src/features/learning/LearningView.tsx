@@ -85,11 +85,12 @@ export function LearningView({
       studioId: activeStudioId,
       studioName: activeStudio?.name ?? "this studio",
       author: uid ? { id: uid, name: authTrainer?.fullName ?? "" } : null,
-      people: mentionablePeople(trainers ?? [], activeStudioId, uid),
+      // Neither of the author's ids: an older account's profile id differs.
+      people: mentionablePeople(trainers ?? [], activeStudioId, [uid, authTrainer?.id]),
       // firestore.rules: a comment comes down by its author, a leader, or an admin.
       isLeaderHere: canWritePages,
     }),
-    [activeStudioId, activeStudio?.name, uid, authTrainer?.fullName, trainers, canWritePages],
+    [activeStudioId, activeStudio?.name, uid, authTrainer?.id, authTrainer?.fullName, trainers, canWritePages],
   );
   const author = useMemo(
     () =>

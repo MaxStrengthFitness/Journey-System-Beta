@@ -245,7 +245,13 @@ export function AcademyWikiView({
   const cues = useAcademyCues(route.kind === "cueing");
   const runTopicSearch = useTopicSearch();
 
-  const { docs: studioDocs, overlayFor, pages } = useStudioWiki(activeStudioId);
+  const {
+    docs: studioDocs,
+    overlayFor,
+    pages,
+    loading: pagesLoading,
+    error: pagesError,
+  } = useStudioWiki(activeStudioId);
 
   const moduleId =
     route.kind === "module" || route.kind === "topic" ? route.moduleId : null;
@@ -675,14 +681,24 @@ export function AcademyWikiView({
   if (route.kind === "page") {
     const page = pages.find((p) => p.id === route.pageId) ?? null;
     if (!page) {
+      // Only "gone" once this studio's pages have actually been read.
       return (
         <WikiShell crumbs={[...rootCrumbs(), { label: "Page" }]}>
-          <div className="wk__placeholder">
-            <p className="wk__placeholder-title">That page is gone</p>
-            <p className="wk__placeholder-body">
-              It was retired, or it belongs to a different studio.
-            </p>
-          </div>
+          {pagesLoading ? (
+            <p className="wk__empty">Loading the page…</p>
+          ) : pagesError ? (
+            <div className="wk__placeholder">
+              <p className="wk__placeholder-title">Couldn't load this page</p>
+              <p className="wk__placeholder-body">{pagesError}</p>
+            </div>
+          ) : (
+            <div className="wk__placeholder">
+              <p className="wk__placeholder-title">That page is gone</p>
+              <p className="wk__placeholder-body">
+                It was retired, or it belongs to a different studio.
+              </p>
+            </div>
+          )}
         </WikiShell>
       );
     }

@@ -4,6 +4,7 @@ import {
   canDeleteComment,
   commentFromDoc,
   commentSegments,
+  hasTag,
   initialsOf,
   insertMention,
   mentionMatches,
@@ -11,6 +12,7 @@ import {
   mentionablePeople,
   mentionsIn,
   newMentions,
+  tagIsFinished,
   sortComments,
   validateComment,
   type StudioComment,
@@ -125,5 +127,69 @@ describe("showing a comment", () => {
     expect(canDeleteComment({ authorId: "me" }, "you", false)).toBe(false);
     expect(canDeleteComment({ authorId: "me" }, "you", true)).toBe(true);
     expect(canDeleteComment({ authorId: "me" }, null, false)).toBe(false);
+  });
+});
+
+describe("tags from the independent review", () => {
+  const kims = [
+    { id: "k1", name: "Sam Kim" },
+    { id: "k2", name: "Sam Kimball" },
+  ];
+
+  it("counts a tag only when the whole name is tagged", () => {
+    expect(hasTag("@Sam Kimball can you look", "Sam Kim")).toBe(false);
+    expect(hasTag("@Sam Kim's pad sticks", "Sam Kim")).toBe(true);
+    expect(hasTag("ask @Sam Kim, then @Sam Kimball", "Sam Kim")).toBe(true);
+    expect(hasTag("ends with @Sam Kim", "Sam Kim")).toBe(true);
+    // Picked Sam Kim, deleted it, picked Sam Kimball: only Sam Kimball is tagged.
+    expect(mentionsIn("@Sam Kimball can you look", kims).map((m) => m.id)).toEqual(["k2"]);
+  });
+
+  it("never draws a shorter name inside a longer one", () => {
+    const segs = commentSegments("@Sam Kimball here", [{ id: "k1", name: "Sam Kim" }]);
+    expect(segs).toEqual([{ kind: "text", text: "@Sam Kimball here" }]);
+  });
+
+  it("finds a name typed without its accents, and takes the iPad's curly apostrophe", () => {
+    const list = [{ id: "j", name: "José Ortiz", initials: "JO" }, { id: "p", name: "Pat O’Neil", initials: "PO" }];
+    expect(mentionMatches(list, "jose").map((p) => p.id)).toEqual(["j"]);
+    expect(mentionMatches(list, "o'n").map((p) => p.id)).toEqual(["p"]);
+    expect(activeMention("Ask @Pat O’N", 12)).toEqual({ start: 4, query: "Pat O’N" });
+  });
+
+  it("can count every tag, to say when there are more than the ten that count", () => {
+    const many = Array.from({ length: 11 }, (_, i) => ({ id: `p${i}`, name: `Person ${String.fromCharCode(65 + i)}` }));
+    const body = many.map((p) => `@${p.name}`).join(" ");
+    expect(mentionsIn(body, many)).toHaveLength(10);
+    expect(mentionsIn(body, many, Infinity)).toHaveLength(11);
+  });
+
+  it("leaves the author out under either of their ids", () => {
+    const list = mentionablePeople(
+      [
+        { id: "uid-1", fullName: "Alex Trainer", primaryHomeStudioId: "w" },
+        { id: "profile-1", fullName: "Alex Trainer (old profile)", primaryHomeStudioId: "w" },
+        { id: "b", fullName: "Blair", primaryHomeStudioId: "w" },
+      ],
+      "w",
+      ["uid-1", "profile-1"],
+    );
+    expect(list.map((p) => p.id)).toEqual(["b"]);
+  });
+});
+
+describe("a finished tag", () => {
+  it("closes the picker once the sentence goes on past a whole name", () => {
+    const list = [{ id: "k", name: "Sam Kim", initials: "SK" }, { id: "kb", name: "Sam Kimball", initials: "SB" }];
+    expect(tagIsFinished(list, "Sam Kim again")).toBe(true);
+    expect(tagIsFinished(list, "Sam Kim, can you")).toBe(true);
+    // Still typing a name: "Sam Kim" might become "Sam Kimball".
+    expect(tagIsFinished(list, "Sam Kim")).toBe(false);
+    expect(tagIsFinished(list, "Sam Kimb")).toBe(false);
+    expect(tagIsFinished(list, "sam")).toBe(false);
+    // "Jo" is at the studio too, but "Jo Anne" is on its way to Jo Anne Smith.
+    const jos = [{ id: "j", name: "Jo", initials: "J" }, { id: "ja", name: "Jo Anne Smith", initials: "JS" }];
+    expect(tagIsFinished(jos, "Jo Anne")).toBe(false);
+    expect(tagIsFinished(jos, "Jo, come")).toBe(true);
   });
 });

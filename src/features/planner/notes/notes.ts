@@ -9,6 +9,7 @@
  */
 
 import { formatStudioDate, formatStudioTime, startOfStudioDay, studioDateKey, toDate } from "../../../lib/studio-time";
+import { clipText } from "../../../lib/clip-text";
 import {
   FOLDER_NAME_MAX,
   NOTE_BODY_MAX,
@@ -53,9 +54,9 @@ export function canShare(clientIds: string[]): boolean {
  */
 export function effectiveTitle(d: Pick<NoteDraft, "title" | "body">): string {
   const typed = d.title.replace(/\s+/g, " ").trim();
-  if (typed) return typed.slice(0, NOTE_TITLE_MAX);
+  if (typed) return clipText(typed, NOTE_TITLE_MAX);
   const first = d.body.split("\n").map((l) => l.replace(/\s+/g, " ").trim()).find(Boolean) ?? "";
-  return first.length > 80 ? `${first.slice(0, 79).trimEnd()}…` : first;
+  return first.length > 80 ? `${clipText(first, 79).trimEnd()}…` : first;
 }
 
 export function validateNoteDraft(d: NoteDraft): NoteProblem[] {
@@ -254,7 +255,18 @@ export function noteMatches(
   return words.every((w) => hay.includes(w));
 }
 
-export function inView(note: TrainerNote, view: NotesView): boolean {
+/**
+ * Whether a note is in a folder that exists. `folderIds` is the folders that
+ * do, once they have loaded; without it every folder is taken as real. A note
+ * can point at a deleted folder — saved from a draft that was open when the
+ * folder went — and it belongs in Unfiled then, not nowhere (review fix).
+ */
+function inAFolder(note: Pick<TrainerNote, "folderId">, folderIds?: ReadonlySet<string>): boolean {
+  if (!note.folderId) return false;
+  return folderIds ? folderIds.has(note.folderId) : true;
+}
+
+export function inView(note: TrainerNote, view: NotesView, folderIds?: ReadonlySet<string>): boolean {
   switch (view.kind) {
     case "all":
       return true;
@@ -263,7 +275,7 @@ export function inView(note: TrainerNote, view: NotesView): boolean {
     case "shared":
       return Boolean(note.sharedWith);
     case "unfiled":
-      return !note.folderId;
+      return !inAFolder(note, folderIds);
     case "folder":
       return note.folderId === view.folderId;
   }
@@ -275,23 +287,27 @@ export function notesInView(
   kind: NoteKind | "all",
   query: string,
   nameOf: (clientId: string) => string,
+  folderIds?: ReadonlySet<string>,
 ): TrainerNote[] {
   return sortNotes(
     notes.filter(
       (n) =>
-        inView(n, view) &&
+        inView(n, view, folderIds) &&
         (kind === "all" || n.kind === kind) &&
         noteMatches(n, query, nameOf),
     ),
   );
 }
 
-/** How many notes each folder holds, plus the unfiled count. */
-export function folderCounts(notes: TrainerNote[]): { byFolder: Record<string, number>; unfiled: number } {
+/** How many notes each folder holds, plus the unfiled count (see inAFolder). */
+export function folderCounts(
+  notes: TrainerNote[],
+  folderIds?: ReadonlySet<string>,
+): { byFolder: Record<string, number>; unfiled: number } {
   const byFolder: Record<string, number> = {};
   let unfiled = 0;
   for (const n of notes) {
-    if (n.folderId) byFolder[n.folderId] = (byFolder[n.folderId] ?? 0) + 1;
+    if (inAFolder(n, folderIds)) byFolder[n.folderId!] = (byFolder[n.folderId!] ?? 0) + 1;
     else unfiled += 1;
   }
   return { byFolder, unfiled };
@@ -345,6 +361,7 @@ export function noteListItems(
   kind: NoteKind | "all",
   query: string,
   nameOf: (clientId: string) => string,
+  folderIds?: ReadonlySet<string>,
 ): NoteListItem[] {
   const savedIds = new Set(saved.map((n) => n.id));
   const unsavedIds = new Set(drafts.map((d) => d.noteId));
@@ -352,7 +369,7 @@ export function noteListItems(
     .filter((d) => d.isNew && !savedIds.has(d.noteId))
     .map((d) => ({ id: d.noteId, ...noteFields(d.draft, null), title: effectiveTitle(d.draft) || "New note" }));
   const newIds = new Set(standIns.map((n) => n.id));
-  return notesInView([...saved, ...standIns], view, kind, query, nameOf).map((note) => ({
+  return notesInView([...saved, ...standIns], view, kind, query, nameOf, folderIds).map((note) => ({
     id: note.id,
     note,
     unsaved: unsavedIds.has(note.id),

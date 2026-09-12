@@ -593,7 +593,10 @@ export function studioMachineId(studioId: string, name: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 40);
-  return `sm-${studioId}-${slug}`;
+  // A name with no plain letters or digits ("Жим ногами") slugged to nothing
+  // and minted `sm-{studio}-`; it gets a word instead (review, Learning +
+  // Planner round), and a collision check upstream adds -2, -3.
+  return `sm-${studioId}-${slug || 'machine'}`;
 }
 
 /** Slugify a setting field label into its immutable key. */

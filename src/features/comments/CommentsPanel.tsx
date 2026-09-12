@@ -7,6 +7,7 @@ import { useComments } from "./hooks";
 import { deleteComment, editComment, postComment } from "./mutations";
 import {
   COMMENT_MAX,
+  MENTIONS_MAX,
   activeMention,
   canDeleteComment,
   commentSegments,
@@ -14,6 +15,7 @@ import {
   insertMention,
   mentionMatches,
   mentionsIn,
+  tagIsFinished,
   validateComment,
   type Mention,
   type MentionPerson,
@@ -73,6 +75,9 @@ export function CommentsPanel({ target, title }: { target: LearningRef; title?: 
 
       {author ? (
         <Composer
+          // A fresh composer per page and studio: half-typed words and their
+          // tags never follow the reader to the next page (review fix).
+          key={`${studioId}|${targetKey}`}
           people={people}
           studioName={studioName}
           onSubmit={async (body, mentions) => {
@@ -172,7 +177,7 @@ function CommentItem({
           >
             {busy ? "Deleting…" : "Delete"}
           </button>
-          <button type="button" className="cm__btn" disabled={busy} onClick={() => setMode("read")}>
+          <button type="button" className="cm__btn" disabled={busy} onClick={() => setMode("read")} autoFocus>
             Keep
           </button>
           {failed && <span className="cm__error">{failed}</span>}
@@ -228,9 +233,11 @@ function Composer({
   const ref = useRef<HTMLTextAreaElement>(null);
 
   const mention = activeMention(body, caret);
-  const open = mention && mention.start !== dismissedAt ? mention : null;
+  const open =
+    mention && mention.start !== dismissedAt && !tagIsFinished(people, mention.query) ? mention : null;
   const matches = open ? mentionMatches(people, open.query) : [];
   const tagged = mentionsIn(body, picked);
+  const overTagged = mentionsIn(body, picked, Infinity).length > MENTIONS_MAX;
 
   const pick = (person: MentionPerson) => {
     if (!open) return;
@@ -239,6 +246,8 @@ function Composer({
     setCaret(next.caret);
     setPicked((p) => [...p.filter((m) => m.id !== person.id), { id: person.id, name: person.name }]);
     setHighlight(0);
+    // That "@" is done: typing on doesn't reopen the list for it.
+    setDismissedAt(open.start);
     requestAnimationFrame(() => {
       const el = ref.current;
       if (el) {
@@ -307,14 +316,17 @@ function Composer({
           onKeyDown={onKeyDown}
         />
         {open && matches.length > 0 && (
-          <ul className="cm__picker" role="listbox" aria-label="Tag someone">
+          // A list of buttons, each reachable on its own; the arrow keys in
+          // the box move the highlight, Enter picks it.
+          <ul className="cm__picker" aria-label="Tag someone">
             {matches.map((p, i) => (
-              <li key={p.id} role="option" aria-selected={i === highlight}>
+              <li key={p.id} className={i === highlight ? "cm__pick-row is-active" : "cm__pick-row"}>
                 <button
                   type="button"
                   className="cm__pick"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => pick(p)}
+                  aria-label={`Tag ${p.name}`}
                 >
                   <span className="cm__avatar" aria-hidden>
                     {p.initials}
@@ -334,6 +346,7 @@ function Composer({
         {tagged.length > 0 ? (
           <span className="cm__tagging">
             Tagging {tagged.map((m) => m.name).join(", ")}
+            {overTagged && ` — only the first ${MENTIONS_MAX} tags count`}
           </span>
         ) : (
           <span className="cm__tagging cm__tagging--none" />

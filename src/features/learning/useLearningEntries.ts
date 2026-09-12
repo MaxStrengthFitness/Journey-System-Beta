@@ -1,7 +1,11 @@
 import { useMemo } from "react";
 import type { Machine } from "../../types";
+import { useMachineCatalog } from "../../hooks/useMachineCatalog";
+import { resolveUnrostered } from "../../lib/resolve-machine";
 import { PAGE_SECTION_LABEL, accentForPattern, useStudioWiki, type WikiAccent } from "../wiki";
+import { fromResolvedMachine } from "../catalog/adapters";
 import { useCatalogMachines } from "../catalog/useCatalogMachines";
+import { useSharedMachines } from "../machine-db/hooks";
 import {
   ACADEMY_INDEX,
   useAcademyCards,
@@ -23,12 +27,19 @@ import type { LearningSearchEntry, LearningSearchGroupKey } from "./search";
  * a trainer can find, and the two can never disagree about what exists.
  *
  * `includeStudioPages` is off where a link would reach people at other
- * studios: a studio's own page opens only at that studio.
+ * studios: a studio's own page opens only at that studio. For the same
+ * reason `machineScope: "msf"` offers the MSF catalog rather than one
+ * studio's floor, whose own machines open nowhere else.
+ *
+ * Machines other studios shared are in it too (review, Learning + Planner
+ * round): the masthead's search is the only one a Learning page offers, so
+ * without them a shared machine could be browsed but never searched for.
  */
 
 /* One accent per Academy group — the same assignment the Academy index uses,
    so a result's colour matches the section it opens in. */
 export const LEARNING_ACCENT: Record<Exclude<LearningSearchGroupKey, "catalog">, WikiAccent> = {
+  network: "push",
   "academy-machines": "push",
   studio: "hips",
   academy: "pull",
@@ -43,6 +54,7 @@ export function useLearningEntries({
   studioId,
   includeStudioPages = true,
   enabled = true,
+  machineScope = "floor",
 }: {
   /** The app's machine list, for a studio whose roster is still empty. */
   machines: Machine[];
@@ -50,8 +62,31 @@ export function useLearningEntries({
   includeStudioPages?: boolean;
   /** Loads the Academy's machine documents and glossary (cached chunks) when true. */
   enabled?: boolean;
+  /**
+   * "floor": the studio's own machines (Learning search; an announcement to
+   * that one studio). "msf": the MSF catalog, for a link that reaches other
+   * studios too.
+   */
+  machineScope?: "floor" | "msf";
 }): LearningSearchEntry[] {
-  const { machines: catalog } = useCatalogMachines(studioId, machines);
+  const onFloor = machineScope === "floor";
+  const { machines: floor, loading: floorLoading } = useCatalogMachines(
+    onFloor ? studioId : null,
+    onFloor ? machines : NO_MACHINES,
+  );
+  const { catalog: msfCatalog } = useMachineCatalog();
+  const msf = useMemo(
+    () =>
+      msfCatalog
+        .filter((c) => c.status === "active")
+        .map((c) => fromResolvedMachine(resolveUnrostered(c, studioId ?? "")))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [msfCatalog, studioId],
+  );
+  // A floor with nothing on it (no roster, and no app list passed in) falls
+  // back to the catalog, so a picker is never left with no machines at all.
+  const catalog = onFloor && (floor.length > 0 || floorLoading) ? floor : msf;
+  const { machines: shared } = useSharedMachines(enabled);
   const cards = useAcademyCards(enabled);
   const scripts = useAcademyScripts(enabled);
   const overviews = useAcademyOverviews(enabled);
@@ -80,6 +115,22 @@ export function useLearningEntries({
           ...m.synergists,
           ...(category ? [CATEGORY_LABEL[category]] : []),
         ],
+      });
+    }
+
+    // Machines other studios made and shared. A copy is listed by its
+    // original, and a machine already offered above isn't offered twice.
+    const offered = new Set(catalog.map((m) => m.id));
+    for (const s of shared) {
+      if (s.adoptedFrom || offered.has(s.machineId)) continue;
+      offered.add(s.machineId);
+      out.push({
+        ref: { kind: "machine", id: s.machineId },
+        group: "network",
+        title: s.machine.name,
+        meta: [`Shared by ${s.studioName}`, s.machine.movementPattern].filter(Boolean).join(" · "),
+        accent: accentForPattern(s.machine.movementPattern),
+        keywords: [...s.machine.targetMuscles, ...s.machine.synergists, s.studioName],
       });
     }
 
@@ -166,7 +217,9 @@ export function useLearningEntries({
       }
     }
     return out;
-  }, [catalog, academyMachines, pages, glossary, studioId, includeStudioPages]);
+  }, [catalog, shared, academyMachines, pages, glossary, studioId, includeStudioPages]);
 
   return entries;
 }
+
+const NO_MACHINES: Machine[] = [];

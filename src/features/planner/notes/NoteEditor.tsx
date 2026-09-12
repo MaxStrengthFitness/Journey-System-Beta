@@ -268,8 +268,14 @@ export function NoteEditor({
   useLayoutEffect(() => {
     const el = bodyRef.current;
     if (!el) return;
+    // Measuring collapses the box for a moment, which can pull the pane's
+    // scroll up; put it back, so typing near the end of a long note stays
+    // where it is (review fix).
+    const pane = el.closest(".ne__scroll") as HTMLElement | null;
+    const top = pane?.scrollTop ?? 0;
     el.style.height = "auto";
     el.style.height = `${Math.max(el.scrollHeight + 2, 288)}px`;
+    if (pane && pane.scrollTop !== top) pane.scrollTop = top;
   }, [draft.body]);
 
   const problemFor = (field: NoteProblem["field"]) => problems.find((p) => p.field === field)?.message;
@@ -528,7 +534,13 @@ export function NoteEditor({
                   <button type="button" className="pl__btn pl__btn--danger" onClick={() => onDelete(saved)} disabled={busy !== null}>
                     Delete note
                   </button>
-                  <button type="button" className="pl__btn" onClick={() => setConfirmDelete(false)} disabled={busy !== null}>
+                  <button
+                    type="button"
+                    className="pl__btn"
+                    onClick={() => setConfirmDelete(false)}
+                    disabled={busy !== null}
+                    autoFocus
+                  >
                     Keep it
                   </button>
                 </div>
@@ -566,7 +578,7 @@ function ClientLinker({
   onClose: () => void;
 }) {
   const [term, setTerm] = useState("");
-  const { results, searching } = useClientSearch(term, authTrainer, activeStudioId);
+  const { results, searching, failed } = useClientSearch(term, authTrainer, activeStudioId);
   const words = term.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const fromRoster = roster.filter((c) => {
     const name = fullName(c).toLowerCase();
@@ -597,6 +609,9 @@ function ClientLinker({
       <p className="ne__linker-note">
         {words.length === 0 ? "On today's schedule — or type a name to search your studio." : searching ? "Searching…" : ""}
       </p>
+      {failed && (
+        <p className="ne__linker-empty">Couldn't search the studio just now — check the connection and try again.</p>
+      )}
       {options.length > 0 ? (
         <ul className="ne__linker-list">
           {options.map((c) => (
@@ -609,6 +624,7 @@ function ClientLinker({
         </ul>
       ) : (
         !searching &&
+        !failed &&
         words.length > 0 && <p className="ne__linker-empty">No client by that name at this studio.</p>
       )}
     </div>
