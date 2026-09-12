@@ -2,7 +2,7 @@
 
 A living document. We update it every working session — newest decisions at the top of each list. (Contractor-scope backend items live in PROJECT_TRACKER.md. The tablet walkthrough and cleanup pass live in TESTING-CHECKLIST.md.)
 
-_Last updated: Sep 11, 2026 — **the Operations Dashboard + Renewals round is built** on `operations-renewals`: nine phases, the review's fixes and docs, one commit each, shipped by `ship-renewals.ps1`. Record and runbook: **`RENEWALS-ROUND.md`**. Before that, Sep 10 (evening): the studio hub, the Catalog wiki, Learning, client History and Eastern-time dates went live (`GO-LIVE-SEP10.md`). Neither round has been seen on a real iPad._
+_Last updated: Sep 11, 2026 (late) — **the Learning + Planner round is built** on `learning-planner`: seven phases, the review's fixes and docs, one commit each, shipped by `ship-learning.ps1` once the Renewals round is live. Record and runbook: **`LEARNING-PLANNER-ROUND.md`**. Before that, Sep 11: **the Operations Dashboard + Renewals round** on `operations-renewals` (`RENEWALS-ROUND.md`), and Sep 10 (evening): the studio hub, the Catalog wiki, Learning, client History and Eastern-time dates went live (`GO-LIVE-SEP10.md`). None of these rounds has been seen on a real iPad._
 
 ---
 
@@ -100,6 +100,48 @@ Rules deployed to production (`prod` / `gen-lang-client-0731527386`), verified b
 ### Phase 7 — Demo mode + tutorials · *driven by the FileMaker cutover date*
 
 **Why last:** it is four different projects wearing one name and it needs a business decision, not a technical one. The decision list is in "Open — reported Sep 5" below.
+
+---
+
+## 🔁 Ready to ship — Learning + Planner (Sep 11) — branch `learning-planner`, one commit per phase, after Renewals
+
+**AJ, Sep 11:** *"making the catalog feel a bit more organized, a expert MSF wiki feel … studio should 100% be able to make machines and add them to the database but I think we just need to have a overall all MSF machines, then studios can adopt machines … each area can have comments and people should be able to tag people … announcements need to be able to reference anything in our learning section … the to do screen, which needs to be renamed … an area where trainers can store notes in folders and link clients to those notes"*
+
+Shipping, the iPad pass, what changed in the rules, and rollback: **`LEARNING-PLANNER-ROUND.md`**. The code maps are the READMEs in `src/features/learning/`, `planner/`, `planner/notes/`, `machine-db/` and `comments/`.
+
+### Decisions (AJ, Sep 11)
+
+| Question | Chosen |
+| --- | --- |
+| Sharing machines, notes and tips between studios | **The studio picks, each time** — a "Share with all MSF studios" switch per machine, note and tip |
+| Comments | **Each studio's own**, with @tags that ring the tagged person's bell — nothing outside the app |
+| Trainers' notes | **Private, with a Share button** that puts a one-client note on that client's record |
+| The To-Do screen's name | **Planner** (Studio · My tasks · Notes) |
+
+### Built (commits on `learning-planner`)
+
+- [x] **0** — One link format for any Learning page (`features/learning/ref.ts`); the bell opens the flagged machine; moved Academy pages say so.
+- [x] **1** — The Learning masthead, the Overview front page, one search across machines, the Academy and studio pages, Academy codes in the Catalog.
+- [x] **2** — The To-Do screen becomes the Planner: Studio (the hub) and My tasks.
+- [x] **3** — Planner Notes: folders, kinds, pins, linked clients, and Share onto one client's record (Goals → Plans from the team).
+- [x] **4** — The MSF machine database: All MSF machines, sharing and adopting, "From other MSF studios" on every machine page. Machine-content writes now need to work at the studio.
+- [x] **5** — Comments on Learning pages, each studio's own, with @tags to the bell.
+- [x] **6** — Announcements link to any Learning page; posting limited to the people the app offers the composer to.
+- [x] **7** — Fixes from an independent review (three reviewers): the Catalog waits for the floor before bouncing a machine to All MSF machines; links from another studio say where they happened; tag matching; switched-off machines come back on; unshared tips and notes stay with their studio in the rules; announcements posted as their author; loading and failed reads no longer read as empty.
+
+### Not yet verified — read before merging
+
+- [ ] **AJ's own runs.** `tsc`, `vitest`, `vite build`, `build:backend` and `test:rules` — the ship script's check and golive stages. The cloud checks used type stubs, because the proxy blocks `npm ci` there.
+- [ ] **The iPad pass** — `LEARNING-PLANNER-ROUND.md` §5.
+- [ ] **The new indexes built** (Firebase console → Firestore → Indexes, all Enabled).
+
+### Still open
+
+- [ ] **Wire sessions to each studio's roster.** Sessions still use the app-wide machine list, so a studio's own and adopted machines aren't in the session picker. `useSessionMachines` exists and nothing uses it yet.
+- [ ] **Security, found by the reviews, not changed — needs AJ's OK:** trainers editing their own role and studio lists; any trainer editing any `studios/{id}`; any trainer writing another studio's `taskInstances` and `taskRequests`. One short rules round.
+- [ ] **Shared note copies named after their author** (`LEARNING-PLANNER-ROUND.md` §8) — closes a way a colleague with developer tools could block someone's note from being shared.
+- [ ] People who reach a studio only through `studios/{id}.ownerId` or a network's `ownerIds` aren't recognised by the rules (clients, sessions, and now studio content). Worth settling with the security round.
+- [ ] Comments aren't searchable yet; comment and note activity isn't in any leader view.
 
 ---
 

@@ -45,8 +45,12 @@ The kinds are Note, Plan, Routine change, Retention and Injury plan. They are a 
 - **Explicit Save, nothing lost.** A plan should reach a client's record when its author says it is ready, not half-typed. Every change waits in a session stash (`draft-stash.ts`) until it is saved or discarded. That survives switching tabs, opening another note, or visiting a profile.
   - The list marks those notes **Unsaved changes**, or **Draft** for a note never saved.
   - The stash is module state, keyed by uid, and never touches `localStorage`: studio iPads are shared.
+  - An unsaved edit to a saved note reopens only once the notes have loaded. Saving it before the saved version is known would lose what the save compares against — whether it was shared, and with whom — and could leave a copy on a client's record after Share was switched off (review fix).
+- **A folder that's gone doesn't lose its notes.** Deleting a folder moves the notes in it, read fresh from the database rather than from the screen's list (which holds the newest 500, and may still hold a note deleted on another iPad). A note that still points at a deleted folder — saved from a draft that was open when the folder went — shows under **Unfiled** (`inAFolder` in `notes.ts`). Until the folders have loaded nothing is moved between chips, and a folder is never called gone.
 - **Notes follow the trainer, not the studio.** The same list shows at every location. Personal tasks, by contrast, belong to the studio they were added at.
 - **Linking a client.** Today's roster comes first (the Planner already has it), then a name search at the studio the trainer is standing in. That search runs the directory's queries under the same tenancy rules (`src/lib/tenancy.ts`).
+  - It searches by the first word's letters ("Al Smith" searches "Al"), and the other words narrow the results.
+  - A search that fails says so; it never reads as "No client by that name".
   - A lone linked client the Planner does not hold is read once (`useClientDoc`), so Share can check their studio honestly.
   - Sharing needs the same access as recording an InBody scan: working at, or leading, the client's home studio.
 

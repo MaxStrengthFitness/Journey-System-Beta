@@ -28,6 +28,7 @@ He picked the name **Planner**.
   - Everything below the header is untouched.
 - **My tasks shows what already existed.** Personal tasks were mixed into the studio's shift strip with a "Just you" badge. "New personal task" could only be reached through Manage → task form → back.
   - My tasks lists them on their own, in three groups: open, in time order; done today; and studio tasks a head trainer assigned to you today.
+  - If any of its reads fails, it says it couldn't load all of today's tasks — never "Nothing on your list today" (`useStudioTasks` now reports an `error`, and waits for the personal task list before it stops loading).
   - Creating and editing uses the existing `TaskManager` in its personal-only mode. Nothing new is stored.
 - **The tab is remembered for the session** (module state, not storage). A fresh load starts on Studio, where the shift strip is.
 - **A client's profile can open the Planner** at a note: **Write a plan**, or **Edit in your Planner** on a shared note. The profile leaves its request in `intent.ts`, and the Planner reads it when it mounts. That avoids threading more state through AppContent, since the Planner is not mounted while the profile is showing.
