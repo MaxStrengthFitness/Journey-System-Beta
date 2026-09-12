@@ -1,17 +1,43 @@
 import React, { useMemo, useState } from "react";
-import { deleteDoc, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import {
+  deleteDoc,
+  deleteField,
+  doc,
+  serverTimestamp,
+  setDoc,
+  writeBatch,
+} from "firebase/firestore";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { db, auth } from "../../firebase";
 import { isStandardSetMachine } from "../../features/admin/studios/registry";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Plus, Search, Loader2, Wrench, CheckCircle2, Sparkles, ShieldAlert,
+  ArrowUpDown, GripVertical, RotateCcw, Check, X,
 } from "lucide-react";
 import { useStudioMachines } from "../../hooks/useStudioMachines";
 import { useToast } from "../../contexts/ToastContext";
@@ -38,6 +64,52 @@ import { MachineDefinitionForm, emptyMachineDefinition } from "./MachineDefiniti
  * bespoke leg press still rolls up against every other leg press in network
  * reporting instead of becoming its own incomparable island.
  */
+/**
+ * One draggable row in reorder mode.
+ *
+ * Deliberately plainer than the cards in the normal list: while you are
+ * putting twenty machines in order, the badges, switches and maintenance
+ * controls are noise, and every one of them is another tap target competing
+ * with the drag. Position number on the left, name, handle on the right.
+ */
+function SortableFloorRow({
+  machineId,
+  name,
+  position,
+}: {
+  machineId: string;
+  name: string;
+  position: number;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: machineId });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        "flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5",
+        isDragging && "opacity-80 shadow-lg",
+      )}
+    >
+      <span className="w-6 shrink-0 text-center text-xs font-black tabular-nums text-muted-foreground">
+        {position}
+      </span>
+      <span className="min-w-0 flex-1 truncate font-bold uppercase">{name}</span>
+      <button
+        type="button"
+        className="flex h-10 w-10 shrink-0 cursor-grab items-center justify-center rounded-lg text-muted-foreground active:cursor-grabbing"
+        aria-label={`Reorder ${name}`}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
 export function StudioInventoryManager({
   studioId,
   studioName,
@@ -45,7 +117,7 @@ export function StudioInventoryManager({
   studioId: string | null;
   studioName?: string;
 }) {
-  const { machines, catalog, rosterEntries, loading } = useStudioMachines(studioId, {
+  const { machines, byId, catalog, rosterEntries, loading } = useStudioMachines(studioId, {
     includeInactive: true,
     includeUnrostered: true,
   });
@@ -56,6 +128,18 @@ export function StudioInventoryManager({
   const [customDraft, setCustomDraft] = useState<MachineDefinition | null>(null);
   const [customBasedOn, setCustomBasedOn] = useState<string>("");
   const [savingCustom, setSavingCustom] = useState(false);
+  /**
+   * Reorder mode. Null when off; otherwise the machine ids in the order the
+   * user is currently dragging them into. Held as a draft rather than written
+   * per-drag so twenty small writes become one batch.
+   */
+  const [reorderIds, setReorderIds] = useState<string[] | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const rosteredIds = useMemo(
     () => new Set(rosterEntries.map((e) => e.machineId)),
@@ -70,6 +154,19 @@ export function StudioInventoryManager({
   const ownedCount = machines.filter(
     (m) => rosteredIds.has(m.machineId) && m.rosterStatus !== "inactive",
   ).length;
+
+  /**
+   * The floor, in the order trainers will see it. `machines` arrives already
+   * sorted by resolveMachineOrder, so this is the current effective order
+   * whether or not anybody has ever set one explicitly.
+   */
+  const floorInOrder = useMemo(
+    () =>
+      machines.filter(
+        (m) => rosteredIds.has(m.machineId) && m.rosterStatus !== "inactive",
+      ),
+    [machines, rosteredIds],
+  );
 
   if (!studioId) {
     return (
@@ -124,6 +221,87 @@ export function StudioInventoryManager({
   };
 
   /** Onboarding shortcut: adopt everything flagged inStandardSet. */
+  /**
+   * Save the dragged order.
+   *
+   * Writes `order` on each roster document, 1..n, in one batch. This is the
+   * ONE ordering mechanism as of Sep 12 2026: the Catalog, the client
+   * profile's Journey grid and the Active Session all resolve through
+   * studios/{id}/roster.order now. Before this there was no UI that wrote an
+   * order anywhere, and the field two of those screens read
+   * (studioMachineSettings.order) had zero documents in production.
+   */
+  const saveOrder = async () => {
+    if (!reorderIds || !studioId) return;
+    setSavingOrder(true);
+    try {
+      const batch = writeBatch(db);
+      reorderIds.forEach((machineId, i) => {
+        batch.set(
+          doc(db, "studios", studioId, "roster", machineId),
+          {
+            order: i + 1,
+            updatedAt: serverTimestamp(),
+            updatedBy: auth.currentUser?.uid ?? null,
+          },
+          { merge: true },
+        );
+      });
+      await batch.commit();
+      toastSuccess(
+        `Order saved. Every trainer at ${studioName ?? "this studio"} sees this sequence.`,
+      );
+      setReorderIds(null);
+    } catch (e: unknown) {
+      toastError(
+        `Could not save the order: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  /**
+   * Drop this studio's custom order and fall back to the MSF standard.
+   *
+   * deleteField() rather than writing the default numbers: resolveMachineOrder
+   * already falls back to DEFAULT_MACHINE_DISPLAY_ORDER when `order` is
+   * absent, so removing the field means this studio automatically follows any
+   * future change to the standard instead of being pinned to today's copy.
+   */
+  const resetOrder = async () => {
+    if (!studioId) return;
+    setSavingOrder(true);
+    try {
+      const batch = writeBatch(db);
+      for (const entry of rosterEntries) {
+        batch.set(
+          doc(db, "studios", studioId, "roster", entry.machineId),
+          { order: deleteField(), updatedAt: serverTimestamp() },
+          { merge: true },
+        );
+      }
+      await batch.commit();
+      toastSuccess("Back to the MSF standard order.");
+      setReorderIds(null);
+    } catch (e: unknown) {
+      toastError(
+        `Could not reset the order: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !reorderIds) return;
+    const from = reorderIds.indexOf(String(active.id));
+    const to = reorderIds.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    setReorderIds(arrayMove(reorderIds, from, to));
+  };
+
   const adoptStandardSet = async () => {
     setBusy("__standard__");
     try {
@@ -209,7 +387,38 @@ export function StudioInventoryManager({
             session here see exactly this list.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {reorderIds ? (
+            <>
+              <Button variant="ghost" onClick={resetOrder} disabled={savingOrder}>
+                <RotateCcw className="mr-1.5 h-4 w-4" /> MSF standard
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setReorderIds(null)}
+                disabled={savingOrder}
+              >
+                <X className="mr-1.5 h-4 w-4" /> Cancel
+              </Button>
+              <Button onClick={saveOrder} disabled={savingOrder}>
+                {savingOrder ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="mr-1.5 h-4 w-4" />
+                )}
+                Save order
+              </Button>
+            </>
+          ) : (
+            <>
+          {floorInOrder.length > 1 && (
+            <Button
+              variant="outline"
+              onClick={() => setReorderIds(floorInOrder.map((m) => m.machineId))}
+            >
+              <ArrowUpDown className="mr-1.5 h-4 w-4" /> Reorder
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={adoptStandardSet}
@@ -223,20 +432,53 @@ export function StudioInventoryManager({
           <Button onClick={() => setCustomDraft(emptyMachineDefinition())}>
             <Plus className="mr-1.5 h-4 w-4" /> Custom machine
           </Button>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          className="pl-9"
-          placeholder="Search equipment"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+      {!reorderIds && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Search equipment"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      )}
 
-      {loading ? (
+      {reorderIds ? (
+        /* REORDER MODE. Only machines actually in service, unfiltered and in
+           order - dragging inside a filtered list moves a row to a position
+           that does not exist once the filter clears. Search is hidden above
+           for the same reason. */
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">
+            Drag to set the order trainers see. This is the sequence used by the
+            Catalog, the client&rsquo;s Journey grid and the Active Session.
+          </p>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={onDragEnd}
+          >
+            <SortableContext items={reorderIds} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-col gap-1.5">
+                {reorderIds.map((machineId, i) => (
+                  <SortableFloorRow
+                    key={machineId}
+                    machineId={machineId}
+                    name={byId[machineId]?.name ?? machineId}
+                    position={i + 1}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </div>
+      ) : loading ? (
         <div className="flex items-center gap-2 p-8 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading equipment…
         </div>
