@@ -128,6 +128,11 @@ export function fromLegacyMachine(
     executionCues: db?.executionCues ?? [],
 
     studioNotes: opts.studioNotes?.[id]?.notes ?? machine.trainerTips ?? "",
+
+    // The shared library: its own lineage, never listed by a studio.
+    comparisonKey: id,
+    shared: false,
+    adoptedFrom: null,
   };
 }
 
@@ -207,5 +212,10 @@ export function fromResolvedMachine(
     // one lives in machineNotes and wins. See features/catalog/mutations.ts.
     studioNotes:
       opts.studioNotes?.[id]?.notes ?? machine.studioNotes ?? "",
+
+    // The MSF machine database — see features/machine-db.
+    comparisonKey: machine.comparisonKey || id,
+    shared: machine.shared === true,
+    adoptedFrom: machine.adoptedFrom ?? null,
   };
 }

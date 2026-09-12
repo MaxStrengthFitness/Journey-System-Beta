@@ -52,6 +52,16 @@ describe("validateDraft", () => {
     expect(validateDraft(draft())).toEqual([]);
   });
 
+  it("links a studio's own page only in an announcement to that one studio", () => {
+    const link = { kind: "studio-page" as const, id: "p1", studioId: "s1", title: "Front desk" };
+    const problem = "A studio's own page can only be linked in an announcement to that one studio.";
+    expect(validateDraft(draft({ learningLink: link }))).toContain(problem);
+    expect(validateDraft(draft({ scope: "studio", studioId: "s2", learningLink: link }))).toContain(problem);
+    expect(validateDraft(draft({ scope: "studio", studioId: "s1", learningLink: link }))).toEqual([]);
+    // Anything else in Learning can go to anyone.
+    expect(validateDraft(draft({ learningLink: { kind: "machine", id: "m-leg-press" } }))).toEqual([]);
+  });
+
   it("requires a headline that is not just whitespace", () => {
     expect(validateDraft(draft({ title: "   " }))).toContain(
       "A headline is required.",
@@ -196,6 +206,19 @@ describe("announcementBody", () => {
     expect(body.authorName).toBe("Austin J");
     expect(body.readBy).toEqual([]);
     expect(body.isActive).toBe(true);
+  });
+
+  it("carries a Learning link only when there is one", () => {
+    const withLink = announcementBody(
+      draft({ learningLink: { kind: "machine", id: "m-leg-press", title: "Leg Press" } }),
+      author,
+      NETWORKS,
+      "24h",
+      now,
+    );
+    expect(withLink.learningLink).toEqual({ kind: "machine", id: "m-leg-press", title: "Leg Press" });
+    const without = announcementBody(draft({ learningLink: null }), author, NETWORKS, "24h", now);
+    expect("learningLink" in without).toBe(false);
   });
 
   it("carries the resolved audience into the document", () => {
@@ -471,6 +494,22 @@ describe("unreadFor", () => {
       "t1",
     );
     expect(out.map((a) => a.id)).toEqual(["b", "c"]);
+  });
+
+  it("counts either id for an account whose profile id is not its sign-in id", () => {
+    const out = unreadFor(
+      [
+        { id: "old", readBy: ["profile-1"] },
+        { id: "new", readBy: ["uid-1"] },
+        { id: "unread", readBy: ["someone-else"] },
+      ],
+      ["uid-1", "profile-1"],
+    );
+    expect(out.map((a) => a.id)).toEqual(["unread"]);
+  });
+
+  it("ignores missing ids in the list", () => {
+    expect(unreadFor([{ id: "a", readBy: [] }], [undefined, null, ""])).toEqual([]);
   });
 });
 

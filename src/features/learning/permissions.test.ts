@@ -1,0 +1,65 @@
+import { describe, expect, it } from "vitest";
+import {
+  canWriteStudioPages,
+  isSuperRole,
+  leadsStudioPerRules,
+  worksAtStudioPerRules,
+  writesForStudioPerRules,
+} from "./permissions";
+
+const t = (role: string, home = "solon", owned: string[] = []) =>
+  ({ role, primaryHomeStudioId: home, ownedStudioIds: owned }) as any;
+
+describe("canWriteStudioPages — mirrors the studios/{s}/wiki page rule", () => {
+  it("lets super admins write anywhere", () => {
+    for (const role of ["Admin", "Founder", "Overseer"]) {
+      expect(canWriteStudioPages(t(role, "elsewhere"), "solon")).toBe(true);
+    }
+  });
+
+  it("lets a studio's own leaders write, at their studio only", () => {
+    for (const role of ["StudioOwner", "HeadTrainer", "StudioLeader"]) {
+      expect(canWriteStudioPages(t(role), "solon")).toBe(true);
+      expect(canWriteStudioPages(t(role), "westlake")).toBe(false);
+    }
+    expect(canWriteStudioPages(t("StudioOwner", "solon", ["westlake"]), "westlake")).toBe(true);
+  });
+
+  it("refuses franchise owners, whom the rule leaves out (the old button did not)", () => {
+    expect(canWriteStudioPages(t("FranchiseOwner"), "solon")).toBe(false);
+    expect(canWriteStudioPages(t("Owner"), "solon")).toBe(false);
+  });
+
+  it("refuses trainers, a missing trainer and a missing studio", () => {
+    expect(canWriteStudioPages(t("LifeTransformer"), "solon")).toBe(false);
+    expect(canWriteStudioPages(null, "solon")).toBe(false);
+    expect(canWriteStudioPages(t("Admin"), null)).toBe(false);
+  });
+
+  it("exposes the two halves of the rule", () => {
+    expect(isSuperRole(t("Founder"))).toBe(true);
+    expect(isSuperRole(t("StudioLeader"))).toBe(false);
+    expect(leadsStudioPerRules(t("HeadTrainer"), "solon")).toBe(true);
+    expect(leadsStudioPerRules(t("HeadTrainer"), undefined)).toBe(false);
+  });
+});
+
+describe("writesForStudioPerRules — mirrors writesForStudio(studioId)", () => {
+  it("lets people who work at the studio write, and nobody from another studio", () => {
+    expect(writesForStudioPerRules(t("LifeTransformer"), "solon")).toBe(true);
+    expect(writesForStudioPerRules(t("LifeTransformer"), "westlake")).toBe(false);
+    const multi = { role: "LifeTransformer", primaryHomeStudioId: "solon", accessibleStudioIds: ["westlake"] } as any;
+    expect(writesForStudioPerRules(multi, "westlake")).toBe(true);
+    const guest = { role: "LifeTransformer", primaryHomeStudioId: "solon", activeGuestStudioIds: ["willoughby"] } as any;
+    expect(worksAtStudioPerRules(guest, "willoughby")).toBe(true);
+  });
+
+  it("lets super admins and franchise owners write anywhere, leaders at their own studio", () => {
+    expect(writesForStudioPerRules(t("Admin", "elsewhere"), "solon")).toBe(true);
+    expect(writesForStudioPerRules(t("FranchiseOwner", "elsewhere"), "solon")).toBe(true);
+    expect(writesForStudioPerRules(t("StudioLeader"), "solon")).toBe(true);
+    expect(writesForStudioPerRules(t("StudioLeader"), "westlake")).toBe(false);
+    expect(writesForStudioPerRules(null, "solon")).toBe(false);
+    expect(writesForStudioPerRules(t("Admin"), null)).toBe(false);
+  });
+});

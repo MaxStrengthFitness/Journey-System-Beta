@@ -17,6 +17,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 | Web server | `server.ts` (Express on Render): serves the build and `/api/*` — the Mindbody proxy and the Gemini endpoints. Every `/api/mindbody/*` route needs a staff sign-in (`server/auth.ts`); Mindbody calls go through `server/mindbody-client.ts` |
 | Scheduled jobs | `server/cron-*.ts` (Render cron jobs, bundled by esbuild — they can import pure modules from `src/`). The nightly renewals job is `server/renewals-job.ts`, run by `server/cron-renewals.ts` |
 | Renewals and InBody | `src/features/renewals/` (engine, pipeline, outcomes — read its `README.md`), `src/features/admin/renewals/` (Operations → Renewals), `src/features/inbody/` |
+| Learning, Planner, machines, comments | `src/features/learning/` (the Learning tab: Overview, one search, links to any page), `src/features/planner/` (the Planner — was To-Do — and its private Notes in `notes/`), `src/features/machine-db/` (All MSF machines: sharing and adopting), `src/features/comments/` (comments with @tags). `LEARNING-PLANNER-ROUND.md` is the round |
 | Cloud Functions | `functions/src/` — `mindbodyWebhook`, trainer rollups, staff photos, nightly facility analytics |
 | Security rules | `firestore.rules`; tests in `tests/firestore.rules.test.ts`; indexes in `firestore.indexes.json` |
 | One-off scripts | `scripts/*.ts` — service-account auth, dry-run by default, `--commit` to write |
@@ -53,6 +54,8 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 - Use the design tokens (`equipment.tokens.css`, and `admin.tokens.css` in admin screens); no raw hex. The red kaizen mark is reserved for rep quality.
 - Dates are the studio's Eastern day (`src/lib/studio-time.ts`).
 - Admin / Operations screens follow `src/features/admin/README.md` (dirty-tracked saves, only the diff is written, plain studio English).
+- The To-Do screen is the **Planner** (Studio · My tasks · Notes); its view id is still `studio-tasks`. Planner notes are private to their author; **Share** copies a one-client note onto that client's record.
+- Sharing between studios is the studio's choice, per machine and per tip or note (a "Share with all MSF studios" switch). Comments stay within the studio; a tag rings the tagged person's bell and nothing else.
 
 **Data**
 - Mindbody owns people, bookings and contracts; Journey owns coaching data. A Mindbody client lives at `clients/{mindbodyClientId}` — no name matching, ever.
@@ -85,7 +88,15 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 - **Found Sep 11, not yet fixed — needs AJ's OK.** Two holes let a signed-in trainer grant themselves access, which undoes every role check in the rules and the Mindbody gate's per-site check:
   - A trainer can edit their own `trainers/{uid}` document, including `role` (anything but Admin, Founder or Overseer), `ownedStudioIds` and `accessibleStudioIds`.
   - Any trainer can edit any `studios/{id}` document, including `mindbodySiteId`.
-- `progressReports`, `journalEntries`, `exerciseLogs`, `clinicalIncidents` and `schedules` are readable by any signed-in user; only `clients` and `sessions` are studio-scoped.
+- **Also open, needs AJ's OK:** any trainer at any studio can create and update another studio's `taskInstances` and `taskRequests` (studio tasks and requests).
+- `progressReports`, `journalEntries`, `exerciseLogs`, `clinicalIncidents` and `schedules` are readable by any signed-in user. Studio-scoped: `clients`, `sessions`, comments, and (since the Learning + Planner round) a studio's `playbook` and `wiki`.
+- **Studio content writes need `writesForStudio(studioId)`** since the Learning + Planner round: machine notes, the upkeep log, playbook, wiki blocks and comments. `writesForStudioPerRules` (`src/features/learning/permissions.ts`) mirrors it for buttons.
+- **Use the Auth uid, not `authTrainer.id`, for anything a rule pins to the signed-in person** — note paths, comment authors, `readBy`, personal tasks. The two differ on older accounts.
+- **Shared lists are collection-group reads.** Each needs a `{path=**}` rule its filters satisfy (`shared == true`) and a collection-group index. Until a new index finishes building, the screen says it couldn't load the shared part.
+- **Announcements** can be posted only by `canPostAnnouncements()` (administrators, founders, franchise owners, studio owners), as themselves; only the Operations tab's people reach every studio. Everyone else may only add their own uid to `readBy`.
+- **Roster entries name their own studio** (`studioId` must match the path), and a copy adopted from another studio can't be shared.
+- **Sessions still use the app-wide machine list**, not each studio's roster, so a studio's own or adopted machines aren't in the session picker yet (ROADMAP).
+- **Never type a raw control or invisible character into source** (a NUL, U+F8FF): write the escape (`\u0000`, `\uf8ff`). A raw NUL makes git treat the file as binary, and a binary diff can't ship as a patch.
 - The nightly leaderboard job reads every exercise log ever written.
 - `setCustomUserClaimsV2` is never called, so every role check in the rules costs a document read.
 - On AJ's PC, Claude's Linux shell can't reach the project folder: it failed to mount it before, and a Windows update on Sep 8 2026 stopped it starting. The file bridge (stage and commit files) still works. The cloud container can't `npm ci` (the proxy blocks the registry), so typecheck and tests there run against type stubs. **AJ's own `tsc`, `vitest` and `test:rules` runs are the ones that count.**

@@ -26,7 +26,9 @@
 
 import React, { useState } from "react";
 import {
+  AtSign,
   Bell,
+  BookOpen,
   Check,
   CheckCheck,
   Megaphone,
@@ -51,6 +53,7 @@ import {
 } from "./useHubAnnouncements";
 import type { NotificationKind, TrainerNotification } from "./types";
 import type { HubAnnouncement, Trainer } from "../../types";
+import { learningRefLabel, parseLearningRef } from "../learning/ref";
 
 const ICON: Record<NotificationKind, typeof Bell> = {
   "task-completed": Check,
@@ -59,6 +62,7 @@ const ICON: Record<NotificationKind, typeof Bell> = {
   "request-replied": MessageSquare,
   "request-resolved": CheckCheck,
   "machine-flagged": TriangleAlert,
+  "comment-mention": AtSign,
 };
 
 function ago(v: unknown): string {
@@ -88,8 +92,13 @@ export interface NotificationBellProps {
   trainerId?: string | null;
   /** Needed for announcement scope targeting; also supplies trainerId. */
   authTrainer?: Trainer | null;
-  /** Where a notification's link should take the app. */
-  onNavigate?: (view: string, id?: string) => void;
+  /**
+   * Where a notification's link should take the app. `learning` is the raw
+   * Learning ref from the link, if it has one; the app parses it.
+   * `studioId` is the studio it happened at: a comment thread, a flag or a
+   * studio page belongs to one studio, so the app checks it is the one open.
+   */
+  onNavigate?: (view: string, id?: string, learning?: unknown, studioId?: string) => void;
   className?: string;
 }
 
@@ -128,7 +137,7 @@ export function NotificationBell({
       markNotificationRead(uid, n.id).catch(() => {});
     }
     if (n.link && onNavigate) {
-      onNavigate(n.link.view, n.link.id);
+      onNavigate(n.link.view, n.link.id, n.link.learning, n.studioId || undefined);
       setOpen(false);
     }
   };
@@ -218,6 +227,31 @@ export function NotificationBell({
                             {a.longContent}
                           </p>
                         )}
+                        {/* Learning + Planner round: an announcement can point
+                            at any page in Learning, and this opens it. */}
+                        {(() => {
+                          const page = parseLearningRef(a.learningLink);
+                          if (!page || !onNavigate) return null;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // A studio's own page opens only at that studio.
+                                onNavigate(
+                                  "learning",
+                                  undefined,
+                                  page,
+                                  page.kind === "studio-page" ? page.studioId : undefined,
+                                );
+                                setOpen(false);
+                              }}
+                              className="mt-2 inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-xl border border-cta/40 bg-cta/10 px-3 text-left text-[11px] font-black uppercase tracking-widest text-cta"
+                            >
+                              <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                              <span className="min-w-0 [overflow-wrap:anywhere]">Open {learningRefLabel(page)}</span>
+                            </button>
+                          );
+                        })()}
                         <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                           {a.authorName} · {announcementDate(a.createdAt)} ·{" "}
                           {scopeLabel(a)}

@@ -61,7 +61,7 @@ interface Props {
   onRestoreMachines?: () => void;
   onReorderTrainers?: () => void;
   onAppCleanse?: () => void;
-  /** Opens the full studio to-do screen from the Overview's task panel. */
+  /** Opens the Planner (was the studio to-do screen) from the Overview's task panel. */
   onOpenStudioTasks?: () => void;
 }
 

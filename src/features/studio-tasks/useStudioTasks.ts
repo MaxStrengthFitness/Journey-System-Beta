@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { onSnapshot, query, where } from "firebase/firestore";
 import { studioDateKey } from "../../lib/studio-time";
 import { useStudioMachines } from "../../hooks/useStudioMachines";
@@ -29,6 +29,11 @@ export interface UseStudioTasksResult {
   templates: TaskTemplate[];
   dateKey: string;
   loading: boolean;
+  /**
+   * One of the four reads failed (Learning + Planner round). The rows are
+   * then incomplete: a screen must say so, never "nothing today".
+   */
+  error: string | null;
   counts: { total: number; done: number; flagged: number };
   /** Machines the day plan expanded over. 0 means machine tasks make no rows. */
   machineCount: number;
@@ -75,11 +80,20 @@ export function useStudioTasks(
     Record<string, TaskInstance>
   >({});
   const [personalLoaded, setPersonalLoaded] = useState(true);
+  const [personalTemplatesLoaded, setPersonalTemplatesLoaded] = useState(true);
+  // Which reads failed, by name; any one makes the list incomplete.
+  const [failed, setFailed] = useState<Record<string, boolean>>({});
+  const markFailed = useCallback(
+    (read: string, value: boolean) =>
+      setFailed((p) => (Boolean(p[read]) === value ? p : { ...p, [read]: value })),
+    [],
+  );
 
   useEffect(() => {
     if (!studioId) {
       setTemplates([]);
       setTemplatesLoaded(true);
+      markFailed("templates", false);
       return;
     }
     setTemplatesLoaded(false);
@@ -92,11 +106,13 @@ export function useStudioTasks(
           ),
         );
         setTemplatesLoaded(true);
+        markFailed("templates", false);
       },
       (err) => {
         console.error("Error loading studio task templates:", err);
         setTemplates([]);
         setTemplatesLoaded(true);
+        markFailed("templates", true);
       },
     );
     return () => unsub();
@@ -106,6 +122,7 @@ export function useStudioTasks(
     if (!studioId || !day) {
       setInstances({});
       setInstancesLoaded(true);
+      markFailed("instances", false);
       return;
     }
     setInstancesLoaded(false);
@@ -120,11 +137,13 @@ export function useStudioTasks(
         });
         setInstances(map);
         setInstancesLoaded(true);
+        markFailed("instances", false);
       },
       (err) => {
         console.error("Error loading studio task instances:", err);
         setInstances({});
         setInstancesLoaded(true);
+        markFailed("instances", true);
       },
     );
     return () => unsub();
@@ -133,8 +152,11 @@ export function useStudioTasks(
   useEffect(() => {
     if (!ownerId) {
       setPersonalTemplates([]);
+      setPersonalTemplatesLoaded(true);
+      markFailed("personalTemplates", false);
       return;
     }
+    setPersonalTemplatesLoaded(false);
     const unsub = onSnapshot(
       personalTemplatesRef(ownerId),
       (snap) => {
@@ -149,10 +171,14 @@ export function useStudioTasks(
               }) as TaskTemplate,
           ),
         );
+        setPersonalTemplatesLoaded(true);
+        markFailed("personalTemplates", false);
       },
       (err) => {
         console.error("Error loading personal task templates:", err);
         setPersonalTemplates([]);
+        setPersonalTemplatesLoaded(true);
+        markFailed("personalTemplates", true);
       },
     );
     return () => unsub();
@@ -162,6 +188,7 @@ export function useStudioTasks(
     if (!ownerId || !day) {
       setPersonalInstances({});
       setPersonalLoaded(true);
+      markFailed("personalInstances", false);
       return;
     }
     setPersonalLoaded(false);
@@ -174,11 +201,13 @@ export function useStudioTasks(
         });
         setPersonalInstances(map);
         setPersonalLoaded(true);
+        markFailed("personalInstances", false);
       },
       (err) => {
         console.error("Error loading personal task instances:", err);
         setPersonalInstances({});
         setPersonalLoaded(true);
+        markFailed("personalInstances", true);
       },
     );
     return () => unsub();
@@ -252,7 +281,10 @@ export function useStudioTasks(
     rows,
     templates: allTemplates,
     dateKey: day,
-    loading: !templatesLoaded || !instancesLoaded || !personalLoaded,
+    loading: !templatesLoaded || !instancesLoaded || !personalLoaded || !personalTemplatesLoaded,
+    error: Object.values(failed).some(Boolean)
+      ? "Couldn't load all of today's tasks. Check the connection."
+      : null,
     counts,
     machineCount: machineIds.length,
   };

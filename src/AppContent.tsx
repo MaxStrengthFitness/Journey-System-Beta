@@ -8,6 +8,7 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useCallback,
   lazy,
   Suspense,
 } from "react";
@@ -38,9 +39,8 @@ import {
   Search,
   RefreshCw,
   X,
-  ListChecks,
-  Dumbbell,
   GraduationCap,
+  NotebookPen,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -176,14 +176,14 @@ const StudioTasksView = lazy(() =>
   })),
 );
 /**
- * The Studio Hub — the To-Do screen rebuilt as a community hub.
- *
- * Same chunk as StudioTasksView, so the classic escape hatch below costs no
- * extra download.
+ * The Planner (Learning + Planner round, Sep 2026) — what was the To-Do
+ * screen: the studio hub as its Studio tab, plus My tasks and Notes. The view
+ * id is still "studio-tasks", because notifications already stored in
+ * trainers' bells link to it.
  */
-const StudioHubView = lazy(() =>
-  import("./features/studio-tasks").then((m) => ({
-    default: m.StudioHubView,
+const PlannerView = lazy(() =>
+  import("./features/planner").then((m) => ({
+    default: m.PlannerView,
   })),
 );
 
@@ -201,18 +201,14 @@ const StudioHubView = lazy(() =>
 const CLASSIC_TODO =
   typeof window !== "undefined" &&
   window.location.search.includes("classic-todo");
-const CatalogView = lazy(() =>
-  import("./features/catalog").then((m) => ({ default: m.CatalogView })),
-);
 /*
- * The MSF Academy, its own tab since the Wiki Redesign (Sep 2026). Lazy for
- * the same reason the Catalog is: the two share features/wiki, and the
- * Academy additionally pulls a megabyte of generated corpus in chunks.
+ * LEARNING — the Catalog, the MSF Academy and (since the Learning + Planner
+ * round, Sep 2026) a front page and one search, as one lazy chunk. The
+ * Academy's megabyte of generated corpus still loads in its own chunks, on
+ * demand. See features/learning/LearningView.
  */
-const AcademyWikiView = lazy(() =>
-  import("./features/academy/AcademyWikiView").then((m) => ({
-    default: m.AcademyWikiView,
-  })),
+const LearningView = lazy(() =>
+  import("./features/learning").then((m) => ({ default: m.LearningView })),
 );
 import { MaxStrengthLogo } from "./components/MaxStrengthLogo";
 import { ThemeToggle } from "./components/ThemeToggle";
@@ -558,11 +554,10 @@ import { useSessions } from "./hooks/useSessions";
 import { useLiveSchedule } from "./hooks/useLiveSchedule";
 import { useClientMutations } from "./hooks/useClientMutations";
 import { StrongConfirmationModal } from "./components/StrongConfirmationModal";
-// Imported from the module, not the wiki barrel: the wiki is lazy-loaded.
-import {
-  WikiSectionsProvider,
-  type WikiSectionsValue,
-} from "./features/wiki/sections";
+// Pure and tiny, and imported from the module rather than the barrel (the
+// Learning tab itself is lazy-loaded): the link format the bell, search and
+// notes share.
+import { parseLearningRef, type LearningRef } from "./features/learning/ref";
 
 export default function AppContent({
   user,
@@ -589,7 +584,7 @@ export default function AppContent({
   handleLogout: () => Promise<void>;
   tokenRole: string | null;
 }) {
-  const { success: toastSuccess, error: toastError } = useToast();
+  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
   const { theme } = useTheme();
   const {
     activeStudioId,
@@ -666,54 +661,41 @@ export default function AppContent({
   const [appMode, setAppMode] = useState<"trainer" | "admin">("trainer");
   const [currentView, setCurrentView] = useState<View>("clients");
   /*
-   * CROSS-TAB LINKS between the Catalog and the Academy.
-   *
-   * Each screen owns its own internal route, which is what keeps them simple
-   * and keeps a back button meaning one thing. So the only way in from outside
-   * is to ASK, and these two pieces of state are that ask. Both are cleared by
-   * the receiving screen the moment they are honoured, so a later re-render
-   * cannot yank a trainer back to where they arrived twenty taps ago.
+   * LEARNING LINKS (features/learning/ref.ts). Any page in Learning — a
+   * machine, an Academy page, a studio's own page — can be opened from
+   * anywhere: the bell, a note, an announcement. `openLearning` is the one
+   * door. It switches to the section the page lives in; LearningView opens
+   * the page and clears the jump, so a later re-render cannot pull a trainer
+   * back to where they arrived twenty taps ago.
    */
-  const [catalogJump, setCatalogJump] = useState<string | null>(null);
-  const [academyJump, setAcademyJump] = useState<{
-    machineId: string;
-    focus: "card" | "script";
-    fromLabel?: string;
-  } | null>(null);
+  const [learningJump, setLearningJump] = useState<LearningRef | null>(null);
+  const openLearning = useCallback((ref: LearningRef) => {
+    setLearningJump(ref);
+    setCurrentView(ref.kind === "machine" ? "machine-anatomy" : "academy");
+  }, []);
+  const clearLearningJump = useCallback(() => setLearningJump(null), []);
   /*
-   * LEARNING — the Catalog and the Academy share one bottom-bar button since
-   * Sep 10 2026 (features/wiki/sections.tsx). The button reopens whichever of
-   * the two was open last; the switch in the wiki's own top bar moves between
-   * them. Both keep their view names, so every existing link — a notification
-   * that opens a machine, the settings shortcut — still lands in the right one.
+   * The bottom bar's Learning button reopens whichever section was open last:
+   * the front page ("learning") the first time, the Catalog or the Academy
+   * after that. The sections keep the view names they always had, so every
+   * existing link still lands in the right one.
    */
   const [lastLearningView, setLastLearningView] = useState<
-    "machine-anatomy" | "academy"
-  >("machine-anatomy");
+    "learning" | "machine-anatomy" | "academy"
+  >("learning");
   useEffect(() => {
-    if (currentView === "machine-anatomy" || currentView === "academy") {
+    if (
+      currentView === "learning" ||
+      currentView === "machine-anatomy" ||
+      currentView === "academy"
+    ) {
       setLastLearningView(currentView);
     }
   }, [currentView]);
-  const learningSections = useMemo<WikiSectionsValue>(
-    () => ({
-      sections: [
-        {
-          id: "machine-anatomy",
-          label: "Catalog",
-          icon: <Dumbbell size={14} aria-hidden />,
-        },
-        {
-          id: "academy",
-          label: "Academy",
-          icon: <GraduationCap size={14} aria-hidden />,
-        },
-      ],
-      active: currentView,
-      onSelect: (id) => setCurrentView(id as View),
-    }),
-    [currentView],
-  );
+  const isLearningView =
+    currentView === "learning" ||
+    currentView === "machine-anatomy" ||
+    currentView === "academy";
   const [newClientOnboardingName, setNewClientOnboardingName] = useState<
     string | null
   >(null);
@@ -1840,7 +1822,31 @@ export default function AppContent({
         trainerId={authTrainer?.id}
         authTrainer={authTrainer}
         className={headerIconClass}
-        onNavigate={(view, id) => {
+        onNavigate={(view, id, learning, atStudioId) => {
+          // A Learning page wins: it names the exact page. The machine-flagged
+          // link predates Learning refs and stores { view, id }; before this
+          // the id was dropped and it opened the Catalog's front page.
+          const ref =
+            parseLearningRef(learning) ??
+            (view === "machine-anatomy" && id
+              ? ({ kind: "machine", id } as LearningRef)
+              : null);
+          if (ref) {
+            // A comment thread, a flag or a studio's own page belongs to the
+            // studio it happened at. Opened here it would show this studio's
+            // instead, so say where it was rather than show the wrong one.
+            if (atStudioId && activeStudioId && atStudioId !== activeStudioId) {
+              const where =
+                studios.find((s) => s.id === atStudioId)?.name ?? "another studio";
+              toastInfo(
+                `That was at ${where}. Switch to ${where} to see it there.`,
+                6000,
+              );
+              return;
+            }
+            openLearning(ref);
+            return;
+          }
           if (view === "profile" && id) setSelectedClientId(id);
           setCurrentView(view as any);
         }}
@@ -1997,7 +2003,7 @@ export default function AppContent({
 
           {/* Main Content */}
           <main
-            className={`w-full max-w-full mx-auto relative ${currentView === "workouts" ? "flex-1 min-h-0 p-2 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950 flex flex-col" : currentView === "clients" || currentView === "client-directory" || currentView === "dashboard" || currentView === "machine-anatomy" || currentView === "academy" || currentView === "studio-tasks" ? "flex-1 min-h-0 overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col" : "flex-1 min-h-0 p-6 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950"}`}
+            className={`w-full max-w-full mx-auto relative ${currentView === "workouts" ? "flex-1 min-h-0 p-2 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950 flex flex-col" : currentView === "clients" || currentView === "client-directory" || currentView === "dashboard" || isLearningView || currentView === "studio-tasks" ? "flex-1 min-h-0 overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col" : "flex-1 min-h-0 p-6 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950"}`}
             style={
               currentView === "clients" ||
               currentView === "client-directory" ||
@@ -2076,44 +2082,17 @@ export default function AppContent({
                     onSearchTermChange={setHubSearchTerm}
                   />
                 )}
-                {(currentView === "machine-anatomy" ||
-                  currentView === "academy") && (
-                  <WikiSectionsProvider key="learning" value={learningSections}>
-                    {currentView === "machine-anatomy" ? (
-                      <CatalogView
-                        machines={machines}
-                        authTrainer={authTrainer}
-                        openMachineId={catalogJump}
-                        onOpenedMachine={() => setCatalogJump(null)}
-                        onOpenAcademy={(machineId, focus, machineName) => {
-                          setAcademyJump({
-                            machineId,
-                            focus,
-                            fromLabel: machineName,
-                          });
-                          setCurrentView("academy");
-                        }}
-                      />
-                    ) : (
-                      <AcademyWikiView
-                        jump={academyJump}
-                        onClearJump={() => setAcademyJump(null)}
-                        canManagePages={isStudioLeader(authTrainer)}
-                        author={
-                          authTrainer?.id
-                            ? {
-                                id: authTrainer.id,
-                                name: authTrainer.fullName ?? "",
-                              }
-                            : null
-                        }
-                        onOpenMachine={(machineId) => {
-                          setCatalogJump(machineId);
-                          setCurrentView("machine-anatomy");
-                        }}
-                      />
-                    )}
-                  </WikiSectionsProvider>
+                {isLearningView && (
+                  <LearningView
+                    key="learning"
+                    view={currentView as "learning" | "machine-anatomy" | "academy"}
+                    onViewChange={setCurrentView}
+                    machines={machines}
+                    authTrainer={authTrainer}
+                    trainers={trainers}
+                    jump={learningJump}
+                    onJumpHandled={clearLearningJump}
+                  />
                 )}
                 {currentView === "studio-tasks" &&
                   (() => {
@@ -2141,7 +2120,7 @@ export default function AppContent({
                         onOpenClientTask={openClientTask}
                       />
                     ) : (
-                      <StudioHubView
+                      <PlannerView
                         authTrainer={authTrainer}
                         clients={clients}
                         trainers={trainers}
@@ -2413,9 +2392,7 @@ export default function AppContent({
                 whichever was open last — see lastLearningView.
               */}
               <NavButton
-                active={
-                  currentView === "machine-anatomy" || currentView === "academy"
-                }
+                active={isLearningView}
                 onClick={() => setCurrentView(lastLearningView)}
                 icon={<GraduationCap className="w-5 h-5 sm:w-6 sm:h-6" />}
                 label="Learning"
@@ -2423,8 +2400,8 @@ export default function AppContent({
               <NavButton
                 active={currentView === "studio-tasks"}
                 onClick={() => setCurrentView("studio-tasks")}
-                icon={<ListChecks className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="To-Do"
+                icon={<NotebookPen className="w-5 h-5 sm:w-6 sm:h-6" />}
+                label="Planner"
               />
               <NavButton
                 active={currentView === "calendar"}

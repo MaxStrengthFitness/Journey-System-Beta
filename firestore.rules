@@ -587,6 +587,97 @@ service cloud.firestore {
       return hasRequiredFields(['title', 'shortContent', 'longContent', 'authorId', 'authorName', 'studioId', 'isActive', 'priority']);
     }
 
+    /* A link from an announcement to a page in Learning (Learning + Planner
+       round). Mirrors parseLearningRef in src/features/learning/ref.ts. */
+    function learningLinkValid(l) {
+      return l is map
+          && l.keys().hasOnly(['kind', 'id', 'moduleId', 'studioId', 'title'])
+          && l.kind in ['machine', 'academy-card', 'academy-script', 'academy-overview',
+                        'academy-module', 'academy-topic', 'academy-cueing',
+                        'academy-glossary', 'studio-page']
+          && (!('id' in l) || (l.id is string && l.id.size() > 0 && l.id.size() <= 200))
+          && (!('title' in l) || (l.title is string && l.title.size() <= 160));
+    }
+
+    /* Who the app offers the announcement composer to: the Operations
+       Announcements tab (administrators, founders, franchise owners) and the
+       Franchise hub (those, and studio owners). */
+    function canPostAnnouncements() {
+      return isSuperAdmin() || isFranchiseOwnerOnly() || getRole() == 'StudioOwner';
+    }
+
+    /* Everyone at every studio. Only the Operations tab offers it, so only
+       its people may send one; the Franchise hub never offers it. */
+    function reachesEveryStudio(d) {
+      return d.get('targetScope', '') == 'universal' || d.get('studioId', '') == 'all';
+    }
+
+    function announcementShapeValid(d) {
+      return isValidHubAnnouncement(d)
+          && d.title is string && d.title.size() <= 200
+          && d.shortContent is string && d.shortContent.size() <= 300
+          && (!('learningLink' in d) || learningLinkValid(d.learningLink));
+    }
+
+    /**
+     * The update rule for hub_announcements, extracted so getRole() is called
+     * once (via let) instead of 7+ times through canPostAnnouncements /
+     * isSuperAdmin / isFranchiseOwnerOnly — each of those calls getRole(),
+     * and stacking them blows Firestore's 1000-expression budget.
+     * let statements are valid inside function bodies but not in allow conditions.
+     */
+    function hubAnnouncementUpdateAllowed() {
+      let r = getRole();
+      return (
+        (
+          // Everyone who was there is still there, and the
+          // only name added is the caller's own.
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy'])
+          && request.resource.data.readBy is list
+          && request.resource.data.readBy.toSet()
+               .hasAll(resource.data.get('readBy', []).toSet())
+          && request.resource.data.readBy.toSet()
+               .difference(resource.data.get('readBy', []).toSet())
+               .hasOnly([request.auth.uid])
+        ) || (
+          // Lengths are checked on create only, so a notice written before
+          // the limits can still be taken down. A studio owner changes only
+          // their own notices; the Operations tab's people, any. The author
+          // and the reach stay what they were allowed to be.
+          (roleIsSuper(r) || roleIsFranchise(r) || r == 'StudioOwner')
+          && (resource.data.get('authorId', '') == request.auth.uid
+              || roleIsSuper(r) || roleIsFranchise(r))
+          && request.resource.data.get('authorId', '') == resource.data.get('authorId', '')
+          && (roleIsSuper(r) || roleIsFranchise(r)
+              || !reachesEveryStudio(request.resource.data))
+          && isValidHubAnnouncement(request.resource.data)
+          && (!('learningLink' in request.resource.data)
+              || learningLinkValid(request.resource.data.learningLink))
+        )
+      );
+    }
+
+    /**
+     * The hub_announcements create rule, in a function for the same reason as
+     * the update rule above: canPostAnnouncements() and the second
+     * isSuperAdmin()/isFranchiseOwnerOnly() pair called getRole() about eleven
+     * times between them, and every getRole() re-reads the trainer document,
+     * which exhausted Firestore's 1000-expression evaluation budget.
+     *
+     * Permissions are unchanged: for an authenticated caller roleIsSuper(r) is
+     * isSuperAdmin(), roleIsFranchise(r) is isFranchiseOwnerOnly(), and the
+     * three together are exactly canPostAnnouncements().
+     */
+    function hubAnnouncementCreateAllowed() {
+      let r = getRole();
+      return (roleIsSuper(r) || roleIsFranchise(r) || r == 'StudioOwner')
+          // Posted as yourself (review fix: the author was free text).
+          && request.resource.data.authorId == request.auth.uid
+          && (roleIsSuper(r) || roleIsFranchise(r)
+              || !reachesEveryStudio(request.resource.data))
+          && announcementShapeValid(request.resource.data);
+    }
+
     // ===============================================================
     // COLLECTION ENDPOINTS SECURITY PATHS
     // ===============================================================
@@ -655,6 +746,113 @@ service cloud.firestore {
         && !ownsTrainerDoc(trainerId);
     }
 
+    /* PLANNER NOTES (Learning + Planner round, Sep 2026). The limits match
+       src/features/planner/notes/types.ts. These are shape checks on a
+       trainer's OWN documents — privacy is the path, below — so a bad write
+       from an old app version cannot leave a note the Planner cannot read. */
+    function noteKindValid(k) {
+      return k in ['note', 'plan', 'routine', 'retention', 'injury'];
+    }
+
+    function trainerNoteValid(d) {
+      return d.keys().hasOnly(['title', 'body', 'kind', 'folderId', 'clientIds', 'clientNames',
+                               'pinned', 'sharedWith', 'createdAt', 'updatedAt'])
+          && d.keys().hasAll(['title', 'body', 'kind', 'folderId', 'clientIds', 'clientNames',
+                              'pinned', 'sharedWith', 'createdAt', 'updatedAt'])
+          && d.title is string && d.title.size() > 0 && d.title.size() <= 160
+          && d.body is string && d.body.size() <= 10000
+          && noteKindValid(d.kind)
+          && (d.folderId == null || (d.folderId is string && d.folderId.size() <= 200))
+          && d.clientIds is list && d.clientIds.size() <= 10
+          && d.clientNames is map && d.clientNames.size() <= 10
+          && d.pinned is bool
+          // Shared means about exactly that one client -- the same rule the
+          // Planner enforces, so a copy can never carry other clients' names.
+          && (d.sharedWith == null || (d.sharedWith is string
+                                       && d.clientIds.size() == 1
+                                       && d.clientIds[0] == d.sharedWith))
+          && d.createdAt is timestamp
+          && d.updatedAt is timestamp;
+    }
+
+    function noteFolderValid(d) {
+      return d.keys().hasOnly(['name', 'createdAt', 'updatedAt'])
+          && d.keys().hasAll(['name', 'createdAt', 'updatedAt'])
+          && d.name is string && d.name.size() > 0 && d.name.size() <= 60
+          && d.createdAt is timestamp
+          && d.updatedAt is timestamp;
+    }
+
+    /* A shared note's copy on a client's record. Signed by the caller and
+       stamped with this write's time, so neither can be faked; the whole
+       document is checked on every write (the app always overwrites it). */
+    function sharedNoteValid(d, clientId) {
+      return d.keys().hasOnly(['clientId', 'title', 'body', 'kind', 'authorId', 'authorName', 'updatedAt'])
+          && d.keys().hasAll(['clientId', 'title', 'body', 'kind', 'authorId', 'authorName', 'updatedAt'])
+          && d.clientId == clientId
+          && d.title is string && d.title.size() > 0 && d.title.size() <= 160
+          && d.body is string && d.body.size() <= 10000
+          && noteKindValid(d.kind)
+          && d.authorId == request.auth.uid
+          && d.authorName is string && d.authorName.size() <= 80
+          && d.updatedAt == request.time;
+    }
+
+    /* STUDIO CONTENT WRITES (Learning + Planner round, Sep 2026).
+       Someone who works at, or runs, this studio -- or an administrator or a
+       franchise owner. Before this round the machine notes, upkeep log,
+       playbook and wiki blocks below accepted any signed-in trainer at ANY
+       studio (their comments said the path enforced tenancy; nothing checked
+       the path). Now the path does. */
+    function writesForStudio(studioId) {
+      return isSuperAdmin() || isFranchiseOwnerOnly() || isTrainerOfStudio(studioId);
+    }
+
+    /* The "Share with all MSF studios" fields on a playbook tip or a machine
+       note (features/machine-db). Shape only: whether it may be shared is
+       the same question as whether it may be edited. */
+    function sharedFieldsValid(d) {
+      return (!('shared' in d) || d.shared is bool)
+          && (!('sharedKeys' in d) || (d.sharedKeys is list && d.sharedKeys.size() <= 10))
+          && (!('studioName' in d) || (d.studioName is string && d.studioName.size() <= 80));
+    }
+
+    /* Only a studio's OWN machine can be listed in the database: a catalog
+       entry is already in it, and a copy adopted from another studio is
+       listed by its original. */
+    function rosterShareValid(d) {
+      return d.get('shared', false) != true
+          || (d.get('source', '') == 'custom' && !('adoptedFrom' in d));
+    }
+
+    /* ...and a copy stays a copy: an update can't drop `adoptedFrom` and list
+       it in the same write (review fix). The studio it names is the one its
+       path names, so a shared machine can't claim another studio. */
+    function rosterWriteValid(studioId) {
+      return rosterShareValid(request.resource.data)
+          && request.resource.data.get('studioId', studioId) == studioId
+          && (resource == null
+              || !('adoptedFrom' in resource.data)
+              || request.resource.data.get('shared', false) != true);
+    }
+
+    /* A comment on a Learning page (features/comments). No client field
+       exists to fill: hasOnly is the guard, as on the playbook and wiki. */
+    function commentValid(d, studioId) {
+      return d.keys().hasOnly(['studioId', 'targetKey', 'target', 'body', 'authorId',
+                               'authorName', 'mentions', 'createdAt', 'editedAt'])
+          && d.keys().hasAll(['studioId', 'targetKey', 'target', 'body', 'authorId',
+                              'authorName', 'mentions', 'createdAt'])
+          && d.studioId == studioId
+          && d.targetKey is string && d.targetKey.size() > 0 && d.targetKey.size() <= 300
+          && d.target is map
+          && d.body is string && d.body.size() > 0 && d.body.size() <= 2000
+          && d.authorId is string
+          && d.authorName is string && d.authorName.size() <= 80
+          && d.mentions is list && d.mentions.size() <= 10
+          && d.createdAt is timestamp;
+    }
+
     match /trainers/{trainerId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && 
@@ -715,6 +913,24 @@ service cloud.firestore {
 
       match /taskInstances/{instanceId} {
         allow read, write: if isAuthenticated() && request.auth.uid == trainerId;
+      }
+
+      // PLANNER NOTES (Learning + Planner round, Sep 2026) -- a trainer's own
+      // notes and folders. Private by PATH, for the same reason as the task
+      // lists above, and more so: a note can name a client and describe an
+      // injury. Nobody else reads these, a studio owner included. A note the
+      // author wants the team to see is COPIED onto the client's record
+      // (clients/{id}/sharedNotes, below); this tree never opens up.
+      match /notes/{noteId} {
+        allow read, delete: if isAuthenticated() && request.auth.uid == trainerId;
+        allow create, update: if isAuthenticated() && request.auth.uid == trainerId
+                              && trainerNoteValid(request.resource.data);
+      }
+
+      match /noteFolders/{folderId} {
+        allow read, delete: if isAuthenticated() && request.auth.uid == trainerId;
+        allow create, update: if isAuthenticated() && request.auth.uid == trainerId
+                              && noteFolderValid(request.resource.data);
       }
 
       // IN-APP NOTIFICATIONS (round: Settings tiers & Task Board, Sep 2026).
@@ -841,6 +1057,41 @@ service cloud.firestore {
       allow delete: if isAuthenticated()
                     && inbodyWritable(clientId, getRole(), callerTrainer()) && (
                       resource.data.get('enteredBy', '') == request.auth.uid ||
+                      isSuperAdmin() ||
+                      isStudioOwnerOrHeadTrainerOnly(inbodyClientStudio(clientId)));
+    }
+
+    // SHARED NOTES (Learning + Planner round, Sep 2026) -- a note a trainer
+    // shared from their Planner, copied onto the client's record. Shown in
+    // the profile under Goals -> Plans from the team.
+    //
+    // Read like InBody scans: whoever can open the client. Written like one
+    // too (inbodyWritable): putting something on a client's record is for
+    // the studio that holds them. Only the author rewrites a copy -- the
+    // app overwrites it whole on every save, so the full shape is checked.
+    //
+    // Delete: the author, always (it is theirs to take back, even after
+    // moving studio); the studio's leaders and administrators (someone has
+    // to be able to take a note off a record). `resource == null` lets the
+    // author's Planner delete a copy a leader already removed, in the same
+    // batch as the note itself, without the whole batch being refused.
+    match /clients/{clientId}/sharedNotes/{noteId} {
+      allow read: if isAuthenticated() && (
+                    roleIsSuper(getRole()) || roleIsFranchise(getRole()) ||
+                    sessionClientIsReadable(clientId, getRole(), callerTrainer()));
+
+      allow create: if isAuthenticated()
+                    && inbodyWritable(clientId, getRole(), callerTrainer())
+                    && sharedNoteValid(request.resource.data, clientId);
+
+      allow update: if isAuthenticated()
+                    && inbodyWritable(clientId, getRole(), callerTrainer())
+                    && resource.data.get('authorId', '') == request.auth.uid
+                    && sharedNoteValid(request.resource.data, clientId);
+
+      allow delete: if isAuthenticated() && (
+                      resource == null ||
+                      resource.data.get('authorId', '') == request.auth.uid ||
                       isSuperAdmin() ||
                       isStudioOwnerOrHeadTrainerOnly(inbodyClientStudio(clientId)));
     }
@@ -1249,7 +1500,10 @@ service cloud.firestore {
       // tracked in ROADMAP.md.
       match /roster/{machineId} {
         allow read: if isAuthenticated();
-        allow create, update, delete:
+        allow create, update:
+          if (isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId))
+             && rosterWriteValid(studioId);
+        allow delete:
           if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
 
@@ -1267,7 +1521,8 @@ service cloud.firestore {
       // spent on the check. A trainer at studio A cannot write studio B.
       match /machineNotes/{machineId} {
         allow read: if isAuthenticated();
-        allow create, update: if isAuthenticated() && isAnyAuthenticatedTrainer();
+        allow create, update: if isAuthenticated() && isAnyAuthenticatedTrainer()
+                              && writesForStudio(studioId);
         allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
 
@@ -1288,7 +1543,8 @@ service cloud.firestore {
       // can be rewritten is not one — but a manager can delete a mistake.
       match /upkeepLog/{entryId} {
         allow read: if isAuthenticated();
-        allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
+        allow create: if isAuthenticated() && isAnyAuthenticatedTrainer()
+                      && writesForStudio(studioId);
         allow update: if false;
         allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
@@ -1417,7 +1673,11 @@ service cloud.firestore {
        * against a machine, so deleting orphans both.
        */
       match /playbook/{entryId} {
-        allow read: if isAuthenticated();
+        // The studio's own people (review fix, Learning + Planner round).
+        // Other studios read only what is shared, through the
+        // {path=**}/playbook rule below; this read used to hand every
+        // signed-in user every studio's unshared tips.
+        allow read: if isAuthenticated() && writesForStudio(studioId);
 
         allow create: if isAuthenticated()
                       && isAnyAuthenticatedTrainer()
@@ -1425,18 +1685,22 @@ service cloud.firestore {
                       && request.resource.data.title is string
                       && request.resource.data.title.size() <= 120
                       && request.resource.data.worked is string
-                      && !('clientId' in request.resource.data);
+                      && !('clientId' in request.resource.data)
+                      && sharedFieldsValid(request.resource.data)
+                      && writesForStudio(studioId);
 
         allow update: if isAuthenticated()
                       && isAnyAuthenticatedTrainer()
                       && !('clientId' in request.resource.data)
+                      && sharedFieldsValid(request.resource.data)
                       && (
                            resource.data.authorId == request.auth.uid
                         || request.resource.data.diff(resource.data)
                              .affectedKeys()
                              .hasOnly(['confirmations', 'lastConfirmedOn'])
                         || isStudioOwnerOrHeadTrainer(studioId)
-                      );
+                      )
+                      && writesForStudio(studioId);
 
         allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
@@ -1484,7 +1748,9 @@ service cloud.firestore {
        * Firestore does not cascade.
        */
       match /wiki/{docId} {
-        allow read: if isAuthenticated();
+        // As the playbook: the studio's own people; other studios read only
+        // what is shared, through {path=**}/wiki below (review fix).
+        allow read: if isAuthenticated() && writesForStudio(studioId);
 
         allow create: if isAuthenticated()
                       && isAnyAuthenticatedTrainer()
@@ -1493,11 +1759,13 @@ service cloud.firestore {
                       && request.resource.data.title.size() <= 160
                       && request.resource.data.kind in ['page', 'overlay']
                       && !('clientId' in request.resource.data)
+                      && sharedFieldsValid(request.resource.data)
                       && (
                            request.resource.data.kind == 'overlay'
                         || isSuperAdmin()
                         || isStudioOwnerOrHeadTrainer(studioId)
-                      );
+                      )
+                      && writesForStudio(studioId);
 
         allow update: if isAuthenticated()
                       && isAnyAuthenticatedTrainer()
@@ -1505,11 +1773,13 @@ service cloud.firestore {
                       && request.resource.data.title.size() <= 160
                       && request.resource.data.kind == resource.data.kind
                       && !('clientId' in request.resource.data)
+                      && sharedFieldsValid(request.resource.data)
                       && (
                            resource.data.kind == 'overlay'
                         || isSuperAdmin()
                         || isStudioOwnerOrHeadTrainer(studioId)
-                      );
+                      )
+                      && writesForStudio(studioId);
 
         allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
@@ -1585,6 +1855,66 @@ service cloud.firestore {
         allow create, update, delete:
           if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
+
+      // COMMENTS ON LEARNING PAGES (Learning + Planner round, Sep 2026).
+      //
+      // AJ chose "own studio": a studio's comments are read and written by
+      // the people who work at (or run) it -- the path is the tenancy, and
+      // unlike the older blocks above, this one checks it on READ as well.
+      // Tagging someone rings their bell through the notifications rule; it
+      // gives them nothing here they could not already read.
+      //
+      // The author may correct the words and the tags (signed with editedAt);
+      // nothing else about a comment changes. The author, the studio's
+      // leaders and administrators may take one down.
+      match /comments/{commentId} {
+        allow read: if isAuthenticated() && writesForStudio(studioId);
+
+        allow create: if isAuthenticated() && isAnyAuthenticatedTrainer()
+                      && writesForStudio(studioId)
+                      && commentValid(request.resource.data, studioId)
+                      && request.resource.data.authorId == request.auth.uid
+                      && request.resource.data.createdAt == request.time
+                      && !('editedAt' in request.resource.data);
+
+        allow update: if isAuthenticated()
+                      && resource.data.authorId == request.auth.uid
+                      && writesForStudio(studioId)
+                      && commentValid(request.resource.data, studioId)
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['body', 'mentions', 'editedAt'])
+                      && request.resource.data.editedAt == request.time;
+
+        allow delete: if isAuthenticated() && (
+                        resource.data.authorId == request.auth.uid ||
+                        isSuperAdmin() ||
+                        isStudioOwnerOrHeadTrainer(studioId));
+      }
+    }
+
+    // THE MSF MACHINE DATABASE (Learning + Planner round, Sep 2026).
+    //
+    // Collection-group reads over what studios chose to share: their own
+    // machines (roster), their machine notes (wiki overlays) and their tips
+    // (playbook). A collection-group query is judged by these rules alone,
+    // and only one filtered on `shared == true` can pass -- so nothing a
+    // studio did not share is listed to another. (A direct read of any of
+    // these documents is still governed by the studios/{studioId} block,
+    // which already lets any signed-in user read them.)
+    //
+    // Administrators may list rosters unfiltered: the catalog editor counts
+    // the studios still running a machine before retiring it.
+    match /{path=**}/roster/{machineId} {
+      allow read: if isAuthenticated()
+                  && (resource.data.shared == true || isSuperAdmin());
+    }
+
+    match /{path=**}/playbook/{entryId} {
+      allow read: if isAuthenticated() && resource.data.shared == true;
+    }
+
+    match /{path=**}/wiki/{docId} {
+      allow read: if isAuthenticated() && resource.data.shared == true;
     }
 
     // NETWORKS: Regional Franchise Groupings
@@ -1645,9 +1975,17 @@ service cloud.firestore {
     }
 
     // ANNOUNCEMENTS
+    //
+    // Learning + Planner round, Sep 2026: posting and editing were open to
+    // any signed-in user with the right field names -- anyone could post to
+    // every studio, or rewrite someone else's notice. Now they follow the
+    // app: only the people it offers the composer to (canPostAnnouncements)
+    // post or change a notice. Everyone else may do the one thing the bell
+    // does: add THEMSELVES, by sign-in id, to readBy, and nothing more.
     match /hub_announcements/{announcementId} {
       allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && isValidHubAnnouncement(request.resource.data);
+      allow create: if isAuthenticated() && hubAnnouncementCreateAllowed();
+      allow update: if isAuthenticated() && hubAnnouncementUpdateAllowed();
       allow delete: if isSuperAdmin() || isFranchiseOwner() || 
                     (resource.data.studioId != null && isStudioOwnerOrHeadTrainer(resource.data.studioId));
     }

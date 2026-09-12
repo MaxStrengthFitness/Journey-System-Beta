@@ -1786,6 +1786,7 @@ export function ClientProfileView({
               trainers={trainers}
               onOpenJournal={() => setActiveTab("journal")}
               onOpenReports={() => setActiveTab("journal")}
+              onOpenPlanner={() => setView("studio-tasks")}
             />
           )}
         </TabsContent>

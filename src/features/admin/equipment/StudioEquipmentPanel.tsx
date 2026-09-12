@@ -43,6 +43,7 @@ import { UpkeepDialog } from "../upkeep/UpkeepDialog";
 import { useStudioUpkeep } from "../upkeep/useStudioUpkeep";
 import { DEFAULT_UPKEEP_POLICY, tallyUpkeep, worstStatus } from "../upkeep/upkeepLog";
 import { studioDateKey } from "../../../lib/studio-time";
+import { writesForStudioPerRules } from "../../learning/permissions";
 
 export interface StudioEquipmentPanelProps {
   studio: Studio;
@@ -55,6 +56,10 @@ export function StudioEquipmentPanel({
 }: StudioEquipmentPanelProps) {
   const studioId = studio.id ?? "";
   const { success: toastSuccess } = useToast();
+  // Logging upkeep needs to work at or run this studio since the Learning +
+  // Planner round (writesForStudio); Operations lists every studio to any
+  // leader, so the button follows the rule rather than being refused.
+  const canLogUpkeep = writesForStudioPerRules(authTrainer ?? null, studioId);
   /*
    * `catalogLoading` was NOT read before, and that is the other half of "the
    * standard set fails to load".
@@ -261,13 +266,15 @@ export function StudioEquipmentPanel({
                     {row.upkeep === "due" && (
                       <AdminBadge tone="warn">Upkeep due</AdminBadge>
                     )}
-                    <AdminButton
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setUpkeepFor(row.entry.machineId)}
-                    >
-                      Upkeep
-                    </AdminButton>
+                    {canLogUpkeep && (
+                      <AdminButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setUpkeepFor(row.entry.machineId)}
+                      >
+                        Upkeep
+                      </AdminButton>
+                    )}
                     <AdminButton
                       variant="ghost"
                       size="sm"

@@ -273,7 +273,7 @@ export function TaskManager({
           <div className="flex flex-col gap-2 p-1">
             <p className="text-[12px] leading-relaxed text-muted-foreground">
               These are the standing duties for this studio. Trainers see them
-              on the To-Do screen on the days they are due.
+              in the Planner on the days they are due.
             </p>
 
             {sorted.length === 0 && (

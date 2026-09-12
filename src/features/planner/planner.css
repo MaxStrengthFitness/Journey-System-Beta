@@ -1,0 +1,315 @@
+/* ==========================================================================
+   PLANNER — the masthead, My tasks, and (Phase 3) Notes
+   --------------------------------------------------------------------------
+   Round: Learning + Planner, Sep 2026.
+
+   On the Studio Hub's --st-* tokens (features/studio-tasks/studio-tasks.css),
+   which carry the same values as Learning's --wk-*: the Planner masthead is
+   deliberately the same shape as Learning's — title, sections, and the
+   context on the right — so the two tabs AJ asked to be given "a good header"
+   got the same one. Nothing here writes a hex value.
+   ========================================================================== */
+
+.pl {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--st-bg);
+  color: var(--st-ink);
+}
+.pl *, .pl *::before, .pl *::after { box-sizing: border-box; }
+
+/* ------------------------------------------------------------------ *
+ * Masthead
+ * ------------------------------------------------------------------ */
+
+.pl__mast {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 58px;
+  padding: 0.5rem 1rem;
+  background: var(--st-surface);
+  border-bottom: 1px solid var(--st-border);
+}
+
+.pl__brand {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--st-ink);
+}
+.pl__brand svg { flex: none; color: var(--st-hero); }
+
+/* The Hub's title voice, one size up — the same as Learning's masthead. */
+.pl__title {
+  font-size: 17px;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+/* The sections: the same segmented control as Learning's .wk__seg--bar. */
+.pl__tabs {
+  flex: none;
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--st-border);
+  border-radius: 11px;
+  background: var(--st-surface-2);
+}
+
+.pl__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 40px;
+  padding: 0 0.875rem;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--st-ink-muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pl__tab svg { flex: none; }
+/* Navigation reads in the brand blue, as in Learning. */
+.pl__tab[aria-selected="true"] {
+  background: var(--st-surface);
+  color: var(--st-live);
+  box-shadow: 0 1px 2px var(--st-shadow);
+}
+.pl__tab:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+
+.pl__where {
+  margin-left: auto;
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--st-ink-muted);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .pl__mast { gap: 0.5rem; }
+  .pl__title { display: none; }
+  .pl__tab { padding: 0 0.625rem; }
+  .pl__tab-label { display: none; }
+}
+
+/* The tab's content fills what is left. Each panel brings its own scroller
+   (the hub's .st__scroll), so this is a flex column and nothing more. */
+.pl__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------------------ *
+ * Buttons — the Planner's own, at the iPad's 40px floor
+ * ------------------------------------------------------------------ */
+
+/* The hub's .sh__mine pill is 36px; everything the Planner adds is 40. */
+.pl__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--st-border-strong);
+  background: var(--st-surface);
+  color: var(--st-ink-2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pl__btn svg { flex: none; }
+.pl__btn:disabled { opacity: 0.5; cursor: default; }
+.pl__btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+.pl__btn--primary {
+  background: var(--st-live);
+  border-color: var(--st-live);
+  color: var(--st-surface);
+}
+/* No red in the --st-* set (the kaizen red is reserved): destructive
+   confirmations use the flag colours, which read as "careful". */
+.pl__btn--danger {
+  background: var(--st-flag-fill);
+  border-color: var(--st-flag-border);
+  color: var(--st-flag);
+}
+
+/* ------------------------------------------------------------------ *
+ * The studio hub, embedded (StudioHubView `embedded`)
+ * ------------------------------------------------------------------ */
+
+/* The masthead already says which studio and which day, so the hub's own
+   header becomes a slim toolbar: what this tab is, and its two switches. */
+.st__head--embedded { padding: 0.625rem 0; }
+.st__sub-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--st-ink-2);
+}
+
+/* ------------------------------------------------------------------ *
+ * My tasks
+ * ------------------------------------------------------------------ */
+
+.pl__panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 0 0.75rem;
+  border-bottom: 1px solid var(--st-border);
+}
+.pl__panel-titles { min-width: 0; flex: 1 1 18rem; }
+.pl__panel-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.pl__h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+.pl__sub {
+  margin: 0.25rem 0 0;
+  max-width: 60ch;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--st-ink-muted);
+}
+
+.pl__list { margin-top: 1rem; }
+.pl__list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+  overflow: hidden;
+}
+
+.pl__list-head {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0 0 0.5rem;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--st-ink-muted);
+}
+.pl__count {
+  min-width: 1.5rem;
+  padding: 0 0.375rem;
+  border-radius: 999px;
+  background: var(--st-surface-2);
+  color: var(--st-ink-2);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.pl__list-note {
+  margin: -0.25rem 0 0.5rem;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--st-ink-muted);
+}
+
+.pl__task {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 56px;
+  padding: 0.5rem 0.875rem;
+}
+.pl__task + .pl__task { border-top: 1px solid var(--st-border); }
+
+/* 44px: the tick is the whole point of the row. */
+.pl__check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-left: -0.375rem;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--st-done);
+  cursor: pointer;
+  position: relative;
+}
+/* The visible box, drawn inside the 44px target. */
+.pl__check::before {
+  content: "";
+  position: absolute;
+  inset: 11px;
+  border: 2px solid var(--st-border-strong);
+  border-radius: 7px;
+  background: var(--st-surface);
+}
+.pl__check[aria-pressed="true"]::before { border-color: var(--st-done); background: var(--st-done-fill); }
+.pl__check svg { position: relative; }
+.pl__check:disabled { opacity: 0.5; cursor: progress; }
+.pl__check:focus-visible { outline: 2px solid var(--st-live); outline-offset: -2px; }
+
+.pl__task-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pl__task-title { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+.pl__task--done .pl__task-title { color: var(--st-ink-muted); text-decoration: line-through; }
+.pl__task-meta {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--st-ink-faint);
+}
+.pl__task-detail { font-size: 12px; line-height: 1.45; color: var(--st-ink-muted); overflow-wrap: anywhere; }
+
+.pl__empty {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  border: 1px dashed var(--st-border-strong);
+  border-radius: var(--st-radius);
+  text-align: center;
+}
+.pl__empty-title { margin: 0 0 0.375rem; font-size: 14px; font-weight: 800; }
+.pl__empty-body {
+  margin: 0 auto;
+  max-width: 52ch;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--st-ink-muted);
+}
+
+@media (min-width: 1024px) {
+  .pl__mast { padding: 0.5rem 1.5rem; }
+}

@@ -217,7 +217,7 @@ export function AdminOverviewTab({
           tone={floor.unresolved > 0 ? "attention" : undefined}
         />
         <AdminStatTile
-          label="Studio to-do"
+          label="Studio tasks"
           value={`${tasks.counts.done}/${tasks.counts.total}`}
           foot={
             tasks.counts.flagged > 0
@@ -356,8 +356,8 @@ export function AdminOverviewTab({
 
         <div className="adm-ov__stack">
           <AdminPanel
-            title="Studio to-do"
-            subtitle="Today's shared list. Creating and scheduling tasks lives on the to-do screen."
+            title="Studio tasks"
+            subtitle="Today's shared list. Creating and scheduling tasks lives in the Planner."
             icon={<ClipboardList className="w-3.5 h-3.5" />}
             actions={
               onOpenStudioTasks && (
@@ -377,7 +377,7 @@ export function AdminOverviewTab({
               <div className="p-4">
                 <AdminEmpty title={tasks.counts.total === 0 ? "No tasks today" : "All done"}>
                   {tasks.counts.total === 0
-                    ? "Recurring cleaning and maintenance tasks show up here once they are set on the to-do screen."
+                    ? "Recurring cleaning and maintenance tasks show up here once they are set in the Planner."
                     : `All ${tasks.counts.total} of today's tasks are marked complete.`}
                 </AdminEmpty>
               </div>

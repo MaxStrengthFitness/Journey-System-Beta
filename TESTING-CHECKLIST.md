@@ -111,6 +111,20 @@ If any of these is wrong, stop and fix it before continuing — everything downs
 - [ ] **Sign in at a second studio — none of it is there.**
 - [ ] **Two iPads, same task, same second.** Both tick it. *Expected:* clean, because instance ids are derived. This is the one place concurrency was designed for — confirm it.
 
+### Learning, the Planner, machines and comments · *branch `learning-planner`*
+
+The full pass is `LEARNING-PLANNER-ROUND.md` §5. These are the ones most likely to catch something:
+
+- [ ] **A studio's own machine from the bell.** Flag a machine the studio made (`sm-…`), then open the flag from another trainer's bell, on a fresh load. *Expected:* that machine's page at the studio. *If it lands on All MSF machines:* the Catalog decided before the floor had loaded — `CatalogWikiView` must wait for `floorLoading`.
+- [ ] **A tag at another studio.** Work at two studios. Get tagged at one while switched to the other, and tap the bell. *Expected:* "That was at *studio*…", not the wrong studio's thread.
+- [ ] **Tag two people whose names start the same** ("Sam Kim", "Sam Kimball"): pick one, delete it, pick the other, post. Only the second is tagged, and only their bell rings.
+- [ ] **Share a note, then switch Share off.** Before saving, go to Studio and back to Notes; then save. The copy must be gone from the client's **Plans from the team**. *If it stays:* the restored draft saved before the notes loaded.
+- [ ] **Delete a folder while a note in it is open with unsaved changes.** Save the note: it shows under **Unfiled**, not only under All.
+- [ ] **Switch a machine off, then add it back from All MSF machines.** *Expected:* **Put it back on *studio*'s floor**, and one entry on the equipment list — never a "-2" copy.
+- [ ] **Operations → Studios → Equipment at a studio you don't work at** (as a studio leader): no **Upkeep** button.
+- [ ] **Offline:** open the Overview, a studio page and My tasks with the network off. *Expected:* "Loading…" or "Couldn't load…" — never "Nothing written here", "That page is gone" or "Nothing on your list today".
+- [ ] **Long lists keep their place.** Scroll far down All MSF machines, open a machine, come back up: you're where you were.
+
 ### Calendar · *branch `calendar-redesign`*
 
 - [ ] **Month with a heavy Thursday** — row heights hold, no trainer names wrapping.
@@ -154,6 +168,9 @@ If any of these is wrong, stop and fix it before continuing — everything downs
 - [ ] **The `?view=trainer-hub` deep link** — gated on Admin/Founder/Overseer, but it also **fabricates a fake Owner trainer** (`id: "owner-temp"`, `pin: "0000"`) when no trainers exist (`AppContent.tsx:931-937`). Test it against an empty studio and decide whether that bootstrap should survive to production.
 - [ ] **Per-studio machine possession toggle** — it controls Machine Settings only; it does **not** hide un-owned machines from the Journey grid or Active Session. Confirm, then decide if that is acceptable at beta.
 - [ ] **Check the live deployment for the contractor's hardcoded admin email** (fixed in this copy only).
+- [ ] **What another studio can see (Learning + Planner round).** As a trainer at studio A, in the console: list `studios/B/playbook` and `studios/B/wiki` directly. *Expected:* **refused** — only what B shared comes through, via the collection-group lists. Read `studios/B/comments`: refused.
+- [ ] **Announcements by role.** A studio owner can post to their studio and network but not to everyone, and can't take down head office's notice; a franchise owner can do both from Operations; a head trainer has no composer and can only mark notices read.
+- [ ] **A Planner note stays private.** Sign in as another trainer — even a studio owner — and try to read `trainers/{someone else}/notes` in the console. *Expected:* refused. The shared copy on the client is readable by anyone who can open that client.
 
 ---
 

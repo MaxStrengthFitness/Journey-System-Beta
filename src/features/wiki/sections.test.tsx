@@ -95,3 +95,75 @@ describe("WikiShell outside the Learning tab", () => {
     expect(html).toContain('aria-label="Breadcrumb"');
   });
 });
+
+describe("WikiShell with the Learning masthead (title set)", () => {
+  const MAST = (active: string, onSearch?: () => void): WikiSectionsValue => ({
+    title: "Learning",
+    sections: [
+      { id: "learning", label: "Overview" },
+      { id: "machine-anatomy", label: "Catalog" },
+      { id: "academy", label: "Academy" },
+    ],
+    active,
+    onSelect: () => {},
+    onHome: () => {},
+    onSearch,
+    searchLabel: "Search Learning",
+  });
+
+  function renderMast(
+    crumbs: { label: string; onClick?: () => void }[],
+    value: WikiSectionsValue,
+    actions?: any,
+  ) {
+    return renderToStaticMarkup(
+      <WikiSectionsProvider value={value}>
+        <WikiShell crumbs={crumbs} onOpenSearch={noop} actions={actions}>
+          <p>body</p>
+        </WikiShell>
+      </WikiSectionsProvider>,
+    );
+  }
+
+  it("titles the tab and carries all three sections", () => {
+    const html = renderMast([{ label: "Overview" }], MAST("learning", noop));
+    expect(html).toContain('class="wk__mast"');
+    expect(html).toContain("Learning</span>");
+    expect(html).toMatch(/aria-pressed="true" aria-label="Overview"/);
+    expect(html).toMatch(/aria-pressed="false" aria-label="Catalog"/);
+  });
+
+  it("has ONE search, the tab's own, labelled for the whole tab", () => {
+    const html = renderMast([{ label: "Catalog" }], MAST("machine-anatomy", noop));
+    expect(html.match(/aria-label="Search Learning"/g)).toHaveLength(1);
+    expect(html).not.toContain("wk__searchbtn");
+  });
+
+  it("has no second row on a section's front page with nothing to do there", () => {
+    const html = renderMast([{ label: "Catalog" }], MAST("machine-anatomy", noop));
+    expect(html).not.toContain("wk__bar--sub");
+    expect(html).not.toContain('aria-label="Breadcrumb"');
+  });
+
+  it("puts a page's actions on the second row even at a section's front page", () => {
+    const html = renderMast([{ label: "Academy" }], MAST("academy", noop), <button>New page</button>);
+    expect(html).toContain("wk__bar--sub");
+    expect(html).toContain("New page");
+    expect(html).not.toContain('aria-label="Breadcrumb"');
+  });
+
+  it("shows the trail and the way back on deeper pages", () => {
+    const html = renderMast(
+      [{ label: "Catalog", onClick: noop }, { label: "Upper Body", onClick: noop }, { label: "Chest Press" }],
+      MAST("machine-anatomy", noop),
+    );
+    expect(html).toContain('aria-label="Breadcrumb"');
+    expect(html).toContain('aria-label="Back to Upper Body"');
+    expect(html).toContain("Chest Press");
+  });
+
+  it("falls back to the screen's own search when the tab has none", () => {
+    const html = renderMast([{ label: "Catalog" }], MAST("machine-anatomy"));
+    expect(html).toContain('class="wk__mast-search"');
+  });
+});

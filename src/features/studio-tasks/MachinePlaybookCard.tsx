@@ -19,6 +19,7 @@
  * clientId, the Firestore rule refuses a write that carries one, and this card
  * therefore cannot leak one however it is styled later.
  */
+import type { ReactNode } from "react";
 import { BookOpen, Check } from "lucide-react";
 import type { PlaybookEntry } from "./playbook";
 // The `--st-*` tokens this leans on come from studio-tasks.css, which the
@@ -31,12 +32,18 @@ export interface MachinePlaybookCardProps {
   currentUserId?: string | null;
   /** Open the hub's playbook lane on this entry. Optional — read-only without. */
   onOpenInHub?: (entryId: string) => void;
+  /**
+   * Beside an entry's tags: the "Share with all MSF studios" switch, for
+   * the people allowed to flip it (features/machine-db). Null for the rest.
+   */
+  renderAction?: (entry: PlaybookEntry) => ReactNode;
 }
 
 export function MachinePlaybookCard({
   entries,
   currentUserId,
   onOpenInHub,
+  renderAction,
 }: MachinePlaybookCardProps) {
   if (entries.length === 0) return null;
 
@@ -92,6 +99,7 @@ export function MachinePlaybookCard({
                     {confirms}
                   </span>
                 )}
+                {renderAction?.(e)}
               </span>
             </li>
           );

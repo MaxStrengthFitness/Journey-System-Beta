@@ -45,6 +45,7 @@ import {
   type WikiCrumb,
   type WikiSearchGroup,
 } from "../wiki";
+import { CommentsPanel } from "../comments";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import {
@@ -62,6 +63,7 @@ import {
   whatItHas,
   type AcademyMachine,
 } from "./academy-machines";
+import type { LearningRef } from "../learning/ref";
 
 /**
  * THE MSF ACADEMY, as its own wiki.
@@ -140,11 +142,65 @@ type Route =
   | { kind: "newPage" }
   | { kind: "search" };
 
+/**
+ * A way in from outside this screen. Two forms:
+ *
+ *   { machineId, focus }  from a Catalog machine page: open that machine's card
+ *                         or script, and offer a crumb back to the machine.
+ *   { ref }               from anywhere else (search, the bell, a note, an
+ *                         announcement): open exactly that page. See
+ *                         features/learning/ref.ts.
+ */
 export interface AcademyJump {
-  machineId: string;
-  focus: "card" | "script";
+  machineId?: string;
+  focus?: "card" | "script";
   /** The machine's name, for the "back to the machine" crumb. */
   fromLabel?: string;
+  ref?: LearningRef;
+  /** Open the index scrolled to one of its four groups (the front page's tiles). */
+  group?: AcademyGroupKey;
+  /** Open the page editor, for someone allowed to write pages. */
+  newPage?: boolean;
+}
+
+export type AcademyGroupKey = "machines" | "studio" | "language" | "curriculum";
+
+/** The module a topic belongs to, from the index that ships with the app. */
+function moduleOfTopic(topicId: string): string | null {
+  for (const m of ACADEMY_INDEX.modules) {
+    if (m.topics.some((t) => t.id === topicId)) return m.id;
+  }
+  return null;
+}
+
+/**
+ * Where a Learning ref lands in this screen. Null for a machine ref, which is
+ * the Catalog's to open, and for a topic whose module cannot be found — the
+ * index is a better landing than a page that can never load.
+ */
+function routeForRef(ref: LearningRef): Route | null {
+  switch (ref.kind) {
+    case "academy-card":
+      return { kind: "card", cardId: ref.id };
+    case "academy-script":
+      return { kind: "script", scriptId: ref.id };
+    case "academy-overview":
+      return { kind: "overview", overviewId: ref.id };
+    case "academy-module":
+      return { kind: "module", moduleId: ref.id };
+    case "academy-topic": {
+      const moduleId = ref.moduleId ?? moduleOfTopic(ref.id);
+      return moduleId ? { kind: "topic", moduleId, topicId: ref.id } : null;
+    }
+    case "academy-cueing":
+      return { kind: "cueing" };
+    case "academy-glossary":
+      return { kind: "glossary" };
+    case "studio-page":
+      return { kind: "page", pageId: ref.id };
+    default:
+      return null;
+  }
 }
 
 export interface AcademyWikiViewProps {
@@ -189,7 +245,13 @@ export function AcademyWikiView({
   const cues = useAcademyCues(route.kind === "cueing");
   const runTopicSearch = useTopicSearch();
 
-  const { docs: studioDocs, overlayFor, pages } = useStudioWiki(activeStudioId);
+  const {
+    docs: studioDocs,
+    overlayFor,
+    pages,
+    loading: pagesLoading,
+    error: pagesError,
+  } = useStudioWiki(activeStudioId);
 
   const moduleId =
     route.kind === "module" || route.kind === "topic" ? route.moduleId : null;
@@ -240,14 +302,67 @@ export function AcademyWikiView({
     [matcher],
   );
 
-  /* ── arriving from a machine ───────────────────────────────────── */
+  /* ── arriving from a machine, or from a link ───────────────────── */
+
+  /** A glossary term to open once the glossary chunk has arrived. */
+  const [pendingTerm, setPendingTerm] = useState<string | null>(null);
+  /** An index group to scroll to once the index has rendered. */
+  const [pendingGroup, setPendingGroup] = useState<AcademyGroupKey | null>(null);
+
+  useEffect(() => {
+    if (!pendingGroup || route.kind !== "index") return;
+    const target = groupElementId(pendingGroup);
+    // Cleared INSIDE the frame: clearing it here would re-render, run this
+    // effect's cleanup and cancel the frame before it ever fired.
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(target)?.scrollIntoView({ block: "start" });
+      setPendingGroup(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pendingGroup, route]);
 
   useEffect(() => {
     if (!jump) return;
+
+    if (jump.group) {
+      setRoute({ kind: "index" });
+      setCameFrom(null);
+      setPendingGroup(jump.group);
+      onClearJump?.();
+      return;
+    }
+
+    if (jump.newPage) {
+      if (canManagePages && author) {
+        setEditingPageId(null);
+        setRoute({ kind: "newPage" });
+      }
+      onClearJump?.();
+      return;
+    }
+
+    // A link to one exact page. No chunk needs to be waiting for this: each
+    // page shows its own loading state, and a page that has since moved says
+    // so (see "gone" below) rather than spinning.
+    if (jump.ref) {
+      const next = routeForRef(jump.ref);
+      setRoute(next ?? { kind: "index" });
+      setCameFrom(null);
+      if (jump.ref.kind === "academy-glossary" && jump.ref.id) {
+        setPendingTerm(jump.ref.id);
+      }
+      onClearJump?.();
+      return;
+    }
+
     // Wait for the chunks rather than giving up: the jump arrives with the tab
     // switch, and the JSON is still in flight for the first few hundred ms.
     if (!cards || !scripts) return;
 
+    if (!jump.machineId) {
+      onClearJump?.();
+      return;
+    }
     const entry = machines.find((m) => m.machineId === jump.machineId) ?? null;
     if (jump.focus === "script" && entry?.scriptId) {
       setRoute({ kind: "script", scriptId: entry.scriptId });
@@ -263,7 +378,14 @@ export function AcademyWikiView({
     }
     setCameFrom(jump);
     onClearJump?.();
-  }, [jump, cards, scripts, machines, onClearJump]);
+  }, [jump, cards, scripts, machines, onClearJump, canManagePages, author]);
+
+  useEffect(() => {
+    if (!pendingTerm || !glossary) return;
+    const wanted = pendingTerm.toLowerCase();
+    setOpenTerm(glossary.find((g) => g.term.toLowerCase() === wanted) ?? null);
+    setPendingTerm(null);
+  }, [pendingTerm, glossary]);
 
   /* ── helpers ───────────────────────────────────────────────────── */
 
@@ -293,7 +415,7 @@ export function AcademyWikiView({
   const rootCrumbs = (): WikiCrumb[] => {
     const crumbs: WikiCrumb[] = [];
     if (
-      cameFrom &&
+      cameFrom?.machineId &&
       onOpenMachine &&
       routeMachine &&
       routeMachine.machineId === cameFrom.machineId
@@ -559,14 +681,24 @@ export function AcademyWikiView({
   if (route.kind === "page") {
     const page = pages.find((p) => p.id === route.pageId) ?? null;
     if (!page) {
+      // Only "gone" once this studio's pages have actually been read.
       return (
         <WikiShell crumbs={[...rootCrumbs(), { label: "Page" }]}>
-          <div className="wk__placeholder">
-            <p className="wk__placeholder-title">That page is gone</p>
-            <p className="wk__placeholder-body">
-              It was retired, or it belongs to a different studio.
-            </p>
-          </div>
+          {pagesLoading ? (
+            <p className="wk__empty">Loading the page…</p>
+          ) : pagesError ? (
+            <div className="wk__placeholder">
+              <p className="wk__placeholder-title">Couldn't load this page</p>
+              <p className="wk__placeholder-body">{pagesError}</p>
+            </div>
+          ) : (
+            <div className="wk__placeholder">
+              <p className="wk__placeholder-title">That page is gone</p>
+              <p className="wk__placeholder-body">
+                It was retired, or it belongs to a different studio.
+              </p>
+            </div>
+          )}
         </WikiShell>
       );
     }
@@ -650,6 +782,11 @@ export function AcademyWikiView({
               </div>
             </WikiSeeAlso>
           )}
+
+          <CommentsPanel
+            target={{ kind: "studio-page", id: page.id, studioId: page.studioId || activeStudioId || "" }}
+            title={page.title}
+          />
         </WikiArticle>
       </WikiShell>
     );
@@ -671,7 +808,11 @@ export function AcademyWikiView({
 
     return (
       <WikiShell crumbs={crumbs} onOpenSearch={() => setRoute({ kind: "search" })}>
-        {!topic ? (
+        {!topic && !mod ? (
+          <GonePage onIndex={openIndex} />
+        ) : !topic && content?.id === route.moduleId && !moduleLoading ? (
+          <GonePage onIndex={openIndex} />
+        ) : !topic ? (
           <div className="wk__placeholder">
             <p className="wk__placeholder-title">
               {moduleFailed ? "This module could not be loaded" : "Loading…"}
@@ -720,6 +861,11 @@ export function AcademyWikiView({
                 Source: <code>{topic.source}</code>
               </p>
             )}
+
+            <CommentsPanel
+              target={{ kind: "academy-topic", id: topic.id, moduleId: route.moduleId }}
+              title={topic.title}
+            />
           </WikiArticle>
         )}
       </WikiShell>
@@ -730,6 +876,13 @@ export function AcademyWikiView({
 
   if (route.kind === "module") {
     const mod = ACADEMY_INDEX.modules.find((m) => m.id === route.moduleId);
+    if (!mod) {
+      return (
+        <WikiShell crumbs={[...rootCrumbs(), { label: "Module" }]}>
+          <GonePage onIndex={openIndex} />
+        </WikiShell>
+      );
+    }
     return (
       <WikiShell
         crumbs={[...rootCrumbs(), { label: mod?.title ?? "Module" }]}
@@ -790,7 +943,7 @@ export function AcademyWikiView({
         onOpenSearch={() => setRoute({ kind: "search" })}
       >
         {!card ? (
-          <p className="wk__empty">Loading…</p>
+          cards ? <GonePage onIndex={openIndex} /> : <p className="wk__empty">Loading…</p>
         ) : (
           <WikiArticle
             accent={GROUP_ACCENT.machines}
@@ -840,6 +993,8 @@ export function AcademyWikiView({
             />
 
             {machineSeeAlso(entry, "card")}
+
+            <CommentsPanel target={{ kind: "academy-card", id: card.id }} title={entry?.name ?? card.abbr} />
           </WikiArticle>
         )}
       </WikiShell>
@@ -857,7 +1012,7 @@ export function AcademyWikiView({
         onOpenSearch={() => setRoute({ kind: "search" })}
       >
         {!script ? (
-          <p className="wk__empty">Loading…</p>
+          scripts ? <GonePage onIndex={openIndex} /> : <p className="wk__empty">Loading…</p>
         ) : (
           <WikiArticle
             accent={GROUP_ACCENT.machines}
@@ -914,6 +1069,8 @@ export function AcademyWikiView({
             />
 
             {machineSeeAlso(entry, "script")}
+
+            <CommentsPanel target={{ kind: "academy-script", id: script.id }} title={entry?.name ?? script.abbr} />
           </WikiArticle>
         )}
       </WikiShell>
@@ -931,7 +1088,7 @@ export function AcademyWikiView({
         onOpenSearch={() => setRoute({ kind: "search" })}
       >
         {!overview ? (
-          <p className="wk__empty">Loading…</p>
+          overviews ? <GonePage onIndex={openIndex} /> : <p className="wk__empty">Loading…</p>
         ) : (
           <WikiArticle
             accent={GROUP_ACCENT.machines}
@@ -966,6 +1123,8 @@ export function AcademyWikiView({
               author={author ?? null}
             />
             {machineSeeAlso(entry, "overview")}
+
+            <CommentsPanel target={{ kind: "academy-overview", id: overview.id }} title={entry?.name ?? overview.title} />
           </WikiArticle>
         )}
       </WikiShell>
@@ -1242,6 +1401,29 @@ export function AcademyWikiView({
 /* ------------------------------------------------------------------ *
  * Small helpers
  * ------------------------------------------------------------------ */
+
+/**
+ * A link that points at a page this build of the Academy does not have.
+ *
+ * Academy ids are slugs of the source documents' file names, so a rebuilt
+ * corpus can rename one. Before Learning links existed nothing stored those
+ * ids; now notes, announcements and comments do. Such a link says so, rather
+ * than showing "Loading…" for ever.
+ */
+function GonePage({ onIndex }: { onIndex: () => void }) {
+  return (
+    <div className="wk__placeholder">
+      <p className="wk__placeholder-title">This page has moved</p>
+      <p className="wk__placeholder-body">
+        The Academy has been updated, and this link points at a page that no
+        longer exists under that name. Search for it, or browse the index.
+      </p>
+      <button type="button" className="wk__btn" onClick={onIndex}>
+        Academy index
+      </button>
+    </div>
+  );
+}
 
 function StudioPageBadges({ page }: { page: StudioWikiDoc }) {
   if (page.tags.length === 0) return null;

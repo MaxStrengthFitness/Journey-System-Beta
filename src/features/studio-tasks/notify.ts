@@ -19,6 +19,7 @@
  */
 
 import { notify } from "../notifications";
+import { machineLink } from "./links";
 import type { TaskAuthor } from "./mutations";
 import type { TaskRow } from "./types";
 import { taskScopeOf } from "./types";
@@ -117,7 +118,7 @@ export async function notifyTaskCompletion(
       title: `${author.name} flagged ${row.machineName ?? row.title}`,
       body: note || "A trainer reported a problem.",
       studioId,
-      link: { view: "machine-anatomy", id: row.machineId },
+      link: machineLink(row.machineId, row.machineName),
     });
     return;
   }

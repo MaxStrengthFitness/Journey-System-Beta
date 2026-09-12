@@ -1,0 +1,335 @@
+/* ==========================================================================
+   LEARNING — the front page, and the search stash
+   --------------------------------------------------------------------------
+   Round: Learning + Planner, Sep 2026.
+
+   Built entirely on the --wk-* tokens (features/wiki/wiki.tokens.css), so the
+   front page is the same product as the Catalog and the Academy it opens —
+   same surfaces, same six category colours, same type voice. Nothing here
+   writes a hex value.
+   ========================================================================== */
+
+/* The page underneath search: kept mounted, taken out of the layout.
+   `display: contents` while visible, so the wiki root still sits directly in
+   AppContent's flex column exactly as it did before this wrapper existed. */
+.lv__pass { display: contents; }
+.lv__stash { display: none; }
+
+/* ------------------------------------------------------------------ *
+ * Hero
+ * ------------------------------------------------------------------ */
+
+.lh__hero {
+  margin-top: 1rem;
+  padding: 1.25rem 1.25rem 1.125rem;
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius-lg);
+  background: var(--wk-surface);
+  box-shadow: var(--wk-elev-1);
+  /* The brand rule along the top: the one place the front page says MSF in
+     colour rather than in words. */
+  border-top: 3px solid var(--wk-hero);
+}
+
+.lh__eyebrow {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--wk-hero-text);
+}
+
+/* The Hub's title voice at full size. */
+.lh__title {
+  margin: 0.25rem 0 0;
+  font-size: 26px;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--wk-ink);
+}
+
+.lh__lede {
+  max-width: var(--wk-measure);
+  margin: 0.5rem 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--wk-ink-2);
+}
+
+/* The front page's search: the masthead's, made unmissable. A button shaped
+   like a field — tapping it opens the search screen, where focusing the
+   field (and so the keyboard) is the point. */
+.lh__search {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 1rem;
+  padding: 0 1rem;
+  border: 1px solid var(--wk-border-strong);
+  border-radius: var(--wk-radius);
+  background: var(--wk-bg);
+  color: var(--wk-ink-muted);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.lh__search:hover { border-color: var(--wk-live); color: var(--wk-live-text); }
+.lh__search:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
+.lh__search svg { flex: none; }
+.lh__search-label { flex: 1 1 auto; min-width: 0; }
+.lh__search-eg {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--wk-ink-faint);
+}
+@media (max-width: 560px) {
+  .lh__search-eg { display: none; }
+}
+
+.lh__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem 1.25rem;
+  margin: 0.875rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--wk-ink-muted);
+}
+.lh__facts strong {
+  font-size: 15px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--wk-ink);
+}
+
+/* ------------------------------------------------------------------ *
+ * Sections
+ * ------------------------------------------------------------------ */
+
+.lh__section { margin-top: 1.75rem; }
+
+.lh__section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.lh__section-titles { min-width: 0; }
+
+.lh__kicker {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--wk-ink-muted);
+}
+
+.lh__h2 {
+  margin: 0.125rem 0 0;
+  font-size: 17px;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--wk-ink);
+  overflow-wrap: anywhere;
+}
+
+.lh__more {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: var(--wk-tap);
+  padding: 0 0.75rem;
+  border: 1px solid var(--wk-border-strong);
+  border-radius: var(--wk-radius-pill);
+  background: var(--wk-surface);
+  color: var(--wk-live-text);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.lh__more:hover { border-color: var(--wk-live); }
+.lh__more:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; }
+
+/* "On the floor today": the catalog's numbers worth acting on, one tap from
+   the catalog that acts on them. */
+.lh__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  min-height: var(--wk-tap);
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--wk-warn-border);
+  border-radius: var(--wk-radius);
+  background: var(--wk-warn-fill);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.lh__status-label {
+  margin-right: 0.25rem;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wk-warn);
+}
+
+/* ------------------------------------------------------------------ *
+ * Category tiles — every machine showing
+ * ------------------------------------------------------------------ */
+
+.lh__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr));
+  gap: 0.625rem;
+}
+
+.lh__tile {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--wk-border);
+  border-top: 3px solid var(--wk-accent, var(--wk-border-strong));
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+  box-shadow: var(--wk-elev-1);
+  overflow: hidden;
+}
+
+.lh__tile-head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 56px;
+  padding: 0.625rem 0.75rem;
+  border: 0;
+  border-bottom: 1px solid var(--wk-border);
+  background: var(--wk-accent-fill, var(--wk-surface-2));
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.lh__tile-head:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: -2px; }
+.lh__tile-head .wk__cat-icon { margin-bottom: 0; background: var(--wk-surface); }
+.lh__tile-titles { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.lh__tile-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--wk-ink);
+  overflow-wrap: anywhere;
+}
+.lh__tile-count {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wk-accent, var(--wk-ink-muted));
+}
+.lh__tile-go { flex: none; color: var(--wk-ink-faint); }
+
+.lh__tile-list { margin: 0; padding: 0.25rem 0; list-style: none; }
+
+.lh__machine {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: var(--wk-tap);
+  padding: 0.25rem 0.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--wk-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.lh__machine:hover { background: var(--wk-surface-2); }
+.lh__machine:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: -2px; }
+.lh__machine-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  /* Machine names are never truncated anywhere in this app. */
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ *
+ * The Academy's ways in
+ * ------------------------------------------------------------------ */
+
+.lh__links {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 0.5rem;
+}
+/* One card under the Catalog's tiles: the way into All MSF machines. */
+.lh__links--one {
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 0.625rem;
+}
+
+.lh__start {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 0.625rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px dashed var(--wk-border-strong);
+  border-radius: var(--wk-radius);
+  background: transparent;
+  color: var(--wk-ink-2);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+}
+.lh__start:hover { border-color: var(--wk-live); }
+.lh__start:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
+.lh__start > svg:first-child { flex: none; color: var(--wk-hero-text); }
+.lh__start > span { flex: 1 1 auto; min-width: 0; }
+.lh__start > svg:last-child { flex: none; color: var(--wk-ink-faint); }
+.lh__start strong { color: var(--wk-ink); }
+
+/* The studio group on the front page sits flush under its section head. */
+.lh__section .wk__group { margin-top: 0; }
+
+.lh__foot {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 1.75rem 0 0;
+  font-size: 11px;
+  color: var(--wk-ink-faint);
+}
+
+@media (min-width: 1024px) {
+  .lh__hero { padding: 1.5rem 1.75rem 1.375rem; }
+  .lh__title { font-size: 30px; }
+}

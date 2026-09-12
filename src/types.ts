@@ -3,6 +3,7 @@
  */
 import type { RenewalSnapshot } from "./features/renewals/types";
 import type { InBodySummary } from "./features/inbody/types";
+import type { StoredLearningRef } from "./features/learning/ref";
 import type {
   ClientSubjectiveSnapshot,
   SubjectiveAssessment,
@@ -1509,6 +1510,12 @@ export interface HubAnnouncement {
   isActive: boolean;
   priority: "low" | "medium" | "high"; // Treated as urgency
   readBy?: string[];
+  /**
+   * A page in Learning the announcement points at — a machine, an Academy
+   * topic, card or script, a studio's page (Learning + Planner round). The
+   * bell's card opens it. Read it with parseLearningRef.
+   */
+  learningLink?: StoredLearningRef;
 }
 
 export interface LeaderboardRank {
@@ -1571,6 +1578,9 @@ export type View =
   /* The MSF Academy, its own tab since the Wiki Redesign (Sep 2026). It used
      to be a pane rendered inside "machine-anatomy". */
   | "academy"
+  /* Learning's front page (Learning + Planner round, Sep 2026). The Catalog
+     and the Academy are its other two sections — features/learning. */
+  | "learning"
   | "studio-tasks"
   | "client-directory"
   | "chart-importer"

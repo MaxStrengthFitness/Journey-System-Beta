@@ -28,6 +28,8 @@
  * and leaves nothing for a future caller to remember.
  */
 
+import type { StoredLearningRef } from "../learning/ref";
+
 export type NotificationKind =
   | "task-completed"
   /* A head trainer put your name on something. The one notification here that
@@ -38,7 +40,10 @@ export type NotificationKind =
   | "request-claimed"
   | "request-replied"
   | "request-resolved"
-  | "machine-flagged";
+  | "machine-flagged"
+  /* Someone tagged you in a comment on a Learning page (Learning + Planner
+     round). The link carries the page as a Learning ref. */
+  | "comment-mention";
 
 /** Where tapping the notification should land. */
 export interface NotificationLink {
@@ -46,6 +51,12 @@ export interface NotificationLink {
   view: string;
   /** Whatever that view needs to select — a request id, a client id. */
   id?: string;
+  /**
+   * A page in Learning (Learning + Planner round, Sep 2026). When present it
+   * wins over `view`/`id`: it names the exact page, where `view` can only name
+   * a screen. See features/learning/ref.ts.
+   */
+  learning?: StoredLearningRef;
 }
 
 /** trainers/{trainerId}/notifications/{notificationId} */

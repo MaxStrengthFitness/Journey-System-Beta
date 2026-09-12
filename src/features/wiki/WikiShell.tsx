@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { ArrowLeft, ChevronRight, Search } from "lucide-react";
 import {
   WikiSectionSwitch,
@@ -58,6 +58,11 @@ export interface WikiShellProps {
    * arrived from a search result back into the search overlay.
    */
   crumbs: WikiCrumb[];
+  /**
+   * Names the page for its scroll position when two pages share a trail —
+   * the Catalog's floor index and All MSF machines are both "Catalog".
+   */
+  scrollKey?: string;
   /** Opens the search overlay. Omit to hide the button entirely. */
   onOpenSearch?: () => void;
   searchLabel?: string;
@@ -70,6 +75,7 @@ export interface WikiShellProps {
 
 export function WikiShell({
   crumbs,
+  scrollKey,
   onOpenSearch,
   searchLabel = "Search",
   actions,
@@ -85,6 +91,30 @@ export function WikiShell({
     ? crumbs.find((c) => c.label === sectionLabel)
     : undefined;
   const hideTrail = trailRepeatsSection(crumbs, sections);
+  const pageKey = scrollKey ?? crumbs.map((c) => c.label).join(" / ");
+  // A top-level page — an index, a front page — keeps its place when the
+  // reader comes back up to it; an article always opens at its top.
+  const keepsPlace = crumbs.length <= 1;
+
+  if (sections?.title) {
+    return (
+      <MastheadShell
+        sections={sections}
+        crumbs={crumbs}
+        up={up}
+        sectionRoot={sectionRoot}
+        hideTrail={hideTrail}
+        pageKey={pageKey}
+        keepsPlace={keepsPlace}
+        onOpenSearch={sections.onSearch ?? onOpenSearch}
+        searchLabel={sections.searchLabel ?? searchLabel}
+        actions={actions}
+        className={className}
+      >
+        {children}
+      </MastheadShell>
+    );
+  }
 
   return (
     <div className={`wk${className ? ` ${className}` : ""}`}>
@@ -166,7 +196,193 @@ export function WikiShell({
         </div>
       </header>
 
-      <div className="wk__scroll">{children}</div>
+      <PageScroller pageKey={pageKey} keepsPlace={keepsPlace}>
+        {children}
+      </PageScroller>
     </div>
   );
 }
+
+/* ------------------------------------------------------------------ *
+ * The masthead layout (Learning + Planner round, Sep 11 2026)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Two rows instead of one.
+ *
+ * Row one is the same on every page of the tab: the title (tap it for the
+ * front page), the sections, and one search. Row two is where you are and
+ * what you can do here — the trail and the page's actions — and it only
+ * exists when there is something to put in it, so a section's front page
+ * has one quiet bar rather than two.
+ *
+ * Why not one row: the old bar carried a back arrow, the section switch, the
+ * breadcrumb, the page actions and search. On a portrait iPad the breadcrumb
+ * was what gave way, so the one thing that says where you are was the first
+ * thing to scroll out of sight.
+ */
+function MastheadShell({
+  sections,
+  crumbs,
+  up,
+  sectionRoot,
+  hideTrail,
+  pageKey,
+  keepsPlace,
+  onOpenSearch,
+  searchLabel,
+  actions,
+  className,
+  children,
+}: {
+  sections: NonNullable<ReturnType<typeof useWikiSections>>;
+  crumbs: WikiCrumb[];
+  up: WikiCrumb | null;
+  sectionRoot: WikiCrumb | undefined;
+  hideTrail: boolean;
+  pageKey: string;
+  keepsPlace: boolean;
+  onOpenSearch?: () => void;
+  searchLabel: string;
+  actions?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  const showSub = !hideTrail || Boolean(actions);
+
+  return (
+    <div className={`wk wk--mast${className ? ` ${className}` : ""}`}>
+      <header className="wk__mast">
+        <button
+          type="button"
+          className="wk__mast-home"
+          onClick={sections.onHome}
+          aria-label={`${sections.title} — front page`}
+        >
+          {sections.titleIcon}
+          <span className="wk__mast-title">{sections.title}</span>
+        </button>
+
+        {/* Tapping the section you are in goes to its root: the section's
+            crumb, or the page's first one (All MSF machines). On the root
+            itself it does nothing — it used to fall back to the front page. */}
+        <WikiSectionSwitch
+          value={sections}
+          onActiveTap={sectionRoot?.onClick ?? crumbs[0]?.onClick}
+        />
+
+        {onOpenSearch && (
+          <button
+            type="button"
+            className="wk__mast-search"
+            onClick={onOpenSearch}
+            aria-label={searchLabel}
+          >
+            <Search size={15} aria-hidden />
+            <span className="wk__mast-search-label">{searchLabel}</span>
+          </button>
+        )}
+      </header>
+
+      {showSub && (
+        <div className="wk__bar wk__bar--sub">
+          {!hideTrail && up?.onClick && (
+            <button
+              type="button"
+              className="wk__up"
+              onClick={up.onClick}
+              aria-label={`Back to ${up.label}`}
+            >
+              <ArrowLeft size={16} aria-hidden />
+            </button>
+          )}
+          {hideTrail ? (
+            <div className="wk__crumbs" aria-hidden />
+          ) : (
+            <nav className="wk__crumbs" aria-label="Breadcrumb">
+              <ol>
+                {crumbs.map((c, i) => {
+                  const last = i === crumbs.length - 1;
+                  return (
+                    <li key={`${c.label}-${i}`}>
+                      {i > 0 && (
+                        <ChevronRight size={13} className="wk__crumb-sep" aria-hidden />
+                      )}
+                      {c.onClick && !last ? (
+                        <button type="button" className="wk__crumb" onClick={c.onClick}>
+                          {c.label}
+                        </button>
+                      ) : (
+                        <span
+                          className="wk__crumb wk__crumb--here"
+                          aria-current={last ? "page" : undefined}
+                        >
+                          {c.label}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            </nav>
+          )}
+          {actions && <div className="wk__bar-actions">{actions}</div>}
+        </div>
+      )}
+
+      <PageScroller pageKey={pageKey} keepsPlace={keepsPlace}>
+        {children}
+      </PageScroller>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * The one scroller
+ * ------------------------------------------------------------------ */
+
+/**
+ * `.wk__scroll`, which starts every new page at its top.
+ *
+ * Learning + Planner round, Sep 2026. Every screen in both wikis returns a
+ * WikiShell at the same place in the tree, so React kept the same scroller
+ * element from page to page — and its scroll position with it. Opening a
+ * machine from low on the index landed halfway down the article, below its
+ * title and warnings. A different trail is a different page, so the scroller
+ * goes back to the top; the same trail re-rendering (new data, a grouping
+ * change, search closing) leaves it where the reader put it.
+ */
+function PageScroller({
+  pageKey,
+  keepsPlace,
+  children,
+}: {
+  pageKey: string;
+  keepsPlace: boolean;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const keyRef = useRef(pageKey);
+  useLayoutEffect(() => {
+    keyRef.current = pageKey;
+    if (ref.current) ref.current.scrollTop = keepsPlace ? placeOf.get(pageKey) ?? 0 : 0;
+    // keepsPlace belongs to the page, which pageKey already names.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageKey]);
+  return (
+    <div
+      className="wk__scroll"
+      ref={ref}
+      onScroll={(e) => placeOf.set(keyRef.current, e.currentTarget.scrollTop)}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Where the reader left each page, for the session (review, Learning +
+ * Planner round): coming back up to a long index used to land at its top.
+ * Only top-level pages read it back.
+ */
+const placeOf = new Map<string, number>();
