@@ -1904,7 +1904,8 @@ export default function AppContent({
                   }
                   className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" ? "bg-white dark:bg-bg-dark shadow-sm text-orange-600 dark:text-orange-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
                 >
-                  Admin
+                  {/* Label only: the mode is still "admin" inside (Renewals round, Sep 2026). */}
+                  Operations
                 </button>
               </div>
             </div>
@@ -2438,7 +2439,7 @@ export default function AppContent({
                 active={currentView === "admin-dashboard"}
                 onClick={() => setCurrentView("admin-dashboard" as any)}
                 icon={<LayoutDashboard className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="Admin"
+                label="Operations"
                 activeColor="text-orange-500"
                 activeBg="bg-orange-500/10 dark:bg-orange-600/10"
                 activeIndicator="bg-orange-500 dark:bg-orange-600"

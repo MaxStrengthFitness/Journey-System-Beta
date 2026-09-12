@@ -526,7 +526,7 @@ export function StudioSelectionView({
               onClick={onGoToAdmin}
               className="mt-4 bg-bg-dark-3 hover:bg-muted text-ink-d1 font-bold uppercase text-[11px] tracking-widest px-4 h-9 rounded-xl border border-div-d flex items-center gap-2 cursor-pointer shadow-md"
             >
-              <Shield className="w-3.5 h-3.5 text-[#F06C22]" /> Go To Admin Panel
+              <Shield className="w-3.5 h-3.5 text-[#F06C22]" /> Go to Operations
             </Button>
           )}
         </div>
@@ -602,7 +602,7 @@ export function StudioSelectionView({
                 No Authorized Studios Configuration Found
               </p>
               <p className="text-xs uppercase tracking-wider text-ink-d3 mt-1 max-w-md">
-                Database clean start complete. Access the Admin Panel to manage
+                Database clean start complete. Open Operations to manage
                 studios, create location entries, configure Mindbody Site IDs,
                 and manage staff.
               </p>
@@ -612,7 +612,7 @@ export function StudioSelectionView({
                 onClick={onGoToAdmin}
                 className="mt-2 bg-cta-strong hover:bg-[#a02400] text-white font-black uppercase tracking-widest text-xs h-12 px-8 rounded-xl shadow-lg shadow-[#F06C22]/20 flex items-center gap-2.5 cursor-pointer"
               >
-                <Shield className="w-4 h-4" /> Go To Admin Panel
+                <Shield className="w-4 h-4" /> Go to Operations
               </Button>
             )}
           </div>

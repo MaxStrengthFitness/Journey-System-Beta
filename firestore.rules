@@ -294,6 +294,192 @@ service cloud.firestore {
       ));
     }
 
+    /* ====================================================================
+       RENEWALS (Renewals round, Sep 2026)
+
+       Same shape as the helpers above: the caller is resolved ONCE at the
+       rule and the role string and trainer map are passed in, so these cost
+       map lookups, not document reads.
+
+         readable   - works at or runs this studio, or reaches every studio
+         manageable - runs this studio (a studio leader of it), or reaches
+                      every studio. Per-trainer renewal rates, the pipeline's
+                      stage / lead / outcome and the studio's renewal
+                      settings are for leaders only (AJ, Sep 10 2026).
+       ==================================================================== */
+
+    function renewalsReadable(studioId, r, t) {
+      return roleIsSuper(r) || roleIsFranchise(r) ||
+             trainerWorksAt(t, studioId) || trainerLeads(r, t, studioId);
+    }
+
+    function renewalsManageable(studioId, r, t) {
+      return roleIsSuper(r) || roleIsFranchise(r) || trainerLeads(r, t, studioId);
+    }
+
+    /** Absent, or a number inside [lo, hi]. */
+    function numberWithin(d, key, lo, hi) {
+      return !(key in d) || (d[key] is number && d[key] >= lo && d[key] <= hi);
+    }
+
+    /**
+     * studios/{s}/config/renewals. The app cleans every value again when it
+     * reads them (features/renewals/settings.ts), so this only has to keep
+     * out shapes that could never be right.
+     */
+    function renewalSettingsValid(d) {
+      return d.keys().hasOnly([
+               'conversationAtSessionsLeft', 'chargeWarnDays', 'chargeWarnMinBanked',
+               'horizonMonths', 'breakDays', 'lostAfterDays', 'payAsYouGoCountsAs',
+               'pauseDuringAwayEvents', 'packages', 'extraSessionNames',
+               'updatedAt', 'updatedBy'])
+          && numberWithin(d, 'conversationAtSessionsLeft', 0, 60)
+          && numberWithin(d, 'chargeWarnDays', 0, 180)
+          && numberWithin(d, 'chargeWarnMinBanked', 1, 100)
+          && numberWithin(d, 'horizonMonths', 1, 12)
+          && numberWithin(d, 'breakDays', 7, 90)
+          && numberWithin(d, 'lostAfterDays', 0, 365)
+          && (!('payAsYouGoCountsAs' in d) || d.payAsYouGoCountsAs in ['retained', 'lost'])
+          && (!('pauseDuringAwayEvents' in d) || d.pauseDuringAwayEvents is bool)
+          && (!('packages' in d) ||
+              (d.packages is list && d.packages.size() >= 1 && d.packages.size() <= 12))
+          && (!('extraSessionNames' in d) ||
+              (d.extraSessionNames is list && d.extraSessionNames.size() <= 40))
+          && d.get('updatedBy', '') == request.auth.uid;
+    }
+
+    /** What a trainer's conversation log may write on a renewal cycle. */
+    function renewalTrainerKeys() {
+      return ['clientId', 'clientName', 'cycleKey', 'packageKey', 'chargeDate',
+              'latestLeaning', 'latestConcerns', 'latestInterestedIn',
+              'needsLeader', 'lastTouchAt', 'lastTouchBy', 'lastTouchByName',
+              'touchCount'];
+    }
+
+    /**
+     * Leaders may also set the stage, the lead and the outcome. EVERY field
+     * the nightly job writes must be listed here too: a leader's write is
+     * checked against the whole document, so one unlisted job field would
+     * lock leaders out of that cycle for good.
+     */
+    function renewalCycleKeys() {
+      return renewalTrainerKeys().concat([
+              'stage', 'leadTrainerId', 'outcome', 'outcomeAt', 'outcomeBy',
+              'nextCycleKey', 'nextPackageKey', 'closedOn', 'primaryTrainerId',
+              'updatedAt', 'updatedBy']);
+    }
+
+    function renewalLeanings() {
+      return ['renewing', 'leaning-yes', 'unsure', 'leaning-no', 'not-renewing'];
+    }
+
+    /**
+     * A trainer logging a conversation: only the trainer fields change, and
+     * the conversation is signed by the person writing it.
+     */
+    function renewalTrainerWrite() {
+      return request.resource.data.get('lastTouchBy', '') == request.auth.uid
+          && request.resource.data.get('latestLeaning', 'unsure') in renewalLeanings()
+          // Only as a side effect of logging a conversation, now: stamped by
+          // the server, and counted one at a time.
+          && request.resource.data.get('lastTouchAt', null) == request.time
+          && request.resource.data.get('touchCount', 0) ==
+               (resource == null ? 0 : resource.data.get('touchCount', 0)) + 1
+          && (resource == null
+                ? request.resource.data.keys().hasOnly(renewalTrainerKeys())
+                : request.resource.data.diff(resource.data).affectedKeys()
+                    .hasOnly(renewalTrainerKeys()));
+    }
+
+    function renewalLeaderWrite() {
+      return request.resource.data.keys().hasOnly(renewalCycleKeys())
+          && request.resource.data.get('stage', 'not-started') in ['not-started', 'talking', 'decided']
+          && (request.resource.data.get('outcome', null) == null ||
+              request.resource.data.outcome in
+                ['renewed', 'upgraded', 'downgraded', 'pay-as-you-go', 'lost'])
+          && (request.resource.data.get('closedOn', null) == null ||
+              (request.resource.data.closedOn is string &&
+               request.resource.data.closedOn.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')));
+    }
+
+    /** One logged conversation. Signed by its author; never edited. */
+    function renewalTouchValid(d) {
+      return d.keys().hasOnly(['clientId', 'authorId', 'authorName', 'at', 'leaning',
+                               'concerns', 'interestedIn', 'note', 'needsLeader'])
+          && d.authorId == request.auth.uid
+          && d.at == request.time
+          && d.leaning in renewalLeanings()
+          && d.concerns is list && d.concerns.size() <= 8
+          && d.note is string && d.note.size() <= 500
+          && d.needsLeader is bool;
+    }
+
+    /* ====================================================================
+       INBODY SCANS (Renewals round, Sep 2026)
+
+       clients/{clientId}/inbodyScans/{scanId}: the numbers from one InBody
+       printout. Body composition is health data, so a scan reads like a
+       session -- only people who can open the client -- never like the open
+       progressReports collection.
+
+       Writes mirror the clients/{id} UPDATE rule on purpose: every scan
+       write is a batch that also rewrites clients/{id}.inbodySummary, and the
+       two halves must never disagree about who may make them.
+
+       The ranges here are wider than the app's (features/inbody/scans.ts):
+       the app catches typos; these only keep out shapes that are never right.
+       ==================================================================== */
+
+    function inbodyNumber(d, key, lo, hi) {
+      return d[key] is number && d[key] >= lo && d[key] <= hi;
+    }
+
+    /** Absent, null, or a number inside [lo, hi]. */
+    function inbodyOptional(d, key, lo, hi) {
+      return !(key in d) || d[key] == null || inbodyNumber(d, key, lo, hi);
+    }
+
+    function inbodyScanValid(d) {
+      return d.keys().hasOnly(['testedAt', 'device', 'source', 'studioId', 'enteredBy',
+                               'enteredByName', 'createdAt', 'updatedBy', 'updatedAt',
+                               'weightLb', 'skeletalMuscleMassLb', 'bodyFatMassLb',
+                               'percentBodyFat', 'bmi', 'totalBodyWaterLb', 'dryLeanMassLb',
+                               'fatFreeMassLb', 'basalMetabolicRateKcal', 'smi', 'phaseAngle',
+                               'segmentalLean'])
+          && d.testedAt is string && d.testedAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && d.device is string && d.device.size() <= 40
+          && inbodyNumber(d, 'weightLb', 20, 800)
+          && inbodyNumber(d, 'skeletalMuscleMassLb', 1, 400)
+          && inbodyNumber(d, 'bodyFatMassLb', 0, 700)
+          && inbodyNumber(d, 'percentBodyFat', 0, 90)
+          && d.skeletalMuscleMassLb + d.bodyFatMassLb < d.weightLb
+          && inbodyOptional(d, 'bmi', 5, 100)
+          && inbodyOptional(d, 'totalBodyWaterLb', 0, 500)
+          && inbodyOptional(d, 'dryLeanMassLb', 0, 300)
+          && inbodyOptional(d, 'fatFreeMassLb', 0, 800)
+          && inbodyOptional(d, 'basalMetabolicRateKcal', 0, 10000)
+          && inbodyOptional(d, 'smi', 0, 40)
+          && inbodyOptional(d, 'phaseAngle', 0, 30)
+          && (!('segmentalLean' in d) || d.segmentalLean == null || d.segmentalLean is map);
+    }
+
+    /** The scan's client's studio. One read, cached for the whole request. */
+    function inbodyClientStudio(clientId) {
+      return studioIdOf(get(/databases/$(database)/documents/clients/$(clientId)).data);
+    }
+
+    /** Mirrors match /clients/{clientId}'s update rule.
+     *  Takes the pre-computed role string and trainer map so it stays within
+     *  the 1000-expression budget. Callers must pass getRole() and callerTrainer().
+     */
+    function inbodyWritable(clientId, r, t) {
+      return t != null
+          && exists(/databases/$(database)/documents/clients/$(clientId))
+          && (roleIsSuper(r) || roleIsFranchise(r)
+              || trainerWorksAt(t, inbodyClientStudio(clientId))
+              || trainerLeads(r, t, inbodyClientStudio(clientId)));
+    }
+
     function isTrainerOfStudioOrClient(studioId, clientId) {
       return isSuperAdmin() || isFranchiseOwnerOnly() || (
         isAuthenticated() && (
@@ -348,7 +534,8 @@ service cloud.firestore {
     }
 
     function isValidTrainer(data) {
-      return hasRequiredFields(['fullName', 'initials', 'primaryHomeStudioId']) &&
+      return !('pinHash' in data) &&
+             hasRequiredFields(['fullName', 'initials', 'primaryHomeStudioId']) &&
              data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
              data.initials is string && data.initials.size() >= 2 && data.initials.size() <= 4 &&
              data.primaryHomeStudioId is string && data.primaryHomeStudioId.size() > 0 && data.primaryHomeStudioId.size() < 100 &&
@@ -599,7 +786,12 @@ service cloud.firestore {
                            getTrainerData().get('accessibleStudioIds', []),
                            getTrainerData().get('activeGuestStudioIds', [])));
 
+      // `renewal` is the renewal snapshot (Renewals round, Sep 2026). Only
+      // the nightly job writes it, through the Admin SDK, which these rules
+      // do not govern. Nobody writes it from the app — not even an admin — so
+      // an iPad holding an old copy of the client can never put it back.
       allow create: if isValidClient(request.resource.data)
+                    && !('renewal' in request.resource.data)
                     && (isSuperAdmin()
                         || (isAnyAuthenticatedTrainer()
                             && isTrainerOfStudio(
@@ -608,12 +800,49 @@ service cloud.firestore {
       // `resource.data` is the EXISTING document: a trainer may only edit a
       // client their own studio holds, whatever the incoming payload claims.
       allow update: if isValidClient(request.resource.data)
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['renewal'])
                     && (isSuperAdmin()
                         || (isAnyAuthenticatedTrainer()
                             && isTrainerOfStudio(
                                  getStudioIdFromData(resource.data))));
 
       allow delete: if isSuperAdmin();
+    }
+
+    // INBODY SCANS (Renewals round, Sep 2026) -- see the helpers above.
+    //
+    // Anyone who can write the client can add a scan or correct a typo in
+    // one (the correction is signed: updatedBy). Who entered it, when, and
+    // from where never change. A scan entered by mistake can be removed by
+    // whoever entered it or by the studio's leaders.
+    match /clients/{clientId}/inbodyScans/{scanId} {
+      allow read: if isAuthenticated() && (
+                    roleIsSuper(getRole()) || roleIsFranchise(getRole()) ||
+                    sessionClientIsReadable(clientId, getRole(), callerTrainer()));
+
+      allow create: if isAuthenticated()
+                    && inbodyWritable(clientId, getRole(), callerTrainer())
+                    && inbodyScanValid(request.resource.data)
+                    && request.resource.data.enteredBy == request.auth.uid
+                    && request.resource.data.enteredByName is string
+                    && request.resource.data.enteredByName.size() <= 80
+                    && request.resource.data.source in ['manual', 'photo']
+                    && request.resource.data.studioId is string
+                    && request.resource.data.createdAt == request.time;
+
+      allow update: if isAuthenticated()
+                    && inbodyWritable(clientId, getRole(), callerTrainer())
+                    && inbodyScanValid(request.resource.data)
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                         .hasAny(['enteredBy', 'enteredByName', 'createdAt', 'source', 'studioId'])
+                    && request.resource.data.updatedBy == request.auth.uid
+                    && request.resource.data.updatedAt == request.time;
+
+      allow delete: if isAuthenticated()
+                    && inbodyWritable(clientId, getRole(), callerTrainer()) && (
+                      resource.data.get('enteredBy', '') == request.auth.uid ||
+                      isSuperAdmin() ||
+                      isStudioOwnerOrHeadTrainerOnly(inbodyClientStudio(clientId)));
     }
 
     // DISK SETTINGS: Machine settings assigned to specific athletes
@@ -939,6 +1168,68 @@ service cloud.firestore {
                              // Allow any trainer to update their own studio's settings (notification toggles etc.)
                              (isAuthenticated() && isAnyAuthenticatedTrainer());
       allow delete: if isSuperAdmin();
+
+      // RENEWAL SETTINGS (Renewals round, Sep 2026).
+      //
+      //   config/renewals      the studio's thresholds and package table.
+      //                        Its leaders write it; everyone who works there
+      //                        reads it (the trainer-side screens measure
+      //                        against it).
+      //   config/renewalsSeen  names the nightly job met in this studio's
+      //                        Mindbody. Written by the job through the Admin
+      //                        SDK, which these rules do not govern; nobody
+      //                        writes it from the app.
+      //
+      // Reads are scoped to the studio, unlike roster/machineNotes: prices are
+      // commercial, and this round's rule is that new collections do not copy
+      // the open-read posture.
+      match /config/{configId} {
+        allow read: if isAuthenticated()
+                    && renewalsReadable(studioId, getRole(), callerTrainer());
+        allow create, update: if isAuthenticated()
+                    && configId == 'renewals'
+                    && renewalsManageable(studioId, getRole(), callerTrainer())
+                    && renewalSettingsValid(request.resource.data);
+        allow delete: if false;
+      }
+
+      // RENEWAL CYCLES AND CONVERSATIONS (Renewals round, Sep 2026).
+      //
+      //   renewals/{cycleKey}            one package term: the latest
+      //                                  conversation, and the leaders'
+      //                                  stage / lead / outcome
+      //   renewals/{cycleKey}/touches    one document per conversation
+      //
+      // Everyone who works at the studio reads them and may log a
+      // conversation; a trainer's write can touch only the conversation
+      // fields (renewalTrainerKeys). Stage, lead and outcome are for the
+      // studio's leaders. Per-trainer renewal RATES are computed from these in
+      // the Operations dashboard, which only leaders can open (AJ, Sep 10).
+      //
+      // A conversation is never edited — an accountability log that can be
+      // rewritten is not one — but a leader can delete a mistake. Cycles are
+      // history and are never deleted. The nightly job writes outcomes
+      // through the Admin SDK, which these rules do not govern.
+      match /renewals/{cycleKey} {
+        allow read: if isAuthenticated()
+                    && renewalsReadable(studioId, getRole(), callerTrainer());
+        allow create, update: if isAuthenticated() && (
+          (renewalsManageable(studioId, getRole(), callerTrainer()) && renewalLeaderWrite()) ||
+          (renewalsReadable(studioId, getRole(), callerTrainer()) && renewalTrainerWrite())
+        );
+        allow delete: if false;
+
+        match /touches/{touchId} {
+          allow read: if isAuthenticated()
+                      && renewalsReadable(studioId, getRole(), callerTrainer());
+          allow create: if isAuthenticated()
+                        && renewalsReadable(studioId, getRole(), callerTrainer())
+                        && renewalTouchValid(request.resource.data);
+          allow update: if false;
+          allow delete: if isAuthenticated()
+                        && renewalsManageable(studioId, getRole(), callerTrainer());
+        }
+      }
 
       // STUDIO MACHINE ROSTER — what THIS location actually has
       // (round: Machine Creator & Studio Roster, Sep 2026).

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { hashPin } from "../lib/auth-utils";
+import { authedFetch } from "../lib/authed-fetch";
 import { generateSearchTokens } from "@/lib/utils";
 import { Trainer, Studio, UserRole } from "../types";
 import {
@@ -110,7 +111,7 @@ export function EditTrainerModal({
 
     setFetchingStaff(true);
     try {
-      const res = await fetch("/api/mindbody/staff", {
+      const res = await authedFetch("/api/mindbody/staff", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ siteId }),
@@ -228,7 +229,7 @@ export function EditTrainerModal({
 
     setFetchingPhoto(true);
     try {
-      const res = await fetch("/api/mindbody/staff-image", {
+      const res = await authedFetch("/api/mindbody/staff-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ siteId, staffId }),

@@ -8,7 +8,8 @@
 # WHAT IS LIVE HERE
 # -----------------
 #   1. The web service (your existing one, now described in git)
-#   2. One cron job: the nightly leaderboard rebuild
+#   2. Two cron jobs: the nightly leaderboard rebuild, and the nightly
+#      renewals job (Renewals round, Sep 2026)
 #
 # WHAT IS PARKED, AND WHY
 # -----------------------
@@ -39,9 +40,9 @@
 # ------------------------
 #   Workspace plan (Pro - billed per workspace, not from this file)   $25/mo
 #   Web service         1c-2g       (the PDF's "Standard")            $25/mo
-#   1 cron job          0.5c-512mb  billed per minute of run time     ~$1/mo
+#   2 cron jobs         0.5c-512mb  billed per minute of run time     ~$2/mo
 #                                                                    -------
-#                                                                    ~$51/mo
+#                                                                    ~$52/mo
 #   The PDF's ~$74 also included a worker ($7), Postgres ($6) and Key
 #   Value ($10). Switching the worker and both notification crons on later
 #   adds about $8/mo.
@@ -206,6 +207,56 @@ services:
       # from one.
       - key: FIREBASE_SERVICE_ACCOUNT
         sync: false
+
+  # ===========================================================================
+  # 2b. CRON - nightly renewals (server/cron-renewals.ts)
+  # ===========================================================================
+  # CONTACTS NOBODY, and writes nothing to Mindbody. Added in the Renewals
+  # round (Sep 2026). Every night it:
+  #   - reads each studio's renewal settings, its clients, and bookings and
+  #     workouts from a fixed window (90 days back, 30 ahead);
+  #   - pulls contracts and pricing options from Mindbody (GETs only) for the
+  #     clients who most need it, capped by RENEWALS_MAX_PULLS (2 calls each;
+  #     Mindbody's first 1,000 calls a day are free);
+  #   - rewrites the renewal snapshot on each client document that changed.
+  #
+  # Unlike the leaderboard job it needs the Mindbody credentials: the same
+  # three values the web service has. A cron job is not public-facing, so
+  # holding them together with the Firestore key here is the same posture as
+  # the leaderboard job holding the key.
+  #
+  # 06:30 UTC = 2:30am Eastern in summer, 1:30am in winter.
+  # ===========================================================================
+  - type: cron
+    name: journey-cron-renewals
+    runtime: node
+    plan: 0.5c-512mb       # "Starter" - 0.5 CPU, 512 MB, billed per minute run
+    branch: master
+    schedule: "30 6 * * *"
+    buildCommand: npm ci && npm run build:backend
+    startCommand: npm run cron:renewals
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: VITE_FIREBASE_PROJECT_ID
+        sync: false
+      - key: VITE_FIREBASE_FIRESTORE_DATABASE_ID
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      - key: MINDBODY_API_KEY
+        sync: false
+      - key: MINDBODY_SOURCE_NAME
+        sync: false
+      - key: MINDBODY_SOURCE_PASSWORD
+        sync: false
+      # Clients pulled from Mindbody a night, across all studios.
+      - key: RENEWALS_MAX_PULLS
+        value: "300"
+      # "true" works everything out and writes nothing (the log says what it
+      # would have done). Leave "false" once the first run has been checked.
+      - key: RENEWALS_DRY_RUN
+        value: "false"
 
 
 # =============================================================================

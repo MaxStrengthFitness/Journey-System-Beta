@@ -12,6 +12,9 @@ import {
   getDocs,
   addDoc,
   updateDoc,
+  writeBatch,
+  serverTimestamp,
+  increment,
 } from "firebase/firestore";
 import { describe, it, beforeAll, afterAll, beforeEach, expect } from "vitest";
 import * as fs from "fs";
@@ -717,5 +720,340 @@ describe("Firestore Security Rules", () => {
       email: "ownera@test.com",
     });
     await assertSucceeds(getDoc(doc(ctx.firestore(), "sessions", "sessionA")));
+  });
+
+  // ── RENEWALS: studio settings (Renewals round, Sep 2026) ──────────────
+  //
+  // studios/{s}/config/renewals: the studio's leaders write it, everyone who
+  // works there reads it, nobody else sees it. config/renewalsSeen belongs to
+  // the nightly job (Admin SDK) and cannot be written from the app.
+
+  const validRenewalSettings = (uid: string) => ({
+    conversationAtSessionsLeft: 12,
+    breakDays: 14,
+    payAsYouGoCountsAs: "retained",
+    packages: [{ key: "committed", label: "Committed", sessions: 96, payments: 12 }],
+    updatedBy: uid,
+  });
+
+  it("lets a studio's owner save its renewal settings", async () => {
+    const ctx = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" });
+    await assertSucceeds(
+      setDoc(doc(ctx.firestore(), "studios", "studioA", "config", "renewals"), validRenewalSettings("ownerA")),
+    );
+  });
+
+  it("lets a trainer read their own studio's renewal settings but not change them", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "studios", "studioA", "config", "renewals"), validRenewalSettings("ownerA"));
+    });
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    const ref = doc(ctx.firestore(), "studios", "studioA", "config", "renewals");
+    await assertSucceeds(getDoc(ref));
+    await assertFails(setDoc(ref, validRenewalSettings("trainerA")));
+  });
+
+  it("keeps one studio's renewal settings from another studio's trainers", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "studios", "studioA", "config", "renewals"), validRenewalSettings("ownerA"));
+    });
+    const ctx = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" });
+    await assertFails(getDoc(doc(ctx.firestore(), "studios", "studioA", "config", "renewals")));
+  });
+
+  it("refuses settings outside their ranges, or signed by someone else", async () => {
+    const ctx = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" });
+    const ref = doc(ctx.firestore(), "studios", "studioA", "config", "renewals");
+    await assertFails(setDoc(ref, { ...validRenewalSettings("ownerA"), breakDays: 3 }));
+    await assertFails(setDoc(ref, validRenewalSettings("trainerA")));
+    await assertFails(setDoc(ref, { ...validRenewalSettings("ownerA"), surprise: true }));
+  });
+
+  it("keeps the nightly job's names list read-only from the app", async () => {
+    const ctx = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" });
+    await assertFails(
+      setDoc(doc(ctx.firestore(), "studios", "studioA", "config", "renewalsSeen"), { names: {} }),
+    );
+  });
+
+  // ── RENEWALS: the snapshot is the nightly job's alone ─────────────────
+
+  const renewalClient = {
+    firstName: "Renewal",
+    lastName: "Client",
+    isActive: true,
+    remainingSessions: 0,
+    homeStudioId: "studioA",
+    renewal: { situation: "on-track", sessionsLeft: 9 },
+  };
+
+  it("lets a trainer edit their client without touching the renewal snapshot", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "clients", "renewalClient"), renewalClient);
+    });
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    await assertSucceeds(updateDoc(doc(ctx.firestore(), "clients", "renewalClient"), { globalNotes: "Prefers mornings" }));
+  });
+
+  it("denies anyone in the app rewriting the renewal snapshot", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "clients", "renewalClient"), renewalClient);
+    });
+    for (const uid of ["trainerA", "ownerA"]) {
+      const ctx = testEnv.authenticatedContext(uid, { email: `${uid}@test.com` });
+      await assertFails(
+        updateDoc(doc(ctx.firestore(), "clients", "renewalClient"), { renewal: { situation: "lapsed" } }),
+      );
+    }
+  });
+
+  it("denies creating a client that arrives with a renewal snapshot", async () => {
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    await assertFails(setDoc(doc(ctx.firestore(), "clients", "newWithRenewal"), renewalClient));
+  });
+
+  // ── RENEWALS: conversations and cycles ─────────────────────────────────
+  //
+  // Trainers at the studio log conversations (a touch, plus the cycle's
+  // latest-of-each fields); only leaders set stage, lead and outcome.
+
+  const touch = (uid: string) => ({
+    clientId: "c1",
+    authorId: uid,
+    authorName: "Trainer A",
+    at: serverTimestamp(),
+    leaning: "unsure",
+    concerns: ["price"],
+    interestedIn: null,
+    note: "Worried about cost",
+    needsLeader: true,
+  });
+
+  const cyclePatch = (uid: string) => ({
+    clientId: "c1",
+    clientName: "Client One",
+    cycleKey: "9001",
+    packageKey: "committed",
+    chargeDate: "2026-11-14",
+    latestLeaning: "unsure",
+    latestConcerns: ["price"],
+    latestInterestedIn: null,
+    needsLeader: true,
+    lastTouchBy: uid,
+    lastTouchByName: "Trainer A",
+    lastTouchAt: serverTimestamp(),
+    touchCount: increment(1),
+  });
+
+  it("lets a trainer log a renewal conversation at their studio", async () => {
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    const db = ctx.firestore();
+    const cycle = doc(db, "studios", "studioA", "renewals", "9001");
+    const batch = writeBatch(db);
+    batch.set(doc(collection(cycle, "touches")), touch("trainerA"));
+    batch.set(cycle, cyclePatch("trainerA"), { merge: true });
+    await assertSucceeds(batch.commit());
+    await assertSucceeds(getDoc(cycle));
+  });
+
+  it("keeps another studio's trainers out of its renewals", async () => {
+    const ctx = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" });
+    const db = ctx.firestore();
+    const cycle = doc(db, "studios", "studioA", "renewals", "9001");
+    await assertFails(setDoc(cycle, cyclePatch("trainerB"), { merge: true }));
+    await assertFails(getDoc(cycle));
+  });
+
+  it("denies a trainer setting the stage or the outcome", async () => {
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    const cycle = doc(ctx.firestore(), "studios", "studioA", "renewals", "9001");
+    await assertFails(setDoc(cycle, { ...cyclePatch("trainerA"), stage: "decided" }, { merge: true }));
+    await assertFails(setDoc(cycle, { ...cyclePatch("trainerA"), outcome: "renewed" }, { merge: true }));
+  });
+
+  it("denies a backdated conversation, or a count bumped by more than one", async () => {
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    const db = ctx.firestore();
+    const cycle = doc(db, "studios", "studioA", "renewals", "9001");
+    await assertFails(setDoc(doc(collection(cycle, "touches")), { ...touch("trainerA"), at: new Date("2026-01-01") }));
+    await assertFails(setDoc(cycle, { ...cyclePatch("trainerA"), touchCount: increment(5) }, { merge: true }));
+    await assertFails(setDoc(cycle, { ...cyclePatch("trainerA"), lastTouchAt: new Date("2026-01-01") }, { merge: true }));
+  });
+
+  it("denies a conversation signed with someone else's name", async () => {
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    const cycle = doc(ctx.firestore(), "studios", "studioA", "renewals", "9001");
+    await assertFails(setDoc(doc(collection(cycle, "touches")), touch("ownerA")));
+    await assertFails(setDoc(cycle, cyclePatch("ownerA"), { merge: true }));
+  });
+
+  it("lets the studio's owner set stage and outcome", async () => {
+    const ctx = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" });
+    const cycle = doc(ctx.firestore(), "studios", "studioA", "renewals", "9001");
+    await assertSucceeds(
+      setDoc(
+        cycle,
+        { clientId: "c1", clientName: "Client One", cycleKey: "9001", stage: "decided", outcome: "upgraded", updatedBy: "ownerA" },
+        { merge: true },
+      ),
+    );
+  });
+
+  it("lets the owner record an outcome with its closing day, even on a cycle the nightly job wrote", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      // Every field the job writes (server/renewals-job.ts).
+      await setDoc(doc(context.firestore(), "studios", "studioA", "renewals", "9001"), {
+        clientId: "c1",
+        clientName: "Client One",
+        cycleKey: "9001",
+        packageKey: "committed",
+        outcome: "lost",
+        outcomeBy: "job",
+        outcomeAt: new Date(),
+        nextCycleKey: null,
+        nextPackageKey: null,
+        closedOn: "2026-07-20",
+        primaryTrainerId: "trainerA",
+      });
+    });
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    const cycle = doc(owner, "studios", "studioA", "renewals", "9001");
+    await assertSucceeds(
+      setDoc(
+        cycle,
+        { outcome: "pay-as-you-go", outcomeBy: "ownerA", closedOn: "2026-07-20", nextCycleKey: null, nextPackageKey: null, updatedBy: "ownerA" },
+        { merge: true },
+      ),
+    );
+    await assertFails(setDoc(cycle, { closedOn: "last July" }, { merge: true }));
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertFails(setDoc(doc(trainer, "studios", "studioA", "renewals", "9001"), { closedOn: "2026-08-01" }, { merge: true }));
+  });
+
+  it("never lets a conversation be edited, and lets only a leader delete one", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "studios", "studioA", "renewals", "9001", "touches", "t1"), {
+        ...touch("trainerA"),
+        at: new Date(),
+      });
+    });
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    const path = ["studios", "studioA", "renewals", "9001", "touches", "t1"] as const;
+    await assertFails(updateDoc(doc(trainer, ...path), { note: "rewritten" }));
+    await assertFails(deleteDoc(doc(trainer, ...path)));
+    await assertSucceeds(deleteDoc(doc(owner, ...path)));
+  });
+
+  // ── INBODY SCANS: health data, scoped like sessions ─────────────────────
+  //
+  // Every scan write is a batch with the client's inbodySummary, so each test
+  // writes both halves the way the app does.
+
+  const inbodyClient = {
+    firstName: "InBody",
+    lastName: "Client",
+    isActive: true,
+    remainingSessions: 0,
+    homeStudioId: "studioA",
+  };
+
+  const scanData = (uid: string) => ({
+    testedAt: "2026-09-02",
+    device: "InBody 270S",
+    source: "manual",
+    studioId: "studioA",
+    enteredBy: uid,
+    enteredByName: "Trainer A",
+    createdAt: serverTimestamp(),
+    weightLb: 172.4,
+    skeletalMuscleMassLb: 68.1,
+    bodyFatMassLb: 53.8,
+    percentBodyFat: 31.2,
+    bmi: 27.8,
+    totalBodyWaterLb: null,
+    dryLeanMassLb: null,
+    fatFreeMassLb: null,
+    basalMetabolicRateKcal: null,
+    smi: null,
+    phaseAngle: null,
+    segmentalLean: null,
+  });
+
+  const summary = { scanCount: 1, firstTestedAt: "2026-09-02", latestTestedAt: "2026-09-02" };
+
+  async function seedInBody(withScan = false) {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "clients", "inbodyClient"), inbodyClient);
+      if (withScan) {
+        await setDoc(doc(db, "clients", "inbodyClient", "inbodyScans", "s1"), {
+          ...scanData("trainerA"),
+          createdAt: new Date(),
+        });
+      }
+      // A second trainer at studio A, who did not enter the scan.
+      await setDoc(doc(db, "trainers", "trainerA2"), {
+        fullName: "Trainer A2",
+        initials: "A2",
+        role: "LifeTransformer",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+      });
+    });
+  }
+
+  it("lets a trainer at the client's studio add a scan and its summary, and read them", async () => {
+    await seedInBody();
+    const db = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const batch = writeBatch(db);
+    batch.set(doc(db, "clients", "inbodyClient", "inbodyScans", "new1"), scanData("trainerA"));
+    batch.update(doc(db, "clients", "inbodyClient"), { inbodySummary: summary, weight: "172" });
+    await assertSucceeds(batch.commit());
+    await assertSucceeds(getDocs(collection(db, "clients", "inbodyClient", "inbodyScans")));
+  });
+
+  it("keeps another studio's trainers from reading or adding scans", async () => {
+    await seedInBody(true);
+    const db = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(getDoc(doc(db, "clients", "inbodyClient", "inbodyScans", "s1")));
+    await assertFails(getDocs(collection(db, "clients", "inbodyClient", "inbodyScans")));
+    await assertFails(setDoc(doc(db, "clients", "inbodyClient", "inbodyScans", "new1"), scanData("trainerB")));
+  });
+
+  it("denies a scan signed with someone else's name, or with impossible numbers", async () => {
+    await seedInBody();
+    const db = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const ref = doc(db, "clients", "inbodyClient", "inbodyScans", "new1");
+    await assertFails(setDoc(ref, scanData("ownerA")));
+    await assertFails(setDoc(ref, { ...scanData("trainerA"), skeletalMuscleMassLb: 130 }));
+    await assertFails(setDoc(ref, { ...scanData("trainerA"), visceralFat: 9 }));
+  });
+
+  it("lets a correction be signed, but never changes who entered a scan", async () => {
+    await seedInBody(true);
+    const db = testEnv.authenticatedContext("trainerA2", { email: "trainera2@test.com" }).firestore();
+    const ref = doc(db, "clients", "inbodyClient", "inbodyScans", "s1");
+    await assertSucceeds(
+      updateDoc(ref, { bodyFatMassLb: 53.6, updatedBy: "trainerA2", updatedAt: serverTimestamp() }),
+    );
+    await assertFails(
+      updateDoc(ref, { enteredBy: "trainerA2", updatedBy: "trainerA2", updatedAt: serverTimestamp() }),
+    );
+  });
+
+  it("lets only whoever entered a scan, or a leader, remove it", async () => {
+    await seedInBody(true);
+    const path = ["clients", "inbodyClient", "inbodyScans", "s1"] as const;
+    const other = testEnv.authenticatedContext("trainerA2", { email: "trainera2@test.com" }).firestore();
+    const author = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertFails(deleteDoc(doc(other, ...path)));
+    await assertSucceeds(deleteDoc(doc(author, ...path)));
+  });
+
+  it("lets the studio's owner remove a scan someone else entered", async () => {
+    await seedInBody(true);
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(deleteDoc(doc(owner, "clients", "inbodyClient", "inbodyScans", "s1")));
   });
 });

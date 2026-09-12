@@ -15,7 +15,12 @@ import {
 } from "../types";
 import { safeToDate } from "../lib/utils";
 import { QuickCheckInDialog } from "../features/subjective-report";
-import { HeartPulse } from "lucide-react";
+import { HeartPulse, MessageSquareText } from "lucide-react";
+import {
+  LogConversationDialog,
+  promptText,
+  renewalPromptDue,
+} from "../features/renewals";
 import { getBroadMuscleGroup } from "../lib/clinical-review-utils";
 
 export interface VictoryHUDScreenProps {
@@ -62,6 +67,10 @@ export function VictoryHUDScreen({
   const [priority, setPriority] = useState<"High" | "Medium" | "Low">("Medium");
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [checkInSavedId, setCheckInSavedId] = useState<string | null>(null);
+  // Renewals round (Sep 2026): only asked when the client is in a window.
+  const [showRenewal, setShowRenewal] = useState(false);
+  const [renewalLogged, setRenewalLogged] = useState(false);
+  const renewalDue = renewalPromptDue(client.renewal);
   const [particles, setParticles] = useState<
     {
       id: number;
@@ -395,6 +404,20 @@ export function VictoryHUDScreen({
               {checkInSavedId ? "90-day check-in saved ✓" : "Run the 90-day check-in"}
             </button>
 
+            {/* Renewal: in a window (a conversation due, a charge coming with
+                sessions banked, or an ended package). The floor asks; the
+                sheet takes fifteen seconds and tells the leaders. */}
+            {renewalDue && client.renewal && (
+              <button
+                type="button"
+                onClick={() => setShowRenewal(true)}
+                className="w-full min-h-11 rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-display italic text-[12px] uppercase tracking-wider text-white hover:bg-white/10 flex items-center justify-center gap-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+              >
+                <MessageSquareText className="w-4 h-4 text-cyan shrink-0" />
+                {renewalLogged ? "Renewal conversation saved ✓" : promptText(client.renewal)}
+              </button>
+            )}
+
             <div className="flex items-center justify-between mt-1">
               <span className="font-display italic text-[11px] text-ink-d3 uppercase tracking-wider">
                 PRIORITY FOR NEXT TIME
@@ -446,6 +469,15 @@ export function VictoryHUDScreen({
           />
         </motion.div>
       </div>
+
+      <LogConversationDialog
+        open={showRenewal}
+        onClose={() => setShowRenewal(false)}
+        client={client}
+        snapshot={client.renewal ?? null}
+        trainer={authTrainer}
+        onSaved={() => setRenewalLogged(true)}
+      />
 
       <QuickCheckInDialog
         open={showCheckIn}

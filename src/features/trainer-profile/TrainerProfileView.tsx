@@ -22,6 +22,7 @@ import { KaizenRoster } from "./KaizenRoster";
 import { deriveTrainerStats } from "./stats";
 import { useRecentlyCoached } from "./useRecentlyCoached";
 import { resolveProfileVisibility, scopeNotice } from "./visibility";
+import { MyRenewals } from "../renewals/MyRenewals";
 import "./trainer-profile.css";
 
 /**
@@ -146,6 +147,11 @@ export function TrainerProfileView({
           canEdit={visibility.scope === "self"}
           onSelectClient={openClient}
         />
+      )}
+
+      {/* Renewals round (Sep 2026): the trainer's own list only. */}
+      {visibility.scope === "self" && (
+        <MyRenewals trainer={trainer} onSelectClient={openClient} />
       )}
 
       {(visibility.showSchedule || visibility.showRecentlyCoached) && (

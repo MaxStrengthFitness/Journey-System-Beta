@@ -9,6 +9,7 @@ import { useActiveStudio } from "../ActiveStudioContext";
 import { useToast } from "../contexts/ToastContext";
 import { Button } from "@/components/ui/button";
 import { ClientDossier } from "./client-dossier/ClientDossier";
+import { authedFetch } from "../lib/authed-fetch";
 
 /**
  * The old sidebar used "identity" for what is now the General section.
@@ -195,7 +196,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
     try {
       const siteId = String(targetStudio.mindbodySiteId).trim();
 
-      const res = await fetch("/api/mindbody/client-demographics", {
+      const res = await authedFetch("/api/mindbody/client-demographics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -346,6 +347,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
         onSyncMindbody={handleSyncMindbody}
         isSyncingMb={isSyncingMb}
         scroll={inline ? "page" : "inner"}
+        authTrainer={authTrainer}
       />
 
       {/* Sticky Footer */}

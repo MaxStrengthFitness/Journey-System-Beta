@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentSingleTabManager, setLogLevel } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
+import { setIdTokenSource } from './lib/authed-fetch';
 
 // Silence Firestore internal warnings and idle stream disconnections
 setLogLevel('silent');
@@ -34,3 +35,7 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export { signInWithPopup };
+
+// The server's Mindbody routes check who is calling (server/auth.ts, Sep 2026).
+// authedFetch() asks here for the signed-in user's token.
+setIdTokenSource(async () => (auth.currentUser ? auth.currentUser.getIdToken() : null));

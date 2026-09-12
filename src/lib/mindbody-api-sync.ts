@@ -10,6 +10,7 @@ import {
 import { db } from "../firebase";
 import { parkPullSyncBooking } from "./mindbody-limbo";
 import { extractBookingExtras } from "./mindbody-pass";
+import { authedFetch } from "./authed-fetch";
 import { Trainer, Client, Studio } from "../types";
 import {
   wallClockToInstant,
@@ -297,7 +298,7 @@ export async function syncMindbodySchedules(
   }
 
   try {
-    const response = await fetch("/api/mindbody/staff-appointments", {
+    const response = await authedFetch("/api/mindbody/staff-appointments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

@@ -58,6 +58,7 @@ import {
   findRoutineByLetter,
   matchesRoutineLetter,
 } from "../../lib/routine-utils";
+import { BriefingRenewalLine } from "../renewals/BriefingRenewalLine";
 import { AppHeader } from "../../components/AppHeader";
 import { useTheme } from "../../components/ThemeProvider";
 import {
@@ -514,6 +515,9 @@ export function BriefingScreen({
                   {client.globalNotes || "No specific global goal set."}
                 </p>
               </div>
+
+              {/* Renewals round (Sep 2026): only when there's something to know. */}
+              <BriefingRenewalLine client={client} />
 
               {/* Active coaching focuses, whichever collection they came from -
                   new clientFocuses, legacy focusRecords, or the old

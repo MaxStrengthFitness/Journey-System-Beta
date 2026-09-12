@@ -62,7 +62,29 @@ export interface ProfileHeaderProps {
   onViewCurrentSession: () => void;
   onDiscardSession: () => void;
   kaizen?: KaizenToggleState;
+  /**
+   * The renewal line (Renewals round, Sep 2026), from the nightly snapshot.
+   * When present, the package tile shows it and opens the Renewal card.
+   */
+  renewal?: RenewalTileState;
 }
+
+/** What the package tile says about the renewal, and where a tap goes. */
+export interface RenewalTileState {
+  /** "9 left · auto-renews Nov 14" — see features/renewals/sentences.ts. */
+  text: string;
+  tone: "ok" | "warn" | "alert" | "neutral";
+  /** Something to talk about now: a conversation due, a charge coming, an ended package. */
+  attention: boolean;
+  onOpen: () => void;
+}
+
+const RENEWAL_TONE: Record<RenewalTileState["tone"], string> = {
+  ok: "text-emerald-700 dark:text-emerald-400",
+  warn: "text-amber-700 dark:text-amber-400",
+  alert: "text-rose-700 dark:text-rose-400",
+  neutral: "text-slate-500 dark:text-slate-400",
+};
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const WEEKDAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -111,6 +133,8 @@ function Stat({
   sub,
   meter,
   className,
+  onClick,
+  ariaLabel,
 }: {
   label: string;
   icon?: ReactNode;
@@ -123,16 +147,22 @@ function Stat({
    */
   meter?: { value: number; max: number; label?: string };
   className?: string;
+  /** Makes the whole tile a button (≥ 40px tall, as every tappable thing is). */
+  onClick?: () => void;
+  ariaLabel?: string;
 }) {
   const pct =
     meter && meter.max > 0
       ? Math.max(0, Math.min(100, (meter.value / meter.max) * 100))
       : null;
+  const Tag = onClick ? "button" : "div";
   return (
-    <div
+    <Tag
+      {...(onClick ? { type: "button" as const, onClick, "aria-label": ariaLabel } : {})}
       className={cn(
         "relative min-w-0 bg-white dark:bg-slate-950 px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-0.5",
         pct !== null && "pb-2.5",
+        onClick && "text-left min-h-10 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors",
         className,
       )}
     >
@@ -154,7 +184,7 @@ function Stat({
           />
         </span>
       )}
-    </div>
+    </Tag>
   );
 }
 
@@ -176,6 +206,7 @@ export function ProfileHeader({
   onViewCurrentSession,
   onDiscardSession,
   kaizen,
+  renewal,
 }: ProfileHeaderProps) {
   /* ---- last session ---- */
   const last = sessions.find((s) => s.status === "Completed") ?? sessions[0];
@@ -435,6 +466,8 @@ export function ProfileHeader({
             is legible without reading a digit. */}
         <Stat
           label="Completed sessions"
+          onClick={renewal?.onOpen}
+          ariaLabel={renewal ? `Renewal: ${renewal.text}. Open the renewal card.` : undefined}
           meter={
             pkg.total && pkg.total > 0
               ? {
@@ -445,7 +478,14 @@ export function ProfileHeader({
               : undefined
           }
           sub={
-            pkg.source === "none" ? undefined : (
+            renewal ? (
+              // Renewals round: the package tile speaks for the renewal, and a
+              // tap opens the Renewal card (both clocks, conversations).
+              <span className={cn("inline-flex items-center gap-1.5 min-w-0 max-w-full text-[11px] font-bold", RENEWAL_TONE[renewal.tone])}>
+                {renewal.attention && <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" aria-hidden="true" />}
+                <span className="truncate">{renewal.text}</span>
+              </span>
+            ) : pkg.source === "none" ? undefined : (
               <span
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider min-w-0 max-w-full",
