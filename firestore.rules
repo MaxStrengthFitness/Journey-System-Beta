@@ -468,11 +468,16 @@ service cloud.firestore {
       return studioIdOf(get(/databases/$(database)/documents/clients/$(clientId)).data);
     }
 
-    /** Mirrors match /clients/{clientId}'s update rule. */
-    function inbodyWritable(clientId) {
-      return isAnyAuthenticatedTrainer()
+    /** Mirrors match /clients/{clientId}'s update rule.
+     *  Takes the pre-computed role string and trainer map so it stays within
+     *  the 1000-expression budget. Callers must pass getRole() and callerTrainer().
+     */
+    function inbodyWritable(clientId, r, t) {
+      return t != null
           && exists(/databases/$(database)/documents/clients/$(clientId))
-          && (isSuperAdmin() || isTrainerOfStudio(inbodyClientStudio(clientId)));
+          && (roleIsSuper(r) || roleIsFranchise(r)
+              || trainerWorksAt(t, inbodyClientStudio(clientId))
+              || trainerLeads(r, t, inbodyClientStudio(clientId)));
     }
 
     function isTrainerOfStudioOrClient(studioId, clientId) {
@@ -529,7 +534,8 @@ service cloud.firestore {
     }
 
     function isValidTrainer(data) {
-      return hasRequiredFields(['fullName', 'initials', 'primaryHomeStudioId']) &&
+      return !('pinHash' in data) &&
+             hasRequiredFields(['fullName', 'initials', 'primaryHomeStudioId']) &&
              data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
              data.initials is string && data.initials.size() >= 2 && data.initials.size() <= 4 &&
              data.primaryHomeStudioId is string && data.primaryHomeStudioId.size() > 0 && data.primaryHomeStudioId.size() < 100 &&
@@ -814,7 +820,8 @@ service cloud.firestore {
                     roleIsSuper(getRole()) || roleIsFranchise(getRole()) ||
                     sessionClientIsReadable(clientId, getRole(), callerTrainer()));
 
-      allow create: if inbodyWritable(clientId)
+      allow create: if isAuthenticated()
+                    && inbodyWritable(clientId, getRole(), callerTrainer())
                     && inbodyScanValid(request.resource.data)
                     && request.resource.data.enteredBy == request.auth.uid
                     && request.resource.data.enteredByName is string
@@ -823,14 +830,16 @@ service cloud.firestore {
                     && request.resource.data.studioId is string
                     && request.resource.data.createdAt == request.time;
 
-      allow update: if inbodyWritable(clientId)
+      allow update: if isAuthenticated()
+                    && inbodyWritable(clientId, getRole(), callerTrainer())
                     && inbodyScanValid(request.resource.data)
                     && !request.resource.data.diff(resource.data).affectedKeys()
                          .hasAny(['enteredBy', 'enteredByName', 'createdAt', 'source', 'studioId'])
                     && request.resource.data.updatedBy == request.auth.uid
                     && request.resource.data.updatedAt == request.time;
 
-      allow delete: if inbodyWritable(clientId) && (
+      allow delete: if isAuthenticated()
+                    && inbodyWritable(clientId, getRole(), callerTrainer()) && (
                       resource.data.get('enteredBy', '') == request.auth.uid ||
                       isSuperAdmin() ||
                       isStudioOwnerOrHeadTrainerOnly(inbodyClientStudio(clientId)));
