@@ -1021,10 +1021,12 @@ service cloud.firestore {
                     roleIsSuper(getRole()) || roleIsFranchise(getRole()) ||
                     sessionClientIsReadable(clientId, getRole(), callerTrainer()));
 
-      allow create: if inbodyWritable(clientId)
+      allow create: if isAuthenticated()
+                    && inbodyWritable(clientId, getRole(), callerTrainer())
                     && sharedNoteValid(request.resource.data, clientId);
 
-      allow update: if inbodyWritable(clientId)
+      allow update: if isAuthenticated()
+                    && inbodyWritable(clientId, getRole(), callerTrainer())
                     && resource.data.get('authorId', '') == request.auth.uid
                     && sharedNoteValid(request.resource.data, clientId);
 
