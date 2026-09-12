@@ -102,7 +102,7 @@ function StudioCard({
       className={cn(
         "bg-bg-dark-2 border rounded-[28px] p-6 shadow-xl flex flex-col relative overflow-hidden transition-colors",
         hasAccess
-          ? "border-div-d hover:border-[#F06C22]/50"
+          ? "border-div-d hover:border-action/50"
           : "border-div-d/70",
       )}
     >
@@ -110,9 +110,9 @@ function StudioCard({
         className={cn(
           "absolute top-0 left-0 w-full h-1",
           isPinned
-            ? "bg-[#F06C22]"
+            ? "bg-action"
             : hasAccess
-              ? "bg-linear-to-r from-[#F06C22]/40 to-transparent"
+              ? "bg-linear-to-r from-action/40 to-transparent"
               : "bg-linear-to-r from-ink-d3/30 to-transparent",
         )}
       />
@@ -135,7 +135,7 @@ function StudioCard({
 
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
           {isHome && (
-            <span className="text-[10px] font-black uppercase tracking-widest bg-[#F06C22]/10 text-[#F06C22] px-2 py-0.5 rounded-full border border-[#F06C22]/20 flex items-center gap-1">
+            <span className="text-[10px] font-black uppercase tracking-widest bg-action/10 text-action px-2 py-0.5 rounded-full border border-action/20 flex items-center gap-1">
               <Home className="w-2.5 h-2.5" /> Home
             </span>
           )}
@@ -153,7 +153,7 @@ function StudioCard({
               className={cn(
                 "h-7 px-2 rounded-full border flex items-center gap-1 text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer",
                 isPinned
-                  ? "bg-[#F06C22] border-[#F06C22] text-white hover:bg-[#F06C22]/85"
+                  ? "bg-action border-action text-white hover:bg-action/85"
                   : "bg-transparent border-div-d text-ink-d3 hover:text-ink-d1 hover:border-ink-d3",
               )}
             >
@@ -526,7 +526,7 @@ export function StudioSelectionView({
               onClick={onGoToAdmin}
               className="mt-4 bg-bg-dark-3 hover:bg-muted text-ink-d1 font-bold uppercase text-[11px] tracking-widest px-4 h-9 rounded-xl border border-div-d flex items-center gap-2 cursor-pointer shadow-md"
             >
-              <Shield className="w-3.5 h-3.5 text-[#F06C22]" /> Go to Operations
+              <Shield className="w-3.5 h-3.5 text-action" /> Go to Operations
             </Button>
           )}
         </div>
@@ -535,9 +535,9 @@ export function StudioSelectionView({
         {mine.length > 0 && (
           <section className="mb-12">
             <div className="flex items-center gap-3 border-b border-div-d pb-2 mb-5">
-              <div className="w-1.5 h-6 bg-[#F06C22] rounded-full" />
+              <div className="w-1.5 h-6 bg-action rounded-full" />
               <div>
-                <h3 className="text-xs font-black uppercase tracking-widest text-[#F06C22] italic">
+                <h3 className="text-xs font-black uppercase tracking-widest text-action italic">
                   Your Studios
                 </h3>
                 <p className="text-[11px] font-bold text-ink-d3 uppercase tracking-widest leading-none mt-0.5">
@@ -596,7 +596,7 @@ export function StudioSelectionView({
 
         {studios.length === 0 && (
           <div className="py-20 px-6 text-center bg-bg-dark-2 rounded-[40px] border border-dashed border-div-d flex flex-col items-center justify-center gap-4">
-            <Building2 className="w-12 h-12 text-[#F06C22] mx-auto" />
+            <Building2 className="w-12 h-12 text-action mx-auto" />
             <div>
               <p className="text-base font-black uppercase tracking-widest text-ink-d1">
                 No Authorized Studios Configuration Found
@@ -610,7 +610,7 @@ export function StudioSelectionView({
             {isAdminUser && onGoToAdmin && (
               <Button
                 onClick={onGoToAdmin}
-                className="mt-2 bg-cta-strong hover:bg-[#a02400] text-white font-black uppercase tracking-widest text-xs h-12 px-8 rounded-xl shadow-lg shadow-[#F06C22]/20 flex items-center gap-2.5 cursor-pointer"
+                className="mt-2 bg-cta-strong hover:bg-[#a02400] text-white font-black uppercase tracking-widest text-xs h-12 px-8 rounded-xl shadow-lg shadow-action/20 flex items-center gap-2.5 cursor-pointer"
               >
                 <Shield className="w-4 h-4" /> Go to Operations
               </Button>
