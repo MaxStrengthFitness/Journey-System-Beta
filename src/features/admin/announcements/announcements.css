@@ -1,0 +1,74 @@
+/* ==========================================================================
+   Announcements — the composer's "Link a Learning page" picker
+   --------------------------------------------------------------------------
+   Learning + Planner round, Sep 2026. On admin.tokens.css; no hex.
+   ========================================================================== */
+
+.adm-learnlink { display: flex; flex-direction: column; gap: 6px; }
+
+.adm-learnlink__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--adm-ink-muted);
+}
+.adm-learnlink__search .adm-input { flex: 1; min-width: 0; }
+
+.adm-learnlink--set {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--adm-live);
+  border-radius: 10px;
+  background: var(--adm-live-fill);
+  color: var(--adm-live-text);
+}
+.adm-learnlink__what {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.adm-learnlink__kind {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}
+.adm-learnlink__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+.adm-learnlink__meta { font-size: 11px; color: var(--adm-ink-muted); overflow-wrap: anywhere; }
+
+.adm-learnlink__hits {
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--adm-border);
+  border-radius: 10px;
+  background: var(--adm-surface);
+}
+.adm-learnlink__hit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.adm-learnlink__hit:hover,
+.adm-learnlink__hit:focus-visible { background: var(--adm-surface-2); outline: none; }
+.adm-learnlink__none { margin: 0; font-size: 12px; color: var(--adm-ink-muted); }

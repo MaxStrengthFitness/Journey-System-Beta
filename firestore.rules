@@ -587,6 +587,32 @@ service cloud.firestore {
       return hasRequiredFields(['title', 'shortContent', 'longContent', 'authorId', 'authorName', 'studioId', 'isActive', 'priority']);
     }
 
+    /* A link from an announcement to a page in Learning (Learning + Planner
+       round). Mirrors parseLearningRef in src/features/learning/ref.ts. */
+    function learningLinkValid(l) {
+      return l is map
+          && l.keys().hasOnly(['kind', 'id', 'moduleId', 'studioId', 'title'])
+          && l.kind in ['machine', 'academy-card', 'academy-script', 'academy-overview',
+                        'academy-module', 'academy-topic', 'academy-cueing',
+                        'academy-glossary', 'studio-page']
+          && (!('id' in l) || (l.id is string && l.id.size() > 0 && l.id.size() <= 200))
+          && (!('title' in l) || (l.title is string && l.title.size() <= 160));
+    }
+
+    /* Who the app offers the announcement composer to: the Operations
+       Announcements tab (administrators, founders, franchise owners) and the
+       Franchise hub (those, and studio owners). */
+    function canPostAnnouncements() {
+      return isSuperAdmin() || isFranchiseOwnerOnly() || getRole() == 'StudioOwner';
+    }
+
+    function announcementShapeValid(d) {
+      return isValidHubAnnouncement(d)
+          && d.title is string && d.title.size() <= 200
+          && d.shortContent is string && d.shortContent.size() <= 300
+          && (!('learningLink' in d) || learningLinkValid(d.learningLink));
+    }
+
     // ===============================================================
     // COLLECTION ENDPOINTS SECURITY PATHS
     // ===============================================================
@@ -1865,9 +1891,38 @@ service cloud.firestore {
     }
 
     // ANNOUNCEMENTS
+    //
+    // Learning + Planner round, Sep 2026: posting and editing were open to
+    // any signed-in user with the right field names -- anyone could post to
+    // every studio, or rewrite someone else's notice. Now they follow the
+    // app: only the people it offers the composer to (canPostAnnouncements)
+    // post or change a notice. Everyone else may do the one thing the bell
+    // does: add THEMSELVES, by sign-in id, to readBy, and nothing more.
     match /hub_announcements/{announcementId} {
       allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && isValidHubAnnouncement(request.resource.data);
+      allow create: if isAuthenticated()
+                    && canPostAnnouncements()
+                    && announcementShapeValid(request.resource.data);
+      allow update: if isAuthenticated() && (
+                      (
+                        // Everyone who was there is still there, and the
+                        // only name added is the caller's own.
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy'])
+                        && request.resource.data.readBy is list
+                        && request.resource.data.readBy.toSet()
+                             .hasAll(resource.data.get('readBy', []).toSet())
+                        && request.resource.data.readBy.toSet()
+                             .difference(resource.data.get('readBy', []).toSet())
+                             .hasOnly([request.auth.uid])
+                      ) || (
+                        // Lengths are checked on create only, so a notice
+                        // written before the limits can still be taken down.
+                        canPostAnnouncements()
+                        && isValidHubAnnouncement(request.resource.data)
+                        && (!('learningLink' in request.resource.data)
+                            || learningLinkValid(request.resource.data.learningLink))
+                      )
+                    );
       allow delete: if isSuperAdmin() || isFranchiseOwner() || 
                     (resource.data.studioId != null && isStudioOwnerOrHeadTrainer(resource.data.studioId));
     }

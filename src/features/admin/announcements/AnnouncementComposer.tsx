@@ -33,6 +33,9 @@ import React, { useMemo, useState } from "react";
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { Megaphone, Send, Users } from "lucide-react";
 import { db } from "../../../firebase";
+import { useActiveStudio } from "../../../ActiveStudioContext";
+import { LEARNING_KIND_LABEL, learningRefLabel, parseLearningRef } from "../../learning/ref";
+import { LearningLinkPicker } from "./LearningLinkPicker";
 import type { HubAnnouncement, Studio } from "../../../types";
 import { useToast } from "../../../contexts/ToastContext";
 import {
@@ -114,6 +117,7 @@ export function AnnouncementComposer({
   subtitle = "Goes to the alerts bell, for everyone it reaches.",
 }: AnnouncementComposerProps) {
   const { success: toastSuccess, error: toastError } = useToast();
+  const { activeStudioId } = useActiveStudio();
   const [draft, setDraft] = useState<AnnouncementDraft>({
     ...EMPTY_DRAFT,
     scope: scopes[0] ?? "universal",
@@ -256,6 +260,19 @@ export function AnnouncementComposer({
               onChange={(e) => set("longContent", e.target.value)}
               placeholder="Anything that does not fit in one line."
               rows={4}
+            />
+          </AdminField>
+
+          <AdminField
+            label="Link a Learning page"
+            hint="Optional. A machine, an Academy topic, card or script — the announcement opens it. A studio's own page can go only to that studio."
+            wide
+          >
+            <LearningLinkPicker
+              value={draft.learningLink ?? null}
+              onChange={(link) => set("learningLink", link)}
+              studioId={draft.scope === "studio" ? draft.studioId ?? null : activeStudioId}
+              includeStudioPages={draft.scope === "studio" && Boolean(draft.studioId)}
             />
           </AdminField>
 
@@ -405,6 +422,12 @@ export function AnnouncementComposer({
                   <AdminBadge>{a.type ?? "news"}</AdminBadge>
                 </div>
                 <p className="adm-ann-short">{a.shortContent}</p>
+                {parseLearningRef(a.learningLink) && (
+                  <p className="adm-ann-short">
+                    Links to {LEARNING_KIND_LABEL[parseLearningRef(a.learningLink)!.kind].toLowerCase()}:{" "}
+                    <strong>{learningRefLabel(parseLearningRef(a.learningLink)!)}</strong>
+                  </p>
+                )}
                 <div className="adm-ann-foot">
                   <span>
                     To {audienceLabel(a, studios, networks)} · by {a.authorName}

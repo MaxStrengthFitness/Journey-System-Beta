@@ -53,6 +53,7 @@
  */
 
 import type { HubAnnouncement, Studio, Trainer } from "../../../types";
+import type { StoredLearningRef } from "../../learning/ref";
 
 /** How long a notice stays live. The three the composers have always offered. */
 export type Lifespan = "24h" | "1w" | "1m";
@@ -71,6 +72,8 @@ export interface AnnouncementDraft {
   studioId?: string;
   /** Set when scope is "network". */
   networkId?: string;
+  /** A Learning page it points at (Learning + Planner round). */
+  learningLink?: StoredLearningRef | null;
 }
 
 /** The networks a composer can address, and the studios in each. */
@@ -133,6 +136,11 @@ export function validateDraft(draft: AnnouncementDraft): string[] {
   }
   if (draft.scope === "network" && !draft.networkId) {
     problems.push("Pick which network this goes to.");
+  }
+  // A studio's own page opens only at that studio.
+  const link = draft.learningLink;
+  if (link?.kind === "studio-page" && (draft.scope !== "studio" || draft.studioId !== link.studioId)) {
+    problems.push("A studio's own page can only be linked in an announcement to that one studio.");
   }
   return problems;
 }
@@ -218,6 +226,8 @@ export function announcementBody(
     authorId: author.id,
     authorName: author.fullName,
     ...resolveAudience(draft, networks),
+    // Only when set: Firestore refuses undefined values.
+    ...(draft.learningLink ? { learningLink: draft.learningLink } : {}),
     expiresAt: expiryFor(lifespan, now),
     isActive: true,
     readBy: [],
@@ -312,13 +322,22 @@ export function visibleAnnouncements<
     .sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
 }
 
-/** Of those, the ones this trainer has not opened. */
+/**
+ * Of those, the ones this trainer has not opened.
+ *
+ * Takes one id or several. From Sep 2026 (Learning + Planner round) the bell
+ * stamps the sign-in id, the only one the rules accept; older accounts whose
+ * profile id differs were stamped under that id before. Either one counts.
+ */
 export function unreadFor<T extends { readBy?: string[] }>(
   announcements: T[],
-  trainerId: string | undefined,
+  readerIds: string | null | undefined | Array<string | null | undefined>,
 ): T[] {
-  if (!trainerId) return [];
-  return announcements.filter((a) => !a.readBy?.includes(trainerId));
+  const ids = (Array.isArray(readerIds) ? readerIds : [readerIds]).filter(
+    (id): id is string => typeof id === "string" && id.length > 0,
+  );
+  if (ids.length === 0) return [];
+  return announcements.filter((a) => !ids.some((id) => a.readBy?.includes(id)));
 }
 
 /* ------------------------------------------------------------------ *

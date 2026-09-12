@@ -308,10 +308,19 @@ export function CatalogWikiView({
    * silently showing a DIFFERENT machine than the one you were reading is
    * worse than showing the list you can choose from.
    */
+  /*
+   * Learning + Planner round: a machine that is not on this floor — a link
+   * from the bell, an announcement or the Academy, or one that just left the
+   * roster — opens in All MSF machines, where every machine has a page,
+   * rather than dead-ending on the index.
+   */
+  const [dbJump, setDbJump] = useState<string | null>(null);
   useEffect(() => {
     if (route.kind !== "machine") return;
     if (catalogMachines.length === 0) return;
     if (catalogMachines.some((m) => m.id === route.id)) return;
+    setDbJump(route.id);
+    setScope("msf");
     setRoute({ kind: "index" });
   }, [catalogMachines, route]);
 
@@ -464,6 +473,8 @@ export function CatalogWikiView({
           setRoute({ kind: "machine", id });
         }}
         onOpenAcademy={onOpenAcademy}
+        openMachineId={dbJump}
+        onOpenedMachine={() => setDbJump(null)}
       />
     );
   }

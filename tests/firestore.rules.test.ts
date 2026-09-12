@@ -1449,6 +1449,77 @@ describe("Firestore Security Rules", () => {
     await assertSucceeds(deleteDoc(doc(owner, ...path)));
   });
 
+  // ── ANNOUNCEMENTS: posted by the people the app offers the composer to ──
+
+  const announcement = (over: Record<string, unknown> = {}) => ({
+    title: "New in Learning",
+    shortContent: "Read the Leg Press card before Monday.",
+    longContent: "",
+    authorId: "adminX",
+    authorName: "Admin X",
+    studioId: "all",
+    targetScope: "universal",
+    targetId: "",
+    isActive: true,
+    priority: "low",
+    readBy: [],
+    learningLink: { kind: "academy-card", id: "card-leg-press", title: "Leg Press" },
+    ...over,
+  });
+
+  async function seedAnnouncements() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "trainers", "adminX"), {
+        fullName: "Admin X",
+        initials: "AX",
+        role: "Admin",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+      });
+      await setDoc(doc(db, "hub_announcements", "a1"), announcement());
+    });
+  }
+
+  it("lets administrators post an announcement that links a Learning page, and nobody else", async () => {
+    await seedAnnouncements();
+    const admin = testEnv.authenticatedContext("adminX", { email: "adminx@test.com" }).firestore();
+    await assertSucceeds(setDoc(doc(admin, "hub_announcements", "a2"), announcement()));
+    await assertFails(
+      setDoc(doc(admin, "hub_announcements", "a3"), announcement({ learningLink: { kind: "client", id: "123" } })),
+    );
+
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertFails(setDoc(doc(trainer, "hub_announcements", "a4"), announcement({ authorId: "trainerA" })));
+    await assertFails(updateDoc(doc(trainer, "hub_announcements", "a1"), { title: "Rewritten" }));
+  });
+
+  it("lets a studio owner post from the Franchise hub and take the notice down", async () => {
+    await seedAnnouncements();
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    const mine = announcement({
+      authorId: "ownerA",
+      authorName: "Owner A",
+      studioId: "studioA",
+      targetScope: "studio",
+      targetId: "studioA",
+    });
+    await assertSucceeds(setDoc(doc(owner, "hub_announcements", "o1"), mine));
+    await assertSucceeds(updateDoc(doc(owner, "hub_announcements", "o1"), { isActive: false }));
+  });
+
+  it("lets anyone mark an announcement read for themselves, and only themselves", async () => {
+    await seedAnnouncements();
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(updateDoc(doc(trainer, "hub_announcements", "a1"), { readBy: ["trainerA"] }));
+    await assertFails(updateDoc(doc(trainer, "hub_announcements", "a1"), { readBy: ["trainerA", "trainerB"] }));
+    // Nobody adds someone else, or takes anyone off.
+    const other = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(updateDoc(doc(other, "hub_announcements", "a1"), { readBy: ["trainerA", "trainerC"] }));
+    await assertFails(updateDoc(doc(other, "hub_announcements", "a1"), { readBy: [] }));
+    await assertSucceeds(updateDoc(doc(other, "hub_announcements", "a1"), { readBy: ["trainerA", "trainerB"] }));
+  });
+
   it("lets a tag ring the tagged person's bell", async () => {
     await seedComments();
     const a = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();

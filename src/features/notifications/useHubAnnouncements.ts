@@ -45,7 +45,7 @@ import {
   query,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "../../firebase";
+import { auth, db } from "../../firebase";
 import type { HubAnnouncement, Trainer } from "../../types";
 import {
   unreadFor,
@@ -97,8 +97,9 @@ export function useHubAnnouncements(
     [all, trainer],
   );
 
+  // Either id counts: see unreadFor and markAnnouncementsRead.
   const unread = useMemo(
-    () => unreadFor(announcements, trainer?.id),
+    () => unreadFor(announcements, [auth.currentUser?.uid, trainer?.id]),
     [announcements, trainer],
   );
 
@@ -116,11 +117,15 @@ export function markAnnouncementsRead(
   trainerId: string | undefined,
   items: HubAnnouncement[],
 ): void {
-  if (!trainerId) return;
+  // The sign-in id, not the profile id: since the Learning + Planner round
+  // the rules let a reader add only themselves, by sign-in id. They differ
+  // on older accounts, whose earlier reads unreadFor still honours.
+  const readerId = auth.currentUser?.uid ?? trainerId;
+  if (!readerId) return;
   for (const a of items) {
     if (!a.id) continue;
     updateDoc(doc(db, "hub_announcements", a.id), {
-      readBy: arrayUnion(trainerId),
+      readBy: arrayUnion(readerId),
     }).catch((err) => {
       console.error("Failed to mark announcement as read:", a.id, err);
     });

@@ -28,6 +28,7 @@ import React, { useState } from "react";
 import {
   AtSign,
   Bell,
+  BookOpen,
   Check,
   CheckCheck,
   Megaphone,
@@ -52,6 +53,7 @@ import {
 } from "./useHubAnnouncements";
 import type { NotificationKind, TrainerNotification } from "./types";
 import type { HubAnnouncement, Trainer } from "../../types";
+import { learningRefLabel, parseLearningRef } from "../learning/ref";
 
 const ICON: Record<NotificationKind, typeof Bell> = {
   "task-completed": Check,
@@ -223,6 +225,25 @@ export function NotificationBell({
                             {a.longContent}
                           </p>
                         )}
+                        {/* Learning + Planner round: an announcement can point
+                            at any page in Learning, and this opens it. */}
+                        {(() => {
+                          const page = parseLearningRef(a.learningLink);
+                          if (!page || !onNavigate) return null;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onNavigate("learning", undefined, page);
+                                setOpen(false);
+                              }}
+                              className="mt-2 inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-xl border border-cta/40 bg-cta/10 px-3 text-left text-[11px] font-black uppercase tracking-widest text-cta"
+                            >
+                              <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                              <span className="min-w-0 [overflow-wrap:anywhere]">Open {learningRefLabel(page)}</span>
+                            </button>
+                          );
+                        })()}
                         <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                           {a.authorName} · {announcementDate(a.createdAt)} ·{" "}
                           {scopeLabel(a)}

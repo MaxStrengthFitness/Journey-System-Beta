@@ -80,6 +80,9 @@ export interface MachineDatabaseProps {
   /** Open this studio's own page for a machine (switches scope). */
   onOpenFloorMachine: (machineId: string) => void;
   onOpenAcademy?: (machineId: string, focus: "card" | "script", machineName: string) => void;
+  /** Open this machine's page on arrival — a link to a machine not on the floor. */
+  openMachineId?: string | null;
+  onOpenedMachine?: () => void;
 }
 
 export function MachineDatabase({
@@ -94,6 +97,8 @@ export function MachineDatabase({
   groupingControl,
   onOpenFloorMachine,
   onOpenAcademy,
+  openMachineId,
+  onOpenedMachine,
 }: MachineDatabaseProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   const [route, setRoute] = useState<Route>({ kind: "index" });
@@ -129,6 +134,15 @@ export function MachineDatabase({
   );
   const counts = useMemo(() => databaseCounts(entries), [entries]);
   const groups = useMemo(() => groupDatabase(entries, grouping), [entries, grouping]);
+
+  // A link from outside: wait for the shared list before deciding it is not there.
+  useEffect(() => {
+    if (!openMachineId) return;
+    const hit = entries.find((e) => e.key === openMachineId || e.shared?.machineId === openMachineId);
+    if (!hit && sharedLoading) return;
+    setRoute(hit ? { kind: "machine", key: hit.key } : { kind: "index" });
+    onOpenedMachine?.();
+  }, [openMachineId, entries, sharedLoading, onOpenedMachine]);
 
   const selected = route.kind === "machine" ? entries.find((e) => e.key === route.key) ?? null : null;
   // A shared machine its studio stopped sharing: back to the index.
