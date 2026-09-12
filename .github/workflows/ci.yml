@@ -1,0 +1,155 @@
+name: CI
+
+# WHY THIS EXISTS
+# ---------------
+# Until now the only way to know whether a round of work compiled was to be
+# sitting at the machine with the repo checked out. That meant every branch
+# built away from the desk — and every branch handed over by an assistant —
+# was unverified until someone got back to a keyboard. This runs the same
+# three commands on GitHub's machines, on every push, and puts a red X on the
+# commit if any of them fail.
+#
+# It does NOT deploy, does NOT touch Firebase, and does NOT need any secret.
+# Render still deploys from master on its own (render.yaml, autoDeployTrigger:
+# commit) and is not gated on this — deliberately, for now: a green tick that
+# blocks the studio's app from updating is worse than a red X you can read.
+# Make it a required check once it has run clean for a week.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  # Lets you fire it by hand from the Actions tab against any branch.
+  workflow_dispatch:
+
+# A second push to the same branch cancels the first. Without this, pushing
+# three times in ten minutes queues three full runs and the answer you care
+# about — the newest one — waits behind two you no longer want.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck, test, build
+    runs-on: ubuntu-latest
+    # Generous, because a cold npm ci plus a full Vite build is a few minutes
+    # and a job killed at the default is indistinguishable from a real failure.
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          # Matches "engines": { "node": "22.x" } in package.json and the Node
+          # version Render pins. Testing on a different major is how you find
+          # out about an incompatibility from a customer instead of from CI.
+          node-version: '22'
+          cache: npm
+
+      # `npm ci` rather than `npm install`: it installs exactly what
+      # package-lock.json says and fails if the lockfile and package.json have
+      # drifted apart. That drift is itself worth failing on.
+      - name: Install
+        run: npm ci
+
+      # ---------------------------------------------------------------
+      # WHY YOUR MACHINE SAYS 19 AND THIS SAYS 18
+      #
+      # `harness/` is listed in .git/info/exclude, so it is untracked and is
+      # NOT in a fresh clone. It contains one permanent error (TS2307, it
+      # imports ../src/features/demo-mode, which only exists on the unmerged
+      # demo-mode-foundation branch). Locally tsc sees it and reports 19; here
+      # the directory does not exist and the count is 18. If you ever commit
+      # the harness, raise the baseline by one in the same commit.
+      # ---------------------------------------------------------------
+      # THE BASELINE PROBLEM, AND HOW THIS HANDLES IT
+      #
+      # `tsc --noEmit` currently reports 18 errors on master. They are real but
+      # they are old, and they live in screens scheduled for rework. Failing CI
+      # on a non-zero exit would mean CI is red on every commit, which is the
+      # same as having no CI at all — people stop looking.
+      #
+      # So the gate is a COUNT, not a clean run: the build fails if the number
+      # goes UP. That catches a new type error the day it lands while leaving
+      # the existing 18 to be paid down deliberately. Lower the number in
+      # .github/typecheck-baseline.txt every time you fix one; the step tells
+      # you to when it notices the count has dropped.
+      # ---------------------------------------------------------------
+      - name: Typecheck (no new errors)
+        run: |
+          set +e
+          npx tsc --noEmit > tsc.log 2>&1
+          set -e
+          COUNT=$(grep -cE "error TS" tsc.log || true)
+          BASE=$(cat .github/typecheck-baseline.txt | tr -d '[:space:]')
+          echo "TypeScript errors: $COUNT (baseline $BASE)"
+          echo ""
+          if [ "$COUNT" -gt "$BASE" ]; then
+            echo "::error::Typecheck errors rose from $BASE to $COUNT."
+            echo "--- full output ---"
+            cat tsc.log
+            exit 1
+          fi
+          if [ "$COUNT" -lt "$BASE" ]; then
+            echo "::notice::Down to $COUNT errors. Lower .github/typecheck-baseline.txt to $COUNT to lock the win in."
+          fi
+          grep -E "error TS" tsc.log || true
+
+      - name: Test
+        run: npm test
+
+      # The build is the step that catches what the other two cannot: a broken
+      # CSS import, an asset that does not resolve, a lazy() chunk that cannot
+      # be split. All three have bitten this repo before.
+      - name: Build
+        run: npx vite build
+
+      # Kept even when everything passes: the typecheck log is how you see
+      # WHICH errors remain without checking the repo out.
+      - name: Upload typecheck log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-log
+          path: tsc.log
+          retention-days: 14
+
+  # Separate job, and deliberately allowed to fail.
+  #
+  # The rules suite needs the Firestore emulator and a JDK, and it has a
+  # history of failing for environmental reasons (a stale emulator holding
+  # port 8080, a JDK too old). Those failures say nothing about the code. So
+  # it reports rather than blocks: you get the result on every push without
+  # a flaky emulator turning the whole repo red.
+  #
+  # Promote it into `verify` once it has been reliably green for a fortnight.
+  rules:
+    name: Firestore rules (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # The emulator is a Java process. 21 is what recent firebase-tools want;
+      # the local machine ran into exactly this and needed a JDK upgrade.
+      - name: Use JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install
+        run: npm ci
+
+      - name: Rules tests
+        run: npm run test:rules

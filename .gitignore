@@ -74,6 +74,12 @@ backups/
 # a fresh result -- which cost us a round trip on Sep 9.
 typecheck-now.txt
 typecheck-baseline.txt
+# ...but NOT the CI baseline. The pattern above has no leading slash, so
+# git applies it at EVERY depth - including .github/typecheck-baseline.txt,
+# which the CI workflow reads to decide whether the type-error count went
+# up. Ignored, it never gets committed, and CI fails on its first run with
+# `cat: .github/typecheck-baseline.txt: No such file`.
+!.github/typecheck-baseline.txt
 test-baseline.txt
 backfill*.txt
 gitstate.txt
