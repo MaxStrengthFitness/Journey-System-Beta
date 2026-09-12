@@ -145,7 +145,10 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
 
   /* ================= Read everything once ================= */
   const studioDocs = (await db.collection("studios").get()).docs
-    .map((d) => ({ id: d.id, ...(d.data() as Record<string, any>) }))
+    .map((d): { id: string; name?: string; timezone?: string; mindbodySiteId?: string | number } => ({
+      id: d.id,
+      ...(d.data() as Record<string, any>),
+    }))
     .filter((s) => !options.onlyStudio || s.id === options.onlyStudio);
 
   const machineNames: Record<string, string> = {};
