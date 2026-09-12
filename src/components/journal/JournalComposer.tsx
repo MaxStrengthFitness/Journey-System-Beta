@@ -158,13 +158,13 @@ export function JournalComposer({
 
       {focusContext && (
         <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2 dark:border-slate-800 dark:bg-slate-800/50">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             Check-in on: <span className="text-slate-700 dark:text-slate-200">{focusContext.label}</span>
           </span>
           <button
             type="button"
             onClick={onClearFocusContext}
-            className="text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground hover:text-slate-600 dark:hover:text-slate-200"
           >
             Clear
           </button>
@@ -203,7 +203,7 @@ export function JournalComposer({
                   "inline-flex h-10 items-center gap-1.5 rounded-xl border px-3 text-[11px] font-black uppercase tracking-wider transition-all",
                   on
                     ? v.chip
-                    : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400 dark:hover:bg-slate-800",
+                    : "border-slate-200 bg-slate-50 text-muted-foreground hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:bg-slate-800",
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -217,7 +217,7 @@ export function JournalComposer({
           <div className="mt-3 space-y-3 border-t border-slate-200 pt-3 dark:border-slate-800">
             {categoryOptions.length > 0 && (
               <div>
-                <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   {kind === "coaching" ? "Which P" : "What kind"}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -234,7 +234,7 @@ export function JournalComposer({
                           "h-10 rounded-xl border px-3 text-[11px] font-black uppercase tracking-wider transition-all",
                           on
                             ? v.chip
-                            : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400 dark:hover:bg-slate-800",
+                            : "border-slate-200 bg-slate-50 text-muted-foreground hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:bg-slate-800",
                         )}
                       >
                         {c}
@@ -247,7 +247,7 @@ export function JournalComposer({
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   How loud
                 </p>
                 <div className="flex gap-1.5">
@@ -260,21 +260,21 @@ export function JournalComposer({
                         "h-10 flex-1 rounded-xl border px-2 text-[11px] font-black uppercase tracking-wider transition-all",
                         importance === lvl
                           ? IMPORTANCE_META[lvl].chip
-                          : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400 dark:hover:bg-slate-800",
+                          : "border-slate-200 bg-slate-50 text-muted-foreground hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:bg-slate-800",
                       )}
                     >
                       {IMPORTANCE_META[lvl].short}
                     </button>
                   ))}
                 </div>
-                <p className="mt-1 text-[10px] leading-tight text-slate-400">
+                <p className="mt-1 text-[10px] leading-tight text-muted-foreground">
                   {IMPORTANCE_META[importance].hint}
                 </p>
               </div>
 
               {showMachine && (
                 <div>
-                  <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     Machine (optional)
                   </p>
                   <select
@@ -296,7 +296,7 @@ export function JournalComposer({
             {showMore && (
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     Happened on
                   </p>
                   <input
@@ -305,12 +305,12 @@ export function JournalComposer({
                     onChange={(e) => setOccurredOn(e.target.value)}
                     className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 outline-none focus:border-slate-400 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-200"
                   />
-                  <p className="mt-1 text-[10px] text-slate-400">
+                  <p className="mt-1 text-[10px] text-muted-foreground">
                     Leave blank for now. Back-date a surgery or a trip.
                   </p>
                 </div>
                 <div>
-                  <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     Stops mattering on
                   </p>
                   <input
@@ -319,7 +319,7 @@ export function JournalComposer({
                     onChange={(e) => setEffectiveUntil(e.target.value)}
                     className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 outline-none focus:border-slate-400 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-200"
                   />
-                  <p className="mt-1 text-[10px] text-slate-400">
+                  <p className="mt-1 text-[10px] text-muted-foreground">
                     After this it stops showing in the briefing.
                   </p>
                 </div>
@@ -332,7 +332,7 @@ export function JournalComposer({
           <button
             type="button"
             onClick={() => setShowMore((v) => !v)}
-            className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-200"
+            className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-slate-600 dark:hover:text-slate-200"
           >
             <ChevronDown
               className={cn("h-3.5 w-3.5 transition-transform", showMore && "rotate-180")}
@@ -345,7 +345,7 @@ export function JournalComposer({
               <button
                 type="button"
                 onClick={reset}
-                className="h-10 rounded-xl px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="h-10 rounded-xl px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground hover:text-slate-600 dark:hover:text-slate-200"
               >
                 Clear
               </button>

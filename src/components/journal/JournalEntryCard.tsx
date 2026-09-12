@@ -203,7 +203,7 @@ export function JournalEntryCard({
                 aria-label="Entry actions"
                 onClick={() => setMenuOpen((v) => !v)}
                 onBlur={() => window.setTimeout(() => setMenuOpen(false), 120)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
               >
                 {isReadOnly ? (
                   <Lock className="h-3.5 w-3.5" />
@@ -213,9 +213,9 @@ export function JournalEntryCard({
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 top-9 z-20 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+                <div className="absolute right-0 top-9 z-20 w-48 overflow-hidden rounded-xl border border-border bg-white p-1 shadow-xl dark:bg-slate-800">
                   {isReadOnly ? (
-                    <p className="px-3 py-2 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+                    <p className="px-3 py-2 text-[11px] leading-snug text-muted-foreground">
                       Read-only — {entry.legacySource || "imported record"}.
                       Edit it where it lives.
                     </p>
@@ -269,7 +269,7 @@ export function JournalEntryCard({
       {/* Provenance, deliberately quiet. */}
       {!dense && (
         <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
-          <span className="font-bold text-slate-500 dark:text-slate-400">
+          <span className="font-bold text-muted-foreground">
             {entry.authorInitials}
           </span>
           <span aria-hidden>·</span>

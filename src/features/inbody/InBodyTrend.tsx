@@ -50,7 +50,7 @@ export function InBodyTrend({ points, measure, label, minSpan, today, variant = 
       <figcaption
         className={cn(
           "mb-1 text-[10px] font-black uppercase tracking-[0.14em]",
-          report ? "text-white/60 print:text-[#0A2E46]/70" : "text-slate-500 dark:text-slate-400",
+          report ? "text-white/60 print:text-[#0A2E46]/70" : "text-muted-foreground",
         )}
       >
         {label}

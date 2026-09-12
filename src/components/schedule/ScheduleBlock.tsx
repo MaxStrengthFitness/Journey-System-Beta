@@ -136,8 +136,8 @@ export function ScheduleBlock({
       : "text-slate-900 dark:text-slate-50";
 
   const metaTone = isUnavailable
-    ? "text-slate-400"
-    : "text-slate-500 dark:text-slate-400";
+    ? "text-muted-foreground"
+    : "text-muted-foreground";
 
   return (
     <div

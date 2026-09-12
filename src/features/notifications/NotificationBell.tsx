@@ -157,7 +157,7 @@ export function NotificationBell({
         }
         className={
           className ??
-          "relative h-9 w-9 sm:h-10 sm:w-10 rounded-full transition-all hover:bg-transparent shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-50"
+          "relative h-9 w-9 sm:h-10 sm:w-10 rounded-full transition-all hover:bg-transparent shrink-0 text-muted-foreground hover:text-slate-900 dark:hover:text-slate-50"
         }
       >
         <Bell className="w-5 h-5 sm:w-6 sm:h-6" />

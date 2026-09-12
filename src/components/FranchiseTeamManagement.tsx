@@ -183,14 +183,14 @@ export function FranchiseTeamManagement({
               placeholder="Search trainers..."
               value={trainerSearchQuery}
               onChange={(e) => setTrainerSearchQuery(e.target.value)}
-              className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white pl-9 h-10 rounded-xl text-xs font-bold"
+              className="bg-card border-slate-200 dark:border-slate-800 text-foreground pl-9 h-10 rounded-xl text-xs font-bold"
             />
-            <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+            <User className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
           </div>
 
           <div className="space-y-2 max-h-125 overflow-y-auto pr-1">
             {filteredTrainers.length === 0 ? (
-              <p className="text-center py-6 text-slate-500 dark:text-slate-400 font-medium italic text-xs">
+              <p className="text-center py-6 text-muted-foreground font-medium italic text-xs">
                 No matching trainers.
               </p>
             ) : (
@@ -217,7 +217,7 @@ export function FranchiseTeamManagement({
                         {t.initials}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-black text-slate-900 dark:text-white uppercase italic truncate">
+                        <p className="text-xs font-black text-foreground uppercase italic truncate">
                           {t.fullName}
                         </p>
                         <p
@@ -237,7 +237,7 @@ export function FranchiseTeamManagement({
                           e.stopPropagation();
                           setTrainerToDelete(t);
                         }}
-                        className="p-1 px-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-all opacity-0 group-hover:opacity-100 shrink-0"
+                        className="p-1 px-2 text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-all opacity-0 group-hover:opacity-100 shrink-0"
                         title="Delete Trainer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -267,7 +267,7 @@ export function FranchiseTeamManagement({
                   </div>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase italic leading-none">
+                      <h3 className="text-lg font-black text-foreground uppercase italic leading-none">
                         {currentSelectedTrainer.fullName}
                       </h3>
                     </div>
@@ -282,7 +282,7 @@ export function FranchiseTeamManagement({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-3 px-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between p-3 px-4 bg-card rounded-xl border border-slate-200 dark:border-slate-800">
                   <Label className="text-xs font-bold text-slate-600 dark:text-slate-400 cursor-pointer mr-3">
                     Show on Hub Calendar
                   </Label>
@@ -303,8 +303,8 @@ export function FranchiseTeamManagement({
               </div>
 
               {/* Home Studio Assignment */}
-              <div className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">
+              <div className="flex flex-col gap-2 p-4 bg-card rounded-2xl border border-slate-200 dark:border-slate-800">
+                <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest leading-none">
                   Primary Home Studio
                 </Label>
                 <Select
@@ -316,10 +316,10 @@ export function FranchiseTeamManagement({
                     handleUpdateHomeStudio(currentSelectedTrainer.id, val);
                   }}
                 >
-                  <SelectTrigger className="h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white font-bold">
+                  <SelectTrigger className="h-10 bg-card border-slate-200 dark:border-slate-800 text-xs text-foreground font-bold">
                     <SelectValue placeholder="Select Studio" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
+                  <SelectContent className="bg-card border-slate-200 dark:border-slate-800 text-foreground">
                     <SelectItem value="unassigned">Unassigned</SelectItem>
                     {studios.map((s) => (
                       <SelectItem key={s.id} value={s.id!}>
@@ -331,14 +331,14 @@ export function FranchiseTeamManagement({
               </div>
 
               {/* Accessible Studios (Cross-Training) */}
-              <div className="flex flex-col gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">
+              <div className="flex flex-col gap-3 p-4 bg-card rounded-2xl border border-slate-200 dark:border-slate-800">
+                <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest leading-none">
                   Accessible Studios (Cross-Training)
                 </Label>
                 <div className="flex flex-wrap gap-2">
                   {(currentSelectedTrainer.accessibleStudioIds || []).length ===
                   0 ? (
-                    <span className="text-xs text-slate-500 dark:text-slate-400 italic">
+                    <span className="text-xs text-muted-foreground italic">
                       No secondary locations assigned
                     </span>
                   ) : (
@@ -391,10 +391,10 @@ export function FranchiseTeamManagement({
                         }
                       }}
                     >
-                      <SelectTrigger className="h-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white font-bold">
+                      <SelectTrigger className="h-9 bg-card border-slate-200 dark:border-slate-800 text-xs text-foreground font-bold">
                         <SelectValue placeholder="+ Grant Studio Access" />
                       </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
+                      <SelectContent className="bg-card border-slate-200 dark:border-slate-800 text-foreground">
                         {studios
                           .filter(
                             (s) =>
@@ -411,7 +411,7 @@ export function FranchiseTeamManagement({
                     </Select>
                   </div>
                 )}
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
                   Toggle secondary locations this trainer teaches at so their
                   scheduled bookings propagate across those live floor
                   calendars.
@@ -419,8 +419,8 @@ export function FranchiseTeamManagement({
               </div>
 
               {/* iCal feed and MindBody integrations */}
-              <div className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                <Label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">
+              <div className="flex flex-col gap-2 p-4 bg-card rounded-2xl border border-slate-200 dark:border-slate-800">
+                <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest leading-none">
                   iCal Mindbody Sync URL
                 </Label>
                 {editingIcalId === currentSelectedTrainer.id ? (
@@ -429,7 +429,7 @@ export function FranchiseTeamManagement({
                       value={newIcalUrl}
                       onChange={(e) => setNewIcalUrl(e.target.value)}
                       placeholder="https://clients.mindbodyonline.com/api/..."
-                      className="bg-white dark:bg-slate-900 font-mono text-xs border border-slate-200 dark:border-slate-800 h-10"
+                      className="bg-card font-mono text-xs border border-slate-200 dark:border-slate-800 h-10"
                     />
                     <div className="flex items-center gap-2">
                       <Button
@@ -472,7 +472,7 @@ export function FranchiseTeamManagement({
                     </Button>
                   </div>
                 )}
-                <p className="text-[11px] text-slate-400 italic">
+                <p className="text-[11px] text-muted-foreground italic">
                   Paste the private trainer schedule iCal URL here to enable
                   automated sync into the Daily Hub Calendar.
                 </p>
@@ -481,7 +481,7 @@ export function FranchiseTeamManagement({
           ) : (
             <div className="h-full min-h-100 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 border-dashed rounded-[32px] flex items-center justify-center p-8">
               <div className="text-center space-y-3 max-w-sm">
-                <div className="w-16 h-16 mx-auto rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-center">
+                <div className="w-16 h-16 mx-auto rounded-3xl bg-card border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-center">
                   <UserCog className="w-8 h-8 text-sky-200 dark:text-sky-900" />
                 </div>
                 <p className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">
@@ -499,7 +499,7 @@ export function FranchiseTeamManagement({
 
       {trainerToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-[24px] max-w-sm w-full border border-slate-200 dark:border-slate-800 shadow-2xl">
+          <div className="bg-card p-6 rounded-[24px] max-w-sm w-full border border-slate-200 dark:border-slate-800 shadow-2xl">
             <h3 className="text-lg font-black uppercase italic mb-2">
               Delete Trainer
             </h3>

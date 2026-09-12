@@ -24,7 +24,7 @@ export function ClinicalCard({
   return (
     <div
       className={cn(
-        "flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden h-full transition-all group border border-slate-200 dark:border-slate-800 border-l-4",
+        "flex flex-col bg-card rounded-2xl shadow-sm overflow-hidden h-full transition-all group border border-slate-200 dark:border-slate-800 border-l-4",
         borderColor,
         className
       )}
@@ -32,7 +32,7 @@ export function ClinicalCard({
       {hasMaintenanceNote && (
         <div className={cn(
           "px-3 py-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest",
-          isRedAlert ? "bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400" : "bg-slate-50 text-slate-500 dark:bg-slate-900/20 dark:text-slate-400"
+          isRedAlert ? "bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400" : "bg-slate-50 text-muted-foreground dark:bg-slate-900/20"
         )}>
           {isRedAlert ? <TriangleAlert className="w-4 h-4" /> : <Wrench className="w-4 h-4" />}
           {isRedAlert ? "Red Alert - Do Not Use" : "Not Performed"}

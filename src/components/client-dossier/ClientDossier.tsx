@@ -263,7 +263,7 @@ export function ClientDossier({
             pageScroll && "md:sticky md:top-0 md:self-start md:max-h-dvh md:overflow-y-auto",
           )}
         >
-          <span className="mb-2 hidden px-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-slate-400 md:block">
+          <span className="mb-2 hidden px-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-muted-foreground md:block">
             Jump to
           </span>
           <ul className="no-scrollbar flex flex-row gap-1 overflow-x-auto md:flex-col md:overflow-visible">
@@ -277,7 +277,7 @@ export function ClientDossier({
                     "flex h-10 w-full items-center gap-2.5 whitespace-nowrap rounded-lg border-l-2 px-3 text-[11px] font-black uppercase tracking-widest transition-all",
                     activeSection === s.id
                       ? "border-l-[#38BDF8] bg-[#38BDF8]/10 text-[#38BDF8]"
-                      : "border-l-transparent text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200",
+                      : "border-l-transparent text-muted-foreground hover:bg-slate-200/60 hover:text-slate-800 dark:hover:bg-slate-800/60 dark:hover:text-slate-200",
                   )}
                 >
                   <span className="shrink-0 opacity-70">{SECTION_ICONS[s.id]}</span>
@@ -292,7 +292,7 @@ export function ClientDossier({
         <div
           ref={scrollRef}
           className={cn(
-            "flex-1 bg-white dark:bg-slate-900",
+            "flex-1 bg-card",
             pageScroll ? "min-w-0" : "min-h-0 overflow-y-auto",
           )}
         >
@@ -414,7 +414,7 @@ export function ClientDossier({
                       {client.mindbodyNotes}
                     </p>
                   </div>
-                  <p className="text-[10.5px] text-slate-400">
+                  <p className="text-[10.5px] text-muted-foreground">
                     First 1,000 characters of the client's Mindbody account notes. Edit them in
                     Mindbody — a sync overwrites anything typed here.
                   </p>
@@ -453,7 +453,7 @@ export function ClientDossier({
                       "flex h-11 items-center justify-between rounded-xl border px-3.5 text-sm font-semibold transition-colors",
                       formData.isRetired
                         ? "border-[#38BDF8]/40 bg-[#38BDF8]/10 text-[#38BDF8]"
-                        : "border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400",
+                        : "border-slate-200 bg-slate-50 text-muted-foreground dark:border-slate-800 dark:bg-slate-800/60",
                     )}
                   >
                     {formData.isRetired ? "Retired" : "Working"}
@@ -549,7 +549,7 @@ export function ClientDossier({
 
               <div className="flex flex-col gap-2.5">
                 <FieldLabel>Clinical flags</FieldLabel>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-muted-foreground">
                   These drive machine-level contraindications in the session tracker.
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -564,7 +564,7 @@ export function ClientDossier({
                           "h-9 rounded-xl border px-3 text-[10.5px] font-black uppercase tracking-wider transition-all",
                           on
                             ? "border-rose-500/40 bg-rose-500/15 text-rose-600 dark:text-rose-300"
-                            : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400 dark:hover:bg-slate-800",
+                            : "border-slate-200 bg-slate-50 text-muted-foreground hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/50 dark:hover:bg-slate-800",
                         )}
                       >
                         {flag.conditionName}
@@ -645,7 +645,7 @@ export function ClientDossier({
                 <button
                   type="button"
                   onClick={onOpenReports}
-                  className="inline-flex h-10 w-fit items-center gap-2 rounded-xl border border-slate-200 px-4 text-[11px] font-black uppercase tracking-wider text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  className="inline-flex h-10 w-fit items-center gap-2 rounded-xl border border-border px-4 text-[11px] font-black uppercase tracking-wider text-slate-600 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   <TrendingUp className="h-3.5 w-3.5" />
                   Progress reports
@@ -700,7 +700,7 @@ export function ClientDossier({
                 <FieldLabel source="mindbody">Contract history</FieldLabel>
                 {contractHistory.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-slate-300 px-4 py-3 dark:border-slate-800">
-                    <p className="text-[11.5px] text-slate-400">
+                    <p className="text-[11.5px] text-muted-foreground">
                       No contracts synced. These arrive on the clientContract webhooks.
                     </p>
                   </div>
@@ -747,7 +747,7 @@ export function ClientDossier({
                               </span>
                             </div>
                           </div>
-                          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px] uppercase tracking-wider text-slate-400">
+                          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                             <span>
                               {fmtDate(c.startDate)} → {fmtDate(c.endDate)}
                             </span>
@@ -761,7 +761,7 @@ export function ClientDossier({
                   </ul>
                 )}
                 {contract && (
-                  <p className="text-[10.5px] text-slate-400">
+                  <p className="text-[10.5px] text-muted-foreground">
                     Read-only. Mindbody owns contracts; changes there flow in on the next webhook.
                   </p>
                 )}
@@ -773,7 +773,7 @@ export function ClientDossier({
                 <FieldLabel>Approved cross-train studios</FieldLabel>
                 <div className="flex flex-wrap gap-1.5">
                   {studios.filter((s) => s.id !== client.homeStudioId).length === 0 ? (
-                    <p className="text-[11.5px] text-slate-400">
+                    <p className="text-[11.5px] text-muted-foreground">
                       No other studios available for cross-training.
                     </p>
                   ) : (
@@ -792,7 +792,7 @@ export function ClientDossier({
                               "h-9 rounded-xl border px-3 text-[10.5px] font-black uppercase tracking-wider transition-all",
                               on
                                 ? "border-[#38BDF8]/40 bg-[#38BDF8]/15 text-[#0284c7] dark:text-[#38BDF8]"
-                                : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400 dark:hover:bg-slate-800",
+                                : "border-slate-200 bg-slate-50 text-muted-foreground hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/50 dark:hover:bg-slate-800",
                             )}
                           >
                             {studio.name}
@@ -812,7 +812,7 @@ export function ClientDossier({
               icon={SECTION_ICONS.events}
             >
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[11.5px] text-slate-400">
+                <p className="text-[11.5px] text-muted-foreground">
                   These appear on the studio calendar. Birthdays, trips, surgeries and recovery
                   windows.
                 </p>
@@ -827,7 +827,7 @@ export function ClientDossier({
 
               {sortedEvents.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center dark:border-slate-800">
-                  <p className="text-[11.5px] text-slate-400">
+                  <p className="text-[11.5px] text-muted-foreground">
                     Nothing on the horizon.
                   </p>
                 </div>
@@ -881,7 +881,7 @@ export function ClientDossier({
                             <button
                               type="button"
                               onClick={() => removeEvent(event.id)}
-                              className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 text-[10.5px] font-black uppercase tracking-wider text-slate-400 transition-colors hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-500 dark:border-slate-800"
+                              className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 text-[10.5px] font-black uppercase tracking-wider text-muted-foreground transition-colors hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-500 dark:border-slate-800"
                             >
                               <Trash2 className="h-3.5 w-3.5" /> Remove
                             </button>

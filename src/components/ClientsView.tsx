@@ -112,7 +112,7 @@ function DayStat({
 }) {
   return (
     <div
-      className="flex items-center justify-center gap-2 px-2.5 md:px-3 bg-white dark:bg-slate-900"
+      className="flex items-center justify-center gap-2 px-2.5 md:px-3 bg-card"
       title={title}
     >
       <span className={cn("shrink-0 hidden md:block opacity-70", tone)}>
@@ -129,7 +129,7 @@ function DayStat({
             </span>
           )}
         </span>
-        <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+        <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground whitespace-nowrap">
           {label}
         </span>
       </span>
@@ -1118,7 +1118,7 @@ export function ClientsView({
                       {/* Corner cell: sticks to the top AND the left. */}
                       <th className="sticky top-0 left-0 z-40 bg-slate-100 dark:bg-slate-900 border-b border-r border-slate-200 dark:border-slate-800" />
                       {visibleTrainersList.length === 0 && (
-                        <th className="sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                        <th className="sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                           No trainers scheduled
                         </th>
                       )}
@@ -1164,7 +1164,7 @@ export function ClientsView({
                                     </span>
                                   )}
                                 </div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 tabular-nums">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground tabular-nums">
                                   {sessionCount}{" "}
                                   {sessionCount === 1 ? "session" : "sessions"}
                                 </span>
@@ -1347,7 +1347,7 @@ export function ClientsView({
               )}
               <h3 className="text-xl font-black uppercase tracking-widest text-foreground dark:text-white">
                 Client Directory{" "}
-                <span className="text-slate-500 dark:text-slate-400 ml-2">
+                <span className="text-muted-foreground ml-2">
                   ({mergedSearchClients.length})
                 </span>
               </h3>

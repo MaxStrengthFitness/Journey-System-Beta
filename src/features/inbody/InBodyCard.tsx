@@ -56,10 +56,10 @@ const TRENDS: { key: MeasureKey; label: string; minSpan: number }[] = [
 const TONE: Record<ChangeTone, string> = {
   good: "text-emerald-700 dark:text-emerald-400",
   watch: "text-amber-700 dark:text-amber-400",
-  neutral: "text-slate-500 dark:text-slate-400",
+  neutral: "text-muted-foreground",
 };
 
-const SUB = "font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400";
+const SUB = "font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground";
 
 export interface InBodyCardProps {
   client: Client;
@@ -100,13 +100,13 @@ export function InBodyCard({ client, authTrainer }: InBodyCardProps) {
 
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
         {error ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">{error}</p>
+          <p className="text-sm text-muted-foreground">{error}</p>
         ) : loading ? (
-          <p className="text-sm text-slate-400">Loading scans…</p>
+          <p className="text-sm text-muted-foreground">Loading scans…</p>
         ) : !latest ? (
           <div className="flex items-start gap-3">
-            <Scale className="mt-0.5 h-5 w-5 shrink-0 text-slate-400" />
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <Scale className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
               No InBody scans yet.{" "}
               {canRecord
                 ? "Add one from the printout — the trend lines, the Renewal Brief and progress reports pick it up from here."
@@ -115,7 +115,7 @@ export function InBodyCard({ client, authTrainer }: InBodyCardProps) {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            <p className="text-[12px] text-slate-500 dark:text-slate-400">
+            <p className="text-[12px] text-muted-foreground">
               Latest: <span className="font-bold text-slate-700 dark:text-slate-200">{scanDateLabel(latest.testedAt, today)}</span>
               {latest.device ? ` · ${latest.device}` : ""}
               {first ? ` · compared with the first scan, ${scanDateLabel(first.testedAt, today)}` : ""}
@@ -125,11 +125,11 @@ export function InBodyCard({ client, authTrainer }: InBodyCardProps) {
               {HEADLINE.map((h) => {
                 const delta = changeBetween(first, latest, h.key);
                 return (
-                  <div key={h.key} className="min-w-0 rounded-xl bg-white p-3 dark:bg-slate-900">
-                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                  <div key={h.key} className="min-w-0 rounded-xl bg-card p-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
                       {h.label}
                     </p>
-                    <p className="mt-1 text-xl font-black tabular-nums text-slate-900 dark:text-white">
+                    <p className="mt-1 text-xl font-black tabular-nums text-foreground">
                       {formatMeasure(latest[h.key], h.key)}
                     </p>
                     {delta !== null && (
@@ -160,7 +160,7 @@ export function InBodyCard({ client, authTrainer }: InBodyCardProps) {
                 ))}
               </div>
             ) : (
-              <p className="text-[12px] text-slate-400">Trend lines appear after the second scan.</p>
+              <p className="text-[12px] text-muted-foreground">Trend lines appear after the second scan.</p>
             )}
 
             <div>
@@ -168,13 +168,13 @@ export function InBodyCard({ client, authTrainer }: InBodyCardProps) {
                 type="button"
                 onClick={() => setShowAll((v) => !v)}
                 aria-expanded={showAll}
-                className="inline-flex min-h-10 items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                className="inline-flex min-h-10 items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-muted-foreground hover:text-slate-800 dark:hover:text-slate-200"
               >
                 {showAll ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 Every scan ({ordered.length})
               </button>
               {showAll && (
-                <ul className="mt-1 divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+                <ul className="mt-1 divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-card dark:divide-slate-800 dark:border-slate-800">
                   {[...ordered].reverse().map((s) => {
                     const row = (
                       <>
@@ -185,7 +185,7 @@ export function InBodyCard({ client, authTrainer }: InBodyCardProps) {
                           {formatMeasure(s.weightLb, "weightLb")} · muscle {formatMeasure(s.skeletalMuscleMassLb, "skeletalMuscleMassLb")} · fat{" "}
                           {formatMeasure(s.percentBodyFat, "percentBodyFat")}
                         </span>
-                        <span className="hidden shrink-0 text-[11px] text-slate-400 sm:inline">
+                        <span className="hidden shrink-0 text-[11px] text-muted-foreground sm:inline">
                           {s.enteredByName || ""}
                         </span>
                       </>

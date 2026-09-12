@@ -145,10 +145,10 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
           <HeartPulse className="h-4.5 w-4.5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="font-display text-base font-black uppercase italic tracking-tight text-slate-900 dark:text-white">
+          <h3 className="font-display text-base font-black uppercase italic tracking-tight text-foreground">
             Client Check-in
           </h3>
-          <p className="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
             {draft.loading
               ? "Loading…"
               : draft.hasDraft
@@ -175,7 +175,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
                 style={{ width: `${pct}%` }}
               />
             </span>
-            <span className="text-[11px] font-black tabular-nums text-slate-500 dark:text-slate-400">
+            <span className="text-[11px] font-black tabular-nums text-muted-foreground">
               {pct}%
             </span>
           </div>
@@ -200,13 +200,13 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
                   <span className="block truncate text-[13px] font-bold text-slate-800 dark:text-slate-200">
                     {section.title}
                   </span>
-                  <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                  <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                     {section.band}
                   </span>
                 </span>
                 <ChevronDown
                   className={cn(
-                    "h-4 w-4 shrink-0 text-slate-400 transition-transform",
+                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
                     open && "rotate-180",
                   )}
                 />
@@ -224,7 +224,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
                       "mt-3 inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-[10px] font-black uppercase tracking-wider transition-colors",
                       section.isReviewed
                         ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                        : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400",
+                        : "border-border bg-slate-50 text-muted-foreground hover:bg-slate-100 dark:bg-slate-800/50",
                     )}
                   >
                     {section.isReviewed ? (
@@ -257,7 +257,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
               <button
                 type="button"
                 onClick={() => setConfirmDiscard(false)}
-                className="h-10 rounded-xl border border-slate-200 px-3 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:border-slate-700"
+                className="h-10 rounded-xl border border-border px-3 text-[10px] font-black uppercase tracking-wider text-slate-500"
               >
                 Keep
               </button>
@@ -278,7 +278,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
             <button
               type="button"
               onClick={() => setConfirmDiscard(true)}
-              className="mr-auto inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-[10px] font-black uppercase tracking-wider text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+              className="mr-auto inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
             >
               <RotateCcw className="h-3 w-3" /> Discard draft
             </button>
@@ -286,7 +286,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
 
           {confirmFinalize ? (
             <>
-              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <span className="text-[11px] font-medium text-muted-foreground">
                 {draft.doneCount < draft.totalSections
                   ? `Finish with ${draft.totalSections - draft.doneCount} area${
                       draft.totalSections - draft.doneCount === 1 ? "" : "s"
@@ -296,7 +296,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
               <button
                 type="button"
                 onClick={() => setConfirmFinalize(false)}
-                className="h-10 rounded-xl border border-slate-200 px-3 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:border-slate-700"
+                className="h-10 rounded-xl border border-border px-3 text-[10px] font-black uppercase tracking-wider text-slate-500"
               >
                 Cancel
               </button>

@@ -16,7 +16,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return (
       <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-2xl">
         <p className="text-white font-bold uppercase tracking-tight mb-1 border-b border-slate-700 pb-1 text-xs">{label}</p>
-        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-2">{data.segment}</p>
+        <p className="text-[11px] text-muted-foreground font-bold uppercase tracking-widest mb-2">{data.segment}</p>
         <div className="flex items-center justify-between gap-4 py-0.5">
           <span className="text-[11px] font-bold uppercase tracking-widest text-[#38BDF8]">
             {payload[0].name}
@@ -33,7 +33,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export function StrengthGainsDemographicChart({ data }: { data?: any[] }) {
   if (!data || data.length === 0) {
-    return <div className="text-slate-400 text-xs text-center flex items-center justify-center h-full font-bold uppercase tracking-widest">No Data Available</div>;
+    return <div className="text-muted-foreground text-xs text-center flex items-center justify-center h-full font-bold uppercase tracking-widest">No Data Available</div>;
   }
 
   const chartData = data.map(d => ({

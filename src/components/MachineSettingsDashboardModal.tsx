@@ -160,7 +160,7 @@ export function MachineSettingsDashboardModal({
     >
       <DialogContent
         showCloseButton={false}
-        className="w-[92vw] sm:w-[85vw] max-w-2xl max-h-[85dvh] sm:max-h-[90dvh] overflow-y-auto no-scrollbar bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl sm:rounded-3xl p-0 flex flex-col transition-colors"
+        className="w-[92vw] sm:w-[85vw] max-w-2xl max-h-[85dvh] sm:max-h-[90dvh] overflow-y-auto no-scrollbar bg-card text-foreground border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl sm:rounded-3xl p-0 flex flex-col transition-colors"
       >
         {/* Hero Header */}
         <div className="bg-slate-50 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800/80 p-5 sm:p-6 flex flex-col justify-between relative">
@@ -168,12 +168,12 @@ export function MachineSettingsDashboardModal({
             variant="ghost"
             size="icon"
             onClick={() => setEditingSettings(null)}
-            className="absolute top-4 right-4 rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+            className="absolute top-4 right-4 rounded-full text-muted-foreground hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </Button>
           <div>
-            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">
               {targetMachine?.name}
             </h2>
             <div className="flex flex-col gap-1">
@@ -193,11 +193,11 @@ export function MachineSettingsDashboardModal({
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs sm:text-sm">
                       PR: {maxWeight} LBS
                     </span>
-                    <span className="text-slate-500 dark:text-slate-400 font-medium text-xs">
+                    <span className="text-muted-foreground font-medium text-xs">
                       × {prLog.reps} reps
                     </span>
                     {prDisplayDate && (
-                      <span className="text-slate-400 text-[10px] uppercase tracking-widest ml-1">
+                      <span className="text-muted-foreground text-[10px] uppercase tracking-widest ml-1">
                         ({prDisplayDate})
                       </span>
                     )}
@@ -221,7 +221,7 @@ export function MachineSettingsDashboardModal({
                             {currentLog.totalTimeUnderLoad} sec
                           </span>
                           {currentLog.averageTimePerRep !== undefined && (
-                            <span className="text-slate-500 dark:text-slate-400 font-medium text-[10px] uppercase tracking-widest mt-0.5">
+                            <span className="text-muted-foreground font-medium text-[10px] uppercase tracking-widest mt-0.5">
                               Avg Time/Rep: {currentLog.averageTimePerRep} sec
                             </span>
                           )}
@@ -238,11 +238,11 @@ export function MachineSettingsDashboardModal({
         {/* Trend Visualization (Middle Section) */}
         <div className="p-4 sm:p-6 bg-slate-100/60 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800/80">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+            <h3 className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
               Load Progression
             </h3>
           </div>
-          <div className="h-44 sm:h-52 w-full text-slate-400">
+          <div className="h-44 sm:h-52 w-full text-muted-foreground">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={chartData}
@@ -298,14 +298,14 @@ export function MachineSettingsDashboardModal({
         </div>
 
         {/* Machine Settings Editor */}
-        <div className="p-4 sm:p-6 bg-white dark:bg-slate-900">
-          <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3 sm:mb-4 flex items-center gap-2">
+        <div className="p-4 sm:p-6 bg-card">
+          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-3 sm:mb-4 flex items-center gap-2">
             <Settings className="w-4 h-4 text-[#F06C22]" /> Machine Configuration
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-5">
             {targetMachine?.settingOptions?.map((opt) => (
               <div key={opt} className="space-y-1.5">
-                <label className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-0.5 flex justify-between items-center pr-0.5">
+                <label className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-0.5 flex justify-between items-center pr-0.5">
                   <span>{opt}</span>
                   {standardSettings[opt] && (
                     <span
@@ -328,7 +328,7 @@ export function MachineSettingsDashboardModal({
                     })
                   }
                   placeholder={standardSettings[opt] || "--"}
-                  className="h-10 sm:h-12 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 focus:border-[#F06C22] focus:ring-[#F06C22] text-base sm:text-lg font-black text-slate-900 dark:text-white px-3 sm:px-4 tabular-nums transition-all shadow-sm"
+                  className="h-10 sm:h-12 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 focus:border-[#F06C22] focus:ring-[#F06C22] text-base sm:text-lg font-black text-foreground px-3 sm:px-4 tabular-nums transition-all shadow-sm"
                 />
               </div>
             ))}

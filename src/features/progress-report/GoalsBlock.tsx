@@ -158,7 +158,7 @@ export function GoalsBlock({
                 <button
                   type="button"
                   aria-label="Remove checkpoint"
-                  className="h-10 w-10 shrink-0 rounded-xl text-slate-400 hover:bg-rose-500/10 hover:text-rose-500"
+                  className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500"
                   onClick={() => set({ checkpoints: checkpoints.filter((x) => x.id !== c.id) })}
                 >
                   ✕

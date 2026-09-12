@@ -415,7 +415,7 @@ export function ClientHistoryView({
                     <span>{initials}</span>
                     <Badge
                       variant="secondary"
-                      className={`text-[7px] h-3 px-1 font-black border-none ${trainerFilter === initials ? "bg-white/20 text-slate-900 dark:text-white" : "bg-primary/10 text-primary"}`}
+                      className={`text-[7px] h-3 px-1 font-black border-none ${trainerFilter === initials ? "bg-white/20 text-foreground" : "bg-primary/10 text-primary"}`}
                     >
                       {count}
                     </Badge>
@@ -631,7 +631,7 @@ export function ClientHistoryView({
                         {sessionNotesList.length > 1 && (
                           <Badge
                             variant="secondary"
-                            className="absolute top-1 right-1 h-3 px-1 text-[6px] font-black bg-primary text-slate-900 dark:text-white border-white border shrink-0"
+                            className="absolute top-1 right-1 h-3 px-1 text-[6px] font-black bg-primary text-foreground border-white border shrink-0"
                           >
                             {sessionNotesList.length}
                           </Badge>

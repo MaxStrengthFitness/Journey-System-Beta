@@ -44,7 +44,7 @@ export function JournalRail({
     if (!emptyHint) return null;
     return (
       <div className="rounded-xl border border-dashed border-slate-300 px-4 py-3 dark:border-slate-800">
-        <p className="text-[11.5px] leading-snug text-slate-400">{emptyHint}</p>
+        <p className="text-[11.5px] leading-snug text-muted-foreground">{emptyHint}</p>
       </div>
     );
   }
@@ -63,7 +63,7 @@ export function JournalRail({
           <button
             type="button"
             onClick={onOpenJournal}
-            className="text-[10px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:text-[#38BDF8]"
+            className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-[#38BDF8]"
           >
             Open journal
           </button>
@@ -93,7 +93,7 @@ export function JournalRail({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="inline-flex items-center gap-1 self-start text-[10px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-200"
+          className="inline-flex items-center gap-1 self-start text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-slate-600 dark:hover:text-slate-200"
         >
           <ChevronDown className={cn("h-3 w-3 transition-transform", expanded && "rotate-180")} />
           {expanded ? "Show fewer" : `${hidden} more`}

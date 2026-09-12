@@ -36,11 +36,11 @@ import {
 import { deleteInBodyScan, saveInBodyScan } from "./useInBodyScans";
 import { INBODY_SEGMENTS, type InBodyScan } from "./types";
 
-const LABEL = "text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400";
+const LABEL = "text-[11px] font-bold uppercase tracking-widest text-muted-foreground";
 const INPUT =
   "h-11 w-full rounded-xl border bg-white px-3 text-sm font-semibold tabular-nums text-slate-900 outline-none " +
   "focus:border-sky-500 dark:bg-slate-900 dark:text-slate-100";
-const INPUT_OK = "border-slate-200 dark:border-slate-700";
+const INPUT_OK = "border-border";
 const INPUT_BAD = "border-rose-400 dark:border-rose-500";
 const PROBLEM = "text-[11px] font-semibold text-rose-600 dark:text-rose-400";
 
@@ -175,7 +175,7 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
             className={cn(INPUT, problem ? INPUT_BAD : INPUT_OK, f.unit && "pr-14")}
           />
           {f.unit && (
-            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[12px] font-bold text-slate-400">
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[12px] font-bold text-muted-foreground">
               {f.unit}
             </span>
           )}
@@ -194,11 +194,11 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
       type="button"
       onClick={onClick}
       aria-expanded={expanded}
-      className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-slate-200 px-3 text-left text-[12px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60"
+      className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-border px-3 text-left text-[12px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800/60"
     >
       {expanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
       <span>{label}</span>
-      <span className="ml-auto text-[10.5px] font-semibold normal-case tracking-normal text-slate-400">{hint}</span>
+      <span className="ml-auto text-[10.5px] font-semibold normal-case tracking-normal text-muted-foreground">{hint}</span>
     </button>
   );
 
@@ -284,7 +284,7 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
                         onChange={(e) => setSeg({ lb: e.target.value })}
                         className={cn(INPUT, problem ? INPUT_BAD : INPUT_OK, "pr-10")}
                       />
-                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[12px] font-bold text-slate-400">
+                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[12px] font-bold text-muted-foreground">
                         lb
                       </span>
                     </div>
@@ -296,7 +296,7 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
                         onChange={(e) => setSeg({ pct: e.target.value })}
                         className={cn(INPUT, problem ? INPUT_BAD : INPUT_OK, "pr-10")}
                       />
-                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[12px] font-bold text-slate-400">
+                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[12px] font-bold text-muted-foreground">
                         %
                       </span>
                     </div>
@@ -308,7 +308,7 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
           )}
 
           {weightOffer && (
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200">
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-border px-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
               <input
                 type="checkbox"
                 checked={updateWeight}
@@ -317,7 +317,7 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
               />
               <span>
                 Also set the profile's weight to {weightOffer} lb
-                <span className="ml-1 font-normal text-slate-400">
+                <span className="ml-1 font-normal text-muted-foreground">
                   (now {String(client.weight ?? "").trim() || "blank"})
                 </span>
               </span>

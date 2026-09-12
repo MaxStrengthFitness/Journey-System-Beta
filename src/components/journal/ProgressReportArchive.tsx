@@ -26,10 +26,10 @@ export function ProgressReportArchive({
     <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+          <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
             Progress reports
           </h3>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-muted-foreground">
             {reports.length} on file
           </p>
         </div>
@@ -43,7 +43,7 @@ export function ProgressReportArchive({
       </div>
 
       {reports.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-[11px] text-slate-400 dark:border-slate-800">
+        <p className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-[11px] text-muted-foreground dark:border-slate-800">
           No evaluations yet.
         </p>
       ) : (
@@ -70,7 +70,7 @@ export function ProgressReportArchive({
                 onClick={() => r.id && onSelect(r.id)}
                 className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-muted-foreground dark:bg-slate-800">
                   <FileText className="h-3.5 w-3.5" />
                 </span>
                 <span className="min-w-0">
@@ -89,12 +89,12 @@ export function ProgressReportArchive({
                       {r.status || "Finalized"}
                     </span>
                   </span>
-                  <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-slate-400">
+                  <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                     {r.date} · {r.trainerInitials || r.trainerName || "Team"}
                     {/* 90-day check-in: overall colour + red-flag count, from the cached summary. */}
                     {summary && (
                       <span
-                        className="inline-flex items-center gap-1 rounded px-1 py-0.5 bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                        className="inline-flex items-center gap-1 rounded px-1 py-0.5 bg-slate-100 text-muted-foreground dark:bg-slate-800"
                         title={`Check-in ${summary.overall.legacyScore ?? "—"} / 96${redFlags ? ` · ${redFlags} red flag${redFlags > 1 ? "s" : ""}` : ""}`}
                       >
                         <HeartPulse className="h-2.5 w-2.5" />

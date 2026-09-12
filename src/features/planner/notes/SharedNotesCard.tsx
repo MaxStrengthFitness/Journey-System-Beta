@@ -26,7 +26,7 @@ import { NOTE_KIND_LABEL, type NoteKind, type SharedNote } from "./types";
  *                        author keeps their own copy
  */
 
-const SUB = "font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400";
+const SUB = "font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground";
 
 const KIND_DOT: Record<NoteKind, string> = {
   note: "bg-slate-400",
@@ -102,13 +102,13 @@ export function SharedNotesCard({ client, authTrainer, onOpenPlanner }: SharedNo
 
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
         {error ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">{error}</p>
+          <p className="text-sm text-muted-foreground">{error}</p>
         ) : loading ? (
-          <p className="text-sm text-slate-400">Loading plans…</p>
+          <p className="text-sm text-muted-foreground">Loading plans…</p>
         ) : notes.length === 0 ? (
           <div className="flex items-start gap-3">
-            <NotebookPen className="mt-0.5 h-5 w-5 shrink-0 text-slate-400" />
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <NotebookPen className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
               Nothing shared yet. A trainer writes a plan in their Planner — a routine change, an injury plan, a
               retention idea — and switches on Share; it appears here for everyone who coaches {first}.
             </p>
@@ -121,17 +121,17 @@ export function SharedNotesCard({ client, authTrainer, onOpenPlanner }: SharedNo
               const mine = Boolean(uid) && n.authorId === uid;
               const canTakeOff = !mine && canRemoveSharedNote(authTrainer, uid, n, studioId);
               return (
-                <li key={n.id} className="min-w-0 rounded-xl bg-white p-3 dark:bg-slate-900">
+                <li key={n.id} className="min-w-0 rounded-xl bg-card p-3">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
                       <span className={cn("h-2 w-2 rounded-full", KIND_DOT[n.kind])} aria-hidden />
                       {NOTE_KIND_LABEL[n.kind]}
                     </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    <span className="text-[11px] text-muted-foreground">
                       {mine ? "You" : n.authorName} · {whenLabel(n.updatedAt)}
                     </span>
                   </div>
-                  <p className="mt-1 text-[15px] font-bold text-slate-900 [overflow-wrap:anywhere] dark:text-white">
+                  <p className="mt-1 text-[15px] font-bold text-foreground [overflow-wrap:anywhere]">
                     {n.title}
                   </p>
                   {n.body && (
@@ -181,7 +181,7 @@ export function SharedNotesCard({ client, authTrainer, onOpenPlanner }: SharedNo
                             setFailure(null);
                             setConfirming(n.id);
                           }}
-                          className="inline-flex min-h-10 items-center rounded-lg px-2 text-[11px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                          className="inline-flex min-h-10 items-center rounded-lg px-2 text-[11px] font-black uppercase tracking-widest text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800"
                         >
                           Take off the record
                         </button>
@@ -213,7 +213,7 @@ export function SharedNotesCard({ client, authTrainer, onOpenPlanner }: SharedNo
                           disabled={busy}
                           onClick={() => setConfirming(null)}
                           autoFocus
-                          className="inline-flex min-h-10 items-center rounded-xl border border-slate-200 px-3 text-[11px] font-black uppercase tracking-widest text-slate-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300"
+                          className="inline-flex min-h-10 items-center rounded-xl border border-border px-3 text-[11px] font-black uppercase tracking-widest text-slate-600 disabled:opacity-50 dark:text-slate-300"
                         >
                           Keep it
                         </button>
