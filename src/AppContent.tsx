@@ -8,6 +8,7 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useCallback,
   lazy,
   Suspense,
 } from "react";
@@ -563,6 +564,9 @@ import {
   WikiSectionsProvider,
   type WikiSectionsValue,
 } from "./features/wiki/sections";
+// Pure and tiny: the Learning link format the bell, search and notes share.
+import { parseLearningRef, type LearningRef } from "./features/learning/ref";
+import type { AcademyJump } from "./features/academy/AcademyWikiView";
 
 export default function AppContent({
   user,
@@ -675,11 +679,21 @@ export default function AppContent({
    * cannot yank a trainer back to where they arrived twenty taps ago.
    */
   const [catalogJump, setCatalogJump] = useState<string | null>(null);
-  const [academyJump, setAcademyJump] = useState<{
-    machineId: string;
-    focus: "card" | "script";
-    fromLabel?: string;
-  } | null>(null);
+  const [academyJump, setAcademyJump] = useState<AcademyJump | null>(null);
+  /**
+   * Open any page in Learning (features/learning/ref.ts). The one door every
+   * link uses — the bell, search, notes, announcements — so "open that page"
+   * cannot mean something different in each of them.
+   */
+  const openLearning = useCallback((ref: LearningRef) => {
+    if (ref.kind === "machine") {
+      setCatalogJump(ref.id);
+      setCurrentView("machine-anatomy");
+    } else {
+      setAcademyJump({ ref });
+      setCurrentView("academy");
+    }
+  }, []);
   /*
    * LEARNING — the Catalog and the Academy share one bottom-bar button since
    * Sep 10 2026 (features/wiki/sections.tsx). The button reopens whichever of
@@ -1840,7 +1854,19 @@ export default function AppContent({
         trainerId={authTrainer?.id}
         authTrainer={authTrainer}
         className={headerIconClass}
-        onNavigate={(view, id) => {
+        onNavigate={(view, id, learning) => {
+          // A Learning page wins: it names the exact page. The machine-flagged
+          // link predates Learning refs and stores { view, id }; before this
+          // the id was dropped and it opened the Catalog's front page.
+          const ref =
+            parseLearningRef(learning) ??
+            (view === "machine-anatomy" && id
+              ? ({ kind: "machine", id } as LearningRef)
+              : null);
+          if (ref) {
+            openLearning(ref);
+            return;
+          }
           if (view === "profile" && id) setSelectedClientId(id);
           setCurrentView(view as any);
         }}

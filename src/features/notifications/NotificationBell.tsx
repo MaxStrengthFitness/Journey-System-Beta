@@ -88,8 +88,11 @@ export interface NotificationBellProps {
   trainerId?: string | null;
   /** Needed for announcement scope targeting; also supplies trainerId. */
   authTrainer?: Trainer | null;
-  /** Where a notification's link should take the app. */
-  onNavigate?: (view: string, id?: string) => void;
+  /**
+   * Where a notification's link should take the app. `learning` is the raw
+   * Learning ref from the link, if it has one; the app parses it.
+   */
+  onNavigate?: (view: string, id?: string, learning?: unknown) => void;
   className?: string;
 }
 
@@ -128,7 +131,7 @@ export function NotificationBell({
       markNotificationRead(uid, n.id).catch(() => {});
     }
     if (n.link && onNavigate) {
-      onNavigate(n.link.view, n.link.id);
+      onNavigate(n.link.view, n.link.id, n.link.learning);
       setOpen(false);
     }
   };
