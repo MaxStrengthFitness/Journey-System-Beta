@@ -657,6 +657,27 @@ service cloud.firestore {
       );
     }
 
+    /**
+     * The hub_announcements create rule, in a function for the same reason as
+     * the update rule above: canPostAnnouncements() and the second
+     * isSuperAdmin()/isFranchiseOwnerOnly() pair called getRole() about eleven
+     * times between them, and every getRole() re-reads the trainer document,
+     * which exhausted Firestore's 1000-expression evaluation budget.
+     *
+     * Permissions are unchanged: for an authenticated caller roleIsSuper(r) is
+     * isSuperAdmin(), roleIsFranchise(r) is isFranchiseOwnerOnly(), and the
+     * three together are exactly canPostAnnouncements().
+     */
+    function hubAnnouncementCreateAllowed() {
+      let r = getRole();
+      return (roleIsSuper(r) || roleIsFranchise(r) || r == 'StudioOwner')
+          // Posted as yourself (review fix: the author was free text).
+          && request.resource.data.authorId == request.auth.uid
+          && (roleIsSuper(r) || roleIsFranchise(r)
+              || !reachesEveryStudio(request.resource.data))
+          && announcementShapeValid(request.resource.data);
+    }
+
     // ===============================================================
     // COLLECTION ENDPOINTS SECURITY PATHS
     // ===============================================================
@@ -1963,13 +1984,7 @@ service cloud.firestore {
     // does: add THEMSELVES, by sign-in id, to readBy, and nothing more.
     match /hub_announcements/{announcementId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated()
-                    && canPostAnnouncements()
-                    // Posted as yourself (review fix: the author was free text).
-                    && request.resource.data.authorId == request.auth.uid
-                    && (isSuperAdmin() || isFranchiseOwnerOnly()
-                        || !reachesEveryStudio(request.resource.data))
-                    && announcementShapeValid(request.resource.data);
+      allow create: if isAuthenticated() && hubAnnouncementCreateAllowed();
       allow update: if isAuthenticated() && hubAnnouncementUpdateAllowed();
       allow delete: if isSuperAdmin() || isFranchiseOwner() || 
                     (resource.data.studioId != null && isStudioOwnerOrHeadTrainer(resource.data.studioId));
