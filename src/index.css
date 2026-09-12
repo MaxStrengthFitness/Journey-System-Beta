@@ -131,6 +131,69 @@
     --color-mb-origin-system:   var(--mb-origin-system);
 }
 
+/* =====================================================================
+   THE NEUTRAL RAMP — `slate-*` retinted onto the brand palette (Sep 12 2026)
+
+   WHY THIS EXISTS, AND WHY IT IS AN OVERRIDE RATHER THAN A NEW SCALE.
+
+   This app was built dark-first on Tailwind's stock `slate` scale, and
+   every dark-mode token in .dark below is EXACTLY a Tailwind slate value:
+   --background #020617 IS slate-950, --card #0F172A IS slate-900,
+   --elevated #1E293B IS slate-800, and --ink-l1/l2/l3/l4 ARE slate-50 /
+   300 / 400 / 500. Checked, not assumed. That is why dark mode has always
+   looked coherent — the ~2,700 hardcoded `slate-*` classes scattered
+   through the components happen to agree with the tokens exactly.
+
+   The Sep 9 light-mode retune then moved the LIGHT palette off pure slate
+   deliberately: a ground a real step below white (#EDF0F5), greys pulled
+   off pure blue and desaturated, both muted inks darkened to clear AA.
+   The hardcoded `slate-*` classes did not move with it. So in light mode
+   those screens paint Tailwind's cold blue-grey directly beside the
+   retuned brand neutral — and that mismatch is precisely the "some
+   screens don't match the rest" report.
+
+   Rather than edit ~2,700 call sites, this redefines what `slate-*` MEANS.
+   Same technique as the elevation scale above, which overrides Tailwind's
+   shadow scale so every `shadow-*` already written softens at once.
+
+     LIGHT -> the retuned brand neutrals, anchored on tokens already
+              defined in :root (--bg-dark-3, --background, --border,
+              --input, --ink-d3, --ink-d2, --foreground). No new pigment.
+     DARK  -> Tailwind's original slate values, BYTE-IDENTICAL. Dark mode
+              already agreed with the brand, so it must not move at all.
+
+   The ramp stays monotonic and non-inverting in BOTH themes (50 is always
+   the lightest rung, 950 always the darkest), so pairs already written as
+   `bg-white dark:bg-slate-900` keep behaving exactly as before.
+
+   Contrast on the light ground (#EDF0F5), text rungs, after / before:
+     slate-500   5.59:1 / 4.17:1   <- crosses AA; it was failing
+     slate-600   7.19:1 / 6.63:1
+     slate-700   9.25:1 / 9.06:1
+     slate-900  15.63:1 / 15.63:1  unchanged
+   slate-400 improves 2.24:1 -> 2.73:1 but is STILL not a text colour. It
+   is a non-text grey by design and cannot be darkened further without
+   colliding with slate-500. The 367 places using it for text are a
+   wrong-token bug, not a colour bug; the next commit moves them to
+   `text-muted-foreground` (identical in dark, 5.9:1 in light).
+
+   TO REVERT: delete this @theme block. The --n-* definitions can stay;
+   nothing else reads them.
+   ===================================================================== */
+@theme inline {
+    --color-slate-50:  var(--n-50);
+    --color-slate-100: var(--n-100);
+    --color-slate-200: var(--n-200);
+    --color-slate-300: var(--n-300);
+    --color-slate-400: var(--n-400);
+    --color-slate-500: var(--n-500);
+    --color-slate-600: var(--n-600);
+    --color-slate-700: var(--n-700);
+    --color-slate-800: var(--n-800);
+    --color-slate-900: var(--n-900);
+    --color-slate-950: var(--n-950);
+}
+
 
 
 /* =====================================================================
@@ -256,6 +319,35 @@
     --red:         #E84F4F;
     --amber:       #F5A623;
 
+    /* ---------------------------------------------------------------
+       THE NEUTRAL RAMP — LIGHT. See the @theme block near the top of this
+       file for why `slate-*` is redefined at all. Every rung below is an
+       anchor already defined above, so no new pigment enters the palette:
+
+         n-50  = --bg-dark-3   raised / inset fill within a card
+         n-100 = --background  the page ground
+         n-200 = --border      hairline   (267 `border-slate-200` uses)
+         n-300 = --input       control boundary, 3.1:1
+         n-400 =               interpolated; a NON-TEXT grey, 2.7:1
+         n-500 = --ink-d3      secondary ink, 5.9:1 on white
+         n-600 =               interpolated, 8.2:1 on white
+         n-700 = --ink-d2      10.6:1 on white
+         n-800 / n-900 / n-950 are Tailwind's own values, unchanged: they
+         are the dark palette's surfaces and they double as dark chips on
+         a light ground, where they already read correctly.
+       --------------------------------------------------------------- */
+    --n-50:  #F5F8FC;
+    --n-100: #EDF0F5;
+    --n-200: #DCE3EC;
+    --n-300: #C3CEDC;
+    --n-400: #8893A2;
+    --n-500: #55606F;
+    --n-600: #44505F;
+    --n-700: #33404F;
+    --n-800: #1E293B;
+    --n-900: #0F172A;
+    --n-950: #020617;
+
     /* --- MINDBODY INTEGRATION TOKENS — append to existing :root { } --- */
     --mb-state-scheduled:    #94A3B8;
     --mb-state-arrived:      var(--cyan);
@@ -357,6 +449,26 @@
     --ink-l3:      #6B7C95;
     --ink-l4:      #64748B;
     --div-l:       #E4E7EB;
+
+    /* ---------------------------------------------------------------
+       THE NEUTRAL RAMP — DARK. These are Tailwind's own slate values,
+       unchanged, because every dark token above already IS one of them.
+       They are written out explicitly rather than left to fall through so
+       that a future edit to the light ramp cannot silently drag dark mode
+       along with it. If you change a value here you are changing dark
+       mode; if you meant to change light mode, edit :root.
+       --------------------------------------------------------------- */
+    --n-50:  #F8FAFC;
+    --n-100: #F1F5F9;
+    --n-200: #E2E8F0;
+    --n-300: #CBD5E1;
+    --n-400: #94A3B8;
+    --n-500: #64748B;
+    --n-600: #475569;
+    --n-700: #334155;
+    --n-800: #1E293B;
+    --n-900: #0F172A;
+    --n-950: #020617;
 
     /* --- MINDBODY INTEGRATION TOKENS — append to existing .dark { } --- */
     --mb-state-early-cancel: var(--ink-d3);
