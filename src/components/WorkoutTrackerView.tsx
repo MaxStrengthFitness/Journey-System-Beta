@@ -131,6 +131,15 @@ import {
 import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL } from "../lib/set-outcome";
 import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
 import { forgetLiveSession, peekLiveSessionId, rememberLiveSession } from "../lib/live-session";
+import {
+  createMachineClocks,
+  focusMachine,
+  machineTimeFields,
+  resetMachine,
+  secondsOn,
+  setPaused,
+  type MachineClocks,
+} from "../lib/machine-clock";
 import { RoutineOrderSheet } from "../features/journey-grid/RoutineOrderSheet";
 import { NOW_BAR_SIDE_QUERY, useMediaQuery } from "../hooks/useMediaQuery";
 import { traineeLevelOf } from "../lib/progression-cue";
@@ -1040,9 +1049,6 @@ export function WorkoutTrackerView({
   const [focusRecords, setFocusRecords] = useState<FocusRecord[]>([]);
   const [sessionNotes, setSessionNotes] = useState<SessionNote[]>([]);
   const [currentSessionNotes, setCurrentSessionNotes] = useState<string>("");
-  const lastMachineLoggedAt = React.useRef<number>(Date.now());
-  const pauseStartTime = React.useRef<number | null>(null);
-  const currentSegmentPauseDuration = React.useRef<number>(0);
 
   /**
    * When the trainer arrived at each machine.
@@ -1061,6 +1067,16 @@ export function WorkoutTrackerView({
    */
   const machineStartedAt = React.useRef<Record<string, number>>({});
 
+  /* The per-machine stopwatches that decide whose time it is: they run only
+     while a machine is the current one (src/lib/machine-clock.ts).
+     `machineStartedAt` above is kept as the machine's FIRST arrival, which
+     is what the log persists and the Not-reached derivation reads. */
+  const machineClocks = React.useRef<MachineClocks>(createMachineClocks());
+  const gridFocusMachineIdRef = React.useRef<string | null>(null);
+  useEffect(() => {
+    machineClocks.current = createMachineClocks();
+  }, [currentSession?.id]);
+
   /** Mark a machine as being worked, unless it already is. */
   const markMachineStarted = React.useCallback((machineId: string) => {
     if (!machineId) return;
@@ -1069,24 +1085,9 @@ export function WorkoutTrackerView({
     }
   }, []);
 
-  /* The clock survives a refresh: updateLogMultiple copies the start onto
-     the machine's log the first time anything is written for it, and this
-     mirror lets startedAtFor read it back without a stale closure. */
+  /* Mirror of `logs` for the write path, kept in sync below. */
   const logsRef = React.useRef<Record<string, ExerciseLog>>({});
 
-  /** When this machine's set began. Falls back to the start persisted on
-   *  the log (after a refresh), then to the shared clock for a machine
-   *  completed without ever being focused or touched. */
-  const startedAtFor = React.useCallback((machineId: string) => {
-    const inMemory = machineStartedAt.current[machineId];
-    if (inMemory !== undefined) return inMemory;
-    const sid = currentSessionIdRef.current;
-    const persisted = sid
-      ? toEpochMs(logsRef.current[logDocId(sid, machineId)]?.machineStartedAt) ??
-        toEpochMs(logsRef.current[logDocId(sid, machineId, "Left")]?.machineStartedAt)
-      : null;
-    return persisted ?? lastMachineLoggedAt.current;
-  }, []);
   const [isEditingRoutine, setIsEditingRoutine] = useState(false);
   const [showRoutinePicker, setShowRoutinePicker] = useState(false);
   // Which machine the unified sheet is open on. One piece of state, because
@@ -1250,161 +1251,46 @@ export function WorkoutTrackerView({
     }
   }, []);
 
+  /* When a machine's set is complete (weight, a count, a quality) and it
+     has no time yet, write its time. The seconds come from the machine's
+     own clock — the time it was the current machine, session pauses
+     excluded (src/lib/machine-clock.ts) — never from "everything since
+     the last machine". The trainer's stopwatch seconds still win for time
+     under load. */
   useEffect(() => {
     if (!currentSession) return;
-    let didUpdate = false;
+    const sid = currentSession.id;
+    const now = Date.now();
 
-    // Check all logs for the current session to see if any are "completed" but lack timeSpent
+    const close = (mId: string, log: ExerciseLog | undefined, side?: "Left" | "Right") => {
+      if (!(log?.weight && (log?.reps || log?.seconds) && log?.repQuality && !log?.timeSpent)) return;
+      const manualSeconds = log.seconds ? parseFloat(log.seconds) : 0;
+      const isStatic = !!(
+        log.isStaticHold ||
+        log.isTSC ||
+        (log.seconds && (!log.reps || parseInt(log.reps) === 0))
+      );
+      const reps = parseInt(log.reps || "0");
+      const fields = machineTimeFields({
+        onMachineSeconds: secondsOn(machineClocks.current, mId, now),
+        manualSeconds: Number.isFinite(manualSeconds) ? manualSeconds : 0,
+        reps: Number.isFinite(reps) ? reps : 0,
+        isStatic,
+        now,
+      });
+      updateLogMultiple(sid, mId, fields, side);
+      resetMachine(machineClocks.current, mId, now);
+      delete machineStartedAt.current[mId];
+    };
+
     activeMachineIds.forEach((mId) => {
-      const isTorso = mId === "torso_rotation"; // Using specific id match based on earlier logic
-      if (isTorso) {
-        const logL = logs[`${currentSession.id}_${mId}_Left`];
-        const logR = logs[`${currentSession.id}_${mId}_Right`];
-
-        if (
-          logL?.weight &&
-          (logL?.reps || logL?.seconds) &&
-          logL?.repQuality &&
-          !logL?.timeSpent
-        ) {
-          const manualSeconds = logL?.seconds ? parseFloat(logL.seconds) : 0;
-          const rawTimeDiff = Math.floor(
-            (Date.now() - startedAtFor(mId)) / 1000,
-          );
-          const computedTimeDiff = Math.max(
-            0,
-            Math.floor(
-              (Date.now() -
-                startedAtFor(mId) -
-                currentSegmentPauseDuration.current) /
-                1000,
-            ),
-          );
-          const timeDiff = manualSeconds > 0 ? manualSeconds : computedTimeDiff;
-          const isStatic =
-            logL.isStaticHold ||
-            logL.isTSC ||
-            (logL.seconds && (!logL.reps || parseInt(logL.reps) === 0));
-          const reps = parseInt(logL.reps || "0");
-          const avgTime =
-            !isStatic && reps > 0
-              ? parseFloat((timeDiff / reps).toFixed(1))
-              : undefined;
-
-          updateLogMultiple(
-            currentSession.id,
-            mId,
-            {
-              timeSpent: rawTimeDiff.toString(),
-              totalTimeUnderLoad: timeDiff,
-              machineDurationSeconds: timeDiff,
-              machineEndedAt: Date.now(),
-              ...(avgTime !== undefined && { averageTimePerRep: avgTime }),
-            },
-            "Left",
-          );
-          delete machineStartedAt.current[mId];
-          lastMachineLoggedAt.current = Date.now();
-          currentSegmentPauseDuration.current = 0;
-          didUpdate = true;
-        }
-        if (
-          logR?.weight &&
-          (logR?.reps || logR?.seconds) &&
-          logR?.repQuality &&
-          !logR?.timeSpent
-        ) {
-          const manualSeconds = logR?.seconds ? parseFloat(logR.seconds) : 0;
-          const rawTimeDiff = Math.floor(
-            (Date.now() - startedAtFor(mId)) / 1000,
-          );
-          const computedTimeDiff = Math.max(
-            0,
-            Math.floor(
-              (Date.now() -
-                startedAtFor(mId) -
-                currentSegmentPauseDuration.current) /
-                1000,
-            ),
-          );
-          const timeDiff = manualSeconds > 0 ? manualSeconds : computedTimeDiff;
-          const isStatic =
-            logR.isStaticHold ||
-            logR.isTSC ||
-            (logR.seconds && (!logR.reps || parseInt(logR.reps) === 0));
-          const reps = parseInt(logR.reps || "0");
-          const avgTime =
-            !isStatic && reps > 0
-              ? parseFloat((timeDiff / reps).toFixed(1))
-              : undefined;
-
-          updateLogMultiple(
-            currentSession.id,
-            mId,
-            {
-              timeSpent: rawTimeDiff.toString(),
-              totalTimeUnderLoad: timeDiff,
-              machineDurationSeconds: timeDiff,
-              machineEndedAt: Date.now(),
-              ...(avgTime !== undefined && { averageTimePerRep: avgTime }),
-            },
-            "Right",
-          );
-          delete machineStartedAt.current[mId];
-          lastMachineLoggedAt.current = Date.now();
-          currentSegmentPauseDuration.current = 0;
-          didUpdate = true;
-        }
+      if (mId === "torso_rotation") {
+        close(mId, logs[`${sid}_${mId}_Left`], "Left");
+        close(mId, logs[`${sid}_${mId}_Right`], "Right");
       } else {
-        const log = logs[`${currentSession.id}_${mId}`];
-        if (
-          log?.weight &&
-          (log?.reps || log?.seconds) &&
-          log?.repQuality &&
-          !log?.timeSpent
-        ) {
-          const manualSeconds = log?.seconds ? parseFloat(log.seconds) : 0;
-          const rawTimeDiff = Math.floor(
-            (Date.now() - startedAtFor(mId)) / 1000,
-          );
-          const computedTimeDiff = Math.max(
-            0,
-            Math.floor(
-              (Date.now() -
-                startedAtFor(mId) -
-                currentSegmentPauseDuration.current) /
-                1000,
-            ),
-          );
-          const timeDiff = manualSeconds > 0 ? manualSeconds : computedTimeDiff;
-          const isStatic =
-            log.isStaticHold ||
-            log.isTSC ||
-            (log.seconds && (!log.reps || parseInt(log.reps) === 0));
-          const reps = parseInt(log.reps || "0");
-          const avgTime =
-            !isStatic && reps > 0
-              ? parseFloat((timeDiff / reps).toFixed(1))
-              : undefined;
-
-          updateLogMultiple(currentSession.id, mId, {
-            timeSpent: rawTimeDiff.toString(),
-            totalTimeUnderLoad: timeDiff,
-            machineDurationSeconds: timeDiff,
-            machineEndedAt: Date.now(),
-            ...(avgTime !== undefined && { averageTimePerRep: avgTime }),
-          });
-          delete machineStartedAt.current[mId];
-          lastMachineLoggedAt.current = Date.now();
-          currentSegmentPauseDuration.current = 0;
-          didUpdate = true;
-        }
+        close(mId, logs[`${sid}_${mId}`]);
       }
     });
-
-    if (didUpdate) {
-      // Optional: Since it auto-advances focus, we could log that time tracked.
-    }
   }, [logs, currentSession, activeMachineIds]);
 
   // Mirror the session's persisted pause state into local state, so per-machine
@@ -1414,19 +1300,10 @@ export function WorkoutTrackerView({
     setIsPaused((prev) => (prev === paused ? prev : paused));
   }, [(currentSession as any)?.pausedAt, currentSession?.id]);
 
+  // A session pause freezes the current machine's clock; resume continues it.
   useEffect(() => {
     if (!currentSession) return;
-    if (isPaused) {
-      if (!pauseStartTime.current) {
-        pauseStartTime.current = Date.now();
-      }
-    } else {
-      if (pauseStartTime.current) {
-        currentSegmentPauseDuration.current +=
-          Date.now() - pauseStartTime.current;
-        pauseStartTime.current = null;
-      }
-    }
+    setPaused(machineClocks.current, isPaused);
   }, [isPaused, currentSession]);
 
   /* Until the tracker round (Sep 2026) this loop also DELETED the session —
@@ -1438,25 +1315,12 @@ export function WorkoutTrackerView({
      heartbeat is older than 60 minutes. Nothing on this screen may delete
      a session except the trainer pressing Discard. */
   useEffect(() => {
-    if (!currentSession || isPaused) return;
-    const interval = setInterval(() => {
-      let extraPause = 0;
-      if (isPaused && pauseStartTime.current) {
-        extraPause = Date.now() - pauseStartTime.current;
-      }
-      setMachineTimeElapsed(
-        Math.max(
-          0,
-          Math.floor(
-            (Date.now() -
-              lastMachineLoggedAt.current -
-              currentSegmentPauseDuration.current -
-              extraPause) /
-              1000,
-          ),
-        ),
-      );
-    }, 1000);
+    if (!currentSession) return;
+    const tick = () =>
+      setMachineTimeElapsed(gridFocusMachineIdRef.current ? secondsOn(machineClocks.current, gridFocusMachineIdRef.current) : 0);
+    tick();
+    if (isPaused) return;
+    const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, [currentSession, isPaused]);
 
@@ -2265,7 +2129,6 @@ export function WorkoutTrackerView({
         startTime: new Date(),
       };
 
-      lastMachineLoggedAt.current = Date.now();
       setCurrentSession(newSession as WorkoutSession);
       setSessions((prev) => [
         newSession as WorkoutSession,
@@ -3030,7 +2893,10 @@ export function WorkoutTrackerView({
      signal about where the trainer is standing, which it was not while focus
      advanced by itself. */
   useEffect(() => {
+    gridFocusMachineIdRef.current = gridFocusMachineId ?? null;
     if (gridFocusMachineId) markMachineStarted(gridFocusMachineId);
+    // The Now bar moved: the previous machine's clock stops, this one's runs.
+    focusMachine(machineClocks.current, gridFocusMachineId ?? null);
   }, [gridFocusMachineId, markMachineStarted]);
 
   /* --- what the Now bar reads. All derived from state that already
@@ -4068,6 +3934,7 @@ export function WorkoutTrackerView({
           onNext={() => gridNextRow && setFocusMachineOverride(gridNextRow.machine.id)}
           level={traineeLevelOf(selectedClient)}
           layout={nowBarSide ? "side" : "bar"}
+          onMachineSeconds={machineTimeElapsed}
         />
       )}
       </div>
@@ -4178,13 +4045,6 @@ export function WorkoutTrackerView({
         )}
       </AnimatePresence>
 
-      {currentSession && activeMachineIds.length > 0 && (
-        <div className="fixed bottom-0 left-2 p-1 pointer-events-none opacity-20 z-110">
-          <span className="text-[11px] text-slate-800 dark:text-slate-200 font-mono tracking-widest">
-            {machineTimeElapsed}s
-          </span>
-        </div>
-      )}
     </motion.div>
   );
 }
