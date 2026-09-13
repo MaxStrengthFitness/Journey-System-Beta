@@ -87,6 +87,18 @@ async function restGet(url: string, idToken: string): Promise<{ status: number; 
   return { status: r.status, body };
 }
 
+/**
+ * "HTTP 403: Missing or insufficient permissions." — the status plus
+ * Firestore's own one-line reason when it gives one. It goes into the
+ * error the caller sees, because "try again in a minute" on its own sent
+ * AJ to the logs to learn which of two reads had failed and why (Sep 13
+ * 2026). Never includes the document, only the status and the message.
+ */
+function describeRestFailure(status: number, body: any): string {
+  const msg = typeof body?.error?.message === "string" ? body.error.message.trim() : "";
+  return msg ? `HTTP ${status}: ${msg}` : `HTTP ${status}`;
+}
+
 function documentsBase(): string {
   const { projectId, databaseId } = firebaseTarget();
   return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/${encodeURIComponent(databaseId)}/documents`;
@@ -111,7 +123,7 @@ async function loadStudioSites(idToken: string): Promise<Record<string, string |
       // A failed read means unknown, never "no studios": keep the last good
       // map if there is one, else fail the call.
       if (studioSites) return studioSites.map;
-      throw new Error(`Could not read the studio list (HTTP ${status}).`);
+      throw new Error(`could not read the studio list (${describeRestFailure(status, body)})`);
     }
     for (const d of body?.documents ?? []) {
       const id = restDocId(d?.name);
@@ -148,7 +160,7 @@ async function loadTrainer(uid: string, idToken: string): Promise<TrainerAccessF
   } else if (status !== 404) {
     // Unknown, not "no profile": ride on the last good answer if we have one.
     if (cached) return cached.trainer;
-    throw new Error(`Could not read your staff profile (HTTP ${status}).`);
+    throw new Error(`could not read your staff profile (${describeRestFailure(status, body)})`);
   }
   profiles.set(uid, {
     trainer,
@@ -228,10 +240,14 @@ export function requireStaff(options: RequireStaffOptions = {}) {
     try {
       access = await loadAccess(decoded.uid, decoded.role, idToken);
     } catch (err: any) {
-      console.error("[auth] could not resolve caller:", err?.message || err);
+      const why = String(err?.message || err || "unknown error");
+      console.error("[auth] could not resolve caller:", why);
+      // The reason rides in the sentence the app shows. It names a read and
+      // a status, never a document or a token, and it is the difference
+      // between a fixable report and "it says try again".
       return res
         .status(503)
-        .json({ error: "Couldn't confirm your account just now. Try again in a minute." });
+        .json({ error: `Couldn't confirm your account just now (${why}). Try again in a minute.` });
     }
 
     // The routes turn these into strings; only plain ids may reach them.
