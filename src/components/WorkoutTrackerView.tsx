@@ -140,6 +140,7 @@ import {
 import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL } from "../lib/set-outcome";
 import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
 import { forgetLiveSession, peekLiveSessionId, rememberLiveSession } from "../lib/live-session";
+import { trackerScreen } from "../lib/tracker-screen";
 import {
   createMachineClocks,
   focusMachine,
@@ -3162,11 +3163,45 @@ export function WorkoutTrackerView({
       }
     : undefined;
 
-  if (!selectedClient && !currentSession) {
+  /* Which of the three screens to draw - the order matters and is a tested
+     rule (lib/tracker-screen.ts). After Finish the sessions stream reports
+     "nothing running" and turns pre-session mode on; checking the briefing
+     first, as this used to, sent the trainer back to the briefing instead
+     of the post-session screen they had just been shown. */
+  const screen = trackerScreen({
+    isPostSessionMode,
+    hasPostSessionSnapshot: !!postSession,
+    isPreSessionMode,
+    hasClient: !!(clientId && selectedClient),
+    hasCurrentSession: !!currentSession,
+  });
+
+  if (screen === "post-session" && postSession) {
+    return (
+      <VictoryHUDScreen
+        client={postSession.client}
+        session={postSession.session}
+        logs={postSession.logs}
+        allLogs={Object.values(logs).filter((l: any) => l.clientId === postSession.client.id) as any}
+        lines={postSession.lines}
+        journey={postSession.journey}
+        schedules={schedules}
+        authTrainer={authTrainer}
+        onFeel={savePostSessionFeel}
+        onLeave={leavePostSession}
+        machines={machines}
+        rightControls={rightControls}
+        trainerDropdown={trainerDropdown}
+        onStudioClick={onStudioClick}
+      />
+    );
+  }
+
+  if (screen === "none") {
     return null; // The app routing will ensure this is never reached by redirecting to ClientDirectoryView instead
   }
 
-  if (clientId && isPreSessionMode && selectedClient && !currentSession) {
+  if (screen === "briefing" && selectedClient) {
     const completedSessionsCount = sessions.filter(
       (s) => s.status === "Completed",
     ).length;
@@ -3258,27 +3293,6 @@ export function WorkoutTrackerView({
           ) as any
         }
         isIntroSession={isIntroSession}
-        rightControls={rightControls}
-        trainerDropdown={trainerDropdown}
-        onStudioClick={onStudioClick}
-      />
-    );
-  }
-
-  if (isPostSessionMode && postSession) {
-    return (
-      <VictoryHUDScreen
-        client={postSession.client}
-        session={postSession.session}
-        logs={postSession.logs}
-        allLogs={Object.values(logs).filter((l: any) => l.clientId === postSession.client.id) as any}
-        lines={postSession.lines}
-        journey={postSession.journey}
-        schedules={schedules}
-        authTrainer={authTrainer}
-        onFeel={savePostSessionFeel}
-        onLeave={leavePostSession}
-        machines={machines}
         rightControls={rightControls}
         trainerDropdown={trainerDropdown}
         onStudioClick={onStudioClick}
