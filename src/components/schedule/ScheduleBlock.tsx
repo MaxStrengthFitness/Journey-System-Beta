@@ -2,7 +2,7 @@ import React from "react";
 import { AlertTriangle, CloudOff, HeartPulse } from "lucide-react";
 import { Client, WorkoutSession } from "../../types";
 import { getClientAlertState } from "../../lib/client-alerts";
-import { hubMarkers, isDefaultService, type HubMarkerKind } from "../../lib/hub-markers";
+import { hubMarkers, isDefaultService, visibleMarkers, type HubMarkerKind } from "../../lib/hub-markers";
 import { safeToDate, getMillis } from "../../lib/utils";
 import { zonedHM } from "../../lib/studio-time";
 import { cn } from "@/lib/utils";
@@ -108,6 +108,10 @@ export function ScheduleBlock({
      session — a consultation, an InBody scan — still shows. */
   const showService = !isDefaultService(serviceName);
   const markers = !isUnavailable && !isCompleted ? hubMarkers({ client, sessionNumber, serviceName }) : [];
+  /* A 30-minute card has one line of chips; the rest fold into "+N". The
+     full list is on the profile (and in the tooltip). */
+  const { shown: shownMarkers, more: moreMarkers } = visibleMarkers(markers);
+  const markerSummary = markers.map((m) => m.label).join(" \u00b7 ");
 
   /**
    * An unlinked block is inert. There is deliberately no manual link or
@@ -175,13 +179,14 @@ export function ScheduleBlock({
           : priorityLabel || undefined
       }
       className={cn(
-        "flex flex-col flex-1 min-h-0 w-full px-1.5 py-1 rounded-md border-l-4 relative overflow-hidden transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500",
+        "flex flex-col flex-1 min-h-0 w-full px-1.5 pt-1 pb-0.5 rounded-md border-l-4 relative overflow-hidden transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500",
         edge,
         surface,
       )}
     >
-      {/* Line 1: client name + flags */}
-      <div className="flex items-start justify-between gap-1 min-w-0">
+      {/* Line 1: client name + flags. `shrink-0`: the name never gives up
+          its line to a lower one. */}
+      <div className="flex items-start justify-between gap-1 min-w-0 shrink-0">
         <span className={cn("truncate text-[13px] font-bold leading-tight", nameTone)}>
           {isUnavailable
             ? "Unavailable"
@@ -228,30 +233,46 @@ export function ScheduleBlock({
         </div>
       </div>
 
-      {/* Line 2: time (studio clock) */}
+      {/* Line 2: time (studio clock). `shrink-0` is the whole fix for "the
+          markers cover the time": the card is exactly as tall as its slot,
+          and `truncate` (overflow: hidden) let this line be the one flex
+          item allowed to shrink to nothing when line 3 needed the room. */}
       {!isUnavailable && timeLabel && (
-        <span className={cn("text-[10px] font-semibold tabular-nums leading-tight truncate", metaTone)}>
+        <span className={cn("block shrink-0 text-[10px] font-semibold tabular-nums leading-tight truncate", metaTone)}>
           {timeLabel}
         </span>
       )}
 
       {/* Line 3: what a trainer should know — markers, or a service that is
-          not the plain training session. */}
+          not the plain training session. One line, small caps, and this is
+          the line that yields (min-h-0 + overflow-hidden) when the card is
+          too short for three. */}
       {!isUnavailable && (markers.length > 0 || showService) && (
-        <span className="flex flex-wrap gap-x-1 gap-y-0.5 pr-6 mt-0.5">
-          {markers.map((m) => (
+        <span
+          className="flex flex-nowrap items-center gap-1 min-h-0 min-w-0 overflow-hidden pr-5 mt-px"
+          title={markerSummary || undefined}
+        >
+          {shownMarkers.map((m) => (
             <span
               key={m.kind}
               className={cn(
-                "inline-flex items-center rounded-[4px] px-1 text-[9px] font-bold uppercase tracking-wide leading-4 whitespace-nowrap",
+                "inline-block min-w-0 truncate rounded-[3px] px-1 text-[8px] font-bold uppercase tracking-wider leading-[13px]",
                 MARKER_TONE[m.kind],
               )}
             >
               {m.label}
             </span>
           ))}
+          {moreMarkers > 0 && (
+            <span
+              aria-label={`${moreMarkers} more: ${markers.slice(shownMarkers.length).map((m) => m.label).join(", ")}`}
+              className="inline-block shrink-0 rounded-[3px] px-1 text-[8px] font-bold tabular-nums leading-[13px] bg-slate-500/15 text-slate-700 dark:text-slate-300"
+            >
+              +{moreMarkers}
+            </span>
+          )}
           {showService && markers.every((m) => m.kind !== "consult") && (
-            <span className={cn("text-[10px] font-medium leading-4 truncate", metaTone)}>{serviceName}</span>
+            <span className={cn("min-w-0 text-[10px] font-medium leading-[13px] truncate", metaTone)}>{serviceName}</span>
           )}
         </span>
       )}

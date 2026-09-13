@@ -117,6 +117,22 @@ export function hubMarkers(params: {
   return out.filter((m) => (seen.has(m.kind) ? false : (seen.add(m.kind), true)));
 }
 
+/** How many marker chips a Hub card shows before folding the rest into "+N". */
+export const HUB_CARD_MAX_MARKERS = 2;
+
+/**
+ * The chips a card has room for, plus how many it folded. A 30-minute card
+ * is one line of chips tall; the markers are ordered by importance, so the
+ * first ones are the ones to keep. "+N" tells the trainer there is more on
+ * the profile without covering the session time.
+ */
+export function visibleMarkers<T>(markers: T[], max: number = HUB_CARD_MAX_MARKERS): { shown: T[]; more: number } {
+  if (markers.length <= max) return { shown: markers, more: 0 };
+  // Folding a single marker into "+1" would hide one chip to show another.
+  const keep = Math.max(1, max - 1);
+  return { shown: markers.slice(0, keep), more: markers.length - keep };
+}
+
 /** True when Mindbody's service name says nothing a trainer needs ("Training Session"). */
 export function isDefaultService(serviceName?: string | null): boolean {
   const s = (serviceName || "").trim().toLowerCase();

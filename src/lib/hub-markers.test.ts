@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daysUntilBirthday, hubMarkers, isDefaultService } from "./hub-markers";
+import { daysUntilBirthday, hubMarkers, isDefaultService, visibleMarkers } from "./hub-markers";
 
 const today = new Date(2026, 8, 13); // Sep 13 2026
 
@@ -51,5 +51,25 @@ describe("isDefaultService", () => {
     expect(isDefaultService("")).toBe(true);
     expect(isDefaultService("Consultation")).toBe(false);
     expect(isDefaultService("InBody Scan")).toBe(false);
+  });
+});
+
+describe("visibleMarkers", () => {
+  const m = (n: number) => Array.from({ length: n }, (_, i) => ({ kind: `k${i}`, label: `M${i}` }));
+
+  it("shows everything when the card has room", () => {
+    expect(visibleMarkers(m(0), 2)).toEqual({ shown: [], more: 0 });
+    expect(visibleMarkers(m(2), 2)).toEqual({ shown: m(2), more: 0 });
+  });
+
+  it("keeps the most important and folds the rest into a count", () => {
+    expect(visibleMarkers(m(3), 2)).toEqual({ shown: m(1), more: 2 });
+    expect(visibleMarkers(m(5), 2)).toEqual({ shown: m(1), more: 4 });
+    expect(visibleMarkers(m(4), 3)).toEqual({ shown: m(2), more: 2 });
+  });
+
+  it("never folds a single chip into a +1 that would take the same room", () => {
+    expect(visibleMarkers(m(2), 1)).toEqual({ shown: m(1), more: 1 });
+    expect(visibleMarkers(m(1), 1)).toEqual({ shown: m(1), more: 0 });
   });
 });
