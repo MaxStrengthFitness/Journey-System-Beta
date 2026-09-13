@@ -1,6 +1,6 @@
 # The tracker round — the Active Session audit, built
 
-**Sep 13, 2026 · fifteen patches on `master` after the gate fix · shipped with `scripts/ship/ship-tracker.ps1`**
+**Sep 13, 2026 · nineteen patches on `master` after the gate fix · shipped with `scripts/ship/ship-tracker.ps1`**
 
 The first screen of the screen-by-screen audit: the Active Session (during-set loop, the trainer's Rank 1 path). AJ filled the audit template on Sep 13; this round is that template answered in code. His three decisions on the way: the Now bar becomes a **right-hand panel in landscape**; the automated time estimate is **fixed and kept, relabeled "time on machine"**; and the Now bar's model is his sentence — *"the weight is always there; every set you enter reps; if you aren't entering reps, that's when it's Practice or Skipped"*.
 
@@ -67,6 +67,24 @@ Patches: 9. **`feat(post-session)`** — the flow, `src/lib/post-session.ts` (9 
 
 Patches: 12. **`feat(hub)`**. 13. **`feat(renewals)`**. 14. **`feat(check-in)`**. 15. **`docs`**.
 
+## Audit sheets 9–11, answered last (patches 16–19)
+
+| Audit verdict | Where it is now |
+| --- | --- |
+| **Directory:** membership, sessions remaining and next session aren't working — they should come from the contract | `src/lib/directory-row.ts` (3 tests) reads the renewal snapshot: "12-Month · paid in full", "38 left" (amber at ≤3, "Auto-renews" monthly), "Sep 16"; honest "No package on file" / "Unknown" otherwise. The hand-edited +/- counter is gone |
+| Loading every client up front may be a red flag for 300-client studios | an empty search renders the 40 most recent and says so; a name search reaches everyone (the Firestore queries were already capped at 30) |
+| The right-side actions can just be removed | gone; the row opens the profile; "Open session" is a header button |
+| **Profile:** "52 of 96" — the 96 must go; show completed and what's left on the contract | the tile shows the count and the renewal line; the meter and the "/ 96" are gone |
+| Next session must be very clear, with how many booked | "N booked" always shown on the tile |
+| Tapping top trainers should list everyone who trained the client | the tile is a button; `tallyRows` (lib/client-rollups.ts) lists every trainer with sessions and share |
+| Tabs don't look like tabs | a tray with the active tab lifted out as a pill |
+| Journey should show all machines; Older in batches of 50 | default filter "All machines"; `SESSION_PAGE = 50` |
+| **Briefing:** cluttered; wanted "here's what you need to know" first, then the routine, then log info and start; old sessions don't belong | one "Before you start · N" block (flags, critical entries, Hub markers, renewal, focuses as lines, or "Nothing flagged — clear to go"), the routine, then "What they told you on the way in" with the arrival note ("On arrival: …" in the journal; "Routine adjusted" only when it was). The scheduled-vs-last pair is gone |
+
+Patches: 16. **`feat(directory)`**. 17. **`feat(profile)`**. 18. **`feat(briefing)`** (`RoutineCompareCard.tsx` deleted). 19. **`docs`**.
+
+Not done, on purpose: extra sessions granted by a leader have no field anywhere (Mindbody comps arrive only as a pricing option named "Session Comp") — needs a decision on where that lives before the tile can show it.
+
 ## Rules the code now follows
 
 - **Nothing on the Active Session deletes a session but Discard.** Abandonment is a *read-side* rule (`isSessionValid`), never a write.
@@ -79,7 +97,7 @@ Patches: 12. **`feat(hub)`**. 13. **`feat(renewals)`**. 14. **`feat(check-in)`**
 
 ## Verification on the mirror
 
-`npx tsc --noEmit` 18 (baseline 18) · `npx vitest run src` 105 files, 2,012 passing · `npx vite build` clean. The session bar and Now bar were rendered in a harness at 768×1024 and 1024×768, light and dark, in the REPS, SEC, Practice, Skipped and Paused states. AJ's own `ship-tracker.ps1 verify` is the run that counts.
+`npx tsc --noEmit` 18 (baseline 18) · `npx vitest run src` 106 files, 2,015 passing · `npx vite build` clean. The session bar and Now bar were rendered in a harness at 768×1024 and 1024×768, light and dark, in the REPS, SEC, Practice, Skipped and Paused states. AJ's own `ship-tracker.ps1 verify` is the run that counts.
 
 ## Still open after this round
 
