@@ -39,7 +39,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 | Install | `npm ci` | `npm install` fails with an `edgesOut` error |
 | Run locally | `npm run dev` | Port 3000 |
 | Typecheck | `npx tsc --noEmit` | Compare the error **count** to master's baseline (20 after the Sep 10 go-live); don't expect zero |
-| Tests | `npx vitest run src` | 1,995 passing after the tracker round (Sep 13); 1,813 after the floor round |
+| Tests | `npx vitest run src` | 2,004 passing after the tracker round (Sep 13); 1,813 after the floor round |
 | Build | `npx vite build` | |
 | Rules tests | `npm run test:rules` | Needs JDK 21. "Port taken" means an old emulator still holds 8080 — stop it first |
 
@@ -80,6 +80,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 - **Set data has four outcomes; only `performed` counts.** Read an outcome through `outcomeOf()` / `isPerformedLog()` in `src/lib/set-outcome.ts`, never off the `outcome` field (older logs don't have it — a count means performed, no count means skipped). Every average, rollup, "last time" and progression figure filters to performed sets; a new reader of `exerciseLogs` does the same. Session start seeds a weight-only log for every planned machine, so a weight alone is not "the trainer worked on this" — `isBegunLog()` is. **Never block a save**: End Session confirms, it does not refuse (docs/ARCHITECTURE.md §1.6, `docs/rounds/2026-09-12-floor-round.md`).
 
 - **Nothing on the Active Session deletes a session except Discard.** A 60-minute "abandoned session" loop used to `deleteSession` with every set in it; it is gone (tracker round, Sep 13). Abandonment is a read-side rule (`isSessionValid`). The bottom tab resumes the trainer's own live session after a crash (`src/lib/live-session.ts`); per-machine time is `src/lib/machine-clock.ts` and runs only while a machine is current — never "since the last one". `docs/rounds/2026-09-13-tracker-round.md`.
+- **The session is saved at End Session, once.** `commitEndSession` is the only caller of `completeWorkoutSession` (its counters are `increment()`s — a second call double-counts). The post-session screen only appends: `clientFeel` by `updateDoc`, the closing note by `createJournalEntry`. There is no Finalize button to bring back.
 - **In a flex column, a card with `overflow: hidden` must be `flex: none`**, or a short container shrinks the card instead of scrolling (this was the machine sheet's "truncation").
 - **Mindbody routes need a sign-in.** Browser code must call them with `authedFetch` (`src/lib/authed-fetch.ts`); a plain `fetch` gets a 401. A new `/api/mindbody/*` route inherits the check. One that should be admin-only goes in `ADMIN_ONLY_MINDBODY_PATHS` in `server.ts` — lowercase, with no trailing slash. The check refuses a `siteId` or `mindbodyClientId` that isn't a plain id.
 - **The web service has no Firestore admin key.** Server code can't read or write Firestore as an admin; `server/auth.ts` reads with the caller's own token over REST — and only single documents, never a collection list: a list is refused when any one document in it is off-limits, which took the schedule sync down on Sep 13. The cron jobs do have the service account.
