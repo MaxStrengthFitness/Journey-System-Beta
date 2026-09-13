@@ -215,7 +215,7 @@ export function CorrelationMatrix({ correlations }: { correlations: Correlation[
   const available = useMemo(() => OUTCOMES.filter((o) => correlations.some((c) => c.outcome === o.key)), [correlations]);
   const [outcome, setOutcome] = useState<OutcomeKey>(available[0]?.key ?? "poorRate");
   const active = available.some((o) => o.key === outcome) ? outcome : available[0]?.key;
-  if (!available.length) return <div className="cr-empty">No session has both a check-in and rated sets yet — the matrix fills in as briefings are completed.</div>;
+  if (!available.length) return <div className="cr-empty">No session has both an assessment and rated sets yet — the matrix fills in as briefings are completed.</div>;
 
   const rows = correlations.filter((c) => c.outcome === active);
   const order = [...SUBJECTIVE_ORDER, ...RHYTHM_ORDER, ...CONTEXT_ORDER];

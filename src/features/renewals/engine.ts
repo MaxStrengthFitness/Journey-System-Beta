@@ -838,12 +838,12 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
   if (snap && Array.isArray(snap.redCategories) && snap.redCategories.length > 0) {
     const names = snap.redCategories.map((k) => CATEGORY_BY_KEY[k]?.title ?? k).join(", ");
     const when = typeof snap.date === "string" && snap.date ? ` (${shortDate(snap.date.slice(0, 10))})` : "";
-    flags.push({ code: "check-in-red", text: `Red on the last 90-day check-in${when}: ${names}.` });
+    flags.push({ code: "check-in-red", text: `Red on the last assessment${when}: ${names}.` });
   }
   if (billingStart && live && daysBetween(billingStart, today) >= CHECK_IN_DUE_DAYS) {
     const lastCheckIn = typeof snap?.date === "string" ? snap.date.slice(0, 10) : null;
     if (!lastCheckIn || lastCheckIn < billingStart) {
-      flags.push({ code: "no-report-this-cycle", text: "No 90-day check-in yet on this package." });
+      flags.push({ code: "no-report-this-cycle", text: "No assessment yet on this package." });
     }
   }
   for (const e of balance.expired) {

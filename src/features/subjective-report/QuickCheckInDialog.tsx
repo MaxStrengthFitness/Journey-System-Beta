@@ -107,7 +107,7 @@ export function QuickCheckInDialog({
       className="fixed inset-0 z-[120] flex flex-col bg-slate-100 dark:bg-slate-950"
       role="dialog"
       aria-modal="true"
-      aria-label="Client check-in"
+      aria-label="Assessment"
     >
       {/* header */}
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-card px-4 py-3 dark:border-slate-800">
@@ -117,14 +117,14 @@ export function QuickCheckInDialog({
           </span>
           <div className="min-w-0">
             <h2 className="truncate text-base font-black uppercase italic tracking-tight text-foreground">
-              Client Check-in · {client.firstName} {client.lastName}
+              Assessment · {client.firstName} {client.lastName}
             </h2>
             <p className="truncate text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               {origin === "pre_session" ? "Before the session" : origin === "post_session" ? "After the session" : "Standalone"}
               {" · "}
               {previous
                 ? `compared with ${fmtDate(previous.date)}${previous.trainerName ? ` by ${previous.trainerName}` : ""}`
-                : "first check-in"}
+                : "first assessment"}
               {" · "}
               {answered}/24 answered
             </p>
@@ -173,8 +173,8 @@ export function QuickCheckInDialog({
       {/* footer */}
       <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-card px-4 py-3 dark:border-slate-800">
         <p className="hidden min-w-0 flex-1 text-[12px] leading-snug text-muted-foreground sm:block">
-          Saves as a check-in on {client.firstName}'s journal. Open it later and press{" "}
-          <b>Build the full report</b> to turn it into the 90-day progress report.
+          Saves to {client.firstName}'s assessment in the journal. Open it later and press{" "}
+          <b>Build the full report</b> to turn it into a progress report.
         </p>
         <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
           <button
@@ -190,7 +190,7 @@ export function QuickCheckInDialog({
             disabled={!canSave || saving}
             className="h-12 flex-1 rounded-2xl bg-[#F06C22] px-6 text-[12px] font-black uppercase tracking-widest text-white shadow-lg shadow-[#F06C22]/20 disabled:opacity-50 sm:flex-none"
           >
-            {saving ? "Saving…" : "Save check-in"}
+            {saving ? "Saving…" : "Save assessment"}
           </button>
         </div>
       </div>

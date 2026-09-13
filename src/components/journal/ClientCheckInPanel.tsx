@@ -112,8 +112,8 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
   }, [query]);
 
   const lastCheckIn = draft.previous
-    ? `Last check-in ${fmtDate(draft.previous.date)}${draft.previous.trainerName ? ` by ${draft.previous.trainerName}` : ""}${draft.previous.enteredBy === "client" ? " (client's own answers)" : ""}`
-    : "No finished check-in on file yet";
+    ? `Last assessment ${fmtDate(draft.previous.date)}${draft.previous.trainerName ? ` by ${draft.previous.trainerName}` : ""}${draft.previous.enteredBy === "client" ? " (client's own answers)" : ""}`
+    : "No assessment on file yet";
 
   const renderBody = (section: CheckInSectionState) => {
     const common = { value: draft.assessment, onChange: draft.update };
@@ -158,7 +158,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
     <section
       id="client-check-in"
       className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/70"
-      aria-label="Client check-in"
+      aria-label="Assessment"
     >
       {/* ---------------------------- header ---------------------------- */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
@@ -167,7 +167,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="font-display text-base font-black uppercase italic tracking-tight text-foreground">
-            Client Check-in
+            Assessment
           </h3>
           <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
             {draft.loading
@@ -212,7 +212,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Find an area — sleep, meals, knee, stress…"
-          aria-label="Find a check-in area"
+          aria-label="Find an assessment area"
           className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-[13px] text-foreground placeholder:text-muted-foreground focus:border-[#F06C22] focus:outline-none dark:border-slate-800 dark:bg-slate-800/50"
         />
         {query.trim() && visibleSections.length === 0 && (
@@ -329,7 +329,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
                   ? `Finish with ${draft.totalSections - draft.doneCount} area${
                       draft.totalSections - draft.doneCount === 1 ? "" : "s"
                     } unanswered?`
-                  : "Finish this check-in?"}
+                  : "Save this assessment?"}
               </span>
               <button
                 type="button"
@@ -352,7 +352,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
                 className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#F06C22] px-4 text-[10px] font-black uppercase tracking-wider text-white transition-colors hover:brightness-105 disabled:opacity-60"
               >
                 {draft.finalizing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                Finish check-in
+                Save assessment
               </button>
             </>
           ) : (
@@ -362,7 +362,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
               onClick={() => setConfirmFinalize(true)}
               className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#F06C22]/40 bg-[#F06C22]/10 px-4 text-[10px] font-black uppercase tracking-wider text-[#F06C22] transition-colors hover:bg-[#F06C22]/20 disabled:opacity-40"
             >
-              <Check className="h-3 w-3" /> Finish check-in
+              <Check className="h-3 w-3" /> Save assessment
             </button>
           )}
         </div>

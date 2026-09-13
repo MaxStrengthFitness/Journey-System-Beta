@@ -148,11 +148,11 @@ describe("options", () => {
 
   it("never suggests one through a rough patch or a Red check-in", () => {
     const v = upgradeVerdict(
-      snap({ flags: [{ code: "check-in-red", text: "Red on the last 90-day check-in: Pain & Mobility." }] }),
+      snap({ flags: [{ code: "check-in-red", text: "Red on the last assessment: Pain & Mobility." }] }),
       DEFAULT_RENEWAL_SETTINGS,
     );
     expect(v.candidate).toBe(false);
-    expect(v.blockers).toContain("Red on the last 90-day check-in: Pain & Mobility.");
+    expect(v.blockers).toContain("Red on the last assessment: Pain & Mobility.");
   });
 
   it("has nothing longer to offer Life Transformed", () => {

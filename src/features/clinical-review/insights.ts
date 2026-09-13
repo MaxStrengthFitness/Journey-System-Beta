@@ -281,7 +281,7 @@ export function coverageInsights(summary: Summary): Insight[] {
       kind: "coverage",
       tone: "info",
       title: `Pre-session check-ins cover ${Math.round(summary.checkInCoverage * 100)}% of sessions`,
-      body: "Sleep, stress, energy and mood correlations need the briefing check-in filled in. Two taps per session is enough.",
+      body: "Sleep, stress, energy and mood correlations need the briefing assessment filled in. Two taps per session is enough.",
       evidence: `${summary.sessions} sessions`,
       score: 0.2,
     });

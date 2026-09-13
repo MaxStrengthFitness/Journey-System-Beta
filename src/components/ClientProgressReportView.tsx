@@ -945,7 +945,7 @@ export function ClientProgressReportView({
                 className="flex w-full items-center justify-between gap-3 text-left"
               >
                 <span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-white">
-                  <HeartPulse className="h-4 w-4 text-[#F06C22]" /> Coach view · Client check-in
+                  <HeartPulse className="h-4 w-4 text-[#F06C22]" /> Coach view · Assessment
                   {(report.subjective.summary?.flags.length ?? 0) > 0 && (
                     <span className="rounded-md bg-rose-500 px-1.5 py-0.5 text-[10px] text-white">
                       {report.subjective.summary!.flags.filter((f) => f.severity === "red").length} red ·{" "}
@@ -982,8 +982,8 @@ export function ClientProgressReportView({
                   <h1 className="text-4xl font-bold uppercase italic tracking-tighter leading-none mb-3 print:text-[#0A2E46]">
                     {report.isCheckInOnly ? (
                       <>
-                        90-Day <br />
-                        <span className="text-[#F06C22]">Check-In</span>
+                        Client <br />
+                        <span className="text-[#F06C22]">Assessment</span>
                       </>
                     ) : (
                       <>
@@ -1371,7 +1371,7 @@ export function ClientProgressReportView({
                 <div className="flex items-center gap-2">
                   <HeartPulse className="w-4 h-4 text-[#F06C22]" />
                   <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
-                    Your 90-Day Check-In
+                    Your Assessment
                   </h3>
                   <div className="h-px bg-[#F06C22]/20 flex-1"></div>
                 </div>
@@ -2242,7 +2242,7 @@ export function ClientProgressReportView({
             <div className="flex items-center gap-3 mb-2">
               <HeartPulse className="w-6 h-6 text-[#0A548B]" />
               <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46] dark:text-white">
-                90-Day Check-In
+                Assessment
               </h2>
             </div>
             <p className="text-sm text-[#68717A] mb-4">

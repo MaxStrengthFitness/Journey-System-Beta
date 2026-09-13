@@ -674,16 +674,15 @@ export function BriefingScreen({
                   What they told you on the way in
                   <span className="br__optional">Optional</span>
                 </h2>
-                {/* The 90-day one - sleep, energy, pain, habits, food - saved
-                    to the journal as a check-in; the full report can be built
-                    from it later. */}
+                {/* The assessment - sleep, energy, pain, habits, food - saved
+                    to the journal; the full report can be built from it
+                    later. */}
                 <button
                   type="button"
                   onClick={() => setShowCheckIn(true)}
                   className="br__link-btn"
                 >
-                  <HeartPulse className="w-3.5 h-3.5" aria-hidden /> 90-day
-                  check-in
+                  <HeartPulse className="w-3.5 h-3.5" aria-hidden /> Assessment
                 </button>
               </div>
 

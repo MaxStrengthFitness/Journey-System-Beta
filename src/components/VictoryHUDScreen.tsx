@@ -397,7 +397,7 @@ export function VictoryHUDScreen({
                 className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 font-display italic text-[12px] uppercase tracking-wider text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
               >
                 <HeartPulse className="w-4 h-4 text-cyan" />
-                {checkInSavedId ? "Check-in saved ✓" : "Quick check-in question"}
+                {checkInSavedId ? "Assessment saved ✓" : "Quick assessment question"}
               </button>
               {/* Always reachable while a package is on file ("there's not
                   really a good way to open it"); loud only when due. */}

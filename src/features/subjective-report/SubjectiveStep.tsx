@@ -120,16 +120,16 @@ export function SubjectiveStep({
         <div className="sr-tile">
           <span className="sr-tile__label">Compared with</span>
           <span className="sr-tile__value" style={{ fontSize: 18 }}>
-            {previous ? fmtDate(previous.date) : "First check-in"}
+            {previous ? fmtDate(previous.date) : "First assessment"}
           </span>
-          <span className="sr-tile__sub">{previous ? "Changes shown per topic" : "No previous check-in on file"}</span>
+          <span className="sr-tile__sub">{previous ? "Changes shown per topic" : "No previous assessment on file"}</span>
         </div>
         <div className="sr-tile">
-          <span className="sr-tile__label">Check-in date</span>
+          <span className="sr-tile__label">Assessment date</span>
           <input
             type="date"
             className="sr-input"
-            aria-label="Check-in date"
+            aria-label="Assessment date"
             value={value.completedAt ?? ""}
             onChange={(e) => patch({ completedAt: e.target.value || null })}
           />
@@ -197,7 +197,7 @@ export function SubjectiveStep({
         ))}
         <div>
           <label className="sr-label" htmlFor="sr-coach-summary">
-            Your summary of the check-in (prints on the client copy)
+            Your summary of the assessment (prints on the client copy)
           </label>
           <textarea
             id="sr-coach-summary"
@@ -706,7 +706,7 @@ export function PainMapCard({
       title="Pain map"
       prompt="Show me where. Is it the joint itself, or the muscle around it?"
       wide
-      help="Tap a body area (and a side) for every spot that bothers them, then rate each one. Link it to the incident or injury note it came from so the session notes and this check-in describe the same event. Last time's spots can be carried forward and re-rated."
+      help="Tap a body area (and a side) for every spot that bothers them, then rate each one. Link it to the incident or injury note it came from so the session notes and this assessment describe the same event. Last time's spots can be carried forward and re-rated."
       right={
         carryable > 0 ? (
           <button type="button" className="sr-btn sr-btn--sm sr-no-print" onClick={carryForward}>
@@ -980,7 +980,7 @@ export function StressCard({
       </div>
 
       {anchors.length === 0 ? (
-        <div className="sr-empty">Nothing recorded. That's fine — not every check-in has one.</div>
+        <div className="sr-empty">Nothing recorded. That's fine — not every assessment has one.</div>
       ) : (
         anchors.map((a) => {
           const set = (patch: Partial<StressAnchor>) =>

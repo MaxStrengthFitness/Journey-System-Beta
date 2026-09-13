@@ -77,10 +77,10 @@ export const REPORT_STEPS: ReportStepDef[] = [
   {
     id: "checkin",
     n: 5,
-    title: "Client check-in",
+    title: "Assessment",
     subtitle: "Sleep, energy, pain, habits, food",
     purpose:
-      "How life is going outside the gym — scored the same way every 90 days so the trend is real. Protein, hydration, specific pain and what's stressing them live here too.",
+      "How life is going outside the gym — the same questions every time so the trend is real. Protein, hydration, specific pain and what's stressing them live here too.",
     howTo:
       "Read each statement and tap the number that fits, using the words under the scale. Then protein, hydration, the pain map and any stressors. Open the coach view any time to see the flags and changes since last time.",
     clientSees:

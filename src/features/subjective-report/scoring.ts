@@ -320,7 +320,7 @@ export function buildFlags(input: {
         code: c.key === "sleepRecovery" ? "sleep_red" : "consistency_red",
         severity: "red",
         label: `${c.title} is Red`,
-        detail: `${c.legacyScore} / ${LEGACY_CATEGORY_MAX} this check-in.`,
+        detail: `${c.legacyScore} / ${LEGACY_CATEGORY_MAX} this assessment.`,
         categoryKey: c.key,
       });
     } else {
@@ -328,7 +328,7 @@ export function buildFlags(input: {
         code: "category_red",
         severity: "watch",
         label: `${c.title} is Red`,
-        detail: `${c.legacyScore} / ${LEGACY_CATEGORY_MAX} this check-in.`,
+        detail: `${c.legacyScore} / ${LEGACY_CATEGORY_MAX} this assessment.`,
         categoryKey: c.key,
       });
     }
@@ -369,7 +369,7 @@ export function buildFlags(input: {
         code: "pain_worsening",
         severity: "watch",
         label: `Pain getting worse: ${t.point.region.replace(/_/g, " ")} (${t.point.side})`,
-        detail: `Up ${t.severityChange} since the last check-in.`,
+        detail: `Up ${t.severityChange} since the last assessment.`,
       });
     }
   }

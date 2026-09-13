@@ -73,7 +73,7 @@ export function journeyLines(client: Client, s: RenewalSnapshot | null, settings
   return lines;
 }
 
-/** Health first: the 90-day check-in, the InBody, the goal. */
+/** Health first: the assessment, the InBody, the goal. */
 export function healthLines(client: Client, s: RenewalSnapshot | null, today: string): string[] {
   const lines: string[] = [];
   const inbody = s?.proof.inbody;
@@ -96,7 +96,7 @@ export function healthLines(client: Client, s: RenewalSnapshot | null, today: st
         }`
       : null;
     lines.push(
-      `90-day check-in, ${dayLabel(snap.date.slice(0, 10), today)}${overall ? `: ${overall}` : ""}`,
+      `Assessment, ${dayLabel(snap.date.slice(0, 10), today)}${overall ? `: ${overall}` : ""}`,
     );
     if (snap.redCategories?.length) {
       lines.push(`Red on: ${snap.redCategories.map((k) => CATEGORY_BY_KEY[k]?.title ?? k).join(", ")}`);

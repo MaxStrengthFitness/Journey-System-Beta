@@ -146,7 +146,7 @@ export function SubjectiveDashboard({
         <div className={`sr-tile${s.largestImprovement ? " sr-tile--green" : ""}`}>
           <span className="sr-tile__label">Largest improvement</span>
           <span className="sr-tile__value" style={{ fontSize: 17 }}>
-            {s.largestImprovement ? s.largestImprovement.title : previous ? "No topic improved" : "First check-in"}
+            {s.largestImprovement ? s.largestImprovement.title : previous ? "No topic improved" : "First assessment"}
           </span>
           {s.largestImprovement && (
             <span className="sr-tile__sub">
@@ -209,7 +209,7 @@ export function SubjectiveDashboard({
         <div className="sr-card">
           <div className="sr-card__head">
             <h3 className="sr-card__title">Overall score over time</h3>
-            <span className="sr-hint">{trend.length} check-ins</span>
+            <span className="sr-hint">{trend.length} assessments</span>
           </div>
           <Sparkline points={trend} />
         </div>
@@ -568,7 +568,7 @@ export function SubjectiveClientCopy({
       )}
 
       {!copy.includeCategoryScores && !copy.includeProteinHydration && !copy.includePainMap && !assessment.coachSummary && (
-        <div className="sr-empty">{clientFirstName}'s check-in is on file for the coaching team.</div>
+        <div className="sr-empty">{clientFirstName}'s assessment is on file for the coaching team.</div>
       )}
     </div>
   );

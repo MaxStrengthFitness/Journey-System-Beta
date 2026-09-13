@@ -425,11 +425,11 @@ export function ClientJournalTab({
         />
       </JournalArea>
 
-      {/* ----------------------- 2 · CLIENT CHECK-IN --------------------- */}
+      {/* ----------------------- 2 · ASSESSMENT -------------------------- */}
       <JournalArea
         id="check-in"
-        title="Client Check-in"
-        blurb="Filled in a piece at a time and saved as you go. Open one topic, answer it, come back next session."
+        title="Assessment"
+        blurb="A living record, filled in a piece at a time and saved as you go. Open one topic, answer it, come back next session."
       >
         <ClientCheckInPanel client={client} trainer={authTrainer ?? null} machines={machines} />
       </JournalArea>
@@ -589,7 +589,7 @@ export function ClientJournalTab({
 
 const JOURNAL_AREAS = [
   { id: "progress-reports", label: "Reports" },
-  { id: "check-in", label: "Check-in" },
+  { id: "check-in", label: "Assessment" },
   { id: "focus", label: "Focus" },
   { id: "notes", label: "Notes" },
 ] as const;

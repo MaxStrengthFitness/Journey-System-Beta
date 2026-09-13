@@ -3419,7 +3419,7 @@ export function WorkoutTrackerView({
             <MessageSquare size={15} strokeWidth={2.5} className="fill-current" />
             <span>Notes</span>
           </button>
-          {/* The check-in (one name for it, everywhere), reachable without
+          {/* The assessment (one name for it, everywhere), reachable without
               ending the session. A trainer has about ninety seconds while a
               client works the lumbar machine, and what they want to do with
               it is record the one thing the client just said. */}
@@ -3427,11 +3427,11 @@ export function WorkoutTrackerView({
             type="button"
             className="jg-sbar__btn"
             onClick={() => setIsShowingAssessment(true)}
-            aria-label="Open the check-in"
-            title="Add to the check-in without leaving the session"
+            aria-label="Open the assessment"
+            title="Add to the assessment without leaving the session"
           >
             <HeartPulse size={15} strokeWidth={2.5} />
-            <span>Check-in</span>
+            <span>Assessment</span>
           </button>
           {/* Past the divider: the two buttons that END the session. Discard
               is a trash icon because it is pressed once a month; Finish is
@@ -4100,7 +4100,7 @@ export function WorkoutTrackerView({
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="relative flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-slate-50 shadow-2xl dark:border-slate-800 dark:bg-slate-950"
               role="dialog"
-              aria-label="90-day assessment"
+              aria-label="Assessment"
             >
               <div className="flex shrink-0 items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
                 <div className="flex flex-col">

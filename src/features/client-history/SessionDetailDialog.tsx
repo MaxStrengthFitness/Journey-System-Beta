@@ -469,7 +469,7 @@ export function SessionDetailDialog({
                   </section>
 
                   <section className="hsd-panel">
-                    <h4 className="hsd-panel__title">Check-in &amp; feel</h4>
+                    <h4 className="hsd-panel__title">Assessment &amp; feel</h4>
                     {checkIn || feel ? (
                       <dl className="hsd-facts">
                         {checkIn?.sleepQuality && <Fact label="Sleep" value={checkIn.sleepQuality} />}
