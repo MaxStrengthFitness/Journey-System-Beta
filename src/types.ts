@@ -4,6 +4,7 @@
 import type { RenewalSnapshot } from "./features/renewals/types";
 import type { InBodySummary } from "./features/inbody/types";
 import type { StoredLearningRef } from "./features/learning/ref";
+import type { SetOutcome, SkipReason } from "./lib/set-outcome";
 import type {
   ClientSubjectiveSnapshot,
   SubjectiveAssessment,
@@ -1001,6 +1002,15 @@ export interface WorkoutSession {
   /** Milliseconds accumulated across completed pauses. */
   totalPausedMs?: number;
   /**
+   * The Mindbody booking this session was for, when one matched at Finish
+   * (lib/session-timing.ts), and how many whole minutes the session started
+   * after it (negative = early). Written so a leader can read why a machine
+   * was not reached without the trainer being asked. Absent when no booking
+   * matched — a guessed lateness is worse than none.
+   */
+  bookingStartTime?: any;
+  startedLateByMinutes?: number;
+  /**
    * The machine sequence ACTUALLY PERFORMED in this session, in order.
    *
    * The routine document is a template: what the client is prescribed. This is
@@ -1066,10 +1076,27 @@ export interface ExerciseLog {
   totalTimeUnderLoad?: number;
   averageTimePerRep?: number;
   machineStartedAt?: any;
+  /** When the trainer moved on from the machine (Finish, or focus leaving). Pairs with machineStartedAt. */
+  machineEndedAt?: any;
   machineDurationSeconds?: number;
   side?: "Left" | "Right";
   notes?: string;
   machineSettings?: Record<string, string>; // Settings used for this specific set
+  /**
+   * SET OUTCOME (Sep 2026). One of four states, decided once in
+   * lib/set-outcome.ts: performed | practice | skipped | not_reached. Only
+   * `performed` counts toward averages, progression, rollups and rep-quality
+   * tallies. Absent on logs written before the field existed — read it through
+   * `outcomeOf()`, never directly, so the legacy rule (a count means performed,
+   * no count means skipped: unknown) is applied everywhere the same way.
+   */
+  outcome?: SetOutcome;
+  /** Why the machine was skipped. Only meaningful when outcome is "skipped". */
+  skipReason?: SkipReason;
+  /** Free text behind a skip — "Left knee, tender since Tuesday". */
+  skipNote?: string;
+  /** A practice set done for a specific body area — the pain-map link. */
+  practiceRegion?: string;
   createdAt?: any;
   updatedAt?: any;
   rpe?: RPE;
