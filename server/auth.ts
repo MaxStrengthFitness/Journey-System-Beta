@@ -12,13 +12,15 @@
  * file keeps it that way:
  *   - the sign-in token is verified with Google's public keys, which needs
  *     only the project id;
- *   - the caller's own trainer document, and the studio list, are read through
- *     the Firestore REST API USING THE CALLER'S OWN TOKEN, so those reads are
- *     subject to the same security rules as the app (both are readable by any
- *     signed-in user today).
+ *   - the caller's own trainer document, and each studio it names, are read
+ *     through the Firestore REST API USING THE CALLER'S OWN TOKEN, so those
+ *     reads are subject to the same security rules as the app. Only single
+ *     documents are read, never a whole collection: a list is refused when
+ *     any one document in it is off-limits (that took the schedule sync down
+ *     on Sep 13 2026), a get is judged on its own.
  *
- * Reads are cached: a caller's profile for 5 minutes, the studio → site map
- * for 10, so a busy iPad costs a handful of reads an hour, not one per call.
+ * Reads are cached: a caller's profile for 5 minutes, a studio's site for
+ * 10, so a busy iPad costs a handful of reads an hour, not one per call.
  */
 
 import type { NextFunction, Request, Response } from "express";
@@ -105,37 +107,54 @@ function documentsBase(): string {
 }
 
 /* ------------------------------------------------------------------ *
- * Studio → Mindbody site, shared by every caller
+ * Studio → Mindbody site, one studio at a time
  * ------------------------------------------------------------------ */
 
-let studioSites: { map: Record<string, string | null>; expiresAt: number } | null = null;
+/**
+ * Studio id → Mindbody site id (null when the studio has none), cached.
+ *
+ * Sep 13 2026: this used to LIST the whole studios collection in one
+ * request. The live rules refused that list (HTTP 403) while the same
+ * token could GET the caller's own studios, and every schedule sync died
+ * with "could not read the studio list". A list is refused if ANY
+ * document it would return is off-limits, so it can never be the way a
+ * public-facing server learns about the two or three studios a trainer
+ * works at. Now each studio named on the caller's trainer document is
+ * fetched on its own, and roles that reach every site read nothing.
+ */
+const studioSiteCache = new Map<string, { site: string | null; expiresAt: number }>();
 
-async function loadStudioSites(idToken: string): Promise<Record<string, string | null>> {
-  if (studioSites && studioSites.expiresAt > Date.now()) return studioSites.map;
-  const map: Record<string, string | null> = {};
-  let pageToken = "";
-  for (let page = 0; page < 10; page++) {
-    const url =
-      `${documentsBase()}/studios?pageSize=300&mask.fieldPaths=mindbodySiteId` +
-      (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : "");
-    const { status, body } = await restGet(url, idToken);
-    if (status !== 200) {
-      // A failed read means unknown, never "no studios": keep the last good
-      // map if there is one, else fail the call.
-      if (studioSites) return studioSites.map;
-      throw new Error(`could not read the studio list (${describeRestFailure(status, body)})`);
-    }
-    for (const d of body?.documents ?? []) {
-      const id = restDocId(d?.name);
-      if (!id) continue;
-      const site = decodeRestFields(d?.fields).mindbodySiteId;
-      map[id] =
-        typeof site === "string" || typeof site === "number" ? String(site).trim() || null : null;
-    }
-    pageToken = typeof body?.nextPageToken === "string" ? body.nextPageToken : "";
-    if (!pageToken) break;
+async function studioSiteOf(studioId: string, idToken: string): Promise<string | null> {
+  const cached = studioSiteCache.get(studioId);
+  if (cached && cached.expiresAt > Date.now()) return cached.site;
+  if (!/^[A-Za-z0-9_-]{1,120}$/.test(studioId)) return null;
+
+  const { status, body } = await restGet(
+    `${documentsBase()}/studios/${encodeURIComponent(studioId)}?mask.fieldPaths=mindbodySiteId`,
+    idToken,
+  );
+  let site: string | null = null;
+  if (status === 200) {
+    const raw = decodeRestFields(body?.fields).mindbodySiteId;
+    site =
+      typeof raw === "string" || typeof raw === "number" ? String(raw).trim() || null : null;
+  } else if (status !== 404) {
+    // Unknown, never "no site": ride on the last good answer if there is
+    // one, else say which read failed and why.
+    if (cached) return cached.site;
+    throw new Error(`could not read one of your studios (${describeRestFailure(status, body)})`);
   }
-  studioSites = { map, expiresAt: Date.now() + STUDIOS_TTL_MS };
+  studioSiteCache.set(studioId, { site, expiresAt: Date.now() + STUDIOS_TTL_MS });
+  return site;
+}
+
+/** The site map for exactly the studios the caller's profile names. */
+async function loadCallerStudioSites(
+  studioIds: string[],
+  idToken: string,
+): Promise<Record<string, string | null>> {
+  const map: Record<string, string | null> = {};
+  for (const id of studioIds) map[id] = await studioSiteOf(id, idToken);
   return map;
 }
 
@@ -171,7 +190,12 @@ async function loadTrainer(uid: string, idToken: string): Promise<TrainerAccessF
 
 async function loadAccess(uid: string, claimRole: unknown, idToken: string): Promise<StaffAccess | null> {
   const trainer = await loadTrainer(uid, idToken);
-  const siteIdByStudio = trainer ? await loadStudioSites(idToken) : {};
+  if (!trainer) return null;
+  // First pass with no site map: it settles the role and the studio list.
+  // A role that reaches every site never needs a studio read at all.
+  const shape = resolveStaffAccess({ uid, claimRole, trainer, siteIdByStudio: {} });
+  if (!shape || shape.allSites) return shape;
+  const siteIdByStudio = await loadCallerStudioSites(shape.studioIds, idToken);
   return resolveStaffAccess({ uid, claimRole, trainer, siteIdByStudio });
 }
 
@@ -193,8 +217,7 @@ async function readableClientSite(mindbodyClientId: string, idToken: string): Pr
   if (status !== 200) return null;
   const home = decodeRestFields(body?.fields).homeStudioId;
   if (typeof home !== "string" || !home) return null;
-  const sites = await loadStudioSites(idToken);
-  return sites[home] ?? null;
+  return studioSiteOf(home, idToken);
 }
 
 /** A plain id — a string or a number — or absent. Anything else is refused. */
