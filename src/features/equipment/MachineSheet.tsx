@@ -42,10 +42,11 @@ import type { JournalContext, MutationAuthor } from "./mutations";
  *      workflow — but "why did someone move this last month" is answerable
  *      without leaving the session, which it was not before.
  *
- * It is a BOTTOM SHEET, not a centred dialog, and that is a physical
- * argument rather than a stylistic one: this app is used on a large iPad
- * held in two hands on a gym floor. The bottom third of that screen is
- * where thumbs already are; the middle is where they are not.
+ * It was a BOTTOM SHEET on a thumbs-first argument (a large iPad held in
+ * two hands). AJ tried it on the floor (fix round, Sep 2026) and saw a
+ * pop-up pushed to the bottom of the screen; it is now a CENTRED dialog in
+ * both orientations, scrolling inside when the content is taller than the
+ * screen. The name stuck.
  *
  * Every write goes through `features/equipment/mutations.ts` — the same
  * functions the Equipment tab calls. That is what makes the promise in the
@@ -144,17 +145,18 @@ export function MachineSheet({
         }
       }}
     >
-      {/* Overrides the centred-dialog geometry into a bottom sheet. Capped
-          at 88dvh so the sheet never becomes the whole screen — seeing a
-          sliver of the grid behind it is what tells a trainer the session
-          is still running underneath. */}
+      {/* Centred in the viewport (fix round, Sep 2026). It was a bottom
+          sheet - `top-auto bottom-0 translate-y-0` on top of the dialog's
+          centred geometry - and on the iPad that read as "pushed to the
+          bottom of the screen". The dialog's own top-1/2 / left-1/2 /
+          -translate-1/2 now does the centring in both orientations. Capped
+          at 88dvh so the grid always shows around it, and the body scrolls
+          when the content is taller than that. */}
       <DialogContent
         showCloseButton={false}
-        className="top-auto bottom-0 left-1/2 translate-y-0 max-w-none sm:max-w-[680px] w-full max-h-[88dvh] rounded-b-none rounded-t-[22px] p-0 border-0 bg-transparent shadow-none"
+        className="max-w-none sm:max-w-[680px] w-[calc(100%-2rem)] max-h-[88dvh] rounded-[22px] p-0 border-0 bg-transparent shadow-none"
       >
         <div className="eq eq-sheet">
-          <div className="eq-sheet__grab" aria-hidden="true" />
-
           <header className="eq-sheet__head">
             <div className="eq-sheet__id">
               <h2 className="eq-sheet__name">{equipment.name}</h2>

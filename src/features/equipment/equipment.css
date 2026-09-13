@@ -928,16 +928,16 @@
 }
 
 /* ---------- The machine sheet (in-session) ---------------------------- *
-   One sheet replacing two modals. Bottom-anchored on purpose: this runs on
-   a large iPad held in two hands on a gym floor, and the bottom third of
-   that screen is where thumbs already are. A centred dialog puts every
-   control in the one band a two-handed grip cannot reach without
-   re-gripping — which, with a client sitting on the machine, is the moment
-   a trainer gives up and does it later.
+   One sheet replacing two modals. It began life bottom-anchored (thumbs
+   on a two-handed iPad); AJ's verdict on the floor (fix round, Sep 2026)
+   was that it looked pushed to the bottom of the screen, so it is now a
+   centred dialog in both orientations - the Dialog primitive's own
+   top-1/2 / left-1/2 / translate(-50%, -50%) places it, and this block
+   only shapes it.
 
-   Capped at 88dvh so a sliver of the grid always shows behind it. That
-   sliver is doing real work: it is what tells a trainer the session is
-   still running and the timer is still counting.                          */
+   Capped at 88dvh so the grid always shows around it. That margin is doing
+   real work: it is what tells a trainer the session is still running and
+   the timer is still counting. Taller content scrolls inside the body.  */
 
 .eq-sheet {
   display: flex;
@@ -946,23 +946,9 @@
   max-height: 88dvh;
   background: var(--eq-bg);
   border: 1px solid var(--eq-border);
-  border-bottom: 0;
-  border-radius: 22px 22px 0 0;
-  box-shadow: 0 -18px 40px -20px var(--eq-shadow);
+  border-radius: 22px;
+  box-shadow: 0 24px 48px -24px var(--eq-shadow);
   overflow: hidden;
-}
-
-/* Not decoration — the grab bar is what says "this came up from the bottom
-   and goes back down", which is the whole reason a sheet reads as
-   interruptible and a dialog reads as blocking. */
-.eq-sheet__grab {
-  flex: none;
-  width: 40px;
-  height: 4px;
-  margin: 8px auto 2px;
-  border-radius: 999px;
-  background: var(--eq-border-strong);
-  opacity: 0.7;
 }
 
 .eq-sheet__head {
@@ -970,7 +956,7 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 6px 16px 12px;
+  padding: 14px 16px 12px;
   border-bottom: 1px solid var(--eq-border);
   background: var(--eq-surface);
 }
@@ -1018,7 +1004,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 12px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+  padding: 12px 12px 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
