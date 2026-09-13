@@ -1090,9 +1090,9 @@ export interface ExerciseLog {
    * `outcomeOf()`, never directly, so the legacy rule (a count means performed,
    * no count means skipped: unknown) is applied everywhere the same way.
    */
-  outcome?: SetOutcome;
+  outcome?: SetOutcome | null;
   /** Why the machine was skipped. Only meaningful when outcome is "skipped". */
-  skipReason?: SkipReason;
+  skipReason?: SkipReason | null;
   /** Free text behind a skip — "Left knee, tender since Tuesday". */
   skipNote?: string;
   /** A practice set done for a specific body area — the pain-map link. */

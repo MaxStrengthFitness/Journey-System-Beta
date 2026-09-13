@@ -100,6 +100,8 @@ export interface LiveSet {
    */
   outcome?: SetOutcome | null;
   skipReason?: SkipReason | null;
+  /** "Left knee, tender since Tuesday" — the body area behind a pain skip. */
+  skipNote?: string | null;
   /** Right side, only for machines with `sides` (the fields above are then the Left side). */
   repsR?: number | null;
   secondsR?: number | null;

@@ -103,6 +103,11 @@ export interface OutcomeLog {
   outcomeTut?: string | number | null;
   isTSC?: boolean | null;
   isStaticHold?: boolean | null;
+  /** The signs a trainer worked on the set — see isBegunLog. */
+  repQuality?: number | null;
+  machineStartedAt?: unknown;
+  machineEndedAt?: unknown;
+  machineDurationSeconds?: number | null;
 }
 
 const isOutcome = (v: unknown): v is SetOutcome =>
@@ -149,6 +154,24 @@ export function isPerformedLog(log: OutcomeLog | null | undefined): boolean {
   return outcomeOf(log) === "performed";
 }
 
+/**
+ * Did the trainer work on this set at all? Session start seeds a log for
+ * every planned machine carrying only the prescribed weight (so the Today
+ * column can show it), so a weight alone proves nothing. What does: an
+ * effort, an explicit outcome, a quality mark, or the per-machine clock the
+ * tracker writes the first time anything is entered for the machine.
+ */
+export function isBegunLog(log: OutcomeLog | null | undefined): boolean {
+  if (!log) return false;
+  if (isOutcome(log.outcome) || hasEffort(log)) return true;
+  return (
+    Boolean(log.repQuality) ||
+    (log.machineStartedAt !== undefined && log.machineStartedAt !== null) ||
+    (log.machineEndedAt !== undefined && log.machineEndedAt !== null) ||
+    hasCount(log.machineDurationSeconds)
+  );
+}
+
 /** The performed sets of a list, in the order given. */
 export function performedOnly<T extends OutcomeLog>(logs: readonly T[] | null | undefined): T[] {
   if (!logs) return [];
@@ -166,9 +189,11 @@ export function isRecordedOnly(log: OutcomeLog | null | undefined): boolean {
 
 /**
  * What Finish Session stamps on a log that carries no explicit outcome, so
- * nothing leaves the session ambiguous: an effort is performed; a set begun
- * without a count is skipped, reason unknown — unless the trainer answered
- * the End Session question and chose practice, which the caller passes in.
+ * nothing leaves the session ambiguous: an effort is performed; the
+ * untouched placeholder session start seeded for a machine the session
+ * never got to is not reached (derived, never asked); a set begun without
+ * a count is skipped, reason unknown — unless the trainer answered the End
+ * Session question and chose practice, which the caller passes in.
  */
 export function outcomeAtFinish(
   log: OutcomeLog | null | undefined,
@@ -178,14 +203,17 @@ export function outcomeAtFinish(
     return log.outcome === "skipped" ? { outcome: "skipped", skipReason: skipReasonOf(log) ?? "unknown" } : { outcome: log.outcome };
   }
   if (hasEffort(log)) return { outcome: "performed" };
+  if (!isBegunLog(log)) return { outcome: "not_reached" };
   if (chosen === "practice") return { outcome: "practice" };
   return { outcome: "skipped", skipReason: "unknown" };
 }
 
 /**
  * The machines in today's sequence that have no log at all — the ones Finish
- * Session records as not reached. Sided machines (Torso Rotation) log per
- * side, so any log for the machine, either side, means it was reached.
+ * Session has to create a not-reached record for (a machine WITH an untouched
+ * placeholder log is stamped not reached by outcomeAtFinish instead). Sided
+ * machines (Torso Rotation) log per side, so any log for the machine, either
+ * side, means it has a record.
  */
 export function unreachedMachineIds(
   plannedMachineIds: readonly string[],

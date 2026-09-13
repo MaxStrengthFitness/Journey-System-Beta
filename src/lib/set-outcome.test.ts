@@ -5,6 +5,7 @@ import {
   SKIP_REASONS,
   hasEffort,
   importedOutcome,
+  isBegunLog,
   isPerformedLog,
   isRecordedOnly,
   outcomeAtFinish,
@@ -125,13 +126,34 @@ describe("outcomeAtFinish — nothing leaves a session ambiguous", () => {
     expect(outcomeAtFinish({ outcome: "skipped" })).toEqual({ outcome: "skipped", skipReason: "unknown" });
   });
 
-  it("an effort is performed; a count-less set is skipped unless the trainer said practice", () => {
+  it("an effort is performed; a begun, count-less set is skipped unless the trainer said practice", () => {
+    const begun = { weight: "100", machineStartedAt: 1_700_000_000_000 } as any;
     expect(outcomeAtFinish({ reps: "9" })).toEqual({ outcome: "performed" });
-    expect(outcomeAtFinish({ weight: "100" } as any)).toEqual({ outcome: "skipped", skipReason: "unknown" });
-    expect(outcomeAtFinish({ weight: "100" } as any, "practice")).toEqual({ outcome: "practice" });
-    expect(outcomeAtFinish({ weight: "100" } as any, "skipped")).toEqual({ outcome: "skipped", skipReason: "unknown" });
+    expect(outcomeAtFinish(begun)).toEqual({ outcome: "skipped", skipReason: "unknown" });
+    expect(outcomeAtFinish(begun, "practice")).toEqual({ outcome: "practice" });
+    expect(outcomeAtFinish(begun, "skipped")).toEqual({ outcome: "skipped", skipReason: "unknown" });
     // The trainer's answer never overrides a real effort.
     expect(outcomeAtFinish({ reps: "9" }, "practice")).toEqual({ outcome: "performed" });
+  });
+
+  it("the untouched placeholder session start seeds is not reached — derived, never asked", () => {
+    // Weight only, no clock, no quality: the machine was never got to.
+    expect(outcomeAtFinish({ weight: "100" } as any)).toEqual({ outcome: "not_reached" });
+    expect(outcomeAtFinish({ weight: "100" } as any, "practice")).toEqual({ outcome: "not_reached" });
+    expect(outcomeAtFinish(null)).toEqual({ outcome: "not_reached" });
+  });
+});
+
+describe("isBegunLog — a weight alone proves nothing", () => {
+  it("reads the signs of work: an effort, an outcome, a quality mark, the clock", () => {
+    expect(isBegunLog({ weight: "100" } as any)).toBe(false);
+    expect(isBegunLog(null)).toBe(false);
+    expect(isBegunLog({ reps: "8" })).toBe(true);
+    expect(isBegunLog({ outcome: "skipped" })).toBe(true);
+    expect(isBegunLog({ repQuality: 2 })).toBe(true);
+    expect(isBegunLog({ machineStartedAt: 1 })).toBe(true);
+    expect(isBegunLog({ machineEndedAt: { seconds: 5 } })).toBe(true);
+    expect(isBegunLog({ machineDurationSeconds: 40 })).toBe(true);
   });
 });
 

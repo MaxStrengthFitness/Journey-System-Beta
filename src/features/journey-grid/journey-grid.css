@@ -1317,6 +1317,71 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
    will read back in the grid tomorrow. */
 .jg-nb__qbtn[data-q="3"].is-on { background: var(--jg-q-max-fill); border-color: var(--jg-q-max-edge); color: var(--jg-q-star); }
 
+/* outcome — what the set was when it was not a set (src/lib/set-outcome.ts).
+   Same 44px height as everything else on the line. Practice "on" borrows the
+   dashed frame the grid draws for a practice cell; Skipped "on" is plain
+   muted ink, deliberately unlike either quality colour. */
+.jg-nb__outcome { display: flex; gap: 3px; flex: none; }
+.jg-nb__obtn {
+  appearance: none;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+  color: var(--jg-ink-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-nb__obtn.is-on { border-style: dashed; color: var(--jg-ink); background: var(--jg-surface-2); }
+.jg-nb__obtn--skip.is-on { border-style: solid; border-color: var(--jg-ink-muted); }
+
+/* the skip strip — takes the controls line over while a reason is picked */
+.jg-nb__controls--skip { align-items: stretch; }
+.jg-nb__skip { display: flex; flex-direction: column; gap: 6px; width: 100%; min-height: 44px; justify-content: center; }
+.jg-nb__skiplbl { font-size: 12px; font-weight: 600; color: var(--jg-ink-muted); }
+.jg-nb__skiplbl b { color: var(--jg-ink); font-weight: 750; }
+.jg-nb__reasons { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.jg-nb__reason {
+  appearance: none;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+  color: var(--jg-ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+/* Pain is the one reason that is also a clinical event; it gets the brand
+   edge, not a quality colour. */
+.jg-nb__reason--pain { border-color: var(--jg-hero); color: var(--jg-hero-text); }
+.jg-nb__reason--go { background: var(--jg-live-fill-strong); border-color: var(--jg-live); color: var(--jg-live-text); }
+.jg-nb__reason--cancel { color: var(--jg-ink-muted); background: transparent; }
+.jg-nb__where {
+  flex: 1 1 200px;
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+  color: var(--jg-ink);
+  font: inherit;
+  font-size: 14px;
+}
+.jg-nb__where::placeholder { color: var(--jg-ink-faint); }
+
 /* timer */
 .jg-nb__timer {
   display: flex;

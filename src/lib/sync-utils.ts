@@ -121,7 +121,9 @@ export async function completeWorkoutSession(
   currentSessionNotes: string,
   authTrainer: any,
   clientMachineSettings: Record<string, any>,
-  userId: string
+  userId: string,
+  /** Extra fields for the session document — the booking match and lateness (lib/session-timing.ts). */
+  sessionExtras?: Record<string, unknown>,
 ) {
   if (!currentSession?.id) return;
   const batch = writeBatch(db);
@@ -155,6 +157,11 @@ export async function completeWorkoutSession(
   }
   if (currentSessionNotes.trim()) {
     updateData.notes = currentSessionNotes.trim();
+  }
+  if (sessionExtras) {
+    for (const [k, v] of Object.entries(sessionExtras)) {
+      if (v !== undefined) updateData[k] = v;
+    }
   }
   batch.update(sessionRef, updateData);
 

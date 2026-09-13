@@ -99,9 +99,24 @@ describe("findIncompleteLogs", () => {
 
   it("flags a normal set saved without reps", () => {
     const result = findIncompleteLogs({
-      s1_pulldown: { machineId: "m-pulldown", weight: "114", reps: "" },
+      s1_pulldown: { machineId: "m-pulldown", weight: "114", reps: "", machineStartedAt: 1 },
     });
     expect(result[0].reason).toBe("missing-reps");
+  });
+
+  it("does not flag the weight-only placeholder session start seeds — that machine was never begun", () => {
+    expect(findIncompleteLogs({ s1_pulldown: { machineId: "m-pulldown", weight: "114" } })).toEqual([]);
+  });
+
+  it("leaves a set the trainer already settled alone — practice, skipped or not reached", () => {
+    expect(
+      findIncompleteLogs({
+        s1_a: { machineId: "a", weight: "100", outcome: "practice" },
+        s1_b: { machineId: "b", weight: "100", outcome: "skipped", skipReason: "machine_occupied" },
+        s1_c: { machineId: "c", outcome: "not_reached" },
+        s1_d: { machineId: "d", weight: "100", machineStartedAt: 1 }, // begun, unanswered — still asked about
+      }).map((i) => i.machineId),
+    ).toEqual(["d"]);
   });
 
   it("ignores rows nobody touched", () => {
@@ -157,8 +172,8 @@ describe("findIncompleteLogs", () => {
 
   it("returns every offender, not just the first", () => {
     const result = findIncompleteLogs({
-      a: { machineId: "m-hip-abd", weight: "92", isStaticHold: true, seconds: "" },
-      b: { machineId: "m-pulldown", weight: "114", isTSC: true, seconds: "" },
+      a: { machineId: "m-hip-abd", weight: "92", isStaticHold: true, seconds: "", machineStartedAt: 1 },
+      b: { machineId: "m-pulldown", weight: "114", isTSC: true, seconds: "", machineStartedAt: 2 },
       c: { machineId: "m-ext", weight: "52", reps: "11" },
     });
     expect(result.map((r) => r.machineId)).toEqual(["m-hip-abd", "m-pulldown"]);

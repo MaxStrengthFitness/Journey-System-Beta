@@ -1,4 +1,5 @@
 import type { ExerciseLog } from "../types";
+import { isBegunLog } from "./set-outcome";
 
 /**
  * A logged set must carry a measurement.
@@ -44,9 +45,19 @@ export function isLogStarted(
   );
 }
 
+/** The trainer already said what this set was — practice, skipped or never reached. */
+export function isSettledOutcome(log: Partial<ExerciseLog> | undefined | null): boolean {
+  const o = log?.outcome;
+  return o === "practice" || o === "skipped" || o === "not_reached";
+}
+
 /**
  * Sets that were begun but never given a count — the ones that would silently
- * score zero. Returns each machine id with the reason, for reporting.
+ * score zero. Returns each machine id with the reason, for reporting. A set
+ * the trainer marked practice or skipped is settled, not incomplete, and the
+ * weight-only placeholder session start seeds for every planned machine was
+ * never begun at all (isBegunLog): the End Session dialog asks only about
+ * the rest (src/lib/set-outcome.ts).
  */
 export function findIncompleteLogs(
   logs: Record<string, Partial<ExerciseLog>>,
@@ -57,7 +68,7 @@ export function findIncompleteLogs(
   reason: "missing-seconds" | "missing-reps";
 }[] {
   return Object.entries(logs)
-    .filter(([, log]) => isLogStarted(log) && !hasRequiredCount(log))
+    .filter(([, log]) => isBegunLog(log) && !hasRequiredCount(log) && !isSettledOutcome(log))
     .map(([key, log]) => ({
       key,
       machineId: String(log.machineId ?? ""),

@@ -1,5 +1,12 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronRight, Minus, Pause, Play, Plus, RotateCcw, Timer } from "lucide-react";
+import {
+  OUTCOME_GLOSS,
+  PICKABLE_SKIP_REASONS,
+  SKIP_REASON_LABEL,
+  SKIP_REASON_SHORT,
+  type SkipReason,
+} from "../../lib/set-outcome";
 import type { JourneyRow, JourneySession, LiveSet, RepQuality } from "./types";
 import { computeRowStats, formatSeconds, journeySummary, orderedSets } from "./stats";
 import { QualityMark, QUALITY_MARK_LABEL } from "./QualityMark";
@@ -87,6 +94,85 @@ export interface SessionNowBarProps {
 
 const EMPTY: LiveSet = { weight: null, reps: null, seconds: null, isTSC: false, quality: null };
 
+/* ------------------------------------------------------------------ *
+ * Skip strip
+ * ------------------------------------------------------------------ */
+
+/**
+ * "Why is this machine skipped?" — the reason vocabulary AJ approved on Sep
+ * 12 2026, one tap each. Every reason but pain writes the skip and moves on
+ * at once; pain asks one more question, "where?", because the answer is
+ * what the pain map and the Monday review need and nobody remembers it by
+ * the end of the session. The field is optional: a trainer with a client
+ * waiting can still just hit "Save and next".
+ */
+function SkipStrip({
+  machineName,
+  onPick,
+  onCancel,
+}: {
+  machineName: string;
+  onPick: (reason: SkipReason, note: string | null) => void;
+  onCancel: () => void;
+}) {
+  const [pain, setPain] = useState(false);
+  const [note, setNote] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (pain) inputRef.current?.focus();
+  }, [pain]);
+
+  return (
+    <div className="jg-nb__skip" role="group" aria-label={`Why is ${machineName} skipped?`}>
+      <span className="jg-nb__skiplbl">
+        Skip <b>{machineName}</b> — why?
+      </span>
+      {!pain ? (
+        <div className="jg-nb__reasons">
+          {PICKABLE_SKIP_REASONS.map((r) => (
+            <button
+              key={r}
+              type="button"
+              className={`jg-nb__reason ${r === "pain_injury" ? "jg-nb__reason--pain" : ""}`}
+              onClick={() => (r === "pain_injury" ? setPain(true) : onPick(r, null))}
+            >
+              {SKIP_REASON_LABEL[r]}
+            </button>
+          ))}
+          <button type="button" className="jg-nb__reason jg-nb__reason--cancel" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <div className="jg-nb__reasons">
+          <input
+            ref={inputRef}
+            className="jg-nb__where"
+            type="text"
+            aria-label="Where is the pain? Optional."
+            placeholder="Where? e.g. left knee (optional)"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onPick("pain_injury", note.trim() || null);
+            }}
+          />
+          <button
+            type="button"
+            className="jg-nb__reason jg-nb__reason--go"
+            onClick={() => onPick("pain_injury", note.trim() || null)}
+          >
+            Save and next
+          </button>
+          <button type="button" className="jg-nb__reason jg-nb__reason--cancel" onClick={() => setPain(false)}>
+            Back
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * Zone 4 -- "The Now".
  *
@@ -117,6 +203,9 @@ function SessionNowBarImpl({
   const v = value ?? EMPTY;
   const weight = v.weight ?? row?.prescribedWeight ?? null;
   const sides = !!machine?.sides;
+  const [skipOpen, setSkipOpen] = useState(false);
+  // The strip belongs to one machine; moving on closes it.
+  useEffect(() => setSkipOpen(false), [machine?.id]);
 
   /* --- what to expect: the last set, the best set, the journey --------- */
   const expect = useMemo(() => {
@@ -141,6 +230,28 @@ function SessionNowBarImpl({
   const setQuality = (q: RepQuality) => {
     if (!machine) return;
     onChange(machine.id, { quality: v.quality === q ? null : q });
+  };
+
+  /* --- the outcome buttons: what this set WAS, when it was not a set ---- *
+     Practice toggles; the numbers stay and are recorded, never counted.
+     Skip opens the reason strip, and picking a reason moves on to the next
+     machine by itself — a skip is the one entry that IS "move on", so the
+     screen is allowed to move here where it never moves on its own for a
+     set being judged. Tapping the active button again clears the outcome. */
+  const togglePractice = () => {
+    if (!machine) return;
+    setSkipOpen(false);
+    onChange(machine.id, v.outcome === "practice" ? { outcome: null } : { outcome: "practice" });
+  };
+  const pickSkip = (reason: SkipReason, note: string | null) => {
+    if (!machine) return;
+    setSkipOpen(false);
+    onChange(machine.id, { outcome: "skipped", skipReason: reason, skipNote: note });
+    onNext?.();
+  };
+  const clearSkip = () => {
+    if (!machine) return;
+    onChange(machine.id, { outcome: null, skipReason: null, skipNote: null });
   };
 
   if (!machine) {
@@ -262,6 +373,11 @@ function SessionNowBarImpl({
       </div>
 
       {/* --- the set --- */}
+      {skipOpen ? (
+        <div className="jg-nb__controls jg-nb__controls--skip">
+          <SkipStrip machineName={machine.name} onPick={pickSkip} onCancel={() => setSkipOpen(false)} />
+        </div>
+      ) : (
       <div className="jg-nb__controls">
         <div className="jg-nb__step">
           <button type="button" className="jg-nb__sbtn" aria-label={`Decrease weight by ${step}`} onClick={() => bump(-1)}>
@@ -313,9 +429,35 @@ function SessionNowBarImpl({
           </button>
         </div>
 
+        <div className="jg-nb__outcome" role="group" aria-label="Set outcome">
+          <button
+            type="button"
+            className={`jg-nb__obtn ${v.outcome === "practice" ? "is-on" : ""}`}
+            aria-pressed={v.outcome === "practice"}
+            aria-label={`Practice set: ${OUTCOME_GLOSS.practice}`}
+            onClick={togglePractice}
+          >
+            Practice
+          </button>
+          <button
+            type="button"
+            className={`jg-nb__obtn jg-nb__obtn--skip ${v.outcome === "skipped" ? "is-on" : ""}`}
+            aria-pressed={v.outcome === "skipped"}
+            aria-label={
+              v.outcome === "skipped"
+                ? `Skipped — ${SKIP_REASON_LABEL[v.skipReason ?? "unknown"]}. Tap to undo.`
+                : `Skip this machine: ${OUTCOME_GLOSS.skipped}`
+            }
+            onClick={() => (v.outcome === "skipped" ? clearSkip() : setSkipOpen(true))}
+          >
+            {v.outcome === "skipped" ? `Skipped${SKIP_REASON_SHORT[v.skipReason ?? "unknown"] ? " · " + SKIP_REASON_SHORT[v.skipReason ?? "unknown"] : ""}` : "Skip"}
+          </button>
+        </div>
+
         <span className="jg-nb__sp" />
         <NowTimer onLogTSC={onLogTSC} />
       </div>
+      )}
 
       {/* --- what is next --- */}
       <button type="button" className="jg-nb__next" onClick={onNext} disabled={!nextName}>

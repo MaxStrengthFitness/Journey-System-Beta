@@ -128,6 +128,8 @@ import {
   hasRequiredCount,
   findIncompleteLogs,
 } from "../lib/log-validation";
+import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL } from "../lib/set-outcome";
+import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
 import { ActiveSessionTimer } from "./ActiveSessionTimer";
 import { MachineSheet } from "../features/equipment/MachineSheet";
 /* Lazy, and the reason is measurable: the assessment panel is a 162 kB
@@ -1062,13 +1064,24 @@ export function WorkoutTrackerView({
     }
   }, []);
 
-  /** When this machine's set began. Falls back to the shared clock for a
-   *  machine completed without ever being focused or touched. */
-  const startedAtFor = React.useCallback(
-    (machineId: string) =>
-      machineStartedAt.current[machineId] ?? lastMachineLoggedAt.current,
-    [],
-  );
+  /* The clock survives a refresh: updateLogMultiple copies the start onto
+     the machine's log the first time anything is written for it, and this
+     mirror lets startedAtFor read it back without a stale closure. */
+  const logsRef = React.useRef<Record<string, ExerciseLog>>({});
+
+  /** When this machine's set began. Falls back to the start persisted on
+   *  the log (after a refresh), then to the shared clock for a machine
+   *  completed without ever being focused or touched. */
+  const startedAtFor = React.useCallback((machineId: string) => {
+    const inMemory = machineStartedAt.current[machineId];
+    if (inMemory !== undefined) return inMemory;
+    const sid = currentSessionIdRef.current;
+    const persisted = sid
+      ? toEpochMs(logsRef.current[logDocId(sid, machineId)]?.machineStartedAt) ??
+        toEpochMs(logsRef.current[logDocId(sid, machineId, "Left")]?.machineStartedAt)
+      : null;
+    return persisted ?? lastMachineLoggedAt.current;
+  }, []);
   const [isEditingRoutine, setIsEditingRoutine] = useState(false);
   const [showRoutinePicker, setShowRoutinePicker] = useState(false);
   // Which machine the unified sheet is open on. One piece of state, because
@@ -1278,6 +1291,7 @@ export function WorkoutTrackerView({
               timeSpent: rawTimeDiff.toString(),
               totalTimeUnderLoad: timeDiff,
               machineDurationSeconds: timeDiff,
+              machineEndedAt: Date.now(),
               ...(avgTime !== undefined && { averageTimePerRep: avgTime }),
             },
             "Left",
@@ -1324,6 +1338,7 @@ export function WorkoutTrackerView({
               timeSpent: rawTimeDiff.toString(),
               totalTimeUnderLoad: timeDiff,
               machineDurationSeconds: timeDiff,
+              machineEndedAt: Date.now(),
               ...(avgTime !== undefined && { averageTimePerRep: avgTime }),
             },
             "Right",
@@ -1369,6 +1384,7 @@ export function WorkoutTrackerView({
             timeSpent: rawTimeDiff.toString(),
             totalTimeUnderLoad: timeDiff,
             machineDurationSeconds: timeDiff,
+            machineEndedAt: Date.now(),
             ...(avgTime !== undefined && { averageTimePerRep: avgTime }),
           });
           delete machineStartedAt.current[mId];
@@ -1448,6 +1464,13 @@ export function WorkoutTrackerView({
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const [isPostSessionMode, setIsPostSessionMode] = useState(false);
+  const currentSessionIdRef = React.useRef<string | null>(null);
+  useEffect(() => {
+    currentSessionIdRef.current = currentSession?.id ?? null;
+  }, [currentSession?.id]);
+  useEffect(() => {
+    logsRef.current = logs as Record<string, ExerciseLog>;
+  }, [logs]);
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
   const [pendingAssignSession, setPendingAssignSession] =
     useState<WorkoutSession | null>(null);
@@ -2321,16 +2344,13 @@ export function WorkoutTrackerView({
     }
   };
 
-  const handleEndSessionPress = () => {
-    // Last line of defence. Logs are only written to Firestore at completion, so
-    // this is the final chance to catch a set that was begun but never given a
-    // count — it would be stored looking complete and score zero volume.
-    //
-    // Scope matters: `logs` is keyed across every session loaded for this client
-    // (see the exerciseLogs snapshot — up to 30 sessions), so validating it whole
-    // flags zero-count sets from PAST workouts. Those cannot be fixed from here —
-    // the entry dialog writes `${currentSession.id}_${machineId}` — so the guard
-    // would block finishing forever. Only today's sets are this session's problem.
+  /**
+   * Machines that were begun but never given a count, for the End Session
+   * dialog to ask about. Scope matters: `logs` is keyed across every session
+   * loaded for this client (up to 30), so only today's sets are looked at —
+   * a zero-count set from a past workout cannot be fixed from here.
+   */
+  const uncountedMachineIds = (): string[] => {
     const currentSessionLogs: Record<string, ExerciseLog> = {};
     Object.entries(logs as Record<string, ExerciseLog>).forEach(
       ([key, log]) => {
@@ -2339,34 +2359,39 @@ export function WorkoutTrackerView({
         }
       },
     );
-    const incomplete = findIncompleteLogs(currentSessionLogs);
-    if (incomplete.length > 0) {
-      const names = incomplete
-        .map(
-          (i) =>
-            machines.find((m) => m.id === i.machineId)?.name || i.machineId,
-        )
-        .filter(Boolean);
-      const unique = Array.from(new Set(names));
-      // The list can mix both kinds of offender; naming only the first one's
-      // unit sends the trainer looking for the wrong field.
-      const reasons = new Set(incomplete.map((i) => i.reason));
-      const missing =
-        reasons.size > 1
-          ? "a rep count or a duration"
-          : incomplete[0].reason === "missing-seconds"
-            ? "a duration"
-            : "reps";
-      toastError(
-        `Add ${missing} for ${unique.join(", ")} before finishing. Sets without a count are recorded as zero.`,
-      );
-      setEditingWeightMachineId(incomplete[0].machineId);
-      // Sided machines keep a log per side — open the dialog on the side that
-      // was actually flagged, or it edits a different (complete) set.
-      setEditingWeightSide(incomplete[0].side);
-      setIsStaticHoldOverride(incomplete[0].reason === "missing-seconds");
-      return;
+    const out: string[] = [];
+    for (const i of findIncompleteLogs(currentSessionLogs)) {
+      if (i.machineId && !out.includes(i.machineId)) out.push(i.machineId);
     }
+    // Routine order, so the dialog reads like the floor did.
+    return out.sort(
+      (a, b) =>
+        (activeMachineIds.indexOf(a) + 1 || 999) - (activeMachineIds.indexOf(b) + 1 || 999),
+    );
+  };
+
+  /**
+   * What the trainer says a count-less set was, per machine, answered in the
+   * End Session dialog. Skipped is the default: a set with no count never
+   * counted toward anything, so the default changes no number, it only
+   * names the blank (docs/ARCHITECTURE.md §1.6). "Not reached" is offered
+   * for the one case the clock misreads — a load set up in advance on a
+   * machine the session then never got to — not asked for on its own.
+   */
+  type EndChoice = "practice" | "skipped" | "not_reached";
+  const [endChoices, setEndChoices] = useState<Record<string, EndChoice>>({});
+
+  const handleEndSessionPress = () => {
+    /* The anti-blocker rule (Sep 12 2026): a missing data point never stops
+       a session from being saved. This used to refuse to finish while any
+       set lacked a count and send the trainer back to the entry dialog. It
+       now asks, in the dialog that follows, whether each such set was
+       practice or skipped — and defaults to skipped so one tap still ends
+       the session. Machines never touched are recorded as not reached by
+       finalizeEndSession, without a question. */
+    const asked: Record<string, EndChoice> = {};
+    for (const id of uncountedMachineIds()) asked[id] = "skipped";
+    setEndChoices(asked);
 
     if (currentSession?.id && !currentSession.endTime) {
       const now = new Date();
@@ -2391,20 +2416,68 @@ export function WorkoutTrackerView({
 
     setIsSyncing(true);
     try {
-      const sessionLogs = Object.values(logs).filter(
-        (l: any) => l.sessionId === currentSession.id,
+      const sessionLogs = (Object.values(logs) as ExerciseLog[]).filter(
+        (l) => l.sessionId === currentSession.id,
       );
+
+      /* Nothing leaves the session ambiguous (lib/set-outcome.ts). A set
+         with a count is performed and is left as it is — inferred, not
+         stamped, so a later edit that zeroes it is not frozen as performed.
+         The untouched placeholder of a machine the session never got to is
+         stamped not reached. A set that was begun without a count takes the
+         trainer's End Session answer, skipped (reason unknown) by default. */
+      const stamped = sessionLogs.map((l) => {
+        const chosen = l.machineId ? endChoices[l.machineId] ?? null : null;
+        let o = outcomeAtFinish(l, chosen === "not_reached" ? null : chosen);
+        if (o.outcome === "performed") return l;
+        if (chosen === "not_reached" && o.outcome === "skipped" && o.skipReason === "unknown") {
+          o = { outcome: "not_reached" };
+        }
+        return { ...l, ...o, ...(o.outcome !== "skipped" ? { skipReason: null } : {}) };
+      });
+
+      /* Machines in today's sequence with no log of any kind ran out of
+         session. Derived here, never asked of the trainer — the clues a
+         leader reads are the per-machine clocks and the lateness below. */
+      const notReached: ExerciseLog[] = unreachedMachineIds(activeMachineIds, sessionLogs).map(
+        (machineId) => ({
+          id: logDocId(currentSession.id!, machineId),
+          sessionId: currentSession.id!,
+          clientId: selectedClient?.id,
+          machineId,
+          outcome: "not_reached",
+          machineSettings: clientMachineSettings[machineId]?.settings || {},
+          studioId:
+            contextActiveStudioId ||
+            authTrainer?.primaryHomeStudioId ||
+            selectedClient?.homeStudioId ||
+            "",
+          createdAt: Timestamp.now(),
+        }),
+      );
+
+      /* Late against the Mindbody booking, when one matches. No match, no
+         number (a guessed lateness is worse than none). */
+      const startMs = toEpochMs(currentSession.startTime ?? currentSession.createdAt);
+      const timing = sessionTimingFields(schedules, selectedClient?.id, startMs);
+      const sessionExtras = timing
+        ? {
+            bookingStartTime: Timestamp.fromMillis(timing.bookingStartMs),
+            startedLateByMinutes: timing.startedLateByMinutes,
+          }
+        : undefined;
 
       await completeWorkoutSession(
         db,
         currentSession,
         selectedClient,
-        sessionLogs,
+        [...stamped, ...notReached],
         postData,
         currentSessionNotes,
         authTrainer,
         clientMachineSettings,
         user.uid,
+        sessionExtras,
       );
 
       setCurrentSession(null);
@@ -2573,6 +2646,20 @@ export function WorkoutTrackerView({
   ) => {
     const key = logDocId(sessionId, machineId, side);
     const currentSettings = clientMachineSettings[machineId]?.settings || {};
+
+    /* The per-machine clock goes onto the log the first time anything is
+       written for the machine — never earlier, so the weight-only placeholder
+       session start seeded for a machine that was only looked at stays
+       untouched and reads as "not reached" at Finish (isBegunLog). After a
+       refresh startedAtFor reads the clock back from here. */
+    const startedAt = machineStartedAt.current[machineId];
+    if (
+      startedAt !== undefined &&
+      updates.machineStartedAt === undefined &&
+      logs[key]?.machineStartedAt === undefined
+    ) {
+      updates = { ...updates, machineStartedAt: startedAt };
+    }
 
     /* Sessions started before this change have logs under random ids; keep
        writing to those rather than stranding them behind a derived id. */
@@ -2889,7 +2976,8 @@ export function WorkoutTrackerView({
     if (!currentSession?.id) return null;
     for (const id of activeMachineIds) {
       const v = gridLiveValues[id];
-      const done = !!v && !!(v.isTSC ? v.seconds : v.reps) && !!v.quality;
+      const settled = v?.outcome === "practice" || v?.outcome === "skipped";
+      const done = settled || (!!v && !!(v.isTSC ? v.seconds : v.reps) && !!v.quality);
       if (!done) return id;
     }
     return activeMachineIds[0] ?? null;
@@ -2949,6 +3037,7 @@ export function WorkoutTrackerView({
     () =>
       activeMachineIds.filter((id) => {
         const v = gridLiveValues[id];
+        if (v?.outcome === "practice" || v?.outcome === "skipped") return true;
         return !!v && (v.isTSC ? v.seconds != null : v.reps != null);
       }).length,
     [activeMachineIds, gridLiveValues],
@@ -2984,6 +3073,21 @@ export function WorkoutTrackerView({
     if (patch.weight !== undefined) {
       updateLogMultiple(sessionId, machineId, { weight: str(patch.weight) }, sideL);
       if (sides) updateLogMultiple(sessionId, machineId, { weight: str(patch.weight) }, "Right");
+    }
+    /* The outcome — practice or skipped, or null to clear it — is written to
+       every side of the machine at once, with the reason and its note. A
+       practice set keeps the load on screen (the trainer used it); a skip
+       carries no load at all. Either closes the machine's clock. */
+    if (patch.outcome !== undefined) {
+      const o: Partial<ExerciseLog> = {
+        outcome: patch.outcome,
+        skipReason: patch.outcome === "skipped" ? patch.skipReason ?? "other" : null,
+        skipNote: patch.outcome === "skipped" ? patch.skipNote ?? null : null,
+        machineEndedAt: patch.outcome ? Date.now() : null,
+      } as Partial<ExerciseLog>;
+      const u = patch.outcome === "practice" ? withWeight(o, sideL) : o;
+      updateLogMultiple(sessionId, machineId, u, sideL);
+      if (sides) updateLogMultiple(sessionId, machineId, patch.outcome === "practice" ? withWeight(o, "Right") : o, "Right");
     }
     if (patch.isTSC !== undefined) {
       const u = { isTSC: patch.isTSC, isStaticHold: patch.isTSC };
@@ -3649,6 +3753,55 @@ export function WorkoutTrackerView({
               </div>
             ) : (
               <div className="space-y-4">
+                {Object.keys(endChoices).length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">
+                      Started, no count — record as
+                    </label>
+                    <p className="text-[11px] font-medium text-muted-foreground -mt-1">
+                      Practice keeps the numbers for history without counting them. Skipped is the default. Not reached: the load was set up but the session ended first.
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {Object.keys(endChoices).map((machineId) => {
+                        const name =
+                          machines.find((m) => m.id === machineId)?.name || machineId;
+                        const choice = endChoices[machineId];
+                        return (
+                          <div
+                            key={machineId}
+                            className="flex items-center justify-between gap-3 rounded-2xl border-2 border-slate-200 dark:border-slate-800 px-3 py-2"
+                          >
+                            <span className="text-sm font-bold truncate">{name}</span>
+                            <div
+                              className="flex gap-1 shrink-0"
+                              role="group"
+                              aria-label={`Record ${name} as`}
+                            >
+                              {(["practice", "skipped", "not_reached"] as const).map((opt) => (
+                                <button
+                                  key={opt}
+                                  type="button"
+                                  aria-pressed={choice === opt}
+                                  onClick={() =>
+                                    setEndChoices((prev) => ({ ...prev, [machineId]: opt }))
+                                  }
+                                  className={cn(
+                                    "h-10 px-3 rounded-xl text-[11px] font-black uppercase tracking-widest border-2 transition-colors",
+                                    choice === opt
+                                      ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white"
+                                      : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300",
+                                  )}
+                                >
+                                  {OUTCOME_LABEL[opt]}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">
                     Session Notes
