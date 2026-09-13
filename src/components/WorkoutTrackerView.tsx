@@ -1953,7 +1953,13 @@ export function WorkoutTrackerView({
             {
               kind: "general",
               category: null,
-              body: `Routine adjusted for today: ${adjustmentNote.trim()}`.slice(0, 5000),
+              /* The briefing's box is the ARRIVAL note now ("how they slept,
+                 an ache, a trip coming up") — it only reads as a routine
+                 change when the sequence actually changed. */
+              body: (customMachines
+                ? `Routine adjusted for today: ${adjustmentNote.trim()}`
+                : `On arrival: ${adjustmentNote.trim()}`
+              ).slice(0, 5000),
               importance: "standard",
               machineId: null,
               focusId: null,

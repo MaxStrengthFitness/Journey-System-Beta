@@ -48,7 +48,6 @@ import {
   X,
 } from "lucide-react";
 import { ConditionChip } from "../../components/ConditionChip";
-import { RoutineCompareCard } from "../../components/RoutineCompareCard";
 import {
   RoutineBuilder,
   type MachineHistoryEntry,
@@ -58,6 +57,8 @@ import {
   findRoutineByLetter,
   matchesRoutineLetter,
 } from "../../lib/routine-utils";
+import { hubMarkers } from "../../lib/hub-markers";
+import { renewalPromptDue } from "../renewals/conversation";
 import { BriefingRenewalLine } from "../renewals/BriefingRenewalLine";
 import { AppHeader } from "../../components/AppHeader";
 import { useTheme } from "../../components/ThemeProvider";
@@ -427,6 +428,17 @@ export function BriefingScreen({
 
   const activeJournalFocuses = focuses.filter((f) => f.status === "active");
 
+  /* Everything that belongs under "Before you start", counted once so the
+     heading can say how many things there are. */
+  const markers = useMemo(
+    () => hubMarkers({ client, sessionNumber: (client.sessionCount || 0) + 1 }),
+    [client],
+  );
+  const beforeCount =
+    clientFlags.length + criticalEntries.length + markers.length + activeJournalFocuses.length;
+  const hasBefore = beforeCount > 0 || renewalPromptDue(client.renewal);
+
+
   const lastRoutineName = lastSession
     ? routines.find((r) => r.id === lastSession.routineId)?.name ||
       ((lastSession.sessionType as string) === "Free"
@@ -491,6 +503,27 @@ export function BriefingScreen({
                 </button>
               </div>
 
+              {client.globalNotes && (
+                <p className="br__goalline">
+                  <Lightbulb className="w-3.5 h-3.5" aria-hidden />
+                  <span>{client.globalNotes}</span>
+                </p>
+              )}
+            </section>
+
+            {/* 1b. BEFORE YOU START (tracker round, Sep 2026). AJ's order:
+                "at the very top, everything the trainer needs to know about
+                that client is known instantly — critical notes, notes from
+                previous sessions marked critical, upcoming events". One
+                block, one heading, and when there is nothing it says so in
+                one line instead of leaving the trainer to wonder. */}
+            <section className={cn("br-card br__before", !hasBefore && "br__before--clear")} aria-label="Before you start">
+              <span className="br__label br__before-head">
+                <Info className="w-3.5 h-3.5" />
+                Before you start{hasBefore ? ` · ${beforeCount}` : ""}
+              </span>
+              {!hasBefore && <p className="br__before-clear">Nothing flagged — clear to go.</p>}
+
               {clientFlags.length > 0 && (
                 <div className="br__flags">
                   {clientFlags.map((cond, i) => (
@@ -508,18 +541,8 @@ export function BriefingScreen({
                 </div>
               )}
 
-              {/* ABOVE the goal, as of Sep 6. The same set the Journal pins to
-                  its "Before you start" strip - unresolved incidents, post-op
-                  restrictions still inside their window, imported consultation
-                  notes flagged critical. A goal is a direction; this is a
-                  thing that must not happen in the next ninety minutes, and it
-                  was reading second. */}
               {criticalEntries.length > 0 && (
                 <div className="br__critical">
-                  <span className="br__label">
-                    <Info className="w-3.5 h-3.5" />
-                    Before you start · {criticalEntries.length}
-                  </span>
                   {criticalEntries.map((entry) => (
                     <JournalEntryCard
                       key={entry.id}
@@ -531,27 +554,28 @@ export function BriefingScreen({
                 </div>
               )}
 
-              <div className="br__inset">
-                <span className="br__label">
-                  <Lightbulb className="w-3.5 h-3.5" />
-                  Global goal
-                </span>
-                <p className="br__quote">
-                  {client.globalNotes || "No specific global goal set."}
-                </p>
-              </div>
+              {/* Upcoming events and milestones, the same markers the Hub card
+                  shows (lib/hub-markers.ts): a break starting Saturday, surgery
+                  on the 25th, a birthday, session 100. */}
+              {markers.length > 0 && (
+                <div className="br__markers">
+                  {markers.map((m) => (
+                    <span key={m.kind} className={cn("br__marker", `br__marker--${m.kind}`)}>
+                      {m.label}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               {/* Renewals round (Sep 2026): only when there's something to know. */}
               <BriefingRenewalLine client={client} />
 
-              {/* Active coaching focuses, whichever collection they came from -
-                  new clientFocuses, legacy focusRecords, or the old
-                  one-per-trainer trainerFocuses docs. */}
+              {/* Active coaching focuses — one line each. */}
               {activeJournalFocuses.map((f) => {
                 const visual =
                   FOCUS_VISUALS[f.category] || FOCUS_VISUALS.Posture;
                 return (
-                  <article key={f.id} className="br__focus">
+                  <article key={f.id} className="br__focus br__focus--line">
                     <span
                       aria-hidden
                       className={cn("br__focus-edge", visual.edge)}
@@ -563,14 +587,14 @@ export function BriefingScreen({
                         {relativeDay(toDate(f.startedAt))}
                       </span>
                     </span>
-                    <p className="br__quote">{f.intent}</p>
-                    {f.targetMachineId && (
-                      <span className="br__focus-target">
-                        Target:{" "}
-                        {machines.find((m) => m.id === f.targetMachineId)
-                          ?.name || "Unknown machine"}
-                      </span>
-                    )}
+                    <p className="br__quote">
+                      {f.intent}
+                      {f.targetMachineId && (
+                        <span className="br__focus-target">
+                          {" "}· {machines.find((m) => m.id === f.targetMachineId)?.name || "Unknown machine"}
+                        </span>
+                      )}
+                    </p>
                   </article>
                 );
               })}
@@ -618,21 +642,9 @@ export function BriefingScreen({
               </div>
             </section>
 
-            {/* 3. What is planned, against what actually happened last time. */}
-            <div className="br__compare">
-              <RoutineCompareCard
-                variant="scheduled"
-                label="SCHEDULED TODAY"
-                title={scheduledRoutineName}
-                meta={`${selectedRoutineIds.length} machines`}
-              />
-              <RoutineCompareCard
-                variant="previous"
-                label="LAST PERFORMED"
-                title={lastRoutineName}
-                meta={lastSessionDate.toUpperCase()}
-              />
-            </div>
+            {/* The "scheduled vs last performed" pair is gone (audit, Sep 13):
+                the hero says when the last session was and which routine it
+                ran, and each sequence row carries its own "last time". */}
 
             {/* 4. Execution sequence — the shared Routine Builder.
 
@@ -677,7 +689,7 @@ export function BriefingScreen({
               <div className="br__checkin-head">
                 <h2 className="br-section__title">
                   <Activity className="w-4 h-4" />
-                  Daily recovery check-in
+                  What they told you on the way in
                   <span className="br__optional">Optional</span>
                 </h2>
                 {/* The 90-day one - sleep, energy, pain, habits, food - saved
@@ -751,11 +763,11 @@ export function BriefingScreen({
               </fieldset>
 
               <fieldset className="br__field">
-                <legend className="br__label">Pre-session notes</legend>
+                <legend className="br__label">Arrival note</legend>
                 <textarea
                   value={adjustmentNote}
                   onChange={(e) => setAdjustmentNote(e.target.value)}
-                  placeholder="How is the client feeling? Any adjustments to the routine?"
+                  placeholder="Anything they mentioned — how they slept, an ache, a trip coming up, a new diet, the grandkids are in town…"
                   className="br__textarea"
                 />
               </fieldset>
