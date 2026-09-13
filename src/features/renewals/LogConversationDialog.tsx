@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { TouchHistory } from "./TouchHistory";
 import { useToast } from "../../contexts/ToastContext";
 import {
   CONCERNS,
@@ -150,6 +151,9 @@ export function LogConversationDialog({
           </p>
         ) : (
           <div className="space-y-5">
+            {/* What earlier conversations found — read before you talk. */}
+            <TouchHistory studioId={client.homeStudioId} cycleKey={cycleKey} compact />
+
             <div className="space-y-2">
               <p className={LABEL}>How are they leaning?</p>
               <div className="flex flex-wrap gap-2">

@@ -23,8 +23,9 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useLiveRenewal } from "./useLiveRenewal";
-import { useRenewalCycle, useRenewalTouches } from "./useRenewalCycle";
+import { useRenewalCycle } from "./useRenewalCycle";
 import { LogConversationDialog } from "./LogConversationDialog";
+import { TouchHistory } from "./TouchHistory";
 import {
   SITUATION_TONE,
   dayLabel,
@@ -32,8 +33,8 @@ import {
   proofSentence,
   situationSentence,
 } from "./sentences";
-import { concernLabel, interestLabel, latestLine, leaningLabel } from "./conversation";
-import { studioDateKey, studioTodayKey } from "../../lib/studio-time";
+import { latestLine } from "./conversation";
+import { studioTodayKey } from "../../lib/studio-time";
 import type { Client, Trainer } from "../../types";
 import type { RenewalSnapshot } from "./types";
 
@@ -113,7 +114,6 @@ export function RenewalCardDialog({ open, onClose, client, trainer, machineNames
   const { snapshot, live, loading, error } = useLiveRenewal(client, { enabled: open, machineNames });
   const studioId = client.homeStudioId;
   const { cycle } = useRenewalCycle(open ? studioId : null, snapshot?.cycleKey ?? null);
-  const { touches, error: touchesError } = useRenewalTouches(studioId, snapshot?.cycleKey ?? null, open);
   const [logging, setLogging] = useState(false);
 
   const s = snapshot;
@@ -187,32 +187,7 @@ export function RenewalCardDialog({ open, onClose, client, trainer, machineNames
                 {latest && (
                   <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Latest: {latest}</p>
                 )}
-                {touchesError && <p className="text-[12px] text-amber-700">{touchesError}</p>}
-                {touches.length === 0 ? (
-                  <p className="text-[13px] text-muted-foreground">Nobody has logged a conversation yet.</p>
-                ) : (
-                  <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
-                    {touches.map((t) => (
-                      <li key={t.id} className="p-3">
-                        <p className="text-[13px] font-bold text-slate-800 dark:text-slate-100">
-                          {leaningLabel(t.leaning)}
-                          {t.concerns.length > 0 && ` — ${t.concerns.map(concernLabel).join(", ").toLowerCase()}`}
-                          {t.needsLeader && (
-                            <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
-                              Needs a leader
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-[12px] text-muted-foreground">
-                          {t.authorName}
-                          {studioDateKey((t.at ?? null) as any) ? ` · ${dayLabel(studioDateKey(t.at as any), today)}` : ""}
-                          {t.interestedIn ? ` · interested in ${interestLabel(t.interestedIn).toLowerCase()}` : ""}
-                        </p>
-                        {t.note && <p className="mt-1 text-sm text-slate-700 dark:text-slate-200">{t.note}</p>}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <TouchHistory studioId={open ? studioId : null} cycleKey={snapshot?.cycleKey ?? null} title={null} />
               </div>
             </div>
           )}

@@ -399,14 +399,24 @@ export function VictoryHUDScreen({
                 <HeartPulse className="w-4 h-4 text-cyan" />
                 {checkInSavedId ? "Check-in saved ✓" : "Quick check-in question"}
               </button>
-              {renewalDue && client.renewal && (
+              {/* Always reachable while a package is on file ("there's not
+                  really a good way to open it"); loud only when due. */}
+              {client.renewal?.cycleKey && (
                 <button
                   type="button"
                   onClick={() => setShowRenewal(true)}
-                  className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 py-2 font-display italic text-[12px] uppercase tracking-wider text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+                  className={`min-h-11 rounded-xl border px-4 py-2 font-display italic text-[12px] uppercase tracking-wider hover:opacity-90 flex items-center justify-center gap-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan ${
+                    renewalDue && !renewalLogged
+                      ? "border-cta/50 bg-cta/10 text-ink-d1"
+                      : "border-div-d bg-bg-dark-3 text-ink-d1"
+                  }`}
                 >
-                  <MessageSquareText className="w-4 h-4 text-cyan shrink-0" />
-                  {renewalLogged ? "Renewal conversation saved ✓" : promptText(client.renewal)}
+                  <MessageSquareText className={`w-4 h-4 shrink-0 ${renewalDue && !renewalLogged ? "text-cta" : "text-cyan"}`} />
+                  {renewalLogged
+                    ? "Renewal conversation saved ✓"
+                    : renewalDue
+                      ? promptText(client.renewal)
+                      : "Renewal conversation"}
                 </button>
               )}
             </div>
