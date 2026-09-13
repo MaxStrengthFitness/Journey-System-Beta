@@ -75,6 +75,7 @@ import {
 } from "./types";
 import { OperationType, handleFirestoreError } from "./lib/firestore-errors";
 import { isSessionValid } from "./lib/utils";
+import { LoadingArea } from "./components/LoadingMark";
 import {
   findMyLiveSession,
   forgetLiveSession,
@@ -249,11 +250,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 // Shown in the content area while a lazy view downloads on first visit.
-const ViewLoader = () => (
-  <div className="flex flex-1 items-center justify-center min-h-[40dvh]">
-    <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-  </div>
-);
+const ViewLoader = () => <LoadingArea label="" />;
 
 const DEFAULT_MACHINES: Machine[] = [
   {

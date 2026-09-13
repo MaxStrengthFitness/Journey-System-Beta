@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { LoadingMark } from "./LoadingMark";
 import { createPortal } from "react-dom";
 import {
   collection,
@@ -1459,14 +1460,7 @@ export function ClientProfileView({
     if (isLoadingClient)
       return (
         <div className="flex flex-col items-center justify-center p-20 gap-4">
-          <div
-            role="status"
-            aria-label="Loading client profile"
-            className="w-10 h-10 border-4 border-cyan border-t-transparent rounded-full animate-spin"
-          />
-          <p className="text-muted-foreground font-medium">
-            Loading client profile...
-          </p>
+          <LoadingMark label="Opening the chart…" size="lg" />
         </div>
       );
 

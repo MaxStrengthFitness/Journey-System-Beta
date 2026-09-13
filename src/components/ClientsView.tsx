@@ -445,6 +445,14 @@ export function ClientsView({
     container.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }, [selectedDate]);
 
+  /* LAND ON NOW (tracker round, Sep 2026). "At 3:30 I open the Hub and it
+     starts me at the top; I scroll all the way down to find my next
+     client." When the selected day is today, the timeline scrolls once so
+     the Now line sits a third of the way down — the next session is right
+     under it. Once per day selection, never while the trainer is reading. */
+  const timelineRef = useRef<HTMLDivElement | null>(null);
+  const landedOnRef = useRef<string | null>(null);
+
   /**
    * "NOW" line, in pixels from the top of the grid. Only drawn when the
    * selected day is today (by the studio's clock) and the time falls inside
@@ -459,6 +467,20 @@ export function ClientsView({
     if (mins < timelineStartMin || mins > lastSlot + SLOT_MINUTES) return null;
     return HEADER_PX + ((mins - timelineStartMin) / SLOT_MINUTES) * ROW_PX;
   })();
+
+  useEffect(() => {
+    const key = calendarLabelKey(selectedDate);
+    if (nowLineTop === null) {
+      landedOnRef.current = null;
+      return;
+    }
+    if (landedOnRef.current === key) return;
+    const el = timelineRef.current;
+    if (!el) return;
+    landedOnRef.current = key;
+    const top = Math.max(0, nowLineTop - Math.round(el.clientHeight / 3));
+    el.scrollTo({ top, behavior: "auto" });
+  }, [nowLineTop, selectedDate]);
 
   /**
    * STRICT resolution: a schedule block resolves to `clients/{mindbodyClientId}`
@@ -1084,7 +1106,7 @@ export function ClientsView({
 
             {/* Continuous timeline. This element is the ONLY scroller (both axes),
                 which is what lets the trainer header and the time axis stick. */}
-            <div className="flex-1 min-h-0 overflow-auto relative">
+            <div ref={timelineRef} className="flex-1 min-h-0 overflow-auto relative">
               <div
                 className="relative"
                 style={{

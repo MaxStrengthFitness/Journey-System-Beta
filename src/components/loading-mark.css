@@ -1,0 +1,38 @@
+/* The loading mark — see LoadingMark.tsx. Brand colours from the theme. */
+.lm { display: inline-flex; flex-direction: column; align-items: center; gap: 10px; }
+.lm__row { display: inline-flex; gap: 4px; }
+.lm__sq {
+  --lm-size: 28px;
+  width: var(--lm-size);
+  height: var(--lm-size);
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  color: var(--brand-foreground, #fff);
+  font-family: var(--jg-font-display, "Saira Condensed", system-ui, sans-serif);
+  font-weight: 800;
+  font-size: calc(var(--lm-size) * 0.62);
+  line-height: 1;
+  animation: lm-wave 1.15s ease-in-out infinite;
+  will-change: transform;
+}
+.lm__sq--m { background: var(--brand, #115e8d); animation-delay: 0s; }
+.lm__sq--a { background: var(--cta, #f06c22); animation-delay: 0.15s; }
+.lm__sq--x { background: var(--muted-foreground, #5b6770); animation-delay: 0.3s; }
+.lm--sm .lm__sq { --lm-size: 18px; border-radius: 2px; }
+.lm--lg .lm__sq { --lm-size: 40px; border-radius: 4px; }
+.lm__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground, #5b6770);
+  letter-spacing: 0.02em;
+}
+.lm-area { display: flex; flex: 1 1 auto; align-items: center; justify-content: center; min-height: 40dvh; padding: 40px 16px; }
+@keyframes lm-wave {
+  0%, 60%, 100% { transform: translateY(0) scale(1); opacity: 1; }
+  30% { transform: translateY(-9px) scale(1.04); opacity: 0.92; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lm__sq { animation: lm-pulse 1.4s ease-in-out infinite; }
+  @keyframes lm-pulse { 50% { opacity: 0.55; } }
+}

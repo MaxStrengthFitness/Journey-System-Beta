@@ -2,6 +2,7 @@ import React from "react";
 import { AlertTriangle, CloudOff, HeartPulse } from "lucide-react";
 import { Client, WorkoutSession } from "../../types";
 import { getClientAlertState } from "../../lib/client-alerts";
+import { hubMarkers, isDefaultService, type HubMarkerKind } from "../../lib/hub-markers";
 import { safeToDate, getMillis } from "../../lib/utils";
 import { zonedHM } from "../../lib/studio-time";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,19 @@ interface ScheduleBlockProps {
   workoutSession?: WorkoutSession | null;
   onOpenClient: (clientId: string) => void;
 }
+
+/* One tone per kind; the words carry the meaning, the tint only groups them:
+   brand blue = the session itself, warm = life, muted = logistics. */
+const MARKER_TONE: Record<HubMarkerKind, string> = {
+  consult: "bg-cyan/15 text-cyan-800 dark:text-cyan",
+  first: "bg-cyan/15 text-cyan-800 dark:text-cyan",
+  milestone: "bg-orange-500/15 text-orange-700 dark:text-orange-300",
+  birthday: "bg-orange-500/15 text-orange-700 dark:text-orange-300",
+  back: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+  away: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+  medical: "bg-amber-400/20 text-amber-800 dark:text-amber-300",
+  renewal: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
+};
 
 const formatClientName = (name: string): string => {
   if (!name) return "";
@@ -89,6 +103,11 @@ export function ScheduleBlock({
     ? `${studioClock(startDate, false)} – ${studioClock(endDate, true)}`
     : studioClock(startDate, true);
   const serviceName: string = session?.serviceName || session?.sessionType || "";
+  /* "Training Session" on every card said nothing; the room goes to the
+     markers instead (lib/hub-markers.ts). A service that is NOT the plain
+     session — a consultation, an InBody scan — still shows. */
+  const showService = !isDefaultService(serviceName);
+  const markers = !isUnavailable && !isCompleted ? hubMarkers({ client, sessionNumber, serviceName }) : [];
 
   /**
    * An unlinked block is inert. There is deliberately no manual link or
@@ -216,10 +235,24 @@ export function ScheduleBlock({
         </span>
       )}
 
-      {/* Line 3: session type */}
-      {!isUnavailable && serviceName && (
-        <span className={cn("text-[10px] font-medium leading-tight truncate pr-6", metaTone)}>
-          {serviceName}
+      {/* Line 3: what a trainer should know — markers, or a service that is
+          not the plain training session. */}
+      {!isUnavailable && (markers.length > 0 || showService) && (
+        <span className="flex flex-wrap gap-x-1 gap-y-0.5 pr-6 mt-0.5">
+          {markers.map((m) => (
+            <span
+              key={m.kind}
+              className={cn(
+                "inline-flex items-center rounded-[4px] px-1 text-[9px] font-bold uppercase tracking-wide leading-4 whitespace-nowrap",
+                MARKER_TONE[m.kind],
+              )}
+            >
+              {m.label}
+            </span>
+          ))}
+          {showService && markers.every((m) => m.kind !== "consult") && (
+            <span className={cn("text-[10px] font-medium leading-4 truncate", metaTone)}>{serviceName}</span>
+          )}
         </span>
       )}
 
