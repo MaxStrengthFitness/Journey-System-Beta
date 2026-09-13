@@ -132,6 +132,7 @@ import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL } from "../lib/set-
 import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
 import { forgetLiveSession, peekLiveSessionId, rememberLiveSession } from "../lib/live-session";
 import { RoutineOrderSheet } from "../features/journey-grid/RoutineOrderSheet";
+import { NOW_BAR_SIDE_QUERY, useMediaQuery } from "../hooks/useMediaQuery";
 import { traineeLevelOf } from "../lib/progression-cue";
 import { createJournalEntry } from "../hooks/useClientJournal";
 import { ActiveSessionTimer } from "./ActiveSessionTimer";
@@ -1491,6 +1492,7 @@ export function WorkoutTrackerView({
    * from the floor" — which hands the new sequence to applySessionMachineIds.
    */
   const [isOrderSheetOpen, setIsOrderSheetOpen] = useState(false);
+  const nowBarSide = useMediaQuery(NOW_BAR_SIDE_QUERY);
 
   /**
    * Every mid-session change to the machine list lands here, and lands
@@ -3943,7 +3945,13 @@ export function WorkoutTrackerView({
           All), Older, and the legend. The legend lays out inline when there
           is width for it and collapses to a Key popover when there is not,
           so it costs no permanent vertical space either way. */}
-      <div className="flex-1 min-h-0 flex flex-col">
+      {/* THE STAGE (tracker round, Sep 2026). Portrait: rail, grid, Now bar
+          stacked. Landscape on an iPad-width screen: the Now bar becomes a
+          column on the RIGHT, under the right thumb, and the grid takes the
+          full height — the old bar stretched across 1180px of width and
+          left the grid eight rows tall ("a foot-long hotdog"). */}
+      <div className={`jg-stage ${nowBarSide ? "jg-stage--side" : ""}`}>
+      <div className="jg-stage__main">
         {/* The rail used to open with the word ROUTINE, then a bare
             "6 of 21", then a segmented control whose left half also said
             Routine -- three pieces of chrome for one idea. It is one
@@ -4036,6 +4044,11 @@ export function WorkoutTrackerView({
             onSelectMachine={(id) => setSheetMachineId(id)}
             onMachineNote={(id) => setSheetMachineId(id)}
             layout="fill"
+            /* Rows shrink to fit what is on screen (44 → 26px) instead of a
+               fixed 44px that showed ~15 machines and hid the rest below
+               the fold. Routine-only stays at 44px; Show: All fits twenty. */
+            fit="auto"
+            targetColumns={nowBarSide ? 8 : 10}
             title="Machine"
           />
         )}
@@ -4054,8 +4067,10 @@ export function WorkoutTrackerView({
           nextName={gridNextRow?.machine.name}
           onNext={() => gridNextRow && setFocusMachineOverride(gridNextRow.machine.id)}
           level={traineeLevelOf(selectedClient)}
+          layout={nowBarSide ? "side" : "bar"}
         />
       )}
+      </div>
 
       {currentSession && (
         <RoutineOrderSheet

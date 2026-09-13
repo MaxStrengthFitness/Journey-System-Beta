@@ -2411,3 +2411,55 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-order__add svg { color: var(--jg-live-text); flex: none; }
 .jg-order__add span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jg-order__add:active { background: var(--jg-live-fill); }
+
+/* ==========================================================================
+   The stage — how the rail, the grid and the Now bar share the screen
+   ========================================================================== */
+.jg-stage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.jg-stage__main { flex: 1 1 auto; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+
+/* Landscape: a row. The grid column on the left, the Now bar as a 312px
+   column on the right — under the right thumb, and the grid gets every
+   pixel of height. */
+.jg-stage--side { flex-direction: row; }
+.jg-stage--side .jg-nb--side {
+  flex: none;
+  width: 312px;
+  align-self: stretch;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 0;
+  border-left: 2px solid var(--jg-hero);
+  grid-template-columns: 1fr;
+  grid-template-areas: "head" "controls" "next";
+  grid-template-rows: auto auto auto;
+  align-content: start;
+  gap: 12px;
+  padding: 12px 12px 14px;
+}
+/* In the column the head stacks: name, then the setting tiles in a row,
+   then the context line — left-aligned, nothing fighting for one line. */
+.jg-nb--side .jg-nb__head { flex-direction: column; align-items: flex-start; gap: 8px; }
+.jg-nb--side .jg-nb__id { width: 100%; }
+.jg-nb--side .jg-nb__name { white-space: normal; line-height: 1.05; font-size: 20px; }
+.jg-nb--side .jg-nb__settings { flex-wrap: wrap; overflow: visible; }
+.jg-nb--side .jg-nb__head .jg-nb__sp { display: none; }
+.jg-nb--side .jg-nb__expect { align-items: flex-start; text-align: left; white-space: normal; }
+.jg-nb--side .jg-nb__expectline { flex-wrap: wrap; }
+.jg-nb--side .jg-nb__controls { flex-direction: column; align-items: stretch; gap: 10px; }
+.jg-nb--side .jg-nb__controls .jg-nb__sp { display: none; }
+.jg-nb--side .jg-nb__grp--noset { flex-direction: row; align-items: center; justify-content: space-between; }
+.jg-nb--side .jg-nb__grp--noset .jg-nb__kicker { padding: 0; }
+.jg-nb--side .jg-nb__outcome { gap: 6px; }
+.jg-nb--side .jg-nb__step { justify-content: space-between; }
+.jg-nb--side .jg-nb__wwrap { flex: 1; width: auto; }
+.jg-nb--side .jg-nb__setrow { width: 100%; }
+.jg-nb--side .jg-nb__out { flex: 1; }
+.jg-nb--side .jg-nb__outin { width: 100%; }
+.jg-nb--side .jg-nb__quality { width: 100%; }
+.jg-nb--side .jg-nb__qbtn { flex: 1; }
+.jg-nb--side .jg-nb__next { width: 100%; height: 50px; background: var(--jg-live); color: var(--jg-live-on); border-color: var(--jg-live); }
+/* Beside a 312px Now bar the rail has ~700px, not the viewport: keep the
+   Key popover, never the inline legend. */
+.jg-stage--side .jg-rail__legend { display: none; }
+.jg-stage--side .jg-keywrap { display: block; }
