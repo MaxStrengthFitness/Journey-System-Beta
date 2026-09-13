@@ -39,7 +39,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 | Install | `npm ci` | `npm install` fails with an `edgesOut` error |
 | Run locally | `npm run dev` | Port 3000 |
 | Typecheck | `npx tsc --noEmit` | Compare the error **count** to master's baseline (20 after the Sep 10 go-live); don't expect zero |
-| Tests | `npx vitest run src` | 2,015 passing after the tracker round (Sep 13); 1,813 after the floor round |
+| Tests | `npx vitest run src` | 2,027 passing after the fix round (Sep 13); 2,015 after the tracker round; 1,813 after the floor round |
 | Build | `npx vite build` | |
 | Rules tests | `npm run test:rules` | Needs JDK 21. "Port taken" means an old emulator still holds 8080 — stop it first |
 
@@ -75,7 +75,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 
 `ROLE_LABELS` in `src/types.ts` is the vocabulary: **Life Transformer** (a trainer), **Studio Leader** (`StudioLeader`, `HeadTrainer`), **Franchise Owner** (`Owner`, `StudioOwner`, `FranchiseOwner`), **Founder / Overseer**, **System Administrator**. The Operations (admin) dashboard is reachable by studio leaders and above. Details: `docs/business/roles-and-permissions.md`.
 
-## Known traps (as of Sep 13 2026)
+## Known traps (as of Sep 13 2026, after the fix round)
 
 - **Set data has four outcomes; only `performed` counts.** Read an outcome through `outcomeOf()` / `isPerformedLog()` in `src/lib/set-outcome.ts`, never off the `outcome` field (older logs don't have it — a count means performed, no count means skipped). Every average, rollup, "last time" and progression figure filters to performed sets; a new reader of `exerciseLogs` does the same. Session start seeds a weight-only log for every planned machine, so a weight alone is not "the trainer worked on this" — `isBegunLog()` is. **Never block a save**: End Session confirms, it does not refuse (docs/ARCHITECTURE.md §1.6, `docs/rounds/2026-09-12-floor-round.md`).
 
@@ -83,7 +83,10 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 - **The session is saved at End Session, once.** `commitEndSession` is the only caller of `completeWorkoutSession` (its counters are `increment()`s — a second call double-counts). The post-session screen only appends: `clientFeel` by `updateDoc`, the closing note by `createJournalEntry`. There is no Finalize button to bring back.
 - **Package facts come from `client.renewal`** (the nightly snapshot), read through `src/lib/directory-row.ts` on lists — never from `packageTier`, `remainingSessions` or `nextSessionDate`, which nothing keeps current. There is no field for leader-granted extra sessions yet.
 - **One loading mark.** `components/LoadingMark.tsx` (`LoadingMark`, `LoadingArea`) is the wait state — never hand-roll another `animate-spin` div. Hub card markers come from `src/lib/hub-markers.ts` and read only what the Hub already holds (no reads per card).
-- **In a flex column, a card with `overflow: hidden` must be `flex: none`**, or a short container shrinks the card instead of scrolling (this was the machine sheet's "truncation").
+- **In a flex column, a card with `overflow: hidden` must be `flex: none`**, or a short container shrinks the card instead of scrolling (this was the machine sheet's "truncation"). The same rule bit the Hub card: `truncate` *is* `overflow: hidden`, so a truncated text line in a fixed-height flex column is the line the browser squeezes to 0px — give the lines that must survive `shrink-0` and let one line (`min-h-0 overflow-hidden`) be the one that yields (fix round, Sep 13).
+- **Two grid items in the same named `grid-area` are drawn on top of each other**, not stacked. A block that should push content down goes in its own row (`col-span-full`, no area name) — this was the profile's "Trained by" list covering the stat tiles.
+- **`WorkoutTrackerView` draws three screens and the order is a rule**, `lib/tracker-screen.ts`: post-session first while its snapshot exists, then none / briefing / tracker. The client's sessions stream turns pre-session mode on whenever nothing is In-Progress — including the beat after Finish — so never check the briefing before the post-session screen.
+- **The check-in is the Assessment on screen** (fix round, Sep 13): labels say "Assessment"; the code, the Firestore fields (`progressReports`, `isCheckInOnly`, `subjectiveSnapshot`) and file names still say check-in until the Assessment round merges the model. The journal's focus "check-ins" are a different thing and keep their name.
 - **Mindbody routes need a sign-in.** Browser code must call them with `authedFetch` (`src/lib/authed-fetch.ts`); a plain `fetch` gets a 401. A new `/api/mindbody/*` route inherits the check. One that should be admin-only goes in `ADMIN_ONLY_MINDBODY_PATHS` in `server.ts` — lowercase, with no trailing slash. The check refuses a `siteId` or `mindbodyClientId` that isn't a plain id.
 - **The web service has no Firestore admin key.** Server code can't read or write Firestore as an admin; `server/auth.ts` reads with the caller's own token over REST — and only single documents, never a collection list: a list is refused when any one document in it is off-limits, which took the schedule sync down on Sep 13. The cron jobs do have the service account.
 - **`clients/{id}.renewal` belongs to the nightly job.** The rules refuse any app write that changes it, so never write a whole client object back — write only the fields that changed.

@@ -21,3 +21,5 @@ One document per round: the brief, the decisions, what shipped, what was left. M
 | 2026-09-12 | [LEARNING-PLANNER-ROUND.md](LEARNING-PLANNER-ROUND.md) |
 | 2026-09-12 | [VISUAL-CONSISTENCY-ROUND.md](VISUAL-CONSISTENCY-ROUND.md) |
 | 2026-09-12 | [2026-09-12-floor-round.md](2026-09-12-floor-round.md) — the four set outcomes, Finish that never blocks, the progression cue |
+| 2026-09-13 | [2026-09-13-tracker-round.md](2026-09-13-tracker-round.md) — the Active Session audit built: resume failsafe, session bar, Now bar, the post-session flow, Hub markers, the directory and profile |
+| 2026-09-13 | [2026-09-13-fix-round.md](2026-09-13-fix-round.md) — what the iPad said about the tracker round: seven fixes and the Check-in → Assessment rename |
