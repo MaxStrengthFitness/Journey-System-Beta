@@ -72,6 +72,15 @@ import { logDocId } from "../lib/exercise-log-id";
  * matters (the set is in the database within a second of being entered) without
  * hammering a single row.
  */
+/** What the post-session screen reads, captured once at End Session. */
+interface PostSessionSnapshot {
+  session: WorkoutSession;
+  client: Client;
+  logs: ExerciseLog[];
+  lines: TodayLine[];
+  journey: JourneyRead;
+}
+
 const LOG_WRITE_DEBOUNCE_MS = 600;
 /** ...but a trainer who keeps typing must not outrun the flush indefinitely. */
 const LOG_WRITE_MAX_WAIT_MS = 2500;
@@ -121,7 +130,7 @@ import {
   type LiveSet,
 } from "../features/journey-grid";
 import { isBig5Machine } from "../lib/utils";
-import type { RepQuality } from "../types";
+import type { ClientFeel, RepQuality } from "../types";
 import { useToast } from "../contexts/ToastContext";
 import {
   hasCount,
@@ -141,6 +150,14 @@ import {
   type MachineClocks,
 } from "../lib/machine-clock";
 import { RoutineOrderSheet } from "../features/journey-grid/RoutineOrderSheet";
+import { computeRowStats, orderedSets } from "../features/journey-grid/stats";
+import {
+  strengthJourney,
+  todayLines,
+  type JourneyRead,
+  type PriorSet,
+  type TodayLine,
+} from "../lib/post-session";
 import { NOW_BAR_SIDE_QUERY, useMediaQuery } from "../hooks/useMediaQuery";
 import { traineeLevelOf } from "../lib/progression-cue";
 import { createJournalEntry } from "../hooks/useClientJournal";
@@ -1329,6 +1346,7 @@ export function WorkoutTrackerView({
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const [isPostSessionMode, setIsPostSessionMode] = useState(false);
+  const [postSession, setPostSession] = useState<PostSessionSnapshot | null>(null);
   const currentSessionIdRef = React.useRef<string | null>(null);
   useEffect(() => {
     currentSessionIdRef.current = currentSession?.id ?? null;
@@ -2261,7 +2279,7 @@ export function WorkoutTrackerView({
        now asks, in the dialog that follows, whether each such set was
        practice or skipped — and defaults to skipped so one tap still ends
        the session. Machines never touched are recorded as not reached by
-       finalizeEndSession, without a question. */
+       commitEndSession, without a question. */
     const asked: Record<string, EndChoice> = {};
     for (const id of uncountedMachineIds()) asked[id] = "skipped";
     setEndChoices(asked);
@@ -2277,12 +2295,22 @@ export function WorkoutTrackerView({
     setShowEndConfirmation(true);
   };
 
-  const finalizeEndSession = async (postData?: {
-    clientFeel: string;
-    noteContent: string;
-    notePriority: "High" | "Medium" | "Low";
-  }) => {
-    if (!currentSession?.id) return;
+  /* THE POST-SESSION FLOW (tracker round, Sep 2026).
+
+     Finish used to be two steps: End Session → the Victory HUD → a second
+     "FINALIZE & RETURN TO HUB" button that did the actual save. AJ's
+     verdict: the session must be SUBMITTED the moment End Session is
+     confirmed — the trainer is walking the client out, offering water,
+     talking about next time — and anything added on the post-session
+     screen must land without another save button.
+
+     So: commitEndSession() writes the session (the one and only call to
+     completeWorkoutSession — its counters are increments, so it must never
+     run twice), then the post-session screen reads from a snapshot. The
+     Feel toggle writes on its own the moment it is tapped; the closing
+     note is written when the trainer leaves the screen. */
+  const commitEndSession = async () => {
+    if (!currentSession?.id || !selectedClient) return;
 
     // Land anything still debounced before the finish batch reads local state.
     flushAllLogWrites();
@@ -2340,35 +2368,112 @@ export function WorkoutTrackerView({
           }
         : undefined;
 
-      const { noteSaved } = await completeWorkoutSession(
+      const finalLogs = [...stamped, ...notReached];
+      await completeWorkoutSession(
         db,
         currentSession,
         selectedClient,
-        [...stamped, ...notReached],
-        postData,
+        finalLogs,
+        undefined,
         currentSessionNotes,
         authTrainer,
         clientMachineSettings,
         user.uid,
         sessionExtras,
       );
-      if (noteSaved === false) {
-        // The session is saved; only the note is not. Say exactly that.
-        toastError("Session saved. The post-session note could not be saved — add it from the Journal.");
-      }
 
+      /* The read the post-session screen shows: today against the last
+         performed set per machine, and the journey since the first
+         session — computed here, once, from the grid's view of history. */
+      const priorOf = (machineId: string): PriorSet | undefined => {
+        const row = gridRows.find((r) => r.machine.id === machineId);
+        if (!row) return undefined;
+        const sets = orderedSets(row, gridHistory);
+        const last = sets[sets.length - 1];
+        return last
+          ? { weight: last.weight, reps: last.reps ?? null, seconds: last.seconds ?? null, isTSC: !!last.isTSC, quality: last.quality }
+          : undefined;
+      };
+      const machineName = (id: string) => machines.find((m) => m.id === id)?.name || id;
+      const lines = todayLines({ order: activeMachineIds, logs: finalLogs, nameOf: machineName, priorOf });
+      const todayWeight = new Map(lines.filter((l) => l.outcome === "performed").map((l) => [l.machineId, l.weight]));
+      const journey = strengthJourney(
+        gridRows.map((row) => {
+          const sets = orderedSets(row, gridHistory);
+          const first = computeRowStats(row, gridHistory).first;
+          const performedToday = todayWeight.has(row.machine.id);
+          const nowWeight = performedToday ? todayWeight.get(row.machine.id) ?? null : sets[sets.length - 1]?.weight ?? null;
+          return {
+            machineId: row.machine.id,
+            name: row.machine.name,
+            group: row.machine.group,
+            startWeight: row.startingWeight ?? sets[0]?.weight ?? null,
+            nowWeight,
+            sessions: sets.length + (performedToday ? 1 : 0),
+            startDate: row.startingWeightDate ?? first?.session.date ?? null,
+          };
+        }),
+      );
+
+      setPostSession({
+        session: { ...currentSession, status: "Completed", endTime: new Date() },
+        client: selectedClient,
+        logs: finalLogs,
+        lines,
+        journey,
+      });
       forgetLiveSession(currentSession?.id);
       setCurrentSession(null);
       setCurrentSessionNotes("");
       setShowEndConfirmation(false);
-      setIsPostSessionMode(false);
-      setSelectedClientId(null);
-      setView("clients");
+      setIsPostSessionMode(true);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, "sessions");
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  /** The Feel toggle writes the moment it is tapped — no save button. */
+  const savePostSessionFeel = async (feel: ClientFeel) => {
+    if (!postSession?.session.id) return;
+    try {
+      await updateDoc(doc(db, "sessions", postSession.session.id), { clientFeel: feel });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, "sessions");
+    }
+  };
+
+  /** Leaving the post-session screen files the closing note, if any, and goes home. */
+  const leavePostSession = async (closing?: { noteContent: string; notePriority: "High" | "Medium" | "Low" }) => {
+    const snap = postSession;
+    const body = closing?.noteContent.trim() ?? "";
+    if (snap && body && user?.uid) {
+      try {
+        const id = await createJournalEntry(
+          snap.client.id,
+          contextActiveStudioId || authTrainer?.primaryHomeStudioId || snap.client.homeStudioId || "",
+          { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
+          {
+            kind: "general",
+            category: null,
+            body: body.slice(0, 5000),
+            importance: closing?.notePriority === "High" ? "critical" : closing?.notePriority === "Medium" ? "elevated" : "standard",
+            machineId: null,
+            focusId: null,
+            sessionId: snap.session.id ?? null,
+            origin: "post_session",
+          },
+        );
+        if (!id) toastError("Session saved. The closing note could not be saved — add it from the Journal.");
+      } catch {
+        toastError("Session saved. The closing note could not be saved — add it from the Journal.");
+      }
+    }
+    setPostSession(null);
+    setIsPostSessionMode(false);
+    setSelectedClientId(null);
+    setView("clients");
   };
 
   const [selectedSessionType, setSelectedSessionType] =
@@ -2665,7 +2770,7 @@ export function WorkoutTrackerView({
    * The session log is the shared Journey Grid with a live Today column.
    * Nothing about persistence changes: every input still goes through
    * updateLogMultiple / setQualityWithGuard into the local `logs` map, and
-   * finalizeEndSession writes that map exactly as before. Torso Rotation
+   * commitEndSession writes that map exactly as before. Torso Rotation
    * keeps its Left/Right logs — the Today cell shows two outcome rows.
    * ------------------------------------------------------------------ */
   const isSidesMachine = (m: Machine) =>
@@ -3154,25 +3259,19 @@ export function WorkoutTrackerView({
     );
   }
 
-  if (isPostSessionMode && currentSession && selectedClient) {
+  if (isPostSessionMode && postSession) {
     return (
       <VictoryHUDScreen
-        client={selectedClient}
-        session={currentSession}
-        logs={
-          Object.values(logs).filter(
-            (l: any) => l.sessionId === currentSession.id,
-          ) as any
-        }
-        allLogs={
-          Object.values(logs).filter(
-            (l: any) => l.clientId === selectedClient.id,
-          ) as any
-        }
+        client={postSession.client}
+        session={postSession.session}
+        logs={postSession.logs}
+        allLogs={Object.values(logs).filter((l: any) => l.clientId === postSession.client.id) as any}
+        lines={postSession.lines}
+        journey={postSession.journey}
         schedules={schedules}
         authTrainer={authTrainer}
-        onFinalize={finalizeEndSession}
-        isSyncing={isSyncing}
+        onFeel={savePostSessionFeel}
+        onLeave={leavePostSession}
         machines={machines}
         rightControls={rightControls}
         trainerDropdown={trainerDropdown}
@@ -3701,12 +3800,12 @@ export function WorkoutTrackerView({
                 )}
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">
-                    Session Notes
+                    Wrap-up note (optional)
                   </label>
                   <Textarea
                     value={currentSessionNotes}
                     onChange={(e) => setCurrentSessionNotes(e.target.value)}
-                    placeholder="Log general observations here..."
+                    placeholder="A reminder for later, or something the next trainer should know…"
                     className="min-h-25 border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus-visible:ring-orange-500 focus-visible:border-orange-500"
                   />
                 </div>
@@ -3719,20 +3818,11 @@ export function WorkoutTrackerView({
                     Keep Training
                   </Button>
                   <Button
-                    className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20 bg-red-600 text-white hover:bg-red-700"
-                    onClick={() => {
-                      if (currentSession) {
-                        setCurrentSession({
-                          ...currentSession,
-                          endTime: new Date(),
-                        });
-                      }
-                      setShowEndConfirmation(false);
-                      setIsPostSessionMode(true);
-                    }}
+                    className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20 bg-cta text-white hover:opacity-90"
+                    onClick={() => void commitEndSession()}
                     disabled={isSyncing}
                   >
-                    Confirm End
+                    {isSyncing ? "Saving…" : "Finish session"}
                   </Button>
                 </div>
                 <div className="pt-4 flex justify-center border-t border-slate-100 dark:border-slate-800 mt-2">

@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "motion/react";
 import { AppHeader } from "./AppHeader";
-import { StickyCTA } from "./StickyCTA";
 import { FeelToggle } from "./FeelToggle";
 import type { ClientFeel } from "../types";
-import { BentoStatTile } from "./BentoStatTile";
 import {
   Client,
   WorkoutSession,
@@ -15,32 +13,135 @@ import {
 } from "../types";
 import { safeToDate } from "../lib/utils";
 import { QuickCheckInDialog } from "../features/subjective-report";
-import { HeartPulse, MessageSquareText } from "lucide-react";
+import { ArrowLeft, CalendarCheck2, CalendarX2, Check, HeartPulse, MessageSquareText, Star } from "lucide-react";
 import {
   LogConversationDialog,
   promptText,
   renewalPromptDue,
 } from "../features/renewals";
 import { getBroadMuscleGroup } from "../lib/clinical-review-utils";
-import { performedOnly } from "../lib/set-outcome";
+import { performedOnly, SKIP_REASON_SHORT } from "../lib/set-outcome";
+import {
+  formatNextBooking,
+  journeySentence,
+  nextBookingFor,
+  todayHeadline,
+  type JourneyRead,
+  type TodayLine,
+} from "../lib/post-session";
+
+/**
+ * THE POST-SESSION SCREEN (rebuilt in the tracker round, Sep 2026).
+ *
+ * Thirty seconds, walking the client out. AJ's order of business:
+ *   1. TODAY — "here's how they did": one line per machine, today against
+ *      last time, the max-strength stars, and where the work went.
+ *   2. THE JOURNEY — one sentence a trainer can say out loud: "your loads
+ *      are up 21% since July across four machines — strongest on lower
+ *      body". Says "not enough history yet" below the bar, never a number
+ *      it cannot stand behind.
+ *   3. NEXT — are they booked? Then how they feel (saves as it is tapped),
+ *      a closing note (saved when the trainer leaves), the check-in and
+ *      the renewal conversation when one is due.
+ *   4. LIFETIME — small, at the bottom. Not the thing to go over every
+ *      time, but nice to have.
+ *
+ * There is NO save button. The session was submitted when End Session was
+ * confirmed (commitEndSession in the tracker). "Back to Hub" only leaves.
+ */
 
 export interface VictoryHUDScreenProps {
   client: Client;
   session: WorkoutSession;
+  /** Today's logs as they were committed (outcomes stamped). */
   logs: ExerciseLog[];
   allLogs?: ExerciseLog[];
+  lines: TodayLine[];
+  journey: JourneyRead;
   schedules?: ScheduleEntry[];
   authTrainer: Trainer | null;
-  onFinalize: (postData: {
-    clientFeel: string;
-    noteContent: string;
-    notePriority: "High" | "Medium" | "Low";
-  }) => void;
-  isSyncing?: boolean;
+  /** Writes sessions.clientFeel the moment it is tapped. */
+  onFeel: (feel: ClientFeel) => void | Promise<void>;
+  /** Leaves the screen; the closing note (if any) is filed on the way out. */
+  onLeave: (closing: { noteContent: string; notePriority: "High" | "Medium" | "Low" }) => void | Promise<void>;
   machines?: Machine[];
   rightControls?: React.ReactNode;
   trainerDropdown?: React.ReactNode;
   onStudioClick?: () => void;
+}
+
+type Priority = "High" | "Medium" | "Low";
+
+const GROUP_TONE: Record<string, string> = {
+  "Lower Body": "bg-emerald-500",
+  "Upper Body": "bg-cyan",
+  "Core & Spine": "bg-orange-500",
+  Other: "bg-indigo-500",
+};
+
+function Kicker({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="font-display italic text-cyan text-[11px] uppercase tracking-[0.16em]">{children}</div>
+  );
+}
+
+function Card({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] }}
+      className={`mx-5 p-4 bg-bg-dark-2 border border-div-d rounded-[14px] flex flex-col gap-3 ${className}`}
+    >
+      {children}
+    </motion.section>
+  );
+}
+
+function fmtLb(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
+function TodayRow({ line }: { line: TodayLine }) {
+  const performed = line.outcome === "performed";
+  const word =
+    line.outcome === "practice"
+      ? "Practice"
+      : line.outcome === "skipped"
+        ? `Skipped${line.skipReason && SKIP_REASON_SHORT[line.skipReason as keyof typeof SKIP_REASON_SHORT] ? " · " + SKIP_REASON_SHORT[line.skipReason as keyof typeof SKIP_REASON_SHORT] : ""}`
+        : line.outcome === "not_reached"
+          ? "Not reached"
+          : "";
+  const delta: { text: string; tone: string } | null = (() => {
+    if (!performed) return null;
+    if (line.first) return { text: "First time", tone: "text-cyan" };
+    if (line.loadDelta === null) return null;
+    if (line.loadDelta > 0) return { text: `▲ +${fmtLb(line.loadDelta)} lb`, tone: "text-cyan" };
+    if (line.loadDelta < 0) return { text: `▼ ${fmtLb(line.loadDelta)} lb`, tone: "text-ink-d2" };
+    if ((line.countDelta ?? 0) > 0) return { text: `▲ +${line.countDelta} ${line.isTSC ? "s" : "rep" + (line.countDelta === 1 ? "" : "s")}`, tone: "text-cyan" };
+    if ((line.countDelta ?? 0) < 0) return { text: `▼ ${line.countDelta} ${line.isTSC ? "s" : "rep" + (line.countDelta === -1 ? "" : "s")}`, tone: "text-ink-d2" };
+    return { text: "Held", tone: "text-ink-d3" };
+  })();
+  return (
+    <li className={`flex items-center gap-3 min-h-11 py-1 border-b border-div-d last:border-b-0 ${performed ? "" : "opacity-60"}`}>
+      <span className="flex-1 min-w-0 text-[14px] font-semibold text-ink-d1 truncate">{line.name}</span>
+      {performed ? (
+        <>
+          <span className="font-mono tabular-nums text-[15px] font-bold text-ink-d1 whitespace-nowrap">
+            {line.weight !== null ? fmtLb(line.weight) : "–"}
+            <span className="text-[10px] font-semibold text-ink-d3 ml-0.5">lb</span>
+            <span className="text-ink-d3 mx-1">×</span>
+            {line.count ?? "–"}
+            {line.isTSC && <span className="text-[10px] font-semibold text-ink-d3 ml-0.5">s</span>}
+          </span>
+          {line.quality === 3 && <Star size={14} className="text-amber-400 fill-current shrink-0" aria-label="Max-strength set" />}
+          {delta && <span className={`w-20 text-right text-[11px] font-bold whitespace-nowrap ${delta.tone}`}>{delta.text}</span>}
+        </>
+      ) : (
+        <span className="text-[11px] font-bold uppercase tracking-wider text-ink-d3 whitespace-nowrap">{word}</span>
+      )}
+    </li>
+  );
 }
 
 export function VictoryHUDScreen({
@@ -48,276 +149,120 @@ export function VictoryHUDScreen({
   session,
   logs,
   allLogs = [],
+  lines,
+  journey,
   schedules = [],
   authTrainer,
-  onFinalize,
-  isSyncing,
+  onFeel,
+  onLeave,
   machines = [],
   rightControls,
   trainerDropdown,
   onStudioClick,
 }: VictoryHUDScreenProps) {
-  /*
-   * `ClientFeel`, the same union the toggle emits and the clinical review
-   * reads. It used to be a five-value union of its own invention that no
-   * other file shared, reconciled at the call site with `as any` — see
-   * FeelToggle for what that cost.
-   */
-  const [feel, setFeel] = useState<ClientFeel>("Good");
+  const [feel, setFeel] = useState<ClientFeel | null>(null);
+  const [feelSaved, setFeelSaved] = useState(false);
   const [notes, setNotes] = useState("");
-  const [priority, setPriority] = useState<"High" | "Medium" | "Low">("Medium");
+  const [priority, setPriority] = useState<Priority>("Medium");
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [checkInSavedId, setCheckInSavedId] = useState<string | null>(null);
-  // Renewals round (Sep 2026): only asked when the client is in a window.
   const [showRenewal, setShowRenewal] = useState(false);
   const [renewalLogged, setRenewalLogged] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const renewalDue = renewalPromptDue(client.renewal);
-  const [particles, setParticles] = useState<
-    {
-      id: number;
-      x: number;
-      y: number;
-      color: string;
-      size: number;
-      delay: number;
-    }[]
-  >([]);
 
-  useEffect(() => {
-    // Generate particle burst elements shooting out from center
-    const colors = [
-      "#F06C22",
-      "#38BDF8",
-      "#4FDB8E",
-      "#FCD661",
-      "#A855F7",
-      "#E2E8F0",
-    ];
-    const generated = Array.from({ length: 45 }).map((_, i) => ({
+  // A short burst, then quiet — the numbers are the celebration.
+  const [particles] = useState(() =>
+    Array.from({ length: 36 }).map((_, i) => ({
       id: i,
       x: (Math.random() - 0.5) * 360,
-      y: (Math.random() - 0.6) * 360 - 50,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      size: Math.random() * 8 + 4,
+      y: (Math.random() - 0.6) * 300 - 40,
+      tone: ["bg-cta", "bg-cyan", "bg-emerald-400", "bg-amber-300", "bg-white"][i % 5],
+      size: Math.random() * 7 + 4,
       delay: Math.random() * 0.15,
-    }));
-    setParticles(generated);
+    })),
+  );
+
+  /* The closing note is filed when the trainer leaves — by the button, or by
+     closing the tab. Keep the latest text in a ref so an unload can read it. */
+  const notesRef = useRef({ notes, priority });
+  notesRef.current = { notes, priority };
+  const leftRef = useRef(false);
+  const leave = () => {
+    if (leftRef.current) return;
+    leftRef.current = true;
+    setLeaving(true);
+    void onLeave({ noteContent: notesRef.current.notes, notePriority: notesRef.current.priority });
+  };
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === "hidden" && notesRef.current.notes.trim() && !leftRef.current) leave();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Multi-format support for stats
-  const getLogLoad = (l: ExerciseLog) =>
-    parseFloat(l.loadLb || l.weight || "0") || 0;
-  const getLogReps = (l: ExerciseLog) => {
-    if (l.isTSC || l.isStaticHold) {
-      const secs =
-        parseFloat(
-          l.seconds || (l.isTSC || l.isStaticHold ? l.reps : "") || "0",
-        ) || 0;
-      return (secs / 30) * 2;
-    }
+  const pickFeel = (v: ClientFeel) => {
+    setFeel(v);
+    setFeelSaved(false);
+    Promise.resolve(onFeel(v)).then(() => setFeelSaved(true));
+  };
+
+  /* --- today ------------------------------------------------------------ */
+  const performed = useMemo(() => performedOnly(logs), [logs]);
+  const load = (l: ExerciseLog) => parseFloat(l.loadLb || l.weight || "0") || 0;
+  const reps = (l: ExerciseLog) => {
+    if (l.isTSC || l.isStaticHold) return ((parseFloat(l.seconds || "0") || 0) / 30) * 2;
     return parseFloat(l.outcomeReps || l.reps || "0") || 0;
   };
-  const getLogTut = (l: ExerciseLog) => {
-    return (
-      parseFloat(
-        l.outcomeTut ||
-          l.seconds ||
-          (l.isTSC || l.isStaticHold ? l.reps : "") ||
-          "0",
-      ) || 0
-    );
-  };
+  const tonnage = useMemo(() => performed.reduce((s, l) => s + load(l) * reps(l), 0), [performed]);
+  const byRegion = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const l of performed) {
+      const m = machines.find((x) => x.id === l.machineId);
+      const g = getBroadMuscleGroup(m?.anatomicalRegion || "Unknown", m?.name || "");
+      acc[g] = (acc[g] ?? 0) + load(l) * reps(l);
+    }
+    return Object.entries(acc)
+      .filter(([, v]) => v > 0)
+      .sort((a, b) => b[1] - a[1]);
+  }, [performed, machines]);
 
-  // Every tile below counts PERFORMED sets only (src/lib/set-outcome.ts).
-  // A practice set and a skipped machine are on the record — the grid shows
-  // them — but the victory numbers are about work done to failure.
-  const performed = performedOnly(logs);
-
-  // Calculate actual total tonnage from today's logs
-  const totalTonnage = performed.reduce(
-    (sum, l) => sum + getLogLoad(l) * getLogReps(l),
-    0,
-  );
-
-  // Calculate today's broad muscle grouping breakdown
-  const todayBroad: Record<string, number> = {
-    "Lower Body": 0,
-    "Upper Body": 0,
-    "Core & Spine": 0,
-    Other: 0,
-  };
-
-  performed.forEach((l) => {
-    const machine = machines.find((m) => m.id === l.machineId);
-    const region = machine?.anatomicalRegion || "";
-    const name = machine?.name || "";
-    const group = getBroadMuscleGroup(region, name);
-    const tonnage = getLogLoad(l) * getLogReps(l);
-    todayBroad[group] += tonnage;
-  });
-
-  const todayBroadList = [
-    {
-      name: "Lower Body",
-      value: todayBroad["Lower Body"],
-      color: "bg-emerald-500",
-    },
-    { name: "Upper Body", value: todayBroad["Upper Body"], color: "bg-cyan" },
-    {
-      name: "Core & Spine",
-      value: todayBroad["Core & Spine"],
-      color: "bg-orange-500",
-    },
-    { name: "Other", value: todayBroad["Other"], color: "bg-indigo-500" },
-  ].filter((item) => item.value > 0 || item.name !== "Other");
-
-  // Total session duration
   const startD = safeToDate(session.startTime) || safeToDate(session.createdAt);
   const endD = safeToDate(session.endTime) || new Date();
+  const minutes = startD ? Math.max(0, Math.round((endD.getTime() - startD.getTime()) / 60000)) : null;
+  const maxSets = performed.filter((l) => (l.repQuality || 0) >= 3).length;
 
-  // Calculate Time Under Tension using background timers (or fallback estimate for legacy logs)
-  const totalReps = performed.reduce((sum, l) => sum + getLogReps(l), 0);
-  const sessionDurationMs = startD
-    ? Math.max(0, endD.getTime() - startD.getTime())
-    : 0;
-  const sessionDurationSeconds = sessionDurationMs / 1000;
-  const numMachines = performed.length || 1;
-  const fallbackTimePerMachineSeconds = sessionDurationSeconds / numMachines;
+  /* --- next ------------------------------------------------------------- */
+  const next = useMemo(() => nextBookingFor(client.id, schedules), [client.id, schedules]);
 
-  const estimatedTotalTUT = performed.reduce((sum, l) => {
-    // Time Under Tension = the actual time spent on the machine under load.
-    // Use the exact background timer if available, otherwise the per-machine session estimate.
-    // We do NOT divide by reps — the full machine duration IS the TUT regardless of rep count.
-    const machineDuration = l.machineDurationSeconds ?? l.totalTimeUnderLoad;
-    if (machineDuration !== undefined && machineDuration > 0) {
-      return sum + machineDuration;
-    }
-    return sum + fallbackTimePerMachineSeconds;
-  }, 0);
+  /* --- lifetime (the client's own running counters; allLogs is the fallback) */
+  const lifetime = useMemo(() => {
+    const sessions = client.sessionCount ?? new Set(allLogs.map((l) => l.sessionId)).size;
+    const lifetimeReps = client.lifetimeReps ?? performedOnly(allLogs).reduce((s, l) => s + (parseFloat(l.reps || "0") || 0), 0);
+    const volume = client.lifetimeWeight ?? performedOnly(allLogs).reduce((s, l) => s + load(l) * reps(l), 0);
+    return { sessions, reps: lifetimeReps, volume };
+  }, [client, allLogs]);
 
-  const estimatedTUTDisplay =
-    estimatedTotalTUT >= 60
-      ? `${Math.floor(estimatedTotalTUT / 60)}:${Math.floor(
-          estimatedTotalTUT % 60,
-        )
-          .toString()
-          .padStart(2, "0")}`
-      : `${Math.round(estimatedTotalTUT)}`;
-
-  const estimatedTUTUnit = estimatedTotalTUT >= 60 ? "" : "s";
-
-  // Calculate max strength sets
-  const maxStrengthSets = performed.filter((l) => (l.repQuality || 0) >= 3).length;
-  const totalSets = performed.length;
-
-  // Duration formatting
-
-  let durationFormat = "0:00";
-  if (startD) {
-    const durationMs = Math.max(0, endD.getTime() - startD.getTime());
-    if (durationMs < 1000 * 60 * 60 * 12) {
-      const durationMins = Math.floor(durationMs / 60000);
-      const durationSecs = Math.floor((durationMs % 60000) / 1000);
-      durationFormat = `${durationMins}:${durationSecs.toString().padStart(2, "0")}`;
-    }
-  }
-
-  // Lifetime stats
-  const lifetimeVolume = allLogs.reduce(
-    (sum, l) => sum + getLogLoad(l) * getLogReps(l),
-    0,
-  );
-  const lifetimeReps = allLogs.reduce((sum, l) => sum + getLogReps(l), 0);
-  const sessionCount = new Set(allLogs.map((l) => l.sessionId)).size;
-  const avgRepsPerSession =
-    sessionCount > 0 ? (lifetimeReps / sessionCount).toFixed(1) : "0";
-
-  const tiles = [
-    {
-      id: "tonnage",
-      label: "TODAY'S TONNAGE",
-      value: totalTonnage,
-      unit: "lb",
-      variant: "hero" as const,
-      broadBreakdown: todayBroadList,
-    },
-    {
-      id: "tut",
-      label: "EST. TIME UNDER TENSION",
-      value: estimatedTUTDisplay,
-      unit: estimatedTUTUnit,
-      variant: "default" as const,
-    },
-    {
-      id: "elite",
-      label: "MAX STRENGTH SETS",
-      value: maxStrengthSets.toString(),
-      meta: `/ ${totalSets}`,
-      progress: { current: maxStrengthSets, target: totalSets },
-      variant: "default" as const,
-    },
-    {
-      id: "reps",
-      label: "TOTAL REPS",
-      value: Number.isInteger(totalReps)
-        ? totalReps
-        : parseFloat(totalReps.toFixed(1)),
-      variant: "default" as const,
-    },
-    {
-      id: "duration",
-      label: "DURATION",
-      value: durationFormat,
-      variant: "default" as const,
-    },
-    {
-      id: "lifetimeVol",
-      label: "LIFETIME VOLUME",
-      value: lifetimeVolume.toLocaleString(),
-      unit: "lb",
-      meta: `${sessionCount} sessions`,
-      variant: "elevated" as const,
-    },
-    {
-      id: "lifetimeReps",
-      label: "LIFETIME REPS",
-      value: lifetimeReps.toLocaleString(),
-      meta: `avg ${avgRepsPerSession} / session`,
-      variant: "elevated" as const,
-    },
-  ];
+  const fmtBig = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 10_000 ? `${Math.round(n / 1000)}k` : Math.round(n).toLocaleString());
 
   return (
     <div className="w-full h-full min-h-screen bg-bg-dark font-sans flex flex-col overflow-hidden relative">
-      {/* Confetti Particle Explosion */}
       <div className="absolute inset-0 pointer-events-none z-50 flex items-center justify-center overflow-hidden">
         {particles.map((p) => (
           <motion.div
             key={p.id}
             initial={{ scale: 0, x: 0, y: 0, opacity: 1 }}
-            animate={{
-              scale: [0, 1.2, 1, 0],
-              x: p.x,
-              y: p.y,
-              opacity: [1, 1, 0.7, 0],
-              rotate: Math.random() * 360,
-            }}
-            transition={{
-              duration: 1.4,
-              delay: p.delay,
-              ease: [0.1, 0.8, 0.3, 1],
-            }}
-            className="absolute rounded-xs"
-            style={{
-              width: p.size,
-              height: p.size,
-              backgroundColor: p.color,
-            }}
+            animate={{ scale: [0, 1.2, 1, 0], x: p.x, y: p.y, opacity: [1, 1, 0.7, 0], rotate: 220 }}
+            transition={{ duration: 1.3, delay: p.delay, ease: [0.1, 0.8, 0.3, 1] }}
+            className={`absolute rounded-xs ${p.tone}`}
+            style={{ width: p.size, height: p.size }}
           />
         ))}
       </div>
 
-      <div className="max-w-205 mx-auto w-full h-full relative flex flex-col pb-24 border-x border-div-d shadow-2xl">
+      <div className="max-w-205 mx-auto w-full h-full relative flex flex-col border-x border-div-d shadow-2xl">
         <AppHeader
           variant="dark"
           trainerInitials={authTrainer?.initials || "AJ"}
@@ -326,154 +271,175 @@ export function VictoryHUDScreen({
           onStudioClick={onStudioClick}
         />
 
-        <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 flex flex-col pb-30">
-          {/* Header Title block */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className="px-6 py-3.5"
-          >
-            <div className="font-display italic text-cyan text-[11px] uppercase tracking-[0.16em] mb-1">
-              🏆 VICTORY HUD
-            </div>
-            <h1 className="font-display italic text-ink-d1 text-[38px] uppercase tracking-[-0.01em] leading-none mb-2 mt-2">
-              SESSION COMPLETE
+        <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 flex flex-col gap-3 pb-6">
+          {/* title */}
+          <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="px-6 pt-4 pb-1">
+            <Kicker>Session complete · saved</Kicker>
+            <h1 className="font-display italic text-ink-d1 text-[34px] uppercase tracking-[-0.01em] leading-none mt-2 mb-2">
+              {client.firstName}, {maxSets > 0 ? "strong work." : "good work."}
             </h1>
-            <div className="flex items-center gap-2 text-ink-d2 text-[13px]">
-              <span>Great work · {client.firstName}'s numbers for today.</span>
-              <div className="font-mono text-[11px] bg-white/10 px-2 py-0.75 rounded-[10px] tracking-[0.04em] uppercase text-ink-d1 ml-2">
-                SESSION · {session.id.substring(0, 8)}…
-              </div>
+            <div className="text-ink-d2 text-[13px]">
+              {todayHeadline(lines)}
+              {minutes !== null ? ` · ${minutes} min` : ""}
+              {session.sessionNumber ? ` · session #${session.sessionNumber}` : ""}
             </div>
           </motion.div>
 
-          {/* Staggered Bento stat grid */}
-          <div className="px-5 mt-2">
-            <div className="grid grid-cols-4 auto-rows-[86px] gap-2.5">
-              {tiles.map((tile, index) => {
-                const colSpan =
-                  tile.variant === "hero"
-                    ? "col-span-4 row-span-4 sm:row-span-2"
-                    : "col-span-2 row-span-1";
-                return (
-                  <motion.div
-                    key={tile.id}
-                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{
-                      duration: 0.45,
-                      delay: 0.1 + index * 0.05,
-                      ease: [0.16, 1, 0.3, 1],
-                    }}
-                    className={colSpan}
-                  >
-                    <BentoStatTile {...tile} />
-                  </motion.div>
-                );
-              })}
+          {/* 1 · today */}
+          <Card delay={0.05}>
+            <div className="flex items-baseline justify-between gap-3">
+              <Kicker>Today</Kicker>
+              <span className="text-[11px] text-ink-d3 font-semibold">vs last time on each machine</span>
             </div>
-          </div>
+            <ol className="flex flex-col">
+              {lines.map((l) => (
+                <TodayRow key={l.machineId} line={l} />
+              ))}
+            </ol>
+            {byRegion.length > 0 && (
+              <div className="pt-2 border-t border-div-d">
+                <div className="flex items-baseline justify-between mb-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-ink-d3">Where the work went</span>
+                  <span className="font-mono text-[12px] text-ink-d2">{Math.round(tonnage).toLocaleString()} lb moved</span>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {byRegion.map(([g, v]) => (
+                    <div key={g} className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${GROUP_TONE[g] ?? "bg-indigo-500"}`} />
+                      <span className="w-24 text-[12px] text-ink-d2">{g}</span>
+                      <span className="flex-1 h-1.5 rounded-full bg-bg-dark-3 overflow-hidden">
+                        <span className={`block h-full ${GROUP_TONE[g] ?? "bg-indigo-500"}`} style={{ width: `${Math.round((100 * v) / tonnage)}%` }} />
+                      </span>
+                      <span className="w-10 text-right font-mono text-[11px] text-ink-d3">{Math.round((100 * v) / tonnage)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Card>
 
-          {/* Feedback Form Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5, ease: "easeOut" }}
-            className="mx-5 mt-4 p-3.5 px-4 bg-bg-dark-2 border border-div-d rounded-[14px] flex flex-col gap-3"
-          >
-            <div className="font-display italic text-cyan text-[11px] uppercase tracking-widest">
-              RECOVERY + CLINICAL LOG
+          {/* 2 · the journey */}
+          <Card delay={0.12}>
+            <Kicker>The journey</Kicker>
+            <p className={`text-[15px] leading-snug ${journey.enough ? "text-ink-d1 font-semibold" : "text-ink-d3"}`}>
+              {journeySentence(journey, client.firstName)}
+            </p>
+            {journey.standout && (
+              <p className="text-[12.5px] text-ink-d2">
+                Biggest gain: <b className="text-ink-d1">{journey.standout.name}</b>, {fmtLb(journey.standout.startWeight)} → {fmtLb(journey.standout.nowWeight)} lb (+{journey.standout.pct}%).
+              </p>
+            )}
+            {journey.byGroup.length > 1 && (
+              <div className="flex flex-wrap gap-1.5">
+                {journey.byGroup.map((g) => (
+                  <span key={g.group} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-bg-dark-3 border border-div-d text-ink-d2">
+                    {g.group} <span className={g.pct > 0 ? "text-cyan" : "text-ink-d3"}>{g.pct > 0 ? "+" : ""}{g.pct}%</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* 3 · next */}
+          <Card delay={0.18}>
+            <Kicker>Next</Kicker>
+            <div className={`flex items-center gap-3 min-h-11 px-3 rounded-xl border ${next ? "border-emerald-500/30 bg-emerald-500/10" : "border-orange-500/40 bg-orange-500/10"}`}>
+              {next ? <CalendarCheck2 size={18} className="text-emerald-400 shrink-0" /> : <CalendarX2 size={18} className="text-orange-400 shrink-0" />}
+              <span className="text-[13.5px] font-semibold text-ink-d1">
+                {next ? `Next session: ${formatNextBooking(next.at)}` : "Nothing booked yet — book the next one before they leave."}
+              </span>
             </div>
 
-            <div className="font-display italic text-ink-d1 text-[17px] uppercase -mt-1">
-              How does {client.firstName} feel?
+            <div className="flex items-baseline justify-between mt-1">
+              <span className="font-display italic text-ink-d1 text-[15px] uppercase">How does {client.firstName} feel?</span>
+              {feelSaved && (
+                <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                  <Check size={12} strokeWidth={3} /> Saved
+                </span>
+              )}
             </div>
-
-            <FeelToggle value={feel} onChange={setFeel} />
+            <FeelToggle value={feel} onChange={pickFeel} />
 
             <textarea
-              className="w-full bg-black/25 border border-white/10 rounded-[10px] p-2.5 px-3 min-h-15 text-[13px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic placeholder:font-sans resize-none outline-none focus:border-cyan transition-colors mt-1"
-              placeholder="Post-session notes — any closing observations? These feed into next briefing."
+              className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[13px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic resize-none outline-none focus:border-cyan transition-colors"
+              placeholder="Closing note — files to the journal when you leave this screen."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+              aria-label="Closing note"
             />
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[11px] text-ink-d3 uppercase tracking-wider font-bold">Priority for next time</span>
+              <div className="flex gap-1" role="group" aria-label="Priority">
+                {(["Low", "Medium", "High"] as const).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    aria-pressed={priority === p}
+                    onClick={() => setPriority(p)}
+                    className={`min-h-10 px-3 rounded-lg text-[11px] font-bold uppercase tracking-wider border transition-colors ${
+                      priority === p
+                        ? p === "High"
+                          ? "bg-orange-500/20 border-orange-500/40 text-orange-300"
+                          : "bg-cyan/15 border-cyan/40 text-cyan"
+                        : "bg-bg-dark-3 border-div-d text-ink-d2"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-            {/* The 90-day check-in, while the client is still in the chair.
-                Saves on its own; finalizing the session is unaffected. */}
-            <button
-              type="button"
-              onClick={() => setShowCheckIn(true)}
-              className="mt-2 w-full min-h-11 rounded-xl border border-white/10 bg-white/5 px-4 font-display italic text-[12px] uppercase tracking-wider text-white hover:bg-white/10 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
-            >
-              <HeartPulse className="w-4 h-4 text-cyan" />
-              {checkInSavedId ? "90-day check-in saved ✓" : "Run the 90-day check-in"}
-            </button>
-
-            {/* Renewal: in a window (a conversation due, a charge coming with
-                sessions banked, or an ended package). The floor asks; the
-                sheet takes fifteen seconds and tells the leaders. */}
-            {renewalDue && client.renewal && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
-                onClick={() => setShowRenewal(true)}
-                className="w-full min-h-11 rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-display italic text-[12px] uppercase tracking-wider text-white hover:bg-white/10 flex items-center justify-center gap-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+                onClick={() => setShowCheckIn(true)}
+                className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 font-display italic text-[12px] uppercase tracking-wider text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
               >
-                <MessageSquareText className="w-4 h-4 text-cyan shrink-0" />
-                {renewalLogged ? "Renewal conversation saved ✓" : promptText(client.renewal)}
+                <HeartPulse className="w-4 h-4 text-cyan" />
+                {checkInSavedId ? "Check-in saved ✓" : "Quick check-in question"}
               </button>
-            )}
-
-            <div className="flex items-center justify-between mt-1">
-              <span className="font-display italic text-[11px] text-ink-d3 uppercase tracking-wider">
-                PRIORITY FOR NEXT TIME
-              </span>
-              <button
-                onClick={() => {
-                  const next: Record<string, "High" | "Medium" | "Low"> = {
-                    High: "Low",
-                    Low: "Medium",
-                    Medium: "High",
-                  };
-                  setPriority(next[priority]);
-                }}
-                className={`font-display italic text-[11px] uppercase px-4 min-h-11 min-w-11 rounded-xl flex items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-bg-dark ${
-                  priority === "High"
-                    ? "bg-orange-500/20 border border-orange-500/30 text-orange-400 hover:bg-orange-500/30"
-                    : priority === "Medium"
-                      ? "bg-cyan/10 border border-cyan/30 text-cyan hover:bg-cyan/20"
-                      : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
-                }`}
-              >
-                {priority} <span className="text-[11px] opacity-70">▼</span>
-              </button>
+              {renewalDue && client.renewal && (
+                <button
+                  type="button"
+                  onClick={() => setShowRenewal(true)}
+                  className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 py-2 font-display italic text-[12px] uppercase tracking-wider text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+                >
+                  <MessageSquareText className="w-4 h-4 text-cyan shrink-0" />
+                  {renewalLogged ? "Renewal conversation saved ✓" : promptText(client.renewal)}
+                </button>
+              )}
             </div>
-          </motion.div>
-        </div>
+          </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.6 }}
-          className="w-full absolute bottom-0 left-0 px-5"
-        >
-          <StickyCTA
-            label={isSyncing ? "SAVING..." : "FINALIZE & RETURN TO HUB"}
-            icon={
-              !isSyncing ? (
-                <span className="text-[13px] order-last ml-1">▶</span>
-              ) : undefined
-            }
-            onClick={() =>
-              onFinalize({
-                clientFeel: feel,
-                noteContent: notes,
-                notePriority: priority,
-              })
-            }
-            className="mb-8"
-          />
-        </motion.div>
+          {/* 4 · lifetime — quiet, at the bottom */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mx-5 grid grid-cols-3 gap-2">
+            {[
+              { label: "Sessions", value: lifetime.sessions.toLocaleString() },
+              { label: "Lifetime volume", value: `${fmtBig(lifetime.volume)} lb` },
+              { label: "Lifetime reps", value: fmtBig(lifetime.reps) },
+            ].map((t) => (
+              <div key={t.label} className="rounded-xl border border-div-d bg-bg-dark-2 px-3 py-2">
+                <div className="text-[9.5px] font-bold uppercase tracking-wider text-ink-d3">{t.label}</div>
+                <div className="font-mono text-[15px] font-bold text-ink-d2">{t.value}</div>
+              </div>
+            ))}
+          </motion.div>
+
+          {/* leave */}
+          <div className="mx-5 mt-2 flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={leave}
+              disabled={leaving}
+              className="w-full min-h-[52px] rounded-2xl bg-bg-dark-2 border border-div-d text-ink-d1 font-display italic text-[14px] uppercase tracking-wider flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+            >
+              <ArrowLeft size={16} />
+              {leaving ? "Leaving…" : "Back to Hub"}
+            </button>
+            <span className="text-[11px] text-ink-d3">The session is saved. Anything you add here saves on its own.</span>
+          </div>
+        </div>
       </div>
 
       <LogConversationDialog

@@ -213,6 +213,9 @@ const ALWAYS_DARK_SCREENS = new Set([
   "components/ErrorBoundary.tsx",
   "components/LegacyChartImporter.tsx",
   "components/ClientProgressReportView.tsx",
+  // The post-session screen is the celebration: deliberately always dark
+  // (bg-bg-dark), rebuilt in the tracker round.
+  "components/VictoryHUDScreen.tsx",
 ]);
 
 /**

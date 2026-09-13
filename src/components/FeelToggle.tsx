@@ -41,7 +41,7 @@ export function FeelToggle({ value, onChange }: FeelToggleProps) {
             "min-h-[44px] rounded-lg font-display italic text-[11px] uppercase tracking-wider transition-colors flex items-center justify-center",
             value === opt.id
               ? "bg-cyan text-bg-dark font-bold"
-              : "bg-white/5 text-ink-d2 hover:bg-white/10 hover:text-white"
+              : "bg-bg-dark-3 border border-div-d text-ink-d2 hover:text-ink-d1"
           )}
         >
           {opt.label}
