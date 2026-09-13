@@ -120,7 +120,6 @@ import {
   RoutineAdjustment,
   View,
   ClientMachineSetting,
-  TrainerFocus,
   Trainer,
   ScheduleEntry,
   ProgressReport,
@@ -221,7 +220,6 @@ export function ClientProfileView({
   const [clientSettings, setClientSettings] = useState<
     Record<string, ClientMachineSetting>
   >({});
-  const [trainerFocuses, setTrainerFocuses] = useState<TrainerFocus[]>([]);
   const [progressReports, setProgressReports] = useState<ProgressReport[]>([]);
   const [showMockConfirm, setShowMockConfirm] = useState(false);
 
@@ -274,17 +272,11 @@ export function ClientProfileView({
   const [scheduledSessions, setScheduledSessions] = useState<ScheduleEntry[]>(
     [],
   );
-  const [isEditingFocus, setIsEditingFocus] = useState(false);
   const [isEditingSessionCount, setIsEditingSessionCount] = useState(false);
   const [sessionCountInput, setSessionCountInput] = useState("");
-  const [focusForm, setFocusForm] = useState<Partial<TrainerFocus>>({
-    category: "Path",
-    notes: "",
-  });
   const [selectedTimingSessionId, setSelectedTimingSessionId] = useState<
     string | null
   >(null);
-  const [isSavingFocus, setIsSavingFocus] = useState(false);
   const [isEditingRoutine, setIsEditingRoutine] = useState<string | null>(null);
   const [routineEditData, setRoutineEditData] = useState<{
     name: string;
@@ -1279,33 +1271,6 @@ export function ClientProfileView({
   }, [clientId]);
 
   useEffect(() => {
-    if (!clientId || hasQuotaError) return;
-    if (activeTab !== "journey" && activeTab !== "journal") return;
-
-    const fetchFocuses = async () => {
-      try {
-        const focusQ = query(
-          collection(db, "trainerFocuses"),
-          where("clientId", "==", clientId),
-          orderBy("updatedAt", "desc"),
-          limit(50),
-        );
-        const snap = await getDocs(focusQ);
-        setTrainerFocuses(
-          snap.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as TrainerFocus,
-          ),
-        );
-      } catch (error) {
-        handleFirestoreError(error, OperationType.GET, "trainerFocuses");
-      }
-    };
-
-    fetchFocuses();
-
-  }, [clientId, activeTab]);
-
-  useEffect(() => {
     if (!clientId || hasQuotaError || !user) return;
     // The archive renders in the Journal tab as well as Clinical — gating
     // this on "clinical" alone is why it always looked empty there.
@@ -1358,45 +1323,6 @@ export function ClientProfileView({
     };
     fetchSchedules();
   }, [clientId, user?.uid]);
-
-  useEffect(() => {
-    const myFocus = trainerFocuses.find((f) => f.trainerId === authTrainer?.id);
-    if (myFocus) {
-      setFocusForm({
-        category: myFocus.category,
-        notes: myFocus.notes,
-      });
-    }
-  }, [trainerFocuses, authTrainer]);
-
-  const handleSaveFocus = async () => {
-    if (!clientId || !authTrainer) return;
-    setIsSavingFocus(true);
-    try {
-      const myFocus = trainerFocuses.find(
-        (f) => f.trainerId === authTrainer.id,
-      );
-      const focusData = {
-        clientId,
-        trainerId: authTrainer.id,
-        trainerName: authTrainer.fullName,
-        category: focusForm.category,
-        notes: focusForm.notes,
-        updatedAt: serverTimestamp(),
-      };
-
-      if (myFocus) {
-        await updateDoc(doc(db, "trainerFocuses", myFocus.id!), focusData);
-      } else {
-        await addDoc(collection(db, "trainerFocuses"), focusData);
-      }
-      setIsEditingFocus(false);
-    } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, "trainerFocuses");
-    } finally {
-      setIsSavingFocus(false);
-    }
-  };
 
   const handleSaveRoutine = async () => {
     if (!clientId || !isEditingRoutine) return;

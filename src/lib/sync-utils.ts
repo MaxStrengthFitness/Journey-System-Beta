@@ -106,11 +106,27 @@ import { invalidateSessionCount } from './session-count-cache';
 import { completedSessionRollup } from './client-rollups';
 import { studioTodayKey } from "./studio-time";
 import { isPerformedLog } from './set-outcome';
+import { createJournalEntry } from '../hooks/useClientJournal';
+import type { JournalImportance } from '../types/journal';
+
+/** The post-session note's priority in the Journal's terms — the same map the legacy adapter uses. */
+export function journalImportanceOf(priority: 'High' | 'Medium' | 'Low' | undefined | null): JournalImportance {
+  return priority === 'High' ? 'critical' : priority === 'Medium' ? 'elevated' : 'standard';
+}
 
 /**
  * Atomic Session Completion Engine
- * Consolidates session parameters, notes, log entries, and machine setting updates
- * into a single transaction writeBatch to prevent partial writes.
+ * Consolidates session parameters, log entries, and machine setting updates
+ * into a single writeBatch to prevent partial writes.
+ *
+ * The post-session note is NOT in the batch. It is written to the client's
+ * Journal (journalEntries, origin post_session) after the batch commits, on
+ * its own, so a note the rules refuse — too long, an author id that is not
+ * the signed-in uid — can never take the session down with it. Finish saves
+ * the core first; notes are append-only (docs/ARCHITECTURE.md §1.2).
+ *
+ * Returns whether the note landed, so the caller can say so. `null` means
+ * there was no note to write.
  */
 export async function completeWorkoutSession(
   db: Firestore,
@@ -124,8 +140,8 @@ export async function completeWorkoutSession(
   userId: string,
   /** Extra fields for the session document — the booking match and lateness (lib/session-timing.ts). */
   sessionExtras?: Record<string, unknown>,
-) {
-  if (!currentSession?.id) return;
+): Promise<{ noteSaved: boolean | null }> {
+  if (!currentSession?.id) return { noteSaved: null };
   const batch = writeBatch(db);
   const homeStudioId = selectedClient?.homeStudioId || null;
 
@@ -164,22 +180,6 @@ export async function completeWorkoutSession(
     }
   }
   batch.update(sessionRef, updateData);
-
-  // Post-session note
-  if (postData?.noteContent && selectedClient && authTrainer) {
-    const noteRef = doc(collection(db, 'sessionNotes'));
-    batch.set(noteRef, {
-      sessionId: currentSession.id,
-      clientId: selectedClient.id,
-      homeStudioId: homeStudioId,
-      studioId: homeStudioId,
-      trainerId: authTrainer.id,
-      trainerInitials: authTrainer.initials || authTrainer.fullName.substring(0, 2).toUpperCase(),
-      content: postData.noteContent,
-      priority: postData.notePriority,
-      createdAt: serverTimestamp()
-    });
-  }
 
   // 2. Sync all local logs
   const cleanData = (obj: any): any => {
@@ -357,4 +357,32 @@ export async function completeWorkoutSession(
   }
 
   await batch.commit();
+
+  // 4. The post-session note, into the Journal — after the core is saved,
+  //    never inside the batch (see the header comment). The author is the
+  //    signed-in uid, which is what the journalEntries rule pins authorId to.
+  const noteBody = (postData?.noteContent || '').trim();
+  if (!noteBody || !selectedClient?.id) return { noteSaved: null };
+  try {
+    const initials = (authTrainer?.initials || (authTrainer?.fullName || '').substring(0, 2) || '??').toUpperCase();
+    const id = await createJournalEntry(
+      selectedClient.id,
+      currentSession.hostedAtStudioId || homeStudioId || '',
+      { id: userId, initials, fullName: authTrainer?.fullName || initials },
+      {
+        kind: 'general',
+        category: null,
+        body: noteBody.slice(0, 5000),
+        importance: journalImportanceOf(postData?.notePriority),
+        machineId: null,
+        focusId: null,
+        sessionId: currentSession.id,
+        origin: 'post_session',
+      },
+    );
+    return { noteSaved: id !== null };
+  } catch (err) {
+    console.error('[finish] post-session note did not reach the Journal', err);
+    return { noteSaved: false };
+  }
 }

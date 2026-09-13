@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { auth } from "../../firebase";
 import { useMachineCatalog } from "../../hooks/useMachineCatalog";
 import { useToast } from "../../contexts/ToastContext";
 import { useActiveStudio } from "../../ActiveStudioContext";
@@ -78,7 +79,9 @@ export function EquipmentTab({
 
   const author: MutationAuthor | null = authTrainer
     ? {
-        id: authTrainer.id || "unknown",
+        // The Auth uid: the journalEntries rule pins authorId to it, and it
+        // differs from authTrainer.id on older accounts.
+        id: auth.currentUser?.uid || authTrainer.id || "unknown",
         fullName: authTrainer.fullName || authTrainer.initials || "Unknown",
         initials: authTrainer.initials,
       }

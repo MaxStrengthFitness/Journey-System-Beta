@@ -18,6 +18,7 @@
  * becomes a horizontal chip bar; on landscape (xl) the sidebar splits off.
  */
 import React, { useMemo, useState } from "react";
+import { auth } from "../../firebase";
 import {
   BookOpen,
   ChevronDown,
@@ -115,7 +116,9 @@ export function ClientJournalTab({
 
   const author = useMemo(
     () => ({
-      id: authTrainer?.id || "unknown",
+      // The Auth uid: the journalEntries rule pins authorId to it, and it
+      // differs from authTrainer.id on older accounts.
+      id: auth.currentUser?.uid || authTrainer?.id || "unknown",
       initials: (authTrainer?.initials || "TR").toUpperCase(),
       fullName: authTrainer?.fullName || "Coach",
     }),

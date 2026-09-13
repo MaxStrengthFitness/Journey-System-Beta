@@ -131,6 +131,7 @@ import {
 import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL } from "../lib/set-outcome";
 import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
 import { traineeLevelOf } from "../lib/progression-cue";
+import { createJournalEntry } from "../hooks/useClientJournal";
 import { ActiveSessionTimer } from "./ActiveSessionTimer";
 import { MachineSheet } from "../features/equipment/MachineSheet";
 /* Lazy, and the reason is measurable: the assessment panel is a 162 kB
@@ -2058,23 +2059,37 @@ export function WorkoutTrackerView({
         );
       }
 
-      if (adjustmentNote && authTrainer) {
-        await addDoc(collection(db, "sessionNotes"), {
-          sessionId: docRef.id,
-          clientId,
-          trainerId: authTrainer.id || "",
-          // Threw when a trainer record had neither initials nor a full name.
-          // It only runs if a pre-session note was written, which is why the
-          // crash looked intermittent.
-          trainerInitials:
-            authTrainer.initials ||
-            (authTrainer.fullName || "").substring(0, 2).toUpperCase() ||
-            "??",
-          date: new Date().toLocaleDateString(),
-          content: `[Protocol Adjustment]: ${adjustmentNote}`,
-          createdAt: serverTimestamp(),
-          studioId: selectedClient?.homeStudioId || "",
-        });
+      if (adjustmentNote && adjustmentNote.trim()) {
+        /* The "why the routine changed today" note goes to the client's
+           Journal (journalEntries, origin pre_session) — the canonical notes
+           collection — not to the legacy sessionNotes. Author is the Auth
+           uid, which the rule pins authorId to. Never blocks the start: a
+           note that fails is reported, and the session begins regardless. */
+        const initials = (
+          authTrainer?.initials ||
+          (authTrainer?.fullName || "").substring(0, 2) ||
+          "??"
+        ).toUpperCase();
+        try {
+          await createJournalEntry(
+            clientId,
+            currentStudioId || clientHomeStudioId || "",
+            { id: user.uid, initials, fullName: authTrainer?.fullName || initials },
+            {
+              kind: "general",
+              category: null,
+              body: `Routine adjusted for today: ${adjustmentNote.trim()}`.slice(0, 5000),
+              importance: "standard",
+              machineId: null,
+              focusId: null,
+              sessionId: docRef.id,
+              origin: "pre_session",
+            },
+          );
+        } catch (err) {
+          console.error("[start] adjustment note did not reach the Journal", err);
+          toastError("The session started, but the routine note could not be saved. Add it from the Journal.");
+        }
       }
 
       // 2. Fetch last logs to pre-fill weights
@@ -2468,7 +2483,7 @@ export function WorkoutTrackerView({
           }
         : undefined;
 
-      await completeWorkoutSession(
+      const { noteSaved } = await completeWorkoutSession(
         db,
         currentSession,
         selectedClient,
@@ -2480,6 +2495,10 @@ export function WorkoutTrackerView({
         user.uid,
         sessionExtras,
       );
+      if (noteSaved === false) {
+        // The session is saved; only the note is not. Say exactly that.
+        toastError("Session saved. The post-session note could not be saved — add it from the Journal.");
+      }
 
       setCurrentSession(null);
       setCurrentSessionNotes("");
@@ -3598,7 +3617,9 @@ export function WorkoutTrackerView({
           author={
             authTrainer
               ? {
-                  id: authTrainer.id || "unknown",
+                  // The Auth uid: the journalEntries rule pins authorId to it,
+                  // and it differs from authTrainer.id on older accounts.
+                  id: user.uid,
                   fullName:
                     authTrainer.fullName || authTrainer.initials || "Unknown",
                   initials: authTrainer.initials,
@@ -3645,7 +3666,7 @@ export function WorkoutTrackerView({
         author={
           authTrainer
             ? {
-                id: authTrainer.id || "unknown",
+                id: user.uid,
                 fullName: authTrainer.fullName || authTrainer.initials || "Unknown",
                 initials: authTrainer.initials,
               }
@@ -4114,7 +4135,7 @@ export function WorkoutTrackerView({
             clientFirstName={selectedClient?.firstName || ""}
             studioId={selectedClient?.homeStudioId || contextActiveStudioId || ""}
             author={{
-              id: authTrainer?.id || user?.uid || "unknown",
+              id: user.uid,
               initials: (authTrainer?.initials || "TR").toUpperCase(),
               fullName: authTrainer?.fullName || "Coach",
             }}
