@@ -406,6 +406,9 @@ export interface PreviousAssessmentRef {
   reportId: string;
   date: string;
   assessment: SubjectiveAssessment;
+  /** Who filed it — shown as "last check-in Aug 2 by Christian" (tracker round). */
+  trainerName?: string | null;
+  enteredBy?: "coach" | "client" | null;
 }
 
 export function summarize(

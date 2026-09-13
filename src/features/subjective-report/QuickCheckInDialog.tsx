@@ -122,7 +122,9 @@ export function QuickCheckInDialog({
             <p className="truncate text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               {origin === "pre_session" ? "Before the session" : origin === "post_session" ? "After the session" : "Standalone"}
               {" · "}
-              {previous ? `compared with ${fmtDate(previous.date)}` : "first check-in"}
+              {previous
+                ? `compared with ${fmtDate(previous.date)}${previous.trainerName ? ` by ${previous.trainerName}` : ""}`
+                : "first check-in"}
               {" · "}
               {answered}/24 answered
             </p>

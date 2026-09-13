@@ -24,8 +24,11 @@ import {
   HeartPulse,
   Loader2,
   RotateCcw,
+  Search,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { sectionMatches } from "../../features/subjective-report/search";
+import { fmtDate } from "../../features/subjective-report/ui";
 import type { Client, Machine, Trainer } from "../../types";
 import {
   CategoryCard,
@@ -93,6 +96,24 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
   const started = relative(draft.startedAt);
   const saved = relative(draft.savedAt);
   const canFinalize = draft.hasDraft && draft.doneCount > 0;
+
+  /* FIND THE AREA (tracker round, Sep 2026). "Search 'sleep' and see every
+     area related to it." The list filters as you type; the first match
+     opens so the answer is one tap away. Clearing the box restores all. */
+  const [query, setQuery] = useState("");
+  const visibleSections = query.trim()
+    ? draft.sections.filter((sec) => sectionMatches(sec.id, query))
+    : draft.sections;
+  useEffect(() => {
+    if (!query.trim()) return;
+    const first = visibleSections[0];
+    if (first && !visibleSections.some((sec) => sec.id === openId)) setOpenId(first.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  const lastCheckIn = draft.previous
+    ? `Last check-in ${fmtDate(draft.previous.date)}${draft.previous.trainerName ? ` by ${draft.previous.trainerName}` : ""}${draft.previous.enteredBy === "client" ? " (client's own answers)" : ""}`
+    : "No finished check-in on file yet";
 
   const renderBody = (section: CheckInSectionState) => {
     const common = { value: draft.assessment, onChange: draft.update };
@@ -164,6 +185,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
                     .filter(Boolean)
                     .join(" · ")
                 : "Nothing open. Answer anything below and it starts saving."}
+            {!draft.loading && <> · {lastCheckIn}</>}
           </p>
         </div>
 
@@ -182,9 +204,25 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
         )}
       </div>
 
+      {/* --------------------------- find an area ----------------------- */}
+      <div className="relative border-b border-slate-200 px-4 py-2 dark:border-slate-800">
+        <Search className="pointer-events-none absolute left-7 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Find an area — sleep, meals, knee, stress…"
+          aria-label="Find a check-in area"
+          className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-[13px] text-foreground placeholder:text-muted-foreground focus:border-[#F06C22] focus:outline-none dark:border-slate-800 dark:bg-slate-800/50"
+        />
+        {query.trim() && visibleSections.length === 0 && (
+          <p className="mt-2 text-[12px] text-muted-foreground">No area matches "{query.trim()}". Try another word, or clear the box.</p>
+        )}
+      </div>
+
       {/* --------------------------- sections --------------------------- */}
       <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-        {draft.sections.map((section) => {
+        {visibleSections.map((section) => {
           const open = openId === section.id;
           return (
             <li key={section.id}>

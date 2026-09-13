@@ -45,7 +45,13 @@ export async function loadPreviousCheckIn(
     .map((d) => ({ id: d.id, ...(d.data() as ProgressReport) }))
     .find((r) => r.id !== excludeReportId && r.status === "Finalized" && !!r.subjective);
   return prev && prev.subjective
-    ? { reportId: prev.id!, date: prev.date, assessment: prev.subjective }
+    ? {
+        reportId: prev.id!,
+        date: prev.date,
+        assessment: prev.subjective,
+        trainerName: prev.trainerName ?? null,
+        enteredBy: prev.subjective.enteredBy ?? null,
+      }
     : null;
 }
 
