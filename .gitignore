@@ -83,3 +83,12 @@ typecheck-baseline.txt
 test-baseline.txt
 backfill*.txt
 gitstate.txt
+
+# --- root hygiene (tidy-root.ps1, Sep 12 2026): keep the repo root clean ---
+/logs/
+/*.txt
+/*.txtcd
+/Claude outputs/
+/harness/
+/patches/
+/patches-*/

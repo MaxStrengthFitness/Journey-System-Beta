@@ -16,7 +16,7 @@ const __dirname = path.dirname(__filename);
 // Simple .env parser
 function getEnv(key) {
   try {
-    const dotenvPath = path.join(__dirname, ".env");
+    const dotenvPath = path.join(__dirname, "..", "..", ".env");
     if (!fs.existsSync(dotenvPath)) return null;
     const content = fs.readFileSync(dotenvPath, "utf8");
     const matches = content.match(

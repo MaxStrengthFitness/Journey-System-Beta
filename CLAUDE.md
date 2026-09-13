@@ -17,11 +17,12 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 | Web server | `server.ts` (Express on Render): serves the build and `/api/*` — the Mindbody proxy and the Gemini endpoints. Every `/api/mindbody/*` route needs a staff sign-in (`server/auth.ts`); Mindbody calls go through `server/mindbody-client.ts` |
 | Scheduled jobs | `server/cron-*.ts` (Render cron jobs, bundled by esbuild — they can import pure modules from `src/`). The nightly renewals job is `server/renewals-job.ts`, run by `server/cron-renewals.ts` |
 | Renewals and InBody | `src/features/renewals/` (engine, pipeline, outcomes — read its `README.md`), `src/features/admin/renewals/` (Operations → Renewals), `src/features/inbody/` |
-| Learning, Planner, machines, comments | `src/features/learning/` (the Learning tab: Overview, one search, links to any page), `src/features/planner/` (the Planner — was To-Do — and its private Notes in `notes/`), `src/features/machine-db/` (All MSF machines: sharing and adopting), `src/features/comments/` (comments with @tags). `LEARNING-PLANNER-ROUND.md` is the round |
+| Learning, Planner, machines, comments | `src/features/learning/` (the Learning tab: Overview, one search, links to any page), `src/features/planner/` (the Planner — was To-Do — and its private Notes in `notes/`), `src/features/machine-db/` (All MSF machines: sharing and adopting), `src/features/comments/` (comments with @tags). `docs/rounds/LEARNING-PLANNER-ROUND.md` is the round |
 | Cloud Functions | `functions/src/` — `mindbodyWebhook`, trainer rollups, staff photos, nightly facility analytics |
 | Security rules | `firestore.rules`; tests in `tests/firestore.rules.test.ts`; indexes in `firestore.indexes.json` |
 | One-off scripts | `scripts/*.ts` — service-account auth, dry-run by default, `--commit` to write |
-| Round documents | Repo root: `*-PROPOSAL.md`, `ADMIN-OVERHAUL-ROUND*.md`, `GO-LIVE-SEP10.md`, etc. `ROADMAP.md` is the living plan; `TESTING-CHECKLIST.md` is the iPad walkthrough |
+| Architecture | `docs/ARCHITECTURE.md` - purpose and scope, the screen map, the data dictionary, the code SOP and the roadmap. **Read it before proposing anything** |
+| Round documents | `docs/rounds/` (index in `docs/rounds/README.md`; the full journal in `docs/rounds/CHANGELOG.md`). `ROADMAP.md` is the short working list; `docs/ops/TESTING-CHECKLIST.md` is the iPad walkthrough; runbooks in `docs/ops/` |
 | Training method source text | `docs/msf-academy/` |
 
 ## Environments
@@ -42,7 +43,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 | Build | `npx vite build` | |
 | Rules tests | `npm run test:rules` | Needs JDK 21. "Port taken" means an old emulator still holds 8080 — stop it first |
 
-**Deploy order:** `firebase deploy --only firestore:indexes` → `npm run test:rules` → `firebase deploy --only firestore:rules` → `git push origin master` (the app goes live). Rules go first when they only add access, so the running app is unaffected and the new one finds its rules waiting. If the rules tests fail, stop. Releases are shipped with a staged PowerShell script (`ship-sep10.ps1`, `ship-renewals.ps1`): `-Stage prepare`, then `-Stage golive`.
+**Deploy order:** `firebase deploy --only firestore:indexes` → `npm run test:rules` → `firebase deploy --only firestore:rules` → `git push origin master` (the app goes live). Rules go first when they only add access, so the running app is unaffected and the new one finds its rules waiting. If the rules tests fail, stop. Releases are shipped with a staged PowerShell script (`scripts/ship/ship-*.ps1`): `-Stage prepare`, then `-Stage golive`.
 
 ## Decisions already made — don't change them without asking
 
@@ -84,7 +85,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 - **Attendance before a studio's first synced booking is unknown, not zero.** Pace and proof say so rather than showing "no visits".
 - **InBody is health data.** Scans live in `clients/{id}/inbodyScans` under the sessions-style rule. Never copy InBody numbers into `progressReports`, which any signed-in user can read.
 - Two Mindbody sites share one client-ID namespace in `clients/`. Collisions haven't been ruled out: run `scripts/check-mindbody-client-collisions.ts` before subscribing site 29068 to contract events.
-- `register-webhook.js` now takes `--site` and `--list` and includes the contract and membership events, but neither site is subscribed to them yet. Deploy the Cloud Functions first.
+- `scripts/mindbody/register-webhook.js` now takes `--site` and `--list` and includes the contract and membership events, but neither site is subscribed to them yet. Deploy the Cloud Functions first.
 - **Found Sep 11, not yet fixed — needs AJ's OK.** Two holes let a signed-in trainer grant themselves access, which undoes every role check in the rules and the Mindbody gate's per-site check:
   - A trainer can edit their own `trainers/{uid}` document, including `role` (anything but Admin, Founder or Overseer), `ownedStudioIds` and `accessibleStudioIds`.
   - Any trainer can edit any `studios/{id}` document, including `mindbodySiteId`.

@@ -108,7 +108,7 @@ Refresh the browser — you should be able to pick a studio and start creating t
 
 ## ⚠️ Warnings
 
-- **The root-level utility scripts act on PRODUCTION.** `reset-health.js`, `register-webhook.js`, `deactivate-webhook.js`, `send-test-webhook.js` and `scripts/purge-database.ts` all target the live project. As of Sep 2, 2026 each one prints what it is about to touch and then refuses unless you pass an explicit confirmation flag (`--yes-affect-production`, or `--yes-destroy-production-data` for the purge). Read the printed target before you type the flag — the flag is the whole safety mechanism.
+- **The Mindbody utility scripts in `scripts/mindbody/` act on PRODUCTION.** `scripts/mindbody/reset-health.js`, `scripts/mindbody/register-webhook.js`, `scripts/mindbody/deactivate-webhook.js`, `scripts/mindbody/send-test-webhook.js` and `scripts/purge-database.ts` all target the live project. As of Sep 2, 2026 each one prints what it is about to touch and then refuses unless you pass an explicit confirmation flag (`--yes-affect-production`, or `--yes-destroy-production-data` for the purge). Read the printed target before you type the flag — the flag is the whole safety mechanism.
 - `scripts/purge-database.ts` permanently deletes clients, sessions, studios and exerciseLogs. There is no undo and no backup.
 - `npm run clean` uses `rm -rf`, which fails on Windows — just delete the `dist` folder manually if you ever need to.
 - If you switch `.env` back to a test project, re-run `node scripts/setup-firebase-config.cjs` — the generated config is what the app actually reads, and a stale one silently keeps talking to the old project.

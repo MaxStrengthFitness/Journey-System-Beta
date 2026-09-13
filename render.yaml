@@ -64,7 +64,7 @@
 # themselves, so the right records are always picked - only the firing hour
 # moves.
 #
-# HOW TO APPLY THIS - read RENDER-DEPLOYMENT.md first.
+# HOW TO APPLY THIS - read docs/ops/RENDER-DEPLOYMENT.md first.
 # The web service `name` below MUST stay exactly as it is. That name is the
 # only thing that tells Render to update your existing service rather than
 # stand up a second copy of it beside the first.
@@ -289,7 +289,7 @@ services:
 # with NOTIFICATION_DRY_RUN=true, which sends nothing at all and parks each
 # document as "dry_run" so you can read exactly what would have gone out. Even
 # then, sending needs an SMS or email provider wired into deliver(), which does
-# not exist yet. Three separate gates, deliberately. RENDER-DEPLOYMENT.md walks
+# not exist yet. Three separate gates, deliberately. docs/ops/RENDER-DEPLOYMENT.md walks
 # through proving the whole pipeline without a single message leaving.
 # -----------------------------------------------------------------------------
 # - type: worker

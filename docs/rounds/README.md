@@ -1,0 +1,22 @@
+# Round documents
+
+One document per round: the brief, the decisions, what shipped, what was left. Moved here from the repo root on Sep 12 2026 (`scripts/ship/tidy-root.ps1`). New rounds add a file here named `<yyyy-mm-dd>-<name>.md` and a line below. The full journal of everything shipped since August is `CHANGELOG.md`; the living plan is `../ARCHITECTURE.md`.
+
+| Date | Document |
+| --- | --- |
+| 2026-08-26 | [SANITIZATION_NOTES.md](SANITIZATION_NOTES.md) |
+| 2026-09-01 | [PROJECT_TRACKER.md](PROJECT_TRACKER.md) |
+| 2026-09-05 | [SETTINGS-RBAC-AND-TASK-BOARD.md](SETTINGS-RBAC-AND-TASK-BOARD.md) |
+| 2026-09-05 | [SETTINGS-RBAC-AND-TASK-BOARD-1.md](SETTINGS-RBAC-AND-TASK-BOARD-1.md) |
+| 2026-09-05 | [TRAINER-PROFILE-AND-KAIZEN-ROSTER.md](TRAINER-PROFILE-AND-KAIZEN-ROSTER.md) |
+| 2026-09-06 | [ADMIN-OVERHAUL-ROUND1.md](ADMIN-OVERHAUL-ROUND1.md) |
+| 2026-09-07 | [ADMIN-OVERHAUL-ROUND2.md](ADMIN-OVERHAUL-ROUND2.md) |
+| 2026-09-09 | [DEMO-MODE-BRANCH.md](DEMO-MODE-BRANCH.md) |
+| 2026-09-09 | [IPAD-LIGHTMODE-AND-DATA-ROUND.md](IPAD-LIGHTMODE-AND-DATA-ROUND.md) |
+| 2026-09-10 | [GO-LIVE-SEP10.md](GO-LIVE-SEP10.md) |
+| 2026-09-10 | [HISTORY-ROUND.md](HISTORY-ROUND.md) |
+| 2026-09-10 | [RUN-THIS-MORNING.md](RUN-THIS-MORNING.md) |
+| 2026-09-11 | [OPERATIONS-RENEWALS-PROPOSAL.md](OPERATIONS-RENEWALS-PROPOSAL.md) |
+| 2026-09-11 | [RENEWALS-ROUND.md](RENEWALS-ROUND.md) |
+| 2026-09-12 | [LEARNING-PLANNER-ROUND.md](LEARNING-PLANNER-ROUND.md) |
+| 2026-09-12 | [VISUAL-CONSISTENCY-ROUND.md](VISUAL-CONSISTENCY-ROUND.md) |

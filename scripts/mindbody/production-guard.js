@@ -1,5 +1,5 @@
 /**
- * Shared production safety check for the root-level utility scripts.
+ * Shared production safety check for the Mindbody utility scripts (scripts/mindbody/, run from the repo root: node scripts/mindbody/<name>.js).
  *
  * Added Sep 2, 2026. Background: these scripts hardcode the live project
  * (gen-lang-client-0731527386) and always have. Until now they were protected
