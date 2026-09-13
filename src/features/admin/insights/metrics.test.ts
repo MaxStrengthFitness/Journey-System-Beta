@@ -373,14 +373,15 @@ describe("observations", () => {
     expect(build(solo).some((o) => o.id === "load-lopsided")).toBe(false);
   });
 
-  it("flags a trainer who writes nothing down", () => {
+  it("never names a trainer for not writing notes, and never nags the studio about note rates", () => {
+    // The anti-blocker rule (Sep 12 2026): notes are not a compliance figure.
     const sessions = [
       ...run(20, { trainerId: "a", notes: "" }),
       ...run(20, { trainerId: "b", notes: "solid form today" }),
     ];
-    const found = build(sessions).find((o) => o.id === "trainer-no-notes-a");
-    expect(found?.text).toContain("Marina");
-    expect(found?.text).toContain("no notes at all");
+    const ids = build(sessions).map((o) => o.id);
+    expect(ids.some((id) => id.startsWith("trainer-no-notes-"))).toBe(false);
+    expect(ids).not.toContain("notes-thin");
   });
 
   it("will not accuse a trainer who has barely worked", () => {

@@ -330,7 +330,6 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
                   <th scope="col">Clients</th>
                   <th scope="col">Machines used</th>
                   <th scope="col">Typical</th>
-                  <th scope="col">Notes</th>
                 </tr>
               </thead>
               <tbody>
@@ -366,9 +365,6 @@ function TrainerRow({ t }: { t: TrainerMetrics }) {
       <td>{t.clients}</td>
       <td>{t.machineVariety}</td>
       <td>{t.medianMinutes === null ? "—" : `${Math.round(t.medianMinutes)}m`}</td>
-      <td className={t.enoughToJudge && t.noteRate === 0 ? "adm-ins-bad" : undefined}>
-        {pct(t.noteRate)}
-      </td>
     </tr>
   );
 }

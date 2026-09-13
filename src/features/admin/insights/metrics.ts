@@ -52,8 +52,12 @@ export const MIN_SESSIONS_FOR_STUDIO_CLAIM = 20;
 export const LOW_COMPLETION_RATE = 0.85;
 /** One trainer carrying more than this share of the floor is a rota question. */
 export const LOPSIDED_LOAD_SHARE = 0.45;
-/** Under this share of sessions carrying a note reads as a habit, not a lapse. */
-export const LOW_NOTE_RATE = 0.4;
+/*
+ * There is deliberately no note-rate threshold and no per-trainer note rate.
+ * AJ's rule (Sep 12 2026): we do not track which trainers are not writing
+ * notes, and a missing note never becomes a compliance figure. The studio's
+ * "sessions with a note" stays as a plain number on a tile, and that is all.
+ */
 /** Days within which a returning client counts as retained. */
 export const RETURN_WINDOW_DAYS = 45;
 /** A session longer than this was almost certainly left running. */
@@ -160,7 +164,6 @@ export interface TrainerMetrics {
   machineVariety: number;
   medianMachinesPerSession: number | null;
   medianMinutes: number | null;
-  noteRate: number;
   feelRate: number;
   /** Sessions that were a client's first. */
   firstSessions: number;
@@ -215,7 +218,6 @@ export function trainerMetrics(
       machineVariety: machines.size,
       medianMachinesPerSession: median(perSession),
       medianMinutes: median(minutes),
-      noteRate: own.length === 0 ? 0 : own.filter(hasNote).length / own.length,
       feelRate: own.length === 0 ? 0 : own.filter(hasFeel).length / own.length,
       firstSessions: own.filter((s) => s.sessionNumber === 1).length,
       crossTrainSessions: own.filter((s) => s.isCrossTrain).length,
@@ -392,24 +394,8 @@ export function observations(
   }
 
   // ── what gets written down ───────────────────────────────────────
-  if (summary.noteRate < LOW_NOTE_RATE) {
-    out.push({
-      id: "notes-thin",
-      tone: "watch",
-      text: `Only ${pct(summary.noteRate)} of sessions have a note on them.`,
-      action:
-        "Notes are what the next trainer reads before a session. Thin notes make every handover a cold start.",
-    });
-  }
-
-  const silent = trainers.filter((t) => t.enoughToJudge && t.noteRate === 0);
-  for (const t of silent) {
-    out.push({
-      id: `trainer-no-notes-${t.trainerKey}`,
-      tone: "watch",
-      text: `${t.label} has written no notes at all across ${t.sessions} sessions.`,
-    });
-  }
+  // Nothing here, on purpose. Notes are not a compliance figure and no
+  // trainer is named for not writing them (the anti-blocker rule).
 
   // ── variety ──────────────────────────────────────────────────────
   const narrow = trainers.filter(
