@@ -23,19 +23,17 @@ import {
   type WikiCrumb,
   type WikiSearchGroup,
 } from "../wiki";
-import {
-  MachineUpkeepCard,
-  MachinePlaybookCard,
-  TaskNoteDialog,
-  notifyTaskCompletion,
-  searchPlaybook,
-  setTaskStatus,
-  studioLocation,
-  useMachineUpkeep,
-  usePlaybook,
-  useStudioTasks,
-  type TaskRow,
-} from "../studio-tasks";
+// Direct sub-module imports, not the studio-tasks barrel - see ClientsView.
+import { MachineUpkeepCard } from "../studio-tasks/MachineUpkeepCard";
+import { MachinePlaybookCard } from "../studio-tasks/MachinePlaybookCard";
+import { TaskNoteDialog } from "../studio-tasks/TaskNoteDialog";
+import { notifyTaskCompletion } from "../studio-tasks/notify";
+import { searchPlaybook } from "../studio-tasks/playbook";
+import { setTaskStatus, studioLocation } from "../studio-tasks/mutations";
+import { useMachineUpkeep } from "../studio-tasks/useMachineUpkeep";
+import { usePlaybook } from "../studio-tasks/usePlaybook";
+import { useStudioTasks } from "../studio-tasks/useStudioTasks";
+import type { TaskRow } from "../studio-tasks/types";
 import { useAcademyCards, useAcademyScripts } from "../academy/useAcademyContent";
 import { canWriteStudioPages, leadsStudioPerRules } from "../learning/permissions";
 import { CommentsPanel } from "../comments";

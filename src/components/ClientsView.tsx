@@ -23,7 +23,10 @@ import { queryStudioIds } from "../lib/tenancy";
 import { Client, Trainer, View, WorkoutSession } from "../types";
 import { isFuzzyNameMatch } from "../lib/sync-utils";
 import { ScheduleBlock } from "./schedule/ScheduleBlock";
-import { useStudioTasks } from "../features/studio-tasks";
+// Import the hook file directly, not the studio-tasks barrel (index.ts).
+// ClientsView is in the initial bundle; pulling the barrel in here would drag
+// the whole Studio Hub UI in with it and defeat AppContent's lazy import.
+import { useStudioTasks } from "../features/studio-tasks/useStudioTasks";
 import {
   zonedHM,
   calendarLabelKey,

@@ -35,13 +35,10 @@ import {
   studioDateKey,
   formatStudioDate,
 } from "../../lib/studio-time";
-import {
-  useStudioTasks,
-  setTaskStatus,
-  studioLocation,
-  categoryLabel,
-  type TaskRow,
-} from "../studio-tasks";
+// Direct sub-module imports, not the studio-tasks barrel - see ClientsView.
+import { useStudioTasks } from "../studio-tasks/useStudioTasks";
+import { setTaskStatus, studioLocation } from "../studio-tasks/mutations";
+import { categoryLabel, type TaskRow } from "../studio-tasks/types";
 import {
   attentionItems,
   entriesForDay,

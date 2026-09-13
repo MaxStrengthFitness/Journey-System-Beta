@@ -13,19 +13,17 @@ import { StudioSetupCard } from "./StudioSetupCard";
 import { MachinePicker } from "./MachinePicker";
 import { X } from "lucide-react";
 import { machinesForBodySlug } from "./anatomy";
-import {
-  MachineUpkeepCard,
-  TaskNoteDialog,
-  setTaskStatus,
-  studioLocation,
-  notifyTaskCompletion,
-  useMachineUpkeep,
-  useStudioTasks,
-  usePlaybook,
-  searchPlaybook,
-  MachinePlaybookCard,
-  type TaskRow,
-} from "../studio-tasks";
+// Direct sub-module imports, not the studio-tasks barrel - see ClientsView.
+import { MachineUpkeepCard } from "../studio-tasks/MachineUpkeepCard";
+import { MachinePlaybookCard } from "../studio-tasks/MachinePlaybookCard";
+import { TaskNoteDialog } from "../studio-tasks/TaskNoteDialog";
+import { setTaskStatus, studioLocation } from "../studio-tasks/mutations";
+import { notifyTaskCompletion } from "../studio-tasks/notify";
+import { useMachineUpkeep } from "../studio-tasks/useMachineUpkeep";
+import { useStudioTasks } from "../studio-tasks/useStudioTasks";
+import { usePlaybook } from "../studio-tasks/usePlaybook";
+import { searchPlaybook } from "../studio-tasks/playbook";
+import type { TaskRow } from "../studio-tasks/types";
 import { useToast } from "../../contexts/ToastContext";
 import { useCatalogMachines } from "./useCatalogMachines";
 import { useStudioMachineSettings } from "../../hooks/useStudioMachineSettings";
