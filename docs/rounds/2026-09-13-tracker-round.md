@@ -1,6 +1,6 @@
 # The tracker round — the Active Session audit, built
 
-**Sep 13, 2026 · eleven patches on `master` after the gate fix · shipped with `scripts/ship/ship-tracker.ps1`**
+**Sep 13, 2026 · fifteen patches on `master` after the gate fix · shipped with `scripts/ship/ship-tracker.ps1`**
 
 The first screen of the screen-by-screen audit: the Active Session (during-set loop, the trainer's Rank 1 path). AJ filled the audit template on Sep 13; this round is that template answered in code. His three decisions on the way: the Now bar becomes a **right-hand panel in landscape**; the automated time estimate is **fixed and kept, relabeled "time on machine"**; and the Now bar's model is his sentence — *"the weight is always there; every set you enter reps; if you aren't entering reps, that's when it's Practice or Skipped"*.
 
@@ -53,6 +53,20 @@ Each is one commit, typechecked on its own, so any one can be reverted alone.
 
 Patches: 9. **`feat(post-session)`** — the flow, `src/lib/post-session.ts` (9 tests), the screen; `BentoStatTile`, `StickyCTA`, `EliteProgressBar` deleted (no other users). 10. **`feat(machine-sheet)`**. 11. **`docs`**.
 
+## Audit sheets 6–8, answered later that night (patches 12–15)
+
+| Audit verdict | Where it is now |
+| --- | --- |
+| **Hub:** opens at the top; at 3:30 I scroll to the bottom to find my next client | the timeline lands with the Now line a third of the way down, once per day selection (`ClientsView` `timelineRef`) |
+| "Training Session" on every card is redundant; room for markers | `src/lib/hub-markers.ts` (6 tests): Consultation, First session, Session 25/50/100…, Birthday today/tomorrow/in N days (7-day window), Back after N wk (21+ days), Away from/until (Vacation, Snowbird events, 14-day window), an upcoming Medical event by name, Renewal due. The plain service name is hidden; a non-default one (InBody scan) still shows |
+| A loading animation with the blue/orange/grey logo | `components/LoadingMark.tsx` — M ∧ X squares in a wave, theme colours, reduced-motion fallback; used for the lazy-view wait and "Opening the chart…" |
+| **Renewal dialog:** no good way to open it; want to see what past trainers said | `TouchHistory.tsx` (one list, used by the card, the leaders' brief and now inside the dialog above the form); the post-session screen shows "Renewal conversation" whenever a package is on file, orange when due |
+| **Check-in:** too many categories to find the right one — search "sleep" | search box over the twelve areas (`subjective-report/search.ts`); first match opens |
+| Who updated it last, and when | "Last check-in Aug 2 by Christian" in the panel header; the dialog's "compared with" line names the author |
+| FORD (Family, Occupation, Recreation, Dreams), client mode, "communicate additional info about the update" | **next round** — the check-in round in ARCHITECTURE §3.8 (living record + snapshots, FORD on the client record). Not squeezed in here |
+
+Patches: 12. **`feat(hub)`**. 13. **`feat(renewals)`**. 14. **`feat(check-in)`**. 15. **`docs`**.
+
 ## Rules the code now follows
 
 - **Nothing on the Active Session deletes a session but Discard.** Abandonment is a *read-side* rule (`isSessionValid`), never a write.
@@ -65,7 +79,7 @@ Patches: 9. **`feat(post-session)`** — the flow, `src/lib/post-session.ts` (9 
 
 ## Verification on the mirror
 
-`npx tsc --noEmit` 18 (baseline 18) · `npx vitest run src` 103 files, 2,004 passing · `npx vite build` clean. The session bar and Now bar were rendered in a harness at 768×1024 and 1024×768, light and dark, in the REPS, SEC, Practice, Skipped and Paused states. AJ's own `ship-tracker.ps1 verify` is the run that counts.
+`npx tsc --noEmit` 18 (baseline 18) · `npx vitest run src` 105 files, 2,012 passing · `npx vite build` clean. The session bar and Now bar were rendered in a harness at 768×1024 and 1024×768, light and dark, in the REPS, SEC, Practice, Skipped and Paused states. AJ's own `ship-tracker.ps1 verify` is the run that counts.
 
 ## Still open after this round
 
