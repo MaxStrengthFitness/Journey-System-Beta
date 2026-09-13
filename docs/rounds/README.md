@@ -20,3 +20,4 @@ One document per round: the brief, the decisions, what shipped, what was left. M
 | 2026-09-11 | [RENEWALS-ROUND.md](RENEWALS-ROUND.md) |
 | 2026-09-12 | [LEARNING-PLANNER-ROUND.md](LEARNING-PLANNER-ROUND.md) |
 | 2026-09-12 | [VISUAL-CONSISTENCY-ROUND.md](VISUAL-CONSISTENCY-ROUND.md) |
+| 2026-09-12 | [2026-09-12-floor-round.md](2026-09-12-floor-round.md) — the four set outcomes, Finish that never blocks, the progression cue |
