@@ -2217,3 +2217,197 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   .jg-sbar__finish { padding: 0 12px; }
   .jg-sbar__end { margin-left: 4px; padding-left: 6px; }
 }
+
+/* ==========================================================================
+   Today's order — the reorder sheet (RoutineOrderSheet.tsx, tracker round)
+   ========================================================================== */
+.jg-order {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 88dvh;
+  background: var(--jg-bg);
+  border: 1px solid var(--jg-border);
+  border-bottom: 0;
+  border-radius: 22px 22px 0 0;
+  overflow: hidden;
+  font-family: var(--jg-font);
+  color: var(--jg-ink);
+}
+.jg-order__grab { flex: none; width: 40px; height: 4px; margin: 8px auto 2px; border-radius: 999px; background: var(--jg-border-strong); opacity: 0.7; }
+.jg-order__head {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 6px 14px 12px 16px;
+  border-bottom: 1px solid var(--jg-border);
+  background: var(--jg-surface);
+}
+.jg-order__head > div { min-width: 0; flex: 1; }
+.jg-order__title { margin: 0; font-family: var(--jg-font-display); font-size: 19px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; }
+.jg-order__sub { margin: 4px 0 0; font-size: 11.5px; font-weight: 600; color: var(--jg-ink-muted); line-height: 1.4; }
+.jg-order__done {
+  appearance: none;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--jg-live);
+  color: var(--jg-live-on);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-order__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.jg-order__body > * { flex: none; }
+.jg-order__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.jg-order__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 0 4px 0 0;
+  border: 1px solid var(--jg-border);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+  touch-action: pan-y;
+}
+.jg-order__row.is-dragging { box-shadow: 0 8px 24px -8px var(--jg-sticky-shadow); border-color: var(--jg-live); position: relative; z-index: 1; }
+.jg-order__row.is-current { border-color: var(--jg-hero); background: var(--jg-hero-fill); }
+.jg-order__row.is-done .jg-order__name, .jg-order__row.is-practice .jg-order__name, .jg-order__row.is-skipped .jg-order__name { color: var(--jg-ink-muted); }
+.jg-order__grip {
+  appearance: none;
+  flex: none;
+  width: 44px;
+  height: 46px;
+  border: 0;
+  background: transparent;
+  color: var(--jg-ink-faint);
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.jg-order__grip:active { cursor: grabbing; color: var(--jg-ink); }
+.jg-order__ord {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--jg-surface-3);
+  color: var(--jg-ink-2);
+  font-size: 11.5px;
+  font-weight: 800;
+  font-style: normal;
+  display: grid;
+  place-items: center;
+  font-variant-numeric: tabular-nums;
+}
+.jg-order__row.is-current .jg-order__ord { background: var(--jg-hero); color: var(--jg-hero-on); }
+.jg-order__id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; padding-left: 4px; }
+.jg-order__name { font-size: 14px; font-weight: 750; line-height: 1.15; }
+.jg-order__settings { font-size: 10.5px; font-weight: 600; color: var(--jg-ink-muted); font-variant-numeric: tabular-nums; }
+.jg-order__status {
+  flex: none;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--jg-ink-muted);
+  padding: 0 6px;
+}
+.jg-order__row.is-current .jg-order__status { color: var(--jg-hero-text); }
+.jg-order__next {
+  appearance: none;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--jg-live);
+  border-radius: 9px;
+  background: var(--jg-live-fill);
+  color: var(--jg-live-text);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-order__next span { display: none; }
+@media (min-width: 480px) { .jg-order__next span { display: inline; } }
+.jg-order__remove {
+  appearance: none;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--jg-ink-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-order__remove:hover { background: var(--jg-surface-3); color: var(--jg-ink); }
+.jg-order__empty { margin: 8px 4px; font-size: 12.5px; color: var(--jg-ink-muted); list-style: none; }
+
+.jg-order__floor { margin-top: 16px; }
+.jg-order__floorhead { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.jg-order__kicker { flex: 1; margin: 0; font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--jg-ink-muted); }
+.jg-order__find {
+  flex: 0 1 220px;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  background: var(--jg-surface);
+  color: var(--jg-ink);
+  font: inherit;
+  font-size: 14px;
+}
+.jg-order__floorlist { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
+.jg-order__add {
+  appearance: none;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px dashed var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  background: transparent;
+  color: var(--jg-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-order__add svg { color: var(--jg-live-text); flex: none; }
+.jg-order__add span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jg-order__add:active { background: var(--jg-live-fill); }

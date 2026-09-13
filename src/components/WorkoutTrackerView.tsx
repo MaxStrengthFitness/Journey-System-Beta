@@ -131,6 +131,7 @@ import {
 import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL } from "../lib/set-outcome";
 import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
 import { forgetLiveSession, peekLiveSessionId, rememberLiveSession } from "../lib/live-session";
+import { RoutineOrderSheet } from "../features/journey-grid/RoutineOrderSheet";
 import { traineeLevelOf } from "../lib/progression-cue";
 import { createJournalEntry } from "../hooks/useClientJournal";
 import { ActiveSessionTimer } from "./ActiveSessionTimer";
@@ -1483,8 +1484,13 @@ export function WorkoutTrackerView({
    * "+" on any machine not in today's routine — so what was actually missing
    * was a way to change the order, and that fits in the cell the machine name
    * already occupies.
+   *
+   * Tracker round (Sep 2026): the in-cell up/down arrows are retired for
+   * drag and drop. Reorder opens RoutineOrderSheet — a bottom sheet with a
+   * grip per machine, "Do next" for the occupied-machine pivot, and "add
+   * from the floor" — which hands the new sequence to applySessionMachineIds.
    */
-  const [isReorderMode, setIsReorderMode] = useState(false);
+  const [isOrderSheetOpen, setIsOrderSheetOpen] = useState(false);
 
   /**
    * Every mid-session change to the machine list lands here, and lands
@@ -3174,17 +3180,6 @@ export function WorkoutTrackerView({
         focusMachineId: gridFocusMachineId,
         onFocusMachine: setFocusMachineOverride,
         weightStep: 2,
-        reorder: isReorderMode,
-        onMoveMachine: (id: string, direction: -1 | 1) => {
-          const at = activeMachineIds.indexOf(id);
-          const to = at + direction;
-          if (at === -1 || to < 0 || to >= activeMachineIds.length) return;
-          const next = [...activeMachineIds];
-          [next[at], next[to]] = [next[to], next[at]];
-          applySessionMachineIds(next);
-        },
-        onRemoveMachine: (id: string) =>
-          applySessionMachineIds(activeMachineIds.filter((m) => m !== id)),
       }
     : undefined;
 
@@ -3984,12 +3979,12 @@ export function WorkoutTrackerView({
           </span>
           <button
             type="button"
-            className={`jg-rail__edit ${isReorderMode ? "is-on" : ""}`}
-            aria-pressed={isReorderMode}
-            onClick={() => setIsReorderMode((o) => !o)}
+            className="jg-rail__edit"
+            onClick={() => setIsOrderSheetOpen(true)}
+            disabled={!currentSession}
           >
             <Settings2 className="w-3 h-3 shrink-0" strokeWidth={2.5} />
-            {isReorderMode ? "Done" : "Reorder"}
+            Reorder
           </button>
           <button
             type="button"
@@ -4059,6 +4054,19 @@ export function WorkoutTrackerView({
           nextName={gridNextRow?.machine.name}
           onNext={() => gridNextRow && setFocusMachineOverride(gridNextRow.machine.id)}
           level={traineeLevelOf(selectedClient)}
+        />
+      )}
+
+      {currentSession && (
+        <RoutineOrderSheet
+          open={isOrderSheetOpen}
+          onClose={() => setIsOrderSheetOpen(false)}
+          ids={activeMachineIds}
+          rows={gridRows}
+          values={gridLiveValues}
+          focusId={gridFocusMachineId}
+          onChange={applySessionMachineIds}
+          onFocus={setFocusMachineOverride}
         />
       )}
 
