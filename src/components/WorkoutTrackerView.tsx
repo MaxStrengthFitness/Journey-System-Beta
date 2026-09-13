@@ -130,6 +130,7 @@ import {
 } from "../lib/log-validation";
 import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL } from "../lib/set-outcome";
 import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
+import { forgetLiveSession, peekLiveSessionId, rememberLiveSession } from "../lib/live-session";
 import { traineeLevelOf } from "../lib/progression-cue";
 import { createJournalEntry } from "../hooks/useClientJournal";
 import { ActiveSessionTimer } from "./ActiveSessionTimer";
@@ -1208,9 +1209,7 @@ export function WorkoutTrackerView({
   const [machineTimeElapsed, setMachineTimeElapsed] = useState<number>(0);
 
   useEffect(() => {
-    const takeoverSessionId = localStorage.getItem(
-      "max_strength_active_session_id",
-    );
+    const takeoverSessionId = peekLiveSessionId();
     if (takeoverSessionId && !currentSession) {
       const fetchTakeoverSession = async () => {
         try {
@@ -1218,7 +1217,11 @@ export function WorkoutTrackerView({
           const sSnap = await getDoc(sRef);
           if (sSnap.exists()) {
             const data = { id: sSnap.id, ...sSnap.data() } as WorkoutSession;
-            if (data.status === "In-Progress") {
+            /* Adopt only for the client on screen. The remembered id used to
+               be cleared on adoption so it could not attach the wrong client's
+               session later; the client check does that job, which lets the
+               key stay put as the crash-recovery net (lib/live-session.ts). */
+            if (data.status === "In-Progress" && (!selectedClient?.id || data.clientId === selectedClient.id)) {
               setCurrentSession(data);
               /* Merge, never replace. `sessions` feeds the history grid AND
                  builds the exerciseLogs query below (its `where sessionId in`
@@ -1233,8 +1236,8 @@ export function WorkoutTrackerView({
               );
               setIsPreSessionMode(false);
               setShowRoutinePicker(false);
-              // Clear it so we don't keep doing this if the trainer navigates away and back manually
-              localStorage.removeItem("max_strength_active_session_id");
+            } else if (data.status !== "In-Progress") {
+              forgetLiveSession(takeoverSessionId);
             }
           }
         } catch (error) {
@@ -1424,23 +1427,17 @@ export function WorkoutTrackerView({
     }
   }, [isPaused, currentSession]);
 
+  /* Until the tracker round (Sep 2026) this loop also DELETED the session —
+     with every set in it — once the clock passed 60 minutes, as "abandoned
+     session cleanup". A client who ran long, or a trainer resuming after a
+     break (the pause history lives in memory and is gone after a reload),
+     lost the whole session with no warning. Abandoned sessions are already
+     handled without destroying data: `isSessionValid` hides a session whose
+     heartbeat is older than 60 minutes. Nothing on this screen may delete
+     a session except the trainer pressing Discard. */
   useEffect(() => {
     if (!currentSession || isPaused) return;
     const interval = setInterval(() => {
-      // Auto-abandon session if left open for > 60 minutes of active time to prevent infinite timers and resource consumption
-      const start = currentSession.startTime?.toDate
-        ? currentSession.startTime.toDate()
-        : new Date(currentSession.startTime);
-      const totalSessionMinutes =
-        (Date.now() - start.getTime() - currentSegmentPauseDuration.current) /
-        60000;
-      if (totalSessionMinutes > 60) {
-        if (currentSession.id) {
-          deleteSession(currentSession.id);
-        }
-        return;
-      }
-
       let extraPause = 0;
       if (isPaused && pauseStartTime.current) {
         extraPause = Date.now() - pauseStartTime.current;
@@ -2045,6 +2042,9 @@ export function WorkoutTrackerView({
         clientId,
         at: Date.now(),
       };
+      // The device remembers the live session, so the bottom tab can bring
+      // the trainer straight back after a crash (lib/live-session.ts).
+      rememberLiveSession(docRef.id);
 
       const clientUpdateData: any = {};
       if (routineType === "B" && !selectedClient?.isRoutineBActive) {
@@ -2345,6 +2345,7 @@ export function WorkoutTrackerView({
       }
       // Delete session
       await deleteDoc(doc(db, "sessions", sessionId));
+      forgetLiveSession(sessionId);
 
       if (currentSession?.id === sessionId) {
         setCurrentSession(null);
@@ -2500,6 +2501,7 @@ export function WorkoutTrackerView({
         toastError("Session saved. The post-session note could not be saved — add it from the Journal.");
       }
 
+      forgetLiveSession(currentSession?.id);
       setCurrentSession(null);
       setCurrentSessionNotes("");
       setShowEndConfirmation(false);

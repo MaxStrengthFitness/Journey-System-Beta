@@ -75,6 +75,12 @@ import {
 } from "./types";
 import { OperationType, handleFirestoreError } from "./lib/firestore-errors";
 import { isSessionValid } from "./lib/utils";
+import {
+  findMyLiveSession,
+  forgetLiveSession,
+  liveSessionTabLabel,
+  peekLiveSessionId,
+} from "./lib/live-session";
 import { afterOverlayClose } from "./lib/scroll-lock";
 import { useToast } from "./contexts/ToastContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -971,6 +977,49 @@ export default function AppContent({
         isSessionValid(s),
     );
   }, [sessions, selectedClientId]);
+
+  /* THE RESUME FAILSAFE (tracker round, Sep 2026). `currentSession` above
+     only exists once a client is selected, and after a crash or a reload no
+     client is selected — so the tab read "Start Session" and sent the
+     trainer to the directory while their session was still running. This
+     is the trainer's OWN live session, found without a client, so the tab
+     can take them straight back. See lib/live-session.ts. */
+  const myLiveSession = useMemo(
+    () => findMyLiveSession(sessions, authTrainer?.id),
+    [sessions, authTrainer?.id],
+  );
+  const liveSession = currentSession ?? myLiveSession;
+
+  const resumeLiveSession = useCallback(async () => {
+    if (currentSession || (selectedClientId && !myLiveSession)) {
+      setCurrentView("workouts");
+      return;
+    }
+    if (myLiveSession?.clientId) {
+      setSelectedClientId(myLiveSession.clientId);
+      setCurrentView("workouts");
+      return;
+    }
+    // Second net: the id the device remembered, read directly — this
+    // survives a heartbeat older than the stream's 60-minute cutoff.
+    const rememberedId = peekLiveSessionId();
+    if (rememberedId) {
+      try {
+        const snap = await getDoc(doc(db, "sessions", rememberedId));
+        const data = snap.exists() ? (snap.data() as { status?: string; clientId?: string }) : null;
+        if (data?.status === "In-Progress" && data.clientId) {
+          setSelectedClientId(data.clientId);
+          setCurrentView("workouts");
+          return;
+        }
+        forgetLiveSession(rememberedId);
+      } catch (error) {
+        console.error("Could not read the remembered session:", error);
+      }
+    }
+    if (selectedClientId) setCurrentView("workouts");
+    else setCurrentView("client-directory");
+  }, [currentSession, myLiveSession, selectedClientId]);
   // Derived state for the active studio name
   const activeStudioName = useMemo(() => {
     if (!activeStudioId) return null;
@@ -2363,25 +2412,22 @@ export default function AppContent({
               <NavButton
                 active={currentView === "workouts"}
                 onClick={() => {
-                  if (currentSession || selectedClientId) {
-                    setCurrentView("workouts");
-                  } else {
-                    setCurrentView("client-directory");
-                  }
+                  void resumeLiveSession();
                 }}
                 icon={<PlayCircle className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label={currentSession ? "Active Session" : "Start Session"}
-                activeColor={currentSession ? "text-orange-500" : undefined}
+                label={liveSessionTabLabel(liveSession)}
+                activeColor={liveSession ? "text-orange-500" : undefined}
                 activeBg={
-                  currentSession
+                  liveSession
                     ? "bg-orange-500/10 dark:bg-orange-600/10"
                     : undefined
                 }
                 activeIndicator={
-                  currentSession
+                  liveSession
                     ? "bg-orange-500 dark:bg-orange-600"
                     : undefined
                 }
+                attention={!!liveSession && currentView !== "workouts"}
               />
               {/*
                 LEARNING — the Catalog and the Academy in one slot (Sep 10
@@ -3092,6 +3138,7 @@ function NavButton({
   activeColor = "text-[#115E8D]",
   activeBg = "bg-sky-500 dark:bg-sky-600/10",
   activeIndicator = "bg-sky-500 dark:bg-sky-600",
+  attention = false,
 }: {
   active: boolean;
   onClick: () => void;
@@ -3100,16 +3147,30 @@ function NavButton({
   activeColor?: string;
   activeBg?: string;
   activeIndicator?: string;
+  /** A live session is running and this tab is the way back to it:
+      the tab stays orange even when not active, with a pulsing dot. */
+  attention?: boolean;
 }) {
+  const tone = active
+    ? `${activeColor} scale-105`
+    : attention
+      ? "text-orange-500 dark:text-orange-400"
+      : "text-[#68717A] hover:text-[#115E8D]";
   return (
     <button
       onClick={onClick}
-      className={`flex flex-1 min-w-0 flex-col items-center gap-0.5 transition-all duration-300 relative ${active ? `${activeColor} scale-105` : "text-[#68717A] hover:text-[#115E8D]"}`}
+      className={`flex flex-1 min-w-0 flex-col items-center gap-0.5 transition-all duration-300 relative ${tone}`}
     >
       <div
-        className={`p-1 sm:p-1.5 rounded-lg transition-colors ${active ? activeBg : "bg-transparent"}`}
+        className={`relative p-1 sm:p-1.5 rounded-lg transition-colors ${active ? activeBg : attention ? "bg-orange-500/10 dark:bg-orange-600/10" : "bg-transparent"}`}
       >
         {icon}
+        {attention && !active && (
+          <span
+            aria-hidden
+            className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-orange-500 dark:bg-orange-400 ring-2 ring-white dark:ring-slate-950 animate-pulse"
+          />
+        )}
       </div>
       <span className="w-full text-center truncate text-[9px] sm:text-[11px] font-black uppercase tracking-tighter">
         {label}
