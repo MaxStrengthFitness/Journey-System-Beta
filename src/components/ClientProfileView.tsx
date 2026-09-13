@@ -177,7 +177,10 @@ import {
 
 
 /** Sessions per Firestore page for the profile's history (see the Journey tab). */
-const SESSION_PAGE = 15;
+/* Fifty at a time (audit, Sep 13): "Older really needs to show us their
+   full history, but loading everything for a 100-session client is a lot —
+   load fifty at a time." */
+const SESSION_PAGE = 50;
 
 export function ClientProfileView({
   clientId,
@@ -1610,6 +1613,7 @@ export function ClientProfileView({
         scheduledSessions={scheduledSessions}
         completedCount={calculatedSessionCount}
         topTrainer={topTrainer}
+        trainers={trainers}
         pkg={clientPackage}
         activeInProgressSession={activeInProgressSession}
         isCheckingActiveSession={isCheckingActiveSession}
@@ -1682,7 +1686,10 @@ export function ClientProfileView({
             that with room. `truncate` is the belt to that suspender. */}
         <div className="mb-2 w-full">
           <div className="w-full pb-0.5">
-            <TabsList className="bg-transparent p-0 grid grid-cols-7 w-full h-11! border-b border-slate-200 dark:border-slate-800 gap-0">
+            {/* Tabs that look like tabs (audit, Sep 13): a tray with the active
+                one lifted out as a filled pill, so the row reads as a set of
+                choices, not a line of headings. */}
+            <TabsList className="bg-slate-100 dark:bg-slate-800/60 p-1 grid grid-cols-7 w-full h-12! rounded-xl gap-1">
               {[
                 { val: "journey", label: "Journey" },
                 { val: "routines", label: "Routines" },
@@ -1695,7 +1702,7 @@ export function ClientProfileView({
                 <TabsTrigger
                   key={tab.val}
                   value={tab.val}
-                  className="relative w-full h-11! px-1 sm:px-2 font-display italic text-[10px] sm:text-[13px] font-bold uppercase tracking-wider sm:tracking-widest text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-slate-800/80 data-[state=active]:text-[#F06C22] dark:data-[state=active]:text-[#F06C22] transition-all text-center cursor-pointer select-none rounded-none border-b-2 border-transparent data-[state=active]:border-[#F06C22] truncate flex items-center justify-center"
+                  className="relative w-full h-10! px-1 sm:px-2 font-display italic text-[10px] sm:text-[13px] font-bold uppercase tracking-wider sm:tracking-widest text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950 data-[state=active]:text-[#F06C22] dark:data-[state=active]:text-[#F06C22] data-[state=active]:shadow-sm transition-all text-center cursor-pointer select-none rounded-lg truncate flex items-center justify-center"
                 >
                   {tab.label}
                 </TabsTrigger>

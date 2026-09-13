@@ -15,7 +15,7 @@
  *  - Profile Details moved into the tab row; the header keeps exactly one
  *    button, so the eye has nowhere to go but Start Session.
  */
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { CalendarDays, ChevronLeft, Clock, History, Maximize, Play, Trash2, UserCheck, AlertTriangle, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -26,6 +26,8 @@ import type { Client, ScheduleEntry, WorkoutSession } from "../../types";
 import type { PackageSummary } from "./client-package";
 import { remainingLabel } from "./client-package";
 import type { TopTrainerState } from "./useTopTrainer";
+import { tallyRows } from "../../lib/client-rollups";
+import type { Trainer } from "../../types";
 import { BrandTiles } from "./BrandTiles";
 
 export interface ActiveSessionLike {
@@ -53,6 +55,8 @@ export interface ProfileHeaderProps {
   scheduledSessions: ScheduleEntry[];
   completedCount: number;
   topTrainer: TopTrainerState;
+  /** Everyone on the studio's list, to name the trainers in the tally. */
+  trainers?: Trainer[];
   pkg: PackageSummary;
   activeInProgressSession?: ActiveSessionLike | null;
   isCheckingActiveSession?: boolean;
@@ -197,6 +201,7 @@ export function ProfileHeader({
   scheduledSessions,
   completedCount,
   topTrainer,
+  trainers = [],
   pkg,
   activeInProgressSession,
   isCheckingActiveSession = false,
@@ -208,6 +213,8 @@ export function ProfileHeader({
   kaizen,
   renewal,
 }: ProfileHeaderProps) {
+  const [showTrainers, setShowTrainers] = useState(false);
+  const trainerRows = tallyRows(client.trainerTally, trainers);
   /* ---- last session ---- */
   const last = sessions.find((s) => s.status === "Completed") ?? sessions[0];
   const lastMs = last?.date ? parseSessionDate(last.date) : 0;
@@ -409,13 +416,17 @@ export function ProfileHeader({
 
       {/* ---------- the four facts, hairline-divided ---------- */}
       <div className="[grid-area:strip] min-w-0 grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+        {/* Tap for everyone who has trained this client and how often
+            (tracker round, Sep 2026 — "a feature we tried to get working"). */}
         <Stat
           label="Top trainer"
           icon={<UserCheck />}
+          onClick={trainerRows.length > 0 ? () => setShowTrainers((v) => !v) : undefined}
+          ariaLabel={trainerRows.length > 0 ? "Show every trainer who has trained this client" : undefined}
           sub={
             topTrainer.top
               ? topTrainer.source === "tally"
-                ? `${topTrainer.top.sessions} of ${topTrainer.top.total} sessions`
+                ? `${topTrainer.top.sessions} of ${topTrainer.top.total} sessions${trainerRows.length > 1 ? ` · ${trainerRows.length} trainers` : ""}`
                 : topTrainer.backfilling
                   ? "Counting full history…"
                   : "From recent sessions"
@@ -447,12 +458,9 @@ export function ProfileHeader({
           {nextLabel ? (
             <>
               <span className="truncate">{nextLabel}</span>
-              {moreBooked > 0 && (
-                <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 tracking-wide whitespace-nowrap">
-                  +{moreBooked}
-                  <span className="xl:hidden 2xl:inline"> booked</span>
-                </span>
-              )}
+              <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 tracking-wide whitespace-nowrap">
+                {moreBooked + 1} booked
+              </span>
             </>
           ) : (
             <span className="text-muted-foreground font-medium italic">Not scheduled</span>
@@ -464,19 +472,13 @@ export function ProfileHeader({
             numbers are one fraction at comparable weight, and the tile's
             bottom edge carries a gauge — how much of the package is spent
             is legible without reading a digit. */}
+        {/* "52 of 96 — I don't know where the 96 comes from; it needs to be
+            removed" (audit, Sep 13). The count stands alone; what is left on
+            the CONTRACT is the sub-line, from the renewal snapshot. */}
         <Stat
           label="Completed sessions"
           onClick={renewal?.onOpen}
           ariaLabel={renewal ? `Renewal: ${renewal.text}. Open the renewal card.` : undefined}
-          meter={
-            pkg.total && pkg.total > 0
-              ? {
-                  value: Math.min(completedCount, pkg.total),
-                  max: pkg.total,
-                  label: `${completedCount} of ${pkg.total} sessions in this package used`,
-                }
-              : undefined
-          }
           sub={
             renewal ? (
               // Renewals round: the package tile speaks for the renewal, and a
@@ -503,16 +505,32 @@ export function ProfileHeader({
           }
         >
           <span className="text-2xl font-black leading-none text-[#F06C22] tabular-nums">{completedCount}</span>
-          {!!pkg.total && pkg.total > 0 && (
-            <span className="shrink-0 flex items-baseline gap-1 leading-none">
-              <span className="text-lg font-black text-slate-300 dark:text-slate-700" aria-hidden="true">
-                /
-              </span>
-              <span className="text-lg font-black tabular-nums text-slate-700 dark:text-slate-200">{pkg.total}</span>
-            </span>
-          )}
         </Stat>
       </div>
+
+      {showTrainers && trainerRows.length > 0 && (
+        <div className="[grid-area:strip] mt-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2" role="region" aria-label="Trainers who have trained this client">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Trained by</span>
+            <button type="button" className="text-[11px] font-bold text-muted-foreground min-h-8 px-2" onClick={() => setShowTrainers(false)}>
+              Close
+            </button>
+          </div>
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            {trainerRows.map((t) => (
+              <li key={t.key} className="flex items-center gap-3 py-1.5">
+                <span className="flex-1 min-w-0 truncate text-[13px] font-semibold text-slate-800 dark:text-slate-100">{t.name}</span>
+                <span className="w-24 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                  <span className="block h-full bg-[#F06C22]" style={{ width: `${Math.round(t.share * 100)}%` }} />
+                </span>
+                <span className="w-24 text-right text-[12px] tabular-nums text-slate-600 dark:text-slate-300">
+                  {t.sessions} session{t.sessions === 1 ? "" : "s"} · {Math.round(t.share * 100)}%
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </header>
   );
 }

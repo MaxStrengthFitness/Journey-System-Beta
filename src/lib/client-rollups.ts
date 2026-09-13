@@ -114,6 +114,33 @@ export function resolveTopTrainer(
   };
 }
 
+/** Every trainer who has trained the client, most sessions first. */
+export interface TallyRow {
+  key: string;
+  name: string;
+  sessions: number;
+  share: number;
+}
+export function tallyRows(tally: Record<string, number> | undefined | null, trainers: Trainer[]): TallyRow[] {
+  if (!tally) return [];
+  const rows: TallyRow[] = [];
+  let total = 0;
+  for (const [key, raw] of Object.entries(tally)) {
+    const n = Number(raw) || 0;
+    if (n <= 0) continue;
+    total += n;
+    const trainer = resolveTrainer(key, trainers);
+    rows.push({
+      key,
+      name: trainer?.fullName || (key.startsWith("initials:") ? key.slice(9) : "Unknown trainer"),
+      sessions: n,
+      share: 0,
+    });
+  }
+  rows.sort((a, b) => b.sessions - a.sessions || a.name.localeCompare(b.name));
+  return rows.map((r) => ({ ...r, share: total > 0 ? r.sessions / total : 0 }));
+}
+
 /** Build a tally from scratch — the one-time backfill and the tests use this. */
 export function tallyFromSessions(
   sessions: Array<{

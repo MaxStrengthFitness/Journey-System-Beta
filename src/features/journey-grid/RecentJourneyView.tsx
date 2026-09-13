@@ -7,11 +7,12 @@ import { GridToolbar, QualityLegend } from "./GridToolbar";
 /**
  * Which machines the grid lists.
  *
- * "performed" is the default because it is the honest one: a studio
- * catalogue of 21 machines against a client who trains six meant fifteen
- * rows of em-dashes, and the eye had to walk past all of them to read the
- * data. The other three are the questions a trainer actually asks —
- * what's in A, what's in B, and what else could we put them on.
+ * "performed" was the default for a while (a 21-machine catalogue against a
+ * client who trains six meant fifteen rows of em-dashes). AJ reversed it in
+ * the Sep 13 audit — "the Journey tab should really display all the
+ * machines" — because what a client has NOT been put on is part of the
+ * evaluation, and the grid now fits rows to the screen. "performed" stays
+ * as a filter for the quick read.
  */
 export type RowFilter = "performed" | "a" | "b" | "all";
 
@@ -82,7 +83,10 @@ export function RecentJourneyView({
   routineBMachineIds,
   onSelectMachine,
 }: RecentJourneyViewProps) {
-  const [filter, setFilter] = useState<RowFilter>("performed");
+  /* Every machine, by default (audit, Sep 13): "the Journey tab should really
+     display all the machines" — a trainer evaluating a client reads what was
+     NOT done as much as what was. */
+  const [filter, setFilter] = useState<RowFilter>("all");
   const [metric, setMetric] = useState<StatMetric>(initialMetric);
   const [visible, setVisible] = useState(initialVisible);
 
@@ -92,7 +96,7 @@ export function RecentJourneyView({
   // last client resolved against the new client's rows.
   useEffect(() => {
     setVisible(initialVisible);
-    setFilter("performed");
+    setFilter("all");
   }, [initialVisible, rows]);
 
   const visibleSessions = useMemo(() => sessions.slice(Math.max(0, sessions.length - visible)), [sessions, visible]);
@@ -118,7 +122,7 @@ export function RecentJourneyView({
 
   // Never strand the trainer on a filter this client cannot show.
   useEffect(() => {
-    if (!availableFilters.includes(filter)) setFilter("performed");
+    if (!availableFilters.includes(filter)) setFilter("all");
   }, [availableFilters, filter]);
 
   const sections = useMemo<GridSection[]>(() => {
