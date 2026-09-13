@@ -54,6 +54,12 @@ Each is one commit, typechecked on its own, so any one can be reverted alone.
 - The MachineSheet has no outcome row; a machine is marked from the Now bar (tap its Today cell first).
 - `practiceRegion` (the pain-map link) is typed and not yet written — it belongs with the check-in / FORD round, where the body map gets its screen.
 
+## Three fixes riding along (Sep 13, found from AJ's screenshots and the CI log)
+
+8. **`fix(kaizen)`** — the Kaizen Roster could not be saved from the one-tap add on a client's header: `addToRoster` produced `note: undefined`, and Firestore refuses a document with an `undefined` anywhere in it ("Unsupported field value: undefined … trainers/{uid}"). Entries are now written without undefined keys; a patch of `undefined` clears a field. This is the "Kaizen list doesn't sync" report.
+9. **`fix(auth-gate)`** — the Mindbody gate's "Couldn't confirm your account just now" now says *which* read failed and Firestore's own reason (e.g. `could not read the studio list (HTTP 403: Missing or insufficient permissions)`), so the next report carries its diagnosis. No behaviour change.
+10. **`ci`** — the CI job now generates `firebase-applet-config.json` (a dummy — CI never talks to Firebase) before the typecheck, tests and build, the way Render's prebuild does. On a fresh clone the file didn't exist, so every run was two type errors over the 18 baseline and could not build: CI had been red since its first run on Sep 12.
+
 ## Verification
 
 Cloud mirror on the post-hygiene tree: `npx tsc --noEmit` 18 errors (the baseline, unchanged); `npx vitest run src` 87 files / 1,813 tests; `npx vite build` clean. **AJ's own runs on the PC are the ones that count** — `ship-floor.ps1 verify` runs all three and compares the typecheck count to master's before anything is pushed.

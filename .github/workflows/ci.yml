@@ -56,6 +56,20 @@ jobs:
         run: npm ci
 
       # ---------------------------------------------------------------
+      # firebase-applet-config.json is gitignored. Locally it is generated
+      # from .env; on Render `npm run build` generates it in its prebuild
+      # step. This job runs tsc, vitest and `vite build` DIRECTLY, so on a
+      # fresh clone the file does not exist - src/firebase.ts and
+      # AdminMindbodyTab.tsx import it - and every run was two type errors
+      # over the baseline and could not build (the first run, Sep 12 2026,
+      # was red for exactly this). With no Firebase variables in the
+      # environment the script writes a dummy config, which is right here:
+      # this job never talks to Firebase.
+      # ---------------------------------------------------------------
+      - name: Firebase config for the typecheck and the build
+        run: node scripts/setup-firebase-config.cjs
+
+      # ---------------------------------------------------------------
       # WHY YOUR MACHINE SAYS 19 AND THIS SAYS 18
       #
       # `harness/` is listed in .git/info/exclude, so it is untracked and is
