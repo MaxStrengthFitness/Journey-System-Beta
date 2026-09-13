@@ -42,8 +42,6 @@ export interface MachineHistoryEntry {
   lastReps: string | number | null;
   lastUnit?: "reps" | "sec";
   lastDate: string | null;
-  /** Up / hold / down against the last performed set (lib/progression-cue.ts). */
-  cue?: { direction: "up" | "hold" | "down" | "none"; label: string; reason: string } | null;
 }
 
 export interface RoutineBuilderProps {

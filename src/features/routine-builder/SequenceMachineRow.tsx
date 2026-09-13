@@ -123,19 +123,6 @@ export function SequenceMachineRow({
               value={history?.lastReps}
               label={history?.lastUnit === "sec" ? "sec" : "reps"}
             />
-            {/* The progression cue: what the last performed set says about
-                today's load, in the Academy's order (form, reps, then
-                resistance). Its reason travels in the title and the label. */}
-            {history?.cue && history.cue.direction !== "none" && (
-              <span
-                className={cn("rb-row__cue", `rb-row__cue--${history.cue.direction}`)}
-                title={history.cue.reason}
-                aria-label={`Progression cue: ${history.cue.label}. ${history.cue.reason}`}
-              >
-                {history.cue.direction === "up" ? "▲ " : history.cue.direction === "down" ? "▼ " : ""}
-                {history.cue.label}
-              </span>
-            )}
           </>
         )}
 

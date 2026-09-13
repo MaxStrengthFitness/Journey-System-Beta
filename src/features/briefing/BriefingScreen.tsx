@@ -83,7 +83,6 @@ import { FOCUS_VISUALS, relativeDay, toDate } from "../../types/journal";
 import { CLINICAL_FLAGS_MATRIX } from "../../data/clinical-matrix";
 import { safeToDate } from "../../lib/utils";
 import { isPerformedLog } from "../../lib/set-outcome";
-import { progressionCue, traineeLevelOf } from "../../lib/progression-cue";
 import "./briefing.css";
 
 function PillGroup<T extends string | number>({
@@ -352,28 +351,11 @@ export function BriefingScreen({
             metric?.reps,
           )
         : first(lastLog?.reps, lastLog?.outcomeReps, metric?.reps);
-      const num = (v: unknown) => {
-        const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
-        return Number.isFinite(n) ? n : null;
-      };
-      const q = lastLog?.repQuality;
       out[machineId] = {
         lastWeight,
         lastReps,
         lastUnit: isTSC ? "sec" : "reps",
         lastDate: null,
-        // Up / hold / down for today's load, read from the last performed set
-        // in the Academy's order — form, reps, then resistance.
-        cue: progressionCue(
-          {
-            weight: num(lastWeight),
-            reps: isTSC ? null : num(lastReps),
-            seconds: isTSC ? num(lastReps) : null,
-            isTSC,
-            quality: q === 1 || q === 2 || q === 3 ? q : null,
-          },
-          traineeLevelOf(client),
-        ),
       };
     }
     return out;

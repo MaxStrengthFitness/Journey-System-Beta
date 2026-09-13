@@ -330,28 +330,6 @@
 
 @media (max-width: 480px) { .rb-row__hist { display: none; } }
 
-/* progression cue — beside the two history cells; blue for a load going up,
-   ink otherwise (never green or red, those are rep quality's) */
-.rb-row__cue {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 8px;
-  border: 1px solid var(--rb-border-strong);
-  border-radius: 11px;
-  background: var(--rb-surface);
-  color: var(--rb-ink-2);
-  font-size: 0.65rem;
-  font-weight: 750;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-.rb-row__cue--up { background: var(--rb-live-fill); border-color: var(--rb-live); color: var(--rb-live-text); }
-.rb-row__cue--down { border-color: var(--rb-ink-muted); color: var(--rb-ink); }
-@media (max-width: 640px) { .rb-row__cue { display: none; } }
-
 .rb-row__btn {
   display: inline-flex;
   align-items: center;

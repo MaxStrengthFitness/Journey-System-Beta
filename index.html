@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- iPad Safari otherwise guesses that "54 LB 7 REPS" on a routine row is
+         an address or a phone number and underlines it. Nothing in this app
+         is a link unless it is drawn as one. -->
+    <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
     <title>Max Strength App</title>
     <script>
       // Buffer only. Errors that happen before the app bundle finishes loading
