@@ -1023,6 +1023,13 @@
   flex-direction: column;
   gap: 12px;
 }
+/* THE TRUNCATION BUG (tracker round, Sep 2026). The body is a flex column
+   and every card in it is `overflow: hidden` — which sets a flex item's
+   automatic minimum height to ZERO. So when the sheet was shorter than its
+   content, the browser did not scroll the body: it SHRANK the cards to fit,
+   slicing the Gap / Back Pad inputs in half in both orientations. Cards
+   keep their size; the body scrolls. */
+.eq-sheet__body > * { flex: 0 0 auto; }
 
 /* The alert strip. Above the dials, above the notes list, above the fold --
    a note saying "hip pain if she goes too fast" used to sit two taps deep
