@@ -130,6 +130,7 @@ import {
 } from "../lib/log-validation";
 import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL } from "../lib/set-outcome";
 import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
+import { traineeLevelOf } from "../lib/progression-cue";
 import { ActiveSessionTimer } from "./ActiveSessionTimer";
 import { MachineSheet } from "../features/equipment/MachineSheet";
 /* Lazy, and the reason is measurable: the assessment panel is a 162 kB
@@ -4027,6 +4028,7 @@ export function WorkoutTrackerView({
           onLogTSC={handleLogTSC}
           doneCount={gridDoneCount}
           totalCount={activeMachineIds.length}
+          level={traineeLevelOf(selectedClient)}
         />
       )}
 

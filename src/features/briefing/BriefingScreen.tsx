@@ -82,6 +82,7 @@ import { FOCUS_VISUALS, relativeDay, toDate } from "../../types/journal";
 import { CLINICAL_FLAGS_MATRIX } from "../../data/clinical-matrix";
 import { safeToDate } from "../../lib/utils";
 import { isPerformedLog } from "../../lib/set-outcome";
+import { progressionCue, traineeLevelOf } from "../../lib/progression-cue";
 import "./briefing.css";
 
 function PillGroup<T extends string | number>({
@@ -339,24 +340,43 @@ export function BriefingScreen({
 
       const first = (...vals: any[]) => vals.find(filled) ?? null;
 
+      const lastWeight = first(lastLog?.weight, lastLog?.loadLb, metric?.weight);
+      const lastReps = isTSC
+        ? first(
+            lastLog?.seconds,
+            lastLog?.outcomeTut,
+            lastLog?.timeSpent,
+            metric?.seconds,
+            lastLog?.reps,
+            metric?.reps,
+          )
+        : first(lastLog?.reps, lastLog?.outcomeReps, metric?.reps);
+      const num = (v: unknown) => {
+        const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
+        return Number.isFinite(n) ? n : null;
+      };
+      const q = lastLog?.repQuality;
       out[machineId] = {
-        lastWeight: first(lastLog?.weight, lastLog?.loadLb, metric?.weight),
-        lastReps: isTSC
-          ? first(
-              lastLog?.seconds,
-              lastLog?.outcomeTut,
-              lastLog?.timeSpent,
-              metric?.seconds,
-              lastLog?.reps,
-              metric?.reps,
-            )
-          : first(lastLog?.reps, lastLog?.outcomeReps, metric?.reps),
+        lastWeight,
+        lastReps,
         lastUnit: isTSC ? "sec" : "reps",
         lastDate: null,
+        // Up / hold / down for today's load, read from the last performed set
+        // in the Academy's order — form, reps, then resistance.
+        cue: progressionCue(
+          {
+            weight: num(lastWeight),
+            reps: isTSC ? null : num(lastReps),
+            seconds: isTSC ? num(lastReps) : null,
+            isTSC,
+            quality: q === 1 || q === 2 || q === 3 ? q : null,
+          },
+          traineeLevelOf(client),
+        ),
       };
     }
     return out;
-  }, [machines, logs, client?.currentMachineMetrics]);
+  }, [machines, logs, client]);
 
   /** The other half of the rotation, for the twice-weekly analysis. */
   const counterpartIds = useMemo(() => {

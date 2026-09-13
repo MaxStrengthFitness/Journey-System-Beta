@@ -7,6 +7,8 @@ import {
   SKIP_REASON_SHORT,
   type SkipReason,
 } from "../../lib/set-outcome";
+import { progressionCue } from "../../lib/progression-cue";
+import type { TraineeLevel } from "../routine-builder/academy";
 import type { JourneyRow, JourneySession, LiveSet, RepQuality } from "./types";
 import { computeRowStats, formatSeconds, journeySummary, orderedSets } from "./stats";
 import { QualityMark, QUALITY_MARK_LABEL } from "./QualityMark";
@@ -90,6 +92,8 @@ export interface SessionNowBarProps {
   onLogTSC?: (seconds: number) => void;
   doneCount?: number;
   totalCount?: number;
+  /** The client's training level — picks the rep window the progression cue reads (REP_RANGE_BY_LEVEL). */
+  level?: TraineeLevel;
 }
 
 const EMPTY: LiveSet = { weight: null, reps: null, seconds: null, isTSC: false, quality: null };
@@ -198,6 +202,7 @@ function SessionNowBarImpl({
   onLogTSC,
   doneCount,
   totalCount,
+  level = "novice",
 }: SessionNowBarProps) {
   const machine = row?.machine;
   const v = value ?? EMPTY;
@@ -207,15 +212,21 @@ function SessionNowBarImpl({
   // The strip belongs to one machine; moving on closes it.
   useEffect(() => setSkipOpen(false), [machine?.id]);
 
-  /* --- what to expect: the last set, the best set, the journey --------- */
+  /* --- what to expect: the last set, the best set, the journey, the cue -- */
   const expect = useMemo(() => {
     if (!row) return null;
     const sets = orderedSets(row, history);
     const last = sets[sets.length - 1];
     const stats = computeRowStats(row, history);
     const best = stats.mostReps ?? stats.high;
-    return { last, best: best?.set, readout: journeySummary(row, history) };
-  }, [row, history]);
+    // Up / hold / down against the last PERFORMED set, in the Academy's
+    // order: form, then reps, then resistance (lib/progression-cue.ts).
+    const cue = progressionCue(last, level, step);
+    return { last, best: best?.set, readout: journeySummary(row, history), cue };
+  }, [row, history, level, step]);
+  // The cue's reason is a tap away, never hover-only.
+  const [cueOpen, setCueOpen] = useState(false);
+  useEffect(() => setCueOpen(false), [machine?.id]);
 
   const parseNum = (raw: string): number | null => {
     const n = Number(raw.replace(/[^\d.]/g, ""));
@@ -364,9 +375,23 @@ function SessionNowBarImpl({
                 </em>
               </>
             )}
+            {expect.cue.direction !== "none" && (
+              <button
+                type="button"
+                className={`jg-nb__cue jg-nb__cue--${expect.cue.direction}`}
+                aria-pressed={cueOpen}
+                aria-label={`Progression cue: ${expect.cue.label}. ${expect.cue.reason}`}
+                onClick={() => setCueOpen((o) => !o)}
+              >
+                <span aria-hidden="true">
+                  {expect.cue.direction === "up" ? "▲ " : expect.cue.direction === "down" ? "▼ " : ""}
+                </span>
+                {expect.cue.label}
+              </button>
+            )}
             <span className="jg-nb__readout">
-              {expect.readout}
-              {totalCount ? ` · ${doneCount ?? 0} of ${totalCount} logged` : ""}
+              {cueOpen && expect.cue.direction !== "none" ? expect.cue.reason : expect.readout}
+              {!cueOpen && totalCount ? ` · ${doneCount ?? 0} of ${totalCount} logged` : ""}
             </span>
           </span>
         )}

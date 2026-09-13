@@ -1164,6 +1164,35 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-nb__mark--q3 { color: var(--jg-q-star); }
 .jg-nb__mark--q1 { color: var(--jg-q-poor-text); }
 
+/* The progression cue — up / hold / down against the last performed set
+   (lib/progression-cue.ts). Blue is the grid's colour for a load moving, so
+   Up wears it; Down and Hold are ink. Never green or red: those are rep
+   quality's. It is a button so the reason is one tap away, not hover-only. */
+.jg-nb__cue {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 22px;
+  margin-left: 8px;
+  padding: 0 8px;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: 11px;
+  background: var(--jg-surface);
+  color: var(--jg-ink-2);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+  vertical-align: middle;
+  -webkit-tap-highlight-color: transparent;
+}
+.jg-nb__cue--up { background: var(--jg-live-fill); border-color: var(--jg-live); color: var(--jg-live-text); }
+.jg-nb__cue--down { border-color: var(--jg-ink-muted); color: var(--jg-ink); }
+.jg-nb__cue[aria-pressed="true"] { background: var(--jg-surface-3); }
+
 /* Portrait: settings drop to their own scrolling line under the name. */
 @media (max-width: 899px) {
   .jg-nb__id { order: 1; flex: 1 1 auto; }
