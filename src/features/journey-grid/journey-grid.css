@@ -7,6 +7,7 @@
    "fake" header table. That is what keeps it smooth on iPad Safari.
 
    Layers (z-index)              top   left  right
+     .jg-view__loading 6                              (the loading mark, over everything)
      .jg-corner        5          ✓     ✓
      .jg-stat-head     5          ✓     ✓      (left = machine col width)
      .jg-head--live    5          ✓            ✓
@@ -94,6 +95,26 @@
   touch-action: pan-x pan-y;
 }
 .jg-view--page { display: block; flex: none; height: auto; min-height: 0; }
+/* The grid's frame while a batch loads: the mark floats over the columns
+   already drawn (a light scrim, pointer-events off so the grid stays live). */
+.jg-view__grid-wrap { position: relative; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.jg-view--page .jg-view__grid-wrap { display: block; flex: none; }
+.jg-view__loading {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--background) 45%, transparent);
+  pointer-events: none;
+}
+.jg-view__loading .lm {
+  padding: 14px 22px;
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
 .jg-view__legend { padding: 10px 2px 0; flex: none; }
 
 /* ---- the scroller ---------------------------------------------------- */

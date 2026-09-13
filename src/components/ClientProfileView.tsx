@@ -318,6 +318,10 @@ export function ClientProfileView({
   const [lastVisibleSession, setLastVisibleSession] = useState<any>(null);
   const [hasMoreSessions, setHasMoreSessions] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  /* True from the first sessions query until its set logs are merged in,
+     so the Journey grid can show the loading mark instead of empty cells
+     (the sessions arrive a moment before their sets do). */
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [calculatedSessionCount, setCalculatedSessionCount] =
     useState<number>(0);
 
@@ -1026,6 +1030,7 @@ export function ClientProfileView({
     }
 
     const fetchInitialSessions = async () => {
+      setIsLoadingSessions(true);
       try {
         // 2. Firebase Query Limits & Pagination
         // The first page is 15 sessions: the Journey grid shows fourteen
@@ -1076,6 +1081,8 @@ export function ClientProfileView({
         });
       } catch (error: any) {
         handleFirestoreError(error, OperationType.GET, "sessions");
+      } finally {
+        setIsLoadingSessions(false);
       }
     };
 
@@ -1759,6 +1766,7 @@ export function ClientProfileView({
             rows={journeyGridRows}
             hasMoreOnServer={hasMoreSessions}
             onLoadMore={handleLoadMoreHistory}
+            loading={isLoadingSessions}
             loadingMore={isLoadingMore}
             layout="page"
             routineAMachineIds={routineAMachineIds}

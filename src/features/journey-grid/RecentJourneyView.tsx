@@ -3,6 +3,7 @@ import { ChevronLeft } from "lucide-react";
 import type { JourneyRow, JourneySession, StatMetric } from "./types";
 import { JourneyGrid, type GridSection } from "./JourneyGrid";
 import { GridToolbar, QualityLegend } from "./GridToolbar";
+import { LoadingArea, LoadingMark } from "../../components/LoadingMark";
 
 /**
  * Which machines the grid lists.
@@ -31,6 +32,9 @@ export interface RecentJourneyViewProps {
   /** More sessions exist in Firestore beyond `sessions`. */
   hasMoreOnServer?: boolean;
   onLoadMore?: () => Promise<void> | void;
+  /** The first batch of sessions (and their sets) is still on its way. */
+  loading?: boolean;
+  /** "Older" is fetching the next batch. */
   loadingMore?: boolean;
   /** Columns shown before the trainer taps "Older". */
   initialVisible?: number;
@@ -72,6 +76,7 @@ export function RecentJourneyView({
   rows,
   hasMoreOnServer = false,
   onLoadMore,
+  loading = false,
   loadingMore = false,
   initialVisible = 14,
   pageStep = 7,
@@ -176,6 +181,18 @@ export function RecentJourneyView({
         </div>
       </GridToolbar>
 
+      {/* The brand loading mark, never empty cells: a whole-area wait while
+          the first batch loads, and a mark over the grid while "Older" adds
+          the next batch (the columns already drawn stay where they are). */}
+      {loading && sessions.length === 0 ? (
+        <LoadingArea label="Loading the journey…" />
+      ) : (
+      <div className="jg-view__grid-wrap">
+        {(loading || loadingMore) && (
+          <div className="jg-view__loading">
+            <LoadingMark label={loadingMore ? "Loading older sessions…" : "Loading…"} size="sm" />
+          </div>
+        )}
       <JourneyGrid
         sessions={visibleSessions}
         historySessions={sessions}
@@ -194,6 +211,8 @@ export function RecentJourneyView({
         settingsDisplay="menu"
         targetColumns={initialVisible}
       />
+      </div>
+      )}
     </section>
   );
 }
