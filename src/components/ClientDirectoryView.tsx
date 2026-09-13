@@ -1,23 +1,16 @@
 import React, { useState, useMemo } from "react";
+import { directoryPackageRead } from "../lib/directory-row";
+import { studioTodayKey } from "../lib/studio-time";
 import {
   Search,
   User2,
-  PlayCircle,
   Plus,
   MapPin,
-  MoreVertical,
-  Minus,
   Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useActiveStudio } from "../ActiveStudioContext";
 import { Client, Trainer } from "../types";
@@ -58,6 +51,9 @@ interface Props {
   onStartNewClientOnboarding?: (name: string) => void;
 }
 
+/** Rows shown with an empty search box. */
+const RECENT_LIMIT = 40;
+
 const DIRECTORY_COLUMNS = [
   "Client",
   "Membership",
@@ -79,9 +75,6 @@ function DirectoryTableHead() {
             {label}
           </th>
         ))}
-        <th className="py-4 px-6 text-right text-[10px] font-black text-muted-foreground uppercase tracking-widest whitespace-nowrap">
-          Actions
-        </th>
       </tr>
     </thead>
   );
@@ -154,31 +147,6 @@ export function ClientDirectoryView({
   const [dbSearchResults, setDbSearchResults] = useState<Client[]>([]);
   const [isSearchingDb, setIsSearchingDb] = useState(false);
 
-  const handleUpdateSessions = async (
-    clientId: string,
-    current: number,
-    delta: number,
-  ) => {
-    if (onUpdateSessions) {
-      setDbSearchResults((prev) =>
-        prev.map((c) =>
-          c.id === clientId
-            ? { ...c, remainingSessions: Math.max(0, current + delta) }
-            : c,
-        ),
-      );
-      try {
-        await onUpdateSessions(clientId, current, delta);
-      } catch (err) {
-        console.error("Failed to update sessions:", err);
-        setDbSearchResults((prev) =>
-          prev.map((c) =>
-            c.id === clientId ? { ...c, remainingSessions: current } : c,
-          ),
-        );
-      }
-    }
-  };
 
   React.useEffect(() => {
     if (!searchTerm.trim()) {
@@ -310,6 +278,7 @@ export function ClientDirectoryView({
     Record<string, string>
   >({});
 
+  const today = studioTodayKey();
   const displayClients = useMemo(() => {
     // 1. Studio filtering
     const allowedStudioIds = [
@@ -352,7 +321,7 @@ export function ClientDirectoryView({
     }
 
     // Sort by recent by default
-    return filtered.sort((a, b) => {
+    const sorted = filtered.sort((a, b) => {
       const aTime = a.createdAt?.toMillis
         ? a.createdAt.toMillis()
         : a.createdAt
@@ -365,6 +334,11 @@ export function ClientDirectoryView({
           : 0;
       return bTime - aTime;
     });
+    /* No search, no roster filter: show the recent few, not the whole
+       studio. Every row was rendered before — 300 rows on a 300-client
+       studio — and the audit called it out. The count line under the
+       search box says how many more a search reaches. */
+    return searchTerm.trim() || rosterOnly ? sorted : sorted.slice(0, RECENT_LIMIT);
   }, [
     clients,
     searchTerm,
@@ -426,33 +400,6 @@ export function ClientDirectoryView({
     fetchLastSessions();
   }, [displayClients, clientLastSessionMap]);
 
-  const renderTierBadge = (tier?: string) => {
-    if (!tier || tier === "None")
-      return <span className="text-sm text-muted-foreground">None</span>;
-    if (tier.toLowerCase().includes("18"))
-      return (
-        <Badge className="bg-secondary text-secondary-foreground border-border uppercase tracking-wide text-xs font-semibold px-2.5 py-0.5">
-          Silver
-        </Badge>
-      );
-    if (tier.toLowerCase().includes("12"))
-      return (
-        <Badge className="bg-primary/10 text-primary border-primary/20 uppercase tracking-wide text-xs font-semibold px-2.5 py-0.5">
-          Orange
-        </Badge>
-      );
-    if (tier.toLowerCase().includes("6"))
-      return (
-        <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 uppercase tracking-wide text-xs font-semibold px-2.5 py-0.5">
-          Blue
-        </Badge>
-      );
-    return (
-      <Badge className="bg-secondary text-secondary-foreground border-border uppercase tracking-wide text-[10px] font-bold px-2 py-0.5">
-        {tier}
-      </Badge>
-    );
-  };
 
   return (
     <div className="h-full bg-background p-6 lg:p-10 flex flex-col pt-12 transition-colors duration-200 overflow-hidden">
@@ -485,6 +432,18 @@ export function ClientDirectoryView({
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
+            {/* The open-session path (no client yet) used to hide in a
+                per-row menu; it is a header action now, next to Add Client. */}
+            {onStartOpenSession && (
+              <Button
+                variant="outline"
+                onClick={() => onStartOpenSession()}
+                className="font-bold uppercase tracking-widest rounded-xl h-12 px-5 cursor-pointer"
+                title="Start a session now and assign the client at the end"
+              >
+                Open session
+              </Button>
+            )}
             {onStartNewClientOnboarding && (
               <Button
                 onClick={() => onStartNewClientOnboarding("")}
@@ -496,6 +455,12 @@ export function ClientDirectoryView({
             )}
           </div>
         </div>
+
+        {!searchTerm.trim() && !rosterOnly && (
+          <p className="mt-3 px-2 text-xs font-medium text-muted-foreground">
+            Showing the {Math.min(RECENT_LIMIT, displayClients.length)} most recent — type a name to search all clients.
+          </p>
+        )}
 
         {activeStudioId && (
           <div className="flex items-center gap-3 mt-4 px-2">
@@ -549,7 +514,7 @@ export function ClientDirectoryView({
                   const originalStudioName =
                     availableStudios?.find((s) => s.id === client.homeStudioId)
                       ?.name || "HQ Network";
-                  const nextSessionDate = (client as any).nextSessionDate;
+                  const pkg = directoryPackageRead(client, today);
 
                   return (
                     <tr
@@ -629,49 +594,22 @@ export function ClientDirectoryView({
                         </div>
                       </td>
                       <td className="py-4 px-6 align-middle">
-                        {renderTierBadge(client.packageTier)}
+                        <span className={`text-sm font-medium ${pkg.membershipKnown ? "text-foreground" : "text-muted-foreground"}`}>
+                          {pkg.membership}
+                        </span>
                       </td>
                       <td className="py-4 px-6 align-middle">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-foreground">
-                            {client.remainingSessions ?? 0}
-                          </span>
-                          {onUpdateSessions && (
-                            <div
-                              className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-muted-foreground hover:text-foreground cursor-pointer"
-                                onClick={() =>
-                                  handleUpdateSessions(
-                                    client.id!,
-                                    client.remainingSessions ?? 0,
-                                    -1,
-                                  )
-                                }
-                              >
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-muted-foreground hover:text-foreground cursor-pointer"
-                                onClick={() =>
-                                  handleUpdateSessions(
-                                    client.id!,
-                                    client.remainingSessions ?? 0,
-                                    1,
-                                  )
-                                }
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
+                        <span
+                          className={`text-sm font-medium ${
+                            pkg.sessionsLeftTone === "low"
+                              ? "text-amber-600 dark:text-amber-400"
+                              : pkg.sessionsLeftTone === "unknown"
+                                ? "text-muted-foreground"
+                                : "text-foreground"
+                          }`}
+                        >
+                          {pkg.sessionsLeft}
+                        </span>
                       </td>
                       <td className="py-4 px-6 align-middle">
                         <span className="text-sm text-muted-foreground">
@@ -701,9 +639,9 @@ export function ClientDirectoryView({
                         </span>
                       </td>
                       <td className="py-4 px-6 align-middle">
-                        {nextSessionDate ? (
+                        {pkg.nextSession ? (
                           <span className="text-sm text-foreground font-medium">
-                            {nextSessionDate}
+                            {pkg.nextSession}
                           </span>
                         ) : (
                           <Badge
@@ -713,37 +651,6 @@ export function ClientDirectoryView({
                             Unscheduled
                           </Badge>
                         )}
-                      </td>
-                      <td
-                        className="py-4 px-6 align-middle text-right"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <DropdownMenu>
-                          <DropdownMenuTrigger className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-                            <MoreVertical className="h-4 w-4" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="w-48 bg-card border-border"
-                          >
-                            {onStartOpenSession && (
-                              <DropdownMenuItem
-                                className="cursor-pointer font-medium text-foreground focus:bg-muted"
-                                onClick={() => onStartOpenSession()}
-                              >
-                                <PlayCircle className="w-4 h-4 mr-2 text-muted-foreground" />
-                                Start Session
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem
-                              className="cursor-pointer font-medium text-foreground focus:bg-muted"
-                              onClick={() => onSelectClient(client.id!)}
-                            >
-                              <User2 className="w-4 h-4 mr-2 text-muted-foreground" />
-                              View Profile
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </td>
                     </tr>
                   );
