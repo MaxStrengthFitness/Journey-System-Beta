@@ -52,6 +52,20 @@ describe("addToRoster", () => {
   it("treats an absent roster as empty", () => {
     expect(addToRoster(undefined, entry({ clientId: "c1" })).kind).toBe("ok");
   });
+
+  it("never writes an undefined field — Firestore refuses the whole document for one", () => {
+    // The one-tap add from a client's header passes no note. This used to
+    // produce `note: undefined`, and the roster could not be saved at all.
+    const result = addToRoster([], entry({ clientId: "c1" }));
+    expect(result.kind).toBe("ok");
+    const saved = result.kind === "ok" ? result.next[0] : null;
+    expect(saved).not.toBeNull();
+    expect(Object.keys(saved!)).not.toContain("note");
+    expect(Object.values(saved!).every((v) => v !== undefined)).toBe(true);
+    // A real note is still kept.
+    const withNote = addToRoster([], entry({ clientId: "c2", note: "watch the left knee" }));
+    expect(withNote.kind === "ok" && withNote.next[0].note).toBe("watch the left knee");
+  });
 });
 
 describe("removeFromRoster / updateRosterEntry", () => {
@@ -70,6 +84,14 @@ describe("removeFromRoster / updateRosterEntry", () => {
     expect(next[0].reason).toBe("Progression");
     expect(next[1].reason).toBe("Retention");
     expect(next[1].note).toBe("watch attendance");
+  });
+
+  it("drops a field patched to undefined instead of writing undefined", () => {
+    const withDate = [entry({ clientId: "c1", reviewBy: ts(NOW) })];
+    const [cleared] = updateRosterEntry(withDate, "c1", { reviewBy: undefined });
+    expect(Object.keys(cleared)).not.toContain("reviewBy");
+    expect(Object.keys(cleared)).not.toContain("note");
+    expect(Object.values(cleared).every((v) => v !== undefined)).toBe(true);
   });
 
   it("truncates a patched note too", () => {

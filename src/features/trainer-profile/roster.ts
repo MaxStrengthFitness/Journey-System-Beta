@@ -29,6 +29,21 @@ import { toDate } from "../../lib/studio-time";
 export const NOTE_MAX = 240;
 
 /**
+ * Firestore refuses a document that carries `undefined` anywhere in it
+ * ("Unsupported field value: undefined"), and the roster is written as one
+ * whole array inside the trainer document. So an entry with no note must
+ * have NO `note` key, not a `note: undefined` — which is exactly what
+ * `{ ...entry, note: entry.note?.slice(...) }` used to produce for the
+ * one-tap add from a client's header, and why that add failed every time
+ * with "Couldn't save your Kaizen Roster" (found Sep 13 2026).
+ */
+function withoutUndefined<T extends object>(entry: T): T {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(entry)) if (v !== undefined) out[k] = v;
+  return out as T;
+}
+
+/**
  * A string discriminant, not a boolean one: this project compiles without
  * `strict`, and TypeScript does not narrow a `ok: true | false` union
  * reliably with strictNullChecks off. Same shape as StaffResolution in the
@@ -73,7 +88,7 @@ export function addToRoster(
 
   return {
     kind: "ok",
-    next: [...list, { ...entry, note: entry.note?.slice(0, NOTE_MAX) }],
+    next: [...list, withoutUndefined({ ...entry, note: entry.note?.slice(0, NOTE_MAX) })],
   };
 }
 
@@ -89,9 +104,12 @@ export function updateRosterEntry(
   clientId: string,
   patch: Partial<Pick<KaizenRosterEntry, "reason" | "note" | "reviewBy">>,
 ): KaizenRosterEntry[] {
+  // A patch key set to undefined CLEARS that field (the key is dropped), so
+  // "remove the review date" is `{ reviewBy: undefined }` and never reaches
+  // Firestore as an undefined value.
   return (current ?? []).map((e) =>
     e.clientId === clientId
-      ? { ...e, ...patch, note: (patch.note ?? e.note)?.slice(0, NOTE_MAX) }
+      ? withoutUndefined({ ...e, ...patch, note: (patch.note ?? e.note)?.slice(0, NOTE_MAX) })
       : e,
   );
 }
