@@ -515,6 +515,7 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   -webkit-tap-highlight-color: transparent;
 }
 .jg-machine__note:active { background: var(--jg-surface-3); }
+.jg-machine__note.is-mark { pointer-events: none; cursor: default; }
 .jg-machine__note.has-notes { color: var(--jg-live-text); }
 .jg-machine__note.is-alert { color: var(--jg-q-poor); }
 .jg-machine__btn {

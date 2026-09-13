@@ -271,7 +271,7 @@ function RowImpl({
           </span>
         ) : null}
 
-        {onNote && !(live?.reorder && !liveInactive) && (
+        {onNote && !(live?.reorder && !liveInactive) ? (
           <button
             type="button"
             className={`jg-machine__note ${machine.alert ? "is-alert" : machine.noteCount ? "has-notes" : ""}`}
@@ -280,7 +280,18 @@ function RowImpl({
           >
             <NotebookPen size={13} strokeWidth={2.25} />
           </button>
-        )}
+        ) : !onNote && (machine.alert || machine.noteCount) ? (
+          /* No separate note target (the Active Session: the name opens the
+             sheet with the notes in it). The glyph stays as a MARK — this
+             machine has notes — so the cell is one tap target, not two that
+             look alike (tracker round, Sep 2026). */
+          <span
+            className={`jg-machine__note is-mark ${machine.alert ? "is-alert" : "has-notes"}`}
+            aria-hidden="true"
+          >
+            <NotebookPen size={13} strokeWidth={2.25} />
+          </span>
+        ) : null}
         {settingsDisplay === "menu" && (settingEntries.length > 0 || machine.noteCount) && (
           <MachineMenu
             machineName={machine.name}

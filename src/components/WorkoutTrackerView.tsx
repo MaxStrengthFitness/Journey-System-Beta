@@ -3633,6 +3633,13 @@ export function WorkoutTrackerView({
           their Equipment tab before the trainer walks back to the desk. */}
       <MachineSheet
         open={!!sheetMachineId}
+        firstTime={
+          !!sheetMachineId &&
+          (() => {
+            const row = gridRows.find((r) => r.machine.id === sheetMachineId);
+            return !row || orderedSets(row, gridHistory).length === 0;
+          })()
+        }
         machine={machines.find((m) => m.id === sheetMachineId) || null}
         client={selectedClient}
         clientId={clientId || ""}
@@ -3993,12 +4000,10 @@ export function WorkoutTrackerView({
             onLoadOlder={() => setGridVisible((v) => v + 5)}
             canLoadOlder={gridVisible < gridHistory.length}
             /* The machine's NAME is the target -- one big one, the width of
-               the rail, instead of a name that did nothing and two small
-               icons beside it that did different things. The note icon
-               still works; it just opens the same sheet, so a trainer who
-               aims for it is never wrong. */
+               the rail. The note glyph is a mark, not a second button:
+               "hard to tell if I'm tapping the note or the machine" was the
+               audit's hesitation, and both did the same thing. */
             onSelectMachine={(id) => setSheetMachineId(id)}
-            onMachineNote={(id) => setSheetMachineId(id)}
             layout="fill"
             /* Rows shrink to fit what is on screen (44 → 26px) instead of a
                fixed 44px that showed ~15 machines and hid the rest below

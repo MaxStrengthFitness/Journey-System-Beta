@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { TriangleAlert, X } from "lucide-react";
+import { Sparkles, TriangleAlert, X } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useMachineCatalog } from "../../hooks/useMachineCatalog";
 import { useActiveStudio } from "../../ActiveStudioContext";
@@ -31,10 +31,13 @@ import type { JournalContext, MutationAuthor } from "./mutations";
  *      if she goes too fast" was previously two taps deep inside the modal
  *      a trainer was LESS likely to open. Safety information does not wait
  *      behind a scroll.
- *   2. THE DIALS.  Gap, Back Pad, Seat — with the studio standard ghosted
+ *   2. THE NOTES.  The list, plus a box to add one, plus the flag. First,
+ *      because the audit's answer to "why do you open this?" was "to add a
+ *      note about this machine for this client" (tracker round, Sep 2026).
+ *   3. THE DIALS.  Gap, Back Pad, Seat — with the studio standard ghosted
  *      in each empty field, and a reason box that is required only when a
- *      value actually changed.
- *   3. THE NOTES.  The list, plus a box to add one, plus the flag.
+ *      value actually changed. On a machine the client has never performed
+ *      the set-up guide opens above them (`firstTime`).
  *   4. SET-UP GUIDE and CHANGE HISTORY, both collapsed. Reference, not
  *      workflow — but "why did someone move this last month" is answerable
  *      without leaving the session, which it was not before.
@@ -66,6 +69,13 @@ export interface MachineSheetProps {
   onError?: (message: string) => void;
   /** Toast-worthy confirmation, so the sheet can stay open after a save. */
   onSaved?: (message: string) => void;
+  /**
+   * The client has never performed this machine. The set-up guide opens by
+   * default and a banner says so — "if a machine is not yet performed by a
+   * client, reference our catalog notes so we set them up properly the
+   * first time" (audit, Sep 13 2026).
+   */
+  firstTime?: boolean;
 }
 
 export function MachineSheet({
@@ -79,6 +89,7 @@ export function MachineSheet({
   onClose,
   onError,
   onSaved,
+  firstTime = false,
 }: MachineSheetProps) {
   const { byId: catalogById } = useMachineCatalog();
   const { activeStudio, activeStudioId } = useActiveStudio();
@@ -188,7 +199,37 @@ export function MachineSheet({
               </p>
             )}
 
-            {/* 2. The dials, with the reason box the audit trail needs. */}
+            {/* First time on this machine: the catalog's set-up guide comes
+                up open, ABOVE the dials, so the first set-up is done from
+                the studio's own notes rather than from memory. */}
+            {firstTime && (
+              <section className="eq-sheet__first" aria-label="First time on this machine">
+                <span className="eq-sheet__first-kicker">
+                  <Sparkles size={12} strokeWidth={2.6} aria-hidden />
+                  First time on this machine
+                </span>
+                <p className="eq-sheet__first-body">
+                  {client?.firstName || "This client"} has no history here yet. Set up from the guide
+                  {equipment.guide ? " below" : " (none on file for this machine yet)"}, then save the settings so the next trainer has them.
+                </p>
+              </section>
+            )}
+            {firstTime && equipment.guide && <SetupGuide guide={equipment.guide} defaultOpen />}
+
+            {/* 2. The notes — the sheet's primary job: "form breaking at a
+                point, something I noticed, feeling it somewhere they
+                shouldn't". Above the dials, which change far less often. */}
+            <MachineNotes
+              machine={equipment}
+              clientId={clientId}
+              author={author}
+              journal={journal}
+              flagLabel="High importance"
+              onSaved={announce}
+              onError={onError}
+            />
+
+            {/* 3. The dials, with the reason box the audit trail needs. */}
             <SettingsCard
               machine={equipment}
               clientId={clientId}
@@ -202,19 +243,8 @@ export function MachineSheet({
               onError={onError}
             />
 
-            {/* 3. The notes. */}
-            <MachineNotes
-              machine={equipment}
-              clientId={clientId}
-              author={author}
-              journal={journal}
-              flagLabel="High importance"
-              onSaved={announce}
-              onError={onError}
-            />
-
             {/* 4. Reference, folded away. */}
-            {equipment.guide && <SetupGuide guide={equipment.guide} />}
+            {!firstTime && equipment.guide && <SetupGuide guide={equipment.guide} />}
             <ChangeHistory machineId={equipment.id} clientId={clientId} />
           </div>
         </div>

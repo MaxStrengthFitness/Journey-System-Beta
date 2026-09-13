@@ -1072,6 +1072,28 @@
   color: var(--eq-ink-muted);
 }
 
+/* First time on this machine — the one banner that changes the sheet's
+   order: the guide comes up open, above the dials. Live-blue, not the
+   alert red: it is an instruction, not a warning. */
+.eq-sheet__first {
+  border: 1px solid var(--eq-live);
+  background: var(--eq-live-fill);
+  border-radius: var(--eq-radius);
+  padding: 10px 12px;
+}
+.eq-sheet__first-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--eq-live-text);
+  margin-bottom: 4px;
+}
+.eq-sheet__first-body { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.45; color: var(--eq-ink); }
+
 /* Save confirmation. It names where the change went, because "it saved" is
    not the question a trainer has -- "will the next trainer see this?" is. */
 .eq-sheet__flash {
