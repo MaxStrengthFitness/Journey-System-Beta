@@ -1043,20 +1043,20 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 }
 
 /* ==========================================================================
-   Zone 4 — the Now bar
+   Zone 4 — the Now bar (rebuilt in the tracker round, Sep 2026)
    --------------------------------------------------------------------------
-   Two layouts, one component. Landscape has width to spare, so the set and
-   the Next handoff share a line under the machine header. Portrait does
-   not, so the three jobs stack: what machine and how it is set up / the set
-   / what is next. Next gets the full width there rather than being squeezed
-   to a chip — it is the control the trainer hits most, and it must stay the
-   most obvious thing on the bar in both orientations.
+   Three lines, three jobs, in the order a trainer does them at a machine:
+   SET UP (which machine, how it is set for this client, what to expect),
+   THE SET (load, count, form — and "no set?" when there was none), NEXT.
+   Portrait stacks the three; at 900px+ the set and Next share a line; and
+   `.jg-nb--side` turns the whole thing into a right-hand column for
+   landscape (Zone 4 becomes a panel beside the grid, not a bar under it).
    ========================================================================== */
 .jg-nb {
   flex: none;
   display: grid;
-  gap: 6px 10px;
-  padding: 7px 10px 8px;
+  gap: 8px 12px;
+  padding: 8px 12px 10px;
   background: var(--jg-surface-2);
   border-top: 2px solid var(--jg-hero);
   font-family: var(--jg-font);
@@ -1065,37 +1065,37 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   grid-template-areas: "head" "controls" "next";
 }
 @media (min-width: 900px) {
-  .jg-nb {
+  .jg-nb--bar {
     grid-template-columns: 1fr auto;
     grid-template-areas:
       "head head"
       "controls next";
-    align-items: center;
+    align-items: end;
   }
 }
 .jg-nb--empty { grid-template-areas: "head"; grid-template-columns: 1fr; }
 .jg-nb__idle { font-size: 12.5px; color: var(--jg-ink-muted); padding: 12px 2px; }
 .jg-nb__sp { flex: 1; min-width: 4px; }
 
-/* ---- line 1 · which machine, how it is set up, what to expect -------- */
+/* ---- line 1 · set up --------------------------------------------------- */
 .jg-nb__head {
   grid-area: head;
   display: flex;
   align-items: center;
-  gap: 6px 10px;
+  gap: 6px 12px;
   flex-wrap: wrap;
   min-width: 0;
 }
-.jg-nb__id { display: inline-flex; align-items: center; gap: 7px; flex: none; min-width: 0; }
+.jg-nb__id { display: inline-flex; align-items: center; gap: 8px; flex: none; min-width: 0; }
 .jg-nb__ord {
   flex: none;
-  width: 21px;
-  height: 21px;
-  border-radius: 5px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
   background: var(--jg-hero);
-  color: #fff;
-  font-size: 11.5px;
-  font-weight: 700;
+  color: var(--jg-hero-on);
+  font-size: 12px;
+  font-weight: 800;
   font-style: normal;
   display: grid;
   place-items: center;
@@ -1113,12 +1113,13 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   text-overflow: ellipsis;
 }
 
-/* Spelled out, not abbreviated. The grid rail says "SH 4" because it has
-   168px; this is what a trainer actually presets the machine from. */
+/* The settings are TILES, not chips: label on top, value big underneath.
+   "I want to know where the machine settings are with the easiest glance,
+   so I can set the weight, the gap and the seat" — this is that glance. */
 .jg-nb__settings {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  align-items: stretch;
+  gap: 5px;
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
@@ -1128,39 +1129,54 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-nb__chip {
   flex: none;
   display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  font-size: 11.5px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 46px;
+  height: 40px;
+  padding: 0 9px;
   color: var(--jg-ink);
   background: var(--jg-surface);
-  border: 1px solid var(--jg-border);
+  border: 1px solid var(--jg-border-strong);
   border-radius: var(--jg-radius-sm);
-  padding: 2px 7px;
   white-space: nowrap;
 }
 .jg-nb__chip b {
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--jg-ink-faint);
+  color: var(--jg-ink-muted);
+  line-height: 1;
+}
+.jg-nb__chip span {
+  font-family: var(--jg-font-display);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
+/* One calm context line. Last, best, cue. */
 .jg-nb__expect {
   flex: none;
-  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--jg-ink-muted);
   text-align: right;
-  line-height: 1.45;
+  line-height: 1.3;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.jg-nb__expect em { font-style: normal; font-weight: 750; color: var(--jg-ink); }
-.jg-nb__readout { display: block; color: var(--jg-ink-faint); font-weight: 600; }
-.jg-nb__mark { display: inline-flex; vertical-align: -1px; margin-left: 3px; line-height: 0; }
+.jg-nb__expectline { display: inline-flex; align-items: center; gap: 3px; }
+.jg-nb__expect em { font-style: normal; font-weight: 800; color: var(--jg-ink); }
+.jg-nb__readout { display: block; color: var(--jg-ink-faint); font-weight: 600; font-size: 10.5px; }
+.jg-nb__mark { display: inline-flex; vertical-align: -1px; margin-left: 1px; line-height: 0; }
 .jg-nb__mark--q3 { color: var(--jg-q-star); }
 .jg-nb__mark--q1 { color: var(--jg-q-poor-text); }
 
@@ -1173,44 +1189,58 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  height: 22px;
-  margin-left: 8px;
-  padding: 0 8px;
+  height: 24px;
+  margin-left: 6px;
+  padding: 0 9px;
   border: 1px solid var(--jg-border-strong);
-  border-radius: 11px;
+  border-radius: 12px;
   background: var(--jg-surface);
   color: var(--jg-ink-2);
   font: inherit;
   font-size: 10.5px;
-  font-weight: 750;
+  font-weight: 800;
   letter-spacing: 0.02em;
   white-space: nowrap;
   cursor: pointer;
-  vertical-align: middle;
   -webkit-tap-highlight-color: transparent;
 }
 .jg-nb__cue--up { background: var(--jg-live-fill); border-color: var(--jg-live); color: var(--jg-live-text); }
 .jg-nb__cue--down { border-color: var(--jg-ink-muted); color: var(--jg-ink); }
 .jg-nb__cue[aria-pressed="true"] { background: var(--jg-surface-3); }
 
-/* Portrait: settings drop to their own scrolling line under the name. */
+/* Portrait: settings stay beside the name (they are the point); the context
+   line drops under. */
 @media (max-width: 899px) {
-  .jg-nb__id { order: 1; flex: 1 1 auto; }
-  .jg-nb__expect { order: 2; }
-  .jg-nb__sp { display: none; }
-  .jg-nb__settings { order: 3; flex: 1 0 100%; }
-  .jg-nb__expect { font-size: 10.5px; }
+  .jg-nb--bar .jg-nb__id { order: 1; flex: 0 1 auto; }
+  .jg-nb--bar .jg-nb__settings { order: 2; flex: 1 1 auto; }
+  .jg-nb--bar .jg-nb__head .jg-nb__sp { display: none; }
+  .jg-nb--bar .jg-nb__expect { order: 3; flex: 1 0 100%; align-items: flex-start; text-align: left; }
 }
 
-/* ---- line 2 · the set ------------------------------------------------ */
+/* ---- line 2 · the set -------------------------------------------------- */
 .jg-nb__controls {
   grid-area: controls;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-end;
+  gap: 8px 14px;
   flex-wrap: wrap;
   min-width: 0;
 }
+/* Every control group carries a one-word kicker above it. A new trainer
+   reads LOAD · SET · FORM · NO SET? and knows the bar without a tour. */
+.jg-nb__grp { display: flex; flex-direction: column; gap: 3px; flex: none; min-width: 0; }
+.jg-nb__kicker {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--jg-ink-faint);
+  line-height: 1;
+  padding-left: 1px;
+}
+.jg-nb__grp--set .jg-nb__kicker { color: var(--jg-live-text); }
+.jg-nb__grp--set.is-noset .jg-nb__kicker { color: var(--jg-ink-muted); }
+
 .jg-nb__step { display: flex; align-items: center; gap: 4px; flex: none; }
 .jg-nb__sbtn {
   appearance: none;
@@ -1228,13 +1258,14 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   touch-action: manipulation;
 }
 .jg-nb__sbtn:active { background: var(--jg-surface-3); }
+/* Three digits and "lb". Weights on the floor never need more. */
 .jg-nb__wwrap {
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   height: 44px;
-  min-width: 92px;
+  width: 78px;
   padding: 0 8px;
   border: 1.5px solid var(--jg-live);
   border-radius: var(--jg-radius-sm);
@@ -1249,23 +1280,25 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   color: var(--jg-ink);
   font: inherit;
   font-size: 22px;                       /* >=16px stops iOS zooming on focus */
-  font-weight: 700;
+  font-weight: 800;
   text-align: right;
   font-variant-numeric: tabular-nums;
   padding: 0;
   line-height: 44px;
 }
 .jg-nb__weight:focus { outline: none; }
-.jg-nb__lb { font-size: 10px; font-weight: 600; color: var(--jg-ink-muted); flex: none; }
+.jg-nb__weight::placeholder { color: var(--jg-ink-faint); font-weight: 500; }
+.jg-nb__lb { font-size: 10px; font-weight: 700; color: var(--jg-ink-muted); flex: none; }
 
-/* the number and its unit as one control — TSC is a unit, not a mode */
+/* The count field, then a real REPS | SEC switch beside it. */
+.jg-nb__setrow { display: flex; align-items: stretch; gap: 4px; height: 44px; }
 .jg-nb__out {
   flex: none;
   height: 44px;
   display: flex;
   align-items: stretch;
   overflow: hidden;
-  border: 1px solid var(--jg-border-strong);
+  border: 1.5px solid var(--jg-live);
   border-radius: var(--jg-radius-sm);
   background: var(--jg-surface);
 }
@@ -1283,47 +1316,107 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   border-right: 1px solid var(--jg-border);
 }
 .jg-nb__outin {
-  width: 58px;
+  width: 64px;
   min-width: 0;
   border: 0;
   background: transparent;
   color: var(--jg-ink);
   font: inherit;
-  font-size: 20px;
-  font-weight: 700;
-  text-align: right;
+  font-size: 22px;
+  font-weight: 800;
+  text-align: center;
   font-variant-numeric: tabular-nums;
-  padding: 0 5px 0 8px;
+  padding: 0 6px;
 }
 .jg-nb__outin:focus { outline: none; }
 .jg-nb__outin::placeholder { color: var(--jg-ink-faint); font-weight: 500; }
 .jg-nb__unit {
-  appearance: none;
   flex: none;
-  width: 38px;
+  display: flex;
+  flex-direction: column;
+  height: 44px;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  overflow: hidden;
+  background: var(--jg-surface);
+}
+.jg-nb__ubtn {
+  appearance: none;
+  flex: 1;
+  min-width: 46px;
+  padding: 0 8px;
   border: 0;
-  border-left: 1px solid var(--jg-border);
   background: transparent;
   color: var(--jg-ink-muted);
   font: inherit;
-  font-size: 8.5px;
+  font-size: 9.5px;
   font-weight: 800;
-  letter-spacing: 0.04em;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.jg-nb__unit.is-static { cursor: default; }
-.jg-nb__unit[aria-pressed="true"] { background: var(--jg-live-fill-strong); color: var(--jg-live-text); }
+.jg-nb__ubtn + .jg-nb__ubtn { border-top: 1px solid var(--jg-border); }
+.jg-nb__ubtn.is-on { background: var(--jg-live-fill-strong); color: var(--jg-live-text); }
+
+/* The stopwatch lives inside the SEC field. */
+.jg-nb__watch { display: inline-flex; align-items: center; gap: 2px; padding: 0 4px 0 2px; border-left: 1px solid var(--jg-border); }
+.jg-nb__wbtn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--jg-hero);
+  width: 30px;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-nb__wbtn--quiet { color: var(--jg-ink-muted); width: 24px; }
+.jg-nb__wtime {
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--jg-ink-muted);
+  min-width: 34px;
+  text-align: center;
+}
+.jg-nb__watch.is-running .jg-nb__wtime { color: var(--jg-ink); }
+
+/* The field when there was no set: it SAYS so, and the × brings the count
+   back. Practice borrows the dashed frame the grid draws for a practice
+   cell; Skipped is plain muted ink, deliberately unlike either quality
+   colour. */
+.jg-nb__out.is-outcome { border-width: 1px; border-color: var(--jg-ink-muted); background: var(--jg-surface-2); align-items: center; }
+.jg-nb__out--practice { border-style: dashed; }
+.jg-nb__outlbl {
+  padding: 0 10px 0 14px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--jg-ink);
+  white-space: nowrap;
+}
+.jg-nb__outclear {
+  appearance: none;
+  width: 40px;
+  height: 100%;
+  border: 0;
+  border-left: 1px solid var(--jg-border);
+  background: transparent;
+  color: var(--jg-ink-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
 
 /* Quality stays exception-only: recording an effort completes the set, and
-   these two flag the sets that were not ordinary. 44px each — down here
-   width is free, so they are bigger than they were in the grid, not smaller. */
+   these two flag the sets that were not ordinary. */
 .jg-nb__quality { display: flex; gap: 3px; flex: none; }
 .jg-nb__qbtn {
   appearance: none;
@@ -1346,18 +1439,16 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
    will read back in the grid tomorrow. */
 .jg-nb__qbtn[data-q="3"].is-on { background: var(--jg-q-max-fill); border-color: var(--jg-q-max-edge); color: var(--jg-q-star); }
 
-/* outcome — what the set was when it was not a set (src/lib/set-outcome.ts).
-   Same 44px height as everything else on the line. Practice "on" borrows the
-   dashed frame the grid draws for a practice cell; Skipped "on" is plain
-   muted ink, deliberately unlike either quality colour. */
+/* "No set?" — ghost buttons. Same 44px height so they are never a fiddly
+   target, but no fill and muted ink so they never compete with the count. */
 .jg-nb__outcome { display: flex; gap: 3px; flex: none; }
 .jg-nb__obtn {
   appearance: none;
   height: 44px;
   padding: 0 12px;
-  border: 1px solid var(--jg-border-strong);
+  border: 1px dashed var(--jg-border-strong);
   border-radius: var(--jg-radius-sm);
-  background: var(--jg-surface);
+  background: transparent;
   color: var(--jg-ink-muted);
   font: inherit;
   font-size: 12px;
@@ -1368,8 +1459,7 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.jg-nb__obtn.is-on { border-style: dashed; color: var(--jg-ink); background: var(--jg-surface-2); }
-.jg-nb__obtn--skip.is-on { border-style: solid; border-color: var(--jg-ink-muted); }
+.jg-nb__obtn:active { background: var(--jg-surface-3); }
 
 /* the skip strip — takes the controls line over while a reason is picked */
 .jg-nb__controls--skip { align-items: stretch; }
@@ -1411,41 +1501,7 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 }
 .jg-nb__where::placeholder { color: var(--jg-ink-faint); }
 
-/* timer */
-.jg-nb__timer {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 44px;
-  padding: 0 8px;
-  flex: none;
-  border: 1px solid var(--jg-border-strong);
-  border-radius: var(--jg-radius-sm);
-  background: var(--jg-surface);
-}
-.jg-nb__tbtn {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: var(--jg-hero);
-  width: 28px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.jg-nb__tbtn--quiet { color: var(--jg-ink-muted); width: 24px; }
-.jg-nb__time {
-  font-size: 15px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--jg-ink);
-  min-width: 40px;
-  text-align: center;
-}
-
-/* ---- line 3 · what is next ------------------------------------------ */
+/* ---- line 3 · what is next --------------------------------------------- */
 .jg-nb__next {
   grid-area: next;
   appearance: none;
@@ -1479,11 +1535,10 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   text-overflow: ellipsis;
 }
 @media (max-width: 899px) {
-  /* The spacer would push the timer onto a line of its own. */
-  .jg-nb__controls .jg-nb__sp { display: none; }
-  .jg-nb__controls { gap: 6px; }
+  .jg-nb--bar .jg-nb__controls .jg-nb__sp { display: none; }
+  .jg-nb--bar .jg-nb__controls { gap: 8px 10px; }
   /* Full width, and the loudest thing on the bar. */
-  .jg-nb__next { width: 100%; height: 48px; background: var(--jg-live); color: var(--jg-live-on); border-color: var(--jg-live); }
+  .jg-nb--bar .jg-nb__next { width: 100%; height: 48px; background: var(--jg-live); color: var(--jg-live-on); border-color: var(--jg-live); }
 }
 
 /* ---- zone 2 · the grid rail ------------------------------------------ *

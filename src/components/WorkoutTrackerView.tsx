@@ -1524,21 +1524,6 @@ export function WorkoutTrackerView({
     applySessionMachineIds(newIds);
   };
 
-  const handleLogTSC = async (seconds: number) => {
-    if (!currentSession || activeMachineIds.length === 0) return;
-    // The stopwatch logs into the machine being performed: the Today cell of
-    // the focused row (first incomplete machine unless the trainer tapped one).
-    const targetId = gridFocusMachineId;
-    if (!targetId) return;
-    if (seconds > 0) {
-      handleGridLiveChange(targetId, {
-        isTSC: true,
-        seconds: Math.round(seconds),
-        reps: 0,
-      });
-    }
-    setFocusMachineOverride(targetId);
-  };
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
@@ -4073,9 +4058,6 @@ export function WorkoutTrackerView({
           step={2}
           nextName={gridNextRow?.machine.name}
           onNext={() => gridNextRow && setFocusMachineOverride(gridNextRow.machine.id)}
-          onLogTSC={handleLogTSC}
-          doneCount={gridDoneCount}
-          totalCount={activeMachineIds.length}
           level={traineeLevelOf(selectedClient)}
         />
       )}
