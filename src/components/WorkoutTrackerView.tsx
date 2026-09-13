@@ -3055,6 +3055,16 @@ export function WorkoutTrackerView({
     const nextId = activeMachineIds[i + 1];
     return nextId ? gridRows.find((r) => r.machine.id === nextId) : undefined;
   }, [activeMachineIds, gridFocusMachineId, gridRows]);
+  /* "Started 2:21 PM" on the session bar — the second thing a trainer
+     checks when two iPads sit side by side (the first is the name). */
+  const sessionStartedLabel = useMemo(() => {
+    const raw = currentSession?.startTime ?? (currentSession as any)?.clientStartTime;
+    if (!raw) return null;
+    const d = typeof raw?.toDate === "function" ? raw.toDate() : new Date(raw);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }, [currentSession]);
+
   const gridDoneCount = useMemo(
     () =>
       activeMachineIds.filter((id) => {
@@ -3384,80 +3394,95 @@ export function WorkoutTrackerView({
           Focus moved out of here entirely — it filters the routine list, so
           it belongs on the grid rail beside the list it filters. */}
       {(selectedClient || currentSession) && (
-        <div className="flex-none flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 h-12 bg-white dark:bg-bg-dark border-b border-slate-200 dark:border-slate-800">
-          <h3 className="text-sm sm:text-base font-bold tracking-tight text-foreground truncate max-w-30 sm:max-w-none">
-            {selectedClient
-              ? `${selectedClient.firstName} ${selectedClient.lastName}`
-              : currentSession?.isUnassigned
-                ? "Unassigned Tracking"
-                : "Initializing..."}
-          </h3>
-          <span className="hidden sm:inline font-mono text-[10px] text-muted-foreground tabular-nums shrink-0">
-            #{currentSession?.sessionNumber || sessions.length} ·{" "}
-            {authTrainer?.initials || currentSession?.trainerInitials || "??"}
-          </span>
+        <div className="jg-sbar">
+          <div className="jg-sbar__client">
+            <h3 className="jg-sbar__name">
+              {selectedClient
+                ? `${selectedClient.firstName} ${selectedClient.lastName}`
+                : currentSession?.isUnassigned
+                  ? "Unassigned Tracking"
+                  : "Initializing..."}
+            </h3>
+            <div className="jg-sbar__meta">
+              <span>
+                <b>#{currentSession?.sessionNumber || sessions.length}</b>
+              </span>
+              <span aria-hidden>·</span>
+              <span>{authTrainer?.initials || currentSession?.trainerInitials || "??"}</span>
+              {sessionStartedLabel && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>Started {sessionStartedLabel}</span>
+                </>
+              )}
+            </div>
+          </div>
           {currentSession && (
-            <div className="flex items-center shrink-0">
-              <ActiveSessionTimer
-                startTime={currentSession.startTime}
-                fallbackStartTime={(currentSession as any).clientStartTime}
-                pausedAt={(currentSession as any).pausedAt}
-                totalPausedMs={(currentSession as any).totalPausedMs}
-                onTogglePause={toggleSessionPause}
-                isMobile
-              />
+            <ActiveSessionTimer
+              variant="bar"
+              startTime={currentSession.startTime}
+              fallbackStartTime={(currentSession as any).clientStartTime}
+              pausedAt={(currentSession as any).pausedAt}
+              totalPausedMs={(currentSession as any).totalPausedMs}
+              onTogglePause={toggleSessionPause}
+            />
+          )}
+          {currentSession && activeMachineIds.length > 0 && (
+            <div
+              className="jg-sbar__progress"
+              aria-label={`${gridDoneCount} of ${activeMachineIds.length} machines logged`}
+            >
+              <span className="jg-sbar__progress-text">
+                {gridDoneCount} <small>of {activeMachineIds.length}</small>
+              </span>
+              <span className="jg-sbar__meter" aria-hidden>
+                <i style={{ width: `${Math.round((100 * gridDoneCount) / activeMachineIds.length)}%` }} />
+              </span>
             </div>
           )}
 
-          <span className="flex-1" />
+          <span className="jg-sbar__sp" />
 
-          <Button
-            variant="outline"
-            size="sm"
+          <button
+            type="button"
+            className="jg-sbar__btn"
             onClick={() => setIsShowingSessionNotes(true)}
-            className="border-border text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-surface-1 h-8 px-2 sm:px-2.5 rounded-lg text-[11px] flex items-center gap-1 shrink-0"
+            aria-label="Session notes"
           >
-            <MessageSquare className="w-3 h-3 text-cta shrink-0 fill-current" />
-            <span className="hidden sm:inline">Notes</span>
-          </Button>
-          {/* The 90-day assessment, reachable without ending the session.
-              A trainer has about ninety seconds while a client works the
-              lumbar machine, and what they want to do with it is record the
-              one thing the client just said. Before this, the assessment
-              lived on a full-page wizard reached from the profile -- so the
-              thing they had just heard got remembered until after the
-              session, which means it got lost. */}
-          <Button
-            variant="outline"
-            size="sm"
+            <MessageSquare size={15} strokeWidth={2.5} className="fill-current" />
+            <span>Notes</span>
+          </button>
+          {/* The check-in (one name for it, everywhere), reachable without
+              ending the session. A trainer has about ninety seconds while a
+              client works the lumbar machine, and what they want to do with
+              it is record the one thing the client just said. */}
+          <button
+            type="button"
+            className="jg-sbar__btn"
             onClick={() => setIsShowingAssessment(true)}
-            title="Add to the 90-day assessment without leaving the session"
-            className="border-border text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-surface-1 h-8 px-2 sm:px-2.5 rounded-lg text-[11px] flex items-center gap-1 shrink-0"
+            aria-label="Open the check-in"
+            title="Add to the check-in without leaving the session"
           >
-            <HeartPulse className="w-3 h-3 text-cta shrink-0" />
-            <span className="hidden sm:inline">Assessment</span>
-          </Button>
-          {/* Routine editing used to sit here, between Notes and Discard.
-              It acts on the machine list, so it moved down to the grid rail
-              that sits directly on top of that list -- and moving it also
-              buys a gap between the buttons a trainer presses all session
-              and Discard, which destroys the session. */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowCancelConfirmation(true)}
-            title="Discard active session without saving"
-            className="border-red-500/30 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 h-8 px-2 sm:px-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider shrink-0"
-          >
-            <Trash2 className="w-3 h-3 shrink-0" />
-            <span className="hidden sm:inline ml-1">Discard</span>
-          </Button>
-          <Button
-            onClick={handleEndSessionPress}
-            className="bg-cta hover:opacity-90 text-white font-bold shadow-sm h-8 px-3 sm:px-4 rounded-lg text-[11px] uppercase tracking-wider cursor-pointer whitespace-nowrap shrink-0"
-          >
-            Finish
-          </Button>
+            <HeartPulse size={15} strokeWidth={2.5} />
+            <span>Check-in</span>
+          </button>
+          {/* Past the divider: the two buttons that END the session. Discard
+              is a trash icon because it is pressed once a month; Finish is
+              the one loud button because it is pressed every session. */}
+          <div className="jg-sbar__end">
+            <button
+              type="button"
+              className="jg-sbar__trash"
+              onClick={() => setShowCancelConfirmation(true)}
+              aria-label="Discard this session"
+              title="Discard this session without saving"
+            >
+              <Trash2 size={17} strokeWidth={2.4} />
+            </button>
+            <button type="button" className="jg-sbar__finish" onClick={handleEndSessionPress}>
+              Finish
+            </button>
+          </div>
         </div>
       )}
       {/* Machine Performance Entry Dialog */}

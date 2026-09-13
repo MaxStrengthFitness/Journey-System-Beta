@@ -1970,3 +1970,195 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 
 /* the Recent Journey toolbar sits tighter — every 4px is a row in landscape */
 .jg-view .jg-toolbar { padding: 4px 0 6px; }
+
+/* ==========================================================================
+   Zone 1 — the session bar (tracker round, Sep 2026)
+   --------------------------------------------------------------------------
+   The audit's verdict on the old bar: not clinical, name too big or too
+   small depending on the width, the pause easy to miss, Notes and
+   Assessment sitting right next to the two buttons that end a session, and
+   Discard as loud as Finish although it is pressed once a month.
+
+   What this bar has to do, in order of how often it is done:
+     1. Say WHOSE session this is, readable from a neighbouring iPad
+        (two trainers set their tablets down side by side) — but a name,
+        not a headline. 17px/800 does that at arm's length.
+     2. Show the clock, and make the pause impossible to miss when it is on:
+        the whole pill goes amber and says PAUSED.
+     3. Say how far through the routine we are ("3 of 6") — this used to
+        live inside the Now bar's fine print, where it competed with the set.
+     4. Notes and Check-in — pressed every session, so left of a real gap.
+     5. Discard, as a trash icon, then Finish as the one loud button.
+   ========================================================================== */
+.jg-sbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 54px;
+  padding: 0 10px 0 12px;
+  background: var(--jg-surface);
+  border-bottom: 1px solid var(--jg-border);
+  font-family: var(--jg-font);
+  color: var(--jg-ink);
+}
+.jg-sbar__client { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.jg-sbar__name {
+  margin: 0;
+  font-family: var(--jg-font-display);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jg-sbar__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--jg-ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.jg-sbar__meta b { font-weight: 800; color: var(--jg-ink-2); }
+
+/* The clock pill. 40px pause target; amber when paused. */
+.jg-clock {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px 0 4px;
+  border-radius: 12px;
+  border: 1px solid var(--jg-border);
+  background: var(--jg-surface-2);
+  user-select: none;
+}
+.jg-clock.is-paused { border-color: var(--jg-q-star); background: color-mix(in srgb, var(--jg-q-star) 16%, var(--jg-surface-2)); }
+.jg-clock__btn {
+  appearance: none;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: var(--jg-surface-3);
+  color: var(--jg-ink);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-clock.is-paused .jg-clock__btn { background: var(--jg-hero); color: var(--jg-hero-on); }
+.jg-clock__btn:focus-visible { outline: 2px solid var(--jg-focus-ring); outline-offset: 1px; }
+.jg-clock__read { display: flex; flex-direction: column; line-height: 1; gap: 2px; }
+.jg-clock__label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--jg-ink-muted);
+}
+.jg-clock.is-paused .jg-clock__label { color: var(--jg-ink); }
+.jg-clock__time {
+  font-family: var(--jg-font-display);
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.jg-clock.is-paused .jg-clock__time { animation: jg-clock-blink 1.4s steps(1, end) infinite; }
+@keyframes jg-clock-blink { 50% { opacity: 0.35; } }
+
+/* "3 of 6" with a hairline meter under it. Quiet: it is a glance, not a
+   control. */
+.jg-sbar__progress {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 52px;
+}
+.jg-sbar__progress-text {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--jg-ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.jg-sbar__progress-text small { font-weight: 700; color: var(--jg-ink-muted); letter-spacing: 0.06em; }
+.jg-sbar__meter { height: 3px; border-radius: 999px; background: var(--jg-border); overflow: hidden; }
+.jg-sbar__meter i { display: block; height: 100%; background: var(--jg-hero); border-radius: inherit; transition: width 240ms ease; }
+
+.jg-sbar__sp { flex: 1; min-width: 6px; }
+
+.jg-sbar__btn,
+.jg-sbar__trash,
+.jg-sbar__finish {
+  appearance: none;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  border-radius: 11px;
+  font-family: var(--jg-font);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  white-space: nowrap;
+}
+.jg-sbar__btn:focus-visible, .jg-sbar__trash:focus-visible, .jg-sbar__finish:focus-visible {
+  outline: 2px solid var(--jg-focus-ring); outline-offset: 1px;
+}
+.jg-sbar__btn {
+  padding: 0 12px;
+  border: 1px solid var(--jg-border);
+  background: var(--jg-surface-2);
+  color: var(--jg-ink);
+}
+.jg-sbar__btn svg { color: var(--jg-hero); }
+.jg-sbar__btn:hover { background: var(--jg-surface-3); }
+.jg-sbar__btn span { display: none; }
+@media (min-width: 640px) { .jg-sbar__btn span { display: inline; } }
+
+/* A gap that is a decision: everything left of it is pressed all session;
+   everything right of it ends the session. */
+.jg-sbar__end { flex: none; display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; padding-left: 12px; border-left: 1px solid var(--jg-border); }
+.jg-sbar__trash {
+  width: 40px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--jg-ink-muted);
+}
+.jg-sbar__trash:hover { color: var(--jg-q-poor); background: var(--jg-q-poor-fill); }
+.jg-sbar__finish {
+  padding: 0 18px;
+  border: 0;
+  background: var(--jg-hero);
+  color: var(--jg-hero-on);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.jg-sbar__finish:hover { filter: brightness(1.05); }
+
+@media (max-width: 599px) {
+  .jg-sbar { gap: 6px; padding: 0 8px; }
+  .jg-sbar__progress { display: none; }
+  .jg-sbar__finish { padding: 0 12px; }
+  .jg-sbar__end { margin-left: 4px; padding-left: 6px; }
+}

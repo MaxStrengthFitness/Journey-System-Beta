@@ -13,6 +13,9 @@ interface ActiveSessionTimerProps {
   totalPausedMs?: number;
   onTogglePause?: () => void;
   isMobile?: boolean;
+  /** "bar" renders the session-bar clock pill (jg-clock, journey-grid.css):
+      a 40px pause target and an amber PAUSED state you cannot miss. */
+  variant?: "card" | "bar";
 }
 
 /**
@@ -61,6 +64,7 @@ export const ActiveSessionTimer = memo(function ActiveSessionTimer({
   totalPausedMs = 0,
   onTogglePause,
   isMobile = false,
+  variant = "card",
 }: ActiveSessionTimerProps) {
   // Re-render once a second; the value itself is computed, never accumulated.
   const [, setTick] = useState(0);
@@ -85,6 +89,35 @@ export const ActiveSessionTimer = memo(function ActiveSessionTimer({
     const secs = s % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
+
+  if (variant === "bar") {
+    return (
+      <div className={cn("jg-clock", isPaused && "is-paused")} role="timer" aria-live="off">
+        {onTogglePause && (
+          <button
+            type="button"
+            className="jg-clock__btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onTogglePause();
+            }}
+            aria-label={isPaused ? "Resume session" : "Pause session"}
+            title={isPaused ? "Resume session" : "Pause session"}
+          >
+            {isPaused ? (
+              <Play size={16} strokeWidth={2.5} className="fill-current ml-0.5" />
+            ) : (
+              <Pause size={16} strokeWidth={2.5} className="fill-current" />
+            )}
+          </button>
+        )}
+        <div className="jg-clock__read">
+          <span className="jg-clock__label">{isPaused ? "Paused" : "Elapsed"}</span>
+          <span className="jg-clock__time">{formatTime(elapsed)}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
