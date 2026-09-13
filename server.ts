@@ -6,7 +6,7 @@ import axios from "axios";
 import path from "path";
 import dotenv from "dotenv";
 
-dotenv.config();
+dotenv.config({ quiet: true }); // quiet: dotenv 17 otherwise prints a sponsored "tip" line on every boot
 
 import {
   generateExecutionGuide,

@@ -54,6 +54,29 @@ export default defineConfig(() => {
               id.includes("node_modules/motion-utils/")
             )
               return "vendor-motion";
+            // Charts. Recharts pulls in most of d3 underneath it, and several
+            // screens import it, so before this rule Rollup lumped all of it
+            // into whichever shared chunk it hit first - a 444 kB file named
+            // after a small hook (useLiveRenewal) that happened to be at the
+            // top of it. Every app change re-downloaded the whole chart
+            // library. Now it is one stable, cacheable file.
+            if (
+              id.includes("node_modules/recharts/") ||
+              id.includes("node_modules/victory-vendor/") ||
+              id.includes("node_modules/d3-") ||
+              id.includes("node_modules/internmap/") ||
+              id.includes("node_modules/delaunator/") ||
+              id.includes("node_modules/robust-predicates/")
+            )
+              return "vendor-charts";
+            // Icons and headless UI primitives - imported by nearly every
+            // screen, change only when we bump the package.
+            if (
+              id.includes("node_modules/lucide-react/") ||
+              id.includes("node_modules/@base-ui/") ||
+              id.includes("node_modules/@dnd-kit/")
+            )
+              return "vendor-ui";
             return undefined;
           },
         },
@@ -61,9 +84,9 @@ export default defineConfig(() => {
     },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
-        'react': path.resolve(__dirname, 'node_modules/react'),
-        'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
+        '@': path.resolve(import.meta.dirname, '.'),
+        'react': path.resolve(import.meta.dirname, 'node_modules/react'),
+        'react-dom': path.resolve(import.meta.dirname, 'node_modules/react-dom'),
       },
     },
     server: {
