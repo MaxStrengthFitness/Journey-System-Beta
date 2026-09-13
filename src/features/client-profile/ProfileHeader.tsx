@@ -16,7 +16,7 @@
  *    button, so the eye has nowhere to go but Start Session.
  */
 import { useState, type ReactNode } from "react";
-import { CalendarDays, ChevronLeft, Clock, History, Maximize, Play, Trash2, UserCheck, AlertTriangle, User } from "lucide-react";
+import { ChevronLeft, Clock, History, Maximize, Play, Trash2, UserCheck, AlertTriangle, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn, parseSessionDate } from "../../lib/utils";
@@ -29,6 +29,7 @@ import type { TopTrainerState } from "./useTopTrainer";
 import { tallyRows } from "../../lib/client-rollups";
 import type { Trainer } from "../../types";
 import { BrandTiles } from "./BrandTiles";
+import { bookedLabel, nextSessionHeadline } from "./next-session-tile";
 
 export interface ActiveSessionLike {
   id?: string;
@@ -246,8 +247,7 @@ export function ProfileHeader({
         ? "Tomorrow"
         : nextWeekday
     : null;
-  const nextLabel = nextDay ? `${nextDay}${nextTime ? ` ${nextTime}` : ""}` : null;
-  const moreBooked = Math.max(0, scheduledSessions.length - 1);
+  const nextLabel = nextSessionHeadline(nextDay, nextTime);
 
   /* ---- package ---- */
   const remaining = remainingLabel(pkg);
@@ -440,28 +440,30 @@ export function ProfileHeader({
           {lastLabel ?? <span className="text-muted-foreground font-medium">No sessions yet</span>}
         </Stat>
 
+        {/* "Tomorrow 4:00 PM" read "Tomorro…" on a portrait iPad: the tile is
+            ~180px, and the icon and the "2 booked" chip shared its one line.
+            Now the headline has the line to itself and may wrap at the dot,
+            the chip sits under it with the date, and there is no icon (the
+            label already says what it is). */}
         <Stat
           label="Next session"
-          icon={<CalendarDays />}
           sub={
-            nextDate && daysUntil(nextDate) && nextDay !== "Today" && nextDay !== "Tomorrow" ? (
-              <span className="inline-flex items-center gap-2">
-                <span className="text-muted-foreground">{daysUntil(nextDate)}</span>
-              </span>
-            ) : nextDate ? (
-              <span className="inline-flex items-center gap-2">
-                <span className="text-muted-foreground">{MONTHS[nextDate.getMonth()]} {nextDate.getDate()}</span>
+            nextDate ? (
+              <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-muted-foreground whitespace-nowrap">
+                  {daysUntil(nextDate) && nextDay !== "Today" && nextDay !== "Tomorrow"
+                    ? daysUntil(nextDate)
+                    : `${MONTHS[nextDate.getMonth()]} ${nextDate.getDate()}`}
+                </span>
+                <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 tracking-wide whitespace-nowrap">
+                  {bookedLabel(scheduledSessions.length)}
+                </span>
               </span>
             ) : undefined
           }
         >
           {nextLabel ? (
-            <>
-              <span className="truncate">{nextLabel}</span>
-              <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 tracking-wide whitespace-nowrap">
-                {moreBooked + 1} booked
-              </span>
-            </>
+            <span className="whitespace-normal break-words">{nextLabel}</span>
           ) : (
             <span className="text-muted-foreground font-medium italic">Not scheduled</span>
           )}
@@ -508,8 +510,13 @@ export function ProfileHeader({
         </Stat>
       </div>
 
+      {/* Its own row under the tiles. It used to sit in `[grid-area:strip]`
+          - the same named area as the tile row - so the grid drew the two on
+          top of each other and the list covered the tiles. `col-span-full`
+          with no named area lands it in a fresh implicit row, in normal
+          flow, pushing everything below it down. */}
       {showTrainers && trainerRows.length > 0 && (
-        <div className="[grid-area:strip] mt-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2" role="region" aria-label="Trainers who have trained this client">
+        <div className="col-span-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2" role="region" aria-label="Trainers who have trained this client">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Trained by</span>
             <button type="button" className="text-[11px] font-bold text-muted-foreground min-h-8 px-2" onClick={() => setShowTrainers(false)}>
@@ -523,7 +530,7 @@ export function ProfileHeader({
                 <span className="w-24 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
                   <span className="block h-full bg-[#F06C22]" style={{ width: `${Math.round(t.share * 100)}%` }} />
                 </span>
-                <span className="w-24 text-right text-[12px] tabular-nums text-slate-600 dark:text-slate-300">
+                <span className="shrink-0 whitespace-nowrap text-right text-[12px] tabular-nums text-slate-600 dark:text-slate-300">
                   {t.sessions} session{t.sessions === 1 ? "" : "s"} · {Math.round(t.share * 100)}%
                 </span>
               </li>
