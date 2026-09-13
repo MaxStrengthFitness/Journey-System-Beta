@@ -150,12 +150,56 @@ describe("deletedSessionRollup", () => {
   it("takes the vote and the machine counts back", () => {
     const u = deletedSessionRollup(
       { trainerId: "t-aj" },
-      [{ machineId: "leg-press" }, { machineId: "leg-press" }, { machineId: "lumbar" }],
+      [
+        { machineId: "leg-press", reps: "10" },
+        { machineId: "leg-press", reps: "8" },
+        { machineId: "lumbar", isTSC: true, seconds: "60" },
+      ],
       plainFieldOps,
     );
     expect(u["trainerTally.t-aj"]).toBe(-1);
     expect(u["machineStats.leg-press.timesPerformed"]).toBe(-1);
     expect(u["machineStats.lumbar.timesPerformed"]).toBe(-1);
+  });
+
+  it("a skipped or practice machine never cast a vote, so it takes none back", () => {
+    const u = deletedSessionRollup(
+      { trainerId: "t-aj" },
+      [
+        { machineId: "leg-press", outcome: "skipped", skipReason: "machine_occupied" },
+        { machineId: "lumbar", outcome: "practice", weight: "40", reps: "8" },
+        { machineId: "chest-press" }, // no count at all: a legacy blank, read as skipped
+      ],
+      plainFieldOps,
+    );
+    expect(u["trainerTally.t-aj"]).toBe(-1);
+    expect(u["machineStats.leg-press.timesPerformed"]).toBeUndefined();
+    expect(u["machineStats.lumbar.timesPerformed"]).toBeUndefined();
+    expect(u["machineStats.chest-press.timesPerformed"]).toBeUndefined();
+  });
+});
+
+describe("only performed sets reach the machine stats", () => {
+  it("completedSessionRollup ignores practice, skipped and not-reached logs", () => {
+    const u = completedSessionRollup(
+      null,
+      { date: "2026-09-12", trainerId: "t-aj" },
+      [
+        { machineId: "leg-press", weight: "120", reps: "10" },
+        { machineId: "lumbar", weight: "30", reps: "12", outcome: "practice" },
+        { machineId: "chest-press", outcome: "skipped", skipReason: "pain_injury" },
+        { machineId: "pulldown", outcome: "not_reached" },
+        { machineId: "row", weight: "80" }, // weight only, no count: skipped, reason unknown
+      ],
+      TRAINERS,
+      plainFieldOps,
+    );
+    expect(u["machineStats.leg-press.timesPerformed"]).toBe(1);
+    expect(u["machineStats.leg-press.firstWeight"]).toBe(120);
+    for (const m of ["lumbar", "chest-press", "pulldown", "row"]) {
+      expect(u[`machineStats.${m}.timesPerformed`]).toBeUndefined();
+      expect(u[`machineStats.${m}.firstWeight`]).toBeUndefined();
+    }
   });
 });
 

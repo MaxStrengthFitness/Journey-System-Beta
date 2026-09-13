@@ -22,6 +22,7 @@ import { formatStudioTime } from "../../lib/studio-time";
 import { cn } from "../../lib/utils";
 import { TrainerAvatar, type TrainerRef } from "../calendar";
 import { QualityMark } from "../journey-grid";
+import { OUTCOME_LABEL, SKIP_REASON_LABEL, outcomeOf, skipReasonOf } from "../../lib/set-outcome";
 import {
   isBackfilledSession,
   isLegacySession,
@@ -344,6 +345,8 @@ export function SessionDetailDialog({
                       const isHold = Boolean(log.isStaticHold || log.isTSC);
                       const timed = isCardio || isHold;
                       const performed = isPerformed(log);
+                      const outcome = outcomeOf(log);
+                      const skipReason = skipReasonOf(log);
                       const q = performed ? qualityOf(log) : null;
                       const ui = q ? QUALITY_UI[q] : null;
                       const w = toNum(log.weight);
@@ -361,6 +364,7 @@ export function SessionDetailDialog({
                             <span className="hsd-set__name">{machine?.name || "Unknown machine"}</span>
                             {log.side && <span className="hsd-set__tag">{log.side[0]}</span>}
                             {isHold && <span className="hsd-set__tag">TSC</span>}
+                            {outcome === "practice" && <span className="hsd-set__tag">{OUTCOME_LABEL.practice}</span>}
                             {q === 3 && <QualityMark quality={3} size={14} className="hist-q-star" />}
                             {q === 1 && <QualityMark quality={1} size={14} className="hist-q-kaizen" />}
                           </div>
@@ -368,10 +372,17 @@ export function SessionDetailDialog({
                           {!isEditMode ? (
                             <>
                               <p className="hsd-set__value">
-                                {performed ? (
+                                {performed || outcome === "practice" ? (
                                   <>
                                     <b>{log.weight || "—"}</b> lb · <b>{timed ? log.seconds || "—" : log.reps || "—"}</b> {timed ? "sec" : "reps"}
                                   </>
+                                ) : outcome === "not_reached" ? (
+                                  <span className="hsd-set__muted">{OUTCOME_LABEL.not_reached}</span>
+                                ) : skipReason && skipReason !== "unknown" ? (
+                                  <span className="hsd-set__muted">
+                                    {OUTCOME_LABEL.skipped} — {SKIP_REASON_LABEL[skipReason]}
+                                    {log.skipNote ? `: ${log.skipNote}` : ""}
+                                  </span>
                                 ) : (
                                   <span className="hsd-set__muted">Not recorded</span>
                                 )}

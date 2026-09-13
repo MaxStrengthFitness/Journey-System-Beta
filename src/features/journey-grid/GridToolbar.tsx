@@ -36,6 +36,9 @@ export function GridToolbar({ title, children }: GridToolbarProps) {
  * grey cell carries nothing at all. Any one of the three cues is enough on
  * its own, which is what keeps the grid readable in greyscale, in print,
  * and for a red-green colour-blind trainer.
+ *
+ * Practice and Skipped follow: the two set outcomes that are recorded but
+ * never counted (src/lib/set-outcome.ts). Neither uses a quality colour.
  */
 export function QualityLegend({ compact = false }: { compact?: boolean } = {}) {
   return (
@@ -59,6 +62,21 @@ export function QualityLegend({ compact = false }: { compact?: boolean } = {}) {
       <span className="jg-legend__item">
         <span className="jg-legend__swatch jg-legend__swatch--q2" aria-hidden="true" />
         {QUALITY_MARK_LABEL[2].name}
+      </span>
+      {/* The two outcomes that are recorded but never counted. Not reached
+          and "no set" need no key: a dot and a dash read as absence. */}
+      <span className="jg-legend__item">
+        <span className="jg-legend__swatch jg-legend__swatch--practice" aria-hidden="true">
+          P
+        </span>
+        Practice
+        <i className="jg-legend__gloss">recorded, not counted</i>
+      </span>
+      <span className="jg-legend__item">
+        <span className="jg-legend__swatch jg-legend__swatch--skipped" aria-hidden="true">
+          &#8856;
+        </span>
+        Skipped
       </span>
       <span className="jg-legend__item">
         <span className="jg-legend__swatch jg-legend__swatch--latest" aria-hidden="true" />

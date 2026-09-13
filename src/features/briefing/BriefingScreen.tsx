@@ -81,6 +81,7 @@ import { JournalEntryCard } from "../../components/journal/JournalEntryCard";
 import { FOCUS_VISUALS, relativeDay, toDate } from "../../types/journal";
 import { CLINICAL_FLAGS_MATRIX } from "../../data/clinical-matrix";
 import { safeToDate } from "../../lib/utils";
+import { isPerformedLog } from "../../lib/set-outcome";
 import "./briefing.css";
 
 function PillGroup<T extends string | number>({
@@ -302,6 +303,10 @@ export function BriefingScreen({
    * a TSC machine reads seconds rather than reps — checking outcomeTut and
    * timeSpent as well, because three rounds of the tracker wrote it under
    * three names. It moved out here so the shared row can render it.
+   *
+   * "Newest log" means the newest PERFORMED set (set-outcome.ts). A practice
+   * set at 60 lb last week is not what the client last lifted, and a skip
+   * has no numbers at all; the briefing shows the last real effort.
    */
   const machineHistory = useMemo<Record<string, MachineHistoryEntry>>(() => {
     const millis = (ts: any) => {
@@ -319,7 +324,7 @@ export function BriefingScreen({
       const machineId = machine.id;
       if (!machineId) continue;
       const mLogs = (logs ?? [])
-        .filter((l) => l.machineId === machineId)
+        .filter((l) => l.machineId === machineId && isPerformedLog(l))
         .sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
       const lastLog = mLogs[0];
       const metric = client?.currentMachineMetrics?.[machineId];

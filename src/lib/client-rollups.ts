@@ -22,6 +22,7 @@
  */
 
 import type { Client, ClientMachineStat, Trainer } from "../types";
+import { isPerformedLog, type OutcomeLog } from "./set-outcome";
 
 /* ------------------------------------------------------------------ *
  * Keys
@@ -137,11 +138,16 @@ export function tallyFromSessions(
  * Machine stats
  * ------------------------------------------------------------------ */
 
-export interface RollupLog {
+/**
+ * The fields a rollup reads off a log. `outcome` and the hold flags come
+ * along so set-outcome.ts can decide whether the set counts: only a
+ * PERFORMED set votes for timesPerformed or moves first/last weight. A
+ * practice set, a skipped machine and a not-reached placeholder are logs
+ * too, but they never happened as sets (docs/ARCHITECTURE.md §1.6).
+ */
+export interface RollupLog extends OutcomeLog {
   machineId?: string | null;
   weight?: string | number | null;
-  reps?: string | number | null;
-  seconds?: string | number | null;
 }
 
 const toNumber = (v: unknown): number | null => {
@@ -228,13 +234,13 @@ export function completedSessionRollup(
     updates.trainerTallyUpdatedAt = ops.serverTimestamp();
   }
 
-  /* ---- machine stats — one vote per machine per session ---- */
+  /* ---- machine stats — one vote per machine per session, performed sets only ---- */
   const seen = new Set<string>();
   for (const log of logs) {
     const machineId = (log.machineId || "").trim();
     if (!machineId || seen.has(machineId)) continue;
+    if (!isPerformedLog(log)) continue;
     const weight = toNumber(log.weight);
-    if (weight === null && toNumber(log.reps) === null && toNumber(log.seconds) === null) continue;
     seen.add(machineId);
     const existing = client?.machineStats?.[machineId];
     const base = `machineStats.${machineId}`;
@@ -262,7 +268,9 @@ export function completedSessionRollup(
  * times-performed counters are unwound; first/last dates stay (recomputing
  * them needs the full history, which the delete path does not have, and a
  * date that is one session too early is a far smaller lie than a count that
- * is one too high).
+ * is one too high). Only performed sets are unwound — the same sets that
+ * voted on the way in, so a skipped machine never takes back a vote it
+ * never cast.
  */
 export function deletedSessionRollup(
   session: { trainerId?: string | null; trainerInitials?: string | null; trainerName?: string | null },
@@ -279,6 +287,7 @@ export function deletedSessionRollup(
   for (const log of logs) {
     const machineId = (log.machineId || "").trim();
     if (!machineId || seen.has(machineId)) continue;
+    if (!isPerformedLog(log)) continue;
     seen.add(machineId);
     updates[`machineStats.${machineId}.timesPerformed`] = ops.increment(-1);
   }
@@ -337,8 +346,8 @@ export function importedSessionsRollup(
     for (const log of s.logs) {
       const machineId = (log.machineId || "").trim();
       if (!machineId || seen.has(machineId)) continue;
+      if (!isPerformedLog(log)) continue;
       const weight = toNumber(log.weight);
-      if (weight === null && toNumber(log.reps) === null && toNumber(log.seconds) === null) continue;
       seen.add(machineId);
       const cur = (stat[machineId] ||= { times: 0 });
       cur.times += 1;

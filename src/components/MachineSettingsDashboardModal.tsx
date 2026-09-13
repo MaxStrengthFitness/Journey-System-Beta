@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { Machine, ExerciseLog, WorkoutSession, Studio } from "../types";
 import { parseSessionDate } from "../lib/utils";
+import { isPerformedLog } from "../lib/set-outcome";
 
 interface Props {
   editingSettings: {
@@ -54,8 +55,10 @@ export function MachineSettingsDashboardModal({
     {};
 
   // Filter logs for this machine
+  // Performed sets only (lib/set-outcome.ts): the trend line and the PR are
+  // about loads lifted to failure, and a practice set is neither.
   const machineLogs = exerciseLogs
-    .filter((l) => l.machineId === mId && parseInt(l.weight || "0") > 0)
+    .filter((l) => l.machineId === mId && parseInt(l.weight || "0") > 0 && isPerformedLog(l))
     .sort((a, b) => {
       const sessionA = sessions.find((s) => s.id === a.sessionId);
       const sessionB = sessions.find((s) => s.id === b.sessionId);

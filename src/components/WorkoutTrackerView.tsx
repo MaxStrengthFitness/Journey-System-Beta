@@ -2756,10 +2756,12 @@ export function WorkoutTrackerView({
           machine.standardSettings || {},
           machine.settingOptions || [],
         );
-        // "Last weight performed" — the newest set on record.
+        // "Last weight performed" — the newest PERFORMED set on record. A
+        // practice set's lighter load must not become tomorrow's prescription.
         let lastWeight: number | undefined;
         let lastIdx = -1;
         for (const set of Object.values(row.sets)) {
+          if (set.outcome !== "performed") continue;
           const i = orderIndex.get(set.sessionId) ?? -1;
           if (i > lastIdx) {
             lastIdx = i;
@@ -2844,6 +2846,9 @@ export function WorkoutTrackerView({
           repsR: toNum(R?.reps),
           secondsR: toNum(R?.seconds),
           qualityR: (R?.repQuality as RepQuality | undefined) ?? null,
+          // The outcome is per machine, written on both sides alike.
+          outcome: L?.outcome ?? R?.outcome ?? null,
+          skipReason: L?.skipReason ?? R?.skipReason ?? null,
         };
       } else {
         const log = logs[`${sid}_${id}`];
@@ -2854,6 +2859,8 @@ export function WorkoutTrackerView({
           seconds: toNum(log.seconds),
           isTSC: !!(log.isTSC || log.isStaticHold),
           quality: (log.repQuality as RepQuality | undefined) ?? null,
+          outcome: log.outcome ?? null,
+          skipReason: log.skipReason ?? null,
         };
       }
     }

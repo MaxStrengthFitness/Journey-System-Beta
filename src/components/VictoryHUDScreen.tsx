@@ -22,6 +22,7 @@ import {
   renewalPromptDue,
 } from "../features/renewals";
 import { getBroadMuscleGroup } from "../lib/clinical-review-utils";
+import { performedOnly } from "../lib/set-outcome";
 
 export interface VictoryHUDScreenProps {
   client: Client;
@@ -127,8 +128,13 @@ export function VictoryHUDScreen({
     );
   };
 
+  // Every tile below counts PERFORMED sets only (src/lib/set-outcome.ts).
+  // A practice set and a skipped machine are on the record — the grid shows
+  // them — but the victory numbers are about work done to failure.
+  const performed = performedOnly(logs);
+
   // Calculate actual total tonnage from today's logs
-  const totalTonnage = logs.reduce(
+  const totalTonnage = performed.reduce(
     (sum, l) => sum + getLogLoad(l) * getLogReps(l),
     0,
   );
@@ -141,7 +147,7 @@ export function VictoryHUDScreen({
     Other: 0,
   };
 
-  logs.forEach((l) => {
+  performed.forEach((l) => {
     const machine = machines.find((m) => m.id === l.machineId);
     const region = machine?.anatomicalRegion || "";
     const name = machine?.name || "";
@@ -170,15 +176,15 @@ export function VictoryHUDScreen({
   const endD = safeToDate(session.endTime) || new Date();
 
   // Calculate Time Under Tension using background timers (or fallback estimate for legacy logs)
-  const totalReps = logs.reduce((sum, l) => sum + getLogReps(l), 0);
+  const totalReps = performed.reduce((sum, l) => sum + getLogReps(l), 0);
   const sessionDurationMs = startD
     ? Math.max(0, endD.getTime() - startD.getTime())
     : 0;
   const sessionDurationSeconds = sessionDurationMs / 1000;
-  const numMachines = logs.length || 1;
+  const numMachines = performed.length || 1;
   const fallbackTimePerMachineSeconds = sessionDurationSeconds / numMachines;
 
-  const estimatedTotalTUT = logs.reduce((sum, l) => {
+  const estimatedTotalTUT = performed.reduce((sum, l) => {
     // Time Under Tension = the actual time spent on the machine under load.
     // Use the exact background timer if available, otherwise the per-machine session estimate.
     // We do NOT divide by reps — the full machine duration IS the TUT regardless of rep count.
@@ -201,8 +207,8 @@ export function VictoryHUDScreen({
   const estimatedTUTUnit = estimatedTotalTUT >= 60 ? "" : "s";
 
   // Calculate max strength sets
-  const maxStrengthSets = logs.filter((l) => (l.repQuality || 0) >= 3).length;
-  const totalSets = logs.length;
+  const maxStrengthSets = performed.filter((l) => (l.repQuality || 0) >= 3).length;
+  const totalSets = performed.length;
 
   // Duration formatting
 

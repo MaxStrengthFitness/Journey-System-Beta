@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { OUTCOME_GLOSS, SKIP_REASON_LABEL, SKIP_REASON_SHORT } from "../../lib/set-outcome";
 import type { JourneySet, JourneySession } from "./types";
 import { formatSeconds, formatLongDate, QUALITY_LABEL, loadDelta, trendVsPrevious, type Trend } from "./stats";
 import { QualityMark } from "./QualityMark";
@@ -7,7 +8,7 @@ interface JourneyCellProps {
   session: JourneySession;
   machineName: string;
   set?: JourneySet;
-  /** The previous logged set on this machine — drives the tiny trend glyph. */
+  /** The previous PERFORMED set on this machine — drives the tiny trend glyph. */
   previous?: JourneySet;
   /** This column is the most recent logged session (the baseline). */
   isLatest: boolean;
@@ -43,14 +44,24 @@ const TREND_GLYPH: Record<NonNullable<Trend>, string> = {
  * glyphs at all -- and it exists because green-vs-red is precisely the pair
  * a red-green colour-blind trainer cannot separate.
  *
+ * The other three outcomes never wear a quality fill, so they can never be
+ * mistaken for a set that counted: a PRACTICE set shows its numbers in muted
+ * ink inside a dashed frame with a P in the corner; a SKIPPED set shows no
+ * numbers, just a ⊘ and the one-word reason; a NOT-REACHED set is a lone dot.
+ * A session with no log at all for this machine is the old "—".
+ *
  * Pure and memoised: it re-renders only when its own set or flags change. With ~20 rows × ~15 columns that is the difference
  * between 300 renders and 1 when the trainer taps something.
  */
 function JourneyCellImpl({ session, machineName, set, previous, isLatest, isSpot, isStatHit }: JourneyCellProps) {
-  const delta = set ? loadDelta(set, previous) : null;
+  const performed = !!set && set.outcome === "performed";
+  const delta = performed ? loadDelta(set, previous) : null;
   const cls = [
     "jg-cell",
-    set ? `jg-cell--q${set.quality}` : "",
+    performed ? `jg-cell--q${set.quality}` : "",
+    set && set.outcome === "practice" ? "jg-cell--practice" : "",
+    set && set.outcome === "skipped" ? "jg-cell--skipped" : "",
+    set && set.outcome === "not_reached" ? "jg-cell--nr" : "",
     delta !== null && delta > 0 ? "is-gain" : "",
     delta !== null && delta < 0 ? "is-drop" : "",
     isLatest ? "is-latest" : "",
@@ -64,7 +75,7 @@ function JourneyCellImpl({ session, machineName, set, previous, isLatest, isSpot
 
   if (!set) {
     return (
-      <div className={cls} role="gridcell" aria-label={`${machineName}, ${when}: not performed`}>
+      <div className={cls} role="gridcell" aria-label={`${machineName}, ${when}: no set logged`}>
         <span className="jg-cell__empty" aria-hidden="true">
           —
         </span>
@@ -72,8 +83,56 @@ function JourneyCellImpl({ session, machineName, set, previous, isLatest, isSpot
     );
   }
 
-  const trend = trendVsPrevious(set, previous);
+  if (set.outcome === "not_reached") {
+    return (
+      <div className={cls} role="gridcell" aria-label={`${machineName}, ${when}: not reached — ${OUTCOME_GLOSS.not_reached}`}>
+        <span className="jg-cell__empty" aria-hidden="true">
+          ·
+        </span>
+      </div>
+    );
+  }
+
+  if (set.outcome === "skipped") {
+    const reason = set.skipReason ?? "unknown";
+    const why = SKIP_REASON_SHORT[reason];
+    return (
+      <div
+        className={cls}
+        role="gridcell"
+        aria-label={`${machineName}, ${when}: skipped — ${SKIP_REASON_LABEL[reason].toLowerCase()}`}
+      >
+        <span className="jg-cell__skip" aria-hidden="true">
+          <span className="jg-cell__skip-glyph">⊘</span>
+          {why && <span className="jg-cell__skip-why">{why}</span>}
+        </span>
+      </div>
+    );
+  }
+
   const effort = set.isTSC ? `${formatSeconds(set.seconds ?? 0)} under tension` : `${set.reps ?? 0} reps`;
+
+  if (set.outcome === "practice") {
+    // The numbers are shown because a leader reading a pain-map entry wants
+    // them; nothing about them is compared, rated or counted.
+    return (
+      <div
+        className={cls}
+        role="gridcell"
+        aria-label={`${machineName}, ${when}: practice set, ${set.weight} lb, ${effort} — ${OUTCOME_GLOSS.practice}`}
+      >
+        <span className="jg-cell__w">{set.weight}</span>
+        <span className="jg-cell__r" aria-hidden="true">
+          {set.isTSC ? <span className="jg-tut">⏱ {formatSeconds(set.seconds ?? 0)}</span> : <>{set.reps ?? "—"}</>}
+        </span>
+        <span className="jg-cell__mark jg-cell__mark--practice" aria-hidden="true">
+          P
+        </span>
+      </div>
+    );
+  }
+
+  const trend = trendVsPrevious(set, previous);
   const load =
     delta === null
       ? ""

@@ -7,6 +7,7 @@
  *
  *   import type { WorkoutSession, ExerciseLog, Machine, ClientMachineSetting } from "../../types";
  */
+import { outcomeOf, skipReasonOf, type SetOutcome } from "../../lib/set-outcome";
 import type { JourneyMachine, JourneyRow, JourneySession, JourneySet, MovementGroup, RepQuality } from "./types";
 
 export interface SessionLike {
@@ -26,6 +27,9 @@ export interface LogLike {
   isStaticHold?: boolean;
   repQuality?: RepQuality;
   side?: "Left" | "Right";
+  /** Written by the tracker since the floor round; older logs infer it (set-outcome.ts). */
+  outcome?: SetOutcome | null;
+  skipReason?: string | null;
 }
 
 export interface MachineLike {
@@ -89,13 +93,24 @@ export function movementGroupFor(name: string): MovementGroup {
   return "Neck";
 }
 
+/**
+ * One log → one cell. The outcome is decided by set-outcome.ts, never here:
+ * a log with no `outcome` field is performed if it carries a count and
+ * skipped (reason unknown) if it does not, so a weight-only log from before
+ * the field existed now draws as a skipped cell instead of a grey set with
+ * no reps — and stops setting the row's first / lowest / highest weight.
+ * A performed set with no load is a broken record and gets no cell.
+ */
 export function toJourneySet(log: LogLike): JourneySet | null {
+  const outcome = outcomeOf(log);
   const weight = num(log.weight);
-  if (weight === undefined) return null;
+  if (outcome === "performed" && weight === undefined) return null;
   const isTSC = !!(log.isTSC || log.isStaticHold);
   return {
     sessionId: log.sessionId,
-    weight,
+    outcome,
+    skipReason: skipReasonOf(log) ?? undefined,
+    weight: weight ?? 0,
     reps: isTSC ? undefined : num(log.reps),
     seconds: isTSC ? num(log.seconds) : undefined,
     isTSC,

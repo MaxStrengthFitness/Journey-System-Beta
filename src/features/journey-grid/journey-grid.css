@@ -713,6 +713,53 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   pointer-events: none;
 }
 
+/* ---- the other three outcomes ---------------------------------------- *
+   Only a performed set wears a quality fill (src/lib/set-outcome.ts). The
+   rest are drawn so they can never be mistaken for one, and none of them
+   touches the three quality colours — rule one above holds:
+
+     practice     the numbers in muted ink inside a dashed frame, a P in the
+                  corner. Recorded (a leader reading the pain map wants the
+                  load), never compared, rated or counted.
+     skipped      no numbers. A ⊘ over the one-word reason, in faint ink.
+                  Reason unknown (history, FileMaker) shows the glyph alone.
+     not reached  a lone middle dot. The session ended first.
+     no set       the dash the grid always drew for "nothing here".          */
+.jg-cell--practice .jg-cell__w { color: var(--jg-ink-muted); font-weight: 600; }
+.jg-cell--practice .jg-cell__r { color: var(--jg-ink-faint); }
+.jg-cell--practice::after {
+  content: "";
+  position: absolute;
+  inset: 3px 3px 3px 2px;
+  border: 1px dashed var(--jg-border-strong);
+  border-radius: 4px;
+  pointer-events: none;
+}
+.jg-cell__mark--practice {
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--jg-ink-muted);
+}
+.jg-cell__skip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  color: var(--jg-ink-faint);
+  line-height: 1.1;
+}
+.jg-cell__skip-glyph { font-size: 15px; font-weight: 600; }
+.jg-cell__skip-why {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.jg[data-dense="line"] .jg-cell__skip-why { display: none; }
+.jg-cell--nr .jg-cell__empty { font-size: 15px; font-weight: 700; }
+
 /* ---- load movement --------------------------------------------------- *
    Every change used to be one grey arrow, so "two more reps" and "two more
    pounds" looked identical — and under continuous tension they are not
@@ -935,6 +982,31 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 }
 .jg-today--q1 .jg-today__w,
 .jg-today--q1 .jg-today__q { color: var(--jg-q-poor-text); }
+
+/* Practice and skipped today, drawn as history will draw them tomorrow. */
+.jg-today--practice .jg-today__w { color: var(--jg-ink-muted); font-weight: 600; }
+.jg-today--practice .jg-today__r { color: var(--jg-ink-faint); }
+.jg-today--practice::after {
+  content: "";
+  position: absolute;
+  inset: 3px 3px 3px 2px;
+  border: 1px dashed var(--jg-border-strong);
+  border-radius: 4px;
+  pointer-events: none;
+}
+.jg-today__q--practice { font-size: 9px; font-weight: 800; line-height: 1; color: var(--jg-ink-muted); }
+.jg-today__skip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--jg-ink-faint);
+  line-height: 1.1;
+}
+.jg-today__skip-glyph { font-size: 15px; font-weight: 600; }
+.jg-today__skip-why { font-size: 9px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.jg-today.is-focus::after { border-color: var(--jg-live-on); }
+.jg-today.is-focus .jg-today__skip,
+.jg-today.is-focus .jg-today__q--practice { color: var(--jg-live-on); }
 
 /* The machine being performed right now. */
 .jg-today.is-focus {
@@ -1651,6 +1723,19 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 }
 .jg-legend__item--quiet { opacity: 0.8; }
 .jg-legend__swatch--latest { background: var(--jg-live-fill); border-color: var(--jg-live); box-shadow: inset -2px 0 0 var(--jg-live); }
+.jg-legend__swatch--practice,
+.jg-legend__swatch--skipped {
+  display: inline-grid;
+  place-items: center;
+  border-left-width: 1px;
+  border: 1px dashed var(--jg-border-strong);
+  background: var(--jg-surface);
+  color: var(--jg-ink-muted);
+  font-size: 8.5px;
+  font-weight: 800;
+  line-height: 1;
+}
+.jg-legend__swatch--skipped { border-style: solid; border-color: var(--jg-border); color: var(--jg-ink-faint); font-size: 11px; }
 /* Segmented, exactly like the cell edge it stands for. */
 .jg-legend__swatch--q1 {
   background-color: var(--jg-q-poor-fill);

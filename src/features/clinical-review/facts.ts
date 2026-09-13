@@ -10,6 +10,7 @@
  */
 
 import type { ClinicalIncident, ExerciseLog, WorkoutSession } from "../../types";
+import { isPerformedLog } from "../../lib/set-outcome";
 import type { EnergyLevel, MoodLevel, PostFeel, SessionFact, SetFact } from "./types";
 
 /* ------------------------------------------------------------------ *
@@ -152,7 +153,16 @@ export function tutOf(log: ExerciseLog): number | null {
   return dur !== null && dur > 0 ? dur : null;
 }
 
+/**
+ * One log → one set fact, or null when the log is not a performed set. A
+ * practice set, a skipped machine and a not-reached placeholder are all
+ * logs, and none of them is evidence about the client's strength — so the
+ * review never sees them (src/lib/set-outcome.ts). The symptoms and
+ * incidents a session carries are read from the session, not from here,
+ * so a skip for pain still reaches the review through the pain record.
+ */
 export function toSetFact(log: ExerciseLog, session: { id: string; date: string; dayMs: number }): SetFact | null {
+  if (!isPerformedLog(log)) return null;
   const weight = num(log.weight ?? log.loadLb);
   const isTSC = !!(log.isTSC || log.isStaticHold);
   const reps = isTSC ? null : num(log.reps ?? log.outcomeReps);

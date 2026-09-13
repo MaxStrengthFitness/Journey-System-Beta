@@ -33,6 +33,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn, parseSessionDate, parseMachineSettings } from '../lib/utils';
 import { planLegacyImport } from '../lib/legacy-import-utils';
 import { importedSessionsRollup } from '../lib/client-rollups';
+import { importedOutcome } from '../lib/set-outcome';
 
 interface ImporterProps {
   clients: Client[];
@@ -437,15 +438,24 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
         for (const vLog of vSess.machines) {
           if (!vLog.machineId) continue;
           const logRef = doc(collection(db, 'exerciseLogs'));
+          const reps = vLog.isStaticHold ? '' : String(vLog.reps || '');
+          const seconds = vLog.isStaticHold ? String(vLog.timeUnderLoad || '') : '';
           const logData: ExerciseLog = {
             sessionId: sessionRef.id,
             clientId: selectedClientId,
             machineId: vLog.machineId,
             weight: String(vLog.weight),
-            reps: vLog.isStaticHold ? '' : String(vLog.reps || ''),
-            seconds: vLog.isStaticHold ? String(vLog.timeUnderLoad || '') : '',
+            reps,
+            seconds,
             isTSC: vLog.isStaticHold,
             isStaticHold: vLog.isStaticHold,
+            // The import rule decided Sep 12 2026 (lib/set-outcome.ts): a row
+            // with a count is a performed set; a row without one is "skipped,
+            // reason unknown" and stays out of every average. The OCR step
+            // above already drops cells with no count at all, so today every
+            // row here is performed — stamping it keeps the record explicit
+            // when the FileMaker import lands with blanks of its own.
+            ...importedOutcome({ reps, seconds, isTSC: vLog.isStaticHold }),
             machineSettings: vLog.settings ? parseMachineSettings(vLog.settings) : {},
             // Left unset intentionally: legacy paper charts never recorded a
             // rep-quality rating, so hardcoding one here (this used to be a

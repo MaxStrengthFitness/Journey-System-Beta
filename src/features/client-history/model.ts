@@ -20,6 +20,7 @@
  */
 import type { ClientEvent, ExerciseLog, RepQuality, WorkoutSession } from "../../types";
 import { calculateExerciseVolume, parseSessionDate } from "../../lib/utils";
+import { isPerformedLog } from "../../lib/set-outcome";
 import { studioDateKey, toDate } from "../../lib/studio-time";
 
 /** A session as History reads it. `trainerName` is written by the live flow but not declared. */
@@ -708,12 +709,14 @@ const toNum = (v: unknown): number => {
 };
 
 /**
- * A set is REAL when something was lifted or held. "Log past session" seeds
- * zero-everything placeholder logs for the client's usual machines; counting
- * those would show five machines on a session where nothing was recorded.
+ * A set is REAL when it was performed — lib/set-outcome.ts decides, the same
+ * way the grid, the rollups and the review decide. That rules out the
+ * zero-everything placeholders "Log past session" seeds (no count → skipped,
+ * reason unknown), and also a practice set, a skipped machine and a
+ * not-reached placeholder: each is on the record, none is a set that counts.
  */
 export function isPerformed(log: ExerciseLog): boolean {
-  return toNum(log.weight) > 0 || toNum(log.reps) > 0 || toNum(log.seconds) > 0;
+  return isPerformedLog(log);
 }
 
 /**

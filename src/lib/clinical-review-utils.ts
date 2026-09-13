@@ -1,4 +1,5 @@
 import { Client, ExerciseLog, WorkoutSession, FocusRecord, ClinicalIncident, Machine, ClinicalTagDefinition, RPE } from "../types";
+import { isPerformedLog } from "./set-outcome";
 
 export interface ReviewMetrics {
   totalTonnage: number;
@@ -110,7 +111,10 @@ export function computeClinicalMetrics(
   const sessionIds = new Set(sessionsInWindow.map(s => s.id));
 
   // Filter logs in window (either linked to a session in window, or created in window)
+  // Performed sets only: tonnage, reps and the per-machine counts below are
+  // about work done to failure, and a practice set or a skip is neither.
   const logsInWindow = logs.filter(log => {
+    if (!isPerformedLog(log)) return false;
     if (log.sessionId && sessionIds.has(log.sessionId)) return true;
     if (log.createdAt) {
       const createdAt = typeof log.createdAt === 'string' ? new Date(log.createdAt) : new Date(log.createdAt.toMillis ? log.createdAt.toMillis() : log.createdAt);

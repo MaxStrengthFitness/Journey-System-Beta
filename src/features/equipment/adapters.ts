@@ -31,6 +31,7 @@ import type { Machine, ClientMachineSetting, ClientMachineStat, ExerciseLog, Wor
 import type { MachineCatalogEntry, MachineSettingField } from "../../types/machines";
 import { MACHINE_DATABASE } from "../../data/machine-database";
 import { toIsoDay } from "../../lib/client-rollups";
+import { performedOnly } from "../../lib/set-outcome";
 import { tutOf } from "../clinical-review/facts";
 import {
   EquipmentMachine,
@@ -361,8 +362,12 @@ export function toEquipmentMachines({
   machineStats,
   sessions = [],
 }: ToEquipmentMachinesArgs): EquipmentMachine[] {
+  /* Performed sets only, decided once for every figure below: "sets logged",
+     first / last / times performed, the TUT average. A practice set or a
+     skipped machine is history, not usage (src/lib/set-outcome.ts). */
+  const performedLogs = performedOnly(allLogs || []);
   const logCounts = new Map<string, number>();
-  for (const log of allLogs || []) {
+  for (const log of performedLogs) {
     if (!log?.machineId) continue;
     logCounts.set(log.machineId, (logCounts.get(log.machineId) || 0) + 1);
   }
@@ -392,8 +397,8 @@ export function toEquipmentMachines({
     const usage: MachineUsage = {
       ...(machineStats
         ? usageFromStats(machineStats[id], currentWeight)
-        : usageFromLogs(id, allLogs || [], sessions, currentWeight)),
-      ...averageTut(id, allLogs || []),
+        : usageFromLogs(id, performedLogs, sessions, currentWeight)),
+      ...averageTut(id, performedLogs),
     };
 
     out.push({

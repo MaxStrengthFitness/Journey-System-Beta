@@ -1,6 +1,7 @@
 import { collection, query, where, orderBy, limit, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { ExerciseLog, Client, Machine } from '../types';
+import { isPerformedLog } from './set-outcome';
 import { calculateStartingWeight } from './consultation-utils';
 import { parseSessionDate, getMillis } from './utils';
 
@@ -34,11 +35,14 @@ export function getLatestTargetWeight(
     });
 
   // Iterate backward (newest to oldest) mapping to find the most recent session
+  // that has a PERFORMED set on this machine — the load from a practice set
+  // must never become the next prescription (set-outcome.ts).
   for (const session of clientSessions) {
     const logsForSession = historyLogs.filter(l => 
       l.sessionId === session.id &&
       l.machineId === machineId &&
-      l.clientId === clientId
+      l.clientId === clientId &&
+      isPerformedLog(l)
     );
     
     if (logsForSession.length > 0) {

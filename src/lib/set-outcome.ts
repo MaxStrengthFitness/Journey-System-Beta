@@ -78,6 +78,17 @@ export const SKIP_REASON_LABEL: Record<SkipReason, string> = {
 /** The reasons a trainer can pick on the floor — `unknown` is history's word, not theirs. */
 export const PICKABLE_SKIP_REASONS: readonly SkipReason[] = SKIP_REASONS.filter((r) => r !== "unknown");
 
+/** One word for an 84px grid cell; `unknown` shows nothing — the glyph alone says skipped. */
+export const SKIP_REASON_SHORT: Record<SkipReason, string> = {
+  pain_injury: "pain",
+  machine_occupied: "occupied",
+  out_of_service: "down",
+  client_declined: "declined",
+  trainers_call: "trainer",
+  other: "other",
+  unknown: "",
+};
+
 /**
  * The fields this module reads. Structural, so it works on an ExerciseLog,
  * on the grid's LogLike, on a rollup row and on a CSV import row alike.
@@ -87,6 +98,9 @@ export interface OutcomeLog {
   skipReason?: SkipReason | string | null;
   reps?: string | number | null;
   seconds?: string | number | null;
+  /** Legacy aliases some imported logs carry instead of reps / seconds. */
+  outcomeReps?: string | number | null;
+  outcomeTut?: string | number | null;
   isTSC?: boolean | null;
   isStaticHold?: boolean | null;
 }
@@ -102,14 +116,15 @@ export function hasCount(value: unknown): boolean {
 }
 
 /**
- * Does the log record an effort? Holds (TSC / static) are measured in
- * seconds, everything else in reps — the same rule lib/log-validation.ts
- * applies when it looks for a set that was begun but never counted.
+ * Does the log record an effort? Any count does — reps, or seconds for a
+ * hold. The hold flag decides which number a screen shows, not whether the
+ * set happened: a legacy hold logged as seconds without its flag, or a set
+ * whose flag was flipped after the reps went in, is still work the client
+ * did. Only a log with no count at all (weight alone, or nothing) is not.
  */
 export function hasEffort(log: OutcomeLog | null | undefined): boolean {
   if (!log) return false;
-  const isHold = Boolean(log.isStaticHold || log.isTSC);
-  return isHold ? hasCount(log.seconds) : hasCount(log.reps);
+  return hasCount(log.reps ?? log.outcomeReps) || hasCount(log.seconds ?? log.outcomeTut);
 }
 
 /**

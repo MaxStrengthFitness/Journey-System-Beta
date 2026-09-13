@@ -8,6 +8,7 @@
  * nowhere else — on Render it would have thrown on the first read.
  */
 import { getDb } from './firebase-admin.ts';
+import { isPerformedLog } from '../src/lib/set-outcome.ts';
 
 export async function calculateLeaderboards() {
   const cronId = Math.random().toString(36).substring(7);
@@ -45,6 +46,9 @@ export async function calculateLeaderboards() {
 
     logsSnap.forEach(doc => {
       const log = doc.data();
+      // Performed sets only (src/lib/set-outcome.ts): a practice load or a
+      // weight typed before a skip is not a personal best.
+      if (!isPerformedLog(log)) return;
       const weight = parseFloat(log.weight);
       if (isNaN(weight) || weight <= 0) return;
 

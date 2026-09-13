@@ -26,12 +26,17 @@ export function nextMetric(m: StatMetric): StatMetric {
   return STAT_ORDER[(STAT_ORDER.indexOf(m) + 1) % STAT_ORDER.length];
 }
 
-/** Sets for a row in timeline order (oldest → newest), skipping empty sessions. */
+/**
+ * Performed sets for a row in timeline order (oldest → newest). Practice,
+ * skipped and not-reached cells are drawn by the grid but never take part in
+ * a summary, an aggregate or a trend — that is the one rule every reader of
+ * set data shares (src/lib/set-outcome.ts).
+ */
 export function orderedSets(row: JourneyRow, sessions: JourneySession[]): JourneySet[] {
   const out: JourneySet[] = [];
   for (const s of sessions) {
     const set = row.sets[s.id];
-    if (set) out.push(set);
+    if (set && set.outcome === "performed") out.push(set);
   }
   return out;
 }
@@ -54,13 +59,14 @@ export type RowStats = Record<StatMetric, StatHit | null>;
  *  - mostReps  → the LATEST tie, at whatever weight it happened
  *  - fewestReps→ the LATEST tie — the most recent struggle is the useful one
  * Timed static contractions have no rep count, so they are skipped by the two
- * rep metrics but still count for the three weight metrics.
+ * rep metrics but still count for the three weight metrics. Only performed
+ * sets are read at all: a practice set's 60 lb is not a lowest weight.
  */
 export function computeRowStats(row: JourneyRow, history: JourneySession[]): RowStats {
   const out: RowStats = { first: null, low: null, high: null, mostReps: null, fewestReps: null };
   for (const session of history) {
     const set = row.sets[session.id];
-    if (!set) continue;
+    if (!set || set.outcome !== "performed") continue;
     const hit: StatHit = { set, session };
     if (!out.first) out.first = hit;
     if (!out.low || set.weight < out.low.set.weight) out.low = hit;

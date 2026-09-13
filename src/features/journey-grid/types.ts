@@ -7,6 +7,8 @@
  * parse strings ("116") or guess whether a log is reps or a static hold.
  */
 
+import type { SetOutcome, SkipReason } from "../../lib/set-outcome";
+
 /** Matches the existing `RepQuality` in src/types.ts: 1 = poor, 2 = completed, 3 = max strength. */
 export type RepQuality = 1 | 2 | 3;
 
@@ -22,10 +24,18 @@ export interface JourneySession {
   trainerName?: string;
 }
 
-/** One completed set = one cell. */
+/**
+ * One set = one cell. Only a `performed` set counts — the stats, the trend
+ * glyph and the "previous set" a cell compares against all skip the other
+ * three outcomes (src/lib/set-outcome.ts). A practice set keeps its numbers
+ * so the cell can show them; a skipped or not-reached set has none.
+ */
 export interface JourneySet {
   sessionId: string;
-  /** Load in lb. */
+  outcome: SetOutcome;
+  /** Only when `outcome` is `skipped`. */
+  skipReason?: SkipReason;
+  /** Load in lb. 0 when the set has none (skipped, not reached). */
   weight: number;
   /** Reps to failure — absent when the set was a timed static contraction. */
   reps?: number;
@@ -83,6 +93,13 @@ export interface LiveSet {
   seconds: number | null;
   isTSC: boolean;
   quality: RepQuality | null;
+  /**
+   * What the trainer said this set was. Absent (or `performed`) while the
+   * set is a normal one; `practice` or `skipped` once the Now bar's outcome
+   * buttons were used. The tracker writes it onto the log as `outcome`.
+   */
+  outcome?: SetOutcome | null;
+  skipReason?: SkipReason | null;
   /** Right side, only for machines with `sides` (the fields above are then the Left side). */
   repsR?: number | null;
   secondsR?: number | null;

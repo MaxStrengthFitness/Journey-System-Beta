@@ -137,6 +137,20 @@ Every historical cell shows the same two numbers in the same two places, so the 
 - **Empty cells** show a faint `—`, never a fill, so a sparse machine doesn't look busy.
 - **Timed static contractions** show `⏱ 1:30` in the reps slot. Same slot, different unit.
 
+#### The four set outcomes (floor round, Sep 2026)
+
+Every planned machine ends in one of four states, decided once in `src/lib/set-outcome.ts` (docs/ARCHITECTURE.md §1.6). Only a **performed** set wears a quality fill; the other three are drawn so they can never be mistaken for one, and none of them uses a quality colour:
+
+| Outcome | Cell | Counts? |
+| --- | --- | --- |
+| performed | the anatomy above | yes — the only one |
+| practice | the numbers in muted ink inside a dashed frame, a small `P` top-right | no — recorded for history and the pain map |
+| skipped | `⊘` over the one-word reason (`pain`, `occupied`, `down`, `declined`, `trainer`, `other`); reason unknown shows the glyph alone | no |
+| not reached | a lone `·` — Finish Session wrote it for a machine the session never got to | no |
+| no log at all | the faint `—` as before | — |
+
+`orderedSets`, `computeRowStats`, `journeySummary` and the "previous set" a cell compares its load against all read performed sets only, so a practice set at 60 lb is never a lowest weight and never the baseline for a `▼` glyph. A log written before the field existed is performed if it carries a count and skipped (reason unknown) if it does not — which means a legacy weight-only log now draws as a skipped cell and no longer sets a row's first / lowest / highest weight. The Today cell wears the same practice / skipped skin as soon as the Now bar's outcome buttons are used, so a row reads the same today as it will next week.
+
 ### 1.3 The LATEST column
 
 The most recent logged session is the baseline for today's prescription, so it gets the strongest treatment in the timeline: a 2px blue frame down both sides of the column, a 3px blue underline on its header, the header inverted (`LATEST · #45`, blue date, filled avatar), empty cells tinted blue, and the weight one step larger. Quality fills stay inside the frame, so "max effort last time" and "poor quality last time" are both still readable at a glance. In the Active Session the LATEST column sits directly beside the Today column: **baseline → today**, no scrolling.

@@ -1,5 +1,6 @@
 import { ActivityLevel, OCCUPATIONS } from "./occupational-matrix";
 import { Client, WorkoutSession, ExerciseLog } from "../types";
+import { isPerformedLog } from "../lib/set-outcome";
 import { MACHINE_LIST } from "./machine-database";
 import { safeToDate } from "../lib/utils";
 import { MACHINE_ANATOMY } from "./machine-anatomy-map";
@@ -189,8 +190,10 @@ export class InsightsAggregator {
 
     const filteredSessionIds = new Set(filteredSessions.map((s) => s.id));
 
-    // 3. Filter logs based on client, session, and date range
+    // 3. Filter logs based on client, session, and date range — performed
+    //    sets only, so a practice load never reads as a strength gain or loss.
     const filteredLogs = logs.filter((l) => {
+      if (!isPerformedLog(l)) return false;
       if (!l.clientId || !filteredClientIds.has(l.clientId)) return false;
       if (l.sessionId && !filteredSessionIds.has(l.sessionId)) return false;
 

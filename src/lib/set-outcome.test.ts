@@ -44,8 +44,17 @@ describe("set outcome — backward compatibility for logs without the field", ()
     expect(outcomeOf({ reps: "0" })).toBe("skipped");
     expect(outcomeOf({ reps: "" })).toBe("skipped");
     expect(skipReasonOf({ reps: "" })).toBe("unknown");
-    // A hold with reps but no seconds is a mismatch, not an effort.
-    expect(outcomeOf({ isTSC: true, reps: "10" })).toBe("skipped");
+    expect(outcomeOf({ weight: "100" } as any)).toBe("skipped");
+  });
+
+  it("any count is an effort — the hold flag picks the number shown, not whether the set happened", () => {
+    // A legacy hold logged as seconds without its flag.
+    expect(outcomeOf({ seconds: "60" })).toBe("performed");
+    // A set whose flag was flipped after the reps went in.
+    expect(outcomeOf({ isTSC: true, reps: "10" })).toBe("performed");
+    // Imported logs that carry the legacy alias fields.
+    expect(outcomeOf({ outcomeReps: "9" })).toBe("performed");
+    expect(outcomeOf({ isTSC: true, outcomeTut: "75" })).toBe("performed");
   });
 
   it("a missing log is not reached", () => {
@@ -53,11 +62,11 @@ describe("set outcome — backward compatibility for logs without the field", ()
     expect(outcomeOf(undefined)).toBe("not_reached");
   });
 
-  it("hasEffort follows the hold/reps rule", () => {
+  it("hasEffort: reps or seconds, positive and numeric", () => {
     expect(hasEffort({ reps: "6" })).toBe(true);
     expect(hasEffort({ isTSC: true, seconds: "60" })).toBe(true);
-    expect(hasEffort({ isTSC: true, reps: "6" })).toBe(false);
     expect(hasEffort({ reps: "abc" })).toBe(false);
+    expect(hasEffort({ reps: "0", seconds: "0" })).toBe(false);
     expect(hasEffort(null)).toBe(false);
   });
 });

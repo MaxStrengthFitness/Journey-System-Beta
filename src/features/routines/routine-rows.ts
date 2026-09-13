@@ -9,6 +9,7 @@
 
 import type { Client, ClientMachineSetting, ExerciseLog, Machine, Routine, RoutineAdjustment, Trainer, WorkoutSession } from "../../types";
 import { orderMachineSettings, parseSessionDate } from "../../lib/utils";
+import { isPerformedLog } from "../../lib/set-outcome";
 
 export interface RoutineRow {
   order: number;
@@ -81,9 +82,12 @@ export function buildRoutineRows(
   [...sessions]
     .sort((a, b) => parseSessionDate(b.date) - parseSessionDate(a.date))
     .forEach((s, i) => s.id && sessionRank.set(s.id, i));
+  // The latest PERFORMED set per machine (lib/set-outcome.ts) — the row's
+  // "last time" figures are what the client actually lifted, so a practice
+  // set or a skip with a stray weight never becomes the number shown.
   const latestLog = new Map<string, ExerciseLog>();
   for (const log of allLogs) {
-    if (!log.machineId) continue;
+    if (!log.machineId || !isPerformedLog(log)) continue;
     const cur = latestLog.get(log.machineId);
     const r = sessionRank.get(log.sessionId) ?? Number.MAX_SAFE_INTEGER;
     const cr = cur ? sessionRank.get(cur.sessionId) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;

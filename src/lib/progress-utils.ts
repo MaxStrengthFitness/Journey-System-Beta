@@ -10,6 +10,7 @@ import {
 import { db } from "../firebase";
 import { ExerciseLog, WorkoutSession } from "../types";
 import { parseSessionDate } from "./utils";
+import { isPerformedLog, performedOnly } from "./set-outcome";
 
 /**
  * Calculates the delta for highlighted movements.
@@ -55,8 +56,10 @@ export async function calculateHighlightedMovements(
       where("machineId", "==", machineId),
     );
     const logsSnap = await getDocs(logsQuery);
-    const logs = logsSnap.docs
-      .map((d) => ({ id: d.id, ...d.data() }) as ExerciseLog)
+    // Performed sets only (set-outcome.ts): a practice load is not a weight
+    // the client lifted to failure, so it is neither a start nor a current.
+    const logs = performedOnly(logsSnap.docs
+      .map((d) => ({ id: d.id, ...d.data() }) as ExerciseLog))
       .sort((a, b) => {
         const sessA = sessionsMap.get(a.sessionId);
         const sessB = sessionsMap.get(b.sessionId);
@@ -241,6 +244,7 @@ export async function calculateComprehensiveAttendanceStats(
   const filteredSessionIds = new Set(filteredSessions.map((s) => s.id));
 
   allLogs.forEach((log) => {
+    if (!isPerformedLog(log)) return; // practice and skips never add volume or a good rep
     if (filteredSessionIds.has(log.sessionId)) {
       if (log.repQuality === 3) {
         totalGoodReps++;
@@ -323,7 +327,7 @@ export async function calculateDynamicHighlightMetrics(
           ...d.data(),
         }) as ExerciseLog,
     )
-    .filter((l) => sessionIds.has(l.sessionId))
+    .filter((l) => sessionIds.has(l.sessionId) && isPerformedLog(l))
     .sort((a, b) => {
       const sessA = sessionInfoMap.get(a.sessionId);
       const sessB = sessionInfoMap.get(b.sessionId);
@@ -405,6 +409,7 @@ export function calculateAverageTutPerMachine(
   const machineMap: Record<string, { sum: number; count: number }> = {};
 
   logs.forEach((log) => {
+    if (!isPerformedLog(log)) return; // a practice set's time is not the set's time
     const tut = log.machineDurationSeconds;
     if (
       tut === undefined ||

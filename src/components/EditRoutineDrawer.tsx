@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { db } from "../firebase";
 import { cn, safeToDate } from "../lib/utils";
+import { isPerformedLog } from "../lib/set-outcome";
 import { GLOBAL_ROUTINE_PRESETS } from "../data/routine-presets";
 import {
   describeDeviation,
@@ -288,8 +289,9 @@ export function EditRoutineDrawer({
   const lastPerformedByMachine = useMemo(() => {
     const map: Record<string, MachineHistoryEntry> = {};
     const sessionById = new Map(sessions.map((s) => [s.id, s]));
+    // Performed sets only (lib/set-outcome.ts) — "last performed" means it.
     const relevantLogs = allLogs
-      .filter((l) => !!l.machineId && sessionById.has(l.sessionId))
+      .filter((l) => !!l.machineId && sessionById.has(l.sessionId) && isPerformedLog(l))
       .sort((a, b) => {
         const sessA = sessionById.get(a.sessionId);
         const sessB = sessionById.get(b.sessionId);

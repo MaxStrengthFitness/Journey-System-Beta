@@ -159,6 +159,7 @@ import {
   toJourneySessions,
 } from "../features/journey-grid";
 import { isOwner as checkIsOwner } from "../lib/permissions";
+import { isPerformedLog } from "../lib/set-outcome";
 import { EditRoutineDrawer } from "./EditRoutineDrawer";
 import { ClientJournalTab } from "./journal/ClientJournalTab";
 import {
@@ -1460,7 +1461,10 @@ export function ClientProfileView({
     const machineWeightsByDate: Record<string, Record<string, number>> = {};
     const machineBaselines: Record<string, number> = {};
 
-    [...allLogs]
+    // Performed sets only (lib/set-outcome.ts): a practice load is not a
+    // baseline and not a progression point.
+    allLogs
+      .filter(isPerformedLog)
       .sort(
         (a, b) =>
           (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0),
@@ -1502,7 +1506,7 @@ export function ClientProfileView({
       const time =
         session.createdAt?.toMillis?.() || parseSessionDate(session.date);
       if (time >= sixtyDaysAgo.getTime()) {
-        const sLogs = allLogs.filter((l) => l.sessionId === session.id);
+        const sLogs = allLogs.filter((l) => l.sessionId === session.id && isPerformedLog(l));
         const totalVol = sLogs.reduce((acc, log) => {
           const w = parseInt(log.weight?.toString() || "0");
           const r = parseInt(log.reps?.toString() || "0");
@@ -2668,7 +2672,7 @@ export function ClientProfileView({
               const time =
                 getMillis(session.createdAt) || parseSessionDate(session.date);
               if (time >= sixtyDaysAgo.getTime()) {
-                const sLogs = allLogs.filter((l) => l.sessionId === session.id);
+                const sLogs = allLogs.filter((l) => l.sessionId === session.id && isPerformedLog(l));
                 const totalVol = sLogs.reduce(
                   (acc, log) => acc + calculateExerciseVolume(log),
                   0,

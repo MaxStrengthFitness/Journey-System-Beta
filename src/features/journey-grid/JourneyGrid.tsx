@@ -165,7 +165,8 @@ function RowImpl({
   const hitSessionId = hit?.session.id ?? null;
   const hitVisible = hitSessionId ? sessions.some((s) => s.id === hitSessionId) : false;
 
-  // Walk once, carrying the previous set forward for the trend glyph.
+  // Walk once, carrying the previous PERFORMED set forward for the trend
+  // glyph — a practice set in between is not the load to compare against.
   let previous: JourneySet | undefined;
   const cells = sessions.map((s) => {
     const set = row.sets[s.id];
@@ -181,7 +182,7 @@ function RowImpl({
         isStatHit={showStats && hitSessionId === s.id}
       />
     );
-    if (set) previous = set;
+    if (set && set.outcome === "performed") previous = set;
     return cell;
   });
 

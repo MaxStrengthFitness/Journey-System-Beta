@@ -105,6 +105,7 @@ import { Firestore, writeBatch, doc, collection, serverTimestamp, increment } fr
 import { invalidateSessionCount } from './session-count-cache';
 import { completedSessionRollup } from './client-rollups';
 import { studioTodayKey } from "./studio-time";
+import { isPerformedLog } from './set-outcome';
 
 /**
  * Atomic Session Completion Engine
@@ -230,12 +231,17 @@ export async function completeWorkoutSession(
     }
   }
 
-  // 3. Update client counters & metrics
+  // 3. Update client counters & metrics — from PERFORMED sets only. Every
+  // log is saved above (a practice set's numbers and a skip's reason are
+  // history), but only a set to failure moves a lifetime total, becomes the
+  // machine's current metrics or sets tomorrow's weight (set-outcome.ts).
+  const performedLogs = sessionLogs.filter((l: any) => isPerformedLog(l));
+
   if (selectedClient && selectedClient.id) {
     let totalSessionReps = 0;
     let totalSessionVolume = 0;
 
-    sessionLogs.forEach((l: any) => {
+    performedLogs.forEach((l: any) => {
       let reps = 0;
       if (l.isTSC || l.isStaticHold) {
         const seconds = parseFloat(l.seconds || '0');
@@ -271,7 +277,7 @@ export async function completeWorkoutSession(
       clientUpdates.lifetimeWeight = increment(roundedSessionVolume);
     }
 
-    sessionLogs.forEach(logObj => {
+    performedLogs.forEach(logObj => {
       const log = logObj as any;
       if (log.weight || log.reps || log.seconds) {
         const key = `currentMachineMetrics.${log.machineId}`;
@@ -332,6 +338,8 @@ export async function completeWorkoutSession(
           trainerId: authTrainer?.id || currentSession.trainerId,
           trainerInitials: authTrainer?.initials || currentSession.trainerInitials,
         },
+        // The rollup filters to performed sets itself; passing every log
+        // keeps the two call sites (finish, import) on one rule.
         sessionLogs as any[],
         authTrainer ? [authTrainer as Trainer] : [],
         { increment, serverTimestamp },
