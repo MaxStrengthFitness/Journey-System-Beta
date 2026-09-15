@@ -25,8 +25,9 @@ import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
  *
  * IMPORTANT for session screens: pass the studio where training is HAPPENING
  * (activeStudioId), never the client's home studio. A client cross-training
- * at another location must see that location's equipment. useSessionMachines
- * wraps this with that guarantee.
+ * at another location must see that location's equipment. (A useSessionMachines
+ * wrapper used to guarantee that; nothing called it and it was removed in the
+ * cost round, Sep 2026 — sessions still read the app-wide list, see ROADMAP.)
  *
  * NOTE: until the roster backfill runs, studios/{id}/roster is empty and this
  * returns nothing. Call sites where an empty list is indistinguishable from a

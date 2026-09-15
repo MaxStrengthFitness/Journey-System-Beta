@@ -199,7 +199,6 @@ function walk(dir: string, out: string[] = []): string[] {
  * root (checked, not assumed):
  *
  *   AccessRequestView        `touch-pane ... bg-[#1c1d1f]`, ambient gradient
- *   ClientFocusDashboard     `flex flex-col h-full bg-[#0A2E46] text-slate-200`
  *   ErrorBoundary            `min-h-screen bg-[#0A2E46] ... text-white`
  *   LegacyChartImporter      `bg-slate-950 min-h-screen text-slate-100`
  *   ClientProgressReportView `min-h-screen bg-[#0A2E46] text-[#FAF9F6]` (print)
@@ -209,7 +208,6 @@ function walk(dir: string, out: string[] = []): string[] {
  */
 const ALWAYS_DARK_SCREENS = new Set([
   "components/AccessRequestView.tsx",
-  "components/ClientFocusDashboard.tsx",
   "components/ErrorBoundary.tsx",
   "components/LegacyChartImporter.tsx",
   "components/ClientProgressReportView.tsx",

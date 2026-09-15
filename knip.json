@@ -1,0 +1,15 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/main.tsx",
+    "server.ts",
+    "server/cron-*.ts",
+    "server/worker.ts",
+    "functions/src/index.ts",
+    "scripts/**/*.ts",
+    "tests/**/*.ts"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "server/**/*.ts", "functions/src/**/*.ts", "scripts/**/*.ts", "components/**/*.tsx", "lib/**/*.ts"],
+  "ignore": ["harness/**", "dist/**", "functions/lib/**"],
+  "ignoreDependencies": []
+}
