@@ -718,6 +718,14 @@ export interface Client {
   postalCode?: string;
   country?: string;
 
+  /* MASTER SYNC (Sep 2026) — written by lib/mindbody-master-sync.ts. */
+  /** Mindbody's own active/inactive flag on the person. Never the app's `isActive`. */
+  mindbodyActive?: boolean;
+  /** Mindbody's EmergencyContactInfoRelationship. */
+  emergencyContactRelationship?: string;
+  /** ISO instant of the last successful Master Sync. */
+  mindbodyMasterSyncedAt?: string;
+
   /** Trainer-entered SMART goal. Was written via a cast; now typed. */
   smartGoal?: string;
   completedSessions?: number;

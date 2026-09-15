@@ -65,6 +65,53 @@ export function mapServices(
   >;
 }
 
+/** The route's commercial rows. A list that is null (or absent) couldn't be read. */
+export interface CommercialPayload {
+  contracts?: any[] | null;
+  memberships?: any[] | null;
+  services?: any[] | null;
+}
+
+export interface CommercialWrites {
+  /**
+   * For setDoc(..., { merge: true }): contracts and memberships deep-merge
+   * into what the webhook wrote. null when neither list could be read.
+   */
+  merge: Record<string, unknown> | null;
+  /** For updateDoc: the whole pricing-option map. null when that call failed. */
+  services: Record<string, Partial<MindbodyService>> | null;
+  contracts: Record<string, Partial<MindbodyContract>>;
+  memberships: Record<string, Partial<MindbodyMembership>>;
+}
+
+/**
+ * What a commercial pull writes — shared by the Sync button below and by
+ * Master Sync (lib/mindbody-master-sync.ts), so both land the same records.
+ *
+ * `mindbodyCommercialSyncedAt` is stamped only when the contract list was
+ * read: the renewal engine takes a stamp with no contracts to mean "Mindbody
+ * shows no package", which a failed read must not say. An empty map is left
+ * out rather than written, so it can't look authoritative.
+ */
+export function buildCommercialWrites(payload: CommercialPayload, stamp: unknown): CommercialWrites {
+  const contractsKnown = Array.isArray(payload.contracts);
+  const membershipsKnown = Array.isArray(payload.memberships);
+  const contracts = mapContracts(payload.contracts ?? undefined, stamp);
+  const memberships = mapMemberships(payload.memberships ?? undefined, stamp);
+
+  let merge: Record<string, unknown> | null = null;
+  if (contractsKnown || membershipsKnown) {
+    merge = {};
+    if (contractsKnown) merge.mindbodyCommercialSyncedAt = stamp;
+    if (Object.keys(contracts).length > 0) merge.mindbodyContracts = contracts;
+    if (Object.keys(memberships).length > 0) merge.mindbodyMemberships = memberships;
+    if (Object.keys(merge).length === 0) merge = null;
+  }
+
+  const services = Array.isArray(payload.services) ? mapServices(payload.services, stamp) : null;
+  return { merge, services, contracts, memberships };
+}
+
 export interface CommercialSyncResult {
   memberships: number;
   contracts: number;
@@ -109,30 +156,32 @@ export async function syncClientCommercialData(params: {
   };
 
   const now = serverTimestamp();
-  const contracts = mapContracts(payload.contracts, now);
-  const memberships = mapMemberships(payload.memberships, now);
-
-  const updates: Record<string, unknown> = {
-    mindbodyCommercialSyncedAt: now,
-  };
-  if (Object.keys(contracts).length > 0) updates.mindbodyContracts = contracts;
-  if (Object.keys(memberships).length > 0) {
-    updates.mindbodyMemberships = memberships;
-  }
+  // This route sends [] for a list it couldn't read, so both lists count as
+  // read here (unchanged behaviour); Master Sync's route sends null instead.
+  const writes = buildCommercialWrites(
+    {
+      contracts: payload.contracts ?? [],
+      memberships: payload.memberships ?? [],
+      services: payload.services,
+    },
+    now,
+  );
+  const { contracts, memberships } = writes;
 
   // merge:true deep-merges nested maps, so other contracts, other memberships
   // and every webhook-written field on this document survive untouched.
-  await setDoc(doc(db, "clients", clientDocId), updates, { merge: true });
+  if (writes.merge) {
+    await setDoc(doc(db, "clients", clientDocId), writes.merge, { merge: true });
+  }
 
   // Replaced, not merged — and only when the pricing-option call worked.
   let serviceCount: number | null = null;
-  if (Array.isArray(payload.services)) {
-    const services = mapServices(payload.services, now);
+  if (writes.services) {
     await updateDoc(doc(db, "clients", clientDocId), {
-      mindbodyServices: services,
+      mindbodyServices: writes.services,
       mindbodyServicesSyncedAt: now,
     });
-    serviceCount = Object.keys(services).length;
+    serviceCount = Object.keys(writes.services).length;
   }
 
   return {

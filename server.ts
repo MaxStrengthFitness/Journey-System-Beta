@@ -15,7 +15,17 @@ import {
   processLegacyChart,
   extractMachineSettingsFromImage,
 } from "./server/gemini.ts";
-import { getMindbodyToken, pullClientCommercial } from "./server/mindbody-client.ts";
+import {
+  getMindbodyToken,
+  mindbodyGet,
+  pullClientCommercial,
+  pullClientMaster,
+} from "./server/mindbody-client.ts";
+import {
+  demographicsFromApi,
+  joinAddress,
+  pickRequestedClient,
+} from "./src/lib/mindbody-demographics-map.ts";
 import { requireStaff } from "./server/auth.ts";
 
 // Error Handling: Prevent process crash on unhandled rejections
@@ -952,105 +962,128 @@ async function startServer() {
     }
   });
 
+  /**
+   * One client's person-facts from Mindbody, looked up BY ID ONLY.
+   *
+   * Master Sync round (Sep 2026): the name search this route used to fall
+   * back to is gone. A name can match someone else, and the answer was
+   * written onto the profile — CLAUDE.md: no name matching, ever. A client
+   * with no Mindbody id gets found:false and a sentence, never a guess.
+   * New code should call /api/mindbody/client-master-sync instead; this
+   * route stays for the older profile sheet.
+   */
   app.post("/api/mindbody/client-demographics", async (req, res) => {
     try {
-      const mindbodyApiKey = process.env.MINDBODY_API_KEY;
-      if (!mindbodyApiKey) {
+      if (!process.env.MINDBODY_API_KEY) {
         return res
           .status(500)
           .json({ error: "MINDBODY_API_KEY environment variable is not set." });
       }
 
-      const { siteId, mindbodyClientId, clientName } = req.body || {};
-
+      const { siteId, mindbodyClientId } = req.body || {};
       if (!siteId) {
         return res.status(400).json({ error: "siteId is required" });
+      }
+      const id = String(mindbodyClientId ?? "").trim();
+      if (!id) {
+        return res.status(400).json({
+          found: false,
+          error:
+            "This client has no Mindbody ID yet, so Journey can't look them up. (Journey never matches clients by name.)",
+        });
       }
 
       // Only the caller's own site. Retrying against the sandbox (-99) used to
       // return demo records that were then written onto real client profiles.
-      const sitesToTry = [String(siteId)];
-
-      let mbClients: any[] = [];
-      let lastApiError = "";
-
-      for (const currentSiteId of sitesToTry) {
-        if (mbClients.length > 0) break;
-        try {
-          const userToken = await getMindbodyToken(currentSiteId);
-
-          // 1. Try by Client ID
-          if (mindbodyClientId) {
-            const url = `https://api.mindbodyonline.com/public/v6/client/clients?ClientIds=${encodeURIComponent(String(mindbodyClientId))}`;
-            const res1 = await fetch(url, {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                "Api-Key": mindbodyApiKey,
-                SiteId: currentSiteId,
-                Authorization: userToken,
-              },
-            });
-            if (res1.ok) {
-              const data1 = await res1.json();
-              mbClients = data1.Clients || [];
-            } else {
-              lastApiError = await res1.text();
-              console.warn(`Mindbody ClientIds lookup failed (Site ${currentSiteId}):`, res1.status, lastApiError);
-            }
-          }
-
-          // 2. Fallback to SearchText
-          if (mbClients.length === 0 && clientName) {
-            const url = `https://api.mindbodyonline.com/public/v6/client/clients?SearchText=${encodeURIComponent(String(clientName))}`;
-            const res2 = await fetch(url, {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                "Api-Key": mindbodyApiKey,
-                SiteId: currentSiteId,
-                Authorization: userToken,
-              },
-            });
-            if (res2.ok) {
-              const data2 = await res2.json();
-              mbClients = data2.Clients || [];
-            } else {
-              lastApiError = await res2.text();
-              console.warn(`Mindbody SearchText lookup failed (Site ${currentSiteId}):`, res2.status, lastApiError);
-            }
-          }
-        } catch (err: any) {
-          console.warn(`Mindbody search error for Site ID ${currentSiteId}:`, err);
-          lastApiError = err.message || String(err);
-        }
-      }
-
-      if (mbClients.length === 0) {
+      const site = String(siteId);
+      const lookup = await mindbodyGet(site, "client/clients", {
+        ClientIds: [id],
+        IncludeInactive: true,
+        Limit: 10,
+      });
+      if (!lookup.ok) {
         return res
-          .status(404)
-          .json({ error: lastApiError ? `MindBody API Response: ${lastApiError}` : `Client "${mindbodyClientId || clientName}" not found in MindBody Site ID ${siteId}` });
+          .status(502)
+          .json({ error: `MindBody API Response: ${lookup.error.slice(0, 300)}` });
+      }
+      const raw = pickRequestedClient(lookup.data?.Clients, id);
+      if (!raw) {
+        // Non-2xx so an older caller shows the sentence instead of writing nothing silently.
+        return res.status(404).json({
+          found: false,
+          error: `MindBody has no client with ID ${id} on site ${site}.`,
+        });
       }
 
-      const client = mbClients[0];
+      const d = demographicsFromApi(raw);
       return res.json({
-        mindbodyClientId: String(client.Id),
-        firstName: client.FirstName,
-        lastName: client.LastName,
-        email: client.Email || "",
-        phone: client.MobilePhone || client.HomePhone || "",
-        dateOfBirth: client.BirthDate ? client.BirthDate.split("T")[0] : "",
-        gender: client.Gender || "",
-        address: client.AddressLine1 || "",
-        photoUrl: client.PhotoUrl || "",
-        emergencyContactName: client.EmergencyContactInfoName || "",
-        emergencyContactPhone: client.EmergencyContactInfoPhone || "",
+        found: true,
+        mindbodyClientId: d.mindbodyClientId || id,
+        firstName: d.firstName ?? "",
+        lastName: d.lastName ?? "",
+        email: d.email ?? "",
+        phone: d.phone ?? "",
+        dateOfBirth: d.dateOfBirth ?? "",
+        gender: d.gender ?? "",
+        address: joinAddress(d.addressLine1, d.addressLine2) ?? "",
+        city: d.city ?? "",
+        state: d.state ?? "",
+        postalCode: d.postalCode ?? "",
+        country: d.country ?? "",
+        photoUrl: d.photoUrl ?? "",
+        emergencyContactName: d.emergencyContactName ?? "",
+        emergencyContactPhone: d.emergencyContactPhone ?? "",
         // Mindbody's account notes. Kept separate from the app's trainer-authored
         // `notes` field -- the caller writes this to `mindbodyNotes`.
-        notes: typeof client.Notes === "string" ? client.Notes : "",
+        notes: d.notes ?? "",
       });
     } catch (error: any) {
       console.error("Error fetching MindBody client demographics:", error);
+      return res.status(500).json({ error: error.message || "Server error" });
+    }
+  });
+
+  /**
+   * MASTER SYNC (Sep 2026) — one tap, everything Mindbody knows about one
+   * client: person-facts, address, status, waiver, "client since", first
+   * visit, lifetime visits, contracts, pricing options and memberships.
+   *
+   * Looked up by Mindbody id only (never by name), on the site the request
+   * names — server/auth.ts has already checked the caller may ask about it.
+   * Nothing is written here: the web service has no database key, so the
+   * browser writes the result (src/lib/mindbody-master-sync.ts).
+   *
+   *   200 { found: false, … }           Mindbody has no such client.
+   *   200 { found: true, demographics, commercial, visits, partial, failed }
+   *       A part that couldn't be read is null and named in `failed`
+   *       (unknown, never "none"); `visits` is best-effort.
+   *   502                               The lookup itself failed — unknown.
+   *
+   * Cost: five Mindbody calls for a found client, one for a missing one.
+   */
+  app.post("/api/mindbody/client-master-sync", async (req, res) => {
+    try {
+      if (!process.env.MINDBODY_API_KEY) {
+        return res
+          .status(500)
+          .json({ error: "MINDBODY_API_KEY environment variable is not set." });
+      }
+      const { siteId, mindbodyClientId } = req.body || {};
+      if (!siteId) return res.status(400).json({ error: "siteId is required" });
+      const id = String(mindbodyClientId ?? "").trim();
+      if (!id) {
+        return res.status(400).json({ error: "mindbodyClientId is required" });
+      }
+
+      const pull = await pullClientMaster(String(siteId).trim(), id);
+      if (!pull.response) {
+        return res.status(502).json({
+          error: `MindBody didn't answer the client lookup (HTTP ${pull.status}): ${pull.error.slice(0, 300)}`,
+        });
+      }
+      return res.json(pull.response);
+    } catch (error: any) {
+      console.error("Error running MindBody master sync:", error);
       return res.status(500).json({ error: error.message || "Server error" });
     }
   });

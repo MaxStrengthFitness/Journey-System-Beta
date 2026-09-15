@@ -12,6 +12,7 @@ import { daysBetween } from "../client-history/model";
 import { normalizeMindbodyName, type PackageNameIndex } from "./settings";
 import { LAPSED_LOOKBACK_DAYS } from "./pipeline";
 import type { Client } from "../../types";
+import { mindbodyIdOf } from "../../lib/mindbody-id";
 import type { RenewalNamesSeen, RenewalSnapshot } from "./types";
 
 /** Near a renewal, data older than this is refreshed. */
@@ -23,18 +24,11 @@ export const STALE_AFTER_DAYS = 30;
 export const CALLS_PER_PULL = 2;
 
 /**
- * The Mindbody id to ask about, or null when there is none to ask. A Mindbody
- * client's document id IS their Mindbody id, but only a numeric one is trusted
- * as such: a Firestore auto-id belongs to a client Mindbody has never heard
- * of, and asking about it would spend two calls on nothing, every night.
+ * The Mindbody id to ask about, or null when there is none to ask. The rule
+ * lives in lib/mindbody-id.ts (Master Sync round) so every screen shares it;
+ * re-exported here for the nightly job and its tests.
  */
-export function mindbodyIdOf(client: Client): string | null {
-  if (client.provisional || client.supersededById || client.migratedTo) return null;
-  const explicit = String(client.mindbodyClientId || client.mindbodyId || "").trim();
-  if (explicit) return /^[A-Za-z0-9_-]{1,40}$/.test(explicit) ? explicit : null;
-  const docId = String(client.id || "").trim();
-  return /^\d{1,20}$/.test(docId) ? docId : null;
-}
+export { mindbodyIdOf };
 
 /**
  * Should tonight's run pull this client from Mindbody, and how urgently?

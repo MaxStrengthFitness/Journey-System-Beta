@@ -22,6 +22,15 @@ import {
   type MembershipRow,
   type ServiceRow,
 } from "../src/lib/mindbody-commercial-map.ts";
+import {
+  demographicsFromApi,
+  pickRequestedClient,
+  visitsTotalFrom,
+  VISITS_START_DATE,
+  type MasterSyncPart,
+  type MasterSyncResponse,
+} from "../src/lib/mindbody-demographics-map.ts";
+import { DEFAULT_TIME_ZONE, studioTodayKey } from "../src/lib/studio-time.ts";
 
 const MB_BASE = "https://api.mindbodyonline.com/public/v6";
 
@@ -193,5 +202,116 @@ export async function pullClientCommercial(
     services,
     calls: wantMemberships ? 3 : 2,
     error: failures[0]?.error ?? "",
+  };
+}
+
+/**
+ * Lifetime visits at the site, or null — best-effort.
+ *
+ * One call (GET client/clientvisits, Limit=1): only the pagination total is
+ * read. Visits up to today (the studio's Eastern day). Mindbody's total
+ * counts every visit record in the range — late cancels and no-shows
+ * included — so it can differ a little from the number the webhook sends
+ * (ClientNumberOfVisitsAtSite). Any failure, or an answer without a total,
+ * is null: unknown, and the stored count is left alone.
+ */
+export async function pullClientVisitTotal(
+  site: string,
+  clientId: string,
+  today: string = studioTodayKey(new Date(), DEFAULT_TIME_ZONE),
+): Promise<number | null> {
+  try {
+    const r = await mindbodyGet(site, "client/clientvisits", {
+      ClientId: clientId,
+      StartDate: VISITS_START_DATE,
+      EndDate: today,
+      Limit: 1,
+    });
+    return r.ok ? visitsTotalFrom(r.data) : null;
+  } catch (err) {
+    console.warn(`Mindbody client/clientvisits threw (Site ${site}):`, String(err).slice(0, 300));
+    return null;
+  }
+}
+
+export interface MasterPull {
+  /** null when the client lookup itself failed — unknown, not "not found". */
+  response: MasterSyncResponse | null;
+  /** The lookup's error text when response is null. */
+  error: string;
+  /** Mindbody's HTTP status for a failed lookup. */
+  status: number;
+  /** Mindbody calls this pull spent. */
+  calls: number;
+}
+
+/**
+ * Master Sync (Sep 2026): everything Mindbody knows about one client.
+ *
+ * 1. GET client/clients by id ONLY, inactive clients included (or a client
+ *    Mindbody marks inactive would read as "not found"). Never by name. Not
+ *    found → stop: nothing else is asked, nothing else is spent.
+ * 2. In parallel: contracts, pricing options and memberships
+ *    (pullClientCommercial) and the lifetime visit count. Each part that
+ *    fails comes back null and is listed in `failed`; the rest still land.
+ *
+ * Five Mindbody calls for a found client, one for a missing one.
+ */
+export async function pullClientMaster(site: string, clientId: string): Promise<MasterPull> {
+  const lookup = await mindbodyGet(site, "client/clients", {
+    ClientIds: [clientId],
+    IncludeInactive: true,
+    Limit: 10,
+  });
+  if (!lookup.ok) {
+    return { response: null, error: lookup.error, status: lookup.status, calls: 1 };
+  }
+  const raw = pickRequestedClient(lookup.data?.Clients, clientId);
+  if (!raw) {
+    return {
+      response: {
+        found: false,
+        mindbodyClientId: clientId,
+        siteId: site,
+        fetchedAt: new Date().toISOString(),
+      },
+      error: "",
+      status: 200,
+      calls: 1,
+    };
+  }
+
+  const [commercial, visits] = await Promise.all([
+    pullClientCommercial(site, clientId),
+    pullClientVisitTotal(site, clientId),
+  ]);
+
+  const failed: MasterSyncPart[] = [];
+  if (!commercial.contracts) failed.push("contracts");
+  if (!commercial.memberships) failed.push("memberships");
+  if (!commercial.services) failed.push("services");
+  const partial = failed.length > 0;
+  if (visits === null) failed.push("visits");
+
+  return {
+    response: {
+      found: true,
+      mindbodyClientId: clientId,
+      siteId: site,
+      demographics: demographicsFromApi(raw),
+      commercial: {
+        contracts: commercial.contracts,
+        memberships: commercial.memberships,
+        services: commercial.services,
+        partial,
+      },
+      visits,
+      partial,
+      failed,
+      fetchedAt: new Date().toISOString(),
+    },
+    error: commercial.error,
+    status: 200,
+    calls: 1 + commercial.calls + 1,
   };
 }
