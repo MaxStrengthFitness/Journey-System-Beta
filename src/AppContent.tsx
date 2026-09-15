@@ -787,10 +787,14 @@ export default function AppContent({
   useNetworks(isDataReady, setNetworks);
 
   const { machines } = useMachines(isDataReady, DEFAULT_MACHINES);
-  const { schedules, liveRosterClients } = useLiveSchedule(
-    activeStudioId,
-    isDataReady,
-  );
+  const {
+    schedules,
+    liveRosterClients,
+    ensureRange,
+    refresh: refreshSchedules,
+    lastFetchedAt: schedulesFetchedAt,
+    isFetching: isFetchingSchedules,
+  } = useLiveSchedule(activeStudioId, isDataReady);
   const { sessions } = useSessions(activeStudioId, isDataReady);
 
   /**
@@ -2361,6 +2365,12 @@ export default function AppContent({
                       onStartNewClientOnboarding={setNewClientOnboardingName}
                       setView={setView}
                       clients={clients}
+                      scheduleWindow={{
+                        ensureRange,
+                        refresh: refreshSchedules,
+                        lastFetchedAt: schedulesFetchedAt,
+                        isFetching: isFetchingSchedules,
+                      }}
                     />
                   </ErrorBoundary>
                 )}

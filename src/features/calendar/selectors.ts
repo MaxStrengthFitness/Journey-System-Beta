@@ -182,6 +182,46 @@ export function weekDays(date: Date): Date[] {
   });
 }
 
+/* ------------------------------------------------------------------ *
+ * Visible range (cost clean-up round, Sep 2026)
+ * ------------------------------------------------------------------ */
+
+/**
+ * A calendar anchor at local NOON. The views build their day anchors as local
+ * dates (`new Date(y, m, d)`), and the schedule hook turns a range into
+ * studio-day bounds by reading each instant in studio time — a local midnight
+ * read from west of the studio is still the day before there. Noon is the one
+ * hour no offset can move across a day line.
+ */
+function noonOf(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
+}
+
+/**
+ * The days a view has on screen, so the hook can fetch exactly those: the
+ * same 42-cell grid `buildMonthCells` draws (leading and trailing days of the
+ * neighbouring months included), the seven days of `weekDays`, or the one day.
+ */
+export function visibleRange(
+  viewMode: "month" | "week" | "day",
+  selectedDate: Date,
+): { from: Date; to: Date } {
+  if (viewMode === "month") {
+    const year = selectedDate.getFullYear();
+    const month = selectedDate.getMonth();
+    const leading = new Date(year, month, 1).getDay();
+    return {
+      from: noonOf(new Date(year, month, 1 - leading)),
+      to: noonOf(new Date(year, month, 42 - leading)),
+    };
+  }
+  if (viewMode === "week") {
+    const days = weekDays(selectedDate);
+    return { from: noonOf(days[0]), to: noonOf(days[6]) };
+  }
+  return { from: noonOf(selectedDate), to: noonOf(selectedDate) };
+}
+
 /**
  * Four bands rather than 28 half-hour rows.
  *

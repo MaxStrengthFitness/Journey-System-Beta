@@ -857,3 +857,58 @@
   cursor: pointer;
 }
 .cal-picker select:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 2px; border-radius: 6px; }
+
+/* Refresh — cost clean-up round, Sep 2026.
+   Bookings outside today/tomorrow are fetched, not live, so the calendar says
+   how old what it is showing is and offers a re-read. The whole control is
+   the tap target (40px, like the picker); the caption sits beside the button
+   because a caption that only appeared on hover would be invisible on an
+   iPad. Same surface, border and radius as the picker so the toolbar reads as
+   one row of controls.                                                       */
+.cal-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 4px 0 0;
+  border-radius: 12px;
+  border: 1px solid var(--cal-border);
+  background: var(--cal-surface);
+  flex: 0 0 auto;
+}
+.cal-refresh__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  min-width: 40px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--cal-live-text);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cal-refresh__btn:hover { background: var(--cal-surface-3); }
+.cal-refresh__btn:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; }
+.cal-refresh__btn:disabled { cursor: default; color: var(--cal-ink-muted); }
+.cal-refresh__btn svg { flex: 0 0 auto; }
+/* While a read is in flight the arrow gives way to the app's one loading
+   mark (small, no label) — never a hand-rolled spinner. */
+.cal-refresh__btn .lm { height: 16px; justify-content: center; }
+.cal-refresh__btn .lm .lm__row { gap: 3px; }
+.cal-refresh__btn .lm .lm__sq { --lm-size: 6px; font-size: 0; border-radius: 1px; }
+.cal-refresh__note {
+  padding-right: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cal-ink-muted);
+  white-space: nowrap;
+}

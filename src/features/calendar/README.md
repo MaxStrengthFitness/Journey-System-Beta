@@ -174,7 +174,8 @@ src/features/calendar/
   calendar.css          nav, month grid, week dashboard, day lanes, toolbars
   types.ts              view models (CalendarSession, DayCell, WeekSummary…)
   trainer-tone.ts       the hash, initials, short names
-  selectors.ts          ScheduleEntry -> view models. Pure. No React.
+  selectors.ts          ScheduleEntry -> view models, visibleRange. Pure. No React.
+  selectors.test.ts     visibleRange
   DateNavigator.tsx     the fixed-width stepper
   TrainerAvatar.tsx     avatar + count chip
   MonthView.tsx
@@ -190,6 +191,7 @@ CalendarView                        container: resolve + filter only
 ├── DateNavigator                   fixed-width label, pinned arrows
 ├── cal-seg × 2                     view switcher, month's show-filter
 ├── cal-picker                      trainer select
+├── cal-refresh                     Refresh + "Updated N min ago" (§3.3)
 └── MonthView | WeekView | DayView
      │
      ├── MonthView
@@ -220,14 +222,44 @@ would have mixed a rendering change with a data-matching change.
 It now lives in exactly one place instead of being duplicated across three
 renderers that had drifted apart.
 
-### 3.3 Timezone
+### 3.3 The schedule window (cost clean-up round, Sep 2026)
+
+The calendar draws whatever `useLiveSchedule` holds, and what it holds is now
+two things merged into one list:
+
+| Part | What | Why |
+|---|---|---|
+| **Live** | yesterday · today · tomorrow, one `onSnapshot` | Today must be right the moment Mindbody changes; a listener is the cheapest way to get that. Yesterday because a session that ran late last night still has to resolve on the Hub this morning. |
+| **Fetched** | anything else, one `getDocs` per range, cached by day | The old listener watched 24 h back to 30 days ahead, and every sync that rewrote `lastSyncAt` billed all of it to every open iPad. Fetched days are fresh within **15 minutes** (`SCHEDULE_STALE_MS`), and a day read more recently than that costs nothing to ask for again. |
+
+The calendar's part (`CalendarView`, `visibleRange` in `selectors.ts`): an
+effect keyed on the view mode and the selected date asks the hook for the
+days on screen — the whole 42-cell month grid, the seven days of the week, or
+the one day — so navigating to last month or three months out now shows
+bookings the old 30-day listener never had. The **Refresh** control in the
+toolbar forces a re-read of both the week ahead and the range on screen, and
+its caption (`freshnessLabel` in `src/lib/schedule-window.ts`) says how old
+the fetched part is: "Updated 3 min ago", "Updating…", "Not loaded yet". The
+caption is always visible — hover is never the only way to find something.
+
+Consequences worth knowing:
+
+- The week dashboard's "No prior week loaded" badge shows until the previous
+  week has been on screen (or falls inside the always-fresh week ahead). Step
+  back one week and forward again and the delta fills in; it is not fetched
+  on its own.
+- A range fetch that fails keeps whatever was cached — a failed read means
+  "unknown", never "there are no bookings that week".
+- Bookings in the live window win over the fetched copy of the same id.
+
+### 3.4 Timezone
 
 Everything buckets on `studioDateKey`, never on the browser's local day, so a
 7:00 AM Cleveland session cannot land on the previous day for someone reading
 the calendar from another timezone. Client-event date strings (`"2026-09-08"`)
 are parsed at **local noon**, which no offset can push across a day line.
 
-### 3.4 Layout mechanics worth knowing
+### 3.5 Layout mechanics worth knowing
 
 - The day lane places blocks **straight into the lane's own grid columns** —
   no nested grid, no `subgrid` (Safari support is too recent to lean on), no
@@ -242,7 +274,7 @@ are parsed at **local noon**, which no offset can push across a day line.
   `memo`-wrapped, which both fixes that and is correct anyway for leaves
   rendered forty times.
 
-### 3.5 Deliberately left
+### 3.6 Deliberately left
 
 - **Dead imports removed**: `axios`, `updateDoc`, `getDocs` and the `motion`
   animation wrapper were imported and unused — leftovers from the click-writes-

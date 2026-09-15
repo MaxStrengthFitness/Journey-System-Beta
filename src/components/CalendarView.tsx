@@ -1,13 +1,16 @@
-import React, { useMemo, useState } from "react";
-import { Calendar as CalendarIcon, Users } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Calendar as CalendarIcon, RefreshCw, Users } from "lucide-react";
 import { ScheduleEntry, Trainer } from "../types";
 import { studioDateKey } from "../lib/studio-time";
+import { freshnessLabel } from "../lib/schedule-window";
+import { LoadingMark } from "./LoadingMark";
 import {
   DateNavigator,
   DayView,
   MonthView,
   WeekView,
   toTrainerRef,
+  visibleRange,
   weekDays,
   type CalendarEvent,
   type CalendarSession,
@@ -36,7 +39,24 @@ import {
 type ViewMode = "month" | "week" | "day";
 type FilterMode = "all" | "sessions" | "events";
 
+/**
+ * The schedule window (cost clean-up round, Sep 2026). Only today and its
+ * neighbours are live; everything else the calendar shows is fetched on
+ * demand by `useLiveSchedule`. The calendar tells the hook which range is on
+ * screen and offers a manual re-read. Optional so the component still renders
+ * from a plain `schedules` list (tests, older call sites).
+ */
+export interface ScheduleWindowControls {
+  ensureRange(from: Date, to: Date, force?: boolean): void;
+  refresh(): void;
+  lastFetchedAt: number | null;
+  isFetching: boolean;
+}
+
 const MS_PER_MIN = 60000;
+
+/** How often the "Updated N min ago" caption re-reads the clock. */
+const FRESHNESS_TICK_MS = 30_000;
 
 function safeToDate(value: any): Date | null {
   if (!value) return null;
@@ -72,6 +92,7 @@ export function CalendarView({
   onSelectClient,
   setView,
   clients,
+  scheduleWindow,
 }: {
   schedules: ScheduleEntry[];
   trainers: Trainer[];
@@ -82,12 +103,54 @@ export function CalendarView({
   onStartNewClientOnboarding?: (name: string) => void;
   setView?: (view: any) => void;
   clients?: any[];
+  scheduleWindow?: ScheduleWindowControls;
 }) {
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [selectedTrainerId, setSelectedTrainerId] = useState<string>(
     isAdmin ? "all" : authTrainer?.id || "all",
+  );
+
+  /* ---------------- the schedule window ---------------- */
+
+  /**
+   * Ask the hook for whatever is on screen. The prop object is rebuilt on
+   * every AppContent render, so the effect keys on the (stable) callback, not
+   * the object — otherwise it would fire every render. A range already read
+   * in the last 15 minutes costs nothing; see `rangeToFetch`.
+   */
+  const ensureRange = scheduleWindow?.ensureRange;
+  useEffect(() => {
+    if (!ensureRange) return;
+    const { from, to } = visibleRange(viewMode, selectedDate);
+    ensureRange(from, to);
+  }, [ensureRange, viewMode, selectedDate]);
+
+  /**
+   * Refresh re-reads BOTH the week the rest of the app keeps fresh and the
+   * range on screen, forced. Only the week would leave someone looking at
+   * next month with a caption saying "Updated just now" over stale days.
+   */
+  const refreshSchedules = () => {
+    if (!scheduleWindow) return;
+    scheduleWindow.refresh();
+    const { from, to } = visibleRange(viewMode, selectedDate);
+    scheduleWindow.ensureRange(from, to, true);
+  };
+
+  // The caption ("Updated 3 min ago") has to age while nothing else changes.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), FRESHNESS_TICK_MS);
+    return () => clearInterval(t);
+  }, []);
+  const lastFetchedAt = scheduleWindow?.lastFetchedAt ?? null;
+  const freshness = useMemo(
+    // Read the clock again on each new fetch so a fresh read says "just now"
+    // at once instead of waiting for the next tick.
+    () => freshnessLabel(lastFetchedAt, Math.max(now, lastFetchedAt ?? 0)),
+    [lastFetchedAt, now],
   );
 
   /* ---------------- trainers ---------------- */
@@ -368,6 +431,28 @@ export function CalendarView({
               ))}
           </select>
         </label>
+
+        {scheduleWindow && (
+          <div className="cal-refresh">
+            <button
+              type="button"
+              className="cal-refresh__btn"
+              onClick={refreshSchedules}
+              disabled={scheduleWindow.isFetching}
+              aria-label="Refresh the schedule"
+            >
+              {scheduleWindow.isFetching ? (
+                <LoadingMark label="" size="sm" />
+              ) : (
+                <RefreshCw size={15} strokeWidth={2.4} aria-hidden />
+              )}
+              Refresh
+            </button>
+            <span className="cal-refresh__note" role="status" aria-live="polite">
+              {scheduleWindow.isFetching ? "Updating…" : freshness}
+            </span>
+          </div>
+        )}
       </header>
 
       {viewMode === "month" && (
