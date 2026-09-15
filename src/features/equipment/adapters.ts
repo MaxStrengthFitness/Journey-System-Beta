@@ -410,6 +410,7 @@ export function toEquipmentMachines({
       region: regionOf(kb?.category || machine.anatomicalRegion || catalog?.anatomicalRegion, machine.name),
       fields: buildFields(machine, catalog, studioStandards),
       guide: buildGuide(machine, catalog),
+      bodyType: catalog?.bodyTypeAdjustments ?? null,
       baselineLoad: {
         male: kb?.baseMale ?? catalog?.baselineLoad?.male ?? 50,
         female: kb?.baseFemale ?? catalog?.baselineLoad?.female ?? 50,

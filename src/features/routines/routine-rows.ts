@@ -10,6 +10,7 @@
 import type { Client, ClientMachineSetting, ExerciseLog, Machine, Routine, RoutineAdjustment, Trainer, WorkoutSession } from "../../types";
 import { orderMachineSettings, parseSessionDate } from "../../lib/utils";
 import { isPerformedLog } from "../../lib/set-outcome";
+import { machineWatchOuts, type WatchOut } from "../../lib/clinical-watchouts";
 
 export interface RoutineRow {
   order: number;
@@ -30,6 +31,16 @@ export interface RoutineRow {
   /** Routine-specific coaching note for this machine, if the trainer left one. */
   note: string | null;
   missing: boolean;
+  /**
+   * Current load vs the first load ever performed on this machine, in %, from
+   * the lifetime rollup (client.machineStats) — the same figure the All
+   * Machines list shows, so the two lists read alike. Null when unknown.
+   */
+  progressionPct: number | null;
+  /** Sessions this machine was performed in, lifetime (0 when unknown). */
+  timesPerformed: number;
+  /** The client's clinical watch-outs that name this machine. */
+  watchOuts: WatchOut[];
 }
 
 const num = (v: unknown): number | null => {
@@ -37,6 +48,12 @@ const num = (v: unknown): number | null => {
   const n = typeof v === "number" ? v : parseFloat(String(v));
   return Number.isFinite(n) ? n : null;
 };
+
+/** Same rule as the Equipment rail (equipment/adapters.ts progressionPct). */
+function pctSince(first: number | null, current: number | null): number | null {
+  if (first === null || current === null || first <= 0) return null;
+  return Math.round(((current - first) / first) * 100);
+}
 
 export type RoutineName = "Routine A" | "Routine B";
 
@@ -96,6 +113,7 @@ export function buildRoutineRows(
 
   return routine.machineIds.map((machineId, i) => {
     const machine = byId.get(machineId);
+    const stat = client?.machineStats?.[machineId];
     const metric = client?.currentMachineMetrics?.[machineId];
     const setting = clientSettings[machineId];
     const log = latestLog.get(machineId);
@@ -123,6 +141,9 @@ export function buildRoutineRows(
       startingWeight: num(setting?.startingWeight),
       note: routine.machineNotes?.[machineId]?.trim() || null,
       missing: !machine,
+      progressionPct: pctSince(num(stat?.firstWeight), weight ?? num(stat?.lastWeight)),
+      timesPerformed: num(stat?.timesPerformed) ?? 0,
+      watchOuts: machineWatchOuts(client?.clinicalFlags, { id: machineId, name: machine?.name, fullName: machine?.fullName }),
     };
   });
 }

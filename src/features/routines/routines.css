@@ -286,10 +286,26 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
 }
 .rt-row__top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
   min-width: 0;
 }
+/* A clinical watch-out on this machine: the condition, in the matrix's tone. */
+.rt-row__watch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--eq-live-text);
+  background: var(--eq-live-fill);
+  white-space: nowrap;
+}
+.rt-row__watch[data-tone="alert"] { color: var(--eq-alert); background: var(--eq-alert-fill); }
+.rt-row__watch[data-tone="caution"] { color: var(--eq-warn); background: var(--eq-warn-fill); }
 .rt-row__name {
   flex: 0 1 auto;
   min-width: 0;
@@ -298,9 +314,8 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
   letter-spacing: 0.01em;
   text-transform: uppercase;
   color: var(--eq-ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Names are never truncated (CLAUDE.md) — a long one wraps. */
+  overflow-wrap: anywhere;
 }
 .rt-row--missing .rt-row__name { color: var(--eq-warn); }
 .rt-row__chips { display: flex; gap: 4px; flex: 0 0 auto; }
@@ -316,7 +331,8 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
 }
 .rt-row__sub {
   display: flex;
-  align-items: baseline;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   min-width: 0;
   font-size: 11px;

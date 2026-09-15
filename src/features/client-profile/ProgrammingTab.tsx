@@ -36,6 +36,7 @@
  * that: the profile's nav reducer does, so the choice survives a trip to the
  * Journey grid and back.
  */
+import { rosterCoverage } from "./programming-summary";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   Client,
@@ -136,6 +137,15 @@ export function ProgrammingTab({
     isBActive,
   });
 
+  const coverage = useMemo(() => rosterCoverage(machines, client), [machines, client]);
+  const prescribedWatch = useMemo(() => {
+    const ids = new Set<string>();
+    for (const r of [...model.rowsA, ...(isBActive ? model.rowsB : [])]) {
+      if (r.watchOuts.length > 0) ids.add(r.machineId);
+    }
+    return ids.size;
+  }, [model, isBActive]);
+
   const items = useMemo<SubnavItem<ProgrammingView>[]>(
     () => [
       {
@@ -164,11 +174,15 @@ export function ProgrammingTab({
       {
         id: "machines",
         label: "All Machines",
-        meta: `${machines.length} on roster`,
+        // "Total transparency": how much of the floor this client has used.
+        meta:
+          coverage.performed === null
+            ? `${coverage.total} on roster`
+            : `${coverage.performed} of ${coverage.total} performed`,
         flag: false,
       },
     ],
-    [model, isBActive, machines.length],
+    [model, isBActive, coverage],
   );
 
   const context = (
@@ -194,6 +208,22 @@ export function ProgrammingTab({
           "No routine chosen for today"
         )}
       </span>
+      {coverage.neverTried !== null && coverage.neverTried > 0 ? (
+        <>
+          <span className="psub-context__dot" aria-hidden="true" />
+          <span>
+            <b>{coverage.neverTried}</b> studio {coverage.neverTried === 1 ? "machine" : "machines"} never tried
+          </span>
+        </>
+      ) : null}
+      {prescribedWatch > 0 ? (
+        <>
+          <span className="psub-context__dot" aria-hidden="true" />
+          <span className="psub-context__watch">
+            <b>{prescribedWatch}</b> with a clinical watch-out
+          </span>
+        </>
+      ) : null}
       {model.newest ? (
         <>
           <span className="psub-context__dot" aria-hidden="true" />

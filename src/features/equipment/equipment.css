@@ -233,9 +233,8 @@
   letter-spacing: 0.01em;
   text-transform: uppercase;
   color: var(--eq-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Names are never truncated (CLAUDE.md) — a long one wraps. */
+  overflow-wrap: anywhere;
 }
 .eq-item__meta {
   display: flex;
@@ -1144,3 +1143,81 @@
 .eq-window .eq-detail__name { display: none; }
 .eq-window .eq-detail__head { align-items: center; margin-bottom: 12px; }
 .eq-window .eq-detail__sub { margin-top: 0; }
+
+/* ---------- Setting suggestions (client-profile audit, Sep 2026) ------
+   A starting point for an EMPTY field, never a value: the trainer taps Use. */
+.eq-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--eq-live-fill);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--eq-ink-2);
+}
+.eq-suggest__text b { color: var(--eq-live-text); font-weight: 900; }
+.eq-suggest__use {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--eq-live);
+  background: var(--eq-surface);
+  color: var(--eq-live-text);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.eq-suggest__use:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
+.eq-suggest__tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-surface-2);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--eq-ink-2);
+}
+.eq-suggest__tip svg { flex: none; margin-top: 1px; color: var(--eq-live-text); }
+.eq-suggest__tip b { color: var(--eq-ink); font-weight: 800; }
+
+/* ---------- Clinical watch-outs ----------------------------------------- */
+.eq-watch { border-left: 3px solid var(--eq-live); }
+.eq-watch[data-tone="alert"] { border-left-color: var(--eq-alert); }
+.eq-watch[data-tone="caution"] { border-left-color: var(--eq-warn); }
+.eq-watch__title { display: inline-flex; align-items: center; gap: 6px; }
+.eq-watch__list { list-style: none; margin: 0; padding: 4px 14px 12px; display: flex; flex-direction: column; gap: 10px; }
+.eq-watch__item { display: flex; flex-direction: column; gap: 3px; }
+.eq-watch__line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--eq-ink); }
+.eq-watch__line b { font-weight: 800; }
+.eq-watch__sev {
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--eq-live-text);
+  background: var(--eq-live-fill);
+}
+.eq-watch__item[data-tone="alert"] .eq-watch__sev { color: var(--eq-alert); background: var(--eq-alert-fill); }
+.eq-watch__item[data-tone="caution"] .eq-watch__sev { color: var(--eq-warn); background: var(--eq-warn-fill); }
+.eq-watch__setup { margin: 0; font-size: 12.5px; font-weight: 800; color: var(--eq-ink); }
+.eq-watch__setup span {
+  margin-right: 4px;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--eq-ink-muted);
+}
+.eq-watch__text { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.4; color: var(--eq-ink-2); }

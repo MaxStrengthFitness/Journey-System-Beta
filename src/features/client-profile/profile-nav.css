@@ -116,6 +116,11 @@
   color: var(--psub-ink);
   font-weight: 900;
 }
+/* "2 with a clinical watch-out" — the one fact in the line that is a caution. */
+.psub-context__watch,
+.psub-context__watch b {
+  color: var(--eq-warn);
+}
 .psub-context__dot {
   width: 3px;
   height: 3px;

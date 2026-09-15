@@ -168,6 +168,7 @@ function WindowBody({
               journal={journal}
               onNoteSaved={toastSuccess}
               progression={progression}
+              client={client}
             />
           </div>
         )}

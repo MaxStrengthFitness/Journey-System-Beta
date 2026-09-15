@@ -200,6 +200,7 @@ export function EquipmentTab({
             journal={journal}
             onNoteSaved={toastSuccess}
             progression={progression}
+            client={client}
           />
         )}
       </div>

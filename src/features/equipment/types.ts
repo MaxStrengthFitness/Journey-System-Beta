@@ -1,3 +1,4 @@
+import type { BodyTypeAdjustments } from "../../types/machines";
 /**
  * EQUIPMENT TAB — view model.
  *
@@ -125,6 +126,12 @@ export interface EquipmentMachine {
 
   fields: SettingFieldSpec[];
   guide: MachineGuide | null;
+  /**
+   * The catalog's body-type columns (shorter / taller stature, limited
+   * mobility), or null when the catalog entry has none. Read by the settings
+   * suggestions as a tip — never as a value.
+   */
+  bodyType?: Partial<BodyTypeAdjustments> | null;
   baselineLoad: { male: number; female: number };
   standardWeights?: { Beginner?: number | string; Intermediate?: number | string; Advanced?: number | string };
 

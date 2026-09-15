@@ -21,7 +21,7 @@
  * which already owns the Firestore writes and the reason dialog.
  */
 import { memo, useState } from "react";
-import { ChevronDown, Pencil, PlayCircle, Sparkles } from "lucide-react";
+import { ChevronDown, Pencil, PlayCircle, ShieldAlert, Sparkles } from "lucide-react";
 import type { Client, ClientMachineSetting, ExerciseLog, Machine, Routine, RoutineAdjustment, Trainer, WorkoutSession } from "../../types";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -33,6 +33,10 @@ import {
   type RoutineRow,
 } from "./routine-rows";
 import { useRoutinesModel, type RoutinesModel } from "./useRoutinesModel";
+// The row borrows the All Machines rail's pills and chips outright (client-
+// profile audit: "unify the design language between the routine viewer and
+// the all machines list"), so the two lists cannot drift apart again.
+import "../equipment/equipment.css";
 import "./routines.css";
 
 export interface RoutinesTabProps {
@@ -83,6 +87,8 @@ const Row = memo(function Row({ row, onSelect }: { row: RoutineRow; onSelect?: (
   const outcome =
     row.outcome === null ? null : row.isHold ? `${row.outcome}s hold` : `${row.outcome} ${row.outcome === 1 ? "rep" : "reps"}`;
   const showStart = row.startingWeight !== null && row.weight !== null && row.startingWeight !== row.weight;
+  const pct = row.progressionPct;
+  const worst = row.watchOuts[0]?.tone ?? null;
   const Tag: "button" | "div" = onSelect ? "button" : "div";
   return (
     <li className={["rt-row", row.missing ? "rt-row--missing" : ""].filter(Boolean).join(" ")}>
@@ -90,25 +96,51 @@ const Row = memo(function Row({ row, onSelect }: { row: RoutineRow; onSelect?: (
         type={onSelect ? "button" : undefined}
         className="rt-row__hit"
         onClick={onSelect ? () => onSelect(row.machineId) : undefined}
-        aria-label={onSelect ? `${row.name} settings` : undefined}
+        aria-label={onSelect ? `Open ${row.name}` : undefined}
       >
         <span className="rt-row__n" aria-hidden="true">
           {row.order}
         </span>
         <span className="rt-row__main">
+          {/* Line 1 is the All Machines rail's line 1: name, progression, flags. */}
           <span className="rt-row__top">
             <span className="rt-row__name">{row.name}</span>
+            {pct !== null && (
+              <span
+                className={`eq-item__prog ${pct > 0 ? "eq-item__prog--up" : pct < 0 ? "eq-item__prog--down" : ""}`}
+                title={`${pct > 0 ? "+" : ""}${pct}% since the first set`}
+              >
+                {pct > 0 ? "+" : ""}
+                {pct}%
+              </span>
+            )}
+            {worst && (
+              <span
+                className="rt-row__watch"
+                data-tone={worst}
+                title={row.watchOuts.map((w) => w.condition).join(", ")}
+              >
+                <ShieldAlert size={12} strokeWidth={2.6} aria-hidden />
+                {row.watchOuts.length === 1 ? row.watchOuts[0].condition : `${row.watchOuts.length} watch-outs`}
+              </span>
+            )}
+          </span>
+          {/* Line 2 is the rail's line 2: setup chips and how often. */}
+          <span className="rt-row__sub">
             {row.settings.length > 0 && (
-              <span className="rt-row__chips" aria-label="Setup">
+              <span className="eq-item__settings" aria-label="Setup">
                 {row.settings.map(([k, v], i) => (
-                  <span key={`${k}${i}`} className="rt-row__chip">
+                  <span key={`${k}${i}`} className="eq-item__chip">
                     {k} {v}
                   </span>
                 ))}
               </span>
             )}
-          </span>
-          <span className="rt-row__sub">
+            {row.timesPerformed > 0 && (
+              <span className="eq-item__count" title={`Performed in ${row.timesPerformed} sessions`}>
+                {row.timesPerformed}×
+              </span>
+            )}
             {row.region ? <span className="rt-row__region">{row.region}</span> : null}
             {row.note ? <span className="rt-row__note">“{row.note}”</span> : null}
             {row.missing ? <span className="rt-row__region">Not on this studio's roster</span> : null}
@@ -116,7 +148,7 @@ const Row = memo(function Row({ row, onSelect }: { row: RoutineRow; onSelect?: (
         </span>
         <span className="rt-row__nums">
           {row.weight === null ? (
-            <span className="rt-row__empty">not set up</span>
+            <span className="eq-item__empty">Not set up</span>
           ) : (
             <span className="rt-row__load">
               {showStart && (

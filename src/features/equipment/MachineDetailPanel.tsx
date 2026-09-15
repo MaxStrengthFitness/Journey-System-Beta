@@ -8,6 +8,9 @@ import type { LoadPoint } from "./progression";
 import { PrescriptionCard } from "./PrescriptionCard";
 import { SettingsCard } from "./SettingsCard";
 import { SetupGuide } from "./SetupGuide";
+import { WatchOutCard } from "./WatchOutCard";
+import { machineWatchOuts } from "../../lib/clinical-watchouts";
+import type { Client } from "../../types";
 import type {
   JournalContext,
   MutationAuthor,
@@ -43,6 +46,12 @@ export interface MachineDetailPanelProps {
    * caller has loaded. The Load progression card shows only when given.
    */
   progression?: LoadPoint[];
+  /**
+   * The client, for the parts of the pane that depend on who they are: the
+   * clinical watch-outs on this machine and the height-based setting
+   * suggestions. Optional — without it neither appears.
+   */
+  client?: Pick<Client, "height" | "gender" | "clinicalFlags"> | null;
 }
 
 export function MachineDetailPanel({
@@ -59,6 +68,7 @@ export function MachineDetailPanel({
   journal,
   onNoteSaved,
   progression,
+  client = null,
 }: MachineDetailPanelProps) {
   if (!machine) {
     return (
@@ -103,6 +113,8 @@ export function MachineDetailPanel({
         />
       </header>
 
+      <WatchOutCard watchOuts={machineWatchOuts(client?.clinicalFlags, machine)} />
+
       <PrescriptionCard
         machine={machine}
         clientId={clientId}
@@ -125,6 +137,8 @@ export function MachineDetailPanel({
         onSaved={onSettingsSaved}
         onError={onError}
         journal={journal}
+        clientHeight={client?.height ?? null}
+        clientGender={client?.gender ?? gender ?? null}
       />
 
       <MachineNotes

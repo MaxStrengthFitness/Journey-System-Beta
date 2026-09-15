@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Settings2 } from "lucide-react";
+import { Lightbulb, Loader2, Settings2 } from "lucide-react";
 import type { EquipmentMachine, SettingFieldSpec } from "./types";
 import type { JournalContext, MutationAuthor, SaveSettingsResult } from "./mutations";
 import { saveSettings } from "./mutations";
+import {
+  parseHeightInches,
+  statureBand,
+  statureTip,
+  suggestFromTrend,
+} from "./setting-suggestions";
+import { useMachineTrend } from "./useMachineTrend";
 
 /**
  * Machine settings — read, then edit in place.
@@ -18,6 +25,11 @@ import { saveSettings } from "./mutations";
  *     is a fact, not a guess, so it pre-fills for real. Today that is Gap = 0.
  *     The list lives in adapters.ts (ABSOLUTE_STANDARDS), not in an `if` here,
  *     so adding the next one is a one-line change.
+ *
+ * SUGGESTIONS (client-profile audit, Sep 2026). While editing an EMPTY field
+ * for a client whose height is on file, the card may offer what most clients
+ * of about that height use on this machine (setting-suggestions.ts), with a
+ * "Use" button. Still rule 1: nothing is filled until the trainer taps it.
  *
  * The audit reason (box 10) is required only when there were settings to
  * change. A first-time setup is not an override of anything, so demanding a
@@ -94,6 +106,10 @@ export interface SettingsCardProps {
   /** Open in edit mode straight away (the in-session setup prompt does this). */
   startEditing?: boolean;
   journal?: JournalContext;
+  /** The client's height as stored ("5'7\""). Enables suggestions for empty fields. */
+  clientHeight?: string | null;
+  /** The client's gender, for the catalog's stature baseline. */
+  clientGender?: string | null;
 }
 
 export function SettingsCard({
@@ -104,6 +120,8 @@ export function SettingsCard({
   onError,
   startEditing = false,
   journal,
+  clientHeight = null,
+  clientGender = null,
 }: SettingsCardProps) {
   const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState<Record<string, string>>(() => seedDraft(machine));
@@ -118,6 +136,15 @@ export function SettingsCard({
   }, [machine.id, startEditing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isInitialSetup = !machine.isConfigured;
+
+  const heightIn = useMemo(() => parseHeightInches(clientHeight), [clientHeight]);
+  const hasEmptyField = machine.fields.some((f) => !(machine.settings[f.key] ?? "").trim());
+  // One read per machine per session, and only while editing something empty.
+  const trend = useMachineTrend(machine.id, editing && heightIn !== null && hasEmptyField);
+  const tip = useMemo(
+    () => statureTip(machine.bodyType, statureBand(heightIn, clientGender)),
+    [machine.bodyType, heightIn, clientGender],
+  );
 
   const dirty = useMemo(
     () =>
@@ -205,18 +232,50 @@ export function SettingsCard({
           </div>
         ) : (
           <>
+            {tip && hasEmptyField && (
+              <p className="eq-suggest__tip">
+                <Lightbulb size={14} strokeWidth={2.4} aria-hidden />
+                <span>
+                  <b>{statureBand(heightIn, clientGender) === "shorter" ? "Shorter client" : "Taller client"}:</b> {tip}
+                </span>
+              </p>
+            )}
             <div className="eq-fields">
-              {machine.fields.map((f) => (
-                <div className="eq-field" key={f.key}>
-                  <span className="eq-field__label">{f.label}</span>
-                  <FieldInput
-                    field={f}
-                    value={draft[f.key] ?? ""}
-                    onChange={(v) => setDraft((d) => ({ ...d, [f.key]: v }))}
-                  />
-                  {f.helpText && <span className="eq-field__help">{f.helpText}</span>}
-                </div>
-              ))}
+              {machine.fields.map((f) => {
+                const savedEmpty = !(machine.settings[f.key] ?? "").trim();
+                const draftEmpty = !(draft[f.key] ?? "").trim();
+                const suggestion =
+                  savedEmpty && draftEmpty
+                    ? suggestFromTrend(trend, [f.key, f.label], heightIn, f.options)
+                    : null;
+                return (
+                  <div className="eq-field" key={f.key}>
+                    <span className="eq-field__label">{f.label}</span>
+                    <FieldInput
+                      field={f}
+                      value={draft[f.key] ?? ""}
+                      onChange={(v) => setDraft((d) => ({ ...d, [f.key]: v }))}
+                    />
+                    {f.helpText && <span className="eq-field__help">{f.helpText}</span>}
+                    {suggestion && (
+                      <span className="eq-suggest">
+                        <span className="eq-suggest__text">
+                          Most clients around {suggestion.heightLabel} here use <b>{suggestion.value}</b>{" "}
+                          ({suggestion.clients} of {suggestion.bandClients})
+                        </span>
+                        <button
+                          type="button"
+                          className="eq-suggest__use"
+                          onClick={() => setDraft((d) => ({ ...d, [f.key]: suggestion.value }))}
+                          aria-label={`Use ${suggestion.value} for ${f.label}`}
+                        >
+                          Use {suggestion.value}
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {needsReason && (

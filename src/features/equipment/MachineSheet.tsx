@@ -1,3 +1,5 @@
+import { WatchOutCard } from "./WatchOutCard";
+import { machineWatchOuts } from "../../lib/clinical-watchouts";
 import { useMemo, useState } from "react";
 import { Sparkles, TriangleAlert, X } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -195,6 +197,10 @@ export function MachineSheet({
               </section>
             )}
 
+            {/* Clinical watch-outs the studio's matrix names for this
+                machine — one line each, only when the client has one. */}
+            <WatchOutCard watchOuts={machineWatchOuts(client?.clinicalFlags, equipment)} compact />
+
             {flash && (
               <p className="eq-sheet__flash" role="status">
                 {flash}
@@ -243,6 +249,8 @@ export function MachineSheet({
                 )
               }
               onError={onError}
+              clientHeight={client?.height ?? null}
+              clientGender={client?.gender ?? null}
             />
 
             {/* 4. Reference, folded away. */}
