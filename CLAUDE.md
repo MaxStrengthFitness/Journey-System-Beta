@@ -40,7 +40,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 | Install | `npm ci` | `npm install` fails with an `edgesOut` error |
 | Run locally | `npm run dev` | Port 3000 |
 | Typecheck | `npx tsc --noEmit` | Compare the error **count** to master's baseline (18 after the FORD round removed two dead panes; 20 before that); don't expect zero |
-| Tests | `npx vitest run src` | 2,069 passing after the four-tab profile round (Sep 15); 2,046 after the FORD round; 2,027 after the fix round; 2,015 after the tracker round; 1,813 after the floor round |
+| Tests | `npx vitest run src` | 2,069 passing after the four-tab profile round (Sep 15) — run it as `TZ=America/New_York npx vitest run src`, see the date trap below; 2,046 after the FORD round; 2,027 after the fix round; 2,015 after the tracker round; 1,813 after the floor round |
 | Build | `npx vite build` | |
 | Rules tests | `npm run test:rules` | Needs JDK 21. "Port taken" means an old emulator still holds 8080 — stop it first |
 
@@ -117,6 +117,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 - **Announcements** can be posted only by `canPostAnnouncements()` (administrators, founders, franchise owners, studio owners), as themselves; only the Operations tab's people reach every studio. Everyone else may only add their own uid to `readBy`.
 - **Roster entries name their own studio** (`studioId` must match the path), and a copy adopted from another studio can't be shared.
 - **Sessions still use the app-wide machine list**, not each studio's roster, so a studio's own or adopted machines aren't in the session picker yet (ROADMAP).
+- **A date-ONLY ISO string is UTC; a date-TIME with no zone is LOCAL.** `new Date("2026-09-20")` is UTC midnight, `new Date("2026-09-20T10:00:00")` is local. Mixing the two in one comparison passes in CI (UTC) and fails on a studio PC (Eastern), which is the worst shape a date bug can have — it cost a red `ship` run on Sep 15. `toDate()` in `src/types/journal.ts` pins a date-only string to local NOON for exactly this reason; never hand a raw `new Date("yyyy-mm-dd")` to anything that then does local-calendar arithmetic. **Run the suite with `TZ=America/New_York` before shipping**, not just in UTC. (Known and unrelated: `src/features/renewals/conversation.test.ts` fails at UTC+14; no studio is east of Eastern.)
 - **Never type a raw control or invisible character into source** (a NUL, U+F8FF): write the escape (`\u0000`, `\uf8ff`). A raw NUL makes git treat the file as binary, and a binary diff can't ship as a patch.
 - The nightly leaderboard job reads every exercise log ever written.
 - `setCustomUserClaimsV2` is never called, so every role check in the rules costs a document read.

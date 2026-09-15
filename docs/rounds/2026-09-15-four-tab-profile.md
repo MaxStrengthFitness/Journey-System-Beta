@@ -252,11 +252,41 @@ layout bugs that typechecking could not.
 
 ---
 
+## 7a. A third bug, found by running the suite at the studio's clock
+
+`ship-4tab.ps1 -Stage check` went red on AJ's PC with one failure the
+container never saw: `upcomingFord` said a Sep 20 event was 4 days from
+Sep 15, not 5.
+
+The production code was correct. The **test** was wrong, in the worst shape a
+date bug can have — green in CI, red on the machine in Ohio. A date-only ISO
+string (`"2026-09-20"`) is parsed as UTC midnight; a date-time with no zone
+(`"2026-09-15T10:00:00"`) is parsed as local. The test used one of each in the
+same assertion, so at America/New_York the event landed at 8pm on the 19th and
+the local-calendar day count came out one short.
+
+The app never had the problem: `toDate()` pins a date-only string to local
+**noon** precisely to stay clear of both ends of the day. The test was the one
+place that bypassed that guard, by handing in a real `Date` built from a bare
+date string. Fixed with a `day()` helper that constructs dates the way
+`toDate()` does; verified at UTC, Eastern, Pacific, Sydney and UTC+14.
+
+**The lesson for the next round: run the suite with `TZ=America/New_York`
+before shipping.** A container that runs in UTC cannot see this class of bug,
+and every studio is Eastern.
+
+Logged, not fixed: `src/features/renewals/conversation.test.ts` fails at
+UTC+14. It predates this round, is not a file this round touches, and no MSF
+studio is east of Eastern.
+
+---
+
 ## 8. Verification
 
 - `npx tsc --noEmit` — **18**, unchanged from master.
 - `npx vitest run src` — **2,069** passing, 1 skipped, 110 files (2,046
-  before this round's 23 new tests).
+  before this round's 23 new tests). Green at UTC, America/New_York and
+  America/Los_Angeles; see 7a.
 - `npx vite build` — clean.
 - Rendered at 744 / 834 / 1366pt in both themes: segments 48px tall and never
   under 172px wide, no label clipped, no horizontal overflow, the bar pinned
