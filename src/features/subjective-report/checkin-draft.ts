@@ -36,6 +36,7 @@ import type { Client, ProgressReport, Trainer } from "../../types";
 import type { SubjectiveAssessment } from "./types";
 import { snapshotForClient, summarize, type PreviousAssessmentRef } from "./scoring";
 import { emptyReportShell } from "./checkin-write";
+import { finalizedSubjective } from "./assessment-history";
 import { studioTodayKey } from "../../lib/studio-time";
 
 export interface OpenCheckIn {
@@ -46,6 +47,8 @@ export interface OpenCheckIn {
   startedAt: number | null;
   /** Epoch ms of the last write. */
   updatedAt: number | null;
+  /** Who opened the draft; the saved assessment carries this name. */
+  trainerName?: string | null;
 }
 
 const millis = (v: any): number | null => {
@@ -78,6 +81,7 @@ const toOpen = (id: string, data: any): OpenCheckIn => ({
     : [],
   startedAt: millis(data.createdAt),
   updatedAt: millis(data.updatedAt),
+  trainerName: data.trainerName ?? null,
 });
 
 /**
@@ -136,6 +140,7 @@ export async function loadOpenCheckIn(clientId: string): Promise<OpenCheckIn | n
       : [],
     startedAt: millis((found as any).createdAt),
     updatedAt: millis((found as any).updatedAt),
+    trainerName: found.trainerName ?? null,
   };
 }
 
@@ -186,16 +191,20 @@ export async function saveCheckInDraft(opts: {
  * Close the draft: score it, flip it to Finalized, and stamp the client's
  * snapshot so the hub flag updates. The snapshot write is best-effort — the
  * report is finalized either way.
+ *
+ * Returns the `subjective` block as stored, change log included, so the
+ * panel can add it to the history without reading it back.
  */
 export async function finalizeCheckIn(opts: {
   draftId: string;
   client: Client;
   assessment: SubjectiveAssessment;
   previous: PreviousAssessmentRef | null;
-}): Promise<void> {
+}): Promise<SubjectiveAssessment> {
   const { draftId, client, assessment, previous } = opts;
   const date = assessment.completedAt || studioTodayKey();
   const summary = summarize(assessment, previous);
+  const stored = finalizedSubjective(assessment, date, summary);
 
   await updateDoc(
     doc(db, "progressReports", draftId),
@@ -203,7 +212,7 @@ export async function finalizeCheckIn(opts: {
       status: "Finalized",
       date,
       previousReportId: previous?.reportId ?? null,
-      subjective: { ...assessment, completedAt: date, summary },
+      subjective: stored,
       updatedAt: serverTimestamp(),
     }),
   );
@@ -215,6 +224,7 @@ export async function finalizeCheckIn(opts: {
   } catch (err) {
     console.error("subjectiveSnapshot update failed", err);
   }
+  return stored;
 }
 
 export async function discardCheckInDraft(draftId: string): Promise<void> {

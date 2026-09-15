@@ -17,4 +17,8 @@ export { QuickCheckInDialog } from "./QuickCheckInDialog";
 export * from "./checkin-write";
 export * from "./checkin-draft";
 export { useCheckInDraft } from "./useCheckInDraft";
-export type { CheckInSectionState, SaveState } from "./useCheckInDraft";
+export type { CheckInSectionState, SaveState, HistoryStatus } from "./useCheckInDraft";
+// The living assessment (Assessment round): pillars, the change log, the history.
+export * from "./pillars";
+export * from "./assessment-history";
+export { AssessmentHistoryLog, DeltaChip } from "./AssessmentHistoryLog";

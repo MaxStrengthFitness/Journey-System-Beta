@@ -24,6 +24,12 @@ import { db } from "../../firebase";
 import type { Client, ProgressReport, Trainer } from "../../types";
 import type { SubjectiveAssessment } from "./types";
 import { snapshotForClient, summarize, type PreviousAssessmentRef } from "./scoring";
+import {
+  ASSESSMENT_HISTORY_LIMIT,
+  finalizedSubjective,
+  historyFromDocs,
+  type AssessmentHistory,
+} from "./assessment-history";
 import { studioTodayKey } from "../../lib/studio-time";
 
 export type CheckInOrigin = "pre_session" | "post_session" | "report";
@@ -53,6 +59,32 @@ export async function loadPreviousCheckIn(
         enteredBy: prev.subjective.enteredBy ?? null,
       }
     : null;
+}
+
+/**
+ * The client's saved assessments, for the history log (Assessment round).
+ *
+ * The same bounded read as `loadPreviousCheckIn` — `clientId` +
+ * `createdAt desc`, one query, no per-report reads, no new index — just a
+ * wider window. `complete` says whether it reached the client's first
+ * report, so the log never calls something "new" that it could not see.
+ */
+export async function loadAssessmentHistory(
+  clientId: string,
+  max: number = ASSESSMENT_HISTORY_LIMIT,
+): Promise<AssessmentHistory> {
+  const snap = await getDocs(
+    query(
+      collection(db, "progressReports"),
+      where("clientId", "==", clientId),
+      orderBy("createdAt", "desc"),
+      limit(max),
+    ),
+  );
+  return historyFromDocs(
+    snap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) })),
+    max,
+  );
 }
 
 /** Empty shells for the report fields the full editor expects to exist. */
@@ -123,7 +155,9 @@ export async function saveQuickCheckIn(opts: {
     checkInSessionId: sessionId ?? null,
     previousReportId: previous?.reportId ?? null,
     sessionNumber: client.sessionCount || 0,
-    subjective: { ...assessment, completedAt: date, summary },
+    // Keeps `changeLog` if the caller built one (the quick dialog starts
+    // empty and has none; the history derives its changes instead).
+    subjective: finalizedSubjective(assessment, date, summary),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

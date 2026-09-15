@@ -7,6 +7,13 @@
  * trainer has to remember on the way to the next machine is a Save button
  * that loses answers. A pending write is flushed on unmount so leaving the
  * tab mid-edit keeps the last answer.
+ *
+ * THE HISTORY (Assessment round, Sep 2026). The hook also loads the client's
+ * saved assessments (one bounded read, the same shape `loadPreviousCheckIn`
+ * used — it replaces that read rather than adding one) and keeps the draft's
+ * change log: every edit that moves an area's number appends to
+ * `assessment.changeLog`, which autosave writes with the rest of the block.
+ * See assessment-history.ts.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Client, Machine, Trainer } from "../../types";
@@ -19,13 +26,23 @@ import {
   scoreCategory,
   type PreviousAssessmentRef,
 } from "./scoring";
-import { loadPreviousCheckIn } from "./checkin-write";
+import { loadAssessmentHistory } from "./checkin-write";
 import {
   discardCheckInDraft,
   finalizeCheckIn,
   loadOpenCheckIn,
   saveCheckInDraft,
 } from "./checkin-draft";
+import {
+  EMPTY_BASELINE,
+  baselineFromHistory,
+  previousFromHistory,
+  recordChanges,
+  withChangeNote,
+  type AssessmentHistory,
+  type LivingBaseline,
+} from "./assessment-history";
+import { pillarOf, sectionTitle } from "./pillars";
 import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
 import { studioTodayKey } from "../../lib/studio-time";
 
@@ -34,7 +51,7 @@ export type CheckInSectionId = string;
 export interface CheckInSectionState {
   id: CheckInSectionId;
   title: string;
-  /** "The lifestyle topics", "Fuel", "Body", "Life" — the panel groups by this. */
+  /** The pillar the area belongs to ("Recovery & Fuel", …) — the panel groups by pillar. */
   band: string;
   /** Data says this section is answered. */
   isComplete: boolean;
@@ -47,8 +64,14 @@ export interface CheckInSectionState {
 }
 
 export type SaveState = "idle" | "saving" | "saved" | "error";
+export type HistoryStatus = "loading" | "ready" | "error";
 
 const SAVE_DEBOUNCE_MS = 1200;
+
+const freshAssessment = (bodyWeightLbs: number | null): SubjectiveAssessment => ({
+  ...emptyAssessment({ bodyWeightLbs }),
+  completedAt: studioTodayKey(),
+});
 
 export function useCheckInDraft(opts: {
   client: Client | null;
@@ -62,11 +85,15 @@ export function useCheckInDraft(opts: {
 
   const [loading, setLoading] = useState(true);
   const [draftId, setDraftId] = useState<string | null>(null);
-  const [assessment, setAssessment] = useState<SubjectiveAssessment>(() =>
+  const [assessment, setAssessmentState] = useState<SubjectiveAssessment>(() =>
     emptyAssessment({ bodyWeightLbs: null }),
   );
-  const [reviewed, setReviewed] = useState<string[]>([]);
+  const [reviewed, setReviewedState] = useState<string[]>([]);
   const [previous, setPrevious] = useState<PreviousAssessmentRef | null>(null);
+  const [history, setHistory] = useState<AssessmentHistory | null>(null);
+  const [historyStatus, setHistoryStatus] = useState<HistoryStatus>("loading");
+  const [baseline, setBaseline] = useState<LivingBaseline>(EMPTY_BASELINE);
+  const [draftTrainerName, setDraftTrainerName] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -91,9 +118,35 @@ export function useCheckInDraft(opts: {
   const trainerRef = useRef<Trainer | null>(trainer);
   /** Serialises writes so two flushes can never race the same document. */
   const inFlight = useRef<Promise<void> | null>(null);
+  /**
+   * The latest values, for the change log. Two quick taps can both run
+   * before React re-renders; the log has to compare against the second-to-
+   * last edit, not whatever the last render happened to close over.
+   */
+  const assessmentRef = useRef<SubjectiveAssessment>(assessment);
+  const reviewedRef = useRef<string[]>(reviewed);
+  const baselineRef = useRef<LivingBaseline>(EMPTY_BASELINE);
+  const historyKnownRef = useRef(false);
 
   clientRef.current = client;
   trainerRef.current = trainer;
+
+  const setAssessment = useCallback((next: SubjectiveAssessment) => {
+    assessmentRef.current = next;
+    setAssessmentState(next);
+  }, []);
+  const setReviewed = useCallback((next: string[]) => {
+    reviewedRef.current = next;
+    setReviewedState(next);
+  }, []);
+  const applyHistory = useCallback((h: AssessmentHistory | null) => {
+    const base = baselineFromHistory(h);
+    baselineRef.current = base;
+    historyKnownRef.current = h !== null;
+    setBaseline(base);
+    setHistory(h);
+    setPrevious(previousFromHistory(h));
+  }, []);
 
   /* ---- load ---------------------------------------------------------- */
   useEffect(() => {
@@ -103,11 +156,29 @@ export function useCheckInDraft(opts: {
     }
     let cancelled = false;
     setLoading(true);
+    setHistoryStatus("loading");
+    applyHistory(null);
 
-    Promise.all([loadOpenCheckIn(clientId), loadPreviousCheckIn(clientId)])
-      .then(([open, prev]) => {
+    // Settled separately: a history that fails to load must not also lose
+    // the open draft (answering then would start a second one). The draft
+    // still waits for the history, so the first edit already has its
+    // baseline to measure "from" against.
+    const historyRead = loadAssessmentHistory(clientId).then(
+      (hist) => {
         if (cancelled) return;
-        setPrevious(prev);
+        applyHistory(hist);
+        setHistoryStatus("ready");
+      },
+      (err) => {
+        // A failed read is "unknown", never "no history".
+        if (!cancelled) setHistoryStatus("error");
+        handleFirestoreError(err, OperationType.GET, "progressReports");
+      },
+    );
+
+    Promise.all([loadOpenCheckIn(clientId), historyRead])
+      .then(([open]) => {
+        if (cancelled) return;
         if (open) {
           draftIdRef.current = open.id;
           setDraftId(open.id);
@@ -115,16 +186,15 @@ export function useCheckInDraft(opts: {
           setReviewed(open.sectionsReviewed);
           setStartedAt(open.startedAt);
           setSavedAt(open.updatedAt);
+          setDraftTrainerName(open.trainerName ?? null);
         } else {
           draftIdRef.current = null;
           setDraftId(null);
-          setAssessment({
-            ...emptyAssessment({ bodyWeightLbs }),
-            completedAt: studioTodayKey(),
-          });
+          setAssessment(freshAssessment(bodyWeightLbs));
           setReviewed([]);
           setStartedAt(null);
           setSavedAt(null);
+          setDraftTrainerName(null);
         }
       })
       .catch((err) => handleFirestoreError(err, OperationType.GET, "progressReports"))
@@ -133,7 +203,7 @@ export function useCheckInDraft(opts: {
     return () => {
       cancelled = true;
     };
-  }, [clientId, enabled, bodyWeightLbs]);
+  }, [clientId, enabled, bodyWeightLbs, applyHistory, setAssessment, setReviewed]);
 
   /* ---- save ---------------------------------------------------------- */
   const flush = useCallback(async (): Promise<void> => {
@@ -160,6 +230,7 @@ export function useCheckInDraft(opts: {
         setDraftId(id);
         setSavedAt(Date.now());
         setStartedAt((prev) => prev ?? Date.now());
+        if (!existing) setDraftTrainerName((prev) => prev ?? t.fullName ?? null);
         setSaveState("saved");
       } catch (err) {
         setSaveState("error");
@@ -186,10 +257,10 @@ export function useCheckInDraft(opts: {
     [flush],
   );
 
-  // Never lose the last answer to a tab change. Empty deps on purpose:
-  // keyed on [flush] this cleanup ran on every identity change of client or
-  // trainer, cancelling the debounce and firing the write early — which is
-  // the other half of the duplicate-draft bug.
+  // Never lose the last answer to a tab change. Keyed on [flush], which is
+  // identity-stable: keyed on client or trainer this cleanup ran on every
+  // identity change, cancelling the debounce and firing the write early —
+  // which was the other half of the duplicate-draft bug.
   useEffect(
     () => () => {
       if (timer.current) window.clearTimeout(timer.current);
@@ -198,12 +269,36 @@ export function useCheckInDraft(opts: {
     [flush],
   );
 
+  /** The change log after moving from the current state to `next`. */
+  const logged = useCallback(
+    (next: SubjectiveAssessment, nextReviewed: string[]): SubjectiveAssessment => {
+      const prev = assessmentRef.current;
+      const t = trainerRef.current;
+      const changeLog = recordChanges({
+        prev,
+        next,
+        prevReviewed: reviewedRef.current,
+        nextReviewed,
+        baseline: baselineRef.current,
+        baselineKnown: historyKnownRef.current,
+        at: new Date(),
+        byId: t?.id ?? null,
+        byName: t?.fullName ?? null,
+      });
+      if (changeLog === next.changeLog) return next;
+      if (!changeLog.length && !next.changeLog) return next;
+      return { ...next, changeLog };
+    },
+    [],
+  );
+
   const update = useCallback(
     (next: SubjectiveAssessment) => {
-      setAssessment(next);
-      queue(next, reviewed);
+      const withLog = logged(next, reviewedRef.current);
+      setAssessment(withLog);
+      queue(withLog, reviewedRef.current);
     },
-    [queue, reviewed],
+    [logged, queue, setAssessment],
   );
 
   // Computed outside the updater: a setState updater must be pure, and
@@ -211,13 +306,30 @@ export function useCheckInDraft(opts: {
   // updaters, which would have armed the save twice.
   const toggleReviewed = useCallback(
     (sectionId: string) => {
-      const next = reviewed.includes(sectionId)
-        ? reviewed.filter((s) => s !== sectionId)
-        : [...reviewed, sectionId];
+      const current = reviewedRef.current;
+      const next = current.includes(sectionId)
+        ? current.filter((s) => s !== sectionId)
+        : [...current, sectionId];
+      // "Nothing to report" on pain is an answer (no active pain), so it can
+      // move the pain number and belongs in the log.
+      const withLog = logged(assessmentRef.current, next);
+      if (withLog !== assessmentRef.current) setAssessment(withLog);
       setReviewed(next);
-      queue(assessment, next);
+      queue(withLog, next);
     },
-    [assessment, queue, reviewed],
+    [logged, queue, setAssessment, setReviewed],
+  );
+
+  /** Attach (or clear) the one-line "why" on a change still in the draft. */
+  const setChangeNote = useCallback(
+    (categoryId: string, at: string, note: string) => {
+      const a = assessmentRef.current;
+      if (!a.changeLog?.some((c) => c.categoryId === categoryId && c.at === at)) return;
+      const next = { ...a, changeLog: withChangeNote(a.changeLog, categoryId, at, note) };
+      setAssessment(next);
+      queue(next, reviewedRef.current);
+    },
+    [queue, setAssessment],
   );
 
   const saveNow = useCallback(async () => {
@@ -227,18 +339,12 @@ export function useCheckInDraft(opts: {
 
   /* ---- where it got to ------------------------------------------------ */
   const sections = useMemo<CheckInSectionState[]>(() => {
-    const mark = (
-      id: string,
-      title: string,
-      band: string,
-      isComplete: boolean,
-      isPartial: boolean,
-    ): CheckInSectionState => {
+    const mark = (id: string, isComplete: boolean, isPartial: boolean): CheckInSectionState => {
       const isReviewed = reviewed.includes(id);
       return {
         id,
-        title,
-        band,
+        title: sectionTitle(id),
+        band: pillarOf(id)?.title ?? "",
         isComplete,
         isReviewed,
         isPartial: isPartial && !isComplete,
@@ -248,7 +354,7 @@ export function useCheckInDraft(opts: {
 
     const cats = SUBJECTIVE_CATEGORIES.map((def) => {
       const score = scoreCategory(def.key, assessment.answers, assessment.scaleVersion);
-      return mark(def.key, def.title, "Lifestyle", score.isComplete, score.answeredCount > 0);
+      return mark(def.key, score.isComplete, score.answeredCount > 0);
     });
 
     const p = assessment.protein;
@@ -257,23 +363,19 @@ export function useCheckInDraft(opts: {
       ...cats,
       mark(
         "protein",
-        "Protein compliance",
-        "Fuel",
         p.daysPerWeekOnTarget !== null,
         p.typicalGramsPerDay !== null || p.primarySources.length > 0,
       ),
       mark(
         "hydration",
-        "Hydration",
-        "Fuel",
         h.daysPerWeekOnTarget !== null,
         h.typicalPerDay !== null || h.primarySources.length > 0,
       ),
       // Pain and stress can be legitimately empty, so only an explicit
       // review closes them. "Nothing to report" is an answer; a blank list
       // on its own is not.
-      mark("pain", "Pain map", "Body", false, assessment.painMap.length > 0),
-      mark("stress", "Stress anchors", "Life", false, assessment.stressAnchors.length > 0),
+      mark("pain", false, assessment.painMap.length > 0),
+      mark("stress", false, assessment.stressAnchors.length > 0),
     ];
   }, [assessment, reviewed]);
 
@@ -286,16 +388,37 @@ export function useCheckInDraft(opts: {
     try {
       if (timer.current) window.clearTimeout(timer.current);
       if (pending.current) await flush();
-      await finalizeCheckIn({ draftId, client, assessment, previous });
+      const current = assessmentRef.current;
+      const stored = await finalizeCheckIn({ draftId, client, assessment: current, previous });
+
+      // The saved assessment joins the history here rather than by reading
+      // it back, and becomes "last time" for the next draft.
+      if (history) {
+        applyHistory({
+          ...history,
+          reports: [
+            {
+              id: draftId,
+              date: stored.completedAt || studioTodayKey(),
+              savedAtMs: Date.now(),
+              trainerId: trainer?.id ?? null,
+              trainerName: draftTrainerName ?? trainer?.fullName ?? null,
+              enteredBy: stored.enteredBy ?? null,
+              assessment: stored,
+              sectionsReviewed: [...reviewedRef.current],
+            },
+            ...history.reports.filter((r) => r.id !== draftId),
+          ],
+        });
+      }
+
       draftIdRef.current = null;
       setDraftId(null);
-      setAssessment({
-        ...emptyAssessment({ bodyWeightLbs }),
-        completedAt: studioTodayKey(),
-      });
+      setAssessment(freshAssessment(bodyWeightLbs));
       setReviewed([]);
       setStartedAt(null);
       setSavedAt(null);
+      setDraftTrainerName(null);
       setSaveState("idle");
       return true;
     } catch (err) {
@@ -304,7 +427,19 @@ export function useCheckInDraft(opts: {
     } finally {
       setFinalizing(false);
     }
-  }, [draftId, client, assessment, previous, flush, bodyWeightLbs]);
+  }, [
+    draftId,
+    client,
+    trainer,
+    previous,
+    history,
+    draftTrainerName,
+    flush,
+    bodyWeightLbs,
+    applyHistory,
+    setAssessment,
+    setReviewed,
+  ]);
 
   const discard = useCallback(async () => {
     if (!draftId) return;
@@ -314,18 +449,16 @@ export function useCheckInDraft(opts: {
       await discardCheckInDraft(draftId);
       draftIdRef.current = null;
       setDraftId(null);
-      setAssessment({
-        ...emptyAssessment({ bodyWeightLbs }),
-        completedAt: studioTodayKey(),
-      });
+      setAssessment(freshAssessment(bodyWeightLbs));
       setReviewed([]);
       setStartedAt(null);
       setSavedAt(null);
+      setDraftTrainerName(null);
       setSaveState("idle");
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, "progressReports");
     }
-  }, [draftId, bodyWeightLbs]);
+  }, [draftId, bodyWeightLbs, setAssessment, setReviewed]);
 
   return {
     loading,
@@ -349,5 +482,13 @@ export function useCheckInDraft(opts: {
     finalize,
     finalizing,
     discard,
+    /* history (Assessment round) */
+    history,
+    historyStatus,
+    /** What the saved assessments already say, per statement and area. */
+    baseline,
+    /** Who opened the open draft, when known. */
+    draftTrainerName,
+    setChangeNote,
   };
 }

@@ -207,3 +207,95 @@ client that carries a `subjective` block — found with the existing
 | `SubjectiveStep.tsx` | The coach-entered form (step 5 of the report). |
 | `SubjectiveDashboard.tsx` | Coach dashboard + the client-copy variant. |
 | `subjective-report.css` | Scoped styles; light on `:root`, dark on `.dark`. |
+
+---
+
+## 5. The living assessment (Assessment round, Sep 2026)
+
+The owner's audit: trainers see a client ~20 minutes twice a week, so the
+assessment is updated a little at a time and is never "done" — and "when a
+category is updated, the previous score is overwritten, erasing the client's
+evolutionary timeline." Everything in §1–§3 is unchanged: the question bank,
+the scoring and every threshold. This round is presentation plus one optional
+field.
+
+### 5.1 Three pillars (`pillars.ts`)
+
+| Pillar | Areas, in order |
+| --- | --- |
+| Recovery & Fuel | Sleep & Recovery · Nutrition & Protein · Protein compliance · Hydration |
+| Physical & Functional | Energy & Daily Function · Strength & Physical Confidence · Pain & Mobility · Pain map |
+| Psychological & Behavioral | Mental & Emotional Impact · Consistency & Habits · Lifestyle Alignment · Stress anchors |
+
+`pillars.test.ts` pins that every category and every extra area is in
+exactly one pillar. Each pillar header says how many of its areas were
+updated in the last 90 days (`SUBJECTIVE_CADENCE_DAYS`) — and says "at
+least" or "can't say" when the history is partial or failed to load.
+
+### 5.2 Scale ends (`sectionScale`)
+
+Every area shows what 0 and the top of its scale mean. No new wording was
+invented:
+
+| Area | Number | Low end / high end taken from |
+| --- | --- | --- |
+| The eight categories | 0–12 score | The first statement's `anchorLow` / `anchorHigh` (Sleep: "Under 5 hours most nights, broken sleep, no routine" / "7–9 hours most nights on a steady schedule") |
+| Protein, hydration | days a week (0–7) | The document's Red 0–1 / Green 5–7 days rule |
+| Pain map | worst active spot (0–10), lower is better | The pain editor's "0 none → 10 worst" and `PainPoint.severity`'s "worst imaginable" |
+| Stress anchors | overall level (0–10), lower is better | The stress editor's "0 light → 10 crushing" |
+
+Every area has bank wording today. `NEUTRAL_LOW` / `NEUTRAL_HIGH`
+("Struggling" / "Thriving") exist only as the fallback for an area without it.
+
+### 5.3 The history (`assessment-history.ts`)
+
+```
+progressReports/{id}.subjective
+  …everything in §3…
+  changeLog?: AssessmentChange[]      ← NEW, optional
+    categoryId: category key | "protein" | "hydration" | "pain" | "stress"
+    from: number | null               ← value before (see "living rule")
+    to: number | null
+    at: ISO instant
+    byId?, byName?                    ← trainer doc id + name, display only
+    note?: string                     ← ≤ 140 chars, typed at the time
+    fromUnknown?: true                ← history unreadable then; row says "Updated"
+```
+
+- **In the draft**, every edit that moves an area's number appends a row.
+  Autosave writes it with the rest of the block, so it can no longer be
+  erased. Changes by the same person to the same area within 10 minutes fold
+  into one row; a correction that returns to where it started is dropped
+  unless it carries a note.
+- **The living rule.** An area missing from an assessment was not asked, not
+  cleared, so the last known value carries forward — per statement for a
+  category (a draft that re-asks only sleep statement 1 is scored with the
+  other two from the last save). That is also the `from` of a change in a
+  fresh draft, which still starts empty.
+- **Saved assessments** are compared in order (`deriveAssessmentDeltas`), so
+  every assessment saved before `changeLog` existed still has a timeline. A
+  first value is "new" only if the read reached the client's first report.
+- **One log** (`buildHistoryLog`): draft rows, rows recorded inside saved
+  assessments, and derived rows for whatever those recordings don't cover —
+  a saved assessment with log rows for an area never also gets a derived row
+  for it.
+- `finalizedSubjective` builds the stored block for both the draft's
+  finalize and `saveQuickCheckIn`, so neither can drop the log.
+- `loadAssessmentHistory` is the same `clientId + createdAt desc` read as
+  `loadPreviousCheckIn` with a 25-report window; the panel's hook uses it
+  instead of that read (no extra query, no new index, no rule change). The
+  newest saved assessment in it is "previous"; after a finalize the saved
+  block joins the history in memory.
+
+**Not stored anywhere new.** `progressReports` is readable by any signed-in
+user, exactly like the category notes already there: keep change notes to
+coaching context. InBody numbers never go in here.
+
+### 5.4 Files added
+
+| File | Job |
+| --- | --- |
+| `pillars.ts` (+ test) | The three pillars, area titles, scale ends. |
+| `assessment-history.ts` (+ test) | Measures, the change log, deltas, the merged log, freshness. Pure. |
+| `AssessmentHistoryLog.tsx` | The log on screen: newest six, "Show all", inline notes on draft rows. |
+| `ClientCheckInPanel.render.test.tsx` | Mounts the panel (null client → client, pillars, log, a logged change with a note). |

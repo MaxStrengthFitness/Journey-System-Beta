@@ -291,6 +291,47 @@ export interface SubjectiveAssessment {
 
   /** Filled by scoring.ts at save time. See file header. */
   summary?: SubjectiveSummary;
+
+  /**
+   * The audit trail inside this assessment (Assessment round, Sep 2026).
+   *
+   * Autosave replaces the whole `subjective` block, so a score changed three
+   * times across three sessions used to keep only the last value. Every time
+   * an area's score moves, a row is appended here instead, and the history
+   * log reads it. Optional: assessments saved before this existed have none,
+   * and the log derives their changes from consecutive saved assessments.
+   * See assessment-history.ts.
+   */
+  changeLog?: AssessmentChange[];
+}
+
+/**
+ * One recorded change to an area's score.
+ *
+ * The number is the area's own measure (assessment-history.ts →
+ * `measureSection`): a category's 0–12 score, protein or hydration days a
+ * week (0–7), the worst active pain (0–10), overall stress (0–10). `from`
+ * is the value before this change — the last saved assessment's value when
+ * the open draft had none yet — so a row is a true "was → now".
+ */
+export interface AssessmentChange {
+  /** A `SubjectiveCategoryKey`, or "protein" | "hydration" | "pain" | "stress". */
+  categoryId: string;
+  from: number | null;
+  to: number | null;
+  /** ISO date-time (with zone) of the change. */
+  at: string;
+  /** Trainer document id of whoever made the change. Display only. */
+  byId?: string;
+  byName?: string;
+  /** One line of context, typed at the time: "Bought a new mattress". */
+  note?: string;
+  /**
+   * True when the saved history could not be read at the time, so the value
+   * before this change is not known. `from` is then null and the row reads
+   * "updated", never "new".
+   */
+  fromUnknown?: boolean;
 }
 
 /* ------------------------------------------------------------------ *
