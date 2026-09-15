@@ -21,7 +21,6 @@ import {
   type ClinicalView,
   type ProfileLocation,
   type ProfileNavAction,
-  type ProfileNavContext,
   type ProfileTab,
   type ProgrammingView,
 } from "./profile-nav";
@@ -46,22 +45,36 @@ export interface UseProfileNav {
 
 export function useProfileNav(
   clientId: string | null | undefined,
-  ctx: ProfileNavContext = {},
+  opts: { programmingDefault?: ProgrammingView } = {},
 ): UseProfileNav {
+  /*
+   * The latest default, for dispatch time.
+   *
+   * It has to be a ref: the segment Programming opens on depends on the
+   * routine chosen for today, which arrives a beat after the profile does,
+   * and rebuilding the callbacks every time it changes would re-render every
+   * consumer. It is read when an action is BUILT — after render, in an event
+   * handler — never from inside the reducer.
+   *
+   * Declared ABOVE useReducer and never referenced by the reducer, both on
+   * purpose. React runs a queued reducer during the next render at the point
+   * of the useReducer call; a reducer closing over a const declared below it
+   * reads that const in its temporal dead zone, and the profile crashed with
+   * "Cannot access 'ctxRef' before initialization" the first time a trainer
+   * changed tabs. See the note on ProfileNavAction.
+   */
+  const defaultRef = useRef(opts.programmingDefault);
+  defaultRef.current = opts.programmingDefault;
+
   // Read once per client. `useReducer`'s lazy initialiser runs on mount only,
   // so the effect below handles a client change without a remount.
+  // `profileNavReducer` is passed DIRECTLY: module scope, two arguments,
+  // closing over nothing.
   const [state, rawDispatch] = useReducer(
-    (s: ReturnType<typeof initialNavState>, a: ProfileNavAction) =>
-      profileNavReducer(s, a, ctxRef.current),
+    profileNavReducer,
     clientId,
     (id) => initialNavState(readStoredLocation(id) ?? DEFAULT_LOCATION),
   );
-
-  // The reducer must see the LATEST default without being re-created on every
-  // render — the programming default depends on the routine chosen for today,
-  // which arrives a beat after the profile opens.
-  const ctxRef = useRef(ctx);
-  ctxRef.current = ctx;
 
   // A different client is a different screen. Resume theirs, or start on
   // Journey; never inherit the last client's segment.
@@ -76,7 +89,11 @@ export function useProfileNav(
     writeStoredLocation(clientId, state.location);
   }, [clientId, state.location]);
 
-  const setTab = useCallback((tab: ProfileTab) => rawDispatch({ type: "tab", tab }), []);
+  const setTab = useCallback(
+    (tab: ProfileTab) =>
+      rawDispatch({ type: "tab", tab, programmingDefault: defaultRef.current }),
+    [],
+  );
   const setProgrammingView = useCallback(
     (view: ProgrammingView) => rawDispatch({ type: "programming", view }),
     [],
@@ -99,7 +116,7 @@ export function useProfileNav(
       programmingView:
         state.location.tab === "programming"
           ? state.location.view
-          : (state.lastProgramming ?? ctxRef.current.programmingDefault ?? "routine-a"),
+          : (state.lastProgramming ?? defaultRef.current ?? "routine-a"),
       clinicalView:
         state.location.tab === "clinical"
           ? state.location.view

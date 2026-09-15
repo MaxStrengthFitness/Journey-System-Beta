@@ -109,13 +109,25 @@ export function ProfileSubnav<T extends string>({
     };
 
     apply();
+
     // The context line rewraps as the numbers change and as the iPad rotates,
-    // so the height is observed rather than measured once.
-    const ro = new ResizeObserver(apply);
-    ro.observe(shell);
+    // so the height is OBSERVED rather than measured once.
+    //
+    // Feature-detected, and not out of politeness: this runs in a layout
+    // effect, and anything that throws in a layout effect takes the whole
+    // profile down to the error boundary — which is exactly how this round
+    // shipped its first crash. Every browser the studios use has
+    // ResizeObserver; a context without it (an old webview, a test renderer)
+    // simply falls back to the resize listener below and re-measures on
+    // rotation, which is the case that matters on an iPad.
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver === "function") {
+      ro = new ResizeObserver(apply);
+      ro.observe(shell);
+    }
     window.addEventListener("resize", apply);
     return () => {
-      ro.disconnect();
+      ro?.disconnect();
       window.removeEventListener("resize", apply);
       host?.style.removeProperty("--psub-stuck-h");
     };

@@ -102,15 +102,31 @@ describe("profileNavReducer", () => {
     expect(s.location).toEqual({ tab: "clinical", view: "trends" });
   });
 
-  it("uses the context default only for a tab that has not been visited", () => {
-    const ctx = { programmingDefault: "routine-b" as const };
-    let s = profileNavReducer(start(), { type: "tab", tab: "programming" }, ctx);
+  it("uses the action's default only for a tab that has not been visited", () => {
+    // The default rides IN the action, never in a closure the reducer reads.
+    // See the note on ProfileNavAction: a reducer that closes over anything
+    // declared below the useReducer call reads it in its temporal dead zone.
+    const toProgramming = {
+      type: "tab",
+      tab: "programming",
+      programmingDefault: "routine-b",
+    } as const;
+
+    let s = profileNavReducer(start(), toProgramming);
     expect(s.location).toEqual({ tab: "programming", view: "routine-b" });
 
-    s = profileNavReducer(s, { type: "programming", view: "machines" }, ctx);
-    s = profileNavReducer(s, { type: "tab", tab: "journey" }, ctx);
-    s = profileNavReducer(s, { type: "tab", tab: "programming" }, ctx);
+    s = profileNavReducer(s, { type: "programming", view: "machines" });
+    s = profileNavReducer(s, { type: "tab", tab: "journey" });
+    s = profileNavReducer(s, toProgramming);
     expect(s.location).toEqual({ tab: "programming", view: "machines" });
+  });
+
+  it("takes exactly two arguments and closes over nothing", () => {
+    // A guard on the shape, not the behaviour. This reducer went into
+    // useReducer directly precisely so it could not reach outside itself;
+    // giving it a third parameter again would reintroduce the wrapper closure
+    // that crashed the profile.
+    expect(profileNavReducer.length).toBe(2);
   });
 
   it("is a no-op when the tab is already active, so a stray tap cannot reset a segment", () => {

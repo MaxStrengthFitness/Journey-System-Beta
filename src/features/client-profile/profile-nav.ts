@@ -168,18 +168,29 @@ export function legacyLocation(id: string | null | undefined): ProfileLocation {
  * Moving around
  * ------------------------------------------------------------------ */
 
+/**
+ * Actions.
+ *
+ * `tab` carries its own `programmingDefault` rather than the reducer reading
+ * one from the outside. That is not a style choice — it is the fix for a
+ * crash. React processes a queued action by calling the reducer DURING the
+ * next render, at the point of the `useReducer` call. A reducer that closes
+ * over anything declared below that call (a `const` ref, say) is reading it
+ * inside its temporal dead zone, and the profile threw "Cannot access 'ctxRef'
+ * before initialization" the first time a trainer changed tabs.
+ *
+ * So the reducer takes exactly two arguments, is declared at module scope,
+ * closes over nothing, and everything it needs arrives in the action — which
+ * is assembled at DISPATCH time, safely after render. The bug is not fixed
+ * here, it is made impossible.
+ */
 export type ProfileNavAction =
-  | { type: "tab"; tab: ProfileTab }
+  | { type: "tab"; tab: ProfileTab; programmingDefault?: ProgrammingView }
   | { type: "programming"; view: ProgrammingView }
   | { type: "clinical"; view: ClinicalView }
   | { type: "section"; section: DossierSection }
   | { type: "go"; to: ProfileLocation }
   | { type: "legacy"; id: string };
-
-export interface ProfileNavContext {
-  /** Where Programming should open when it is entered without a segment. */
-  programmingDefault?: ProgrammingView;
-}
 
 /**
  * The reducer.
@@ -221,12 +232,11 @@ function remember(state: ProfileNavState, location: ProfileLocation): ProfileNav
 export function profileNavReducer(
   state: ProfileNavState,
   action: ProfileNavAction,
-  ctx: ProfileNavContext = {},
 ): ProfileNavState {
   switch (action.type) {
     case "tab": {
       if (action.tab === state.location.tab) return state;
-      return remember(state, enterTab(state, action.tab, ctx));
+      return remember(state, enterTab(state, action.tab, action.programmingDefault));
     }
     case "programming":
       return remember(state, { tab: "programming", view: action.view });
@@ -246,7 +256,7 @@ export function profileNavReducer(
 function enterTab(
   state: ProfileNavState,
   tab: ProfileTab,
-  ctx: ProfileNavContext,
+  programmingDefault?: ProgrammingView,
 ): ProfileLocation {
   switch (tab) {
     case "journey":
@@ -254,7 +264,7 @@ function enterTab(
     case "programming":
       return {
         tab: "programming",
-        view: state.lastProgramming ?? ctx.programmingDefault ?? "routine-a",
+        view: state.lastProgramming ?? programmingDefault ?? "routine-a",
       };
     case "clinical":
       return { tab: "clinical", view: state.lastClinical ?? "calendar" };
