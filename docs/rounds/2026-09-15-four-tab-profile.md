@@ -281,10 +281,50 @@ studio is east of Eastern.
 
 ---
 
+## 7b. The one that got through: a reducer in its temporal dead zone
+
+The round shipped a crash. The profile opened correctly and fell through to
+the error boundary the moment a trainer changed tabs:
+
+    ReferenceError: Cannot access 'ctxRef' before initialization
+
+**React does not call a reducer on mount.** It calls it while processing a
+queued action, and it does that during the *next render*, at the point of the
+`useReducer` call. `useProfileNav` passed a wrapper arrow that read
+`ctxRef.current`, and `const ctxRef` was declared a few lines below
+`useReducer` — so at the moment React ran it, that const was still in its
+temporal dead zone. No action queued, no crash: which is precisely why the
+screen looked perfect until the first tap.
+
+Fixed structurally rather than by moving a line. `profileNavReducer` takes two
+arguments, lives at module scope, closes over nothing, and the programming
+default rides in the action, assembled at dispatch time — safely after render.
+A test asserts `profileNavReducer.length === 2`, because restoring the third
+parameter is what would reintroduce the wrapper.
+
+Found while proving it: `new ResizeObserver` in `ProfileSubnav`'s layout
+effect was unguarded. Anything that throws in a layout effect takes the whole
+screen down the same way, and `JourneyGrid` already feature-detects in two of
+its three uses — the house convention, missed. Now guarded.
+
+### Why nothing caught it, and what changed
+
+A clean typecheck, 2,069 passing tests and a production build all look at code
+that is never mounted. So this round adds **the first render tests in the
+repo** — `profile-nav.render.test.tsx`, jsdom and raw `react-dom/client`, no
+testing-library, one devDependency. They fail on the old code with the exact
+production error.
+
+**Add a render test for any hook or component that does work during render or
+in a layout effect.** They cost milliseconds and they are the only check in
+the suite that would have caught this.
+
+---
+
 ## 8. Verification
 
 - `npx tsc --noEmit` — **18**, unchanged from master.
-- `npx vitest run src` — **2,069** passing, 1 skipped, 110 files (2,046
+- `npx vitest run src` — **2,077** passing, 1 skipped, 111 files (2,046
   before this round's 23 new tests). Green at UTC, America/New_York and
   America/Los_Angeles; see 7a.
 - `npx vite build` — clean.
