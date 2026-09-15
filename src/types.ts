@@ -568,6 +568,16 @@ export interface MindbodyService {
   lastPullSyncAt?: any;
 }
 
+/** See Client.contractTierOverride. */
+export interface ContractTierOverride {
+  term: 6 | 12 | 18 | null;
+  payment: "monthly" | "pif" | "month-to-month" | "sessions-only";
+  setAt: string;
+  setById?: string;
+  setByName?: string;
+  note?: string;
+}
+
 export interface Client {
   id?: string;
   mindbodyId?: string;
@@ -820,6 +830,12 @@ export interface Client {
    * (server/renewals-job.ts); firestore.rules refuses it from the app.
    */
   renewal?: RenewalSnapshot;
+  /**
+   * A coach's hand-set contract tier (client-profile audit, Sep 2026). Wins
+   * over what Mindbody's names say, in the record's Admin section, until it
+   * is removed. Never written by a sync. See features/client-admin/contract.ts.
+   */
+  contractTierOverride?: ContractTierOverride | null;
   /**
    * The first InBody scan against the latest (Renewals round, Sep 2026).
    * Rewritten by the app with every scan saved, corrected or removed; the

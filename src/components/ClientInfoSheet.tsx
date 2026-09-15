@@ -190,6 +190,9 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
         isDifferent = value !== initialVal;
       }
 
+      // null and undefined are the same "nothing" (a cleared lock, say).
+      if (initialVal == null && value == null) isDifferent = false;
+
       // Handle undefined cases gracefully
       if (
         initialVal === undefined &&

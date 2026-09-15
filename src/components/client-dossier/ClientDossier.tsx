@@ -53,17 +53,16 @@ import {
 import type {
   Client,
   Machine,
-  MindbodyContract,
   ProgressReport,
   Studio,
   Trainer,
 } from "../../types";
 import { CLINICAL_FLAGS_MATRIX } from "../../data/clinical-matrix";
 import { OccupationSelect } from "../OccupationSelect";
-import { ClientMembershipsCard } from "../mindbody/ClientMembershipsCard";
+import { ContractPanel } from "../../features/client-admin/ContractPanel";
 import { InBodyCard } from "../../features/inbody/InBodyCard";
 import { SharedNotesCard } from "../../features/planner/notes/SharedNotesCard";
-import { ClientSnapshot, activeContract } from "./ClientSnapshot";
+import { ClientSnapshot } from "./ClientSnapshot";
 import { JournalRail } from "./JournalRail";
 import { ClientJournalTab } from "../journal/ClientJournalTab";
 import { FordSection } from "../../features/ford/FordSection";
@@ -231,14 +230,6 @@ export function ClientDossier({
     .map((p) => (p || "").trim())
     .filter(Boolean)
     .join(" · ");
-  const contract = activeContract(client);
-  const contractHistory = useMemo<MindbodyContract[]>(
-    () =>
-      Object.values(client.mindbodyContracts || {}).sort(
-        (a, b) => (toDate(b.startDate)?.getTime() ?? 0) - (toDate(a.startDate)?.getTime() ?? 0),
-      ),
-    [client.mindbodyContracts],
-  );
   const longTermGoal =
     client.mindbodyIndexes?.LongtermGoal ||
     client.mindbodyIndexes?.LongTermGoal ||
@@ -256,13 +247,6 @@ export function ClientDossier({
     updateField(
       "clinicalFlags",
       cur.includes(flagId) ? cur.filter((f) => f !== flagId) : [...cur, flagId],
-    );
-  };
-  const toggleStudio = (studioId: string) => {
-    const cur = formData.approvedCrossTrainStudioIds || [];
-    updateField(
-      "approvedCrossTrainStudioIds",
-      cur.includes(studioId) ? cur.filter((s) => s !== studioId) : [...cur, studioId],
     );
   };
 
@@ -804,158 +788,33 @@ export function ClientDossier({
             </DossierSectionShell>
 
             {/* ---------------- ADMIN ---------------- */}
+            {/* Rebuilt around the contract (client-profile audit, Sep 2026):
+                what they are on, what is left, what they have had, and the
+                fine print. features/client-admin/ContractPanel.tsx. */}
             <DossierSectionShell
               id="admin"
               title="Admin"
               blurb={sectionBlurb("admin")}
               icon={SECTION_ICONS.admin}
             >
-              <FieldGroup cols={3}>
-                <SelectField
-                  label="Package tier"
-                  value={val("packageTier")}
-                  onChange={set("packageTier")}
-                  options={["None", "6-Month", "12-Month", "18-Month"]}
-                />
-                <ReadOnlyField
-                  label="Home studio"
-                  source="derived"
-                  value={
-                    studios.find((s) => s.id === client.homeStudioId)?.name ||
-                    client.homeStudioId ||
-                    ""
-                  }
-                />
-                <ReadOnlyField
-                  label="Sessions remaining"
-                  source="derived"
-                  value={
-                    typeof client.remainingSessions === "number"
-                      ? String(client.remainingSessions)
-                      : ""
-                  }
-                />
-              </FieldGroup>
-
-              {/* Contract history — the whole point of the Admin section. */}
-              <div className="flex flex-col gap-2.5">
-                <FieldLabel source="mindbody">Contract history</FieldLabel>
-                {contractHistory.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-300 px-4 py-3 dark:border-slate-800">
-                    <p className="text-[11.5px] text-muted-foreground">
-                      No contracts synced. These arrive on the clientContract webhooks.
-                    </p>
-                  </div>
-                ) : (
-                  <ul className="flex flex-col gap-2">
-                    {contractHistory.map((c) => {
-                      const isActive = c.status === "Active";
-                      return (
-                        <li
-                          key={String(c.clientContractId)}
-                          className={cn(
-                            "relative overflow-hidden rounded-xl border p-3.5 pl-4.5",
-                            isActive
-                              ? "border-emerald-500/25 bg-emerald-500/[0.05]"
-                              : "border-slate-200 bg-slate-50 opacity-70 dark:border-slate-800 dark:bg-slate-950/40",
-                          )}
-                        >
-                          <span
-                            aria-hidden
-                            className={cn(
-                              "absolute left-0 top-0 h-full w-[3px]",
-                              isActive ? "bg-emerald-500" : "bg-slate-400 dark:bg-slate-700",
-                            )}
-                          />
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="text-[13px] font-bold text-slate-800 dark:text-slate-100">
-                              {c.contractName || `Contract ${c.clientContractId}`}
-                            </span>
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {c.isAutoRenewing && (
-                                <span className="rounded-md border border-sky-500/25 bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-sky-600 dark:text-sky-300">
-                                  Auto-renew
-                                </span>
-                              )}
-                              <span
-                                className={cn(
-                                  "rounded-md border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider",
-                                  isActive
-                                    ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
-                                    : "border-slate-300 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800",
-                                )}
-                              >
-                                {c.status}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                            <span>
-                              {fmtDate(c.startDate)} → {fmtDate(c.endDate)}
-                            </span>
-                            {c.agreementDate && <span>· Signed {fmtDate(c.agreementDate)}</span>}
-                            {c.soldByStaffName && <span>· Sold by {c.soldByStaffName}</span>}
-                            {String(c.originationLocationId) === "98" && <span>· Bought online</span>}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-                {contract && (
-                  <p className="text-[10.5px] text-muted-foreground">
-                    Read-only. Mindbody owns contracts; changes there flow in on the next webhook.
-                  </p>
-                )}
-              </div>
-
-              {/* Also from the old Lifestyle section. How a client found the
-                  studio is acquisition data — it sits with the contract. */}
-              <FieldGroup title="How they found us">
-                <TextField label="Lead source" value={val("leadSource")} onChange={set("leadSource")} />
-                <TextField
-                  label="Referred by"
-                  value={val("referredBy")}
-                  onChange={set("referredBy")}
-                  hint="Mindbody fills this if it is blank; your edit is never overwritten."
-                />
-              </FieldGroup>
-
-              <ClientMembershipsCard client={client} />
-
-              <div className="flex flex-col gap-2.5">
-                <FieldLabel>Approved cross-train studios</FieldLabel>
-                <div className="flex flex-wrap gap-1.5">
-                  {studios.filter((s) => s.id !== client.homeStudioId).length === 0 ? (
-                    <p className="text-[11.5px] text-muted-foreground">
-                      No other studios available for cross-training.
-                    </p>
-                  ) : (
-                    studios
-                      .filter((s) => s.id !== client.homeStudioId)
-                      .map((studio) => {
-                        const on = (formData.approvedCrossTrainStudioIds || []).includes(
-                          studio.id!,
-                        );
-                        return (
-                          <button
-                            key={studio.id}
-                            type="button"
-                            onClick={() => toggleStudio(studio.id!)}
-                            className={cn(
-                              "h-9 rounded-xl border px-3 text-[10.5px] font-black uppercase tracking-wider transition-all",
-                              on
-                                ? "border-[#38BDF8]/40 bg-[#38BDF8]/15 text-[#0284c7] dark:text-[#38BDF8]"
-                                : "border-slate-200 bg-slate-50 text-muted-foreground hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/50 dark:hover:bg-slate-800",
-                            )}
-                          >
-                            {studio.name}
-                          </button>
-                        );
-                      })
-                  )}
-                </div>
-              </div>
+              <ContractPanel
+                client={client}
+                formData={formData}
+                updateField={updateField}
+                studios={studios}
+                author={authTrainer ? { id: fordAuthor?.id || authTrainer.id, name: authTrainer.fullName } : null}
+                acquisition={
+                  <FieldGroup title="How they found us">
+                    <TextField label="Lead source" value={val("leadSource")} onChange={set("leadSource")} />
+                    <TextField
+                      label="Referred by"
+                      value={val("referredBy")}
+                      onChange={set("referredBy")}
+                      hint="Mindbody fills this if it is blank; your edit is never overwritten."
+                    />
+                  </FieldGroup>
+                }
+              />
             </DossierSectionShell>
 
           </div>
