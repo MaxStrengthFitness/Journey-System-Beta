@@ -28,6 +28,14 @@
      rail use for "this one matters", so it is one colour app-wide. */
   --psub-flag:          #c0203f;
 
+  /* What the sticky shell paints over. This MUST be opaque and MUST match
+     the page behind it: the shell sticks while a twenty-machine list scrolls
+     under it, and a transparent sticky bar is one the content scrolls
+     straight through. --background is the app's own page token, which
+     ThemeProvider already flips; the hex is the same value, as a fallback for
+     a frame rendered before the theme has been applied. */
+  --psub-page:          var(--background, #edf0f5);
+
   --psub-h:             48px;      /* >= 40px floor, on both axes           */
   --psub-radius:        14px;
 }
@@ -44,6 +52,7 @@
   --psub-live-soft:     #2f7fc4;
   --psub-live-on:       #04121d;   /* 7.4:1 on --psub-live                  */
   --psub-flag:          #f2637d;
+  --psub-page:          var(--background, #020617);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -58,6 +67,7 @@
     --psub-live-soft:   #2f7fc4;
     --psub-live-on:     #04121d;
     --psub-flag:        #f2637d;
+    --psub-page:        var(--background, #020617);
   }
 }
 
@@ -69,18 +79,23 @@
    -------------------------------------------------------------------------- */
 .psub-shell {
   position: sticky;
-  top: 0;
+  /* The scroller's own padding, negated, measured by ProfileSubnav. A plain
+     `top: 0` pins inside that padding and lets rows slide past above the bar. */
+  top: var(--psub-stick-top, 0px);
   z-index: 18;              /* over the panes, under the snapshot bar (20) */
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 8px 0 10px;
   margin-bottom: 4px;
+  /* Solid where the control is, a short fade under it so a row sliding
+     beneath does not end on a hard line. Never `transparent` at the top —
+     see --psub-page. */
   background: linear-gradient(
     to bottom,
-    var(--psub-page, transparent) 0%,
-    var(--psub-page, transparent) 72%,
-    transparent 100%
+    var(--psub-page) 0%,
+    var(--psub-page) 88%,
+    color-mix(in srgb, var(--psub-page) 55%, transparent) 100%
   );
 }
 
@@ -179,6 +194,10 @@
   opacity: 0.72;
   white-space: nowrap;
 }
+/* On the selected segment the meta is white on brand blue at 9.5px, which is
+   small text and has to clear 4.5:1 on its own. 0.72 alpha took it under; at
+   0.86 it clears with room. */
+.psub__btn[data-on] .psub__meta { opacity: 0.86; }
 
 .psub__dot {
   width: 6px;

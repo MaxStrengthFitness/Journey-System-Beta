@@ -219,7 +219,11 @@
 .hist-year__head,
 .hist-lmonth__head {
   position: sticky;
-  top: var(--hist-stick-top, 0px);
+  /* Plus the profile sub-toggle's height when this pane is inside Clinical
+     History: that bar sticks to the same edge, so without the offset a month
+     header stops underneath it and is never seen. ProfileSubnav publishes
+     --psub-stuck-h on the enclosing .ptab; it is 0 anywhere else. */
+  top: calc(var(--hist-stick-top, 0px) + var(--psub-stuck-h, 0px));
   z-index: 3;
   display: flex;
   align-items: baseline;

@@ -33,8 +33,17 @@
  * the client has no B reads "B · off", and tapping it explains how to turn it
  * on. Hiding it is how the whole feature stops existing.
  */
-import { useCallback, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import "./profile-nav.css";
+
+/** The nearest ancestor that actually scrolls. */
+function scrollParentOf(el: HTMLElement): HTMLElement | null {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const overflowY = getComputedStyle(p).overflowY;
+    if (overflowY === "auto" || overflowY === "scroll") return p;
+  }
+  return null;
+}
 
 export interface SubnavItem<T extends string> {
   id: T;
@@ -68,6 +77,49 @@ export function ProfileSubnav<T extends string>({
   context,
 }: ProfileSubnavProps<T>) {
   const listRef = useRef<HTMLDivElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
+
+  /*
+   * Two measurements, both of them the same trap the History tab already hit
+   * (see the note on --hist-stick-top in client-history.css):
+   *
+   *   1. The app shell is a bounded 100dvh column, so the document never
+   *      scrolls — an inner `p-6` container does. Every engine pins a sticky
+   *      box inside the scroll container's PADDING, so a plain `top: 0` would
+   *      stick 24px down and let rows slide past in the strip above it. The
+   *      scroller's padding, negated, is --psub-stick-top.
+   *
+   *   2. The History pane inside Clinical History has sticky month headers of
+   *      its own, which want to stop UNDER this bar rather than slide beneath
+   *      it. This publishes its own height as --psub-stuck-h on the enclosing
+   *      .ptab, and client-history.css adds it to their offset. A CSS
+   *      variable rather than a prop, because it has to reach a component
+   *      three levels down that knows nothing about this one.
+   */
+  useLayoutEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const host = shell.parentElement;
+    const scroller = scrollParentOf(shell);
+
+    const apply = () => {
+      const pad = scroller ? parseFloat(getComputedStyle(scroller).paddingTop) || 0 : 0;
+      shell.style.setProperty("--psub-stick-top", `${-pad}px`);
+      host?.style.setProperty("--psub-stuck-h", `${Math.round(shell.offsetHeight)}px`);
+    };
+
+    apply();
+    // The context line rewraps as the numbers change and as the iPad rotates,
+    // so the height is observed rather than measured once.
+    const ro = new ResizeObserver(apply);
+    ro.observe(shell);
+    window.addEventListener("resize", apply);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", apply);
+      host?.style.removeProperty("--psub-stuck-h");
+    };
+  }, []);
 
   // Arrow keys walk the row and select as they go, the way a segmented
   // control behaves everywhere else. Home/End jump to the ends.
@@ -90,7 +142,7 @@ export function ProfileSubnav<T extends string>({
   );
 
   return (
-    <div className="psub-shell">
+    <div className="psub-shell" ref={shellRef}>
       {context ? <div className="psub-context">{context}</div> : null}
       <div
         ref={listRef}
