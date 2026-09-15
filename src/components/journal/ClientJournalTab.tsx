@@ -143,7 +143,7 @@ export function ClientJournalTab({
     trainers,
     enabled: !hasQuotaError && !journal,
   });
-  const { entries, focuses, criticalEntries, isLoading, needsIndex } =
+  const { entries, focuses, criticalEntries, isLoading, needsIndex, capped } =
     journal ?? ownJournal;
 
   /** Composed into a spine? Then the caller owns the nav and the rail. */
@@ -417,6 +417,16 @@ export function ClientJournalTab({
 
   return (
     <div className="space-y-6">
+      {capped && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-[11px] leading-snug text-amber-700 dark:text-amber-300">
+          <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" />
+          <span>
+            This record is unusually large: one of its collections has more than
+            200 items, and only the first 200 are loaded. Counts on this page may
+            run short.
+          </span>
+        </div>
+      )}
       {needsIndex && (
         <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-[11px] leading-snug text-amber-700 dark:text-amber-300">
           <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" />

@@ -72,6 +72,18 @@ import {
 const STREAM_LIMIT = 300;
 const LEGACY_NOTE_LIMIT = 200;
 const SESSION_SUMMARY_LIMIT = 40;
+/**
+ * A guard rail, not a window (cost round, Sep 2026). The four per-client
+ * collections below (clientFocuses, focusRecords, clinicalIncidents,
+ * trainerFocuses) had NO limit: a client with a runaway import could open
+ * thousands of documents every time their profile opened. Any real client has
+ * a few dozen at most, so at 200 nothing changes for anyone today. It is
+ * deliberately NOT a "newest 50": the focus board counts every past focus and
+ * offers a new one only when the trainer has no active one, so a cut-off
+ * active focus would come back as a duplicate. When a collection does hit the
+ * rail, `capped` is true and the journal says so instead of miscounting.
+ */
+export const JOURNAL_GUARD_LIMIT = 200;
 
 /* ------------------------------------------------------------------ */
 /* WRITES                                                              */
@@ -729,6 +741,8 @@ export interface UseClientJournalResult {
   isLoading: boolean;
   /** True when the composite index has not been deployed yet. */
   needsIndex: boolean;
+  /** True when a per-client collection hit JOURNAL_GUARD_LIMIT, so counts may be short. */
+  capped: boolean;
 }
 
 export function useClientJournal({
@@ -746,9 +760,18 @@ export function useClientJournal({
   const [legacySessions, setLegacySessions] = useState<WorkoutSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [needsIndex, setNeedsIndex] = useState(false);
+  const [cappedBy, setCappedBy] = useState<Record<string, boolean>>({});
 
   // Guards the ordered-query -> unordered-query fallback from looping.
   const fellBackRef = useRef(false);
+
+  /** Records whether a collection's snapshot came back exactly at the guard rail. */
+  const noteCap = (name: string, size: number) =>
+    setCappedBy((prev) => {
+      const hit = size >= JOURNAL_GUARD_LIMIT;
+      if (Boolean(prev[name]) === hit) return prev;
+      return { ...prev, [name]: hit };
+    });
 
   /* --- native journalEntries -------------------------------------- */
   useEffect(() => {
@@ -810,19 +833,24 @@ export function useClientJournal({
   useEffect(() => {
     if (!clientId || !enabled) {
       setNativeFocuses([]);
+      setCappedBy({});
       return;
     }
-    // Single-field equality only — no composite index required.
+    // Single-field equality only — no composite index required. The limit is
+    // the guard rail (JOURNAL_GUARD_LIMIT), unordered on purpose.
     const q = query(
       collection(db, "clientFocuses"),
       where("clientId", "==", clientId),
+      limit(JOURNAL_GUARD_LIMIT),
     );
     const unsub = onSnapshot(
       q,
-      (snap) =>
+      (snap) => {
         setNativeFocuses(
           snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ClientFocus),
-        ),
+        );
+        noteCap("clientFocuses", snap.size);
+      },
       (err) => handleFirestoreError(err, OperationType.GET, "clientFocuses"),
     );
     return () => unsub();
@@ -840,14 +868,22 @@ export function useClientJournal({
     }
 
     // Deliberately unordered equality queries: they need no composite index and
-    // the result set per client is small enough to sort in memory.
+    // the result set per client is small enough to sort in memory. Each carries
+    // the guard rail (JOURNAL_GUARD_LIMIT) so a runaway client can't open
+    // thousands of documents.
     const subs = [
       onSnapshot(
-        query(collection(db, "focusRecords"), where("clientId", "==", clientId)),
-        (s) =>
+        query(
+          collection(db, "focusRecords"),
+          where("clientId", "==", clientId),
+          limit(JOURNAL_GUARD_LIMIT),
+        ),
+        (s) => {
           setLegacyFocusRecords(
             s.docs.map((d) => ({ id: d.id, ...d.data() }) as FocusRecord),
-          ),
+          );
+          noteCap("focusRecords", s.size);
+        },
         (e) => handleFirestoreError(e, OperationType.GET, "focusRecords"),
       ),
       onSnapshot(
@@ -866,22 +902,28 @@ export function useClientJournal({
         query(
           collection(db, "clinicalIncidents"),
           where("clientId", "==", clientId),
+          limit(JOURNAL_GUARD_LIMIT),
         ),
-        (s) =>
+        (s) => {
           setLegacyIncidents(
             s.docs.map((d) => ({ id: d.id, ...d.data() }) as ClinicalIncident),
-          ),
+          );
+          noteCap("clinicalIncidents", s.size);
+        },
         (e) => handleFirestoreError(e, OperationType.GET, "clinicalIncidents"),
       ),
       onSnapshot(
         query(
           collection(db, "trainerFocuses"),
           where("clientId", "==", clientId),
+          limit(JOURNAL_GUARD_LIMIT),
         ),
-        (s) =>
+        (s) => {
           setLegacyTrainerFocuses(
             s.docs.map((d) => ({ id: d.id, ...d.data() }) as TrainerFocus),
-          ),
+          );
+          noteCap("trainerFocuses", s.size);
+        },
         (e) => handleFirestoreError(e, OperationType.GET, "trainerFocuses"),
       ),
       // Session wrap-up text lives on the session document itself. The journal
@@ -997,5 +1039,7 @@ export function useClientJournal({
     });
   }, [entries]);
 
-  return { entries, focuses, criticalEntries, isLoading, needsIndex };
+  const capped = Object.values(cappedBy).some(Boolean);
+
+  return { entries, focuses, criticalEntries, isLoading, needsIndex, capped };
 }
