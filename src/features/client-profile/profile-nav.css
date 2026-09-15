@@ -1,0 +1,277 @@
+/* ==========================================================================
+   Client profile — sub-toggle and tab-shell furniture
+   --------------------------------------------------------------------------
+   Two layers, the same as equipment.tokens.css and the Journey grid: brand
+   pigment first, then semantic names. Light on :root, dark on .dark (the class
+   ThemeProvider toggles) with [data-theme] and prefers-color-scheme behind it
+   so a frame rendered before hydration is never the wrong theme.
+
+   Contrast is to WCAG 2.1 AA — body text >= 4.5:1, non-text UI >= 3:1 — and
+   the ratio is noted beside anything that was close.
+   ========================================================================== */
+
+:root {
+  --psub-bg:            #e8eef2;   /* the tray                              */
+  --psub-surface:       #ffffff;   /* an unselected segment on hover        */
+  --psub-border:        #d3dadf;
+  --psub-ink:           #121c23;   /* selected-adjacent text       17.3:1   */
+  --psub-ink-muted:     #5b6770;   /* an unselected segment         5.8:1   */
+  --psub-ink-faint:     #6d7780;   /* the meta line                 4.6:1   */
+
+  /* Brand blue — this is an interactive control, so it is never hero orange.
+     #034a84 on white is 9.1:1; white on #034a84 is the same ratio inverted. */
+  --psub-live:          #034a84;
+  --psub-live-soft:     #0a548b;
+  --psub-live-on:       #ffffff;
+
+  /* The attention dot. The same crimson the Journey grid and the Equipment
+     rail use for "this one matters", so it is one colour app-wide. */
+  --psub-flag:          #c0203f;
+
+  --psub-h:             48px;      /* >= 40px floor, on both axes           */
+  --psub-radius:        14px;
+}
+
+.dark,
+[data-theme="dark"] {
+  --psub-bg:            #151e27;
+  --psub-surface:       #1d2833;
+  --psub-border:        #26333f;
+  --psub-ink:           #eef4f8;
+  --psub-ink-muted:     #9aa7b2;   /* 6.1:1 on --psub-bg                    */
+  --psub-ink-faint:     #8593a0;   /* 4.9:1                                 */
+  --psub-live:          #2f7fc4;   /* lifted: #034a84 on a dark tray is 1.6:1 */
+  --psub-live-soft:     #2f7fc4;
+  --psub-live-on:       #04121d;   /* 7.4:1 on --psub-live                  */
+  --psub-flag:          #f2637d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not([data-theme="light"]) {
+    --psub-bg:          #151e27;
+    --psub-surface:     #1d2833;
+    --psub-border:      #26333f;
+    --psub-ink:         #eef4f8;
+    --psub-ink-muted:   #9aa7b2;
+    --psub-ink-faint:   #8593a0;
+    --psub-live:        #2f7fc4;
+    --psub-live-soft:   #2f7fc4;
+    --psub-live-on:     #04121d;
+    --psub-flag:        #f2637d;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   The shell. Sticky, because every pane under it is longer than a screen and
+   a switch you have to scroll back up to find is a switch nobody uses.
+   `top: 0` is against the page scroller — the profile scrolls the page, not a
+   box (see the History tab's note on --hist-stick-top for the same reason).
+   -------------------------------------------------------------------------- */
+.psub-shell {
+  position: sticky;
+  top: 0;
+  z-index: 18;              /* over the panes, under the snapshot bar (20) */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 10px;
+  margin-bottom: 4px;
+  background: linear-gradient(
+    to bottom,
+    var(--psub-page, transparent) 0%,
+    var(--psub-page, transparent) 72%,
+    transparent 100%
+  );
+}
+
+/* The context line above the toggle: one sentence, never wrapping past two. */
+.psub-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  min-height: 22px;
+  padding: 0 2px;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--psub-ink-faint);
+}
+.psub-context b {
+  color: var(--psub-ink);
+  font-weight: 900;
+}
+.psub-context__dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+/* --------------------------------------------------------------------------
+   The toggle itself. Equal tracks, not content width: the segments have to be
+   in the same place every time or the thumb cannot find them without looking.
+   -------------------------------------------------------------------------- */
+.psub {
+  display: grid;
+  grid-template-columns: repeat(var(--psub-n, 3), minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  padding: 4px;
+  border: 1px solid var(--psub-border);
+  border-radius: var(--psub-radius);
+  background: var(--psub-bg);
+}
+
+.psub__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  height: var(--psub-h);
+  padding: 0 6px;
+  border: 0;
+  border-radius: calc(var(--psub-radius) - 5px);
+  background: transparent;
+  color: var(--psub-ink-muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.psub__btn:hover:not([data-on]) {
+  background: var(--psub-surface);
+  color: var(--psub-ink);
+}
+.psub__btn:focus-visible {
+  outline: 2px solid var(--psub-live);
+  outline-offset: -3px;
+}
+.psub__btn[data-on] {
+  background: var(--psub-live);
+  color: var(--psub-live-on);
+}
+
+.psub__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  /* Names are never truncated (CLAUDE.md). Two words wrap rather than clip,
+     which is why the button is a column and 48px tall rather than 40px. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+.psub__meta {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.72;
+  white-space: nowrap;
+}
+
+.psub__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--psub-flag);
+  flex: 0 0 auto;
+}
+.psub__btn[data-on] .psub__dot {
+  background: var(--psub-live-on);
+}
+
+/* Below ~420px (a phone held sideways in the office, not the floor case) the
+   meta line is the first thing to go — the label is what identifies it. */
+@media (max-width: 420px) {
+  .psub__label { font-size: 11px; letter-spacing: 0.04em; }
+  .psub__meta { display: none; }
+}
+
+/* --------------------------------------------------------------------------
+   Tab shells: the persistent strip a consolidated tab puts above its toggle.
+   -------------------------------------------------------------------------- */
+.ptab {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* A read-only fact strip — Clinical History's flags, Programming's counts.
+   Read-only on purpose: these facts are EDITED in exactly one place (the
+   dossier), and a second editable copy is how two screens start disagreeing. */
+.ptab-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px;
+  border: 1px solid var(--psub-border);
+  border-radius: 12px;
+  background: var(--psub-surface);
+}
+.ptab-strip__title {
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--psub-ink-faint);
+  margin-right: 2px;
+}
+.ptab-strip__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--psub-border);
+  background: var(--psub-bg);
+  color: var(--psub-ink);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.ptab-strip__chip[data-tone="alert"] {
+  border-color: color-mix(in srgb, var(--psub-flag) 45%, transparent);
+  background: color-mix(in srgb, var(--psub-flag) 12%, transparent);
+  color: var(--psub-flag);
+}
+.ptab-strip__none {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--psub-ink-faint);
+}
+.ptab-strip__edit {
+  margin-left: auto;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--psub-border);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--psub-live-soft);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ptab-strip__edit:hover { background: var(--psub-bg); }
+.ptab-strip__edit:focus-visible { outline: 2px solid var(--psub-live); outline-offset: 2px; }
+
+/* A pane that is mounted but not showing. `hidden` rather than unmounting:
+   the Equipment pane holds the selected machine and the clinical report holds
+   a generated window, and throwing either away on a toggle would turn a free
+   switch into a reload. */
+.ptab-pane[hidden] { display: none !important; }

@@ -1,0 +1,328 @@
+/**
+ * CLIENT PROFILE NAVIGATION — one model for four tabs and their sub-views.
+ *
+ * Why this file exists
+ * --------------------
+ * The profile used to be seven tabs, each a flat string in one `useState`.
+ * Seven tabs meant a trainer hunting for "her A routine" had to know whether
+ * that lived under Routines or Equipment, and "what happened in March" had to
+ * know whether that was History or Clinical. The tabs were named after the
+ * screens that produced them, not after the questions a coach asks.
+ *
+ * Four tabs now, and each one answers a question:
+ *
+ *   Journey            what has she done, in order
+ *   Programming        what is she supposed to do          (Routines + Equipment)
+ *   Notes & Profile    what do we know and what did we say (Journal + Details)
+ *   Clinical History   what has already happened           (Clinical + History)
+ *
+ * Two of those carry more than one view, so a tab is no longer a single
+ * string: it is a tab AND a position inside it. That pair is a
+ * `ProfileLocation`, and it is the only thing the profile stores about where
+ * the trainer is.
+ *
+ * Three rules the rest of the profile depends on:
+ *
+ *   1. NOTHING IS LOST IN A CONSOLIDATION. Every view that had a tab still
+ *      has a segment, including Routine B when it is switched off. A control
+ *      that disappears when its feature is off is a feature nobody finds
+ *      again.
+ *
+ *   2. SWITCHING A SUB-VIEW COSTS NO FETCH. Every pane inside a tab reads
+ *      data the profile has already loaded, or keeps its own gate (the
+ *      clinical report still only runs when asked). Sub-views are therefore
+ *      pure state, which is what lets them be tapped without thinking.
+ *
+ *   3. OLD LINKS STILL LAND. `legacyLocation()` maps every tab id the app has
+ *      ever used — including the six-tab and seven-tab vocabularies — onto a
+ *      location, so a `setActiveTab("journal")` anywhere in the codebase (or
+ *      in a trainer's muscle memory) still arrives somewhere sane.
+ *
+ * Pure module, no React: the reducer and the maps are tested with plain
+ * objects, and the screen is the only thing that needs a browser.
+ */
+import type { DossierSection } from "../../types/journal";
+
+/* ------------------------------------------------------------------ *
+ * The vocabulary
+ * ------------------------------------------------------------------ */
+
+export type ProfileTab = "journey" | "programming" | "record" | "clinical";
+
+/** Programming's segments: the two prescriptions, then the whole roster. */
+export type ProgrammingView = "routine-a" | "routine-b" | "machines";
+
+/**
+ * Clinical History's segments.
+ *
+ * `calendar` and `sessions` were the History tab's own internal switch. They
+ * are promoted to this level rather than nested inside it: a toggle inside a
+ * toggle is two decisions to reach one screen, and the whole point of the
+ * consolidation was to remove a hop, not move it.
+ */
+export type ClinicalView = "calendar" | "sessions" | "trends" | "reports";
+
+export type ProfileLocation =
+  | { tab: "journey" }
+  | { tab: "programming"; view: ProgrammingView }
+  | { tab: "record"; section?: DossierSection }
+  | { tab: "clinical"; view: ClinicalView };
+
+export const PROFILE_TABS: { id: ProfileTab; label: string; blurb: string }[] = [
+  { id: "journey", label: "Journey", blurb: "Every machine she has performed, in order" },
+  { id: "programming", label: "Programming", blurb: "What she is prescribed and how it is set up" },
+  { id: "record", label: "Notes & Profile", blurb: "Everything written down, and who she is" },
+  { id: "clinical", label: "Clinical History", blurb: "What has already happened, and what it shows" },
+];
+
+/* ------------------------------------------------------------------ *
+ * Defaults
+ * ------------------------------------------------------------------ */
+
+export const DEFAULT_LOCATION: ProfileLocation = { tab: "journey" };
+
+/**
+ * Which Programming segment to open on.
+ *
+ * The routine the client is training TODAY, when one is chosen — that is the
+ * screen the trainer wanted nine times out of ten, and it saves the tap that
+ * used to be "open Routines, then read which one is today". Otherwise A,
+ * unless A is empty and B is not, in which case B: a client mid-way through
+ * a rebuild can have an empty A for a week, and opening on an empty list
+ * reads as a broken screen.
+ */
+export function defaultProgrammingView(args: {
+  todayRoutine?: "Routine A" | "Routine B" | null;
+  countA?: number;
+  countB?: number;
+  isBActive?: boolean;
+}): ProgrammingView {
+  const { todayRoutine, countA = 0, countB = 0, isBActive = false } = args;
+  if (todayRoutine === "Routine B" && isBActive) return "routine-b";
+  if (todayRoutine === "Routine A") return "routine-a";
+  if (countA === 0 && isBActive && countB > 0) return "routine-b";
+  return "routine-a";
+}
+
+/* ------------------------------------------------------------------ *
+ * Legacy ids
+ * ------------------------------------------------------------------ */
+
+/**
+ * Every tab id the profile has ever answered to, mapped onto where that
+ * subject lives now. Callers elsewhere in the app (and the deep links in the
+ * Hub, the briefing and the directory) keep passing these strings; they are
+ * translated here rather than chased down one at a time.
+ */
+export function legacyLocation(id: string | null | undefined): ProfileLocation {
+  switch ((id || "").toLowerCase()) {
+    case "journey":
+      return { tab: "journey" };
+
+    case "routines":
+      return { tab: "programming", view: "routine-a" };
+    case "routine-b":
+      return { tab: "programming", view: "routine-b" };
+    case "equipment":
+    case "machines":
+      return { tab: "programming", view: "machines" };
+
+    case "journal":
+    case "notes":
+      return { tab: "record", section: "notes" };
+    case "details":
+    case "profile":
+    case "identity":
+    case "general":
+      return { tab: "record", section: "general" };
+    case "life":
+    case "lifestyle":
+    case "ford":
+    case "events":
+      return { tab: "record", section: "life" };
+    case "medical":
+      return { tab: "record", section: "medical" };
+    case "goals":
+      return { tab: "record", section: "goals" };
+    case "focus":
+      return { tab: "record", section: "focus" };
+    case "admin":
+      return { tab: "record", section: "admin" };
+
+    case "history":
+      return { tab: "clinical", view: "calendar" };
+    case "sessions":
+      return { tab: "clinical", view: "sessions" };
+    case "clinical":
+    case "trends":
+      return { tab: "clinical", view: "trends" };
+    case "reports":
+      return { tab: "clinical", view: "reports" };
+
+    default:
+      return DEFAULT_LOCATION;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Moving around
+ * ------------------------------------------------------------------ */
+
+export type ProfileNavAction =
+  | { type: "tab"; tab: ProfileTab }
+  | { type: "programming"; view: ProgrammingView }
+  | { type: "clinical"; view: ClinicalView }
+  | { type: "section"; section: DossierSection }
+  | { type: "go"; to: ProfileLocation }
+  | { type: "legacy"; id: string };
+
+export interface ProfileNavContext {
+  /** Where Programming should open when it is entered without a segment. */
+  programmingDefault?: ProgrammingView;
+}
+
+/**
+ * The reducer.
+ *
+ * The one behaviour worth stating out loud: **re-entering a tab returns you
+ * to the segment you left it on.** A trainer who was reading Routine B, looks
+ * at the Journey grid, and comes back expects Routine B — not a reset to A.
+ * So the last segment of each tab is remembered in the state, and `tab` only
+ * falls back to the default when that tab has not been visited yet.
+ */
+export interface ProfileNavState {
+  location: ProfileLocation;
+  lastProgramming: ProgrammingView | null;
+  lastClinical: ClinicalView | null;
+  lastSection: DossierSection | null;
+}
+
+export function initialNavState(
+  location: ProfileLocation = DEFAULT_LOCATION,
+): ProfileNavState {
+  return {
+    location,
+    lastProgramming: location.tab === "programming" ? location.view : null,
+    lastClinical: location.tab === "clinical" ? location.view : null,
+    lastSection: location.tab === "record" ? (location.section ?? null) : null,
+  };
+}
+
+function remember(state: ProfileNavState, location: ProfileLocation): ProfileNavState {
+  return {
+    location,
+    lastProgramming: location.tab === "programming" ? location.view : state.lastProgramming,
+    lastClinical: location.tab === "clinical" ? location.view : state.lastClinical,
+    lastSection:
+      location.tab === "record" && location.section ? location.section : state.lastSection,
+  };
+}
+
+export function profileNavReducer(
+  state: ProfileNavState,
+  action: ProfileNavAction,
+  ctx: ProfileNavContext = {},
+): ProfileNavState {
+  switch (action.type) {
+    case "tab": {
+      if (action.tab === state.location.tab) return state;
+      return remember(state, enterTab(state, action.tab, ctx));
+    }
+    case "programming":
+      return remember(state, { tab: "programming", view: action.view });
+    case "clinical":
+      return remember(state, { tab: "clinical", view: action.view });
+    case "section":
+      return remember(state, { tab: "record", section: action.section });
+    case "go":
+      return remember(state, action.to);
+    case "legacy":
+      return remember(state, legacyLocation(action.id));
+    default:
+      return state;
+  }
+}
+
+function enterTab(
+  state: ProfileNavState,
+  tab: ProfileTab,
+  ctx: ProfileNavContext,
+): ProfileLocation {
+  switch (tab) {
+    case "journey":
+      return { tab: "journey" };
+    case "programming":
+      return {
+        tab: "programming",
+        view: state.lastProgramming ?? ctx.programmingDefault ?? "routine-a",
+      };
+    case "clinical":
+      return { tab: "clinical", view: state.lastClinical ?? "calendar" };
+    case "record":
+      return { tab: "record", section: state.lastSection ?? undefined };
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Resuming
+ * ------------------------------------------------------------------ */
+
+const STORE_PREFIX = "msf_profile_nav:";
+
+/**
+ * Where the trainer was on THIS client, last time.
+ *
+ * Per client, not per app: coming back to Judy should resume Judy's screen,
+ * and opening Marcus straight afterwards should not inherit it. Session
+ * storage rather than local — a tab left open for a week resuming on last
+ * Tuesday's segment is surprise, not service. Every access is wrapped:
+ * storage throws in a private window and returns null in the harness.
+ */
+export function readStoredLocation(clientId: string | null | undefined): ProfileLocation | null {
+  if (!clientId) return null;
+  try {
+    const raw = window.sessionStorage.getItem(STORE_PREFIX + clientId);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as ProfileLocation;
+    return isLocation(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeStoredLocation(
+  clientId: string | null | undefined,
+  location: ProfileLocation,
+): void {
+  if (!clientId) return;
+  try {
+    window.sessionStorage.setItem(STORE_PREFIX + clientId, JSON.stringify(location));
+  } catch {
+    /* private window, or storage full — the profile just opens on Journey. */
+  }
+}
+
+/** Defensive: sessionStorage is user-writable and survives a deploy. */
+export function isLocation(v: unknown): v is ProfileLocation {
+  if (!v || typeof v !== "object") return false;
+  const loc = v as { tab?: unknown; view?: unknown; section?: unknown };
+  switch (loc.tab) {
+    case "journey":
+      return true;
+    case "programming":
+      return (
+        loc.view === "routine-a" || loc.view === "routine-b" || loc.view === "machines"
+      );
+    case "clinical":
+      return (
+        loc.view === "calendar" ||
+        loc.view === "sessions" ||
+        loc.view === "trends" ||
+        loc.view === "reports"
+      );
+    case "record":
+      return loc.section === undefined || typeof loc.section === "string";
+    default:
+      return false;
+  }
+}
