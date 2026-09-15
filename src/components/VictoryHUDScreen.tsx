@@ -13,6 +13,8 @@ import {
 } from "../types";
 import { safeToDate } from "../lib/utils";
 import { QuickCheckInDialog } from "../features/subjective-report";
+import { FordSweep } from "../features/ford/FordSweep";
+import { useClientFord } from "../features/ford/useClientFord";
 import { ArrowLeft, CalendarCheck2, CalendarX2, Check, HeartPulse, MessageSquareText, Star } from "lucide-react";
 import {
   LogConversationDialog,
@@ -43,6 +45,14 @@ import {
  *   3. NEXT — are they booked? Then how they feel (saves as it is tapped),
  *      a closing note (saved when the trainer leaves), the check-in and
  *      the renewal conversation when one is due.
+ *   3b. WHAT THEY TOLD YOU — anything caught with "Remember this" during the
+ *      session that has no FORD letter on it yet, with four buttons to file
+ *      it. Renders NOTHING when there is nothing outstanding, which is most
+ *      sessions. It sits here, after Next and before Lifetime, because
+ *      filing three sentences is seconds and the assessment is minutes —
+ *      short thing first is what gets both done. Like everything else on
+ *      this screen it blocks nothing: walking away costs the trainer
+ *      nothing, the captures simply wait in the profile's Life section.
  *   4. LIFETIME — small, at the bottom. Not the thing to go over every
  *      time, but nice to have.
  *
@@ -165,6 +175,14 @@ export function VictoryHUDScreen({
   const [notes, setNotes] = useState("");
   const [priority, setPriority] = useState<Priority>("Medium");
   const [showCheckIn, setShowCheckIn] = useState(false);
+
+  // Anything caught with "Remember this" during the session and not yet filed.
+  // `client: null` because the legacy client.events adapter has nothing to add
+  // here — this list is only ever about captures from the floor.
+  const { untagged: fordUntagged } = useClientFord({
+    clientId: client.id,
+    client: null,
+  });
   const [checkInSavedId, setCheckInSavedId] = useState<string | null>(null);
   const [showRenewal, setShowRenewal] = useState(false);
   const [renewalLogged, setRenewalLogged] = useState(false);
@@ -421,6 +439,27 @@ export function VictoryHUDScreen({
               )}
             </div>
           </Card>
+
+          {/* 3b · what they told you — see the header. Silent when empty. */}
+          {fordUntagged.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.24 }}
+              className="mx-5"
+              /* This screen is dark whatever the app theme is, so the FORD
+                 tokens are pinned to their dark values rather than resolving
+                 against the document. */
+              data-theme="dark"
+            >
+              <FordSweep
+                clientId={client.id}
+                clientFirstName={client.firstName || "them"}
+                untagged={fordUntagged}
+                sessionId={session.id ?? null}
+              />
+            </motion.div>
+          )}
 
           {/* 4 · lifetime — quiet, at the bottom */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mx-5 grid grid-cols-3 gap-2">

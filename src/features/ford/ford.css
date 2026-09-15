@@ -1,0 +1,510 @@
+/* ==========================================================================
+   FORD — Family, Occupation, Recreation, Dreams
+   --------------------------------------------------------------------------
+   Tokens only, no hex values below this line. See ford.tokens.css.
+
+   Three surfaces share this file because they are three views of one idea and
+   splitting them let the letter marks drift apart last time this pattern was
+   copied:
+
+     .ford-hub      the Life section of the client profile
+     .ford-capture  the floor sheet — one box, four letters, save
+     .ford-sweep    the post-session tray where captures get filed
+
+   Touch targets are 40px minimum throughout. The capture sheet's letter marks
+   are 44px because they are hit with a thumb by someone who is not looking
+   at the screen.
+   ========================================================================== */
+
+@import "./ford.tokens.css";
+
+/* ------------------------------------------------------------------ */
+/* SHARED                                                              */
+/* ------------------------------------------------------------------ */
+
+.ford-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ford-mark);
+  height: var(--ford-mark);
+  flex: 0 0 auto;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 1rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.ford-mark--family     { background: var(--ford-family-fill);     color: var(--ford-family-ink); }
+.ford-mark--occupation { background: var(--ford-occupation-fill); color: var(--ford-occupation-ink); }
+.ford-mark--recreation { background: var(--ford-recreation-fill); color: var(--ford-recreation-ink); }
+.ford-mark--dreams     { background: var(--ford-dreams-fill);     color: var(--ford-dreams-ink); }
+.ford-mark--unfiled    { background: var(--ford-unfiled-fill);    color: var(--ford-unfiled); }
+
+/* A date, said the way a trainer would say it. */
+.ford-when {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.ford-when--now   { background: var(--ford-now-fill);   color: var(--ford-now); }
+.ford-when--soon  { background: var(--ford-soon-fill);  color: var(--ford-soon); }
+.ford-when--later { background: var(--ford-later-fill); color: var(--ford-later); }
+.ford-when--past  { background: transparent; color: var(--ford-ink-faint); }
+
+.ford-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0 0.85rem;
+  border-radius: var(--ford-radius-sm);
+  border: 1px solid var(--ford-border-strong);
+  background: var(--ford-surface);
+  color: var(--ford-ink-2);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.ford-btn:hover { background: var(--ford-surface-3); }
+.ford-btn:focus-visible {
+  outline: 2px solid var(--ford-focus-ring);
+  outline-offset: 2px;
+}
+.ford-btn--primary {
+  background: var(--ford-soon);
+  border-color: var(--ford-soon);
+  color: var(--ford-surface);
+}
+.ford-btn--primary:hover { filter: brightness(1.08); background: var(--ford-soon); }
+.ford-btn--ghost { border-color: transparent; background: transparent; }
+.ford-btn--ghost:hover { background: var(--ford-surface-3); }
+.ford-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ------------------------------------------------------------------ */
+/* THE HUB — the Life section                                          */
+/* ------------------------------------------------------------------ */
+
+.ford-hub { display: flex; flex-direction: column; gap: 0.9rem; }
+
+/* "Coming up" — the only part of this section that is a to-do list. It sits
+   above the pillars because a date that is eight days out is worth more than
+   a beautifully filed fact. */
+.ford-upnext {
+  border: 1px solid var(--ford-border);
+  border-radius: var(--ford-radius);
+  background: var(--ford-surface);
+  overflow: hidden;
+}
+.ford-upnext__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.85rem;
+  background: var(--ford-surface-2);
+  border-bottom: 1px solid var(--ford-border);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ford-ink-muted);
+}
+.ford-upnext__row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.5rem 0.85rem;
+  border: 0;
+  border-top: 1px solid var(--ford-border);
+  background: transparent;
+  color: var(--ford-ink);
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+}
+.ford-upnext__row:first-of-type { border-top: 0; }
+.ford-upnext__row:hover { background: var(--ford-surface-3); }
+.ford-upnext__body { flex: 1 1 auto; min-width: 0; }
+.ford-upnext__text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ford-upnext__meta {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ford-ink-muted);
+}
+
+/* The unfiled tray. Reads as tidying, never as an error — see the tokens. */
+.ford-tray {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--ford-border);
+  border-left: 3px solid var(--ford-unfiled);
+  border-radius: var(--ford-radius-sm);
+  background: var(--ford-unfiled-fill);
+  color: var(--ford-ink-2);
+  font-size: 0.8125rem;
+}
+.ford-tray__count { font-weight: 800; color: var(--ford-unfiled); }
+
+/* The four pillars. Two up on a landscape iPad, stacked in portrait — the
+   8-machine rule's sibling: four cards must be reachable without hunting. */
+.ford-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+@media (min-width: 768px) {
+  .ford-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.ford-pillar {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ford-border);
+  border-radius: var(--ford-radius);
+  background: var(--ford-surface);
+  overflow: hidden;
+}
+.ford-pillar__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--ford-border);
+}
+.ford-pillar__name {
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: var(--ford-ink);
+  letter-spacing: -0.01em;
+}
+.ford-pillar__blurb {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ford-ink-muted);
+  line-height: 1.3;
+}
+.ford-pillar__count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ford-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.ford-pillar__body { padding: 0.55rem 0.75rem 0.7rem; }
+
+/* Standing facts read as a paragraph that grew, not as a list of records. */
+.ford-facts { margin: 0 0 0.5rem; padding: 0; list-style: none; }
+.ford-fact {
+  display: flex;
+  gap: 0.45rem;
+  align-items: flex-start;
+  padding: 0.22rem 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--ford-ink);
+}
+.ford-fact::before {
+  content: "—";
+  color: var(--ford-ink-faint);
+  flex: 0 0 auto;
+}
+.ford-fact__text { flex: 1 1 auto; min-width: 0; }
+
+.ford-moments { margin: 0; padding: 0; list-style: none; }
+.ford-moment {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--ford-border);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--ford-ink);
+}
+.ford-moment:first-child { border-top: 0; }
+.ford-moment__body { flex: 1 1 auto; min-width: 0; }
+.ford-moment__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--ford-ink-muted);
+}
+.ford-moment__actions {
+  display: flex;
+  gap: 0.15rem;
+  flex: 0 0 auto;
+}
+.ford-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--ford-radius-sm);
+  background: transparent;
+  color: var(--ford-ink-faint);
+  cursor: pointer;
+}
+.ford-icon-btn:hover { background: var(--ford-surface-3); color: var(--ford-ink-2); }
+.ford-icon-btn:focus-visible {
+  outline: 2px solid var(--ford-focus-ring);
+  outline-offset: 1px;
+}
+.ford-icon-btn--on { color: var(--ford-soon); }
+
+/* A gesture in flight. */
+.ford-gesture {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.ford-gesture--idea     { color: var(--ford-later); }
+.ford-gesture--planned  { color: var(--ford-soon); }
+.ford-gesture--done     { color: var(--ford-recreation-ink); }
+.ford-gesture--declined { color: var(--ford-ink-faint); }
+
+.ford-empty {
+  padding: 0.5rem 0 0.2rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--ford-ink-faint);
+}
+.ford-empty__prompt {
+  display: block;
+  margin-top: 0.3rem;
+  font-style: italic;
+  color: var(--ford-ink-muted);
+}
+
+/* ------------------------------------------------------------------ */
+/* THE CAPTURE — the floor sheet                                       */
+/* ------------------------------------------------------------------ */
+
+.ford-capture { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.ford-capture__field {
+  width: 100%;
+  min-height: 92px;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--ford-border-strong);
+  border-radius: var(--ford-radius-sm);
+  background: var(--ford-surface);
+  color: var(--ford-ink);
+  font-size: 1rem;          /* 16px — anything smaller zooms iOS on focus */
+  line-height: 1.45;
+  resize: vertical;
+}
+.ford-capture__field::placeholder { color: var(--ford-ink-faint); }
+.ford-capture__field:focus-visible {
+  outline: 2px solid var(--ford-focus-ring);
+  outline-offset: 1px;
+  border-color: var(--ford-focus-ring);
+}
+
+/* The four letters. Optional on the floor — the whole point is that a trainer
+   can save without touching them and file at teardown instead. */
+.ford-letters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+.ford-letter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 60px;
+  padding: 0.4rem 0.2rem;
+  border: 1px solid var(--ford-border);
+  border-radius: var(--ford-radius-sm);
+  background: var(--ford-surface);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.ford-letter:focus-visible {
+  outline: 2px solid var(--ford-focus-ring);
+  outline-offset: 2px;
+}
+.ford-letter__glyph {
+  font-size: 1.125rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.ford-letter__label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--ford-ink-muted);
+  text-align: center;
+}
+.ford-letter--family     .ford-letter__glyph { color: var(--ford-family-ink); }
+.ford-letter--occupation .ford-letter__glyph { color: var(--ford-occupation-ink); }
+.ford-letter--recreation .ford-letter__glyph { color: var(--ford-recreation-ink); }
+.ford-letter--dreams     .ford-letter__glyph { color: var(--ford-dreams-ink); }
+
+.ford-letter--on { border-width: 2px; }
+.ford-letter--on.ford-letter--family     { background: var(--ford-family-fill);     border-color: var(--ford-family-ink); }
+.ford-letter--on.ford-letter--occupation { background: var(--ford-occupation-fill); border-color: var(--ford-occupation-ink); }
+.ford-letter--on.ford-letter--recreation { background: var(--ford-recreation-fill); border-color: var(--ford-recreation-ink); }
+.ford-letter--on.ford-letter--dreams     { background: var(--ford-dreams-fill);     border-color: var(--ford-dreams-ink); }
+.ford-letter--on .ford-letter__label { color: var(--ford-ink); }
+
+.ford-capture__hint {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--ford-ink-muted);
+}
+.ford-capture__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ford-capture__actions .ford-btn--primary { flex: 1 1 auto; }
+
+.ford-capture__recent {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ford-border);
+}
+.ford-capture__recent li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.4rem 0;
+  font-size: 0.8125rem;
+  color: var(--ford-ink-2);
+  border-bottom: 1px solid var(--ford-border);
+}
+
+/* ------------------------------------------------------------------ */
+/* THE SWEEP — post-session filing                                     */
+/* ------------------------------------------------------------------ */
+
+.ford-sweep {
+  border: 1px solid var(--ford-border);
+  border-radius: var(--ford-radius);
+  background: var(--ford-surface);
+  overflow: hidden;
+}
+.ford-sweep__head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 0.85rem;
+  background: var(--ford-surface-2);
+  border-bottom: 1px solid var(--ford-border);
+}
+.ford-sweep__title {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--ford-ink);
+}
+.ford-sweep__sub {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ford-ink-muted);
+}
+.ford-sweep__card { padding: 0.75rem 0.85rem; border-top: 1px solid var(--ford-border); }
+.ford-sweep__card:first-of-type { border-top: 0; }
+.ford-sweep__quote {
+  margin: 0 0 0.6rem;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--ford-ink);
+}
+.ford-sweep__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--ford-ink-muted);
+}
+.ford-sweep__done {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem;
+  font-size: 0.875rem;
+  color: var(--ford-ink-muted);
+}
+
+/* ------------------------------------------------------------------ */
+/* THE DELIGHT QUEUE                                                   */
+/* ------------------------------------------------------------------ */
+
+.ford-queue { display: flex; flex-direction: column; gap: 0.6rem; }
+.ford-queue__group-label {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ford-ink-muted);
+  padding: 0.35rem 0 0.15rem;
+}
+.ford-queue__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--ford-border);
+  border-radius: var(--ford-radius-sm);
+  background: var(--ford-surface);
+}
+.ford-queue__main { flex: 1 1 auto; min-width: 0; }
+.ford-queue__client {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--ford-ink);
+}
+.ford-queue__idea { font-size: 0.875rem; color: var(--ford-ink); line-height: 1.4; }
+.ford-queue__detail {
+  font-size: 0.75rem;
+  color: var(--ford-ink-muted);
+  line-height: 1.4;
+  margin-top: 0.15rem;
+}
+.ford-queue__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  flex: 0 0 auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ford-btn,
+  .ford-letter { transition: none; }
+}

@@ -18,8 +18,13 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import type { Client } from "../../types";
-import { adaptClientEvents, groupByPillar, upcomingFord } from "./ford-rollup";
-import type { FordEntry, FordPillarBucket } from "./types";
+import {
+  adaptClientEvents,
+  groupByPillar,
+  upcomingFord,
+  type FordPillarBucket,
+} from "./ford-rollup";
+import type { FordEntry } from "./types";
 
 /**
  * A client's whole personal history fits in one read. Twelve years of a

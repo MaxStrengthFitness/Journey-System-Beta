@@ -11,9 +11,24 @@
  *
  * Below the composer: every journal entry written during THIS session, live,
  * so two coaches sharing a floor see each other's notes as they are saved.
+ *
+ * TWO MODES, ONE BUTTON
+ * ---------------------
+ * The sheet has a second mode — REMEMBER THIS — for the FORD framework
+ * (Family, Occupation, Recreation, Dreams): the personal detail a client
+ * mentions between sets. It deliberately lives behind the Notes button a
+ * trainer already knows rather than a new control competing for room on the
+ * session bar, which is already the busiest strip on the screen.
+ *
+ * The two modes are not the same shape and should not be merged. A coaching
+ * note is deliberate and structured — kind, category, importance, machine. A
+ * FORD capture has exactly one required field and no decisions, because it is
+ * typed while a client is mid-sentence. Giving the personal detail its own
+ * mode is what keeps the journal composer from growing a fifth dropdown, and
+ * keeps the capture down to type-and-save.
  */
 import React, { useEffect, useMemo, useState } from "react";
-import { X, NotebookPen, Loader2 } from "lucide-react";
+import { X, NotebookPen, Loader2, Heart } from "lucide-react";
 import { motion } from "motion/react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebase";
@@ -24,6 +39,8 @@ import { toDate, type JournalDraft, type JournalEntry } from "../../types/journa
 import { createJournalEntry, type JournalAuthor } from "../../hooks/useClientJournal";
 import { JournalComposer } from "./JournalComposer";
 import { JournalEntryCard } from "./JournalEntryCard";
+import { FordQuickCapture } from "../../features/ford/FordQuickCapture";
+import { useClientFord } from "../../features/ford/useClientFord";
 
 export interface SessionJournalSidebarProps {
   session: WorkoutSession;
@@ -34,8 +51,12 @@ export interface SessionJournalSidebarProps {
   machines: Machine[];
   /** The machine being performed right now — pre-selected in the composer. */
   defaultMachineId?: string | null;
+  /** Which mode to land on. The session bar's Notes button opens on "note". */
+  defaultMode?: SidebarMode;
   onClose: () => void;
 }
+
+export type SidebarMode = "note" | "ford";
 
 export function SessionJournalSidebar({
   session,
@@ -45,10 +66,27 @@ export function SessionJournalSidebar({
   author,
   machines,
   defaultMachineId,
+  defaultMode = "note",
   onClose,
 }: SessionJournalSidebarProps) {
+  const [mode, setMode] = useState<SidebarMode>(defaultMode);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Only streamed to show what was already caught this session, so the trainer
+  // does not save the same sentence twice. Cheap: one client subcollection.
+  const { entries: fordEntries } = useClientFord({
+    clientId,
+    client: null,
+    enabled: mode === "ford",
+  });
+  const caughtThisSession = useMemo(
+    () =>
+      fordEntries
+        .filter((e) => e.sessionId && e.sessionId === session.id)
+        .map((e) => ({ id: e.id, body: e.body, pillar: e.pillar })),
+    [fordEntries, session.id],
+  );
 
   // Everything written during this session, newest first. A single-field
   // equality query, so it needs no composite index.
@@ -104,11 +142,25 @@ export function SessionJournalSidebar({
         <div className="flex shrink-0 items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
           <div className="flex flex-col">
             <h2 className="flex items-center gap-2 text-xl font-black uppercase tracking-tighter text-foreground">
-              <NotebookPen className="h-5 w-5 text-orange-500" /> Session notes
+              {mode === "note" ? (
+                <>
+                  <NotebookPen className="h-5 w-5 text-orange-500" /> Session notes
+                </>
+              ) : (
+                <>
+                  <Heart className="h-5 w-5 text-orange-500" /> Remember this
+                </>
+              )}
             </h2>
             <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-              Filed to {clientFirstName || "the client"}&apos;s journal
-              {defaultMachineName ? ` · now on ${defaultMachineName}` : ""}
+              {mode === "note" ? (
+                <>
+                  Filed to {clientFirstName || "the client"}&apos;s journal
+                  {defaultMachineName ? ` · now on ${defaultMachineName}` : ""}
+                </>
+              ) : (
+                <>Filed to {clientFirstName || "the client"}&apos;s profile</>
+              )}
             </p>
           </div>
           <Button
@@ -122,6 +174,48 @@ export function SessionJournalSidebar({
           </Button>
         </div>
 
+        {/* Two modes, one sheet. 40px targets — this is tapped mid-session. */}
+        <div
+          role="tablist"
+          aria-label="What are you writing down?"
+          className="flex shrink-0 gap-1 border-b border-slate-200 p-2 dark:border-slate-800"
+        >
+          {(
+            [
+              { id: "note" as const, label: "Coaching note" },
+              { id: "ford" as const, label: "Remember this" },
+            ]
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={mode === tab.id}
+              onClick={() => setMode(tab.id)}
+              className={`h-10 flex-1 rounded-lg text-[13px] font-bold transition-colors ${
+                mode === tab.id
+                  ? "bg-orange-500 text-white"
+                  : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {mode === "ford" ? (
+          <div className="custom-scrollbar flex-1 overflow-y-auto p-5">
+            <FordQuickCapture
+              clientId={clientId}
+              clientFirstName={clientFirstName || "them"}
+              studioId={studioId}
+              author={author}
+              sessionId={session.id ?? null}
+              origin="in_session"
+              recent={caughtThisSession}
+            />
+          </div>
+        ) : (
         <div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto p-5">
           {/* keyed so a new focused machine re-seeds the machine picker */}
           <React.Fragment key={defaultMachineId ?? "none"}>
@@ -152,6 +246,7 @@ export function SessionJournalSidebar({
             )}
           </div>
         </div>
+        )}
       </motion.div>
     </div>
   );
