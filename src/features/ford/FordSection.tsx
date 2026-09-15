@@ -151,27 +151,26 @@ export function FordSection({ client, author }: FordSectionProps) {
             <span className="ford-tray__count">{untagged.length}</span>{" "}
             {untagged.length === 1 ? "detail" : "details"} caught on the floor,
             not filed yet.
-            <ul className="mt-1.5 flex flex-col gap-1.5">
+            <ul className="ford-tray__list">
               {untagged.slice(0, 4).map((entry) => (
-                <li key={entry.id} className="flex flex-wrap items-center gap-1.5">
-                  <span className="flex-1 min-w-[10rem] text-[var(--ford-ink)]">
-                    “{entry.body}”
+                <li key={entry.id} className="ford-tray__item">
+                  <span className="ford-tray__quote">“{entry.body}”</span>
+                  <span className="ford-tray__letters">
+                    {(Object.keys(FORD_META) as FordPillar[]).map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        className={`ford-letter ford-letter--${p}`}
+                        onClick={() => void tagFordEntry(client.id, entry.id, p)}
+                        aria-label={`File under ${FORD_META[p].label}`}
+                        title={FORD_META[p].label}
+                      >
+                        <span className="ford-letter__glyph">
+                          {FORD_META[p].letter}
+                        </span>
+                      </button>
+                    ))}
                   </span>
-                  {(Object.keys(FORD_META) as FordPillar[]).map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      className={`ford-letter ford-letter--${p}`}
-                      style={{ minHeight: 34, width: 34, padding: 0 }}
-                      onClick={() => void tagFordEntry(client.id, entry.id, p)}
-                      aria-label={`File under ${FORD_META[p].label}`}
-                      title={FORD_META[p].label}
-                    >
-                      <span className="ford-letter__glyph">
-                        {FORD_META[p].letter}
-                      </span>
-                    </button>
-                  ))}
                 </li>
               ))}
             </ul>
@@ -227,7 +226,7 @@ export function FordSection({ client, author }: FordSectionProps) {
                           <li key={entry.id} className="ford-fact">
                             <button
                               type="button"
-                              className="ford-fact__text text-left"
+                              className="ford-fact__text"
                               onClick={() => setEditing(entry)}
                             >
                               {entry.body}
@@ -243,7 +242,7 @@ export function FordSection({ client, author }: FordSectionProps) {
                           <div className="ford-moment__body">
                             <button
                               type="button"
-                              className="text-left w-full"
+                              className="ford-moment__text"
                               onClick={() => setEditing(entry)}
                             >
                               {entry.body}

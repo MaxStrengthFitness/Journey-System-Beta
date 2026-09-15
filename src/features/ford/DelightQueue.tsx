@@ -147,9 +147,9 @@ export function DelightQueue({
                         <div className="ford-queue__detail">“{entry.body}”</div>
                       ) : null}
                       {opp?.status === "done" && opp.outcome ? (
-                        <div className="ford-queue__detail">
-                          <CheckCheck size={12} className="inline mr-1" />
-                          {opp.outcome}
+                        <div className="ford-queue__detail ford-queue__outcome">
+                          <CheckCheck size={12} />
+                          <span>{opp.outcome}</span>
                         </div>
                       ) : null}
                     </div>
@@ -165,18 +165,11 @@ export function DelightQueue({
                         {opp ? GESTURE_STATUS_LABEL[opp.status] : "Idea"}
                       </span>
                       {unowned ? (
-                        <span className="text-[0.6875rem] font-bold text-[var(--ford-now)]">
+                        <span className="ford-queue__owner ford-queue__owner--none">
                           Needs an owner
                         </span>
                       ) : opp?.ownerName ? (
-                        <span className="text-[0.6875rem] text-[var(--ford-ink-muted)]">
-                          {opp.ownerName}
-                        </span>
-                      ) : null}
-                      {daysAway !== null && daysAway <= 7 && opp?.status !== "done" ? (
-                        <span className="text-[0.6875rem] text-[var(--ford-ink-faint)]">
-                          {daysAway === 0 ? "today" : `${daysAway}d`}
-                        </span>
+                        <span className="ford-queue__owner">{opp.ownerName}</span>
                       ) : null}
                     </div>
                   </article>

@@ -162,6 +162,18 @@
   font-size: 0.8125rem;
 }
 .ford-tray__count { font-weight: 800; color: var(--ford-unfiled); }
+.ford-tray__list { margin: 0.35rem 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+.ford-tray__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.ford-tray__quote { flex: 1 1 10rem; min-width: 0; color: var(--ford-ink); }
+/* The four letters in the tray are a ROW, always. Their own container, so they
+   cannot be wrapped one-per-line by whatever the quote does. */
+.ford-tray__letters { display: flex; gap: 0.25rem; flex: 0 0 auto; }
+.ford-tray__letters .ford-letter { width: 36px; min-height: 36px; padding: 0; }
 
 /* The four pillars. Two up on a landscape iPad, stacked in portrait — the
    8-machine rule's sibling: four cards must be reachable without hunting. */
@@ -227,7 +239,20 @@
   color: var(--ford-ink-faint);
   flex: 0 0 auto;
 }
-.ford-fact__text { flex: 1 1 auto; min-width: 0; }
+/* These are <button>s so a detail can be opened, and a button's UA default is
+   text-align:center — which centres any detail long enough to wrap. Set here
+   rather than with a utility class so it cannot be lost to layer ordering. */
+.ford-fact__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
 
 .ford-moments { margin: 0; padding: 0; list-style: none; }
 .ford-moment {
@@ -242,6 +267,17 @@
 }
 .ford-moment:first-child { border-top: 0; }
 .ford-moment__body { flex: 1 1 auto; min-width: 0; }
+.ford-moment__text {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
 .ford-moment__meta {
   display: flex;
   flex-wrap: wrap;
@@ -496,6 +532,10 @@
   line-height: 1.4;
   margin-top: 0.15rem;
 }
+.ford-queue__outcome { display: flex; align-items: flex-start; gap: 0.3rem; }
+.ford-queue__outcome svg { flex: 0 0 auto; margin-top: 0.15rem; }
+.ford-queue__owner { font-size: 0.6875rem; color: var(--ford-ink-muted); }
+.ford-queue__owner--none { font-weight: 800; color: var(--ford-now); }
 .ford-queue__side {
   display: flex;
   flex-direction: column;

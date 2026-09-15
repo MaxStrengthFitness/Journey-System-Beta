@@ -16,6 +16,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 | Types | `src/types.ts`, plus `src/types/journal.ts` and `src/types/machines.ts` |
 | Web server | `server.ts` (Express on Render): serves the build and `/api/*` — the Mindbody proxy and the Gemini endpoints. Every `/api/mindbody/*` route needs a staff sign-in (`server/auth.ts`); Mindbody calls go through `server/mindbody-client.ts` |
 | Scheduled jobs | `server/cron-*.ts` (Render cron jobs, bundled by esbuild — they can import pure modules from `src/`). The nightly renewals job is `server/renewals-job.ts`, run by `server/cron-renewals.ts` |
+| FORD (Family, Occupation, Recreation, Dreams) | `src/features/ford/` — the Life section of the client profile, mid-session capture, the post-session sweep and the studio Delight queue. Read its `README.md` first |
 | Renewals and InBody | `src/features/renewals/` (engine, pipeline, outcomes — read its `README.md`), `src/features/admin/renewals/` (Operations → Renewals), `src/features/inbody/` |
 | Learning, Planner, machines, comments | `src/features/learning/` (the Learning tab: Overview, one search, links to any page), `src/features/planner/` (the Planner — was To-Do — and its private Notes in `notes/`), `src/features/machine-db/` (All MSF machines: sharing and adopting), `src/features/comments/` (comments with @tags). `docs/rounds/LEARNING-PLANNER-ROUND.md` is the round |
 | Cloud Functions | `functions/src/` — `mindbodyWebhook`, trainer rollups, staff photos, nightly facility analytics |
@@ -38,8 +39,8 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 | --- | --- | --- |
 | Install | `npm ci` | `npm install` fails with an `edgesOut` error |
 | Run locally | `npm run dev` | Port 3000 |
-| Typecheck | `npx tsc --noEmit` | Compare the error **count** to master's baseline (20 after the Sep 10 go-live); don't expect zero |
-| Tests | `npx vitest run src` | 2,027 passing after the fix round (Sep 13); 2,015 after the tracker round; 1,813 after the floor round |
+| Typecheck | `npx tsc --noEmit` | Compare the error **count** to master's baseline (18 after the FORD round removed two dead panes; 20 before that); don't expect zero |
+| Tests | `npx vitest run src` | 2,046 passing after the FORD round (Sep 15); 2,027 after the fix round; 2,015 after the tracker round; 1,813 after the floor round |
 | Build | `npx vite build` | |
 | Rules tests | `npm run test:rules` | Needs JDK 21. "Port taken" means an old emulator still holds 8080 — stop it first |
 
@@ -75,7 +76,12 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 
 `ROLE_LABELS` in `src/types.ts` is the vocabulary: **Life Transformer** (a trainer), **Studio Leader** (`StudioLeader`, `HeadTrainer`), **Franchise Owner** (`Owner`, `StudioOwner`, `FranchiseOwner`), **Founder / Overseer**, **System Administrator**. The Operations (admin) dashboard is reachable by studio leaders and above. Details: `docs/business/roles-and-permissions.md`.
 
-## Known traps (as of Sep 13 2026, after the fix round)
+## Known traps (as of Sep 15 2026, after the FORD round)
+
+- **The client profile is SIX tabs and the Profile tab is the whole non-training record.** Details and Journal merged (Sep 15): one spine, sections `general · life · medical · goals · focus · notes · reports · admin`, defined once in `DOSSIER_SECTIONS` (`src/types/journal.ts`). `lifestyle` and `events` no longer exist. `ClientJournalTab` is mounted three times inside it with an `areas` list; given `areas` it draws no jump nav and no critical rail, because the spine owns navigation. It also takes a preloaded `journal` — the dossier loads `useClientJournal` ONCE and shares it, so don't add a second hook in a journal area.
+- **Personal detail goes in FORD, not the journal.** `clients/{id}/ford/{id}`, studio-scoped by the client it hangs off; `journalEntries` is readable by any signed-in user, which is why it is not there. `pillar` is NULLABLE by design and the rules do not validate it — null means "caught mid-set, filed at teardown", and making it required puts a decision between a trainer hearing something and recording it. "Personal" was removed from the journal composer; old `life` entries still render. `client.events` is READ as FORD through an adapter and never written. Read `src/features/ford/README.md` before touching any of it.
+- **Colour by urgency, never by pillar** on FORD screens, and `clients/{id}.fordSummary` is a cache — the subcollection is the truth.
+- **A `<button>` centres its own text.** Several FORD details render inside buttons so they can be opened, and a Tailwind `text-left` on them did not survive layer ordering in every build. Text alignment on a button belongs in the feature's CSS file, not in a utility class (FORD round, Sep 15).
 
 - **Set data has four outcomes; only `performed` counts.** Read an outcome through `outcomeOf()` / `isPerformedLog()` in `src/lib/set-outcome.ts`, never off the `outcome` field (older logs don't have it — a count means performed, no count means skipped). Every average, rollup, "last time" and progression figure filters to performed sets; a new reader of `exerciseLogs` does the same. Session start seeds a weight-only log for every planned machine, so a weight alone is not "the trainer worked on this" — `isBegunLog()` is. **Never block a save**: End Session confirms, it does not refuse (docs/ARCHITECTURE.md §1.6, `docs/rounds/2026-09-12-floor-round.md`).
 
