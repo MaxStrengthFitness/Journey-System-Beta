@@ -49,6 +49,23 @@ function entry(patch: Partial<FordEntry> = {}): FordEntry {
   };
 }
 
+/**
+ * A calendar day, as a local Date — the way the app's own `toDate()` reads a
+ * date-only value.
+ *
+ * `day("2026-09-20")` is NOT that. A date-ONLY ISO string is parsed as
+ * UTC midnight, while a date-TIME with no zone ("2026-09-15T10:00:00") is
+ * parsed as local. Mixing the two in one assertion is a test that passes in
+ * UTC and fails everywhere west of it: at America/New_York, UTC midnight on
+ * the 20th is 8pm on the 19th, so "five days away" measured against a local
+ * NOW comes out as four. It failed on a studio PC and passed in CI, which is
+ * the worst shape a date bug can have.
+ *
+ * Local noon is the same guard `toDate()` uses for real date-only data
+ * (`src/types/journal.ts`), so this helper is what production actually sees.
+ */
+const day = (iso: string) => new Date(`${iso}T12:00:00`);
+
 const NOW = new Date("2026-09-15T10:00:00");
 
 describe("dates", () => {
@@ -86,10 +103,10 @@ describe("dates", () => {
   });
 
   it("grades urgency by how much time a gesture still has", () => {
-    expect(urgencyOf(new Date("2026-09-18"), "none", NOW)).toBe("now");
-    expect(urgencyOf(new Date("2026-10-05"), "none", NOW)).toBe("soon");
-    expect(urgencyOf(new Date("2026-12-25"), "none", NOW)).toBe("later");
-    expect(urgencyOf(new Date("2026-08-01"), "none", NOW)).toBe("past");
+    expect(urgencyOf(day("2026-09-18"), "none", NOW)).toBe("now");
+    expect(urgencyOf(day("2026-10-05"), "none", NOW)).toBe("soon");
+    expect(urgencyOf(day("2026-12-25"), "none", NOW)).toBe("later");
+    expect(urgencyOf(day("2026-08-01"), "none", NOW)).toBe("past");
     expect(urgencyOf(null, "none", NOW)).toBe("none");
   });
 });
@@ -115,7 +132,7 @@ describe("summariseFord", () => {
       entry({ pillar: null, isArchived: true }),
       entry({
         pillar: "family",
-        eventDate: new Date("2026-09-20"),
+        eventDate: day("2026-09-20"),
         isArchived: true,
       }),
     ]);
@@ -162,9 +179,9 @@ describe("upcomingFord", () => {
   it("returns dated details soonest first and drops past one-offs", () => {
     const rows = upcomingFord(
       [
-        entry({ id: "far", eventDate: new Date("2026-12-25") }),
-        entry({ id: "soon", eventDate: new Date("2026-09-20") }),
-        entry({ id: "gone", eventDate: new Date("2026-04-01") }),
+        entry({ id: "far", eventDate: day("2026-12-25") }),
+        entry({ id: "soon", eventDate: day("2026-09-20") }),
+        entry({ id: "gone", eventDate: day("2026-04-01") }),
         entry({ id: "undated" }),
       ],
       { now: NOW },
@@ -175,7 +192,7 @@ describe("upcomingFord", () => {
 
   it("keeps an annual date that has already passed this year, rolled forward", () => {
     const rows = upcomingFord(
-      [entry({ id: "bday", eventDate: new Date("1954-03-02"), recurrence: "annual" })],
+      [entry({ id: "bday", eventDate: day("1954-03-02"), recurrence: "annual" })],
       { now: NOW },
     );
     expect(rows).toHaveLength(1);
@@ -185,8 +202,8 @@ describe("upcomingFord", () => {
   it("honours a window", () => {
     const rows = upcomingFord(
       [
-        entry({ id: "in", eventDate: new Date("2026-09-25") }),
-        entry({ id: "out", eventDate: new Date("2026-11-25") }),
+        entry({ id: "in", eventDate: day("2026-09-25") }),
+        entry({ id: "out", eventDate: day("2026-11-25") }),
       ],
       { now: NOW, within: 30 },
     );
@@ -197,10 +214,10 @@ describe("upcomingFord", () => {
 describe("groupByPillar", () => {
   it("reads standing facts oldest-first and moments newest-first", () => {
     const { buckets } = groupByPillar([
-      entry({ id: "fact-old", isPinned: true, occurredAt: new Date("2024-01-01") }),
-      entry({ id: "fact-new", isPinned: true, occurredAt: new Date("2026-01-01") }),
-      entry({ id: "moment-old", occurredAt: new Date("2026-02-01") }),
-      entry({ id: "moment-new", occurredAt: new Date("2026-09-01") }),
+      entry({ id: "fact-old", isPinned: true, occurredAt: day("2024-01-01") }),
+      entry({ id: "fact-new", isPinned: true, occurredAt: day("2026-01-01") }),
+      entry({ id: "moment-old", occurredAt: day("2026-02-01") }),
+      entry({ id: "moment-new", occurredAt: day("2026-09-01") }),
     ]);
     const family = buckets.find((b) => b.pillar === "family")!;
     expect(family.pinned.map((e) => e.id)).toEqual(["fact-old", "fact-new"]);
