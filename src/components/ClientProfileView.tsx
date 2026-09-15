@@ -11,14 +11,13 @@ import {
   getDocs,
   addDoc,
   updateDoc,
-  setDoc,
   doc,
   serverTimestamp,
   Timestamp,
   deleteDoc,
   startAfter,
 } from "firebase/firestore";
-import { db, auth } from "../firebase";
+import { db } from "../firebase";
 import { studioHour, formatStudioTime, studioTodayKey } from "../lib/studio-time";
 import {
   User,
@@ -69,7 +68,7 @@ import {
   Tooltip as RechartsTooltip,
   Legend,
 } from "recharts";
-import { MachineSettingsDashboardModal } from "./MachineSettingsDashboardModal";
+import { ClientMachineWindow } from "../features/equipment";
 import {
   Card,
   CardContent,
@@ -555,42 +554,10 @@ export function ClientProfileView({
   const [isSavingEvent, setIsSavingEvent] = useState(false);
   const [isSavingInfo, setIsSavingInfo] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [editingSettings, setEditingSettings] = useState<{
-    machineId: string;
-    settings: Record<string, string>;
-  } | null>(null);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  /** The machine open in the one machine window (Journey grid, Routine A / B rows). */
+  const [machineWindowId, setMachineWindowId] = useState<string | null>(null);
   const [matrixRoutineFilter, setMatrixRoutineFilter] = useState<string>("all");
   const SESSIONS_PER_PAGE = 3;
-
-  const handleUpdateMachineSettings = async () => {
-    if (!editingSettings || !clientId) return;
-    setIsSavingSettings(true);
-    try {
-      const settingId = `${clientId}_${editingSettings.machineId}`;
-      await setDoc(
-        doc(db, "clientMachineSettings", settingId),
-        {
-          clientId,
-          machineId: editingSettings.machineId,
-          settings: editingSettings.settings,
-          updatedBy: auth.currentUser?.email || "Unknown",
-          updatedAt: serverTimestamp(),
-          studioId: clients.find((c) => c.id === clientId)?.homeStudioId || "",
-        },
-        { merge: true },
-      );
-      setEditingSettings(null);
-    } catch (error) {
-      handleFirestoreError(
-        error,
-        OperationType.UPDATE,
-        `clientMachineSettings/${editingSettings.machineId}`,
-      );
-    } finally {
-      setIsSavingSettings(false);
-    }
-  };
 
   const formatToMMDDYYYY = (dateVal: any) => {
     if (!dateVal) return "";
@@ -1272,15 +1239,20 @@ export function ClientProfileView({
     activeStudioId,
   ]);
 
-  /** Tapping a machine name in the grid opens its settings editor, as the old row did. */
-  const openJourneyMachineSettings = useCallback(
-    (machineId: string | null) => {
-      if (!machineId) return;
-      const currentSettings = clientSettings[machineId]?.settings || {};
-      setEditingSettings({ machineId, settings: { ...currentSettings } });
-    },
-    [clientSettings],
-  );
+  /**
+   * Tapping a machine — its name on the Journey grid, or its row in Routine
+   * A / B — opens the one machine window: the same detail Programming → All
+   * Machines shows, writing through features/equipment/mutations.ts.
+   */
+  const openMachineWindow = useCallback((machineId: string) => {
+    setMachineWindowId(machineId);
+  }, []);
+  const closeMachineWindow = useCallback(() => setMachineWindowId(null), []);
+
+  // A different client is a different prescription: never carry a window over.
+  useEffect(() => {
+    setMachineWindowId(null);
+  }, [clientId]);
 
   useEffect(() => {
     if (!clientId) return;
@@ -1763,7 +1735,7 @@ export function ClientProfileView({
             layout="page"
             routineAMachineIds={routineAMachineIds}
             routineBMachineIds={routineBMachineIds}
-            onSelectMachine={openJourneyMachineSettings}
+            onOpenMachine={openMachineWindow}
           />
         </TabsContent>
 
@@ -1797,7 +1769,7 @@ export function ClientProfileView({
             onEdit={(name) => setEditRoutineTarget(name)}
             onUseToday={handleUseToday}
             onToggleB={handlePromptToggleB}
-            onSelectMachine={openJourneyMachineSettings}
+            onSelectMachine={openMachineWindow}
             disabled={!!hasQuotaError}
           />
 
@@ -2094,15 +2066,17 @@ export function ClientProfileView({
         </DialogContent>
       </Dialog>
 
-      <MachineSettingsDashboardModal
-        editingSettings={editingSettings}
-        setEditingSettings={setEditingSettings}
+      <ClientMachineWindow
+        open={!!machineWindowId}
+        onClose={closeMachineWindow}
+        clientId={clientId || ""}
+        client={client}
+        machineId={machineWindowId}
         machines={machines}
-        exerciseLogs={allLogs}
+        clientSettings={clientSettings}
+        allLogs={allLogs}
         sessions={sessions}
-        isSaving={isSavingSettings}
-        onSave={handleUpdateMachineSettings}
-        studios={studios}
+        authTrainer={authTrainer}
         activeStudioId={activeStudioId}
       />
 

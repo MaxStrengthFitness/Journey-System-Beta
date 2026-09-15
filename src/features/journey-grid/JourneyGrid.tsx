@@ -70,6 +70,13 @@ export interface JourneyGridProps {
   /** Controlled row trace (tap a machine name). Uncontrolled if omitted. */
   selectedMachineId?: string | null;
   onSelectMachine?: (machineId: string | null) => void;
+  /**
+   * Called with the machine on EVERY tap of its name (the profile opens its
+   * machine window here). `onSelectMachine` toggles, so it reports null on a
+   * second tap — which is why the profile could not reopen a machine it had
+   * just closed. The row trace still toggles alongside.
+   */
+  onOpenMachine?: (machineId: string) => void;
   /** When set, every machine cell gets a note button at its right edge. */
   onMachineNote?: (machineId: string) => void;
   /** Present only inside an Active Session — adds the sticky-right Today column. */
@@ -143,6 +150,8 @@ interface RowProps {
   spotlightSessionId: string | null;
   isSelected: boolean;
   onSelect: (machineId: string) => void;
+  /** The name opens the machine (the profile) rather than only tracing the row. */
+  opensMachine: boolean;
   onJump: (sessionId: string) => void;
   onNote?: (machineId: string) => void;
   hasOlderColumn: boolean;
@@ -173,6 +182,7 @@ function RowImpl({
   spotlightSessionId,
   isSelected,
   onSelect,
+  opensMachine,
   onJump,
   onNote,
   hasOlderColumn,
@@ -239,7 +249,9 @@ function RowImpl({
           type="button"
           className="jg-machine__btn"
           aria-pressed={isSelected}
-          aria-label={`${machine.name}.${spokenSettings} ${journeySummary(row, history)}. Tap to trace this row.`}
+          aria-label={`${machine.name}.${spokenSettings} ${journeySummary(row, history)}. ${
+            opensMachine ? "Tap to open this machine." : "Tap to trace this row."
+          }`}
           onClick={() => onSelect(machine.id)}
         >
           <span className="jg-machine__name">
@@ -507,6 +519,7 @@ export function JourneyGrid({
   onSpotlight,
   selectedMachineId,
   onSelectMachine,
+  onOpenMachine,
   onMachineNote,
   live,
   onLoadOlder,
@@ -551,8 +564,9 @@ export function JourneyGrid({
       const next = selected === id ? null : id;
       setInnerSel(next);
       onSelectMachine?.(next);
+      onOpenMachine?.(id);
     },
-    [selected, onSelectMachine],
+    [selected, onSelectMachine, onOpenMachine],
   );
 
   /* --- analytics: all five metrics per row, one pass, memoised ------- */
@@ -995,6 +1009,7 @@ export function JourneyGrid({
               spot={spot}
               selected={selected}
               onSelect={toggleSelect}
+              opensMachine={!!onOpenMachine}
               onJump={jumpTo}
               onNote={onMachineNote}
               hasOlderColumn={hasOlderColumn}
@@ -1021,6 +1036,7 @@ interface SectionBlockProps {
   spot: string | null;
   selected: string | null;
   onSelect: (id: string) => void;
+  opensMachine: boolean;
   onJump: (sessionId: string) => void;
   onNote?: (machineId: string) => void;
   hasOlderColumn: boolean;
@@ -1041,6 +1057,7 @@ const SectionBlock = memo(function SectionBlock({
   spot,
   selected,
   onSelect,
+  opensMachine,
   onJump,
   onNote,
   hasOlderColumn,
@@ -1078,6 +1095,7 @@ const SectionBlock = memo(function SectionBlock({
             spotlightSessionId={spot}
             isSelected={selected === row.machine.id}
             onSelect={onSelect}
+            opensMachine={opensMachine}
             onJump={onJump}
             onNote={onNote}
             hasOlderColumn={hasOlderColumn}

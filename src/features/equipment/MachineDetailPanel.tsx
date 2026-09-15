@@ -3,6 +3,8 @@ import { NoteIndicator } from "./NoteIndicator";
 import { ChangeHistory } from "./ChangeHistory";
 import { MachineNotes } from "./MachineNotes";
 import { MachineUsageCard } from "./MachineUsageCard";
+import { LoadProgressionCard } from "./LoadProgressionCard";
+import type { LoadPoint } from "./progression";
 import { PrescriptionCard } from "./PrescriptionCard";
 import { SettingsCard } from "./SettingsCard";
 import { SetupGuide } from "./SetupGuide";
@@ -36,6 +38,11 @@ export interface MachineDetailPanelProps {
   studioMachineSettings?: Record<string, Record<string, string>>;
   journal?: JournalContext;
   onNoteSaved?: (message: string) => void;
+  /**
+   * This machine's load per session (progression.ts), from the sessions the
+   * caller has loaded. The Load progression card shows only when given.
+   */
+  progression?: LoadPoint[];
 }
 
 export function MachineDetailPanel({
@@ -51,6 +58,7 @@ export function MachineDetailPanel({
   studioMachineSettings,
   journal,
   onNoteSaved,
+  progression,
 }: MachineDetailPanelProps) {
   if (!machine) {
     return (
@@ -107,6 +115,8 @@ export function MachineDetailPanel({
       />
 
       <MachineUsageCard machine={machine} />
+
+      {progression && <LoadProgressionCard points={progression} />}
 
       <SettingsCard
         machine={machine}

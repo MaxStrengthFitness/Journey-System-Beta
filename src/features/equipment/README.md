@@ -192,6 +192,9 @@ SetupPromptDialog                                  used by WorkoutTrackerView
 | `SetupPromptDialog.tsx` | In-session prompt (phase 6) |
 | `MachineUsageCard.tsx` | First / times / last performed + progression (§3.7) |
 | `useMachineStats.ts` | Reads `client.machineStats`; one-time history backfill |
+| `ClientMachineWindow.tsx` | The profile's one machine window (§3.8) |
+| `LoadProgressionCard.tsx` · `progression.ts` | Load per session, performed sets only (§3.8) |
+| `author.ts` | Who a write is attributed to (the Auth uid) |
 
 ### 3.2 The `EquipmentMachine` adapter — why it exists
 
@@ -309,3 +312,30 @@ weight is sometimes typed in months later from memory, whereas the first set
 is a fact that happened on the floor. Positive is green, negative plum, flat
 stays muted — a `0%` after ten sessions is a plateau worth seeing, so it is
 not hidden.
+
+### 3.8 One machine window (profile round, Sep 2026)
+
+Tapping a machine on the profile — its name on the Journey grid, or its row
+in Routine A / B — used to open `components/MachineSettingsDashboardModal`, a
+second, different machine screen that saved settings with a bare `setDoc`:
+no reason, no `settingHistory`, no journal entry. It now opens
+`ClientMachineWindow`: the MachineSheet frame (centred, 88dvh, fixed header,
+40px close, body scrolls) around **this** tab's `MachineDetailPanel`, built
+for the one machine with `toEquipmentMachines`. Same cards, same writes
+(`mutations.ts`, journalled with origin `"profile"`). The modal file stays
+only because the full-screen `WorkoutChartGrid` still uses it.
+
+- **Cost.** Nothing until the first open; from then the body stays mounted, so
+  the catalog listener is opened once per profile, not once per tap. Usage
+  figures read the lifetime rollup when it exists and pass
+  `useMachineStats(client, { enabled: false })` — the window never starts the
+  one-time backfill; this tab does.
+- **Load progression.** The old modal opened on a load trend, so the detail
+  pane gained a card for it (and therefore All Machines has it too).
+  `progression.ts`: performed sets only, ONE point per session at its
+  heaviest performed load (the modal plotted every set, so a unilateral
+  machine drew each visit twice), days from the session through `toIsoDay`.
+  Under two points the card says "Not enough sessions yet" and draws no line.
+  It covers only the sessions the profile has loaded, and its sentence says so.
+- In the window the pane's own title and "‹ Machines" back button are hidden
+  — the window's header names the machine and closes it.

@@ -62,8 +62,12 @@ export interface RecentJourneyViewProps {
   /** Machine ids prescribed in Routine A / B — drives the two routine filters. */
   routineAMachineIds?: string[];
   routineBMachineIds?: string[];
-  /** Tap on a machine name (the row also traces). The app opens the settings editor here. */
-  onSelectMachine?: (machineId: string | null) => void;
+  /**
+   * Tap on a machine name — every tap, including the second one on the same
+   * row (the row trace toggles alongside). The profile opens its machine
+   * window here.
+   */
+  onOpenMachine?: (machineId: string) => void;
 }
 
 /**
@@ -96,7 +100,7 @@ export function RecentJourneyView({
   initialMetric = "high",
   routineAMachineIds,
   routineBMachineIds,
-  onSelectMachine,
+  onOpenMachine,
 }: RecentJourneyViewProps) {
   /* Every machine, by default (audit, Sep 13): "the Journey tab should really
      display all the machines" — a trainer evaluating a client reads what was
@@ -213,7 +217,7 @@ export function RecentJourneyView({
         sections={sections}
         metric={metric}
         onMetricChange={setMetric}
-        onSelectMachine={onSelectMachine}
+        onOpenMachine={onOpenMachine}
         /* The owner's call (Sep 2026): no LATEST frame on the profile. The
            newest column was a blue stripe of dashes whenever its session
            logged nothing, and the Active Session is where "baseline →

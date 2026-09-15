@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { auth } from "../../firebase";
 import { useMachineCatalog } from "../../hooks/useMachineCatalog";
 import { useToast } from "../../contexts/ToastContext";
 import { useActiveStudio } from "../../ActiveStudioContext";
@@ -9,9 +8,10 @@ import { useMachineStats } from "./useMachineStats";
 import { EquipmentSummaryBar } from "./EquipmentSummaryBar";
 import { MachineRail } from "./MachineRail";
 import { MachineDetailPanel } from "./MachineDetailPanel";
+import { authorFromTrainer } from "./author";
+import { loadProgression } from "./progression";
 import type {
   JournalContext,
-  MutationAuthor,
   SaveSettingsResult,
   SaveWeightsResult,
 } from "./mutations";
@@ -77,15 +77,8 @@ export function EquipmentTab({
   const { activeStudio } = useActiveStudio();
   const { success: toastSuccess, error: toastError } = useToast();
 
-  const author: MutationAuthor | null = authTrainer
-    ? {
-        // The Auth uid: the journalEntries rule pins authorId to it, and it
-        // differs from authTrainer.id on older accounts.
-        id: auth.currentUser?.uid || authTrainer.id || "unknown",
-        fullName: authTrainer.fullName || authTrainer.initials || "Unknown",
-        initials: authTrainer.initials,
-      }
-    : null;
+  // The Auth uid, not authTrainer.id — see author.ts.
+  const author = authorFromTrainer(authTrainer);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -157,6 +150,12 @@ export function EquipmentTab({
     [equipment, selectedId],
   );
 
+  // The selected machine only: one pass over the loaded sets per selection.
+  const progression = useMemo(
+    () => loadProgression(selected?.id, allLogs, sessions),
+    [selected?.id, allLogs, sessions],
+  );
+
   const handleSettingsSaved = (result: SaveSettingsResult) => {
     toastSuccess(`Settings saved — ${result.summary}`);
   };
@@ -200,6 +199,7 @@ export function EquipmentTab({
             studioMachineSettings={activeStudio?.machineSettings}
             journal={journal}
             onNoteSaved={toastSuccess}
+            progression={progression}
           />
         )}
       </div>

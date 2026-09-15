@@ -15,3 +15,7 @@ export { MachineSheet, type MachineSheetProps } from "./MachineSheet";
 export * from "./mutations";
 export { useMachineStats, type MachineStatsState } from "./useMachineStats";
 export { MachineUsageCard } from "./MachineUsageCard";
+export { LoadProgressionCard } from "./LoadProgressionCard";
+export { ClientMachineWindow, type ClientMachineWindowProps } from "./ClientMachineWindow";
+export { loadProgression, progressionSentence, MIN_PROGRESSION_POINTS, type LoadPoint } from "./progression";
+export { authorFromTrainer } from "./author";

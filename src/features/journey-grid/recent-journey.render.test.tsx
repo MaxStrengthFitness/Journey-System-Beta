@@ -10,6 +10,7 @@
  *     LATEST column and no "Latest session" key;
  *   - scrolling to the left edge (after a touch) reveals the next page, and
  *     the rail then says where the history stops;
+ *   - a machine's name opens it on every tap, not only on odd ones;
  *   - the Active Session's grid keeps its own rail, untouched.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -159,6 +160,29 @@ describe("RecentJourneyView (the profile's Journey tab)", () => {
     await act(async () => root.unmount());
   });
 
+  it("opens the machine on every tap — including the second tap on the same row", async () => {
+    // The bug: the grid toggled its selection and reported null on the
+    // second tap, so a machine the trainer had just closed would not reopen.
+    const sessions = sessionsOf(5);
+    const opened: string[] = [];
+    const { host, root } = await mount(
+      <RecentJourneyView
+        sessions={sessions}
+        rows={rowsFor(sessions)}
+        layout="page"
+        resetKey="judy"
+        onOpenMachine={(id) => opened.push(id)}
+      />,
+    );
+    const name = host.querySelector<HTMLButtonElement>(".jg-machine__btn")!;
+    expect(name.getAttribute("aria-label")).toContain("Tap to open this machine.");
+    await act(async () => name.click());
+    await act(async () => name.click());
+    await act(async () => name.click());
+    expect(opened).toEqual(["leg-press", "leg-press", "leg-press"]);
+    await act(async () => root.unmount());
+  });
+
   it("the rail itself is a tap target while there is more", async () => {
     const sessions = sessionsOf(30);
     const { host, root } = await mount(
@@ -200,6 +224,8 @@ describe("the Active Session's grid is unchanged", () => {
     expect(host.querySelector(".jg-older__label")).toBeNull();
     expect(host.querySelector(".jg-head--older")?.textContent).toContain("Older");
     expect(host.querySelectorAll(".jg-cell--older__mark").length).toBeGreaterThan(0);
+    // The name still traces the row, and says so.
+    expect(host.querySelector(".jg-machine__btn")?.getAttribute("aria-label")).toContain("Tap to trace this row.");
     await act(async () => root.unmount());
   });
 });
