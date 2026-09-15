@@ -11,6 +11,7 @@
 import React, { useState } from "react";
 import {
   AlertTriangle,
+  Bandage,
   Brain,
   CalendarClock,
   Check,
@@ -23,6 +24,7 @@ import {
   PersonStanding,
   Route,
   Target,
+  ThumbsUp,
   Timer,
   Undo2,
   Archive,
@@ -36,6 +38,7 @@ import {
   type JournalEntry,
 } from "../../types/journal";
 import type { Machine } from "../../types";
+import { noteCardLabel } from "../../features/notes/note-catalog";
 
 const ICONS: Record<string, React.ElementType> = {
   PersonStanding,
@@ -48,6 +51,8 @@ const ICONS: Record<string, React.ElementType> = {
   ClipboardList,
   MessageSquare,
   Target,
+  Bandage,
+  ThumbsUp,
 };
 
 const ORIGIN_LABELS: Record<string, string> = {
@@ -141,9 +146,9 @@ export function JournalEntryCard({
             )}
           >
             <Icon className="h-3 w-3 shrink-0" />
-            {entry.kind === "coaching" && entry.category
-              ? entry.category
-              : visual.label}
+            {/* The catalog's label (Sep 2026), so a card says the same
+                category as the shelf it sits on. */}
+            {noteCardLabel(entry)}
           </span>
 
           {entry.kind === "life" && entry.category && (
@@ -203,7 +208,7 @@ export function JournalEntryCard({
                 aria-label="Entry actions"
                 onClick={() => setMenuOpen((v) => !v)}
                 onBlur={() => window.setTimeout(() => setMenuOpen(false), 120)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
               >
                 {isReadOnly ? (
                   <Lock className="h-3.5 w-3.5" />
@@ -213,7 +218,7 @@ export function JournalEntryCard({
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 top-9 z-20 w-48 overflow-hidden rounded-xl border border-border bg-white p-1 shadow-xl dark:bg-slate-800">
+                <div className="absolute right-0 top-11 z-20 w-48 overflow-hidden rounded-xl border border-border bg-white p-1 shadow-xl dark:bg-slate-800">
                   {isReadOnly ? (
                     <p className="px-3 py-2 text-[11px] leading-snug text-muted-foreground">
                       Read-only — {entry.legacySource || "imported record"}.
@@ -225,7 +230,7 @@ export function JournalEntryCard({
                         <button
                           type="button"
                           onClick={() => onResolve(entry, !isResolved)}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
+                          className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
                         >
                           {isResolved ? (
                             <>
@@ -242,7 +247,7 @@ export function JournalEntryCard({
                         <button
                           type="button"
                           onClick={() => onArchive(entry)}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-500/10 dark:text-rose-300"
+                          className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-500/10 dark:text-rose-300"
                         >
                           <Archive className="h-3.5 w-3.5" /> Archive
                         </button>

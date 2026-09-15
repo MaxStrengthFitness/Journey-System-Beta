@@ -66,8 +66,8 @@ import {
   type JournalDraft,
   type JournalEntry,
   type JournalImportance,
-  type LifeCategory,
 } from "../types/journal";
+import { adaptClientEvents as adaptFordEvents } from "../features/ford/ford-rollup";
 
 const STREAM_LIMIT = 300;
 const LEGACY_NOTE_LIMIT = 200;
@@ -558,33 +558,37 @@ function adaptIncidents(
     });
 }
 
-const EVENT_TO_LIFE: Record<string, LifeCategory> = {
-  "Birthday/Anniversary": "Birthday",
-  Vacation: "Vacation",
-  Snowbird: "Vacation",
-  Medical: "Surgery",
-  "Progress Report": "Milestone",
-  "InBody Scan": "Milestone",
-  "Routine Change": "Milestone",
-  Alert: "Other",
-  Other: "Other",
-};
-
-/** client.events[] → life entries, so birthdays sit in the same stream. */
-function adaptClientEvents(client: Client | null): JournalEntry[] {
+/**
+ * client.events[] -> journal entries, EXCEPT the ones FORD shows.
+ *
+ * Notes catalog round, Sep 2026: FORD reads the same array as personal
+ * details in the Life section (features/ford/ford-rollup.ts), so adapting
+ * every event here as well put each birthday and vacation on the record
+ * twice. FORD decides which events are personal — its own adapter is asked,
+ * so the two can never disagree — and those are left to it.
+ *
+ * What FORD deliberately drops is NOT dropped here: a Medical event is a load
+ * constraint (read as `injury`), and Alerts, scan and routine reminders are
+ * profile imports (Admin). A High-priority one is still critical, so it still
+ * reaches the critical strip and the snapshot bar. Nothing is migrated or
+ * deleted; the array is untouched.
+ */
+export function adaptEventsToJournal(client: Client | null): JournalEntry[] {
   if (!client?.events?.length) return [];
+  // Asked one event at a time, so an event with no id is still judged on
+  // its own rather than by a shared synthetic id.
+  const fordShows = (e: ClientEvent) => adaptFordEvents({ ...client, events: [e] }).length > 0;
   return (client.events as ClientEvent[])
     .filter((e) => e && e.date)
+    .filter((e) => !fordShows(e))
     .map((e) => {
       const when = toDate(e.date) || new Date();
-      const isAlert = e.type === "Alert" || e.type === "Medical";
-      const body = e.notes ? `${e.title}\n${e.notes}` : e.title;
+      const body = (e.notes ? `${e.title}\n${e.notes}` : e.title || "").trim();
       return legacyEntry({
         id: `legacy:clientEvents:${e.id || e.date + e.title}`,
         clientId: client.id || "",
         studioId: client.homeStudioId || "",
-        kind: isAlert ? "life" : "life",
-        category: EVENT_TO_LIFE[e.type] || "Other",
+        kind: e.type === "Medical" ? "injury" : "general",
         body,
         importance:
           e.priority === "High"
@@ -602,7 +606,8 @@ function adaptClientEvents(client: Client | null): JournalEntry[] {
         authorName: "Client events",
         legacySource: `Event · ${e.type}`,
       });
-    });
+    })
+    .filter((e) => e.body.length > 0);
 }
 
 /**
@@ -610,14 +615,18 @@ function adaptClientEvents(client: Client | null): JournalEntry[] {
  *
  * Dated to the client's record rather than to "now", because that is when they
  * are true of: intake notes belong at the start of the client's history, not
- * at the top of today's stream. So that they stay reachable rather than
- * sinking to the bottom of a long timeline, the Journal also pins
- * consultation-kind entries to a reference shelf in the sidebar.
+ * at the top of today's stream. The notes catalog files the imports under
+ * Admin, where they are one tap away however long the history grows.
+ *
+ * The medical-history and clinical-notes fields are read as `injury` (they
+ * were `life`, which filed a surgery under the client's personal life): the
+ * catalog shelves them under Injury and `sectionForEntry` puts them in the
+ * medical section.
  *
  * All flagged legacy, so nobody tries to edit them here — Mindbody is the
  * system of record for its own notes, and the rest are edited on the profile.
  */
-function adaptProfileFields(client: Client | null): JournalEntry[] {
+export function adaptProfileFields(client: Client | null): JournalEntry[] {
   if (!client) return [];
   const out: JournalEntry[] = [];
   const stamp = client.createdAt || Timestamp.now();
@@ -671,8 +680,8 @@ function adaptProfileFields(client: Client | null): JournalEntry[] {
     "consultation",
   );
   push("priorityNote", client.priorityNote, "general", "Pinned priority note", "critical");
-  push("medicalHistory", client.medicalHistory, "life", "Medical history", "elevated");
-  push("clinicalNotes", client.clinicalNotes, "life", "Clinical notes", "elevated");
+  push("medicalHistory", client.medicalHistory, "injury", "Medical history", "elevated");
+  push("clinicalNotes", client.clinicalNotes, "injury", "Clinical notes", "elevated");
   push("globalNotes", client.globalNotes, "general", "Global goal");
   push("notes", client.notes, "general", "Profile notes");
 
@@ -973,7 +982,7 @@ export function useClientJournal({
       ...native.filter((e) => !e.isArchived),
       ...adaptSessionNotes(legacyNotes, trainers),
       ...adaptIncidents(legacyIncidents, trainers),
-      ...adaptClientEvents(client),
+      ...adaptEventsToJournal(client),
       ...adaptProfileFields(client),
       ...adaptSessionSummaries(legacySessions, trainers),
     ];

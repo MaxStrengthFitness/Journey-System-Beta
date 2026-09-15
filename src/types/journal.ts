@@ -14,14 +14,23 @@
  * nothing has to be rewritten in production.
  */
 
-/** What KIND of thing this is. Drives the card's colour family and icon. */
+/**
+ * What KIND of thing this is. Drives the card's colour family and icon.
+ *
+ * The notes catalog (Sep 2026) files every kind under one of seven
+ * categories — see `noteCategoryOf` in features/notes/note-catalog.ts, which
+ * is the one place that mapping lives. No kind is ever removed: old entries
+ * keep the kind they were written with and are mapped at read time.
+ */
 export type JournalKind =
-  | "coaching"      // the 4 P's — a cue or correction
-  | "life"          // birthdays, anniversaries, vacations, surgeries, injuries
-  | "equipment"     // machine-specific knowledge that isn't a setting
-  | "incident"      // something went wrong in the room
-  | "consultation"  // intake / discovery / Mindbody-imported account notes
-  | "general";      // everything else
+  | "coaching"      // the 4 P's — a cue or correction          -> Coaching tip
+  | "life"          // OLD personal notes; new ones go to FORD   -> FORD / Life
+  | "equipment"     // machine-specific knowledge, not a setting -> Equipment
+  | "incident"      // something went wrong in the room          -> Incident
+  | "injury"        // a standing limitation, surgery, pain      -> Injury
+  | "preference"    // how they like things done                 -> Preference
+  | "consultation"  // intake / discovery / Mindbody imports     -> Admin
+  | "general";      // older "Note" entries, no longer offered   -> Preferences & other
 
 /** The 4 P's. Also the categories a trainer focus can be set to. */
 export type FocusCategory = "Posture" | "Path" | "Pace" | "Purpose";
@@ -311,6 +320,22 @@ const VISUALS = {
     tint: "bg-slate-500/[0.05]",
     label: "Note",
   },
+  injury: {
+    edge: "bg-fuchsia-500",
+    chip: "bg-fuchsia-500/12 text-fuchsia-700 dark:text-fuchsia-300 border-fuchsia-500/25",
+    icon: "Bandage",
+    accent: "text-fuchsia-700 dark:text-fuchsia-300",
+    tint: "bg-fuchsia-500/[0.05]",
+    label: "Injury",
+  },
+  preference: {
+    edge: "bg-stone-400 dark:bg-stone-500",
+    chip: "bg-stone-500/12 text-stone-600 dark:text-stone-300 border-stone-500/25",
+    icon: "ThumbsUp",
+    accent: "text-stone-600 dark:text-stone-300",
+    tint: "bg-stone-500/[0.05]",
+    label: "Preference",
+  },
   coaching: {
     edge: "bg-cyan-500",
     chip: "bg-cyan-500/12 text-cyan-600 dark:text-cyan-300 border-cyan-500/25",
@@ -350,16 +375,6 @@ export const FOCUS_BLURBS: Record<FocusCategory, string> = {
   Purpose: "Intent and mind-muscle connection through the set.",
 };
 
-export const LIFE_CATEGORIES: LifeCategory[] = [
-  "Birthday",
-  "Anniversary",
-  "Vacation",
-  "Surgery",
-  "Injury",
-  "Milestone",
-  "Other",
-];
-
 export const FOCUS_CATEGORIES: FocusCategory[] = [
   "Posture",
   "Path",
@@ -394,24 +409,28 @@ export const IMPORTANCE_META: Record<
   },
 };
 
-/** Kinds offered in the quick-add strip, in the order coaches reach for them. */
 /**
- * What the composer offers.
+ * The journal kinds the composer writes, in the order coaches reach for them.
  *
  * `life` ("Personal") was removed in the profile merge, Sep 2026. Personal
  * detail has a real home now — FORD, on the client record, studio-scoped
  * rather than readable by every signed-in user, and structured so a date can
- * become a gesture. Two ways to record that a client's son is graduating is
- * exactly the duplication this round set out to remove.
+ * become a gesture. The composer still OFFERS "FORD / Life", but choosing it
+ * hands the sentence to the FORD capture; it never writes a journal entry.
  *
- * Existing `life` entries still render everywhere they always did; only the
- * way to create a NEW one has moved. See features/ford.
+ * `general` ("Note") was removed in the notes catalog round, Sep 2026: every
+ * note must have a clear category, and "Note" was the way to avoid choosing
+ * one. Existing `general` entries render under "Preferences & other".
+ *
+ * The labels, icons and order the screens show live in
+ * features/notes/note-catalog.ts; this list is only the kinds.
  */
-export const COMPOSER_KINDS: { kind: JournalKind; label: string }[] = [
-  { kind: "coaching", label: "Coaching" },
-  { kind: "equipment", label: "Equipment" },
-  { kind: "incident", label: "Incident" },
-  { kind: "general", label: "Note" },
+export const COMPOSER_KINDS: JournalKind[] = [
+  "coaching",
+  "equipment",
+  "incident",
+  "injury",
+  "preference",
 ];
 
 /** Safely turn a Firestore Timestamp | Date | string | number into a Date. */
@@ -446,20 +465,6 @@ export function relativeDay(date: Date | null): string {
   return `${Math.round(days / 30)}mo ago`;
 }
 
-/** Bucket used to group the stream into date headers. */
-export function dateBucket(date: Date | null): string {
-  if (!date) return "Undated";
-  const days = Math.floor((Date.now() - date.getTime()) / 86400000);
-  if (days <= 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days <= 7) return "This week";
-  if (days <= 30) return "This month";
-  if (days <= 90) return "Last 3 months";
-  return date.getFullYear() === new Date().getFullYear()
-    ? "Earlier this year"
-    : String(date.getFullYear());
-}
-
 /* ------------------------------------------------------------------ */
 /* JOURNAL -> CLIENT DOSSIER LINKING                                   */
 /* ------------------------------------------------------------------ */
@@ -484,7 +489,7 @@ export function dateBucket(date: Date | null): string {
  *   medical   what the load works around, plus the load they already carry
  *   goals     the why              — original why, SMART goal, coach strategy
  *   focus     the 4 P's            — what each coach is working on
- *   notes     the timeline         — everything written, newest first
+ *   notes     the catalog          — every note, in one of seven categories
  *   reports   the assessment — the living record a coach fills in over time.
  *             The FILED reports moved to Clinical History in the four-tab
  *             round: the archive is the past, and the past has a tab. You
@@ -524,7 +529,7 @@ export const DOSSIER_SECTIONS: {
   { id: "medical", label: "Body", blurb: "What the load has to work around", icon: "HeartPulse" },
   { id: "goals", label: "Goals", blurb: "The why, and how it has moved", icon: "Target" },
   { id: "focus", label: "Focus", blurb: "What each coach is working on", icon: "Crosshair" },
-  { id: "notes", label: "Notes", blurb: "Everything logged, newest first", icon: "NotebookPen" },
+  { id: "notes", label: "Notes", blurb: "Every note, filed by category", icon: "NotebookPen" },
   { id: "reports", label: "Assessment", blurb: "The living record — write it here, read the shelf in Clinical History", icon: "TrendingUp" },
   { id: "admin", label: "Admin", blurb: "Contract, billing and access", icon: "Settings2" },
 ];
@@ -537,7 +542,7 @@ export const DOSSIER_SECTIONS: {
  * migration. An explicit `profileSection` on the entry always wins.
  *
  * Returns null for notes with no profile home — coaching cues and equipment
- * preferences are training material, and belong in the Journal and the
+ * notes are training material, and belong in the Journal and the
  * Equipment tab rather than being forced into a dossier section.
  */
 export function sectionForEntry(entry: JournalEntry): DossierSection | null {
@@ -545,6 +550,9 @@ export function sectionForEntry(entry: JournalEntry): DossierSection | null {
 
   switch (entry.kind) {
     case "incident":
+    case "injury":
+      // Includes the medical-history and clinical-notes profile fields, which
+      // the journal adapter reads as `injury` (they used to land in Life).
       return "medical";
     case "life":
       // A surgery or an injury is a load constraint before it is a personal
@@ -555,6 +563,7 @@ export function sectionForEntry(entry: JournalEntry): DossierSection | null {
     case "consultation":
       return "goals";
     case "general":
+    case "preference":
       return "general";
     default:
       // coaching, equipment

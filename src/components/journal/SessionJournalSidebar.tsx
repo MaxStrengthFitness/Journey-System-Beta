@@ -1,13 +1,14 @@
 /**
  * In-session notes — the "Notes" button in the Active Session header.
  *
- * A slide-over that puts the same JournalComposer the Journal tab uses in
+ * A slide-over that puts the same JournalComposer the Notes area uses in
  * front of the trainer mid-set, so a note taken between machines lands in the
- * client's journal with everything the Journal expects: kind (the 4 P's,
- * equipment, personal, incident, general), category, importance, the
- * machine it is about, and the session it happened in. Origin is stamped
- * `in_session`; the machine being performed is pre-selected so the common
- * case is type → save.
+ * client's journal with everything the catalog expects: its category (the
+ * same six chips as the Notes area — Coaching tip, Equipment, Incident,
+ * Injury, Preference, FORD / Life), importance, the machine it is about, and
+ * the session it happened in. Origin is stamped `in_session`; the machine
+ * being performed is offered as "About <machine>" so the common case is
+ * pick → type → save.
  *
  * Below the composer: every journal entry written during THIS session, live,
  * so two coaches sharing a floor see each other's notes as they are saved.
@@ -21,11 +22,13 @@
  * session bar, which is already the busiest strip on the screen.
  *
  * The two modes are not the same shape and should not be merged. A coaching
- * note is deliberate and structured — kind, category, importance, machine. A
- * FORD capture has exactly one required field and no decisions, because it is
+ * note is deliberate and structured — category, importance, machine. A FORD
+ * capture has exactly one required field and no decisions, because it is
  * typed while a client is mid-sentence. Giving the personal detail its own
  * mode is what keeps the journal composer from growing a fifth dropdown, and
- * keeps the capture down to type-and-save.
+ * keeps the capture down to type-and-save. Tapping the composer's
+ * "FORD / Life" chip switches to this mode (notes catalog round, Sep 2026),
+ * so the chips mean the same thing here as everywhere else.
  */
 import React, { useEffect, useMemo, useState } from "react";
 import { X, NotebookPen, Loader2, Heart } from "lucide-react";
@@ -182,7 +185,7 @@ export function SessionJournalSidebar({
         >
           {(
             [
-              { id: "note" as const, label: "Coaching note" },
+              { id: "note" as const, label: "Note" },
               { id: "ford" as const, label: "Remember this" },
             ]
           ).map((tab) => (
@@ -225,6 +228,7 @@ export function SessionJournalSidebar({
               defaultMachineId={defaultMachineId ?? undefined}
               origin="in_session"
               onSubmit={handleSubmit}
+              onPickFord={() => setMode("ford")}
             />
           </React.Fragment>
 

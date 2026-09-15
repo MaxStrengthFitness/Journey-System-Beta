@@ -62,7 +62,7 @@ import { InBodyCard } from "../../features/inbody/InBodyCard";
 import { SharedNotesCard } from "../../features/planner/notes/SharedNotesCard";
 import { ClientSnapshot, activeContract } from "./ClientSnapshot";
 import { JournalRail } from "./JournalRail";
-import { ClientJournalTab, type JournalAreaId } from "../journal/ClientJournalTab";
+import { ClientJournalTab } from "../journal/ClientJournalTab";
 import { FordSection } from "../../features/ford/FordSection";
 import { GoalsPanel } from "../../features/goals/GoalsPanel";
 import type { FordAuthor } from "../../features/ford/ford-write";
@@ -670,9 +670,13 @@ export function ClientDossier({
               blurb={sectionBlurb("notes")}
               icon={SECTION_ICONS.notes}
             >
+              {/* Notes catalog round, Sep 2026: a category-first composer and
+                  a catalog (tiles, shelves, search) instead of one feed. FORD /
+                  Life notes hand off to the Life section. See features/notes. */}
               <ClientJournalTab
                 areas={["notes"]}
                 journal={journal}
+                onOpenFord={() => jump("life")}
                 clientId={client.id || null}
                 client={client}
                 machines={machines}

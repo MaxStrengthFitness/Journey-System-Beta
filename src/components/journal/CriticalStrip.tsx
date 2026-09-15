@@ -2,6 +2,9 @@
  * "Read this before you touch the client."
  *
  * Sits above everything else and only exists when there is something to say.
+ * Since the notes catalog round it heads the Notes area as "Critical &
+ * pinned" — the pinned priority note is imported as a critical entry, so it
+ * lands here too.
  * Same selection the pre-session briefing uses — critical, unresolved, and
  * still inside its effective window — so the Journal and the briefing can
  * never disagree about what matters.
@@ -18,9 +21,12 @@ const PREVIEW = 3;
 export function CriticalStrip({
   entries,
   machines,
+  title = "Before you start",
 }: {
   entries: JournalEntry[];
   machines: Machine[];
+  /** The notes catalog calls it "Critical & pinned" (Sep 2026). */
+  title?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   if (entries.length === 0) return null;
@@ -41,7 +47,7 @@ export function CriticalStrip({
         </span>
         <div className="min-w-0">
           <h3 className="font-mono text-[11px] font-black uppercase tracking-[0.14em] text-rose-600 dark:text-rose-300">
-            Before you start
+            {title}
           </h3>
           <p className="text-[11px] text-rose-600/70 dark:text-rose-300/70">
             {entries.length} critical {entries.length === 1 ? "note" : "notes"} · also shown in the pre-session briefing
@@ -59,7 +65,7 @@ export function CriticalStrip({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-rose-600/80 transition-colors hover:text-rose-600 dark:text-rose-300/80 dark:hover:text-rose-300"
+          className="mt-2 inline-flex h-10 items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-rose-600/80 transition-colors hover:text-rose-600 dark:text-rose-300/80 dark:hover:text-rose-300"
         >
           <ChevronDown className={cn("h-3 w-3 transition-transform", expanded && "rotate-180")} />
           {expanded ? "Show fewer" : `${hidden} more`}

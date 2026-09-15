@@ -24,6 +24,16 @@ import type { Machine } from "../../types";
 
 const PREVIEW = 3;
 
+/**
+ * Profile fields the dossier section already shows as an editable box. The
+ * journal adapter reads them as notes too (so the Notes catalog can shelve
+ * them), but on their own section a card repeating the textarea right below
+ * it is just the same words twice (notes catalog round, Sep 2026).
+ */
+const SHOWN_AS_FIELDS: Partial<Record<DossierSection, ReadonlySet<string>>> = {
+  medical: new Set(["legacy:profile:medicalHistory", "legacy:profile:clinicalNotes"]),
+};
+
 export function JournalRail({
   section,
   entries,
@@ -38,7 +48,8 @@ export function JournalRail({
   emptyHint?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const linked = entriesForSection(entries, section);
+  const own = SHOWN_AS_FIELDS[section];
+  const linked = entriesForSection(entries, section).filter((e) => !own?.has(e.id));
 
   if (linked.length === 0) {
     if (!emptyHint) return null;
@@ -63,7 +74,7 @@ export function JournalRail({
           <button
             type="button"
             onClick={onOpenJournal}
-            className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-[#38BDF8]"
+            className="inline-flex h-10 items-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-[#38BDF8]"
           >
             Open journal
           </button>
@@ -93,7 +104,7 @@ export function JournalRail({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="inline-flex items-center gap-1 self-start text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-slate-600 dark:hover:text-slate-200"
+          className="inline-flex h-10 items-center gap-1 self-start text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-slate-600 dark:hover:text-slate-200"
         >
           <ChevronDown className={cn("h-3 w-3 transition-transform", expanded && "rotate-180")} />
           {expanded ? "Show fewer" : `${hidden} more`}
