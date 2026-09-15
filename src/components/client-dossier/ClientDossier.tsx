@@ -34,13 +34,16 @@ import {
   Heart,
   HeartPulse,
   NotebookPen,
-  RefreshCw,
   Settings2,
   Target,
   TrendingUp,
   User,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { mindbodyIdOf } from "../../lib/mindbody-id";
+import { waiverState } from "../../lib/client-waiver";
+import { clientLegalName } from "../../lib/client-name";
+import { ageFromDob, masterSyncLabel } from "../../features/client-profile/sync-label";
 import { useClientJournal } from "../../hooks/useClientJournal";
 import {
   DOSSIER_SECTIONS,
@@ -92,6 +95,17 @@ const SECTION_ICONS: Record<DossierSection, React.ReactNode> = {
 const sectionBlurb = (id: DossierSection) =>
   DOSSIER_SECTIONS.find((s) => s.id === id)?.blurb ?? "";
 
+/** A date of birth is a calendar day: read the digits, never through UTC. */
+const fmtDob = (v: string) => {
+  const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return v;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
 const fmtDate = (v: any, fallback = "—") => {
   const d = toDate(v);
   return d
@@ -116,8 +130,6 @@ export interface ClientDossierProps {
   onSelectReport?: (id: string) => void;
   onDeleteReport?: (report: ProgressReport) => void;
   onNewReport?: () => void;
-  onSyncMindbody?: () => void;
-  isSyncingMb?: boolean;
   /**
    * "inner" (default, the full-screen overlay): the spine is its own
    * scroll container. "page" (the Details tab): the spine has no scroller
@@ -145,8 +157,6 @@ export function ClientDossier({
   onSelectReport,
   onDeleteReport,
   onNewReport,
-  onSyncMindbody,
-  isSyncingMb = false,
   scroll = "inner",
   authTrainer = null,
   onOpenPlanner,
@@ -208,6 +218,19 @@ export function ClientDossier({
   }, [defaultSection, jump]);
 
   /* --- derived ------------------------------------------------------- */
+  const mbId = mindbodyIdOf(client);
+  // Linked to Mindbody → Mindbody owns identity and contact (read-only here).
+  const mbLinked = !!mbId && !client.provisional;
+  const waiver = waiverState(client);
+  const age = ageFromDob(client.dateOfBirth);
+  const fullAddress = [
+    client.address,
+    [client.city, client.addressState].filter(Boolean).join(", "),
+    [client.postalCode, client.country].filter(Boolean).join(" "),
+  ]
+    .map((p) => (p || "").trim())
+    .filter(Boolean)
+    .join(" · ");
   const contract = activeContract(client);
   const contractHistory = useMemo<MindbodyContract[]>(
     () =>
@@ -302,81 +325,133 @@ export function ClientDossier({
             )}
           >
 
-            {/* ---------------- GENERAL ---------------- */}
+            {/* ---------------- WHO THEY ARE ---------------- */}
+            {/* The client's ID card (client-profile audit, Sep 2026). Mindbody
+                owns who a client is, so once a client is linked every identity
+                and contact field is READ-ONLY here and refreshes with Master
+                Sync at the top of the profile. The one thing a coach owns is
+                what the client is called on the floor. */}
             <DossierSectionShell
               id="general"
-              title="General"
+              title="Who they are"
               blurb={sectionBlurb("general")}
               icon={SECTION_ICONS.general}
             >
-              <FieldGroup title="Identity">
-                <TextField label="First name" value={val("firstName")} onChange={set("firstName")} />
-                <TextField label="Last name" value={val("lastName")} onChange={set("lastName")} />
+              <FieldGroup title="Goes by" cols={2}>
                 <TextField
-                  label="Date of birth"
-                  type="date"
-                  value={val("dateOfBirth")}
-                  onChange={set("dateOfBirth")}
+                  label="Nickname"
+                  value={val("nickname")}
+                  onChange={set("nickname")}
+                  placeholder={client.firstName ? `e.g. what ${client.firstName} likes to be called` : "What they like to be called"}
+                  hint="Replaces the first name in the profile header, the briefing and the session. The legal name stays on the record."
                 />
-                <SelectField
-                  label="Gender"
-                  value={val("gender")}
-                  onChange={set("gender")}
-                  options={["Male", "Female", "Other"]}
-                />
+                {mbLinked ? (
+                  <ReadOnlyField label="Legal name" value={clientLegalName(client)} />
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <TextField label="First name" value={val("firstName")} onChange={set("firstName")} />
+                    <TextField label="Last name" value={val("lastName")} onChange={set("lastName")} />
+                  </div>
+                )}
+              </FieldGroup>
+
+              <FieldGroup title="Identity" cols={3}>
+                {mbLinked ? (
+                  <>
+                    <ReadOnlyField
+                      label="Date of birth"
+                      value={
+                        client.dateOfBirth
+                          ? `${fmtDob(client.dateOfBirth)}${age !== null ? ` · ${age}` : ""}`
+                          : ""
+                      }
+                    />
+                    <ReadOnlyField label="Gender" value={client.gender || ""} />
+                  </>
+                ) : (
+                  <>
+                    <TextField
+                      label="Date of birth"
+                      type="date"
+                      value={val("dateOfBirth")}
+                      onChange={set("dateOfBirth")}
+                      hint={age !== null ? `${age} years old` : undefined}
+                    />
+                    <SelectField
+                      label="Gender"
+                      value={val("gender")}
+                      onChange={set("gender")}
+                      options={["Male", "Female", "Other"]}
+                    />
+                  </>
+                )}
+                <ReadOnlyField label="Mindbody ID" value={mbId || ""} hint={mbId ? undefined : "Not linked to Mindbody."} />
               </FieldGroup>
 
               <FieldGroup title="Contact">
-                <TextField label="Phone" value={val("phone")} onChange={set("phone")} />
-                <TextField label="Email" type="email" value={val("email")} onChange={set("email")} />
-                <div className="sm:col-span-2">
-                  <TextField
-                    label="Address"
-                    value={val("address")}
-                    onChange={set("address")}
-                    hint="The line trainers edit. City, state and postal come from Mindbody and only fill blanks."
-                  />
-                </div>
-                <ReadOnlyField
-                  label="City / State"
-                  value={[client.city, client.addressState].filter(Boolean).join(", ")}
-                />
-                <ReadOnlyField
-                  label="Postal / Country"
-                  value={[client.postalCode, client.country].filter(Boolean).join(" · ")}
-                />
+                {mbLinked ? (
+                  <>
+                    <ReadOnlyField label="Phone" value={client.phone || ""} />
+                    <ReadOnlyField label="Email" value={client.email || ""} />
+                    <div className="sm:col-span-2">
+                      <ReadOnlyField label="Address" value={fullAddress} />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <TextField label="Phone" value={val("phone")} onChange={set("phone")} />
+                    <TextField label="Email" type="email" value={val("email")} onChange={set("email")} />
+                    <div className="sm:col-span-2">
+                      <TextField label="Address" value={val("address")} onChange={set("address")} />
+                    </div>
+                  </>
+                )}
               </FieldGroup>
 
-              <FieldGroup title="Emergency contact">
-                <TextField
-                  label="Name"
-                  value={val("emergencyContactName")}
-                  onChange={set("emergencyContactName")}
-                />
-                <TextField
-                  label="Phone"
-                  value={val("emergencyContactPhone")}
-                  onChange={set("emergencyContactPhone")}
-                />
+              <FieldGroup title="Emergency contact" cols={3}>
+                {mbLinked ? (
+                  <>
+                    <ReadOnlyField label="Name" value={client.emergencyContactName || ""} />
+                    <ReadOnlyField label="Relationship" value={client.emergencyContactRelationship || ""} />
+                    <ReadOnlyField label="Phone" value={client.emergencyContactPhone || ""} />
+                  </>
+                ) : (
+                  <>
+                    <TextField
+                      label="Name"
+                      value={val("emergencyContactName")}
+                      onChange={set("emergencyContactName")}
+                    />
+                    <TextField
+                      label="Phone"
+                      value={val("emergencyContactPhone")}
+                      onChange={set("emergencyContactPhone")}
+                    />
+                  </>
+                )}
               </FieldGroup>
 
-              <FieldGroup title="Mindbody record" cols={3}>
-                <ReadOnlyField label="Mindbody ID" value={client.mindbodyId || ""} />
+              <FieldGroup title="Account" cols={3}>
                 <ReadOnlyField
                   label="Liability waiver"
                   value={
-                    client.isLiabilityReleased
-                      ? `Released ${fmtDate(client.liabilityAgreementDate, "")}`.trim()
-                      : "Not on file"
+                    waiver.state === "unknown" ? (
+                      ""
+                    ) : (
+                      <span
+                        className={cn(
+                          waiver.tone === "ok" && "text-emerald-700 dark:text-emerald-400",
+                          waiver.tone === "warn" && "text-amber-700 dark:text-amber-400",
+                        )}
+                      >
+                        {waiver.label}
+                      </span>
+                    )
                   }
-                  hint={
-                    client.isLiabilityReleased
-                      ? undefined
-                      : "Mindbody reports no signed release for this client."
-                  }
+                  hint={waiver.detail}
                 />
                 <ReadOnlyField label="Membership status" value={client.mindbodyStatus || ""} />
-                <ReadOnlyField label="Client since" value={fmtDate(client.mindbodyCreatedAt, "")} />
+                <ReadOnlyField label="In Mindbody since" value={fmtDate(client.mindbodyCreatedAt, "")} />
                 <ReadOnlyField
                   label="First appointment"
                   value={fmtDate(client.firstAppointmentDate, "")}
@@ -390,19 +465,12 @@ export function ClientDossier({
                   }
                   hint="Mindbody's count. Separate from this app's completed-session count."
                 />
+                <ReadOnlyField
+                  label="Last Master Sync"
+                  value={client.mindbodyMasterSyncedAt ? masterSyncLabel(client.mindbodyMasterSyncedAt).replace(/^Synced /, "") : ""}
+                  hint="Everything on this card refreshes with Sync at the top of the profile."
+                />
               </FieldGroup>
-
-              {onSyncMindbody && (
-                <button
-                  type="button"
-                  onClick={onSyncMindbody}
-                  disabled={isSyncingMb}
-                  className="inline-flex h-10 w-fit items-center gap-2 rounded-xl border border-[#38BDF8]/30 bg-[#38BDF8]/10 px-4 text-[11px] font-black uppercase tracking-wider text-[#38BDF8] transition-colors hover:bg-[#38BDF8]/20 disabled:opacity-50"
-                >
-                  <RefreshCw className={cn("h-3.5 w-3.5", isSyncingMb && "animate-spin")} />
-                  {isSyncingMb ? "Syncing" : "Sync from Mindbody"}
-                </button>
-              )}
 
               {client.mindbodyNotes && (
                 <div className="flex flex-col gap-1.5">
@@ -415,7 +483,7 @@ export function ClientDossier({
                   </div>
                   <p className="text-[10.5px] text-muted-foreground">
                     First 1,000 characters of the client's Mindbody account notes. Edit them in
-                    Mindbody — a sync overwrites anything typed here.
+                    Mindbody — the next sync brings the change here.
                   </p>
                 </div>
               )}

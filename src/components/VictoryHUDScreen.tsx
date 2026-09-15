@@ -32,6 +32,7 @@ import {
   type TodayLine,
 } from "../lib/post-session";
 
+import { clientFirstName } from "../lib/client-name";
 /**
  * THE POST-SESSION SCREEN (rebuilt in the tracker round, Sep 2026).
  *
@@ -294,7 +295,7 @@ export function VictoryHUDScreen({
           <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="px-6 pt-4 pb-1">
             <Kicker>Session complete · saved</Kicker>
             <h1 className="font-display italic text-ink-d1 text-[34px] uppercase tracking-[-0.01em] leading-none mt-2 mb-2">
-              {client.firstName}, {maxSets > 0 ? "strong work." : "good work."}
+              {clientFirstName(client)}, {maxSets > 0 ? "strong work." : "good work."}
             </h1>
             <div className="text-ink-d2 text-[13px]">
               {todayHeadline(lines)}
@@ -340,7 +341,7 @@ export function VictoryHUDScreen({
           <Card delay={0.12}>
             <Kicker>The journey</Kicker>
             <p className={`text-[15px] leading-snug ${journey.enough ? "text-ink-d1 font-semibold" : "text-ink-d3"}`}>
-              {journeySentence(journey, client.firstName)}
+              {journeySentence(journey, clientFirstName(client))}
             </p>
             {journey.standout && (
               <p className="text-[12.5px] text-ink-d2">
@@ -369,7 +370,7 @@ export function VictoryHUDScreen({
             </div>
 
             <div className="flex items-baseline justify-between mt-1">
-              <span className="font-display italic text-ink-d1 text-[15px] uppercase">How does {client.firstName} feel?</span>
+              <span className="font-display italic text-ink-d1 text-[15px] uppercase">How does {clientFirstName(client)} feel?</span>
               {feelSaved && (
                 <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
                   <Check size={12} strokeWidth={3} /> Saved
@@ -454,7 +455,7 @@ export function VictoryHUDScreen({
             >
               <FordSweep
                 clientId={client.id}
-                clientFirstName={client.firstName || "them"}
+                clientFirstName={clientFirstName(client, "them")}
                 untagged={fordUntagged}
                 sessionId={session.id ?? null}
               />

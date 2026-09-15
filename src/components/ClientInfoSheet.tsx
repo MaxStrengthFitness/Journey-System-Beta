@@ -7,9 +7,10 @@ import { Client, Machine, ProgressReport, Trainer } from "../types";
 import type { DossierSection } from "../types/journal";
 import { useActiveStudio } from "../ActiveStudioContext";
 import { useToast } from "../contexts/ToastContext";
+import { clientDisplayName } from "../lib/client-name";
+import { mindbodyIdOf } from "../lib/mindbody-id";
 import { Button } from "@/components/ui/button";
 import { ClientDossier } from "./client-dossier/ClientDossier";
-import { authedFetch } from "../lib/authed-fetch";
 
 /**
  * The old sidebar used "identity" for what is now the General section.
@@ -96,7 +97,6 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
   const [formData, setFormData] = useState<Partial<Client>>({});
   const [dirtyFields, setDirtyFields] = useState<Set<keyof Client>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
-  const [isSyncingMb, setIsSyncingMb] = useState(false);
 
   // The Auth uid, not authTrainer.id: the FORD rules pin authorId to it, the
   // same way the journalEntries rule does, and the two differ on older
@@ -125,6 +125,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
       setFormData({
         firstName: client.firstName || "",
         lastName: client.lastName || "",
+        nickname: client.nickname || "",
         mindbodyId: client.mindbodyId || "",
         mindbodyClientId: client.mindbodyClientId || client.mindbodyId || "",
         mindbody_name: client.mindbody_name || "",
@@ -208,66 +209,6 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
     });
   };
 
-  /**
-   * On-demand demographics pull. Distinct from the webhook path: this is a
-   * trainer saying "go get it now", and it only ever looks the client up
-   * against their OWN home studio's site — falling back to another studio's
-   * site returns a different studio's client record.
-   */
-  const handleSyncMindbody = async () => {
-    const mbId = (formData as any).mindbodyClientId || (formData as any).mindbodyId;
-    const searchName = `${formData.firstName || ""} ${formData.lastName || ""}`.trim();
-    if (!mbId && !searchName) return;
-    // Only ever look a client up against their own home
-    // studio's site — falling back to another studio's
-    // site returns a different studio's client record.
-    const targetStudio = studios.find(
-      (s) => s.id === client.homeStudioId,
-    );
-    if (!targetStudio?.mindbodySiteId) {
-      toastError(
-        `${targetStudio?.name || "This client's home studio"} has no MindBody Site ID configured.`,
-      );
-      return;
-    }
-    setIsSyncingMb(true);
-    try {
-      const siteId = String(targetStudio.mindbodySiteId).trim();
-
-      const res = await authedFetch("/api/mindbody/client-demographics", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          siteId,
-          mindbodyClientId: mbId || undefined,
-          clientName: searchName || undefined,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Client not found in MindBody");
-      }
-      const mbData = await res.json();
-      if (mbData.mindbodyClientId) {
-        updateField("mindbodyClientId" as any, mbData.mindbodyClientId);
-        updateField("mindbodyId" as any, mbData.mindbodyClientId);
-      }
-      if (mbData.phone) updateField("phone", mbData.phone);
-      if (mbData.email) updateField("email", mbData.email);
-      if (mbData.dateOfBirth) updateField("dateOfBirth", mbData.dateOfBirth);
-      if (mbData.gender) updateField("gender", mbData.gender);
-      if (mbData.address) updateField("address", mbData.address);
-      if (mbData.photoUrl) updateField("photoUrl", mbData.photoUrl);
-      // Mindbody's account notes -- never the app's
-      // trainer-authored `notes` field.
-      if (mbData.notes) updateField("mindbodyNotes", mbData.notes.slice(0, 1000));
-    } catch (e: any) {
-      alert(e.message || "Failed to sync MindBody demographics");
-    } finally {
-      setIsSyncingMb(false);
-    }
-  };
-
   const handleSave = async () => {
     if (dirtyFields.size === 0 || !client.id) return;
     setIsSaving(true);
@@ -308,12 +249,12 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
         <div className="px-4 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900/60">
           <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 min-w-0">
             <span className="text-[#0a548b] dark:text-[#8cc4f2] truncate">
-              {client.firstName} {client.lastName}
+              {clientDisplayName(client)}
             </span>
-            {client.mindbodyId && (
+            {mindbodyIdOf(client) && (
               <>
                 <span className="text-slate-300 dark:text-slate-600">•</span>
-                <span className="truncate">MBO ID {client.mindbodyId}</span>
+                <span className="truncate">MBO ID {mindbodyIdOf(client)}</span>
               </>
             )}
           </p>
@@ -388,8 +329,6 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
         onSelectReport={onSelectReport}
         onDeleteReport={onDeleteReport}
         onNewReport={onNewReport}
-        onSyncMindbody={handleSyncMindbody}
-        isSyncingMb={isSyncingMb}
         scroll={inline ? "page" : "inner"}
         authTrainer={authTrainer}
       />

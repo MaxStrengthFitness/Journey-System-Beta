@@ -16,7 +16,7 @@
  *    button, so the eye has nowhere to go but Start Session.
  */
 import { useState, type ReactNode } from "react";
-import { ChevronLeft, Clock, History, Maximize, Play, Trash2, UserCheck, AlertTriangle, User } from "lucide-react";
+import { ChevronLeft, Clock, History, Maximize, Play, RefreshCw, Trash2, UserCheck, AlertTriangle, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn, parseSessionDate } from "../../lib/utils";
@@ -30,6 +30,7 @@ import { tallyRows } from "../../lib/client-rollups";
 import type { Trainer } from "../../types";
 import { BrandTiles } from "./BrandTiles";
 import { bookedLabel, nextSessionHeadline } from "./next-session-tile";
+import { clientDisplayName, clientInitials, clientLegalName, goesByNickname } from "../../lib/client-name";
 
 export interface ActiveSessionLike {
   id?: string;
@@ -47,6 +48,19 @@ export interface KaizenToggleState {
   isOn: boolean;
   busy?: boolean;
   onToggle: () => void;
+}
+
+/**
+ * The Master Sync button (client-profile audit, Sep 2026): the ONE place a
+ * trainer refreshes a client from Mindbody. Passed in like the Kaizen toggle.
+ */
+export interface MasterSyncState {
+  busy: boolean;
+  onSync: () => void;
+  /** "Synced 3 days ago" / "Never synced", for the title and the sub-label. */
+  label: string;
+  /** False when the client has no Mindbody ID — the button explains why. */
+  available: boolean;
 }
 
 export interface ProfileHeaderProps {
@@ -67,6 +81,7 @@ export interface ProfileHeaderProps {
   onViewCurrentSession: () => void;
   onDiscardSession: () => void;
   kaizen?: KaizenToggleState;
+  sync?: MasterSyncState;
   /**
    * The renewal line (Renewals round, Sep 2026), from the nightly snapshot.
    * When present, the package tile shows it and opens the Renewal card.
@@ -212,6 +227,7 @@ export function ProfileHeader({
   onViewCurrentSession,
   onDiscardSession,
   kaizen,
+  sync,
   renewal,
 }: ProfileHeaderProps) {
   const [showTrainers, setShowTrainers] = useState(false);
@@ -252,8 +268,17 @@ export function ProfileHeader({
   /* ---- package ---- */
   const remaining = remainingLabel(pkg);
   const since = clientSinceLabel(client);
-  const hasFlags = !!(client.notes || (client.clinicalFlags && client.clinicalFlags.length > 0));
-  const initials = `${(client.firstName || "").charAt(0)}${(client.lastName || "").charAt(0)}`.toUpperCase();
+  // The badge promises medical detail, so it fires on medical detail — not on
+  // a general note (client-profile audit: high-visibility alerts).
+  const hasFlags = !!(
+    (client.clinicalFlags && client.clinicalFlags.length > 0) ||
+    client.medicalHistory?.trim() ||
+    client.clinicalNotes?.trim()
+  );
+  const initials = clientInitials(client);
+  const displayName = clientDisplayName(client);
+  const legalName = clientLegalName(client);
+  const nick = goesByNickname(client);
 
   return (
     <header
@@ -282,15 +307,18 @@ export function ProfileHeader({
         </button>
 
         <Avatar size="xl" className="ring-2 ring-slate-200 dark:ring-slate-800 bg-slate-100 dark:bg-slate-800 shrink-0 xl:size-12 2xl:size-14">
-          {client.photoUrl && <AvatarImage src={client.photoUrl} alt={`${client.firstName} ${client.lastName}`} />}
+          {client.photoUrl && <AvatarImage src={client.photoUrl} alt={displayName} />}
           <AvatarFallback className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-lg">
             {initials || <User className="w-7 h-7" />}
           </AvatarFallback>
         </Avatar>
 
         <div className="min-w-0 flex-1 xl:max-w-[240px] 2xl:max-w-[320px]">
-          <h1 className="text-2xl md:text-[26px] xl:text-[28px] font-black tracking-tight leading-none text-foreground truncate">
-            {client.firstName} {client.lastName}
+          <h1
+            className="text-2xl md:text-[26px] xl:text-[28px] font-black tracking-tight leading-none text-foreground truncate"
+            title={nick ? `${displayName} (legal name ${legalName})` : displayName}
+          >
+            {displayName}
           </h1>
           <div className="mt-1.5 flex items-center gap-2.5 min-w-0">
             <BrandTiles size={6} gap={2} />
@@ -355,6 +383,30 @@ export function ProfileHeader({
               <polyline points="6,13 10,9 14,13" />
             </svg>
             <span className="hidden sm:inline">{kaizen.isOn ? "Tracking" : "Track"}</span>
+          </button>
+        )}
+        {sync && (
+          <button
+            type="button"
+            onClick={sync.onSync}
+            disabled={sync.busy || !sync.available}
+            title={
+              sync.available
+                ? `Master Sync — refresh everything Mindbody knows about this client. ${sync.label}.`
+                : "No Mindbody ID on this client, so there is nothing to sync from."
+            }
+            aria-label={sync.busy ? "Syncing with Mindbody" : `Sync with Mindbody. ${sync.label}`}
+            className={cn(
+              "shrink-0 inline-flex items-center gap-1.5 h-12 px-3 rounded-2xl border text-[11px] font-bold uppercase tracking-widest transition-colors",
+              "border-slate-200 dark:border-slate-800 text-muted-foreground hover:text-[#034a84] dark:hover:text-[#7cc0ee]",
+              "disabled:opacity-50 disabled:cursor-not-allowed",
+            )}
+          >
+            <RefreshCw className={cn("w-4 h-4", sync.busy && "animate-spin")} aria-hidden />
+            <span className="hidden md:flex flex-col items-start leading-none">
+              <span>{sync.busy ? "Syncing" : "Sync"}</span>
+              <span className="mt-1 text-[9px] font-semibold normal-case tracking-normal opacity-80">{sync.label}</span>
+            </span>
           </button>
         )}
         {activeInProgressSession ? (

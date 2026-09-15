@@ -524,7 +524,7 @@ export const DOSSIER_SECTIONS: {
   blurb: string;
   icon: string;
 }[] = [
-  { id: "general", label: "Who they are", blurb: "Identity, contact, and what Mindbody knows", icon: "User" },
+  { id: "general", label: "Who they are", blurb: "The ID card — what they go by, and what Mindbody knows", icon: "User" },
   { id: "life", label: "Life", blurb: "Family, occupation, recreation, dreams", icon: "Heart" },
   { id: "medical", label: "Body", blurb: "What the load has to work around", icon: "HeartPulse" },
   { id: "goals", label: "Goals", blurb: "The why, and how it has moved", icon: "Target" },

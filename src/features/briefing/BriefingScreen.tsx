@@ -86,6 +86,7 @@ import { safeToDate } from "../../lib/utils";
 import { isPerformedLog } from "../../lib/set-outcome";
 import "./briefing.css";
 
+import { clientDisplayName } from "../../lib/client-name";
 function PillGroup<T extends string | number>({
   label,
   value,
@@ -470,7 +471,7 @@ export function BriefingScreen({
               <div className="br__hero-top">
                 <div className="min-w-0">
                   <h1 className="br__name">
-                    {client.firstName} {client.lastName}
+                    {clientDisplayName(client)}
                   </h1>
                   <p className="br__meta">
                     Last session · {lastSessionDate} · {lastRoutineName}

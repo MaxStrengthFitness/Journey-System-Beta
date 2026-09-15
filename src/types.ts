@@ -578,6 +578,11 @@ export interface Client {
   approvedCrossTrainStudioIds?: string[]; // Studio IDs where cross-training is explicitly approved
   firstName: string;
   lastName: string;
+  /**
+   * What the client is called on the floor ("Judy"). Coach-entered, never
+   * synced; replaces the legal first name in headers (src/lib/client-name.ts).
+   */
+  nickname?: string;
   dateOfBirth?: string;
   gender?: "Male" | "Female" | "Other" | string;
   height: string; // e.g., "5'10\""

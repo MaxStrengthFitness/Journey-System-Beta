@@ -177,6 +177,7 @@ import { VictoryHUDScreen } from "./VictoryHUDScreen";
 import { ConsultationSetupWizard } from "./ConsultationSetupWizard";
 import { studioTodayKey } from "../lib/studio-time";
 
+import { clientDisplayName, clientFirstName } from "../lib/client-name";
 type RoutineType = "A" | "B" | "Free";
 
 function ClientSelectionDialog({
@@ -3215,7 +3216,7 @@ export function WorkoutTrackerView({
     if (shouldShowWizard) {
       return (
         <ConsultationSetupWizard
-          clientName={selectedClient.firstName}
+          clientName={clientFirstName(selectedClient)}
           onComplete={async (setupData) => {
             // setupData.routine is [{name: 'Leg Press', ...}]
             const machineNames = setupData.routine.map((r: any) => r.name);
@@ -3301,7 +3302,7 @@ export function WorkoutTrackerView({
   }
 
   const clientNameDisplay = selectedClient
-    ? `${selectedClient.firstName} ${selectedClient.lastName}`
+    ? clientDisplayName(selectedClient)
     : "Open Session";
   const lastSession = sessions.length > 0 ? sessions[0] : null;
   const previousSession = sessions.length > 1 ? sessions[1] : null;
@@ -3365,7 +3366,7 @@ export function WorkoutTrackerView({
           <div className="jg-sbar__client">
             <h3 className="jg-sbar__name">
               {selectedClient
-                ? `${selectedClient.firstName} ${selectedClient.lastName}`
+                ? clientDisplayName(selectedClient)
                 : currentSession?.isUnassigned
                   ? "Unassigned Tracking"
                   : "Initializing..."}
@@ -4146,7 +4147,7 @@ export function WorkoutTrackerView({
           <SessionJournalSidebar
             session={currentSession}
             clientId={clientId}
-            clientFirstName={selectedClient?.firstName || ""}
+            clientFirstName={clientFirstName(selectedClient)}
             studioId={selectedClient?.homeStudioId || contextActiveStudioId || ""}
             author={{
               id: user.uid,

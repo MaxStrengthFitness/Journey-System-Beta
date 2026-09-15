@@ -6,6 +6,8 @@
  * matter most are exactly the ones that used to be buried three tabs deep. Its
  * chips are jump links: tapping the critical-notes chip lands you in Medical.
  */
+import { waiverState } from "../../lib/client-waiver";
+import { mindbodyIdOf } from "../../lib/mindbody-id";
 import React from "react";
 import {
   AlertTriangle,
@@ -20,6 +22,7 @@ import { cn } from "../../lib/utils";
 import { relativeDay, toDate, type DossierSection, type JournalEntry } from "../../types/journal";
 import type { Client, ClientEvent, MindbodyContract } from "../../types";
 
+import { clientDisplayName } from "../../lib/client-name";
 /** Years, from a yyyy-mm-dd string or a Timestamp. Null when unparseable. */
 export function ageFrom(dob: any): number | null {
   const d = toDate(dob);
@@ -111,13 +114,14 @@ export function ClientSnapshot({
   const age = ageFrom(client.dateOfBirth);
   const contract = activeContract(client);
   const upcoming = nextEvent(client);
-  const liabilityDate = toDate(client.liabilityAgreementDate);
+  const waiver = waiverState(client);
+  const mbId = mindbodyIdOf(client);
   const contractEnd = toDate(contract?.endDate);
 
   const identity = [
     age !== null ? `${age} yrs` : null,
     client.gender || null,
-    client.mindbodyId ? `MBO ${client.mindbodyId}` : null,
+    mbId ? `MBO ${mbId}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -143,7 +147,7 @@ export function ClientSnapshot({
           </div>
           <div className="min-w-0">
             <p className="truncate text-base font-black uppercase italic tracking-tight text-foreground">
-              {client.firstName} {client.lastName}
+              {clientDisplayName(client)}
             </p>
             <p className="truncate font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               {identity || "No demographics on file"}
@@ -160,33 +164,23 @@ export function ClientSnapshot({
               label="Flagged"
               value={`${criticalEntries.length} critical note${criticalEntries.length === 1 ? "" : "s"}`}
               onClick={() => onJump("medical")}
-              title="Jump to Medical"
+              title="Jump to Body"
             />
           )}
 
           <Chip
-            tone={client.isLiabilityReleased ? "ok" : "warn"}
+            tone={waiver.tone === "ok" ? "ok" : waiver.tone === "warn" ? "warn" : "neutral"}
             icon={
-              client.isLiabilityReleased ? (
+              waiver.state === "signed" ? (
                 <ShieldCheck className="h-4 w-4" />
               ) : (
                 <ShieldAlert className="h-4 w-4" />
               )
             }
             label="Liability"
-            value={
-              client.isLiabilityReleased
-                ? liabilityDate
-                  ? `Signed ${liabilityDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`
-                  : "Released"
-                : "Not on file"
-            }
+            value={waiver.label}
             onClick={() => onJump("general")}
-            title={
-              client.isLiabilityReleased
-                ? "Waiver released in Mindbody"
-                : "Mindbody has no liability release for this client"
-            }
+            title={waiver.detail}
           />
 
           <Chip
@@ -211,7 +205,7 @@ export function ClientSnapshot({
               label="Next up"
               value={`${upcoming.title} · ${relativeDay(toDate(upcoming.date))}`}
               onClick={() => onJump("life")}
-              title="Jump to Events"
+              title="Jump to Life"
             />
           )}
         </div>

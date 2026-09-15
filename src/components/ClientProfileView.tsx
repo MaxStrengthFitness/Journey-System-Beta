@@ -134,6 +134,9 @@ import {
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { WorkoutChartGrid } from "./WorkoutChartGrid";
 import { useToast } from "../contexts/ToastContext";
+import { runMasterSync } from "../lib/mindbody-master-sync";
+import { mindbodyIdOf } from "../lib/mindbody-id";
+import { masterSyncLabel } from "../features/client-profile/sync-label";
 import { StrongConfirmationModal } from "./StrongConfirmationModal";
 
 import { OccupationSelect } from "./OccupationSelect";
@@ -402,6 +405,26 @@ export function ClientProfileView({
   };
 
   const client = clients.find((c) => c.id === clientId);
+
+  // Master Sync (client-profile audit, Sep 2026): the ONE place a trainer
+  // refreshes a client from Mindbody. The write lands on the client document,
+  // and the profile's client stream brings it back to every card.
+  const [masterSyncing, setMasterSyncing] = useState(false);
+  const handleMasterSync = async () => {
+    if (!client || masterSyncing) return;
+    setMasterSyncing(true);
+    try {
+      const res = await runMasterSync({ client, studios: studios || [] });
+      if (res.status === "ok") toastSuccess(res.message);
+      else toastError(res.message);
+    } catch (err) {
+      console.error("[master sync]", err);
+      toastError("Couldn't reach Mindbody just now — nothing was changed. Try again in a minute.");
+    } finally {
+      setMasterSyncing(false);
+    }
+  };
+
   // Renewals round (Sep 2026): the package tile opens the Renewal card.
   const [renewalOpen, setRenewalOpen] = useState(false);
   const machineNames = useMemo(() => {
@@ -1623,6 +1646,12 @@ export function ClientProfileView({
         pkg={clientPackage}
         activeInProgressSession={activeInProgressSession}
         isCheckingActiveSession={isCheckingActiveSession}
+        sync={{
+          busy: masterSyncing,
+          onSync: () => void handleMasterSync(),
+          label: masterSyncLabel(client.mindbodyMasterSyncedAt),
+          available: !!mindbodyIdOf(client) && !client.provisional,
+        }}
         kaizen={
           liveAuthTrainer && client.id
             ? {
