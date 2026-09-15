@@ -1,5 +1,3 @@
-export { StudioTasksView } from "./StudioTasksView";
-export type { StudioTasksViewProps } from "./StudioTasksView";
 export { useMachineUpkeep } from "./useMachineUpkeep";
 export type { MachineUpkeep } from "./useMachineUpkeep";
 export { useStudioTasks } from "./useStudioTasks";
@@ -55,8 +53,9 @@ export {
 /* ------------------------------------------------------------------ *
  * STUDIO HUB (Sep 2026)
  *
- * Added alongside StudioTasksView rather than replacing it, so both can be
- * rendered while the new screen is reviewed on the iPad.
+ * Added alongside the original StudioTasksView so both could render while
+ * the new screen was reviewed on the iPad; the original was deleted in the
+ * cost round once the hub had had its week.
  * ------------------------------------------------------------------ */
 export { StudioHubView } from "./StudioHubView";
 export type { StudioHubViewProps } from "./StudioHubView";

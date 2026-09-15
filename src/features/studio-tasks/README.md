@@ -112,7 +112,8 @@ management can change the record.
 
 ## 5. The two screens
 
-**`StudioTasksView`** — grouped by template, not flattened. "Wipe down every
+**`StudioTasksView`** (deleted in the cost round, Sep 2026; the grouping it
+pioneered lives on in `StudioHubView`) — grouped by template, not flattened. "Wipe down every
 machine" across a 22-machine roster is 22 rows; as a flat list it buries the four
 facility tasks that also have to happen and gives no way to close the set at
 once. As a card with its own count and its own *Mark all*, it is one line of
@@ -139,7 +140,7 @@ recurrence.test.ts   26 tests — the whole scheduling policy, no Firestore
 mutations.ts         every write; batching, lazy creation, template CRUD
 useStudioTasks.ts    live templates + instances joined to the derived plan
 useMachineUpkeep.ts  per-machine cleaning/service/flag state, for the Catalog
-StudioTasksView.tsx  the trainer screen
+StudioHubView.tsx    the trainer screen (the Planner's Studio lane)
 TaskManager.tsx      the manager's editor
 TaskNoteDialog.tsx   complete-with-note, and the flag
 MachineUpkeepCard.tsx rendered by features/catalog
@@ -209,8 +210,8 @@ carries a `studioId` and the day list filters on it, so "restock the towels"
 does not follow a trainer to another location.
 
 **Mixed writes.** A multi-select can span both tiers, and they are different
-collections, so one batch cannot cover both. `StudioTasksView.writeMany()`
-groups the selection by location and writes each group.
+collections, so one batch cannot cover both. The mutations group a selection
+by location and write each group.
 
 ### Still open
 
@@ -300,7 +301,7 @@ is no such thing as a "preset task" in the model.
 
 ### `canManage` is temporarily `true`, and it has a date on it
 
-`StudioTasksView` no longer hides anything behind
+The hub no longer hides anything behind
 `hasPermission("manage_studio_tasks")`. The permission is still evaluated —
 it decides the button's *label* — but the Manage section is being built out
 and the role model it should hang off is separate work; gating a half-built
@@ -337,10 +338,10 @@ instead of not seeing the button. **Restore the gate when RBAC lands.**
 The To-Do screen rebuilt as a community hub: *what the team is doing, what the
 team needs to do, and how the team has solved this before.*
 
-**Routing.** `StudioHubView` renders for `currentView === "studio-tasks"`.
-`StudioTasksView` is untouched and still reachable — append `?classic-todo` to
-the URL. One constant in `AppContent.tsx` decides, read once at module load.
-Delete both when the hub has had a full week on the floor.
+**Routing.** The Planner (`features/planner`) renders for
+`currentView === "studio-tasks"`; `StudioHubView` is its Studio lane. The
+original `StudioTasksView` and its `?classic-todo` escape hatch were deleted
+in the cost round (Sep 2026) once the hub had had its week on the floor.
 
 ### Lanes are lifespan, chips are topic
 

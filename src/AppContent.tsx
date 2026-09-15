@@ -87,7 +87,6 @@ import { useToast } from "./contexts/ToastContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import AccessRequestView from "./components/AccessRequestView";
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
-// Lazy-loaded: downloaded on first visit to this view, not at app start.
 const TrainerSettingsView = lazy(() =>
   import("./features/settings").then((m) => ({
     default: m.TrainerSettingsView,
@@ -171,17 +170,11 @@ const ClientProgressReportView = lazy(() =>
     default: m.ClientProgressReportView,
   })),
 );
-// Lazy-loaded: downloaded on first visit to this view, not at app start.
 import { FeedbackProvider, FeedbackButton } from "./features/feedback";
 import { NotificationBell } from "./features/notifications";
 // Type-only, and from the module rather than the barrel, so nothing about the
 // studio-tasks chunk is pulled into the initial bundle.
 import type { ClientTaskAction } from "./features/studio-tasks/types";
-const StudioTasksView = lazy(() =>
-  import("./features/studio-tasks").then((m) => ({
-    default: m.StudioTasksView,
-  })),
-);
 /**
  * The Planner (Learning + Planner round, Sep 2026) — what was the To-Do
  * screen: the studio hub as its Studio tab, plus My tasks and Notes. The view
@@ -194,20 +187,6 @@ const PlannerView = lazy(() =>
   })),
 );
 
-/**
- * THE ESCAPE HATCH — append ?classic-todo to the URL for the old screen.
- *
- * The hub is a redesign of a screen trainers use every shift, and it is being
- * reviewed on an iPad in a live studio. If something about it does not work at
- * 6am on a Tuesday, the fix has to be "add six characters to the URL", not
- * "wait for a deploy". Read once at module load, so it cannot change under a
- * render.
- *
- * Delete this and the StudioTasksView branch once the hub has had a full week.
- */
-const CLASSIC_TODO =
-  typeof window !== "undefined" &&
-  window.location.search.includes("classic-todo");
 /*
  * LEARNING — the Catalog, the MSF Academy and (since the Learning + Planner
  * round, Sep 2026) a front page and one search, as one lazy chunk. The
@@ -2163,13 +2142,7 @@ export default function AppContent({
                             : "profile",
                       );
                     };
-                    return CLASSIC_TODO ? (
-                      <StudioTasksView
-                        authTrainer={authTrainer}
-                        clients={clients}
-                        onOpenClientTask={openClientTask}
-                      />
-                    ) : (
+                    return (
                       <PlannerView
                         authTrainer={authTrainer}
                         clients={clients}

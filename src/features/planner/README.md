@@ -21,8 +21,9 @@ He picked the name **Planner**.
   - the settings link;
   - the Operations overview ("Studio tasks");
   - the Hub's day strip ("Tasks").
-  
-  `?classic-todo` still opens the old list.
+
+  The old list and its `?classic-todo` escape hatch were deleted in the cost
+  round (Sep 2026).
 - **A masthead like Learning's.** A title, the tabs, and the studio and day on the right. AJ said both screens lacked "a good header", and both got the same one.
   - Embedded in the Planner, the hub's own title and date give way to one line: "Shared with everyone at {studio}".
   - Everything below the header is untouched.

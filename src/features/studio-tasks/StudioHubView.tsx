@@ -19,11 +19,11 @@
  * you already claimed or authored, so it costs no extra data.
  *
  * SELF-CONTAINED, DELIBERATELY
- * This takes the same three props as StudioTasksView and fetches everything
- * else itself, so routing it is a one-line swap in AppContent and swapping
- * back is the same line. The old StudioTasksView is left untouched and still
- * routable — both can render while this is reviewed on the iPad, and nothing
- * that works today has to be deleted to try it.
+ * This took the same three props as the original StudioTasksView and fetches
+ * everything else itself, so routing it was a one-line swap in AppContent.
+ * The old screen and its ?classic-todo escape hatch were deleted in the cost
+ * round (Sep 2026) once the hub had had its week on the floor; the Planner
+ * now embeds this as its Studio lane.
  */
 import { useMemo, useState } from "react";
 import { Settings2, UserRound, Users } from "lucide-react";
