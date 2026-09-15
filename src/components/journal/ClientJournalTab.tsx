@@ -16,6 +16,26 @@
  *
  * On iPad portrait everything stacks into one column and the filter rail
  * becomes a horizontal chip bar; on landscape (xl) the sidebar splits off.
+ *
+ * SINCE THE PROFILE MERGE (Sep 2026) THIS IS NOT A TAB
+ * ---------------------------------------------------
+ * Details and Journal became one spine, and the four areas were dealt out to
+ * three of its sections: Focus, Notes, and Reports (which holds the report
+ * shelf and the assessment together). So this component is now mounted three
+ * times, each with an `areas` list naming what to draw.
+ *
+ * Two things follow from that, and both are load-bearing:
+ *
+ *   - When `areas` is given, the internal jump nav and the critical-notes rail
+ *     are NOT drawn. The spine has its own nav, and the snapshot bar already
+ *     carries the critical count. Drawing either again would be the exact
+ *     duplication the merge set out to remove. Mounted with no `areas` it is
+ *     the original standalone tab, rail and all.
+ *   - `journal` lets the caller pass an already-loaded useClientJournal result
+ *     in. The dossier loads it once and hands the same object to all three
+ *     mounts, so three sections of journal UI cost one set of listeners. Left
+ *     out, the component loads its own — which is what the standalone tab and
+ *     any future caller get for free.
  */
 import React, { useMemo, useState } from "react";
 import { auth } from "../../firebase";
@@ -39,6 +59,7 @@ import {
   resolveJournalEntry,
   setFocusStatus,
   useClientJournal,
+  type UseClientJournalResult,
 } from "../../hooks/useClientJournal";
 import {
   COMPOSER_KINDS,
@@ -72,6 +93,9 @@ const WINDOW_DAYS: Record<WindowFilter, number | null> = {
   all: null,
 };
 
+/** The four areas, by id. */
+export type JournalAreaId = "progress-reports" | "check-in" | "focus" | "notes";
+
 export interface ClientJournalTabProps {
   clientId: string | null;
   client: Client | null;
@@ -83,6 +107,15 @@ export interface ClientJournalTabProps {
   onDeleteReport: (report: ProgressReport) => void;
   onNewReport: () => void;
   hasQuotaError?: boolean;
+  /**
+   * Which areas to draw. Omit for all four plus the jump nav and the critical
+   * rail — the original standalone tab. Give it a subset and those two
+   * chrome pieces are suppressed, because whoever is composing the areas owns
+   * the navigation. See the header.
+   */
+  areas?: JournalAreaId[];
+  /** An already-loaded journal, so several mounts share one set of listeners. */
+  journal?: UseClientJournalResult;
 }
 
 export function ClientJournalTab({
@@ -96,16 +129,26 @@ export function ClientJournalTab({
   onDeleteReport,
   onNewReport,
   hasQuotaError,
+  areas,
+  journal,
 }: ClientJournalTabProps) {
   const { success: toastSuccess, error: toastError } = useToast();
 
+  // Hooks cannot be called conditionally, so when a journal is handed in the
+  // internal one is disabled rather than skipped. A disabled useClientJournal
+  // opens no listeners, so this costs nothing but a few empty arrays.
+  const ownJournal = useClientJournal({
+    clientId,
+    client,
+    trainers,
+    enabled: !hasQuotaError && !journal,
+  });
   const { entries, focuses, criticalEntries, isLoading, needsIndex } =
-    useClientJournal({
-      clientId,
-      client,
-      trainers,
-      enabled: !hasQuotaError,
-    });
+    journal ?? ownJournal;
+
+  /** Composed into a spine? Then the caller owns the nav and the rail. */
+  const composed = Boolean(areas);
+  const shows = (id: JournalAreaId) => !areas || areas.includes(id);
 
   const [kindFilter, setKindFilter] = useState<JournalKind | "all">("all");
   const [coachFilter, setCoachFilter] = useState<string>("all");
@@ -391,11 +434,13 @@ export function ClientJournalTab({
 
       {/* Before you start. Not one of the four areas: it is a safety rail,
           and it stays above them because a critical note is the one thing
-          that must be read before the client is touched. */}
-      <CriticalStrip entries={criticalEntries} machines={machines} />
+          that must be read before the client is touched. In the spine the
+          snapshot bar carries this instead. */}
+      {!composed && <CriticalStrip entries={criticalEntries} machines={machines} />}
 
       {/* The four areas, and a rail to jump between them. A 20-minute
           session does not have time to scroll looking for the right one. */}
+      {!composed && (
       <nav
         aria-label="Journal areas"
         className="sticky top-0 z-20 -mx-2 flex gap-1.5 overflow-x-auto border-b border-slate-200 bg-slate-50/95 px-2 py-2 backdrop-blur-sm no-scrollbar dark:border-slate-800 dark:bg-slate-950/95"
@@ -410,10 +455,13 @@ export function ClientJournalTab({
           </a>
         ))}
       </nav>
+      )}
 
       {/* ------------------ 1 · CLIENT PROGRESS REPORTS ------------------ */}
+      {shows("progress-reports") && (
       <JournalArea
         id="progress-reports"
+        bare={composed}
         title="Client Progress Reports"
         blurb="Finalized evaluations, newest first. The shelf a coach reads before a review conversation."
       >
@@ -424,19 +472,25 @@ export function ClientJournalTab({
           onNew={onNewReport}
         />
       </JournalArea>
+      )}
 
       {/* ----------------------- 2 · ASSESSMENT -------------------------- */}
+      {shows("check-in") && (
       <JournalArea
         id="check-in"
+        bare={false}
         title="Assessment"
         blurb="A living record, filled in a piece at a time and saved as you go. Open one topic, answer it, come back next session."
       >
         <ClientCheckInPanel client={client} trainer={authTrainer ?? null} machines={machines} />
       </JournalArea>
+      )}
 
       {/* ---------------------------- 3 · FOCUS -------------------------- */}
+      {shows("focus") && (
       <JournalArea
         id="focus"
+        bare={composed}
         title="Focus"
         blurb="What each coach is working on with this client, and whether it passed."
       >
@@ -452,10 +506,13 @@ export function ClientJournalTab({
           onCheckIn={handleCheckIn}
         />
       </JournalArea>
+      )}
 
       {/* ---------------------------- 4 · NOTES -------------------------- */}
+      {shows("notes") && (
       <JournalArea
         id="notes"
+        bare={composed}
         title="Notes"
         blurb="Everything logged about this client, newest first. Write it while it is fresh."
       >
@@ -583,6 +640,7 @@ export function ClientJournalTab({
           </div>
         </div>
       </JournalArea>
+      )}
     </div>
   );
 }
@@ -603,22 +661,29 @@ function JournalArea({
   id,
   title,
   blurb,
+  bare = false,
   children,
 }: {
   id: string;
   title: string;
   blurb: string;
+  /** Inside the profile spine the section shell already printed a heading. */
+  bare?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <section id={id} className="scroll-mt-16">
-      <div className="mb-3 flex items-baseline gap-3">
-        <h3 className="font-display text-lg font-black uppercase italic tracking-tight text-foreground">
-          {title}
-        </h3>
-        <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-      </div>
-      <p className="mb-3 text-[11px] font-medium text-muted-foreground">{blurb}</p>
+      {!bare && (
+        <>
+          <div className="mb-3 flex items-baseline gap-3">
+            <h3 className="font-display text-lg font-black uppercase italic tracking-tight text-foreground">
+              {title}
+            </h3>
+            <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+          </div>
+          <p className="mb-3 text-[11px] font-medium text-muted-foreground">{blurb}</p>
+        </>
+      )}
       {children}
     </section>
   );

@@ -1,34 +1,42 @@
 /**
- * THE CLIENT DOSSIER
+ * THE CLIENT DOSSIER — the whole client, in one scroll.
  *
- * Replaces the six-tab Client Information modal with one scrolling spine.
+ * Originally this replaced the six-tab Client Information modal with one
+ * spine. In the profile merge (Sep 2026) it absorbed the Journal tab as well,
+ * so it is now the client's entire non-training record: who they are, their
+ * life, their body, their goals, the coaching focus, every note, the reports,
+ * and the admin.
  *
- * Why: a coach walking to the floor thinks "tell me about Judy", not "which
- * tab is her A-Fib in". Tabs made every fact conditional on already knowing
- * where it lived, and split data that belongs together — a surgery is a
- * medical fact AND a calendar event AND the reason her load is capped. One
- * spine lets you read the whole client in a single scroll; the nav is demoted
- * from a switch to a jump list for when you already know where you are going.
+ * Why one spine: a coach walking to the floor thinks "tell me about Judy", not
+ * "which tab is her A-Fib in". Tabs made every fact conditional on already
+ * knowing where it lived, and split data that belongs together — a surgery is
+ * a medical fact AND a date AND the reason her load is capped. The nav is
+ * demoted from a switch to a jump list for when you already know where you
+ * are going.
  *
- * Three things carry the design:
- *   1. The snapshot bar never scrolls away. Liability, contract, critical
- *      notes and the next event are the facts that must not be three tabs deep.
- *   2. Provenance is in the control. An input means you own it; a tabbed
- *      read-only block means Mindbody or the Journal does. See DossierPrimitives.
- *   3. Every section pulls its own journal notes. A "Surgery" note logged
- *      mid-session appears under Medical without anyone re-typing it, because
- *      it is the same document, not a copy.
+ * Four things carry the design:
+ *   1. The snapshot bar never scrolls away. Liability, contract and critical
+ *      notes are the facts that must not be a scroll away.
+ *   2. Provenance is in the control. An input means you own it; a read-only
+ *      block means Mindbody or the Journal does. See DossierPrimitives.
+ *   3. ONE copy of everything. The per-section journal rails are gone except
+ *      on Body, where a limitation noticed mid-session is safety information
+ *      and belongs beside the clinical fields. Everything else is read in
+ *      Notes, which is the single timeline. See the note on DOSSIER_SECTIONS
+ *      in types/journal.ts for what moved and what was deleted.
+ *   4. The journal areas are mounted with the journal ALREADY LOADED and
+ *      passed in, so three sections of journal UI cost one set of Firestore
+ *      listeners rather than three.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Activity,
-  Calendar,
+  Crosshair,
+  Heart,
   HeartPulse,
-  Plus,
+  NotebookPen,
   RefreshCw,
   Settings2,
   Target,
-  Trash2,
   TrendingUp,
   User,
 } from "lucide-react";
@@ -41,9 +49,9 @@ import {
 } from "../../types/journal";
 import type {
   Client,
-  ClientEvent,
   Machine,
   MindbodyContract,
+  ProgressReport,
   Studio,
   Trainer,
 } from "../../types";
@@ -54,6 +62,9 @@ import { InBodyCard } from "../../features/inbody/InBodyCard";
 import { SharedNotesCard } from "../../features/planner/notes/SharedNotesCard";
 import { ClientSnapshot, activeContract } from "./ClientSnapshot";
 import { JournalRail } from "./JournalRail";
+import { ClientJournalTab, type JournalAreaId } from "../journal/ClientJournalTab";
+import { FordSection } from "../../features/ford/FordSection";
+import type { FordAuthor } from "../../features/ford/ford-write";
 import {
   DossierSectionShell,
   FieldGroup,
@@ -63,28 +74,22 @@ import {
   TextAreaField,
   TextField,
 } from "./DossierPrimitives";
-import { studioTodayKey } from "../../lib/studio-time";
 
 const SECTION_ICONS: Record<DossierSection, React.ReactNode> = {
   general: <User className="h-5 w-5" />,
-  lifestyle: <Activity className="h-5 w-5" />,
+  life: <Heart className="h-5 w-5" />,
   medical: <HeartPulse className="h-5 w-5" />,
   goals: <Target className="h-5 w-5" />,
+  focus: <Crosshair className="h-5 w-5" />,
+  notes: <NotebookPen className="h-5 w-5" />,
+  reports: <TrendingUp className="h-5 w-5" />,
   admin: <Settings2 className="h-5 w-5" />,
-  events: <Calendar className="h-5 w-5" />,
 };
 
-const EVENT_TYPES = [
-  "Birthday/Anniversary",
-  "Vacation",
-  "Snowbird",
-  "Medical",
-  "Progress Report",
-  "InBody Scan",
-  "Routine Change",
-  "Alert",
-  "Other",
-] as const;
+/** Read the blurb by id rather than by array position — the order has changed
+ *  twice now, and `DOSSIER_SECTIONS[1].blurb` was silently wrong both times. */
+const sectionBlurb = (id: DossierSection) =>
+  DOSSIER_SECTIONS.find((s) => s.id === id)?.blurb ?? "";
 
 const fmtDate = (v: any, fallback = "—") => {
   const d = toDate(v);
@@ -103,6 +108,13 @@ export interface ClientDossierProps {
   defaultSection?: DossierSection;
   onOpenJournal?: () => void;
   onOpenReports?: () => void;
+  /** Signed-in coach, for writing FORD details. Omit and the Life hub is read-only. */
+  fordAuthor?: FordAuthor | null;
+  /** The report shelf, handed straight to the Reports section. */
+  progressReports?: ProgressReport[];
+  onSelectReport?: (id: string) => void;
+  onDeleteReport?: (report: ProgressReport) => void;
+  onNewReport?: () => void;
   onSyncMindbody?: () => void;
   isSyncingMb?: boolean;
   /**
@@ -127,6 +139,11 @@ export function ClientDossier({
   defaultSection,
   onOpenJournal,
   onOpenReports,
+  fordAuthor = null,
+  progressReports = [],
+  onSelectReport,
+  onDeleteReport,
+  onNewReport,
   onSyncMindbody,
   isSyncingMb = false,
   scroll = "inner",
@@ -139,11 +156,16 @@ export function ClientDossier({
     defaultSection || "general",
   );
 
-  const { entries, criticalEntries } = useClientJournal({
+  // Loaded ONCE here and handed to each journal section below. Three areas
+  // of journal UI, one set of listeners.
+  const journal = useClientJournal({
     clientId: client.id || null,
     client,
     trainers,
   });
+  const { entries, criticalEntries } = journal;
+
+  const noop = useCallback(() => {}, []);
 
   /* --- scroll spy ---------------------------------------------------- */
   useEffect(() => {
@@ -201,33 +223,9 @@ export function ClientDossier({
     ([k]) => k !== "LongtermGoal" && k !== "LongTermGoal",
   );
 
-  const events = formData.events || [];
-  const sortedEvents = useMemo(
-    () =>
-      [...events].sort(
-        (a, b) => (toDate(a.date)?.getTime() ?? 0) - (toDate(b.date)?.getTime() ?? 0),
-      ),
-    [events],
-  );
-
-  /* --- event editing -------------------------------------------------- */
-  const addEvent = () => {
-    const next: ClientEvent = {
-      id: Math.random().toString(36).slice(2, 11),
-      title: "",
-      type: "Other",
-      date: studioTodayKey(),
-      priority: "Medium",
-    };
-    updateField("events", [...events, next]);
-  };
-  const patchEvent = (id: string, key: keyof ClientEvent, value: any) =>
-    updateField(
-      "events",
-      events.map((e) => (e.id === id ? { ...e, [key]: value } : e)),
-    );
-  const removeEvent = (id: string) =>
-    updateField("events", events.filter((e) => e.id !== id));
+  /* `client.events` is no longer edited here. It is read as FORD entries in
+     the Life section (features/ford/ford-rollup.ts), so the array stays on the
+     record untouched and there is one dated timeline instead of two. */
 
   const toggleFlag = (flagId: string) => {
     const cur = formData.clinicalFlags || [];
@@ -307,7 +305,7 @@ export function ClientDossier({
             <DossierSectionShell
               id="general"
               title="General"
-              blurb={DOSSIER_SECTIONS[0].blurb}
+              blurb={sectionBlurb("general")}
               icon={SECTION_ICONS.general}
             >
               <FieldGroup title="Identity">
@@ -421,21 +419,20 @@ export function ClientDossier({
                 </div>
               )}
 
-              <JournalRail
-                section="general"
-                entries={entries}
-                machines={machines}
-                onOpenJournal={onOpenJournal}
-              />
             </DossierSectionShell>
 
-            {/* ---------------- LIFESTYLE ---------------- */}
+            {/* ---------------- LIFE (FORD) ---------------- */}
             <DossierSectionShell
-              id="lifestyle"
-              title="Lifestyle"
-              blurb={DOSSIER_SECTIONS[1].blurb}
-              icon={SECTION_ICONS.lifestyle}
+              id="life"
+              title="Life"
+              blurb={sectionBlurb("life")}
+              icon={SECTION_ICONS.life}
             >
+              {/* Occupation stays a structured field even though it is also
+                  the O in FORD: the occupational matrix reads it to reason
+                  about what a client's body does all day, which a free-text
+                  detail cannot do. The sentence and the dropdown are
+                  different jobs, so both are here, in that order. */}
               <FieldGroup title="Work">
                 <div className="flex flex-col gap-1.5 min-w-0">
                   <FieldLabel>Occupation</FieldLabel>
@@ -474,6 +471,44 @@ export function ClientDossier({
                 </div>
               </FieldGroup>
 
+              {fordAuthor ? (
+                <FordSection client={client} author={fordAuthor} machines={machines} />
+              ) : null}
+
+              {/* Personal notes written before FORD existed. Read-only here
+                  and quiet: the composer no longer creates them, so this
+                  shrinks to nothing on its own over time. */}
+              <JournalRail
+                section="life"
+                entries={entries}
+                machines={machines}
+                onOpenJournal={onOpenJournal}
+                emptyHint=""
+              />
+            </DossierSectionShell>
+
+            {/* ---------------- MEDICAL ---------------- */}
+            <DossierSectionShell
+              id="medical"
+              title="Medical"
+              blurb={sectionBlurb("medical")}
+              icon={SECTION_ICONS.medical}
+            >
+              {/* The rail leads here, before the form fields. On this section
+                  what happened in the room outranks what someone typed at
+                  intake six months ago. */}
+              <JournalRail
+                section="medical"
+                entries={entries}
+                machines={machines}
+                onOpenJournal={onOpenJournal}
+                emptyHint="No medical notes or incidents logged. Surgery and injury notes, clinical incidents, and anything flagged critical anywhere in the Journal surface here automatically."
+              />
+
+              {/* Moved here from the old Lifestyle section in the profile
+                  merge: how much load a client already carries, and how well
+                  they recover from it, is a programming input. It belongs
+                  beside the constraints, not beside their grandchildren. */}
               <FieldGroup title="Load outside the studio">
                 <SelectField
                   label="Activity level"
@@ -500,43 +535,6 @@ export function ClientDossier({
                   options={["Novice", "Intermediate", "Advanced", "Protocol Veteran"]}
                 />
               </FieldGroup>
-
-              <FieldGroup title="How they found us">
-                <TextField label="Lead source" value={val("leadSource")} onChange={set("leadSource")} />
-                <TextField
-                  label="Referred by"
-                  value={val("referredBy")}
-                  onChange={set("referredBy")}
-                  hint="Mindbody fills this if it is blank; your edit is never overwritten."
-                />
-              </FieldGroup>
-
-              <JournalRail
-                section="lifestyle"
-                entries={entries}
-                machines={machines}
-                onOpenJournal={onOpenJournal}
-                emptyHint="No lifestyle notes yet. Notes filed here appear automatically — a general note about her bocce league or her sleep will show up in this spot."
-              />
-            </DossierSectionShell>
-
-            {/* ---------------- MEDICAL ---------------- */}
-            <DossierSectionShell
-              id="medical"
-              title="Medical"
-              blurb={DOSSIER_SECTIONS[2].blurb}
-              icon={SECTION_ICONS.medical}
-            >
-              {/* The rail leads here, before the form fields. On this section
-                  what happened in the room outranks what someone typed at
-                  intake six months ago. */}
-              <JournalRail
-                section="medical"
-                entries={entries}
-                machines={machines}
-                onOpenJournal={onOpenJournal}
-                emptyHint="No medical notes or incidents logged. Surgery and injury notes, clinical incidents, and anything flagged critical anywhere in the Journal surface here automatically."
-              />
 
               <FieldGroup title="Measurements">
                 <TextField label="Height" value={val("height")} onChange={set("height")} placeholder={`e.g. 5'4"`} />
@@ -596,7 +594,7 @@ export function ClientDossier({
             <DossierSectionShell
               id="goals"
               title="Goals"
-              blurb={DOSSIER_SECTIONS[3].blurb}
+              blurb={sectionBlurb("goals")}
               icon={SECTION_ICONS.goals}
             >
               {/* Learning + Planner round, Sep 2026: plans trainers shared
@@ -652,12 +650,71 @@ export function ClientDossier({
                 </button>
               )}
 
-              <JournalRail
-                section="goals"
-                entries={entries}
+            </DossierSectionShell>
+
+            {/* ---------------- FOCUS ---------------- */}
+            <DossierSectionShell
+              id="focus"
+              title="Focus"
+              blurb={sectionBlurb("focus")}
+              icon={SECTION_ICONS.focus}
+            >
+              <ClientJournalTab
+                areas={["focus"]}
+                journal={journal}
+                clientId={client.id || null}
+                client={client}
                 machines={machines}
-                onOpenJournal={onOpenJournal}
-                emptyHint="Consultation and discovery notes appear here as they are logged."
+                trainers={trainers}
+                authTrainer={authTrainer}
+                progressReports={progressReports}
+                onSelectReport={onSelectReport ?? noop}
+                onDeleteReport={onDeleteReport ?? noop}
+                onNewReport={onNewReport ?? noop}
+              />
+            </DossierSectionShell>
+
+            {/* ---------------- NOTES ---------------- */}
+            <DossierSectionShell
+              id="notes"
+              title="Notes"
+              blurb={sectionBlurb("notes")}
+              icon={SECTION_ICONS.notes}
+            >
+              <ClientJournalTab
+                areas={["notes"]}
+                journal={journal}
+                clientId={client.id || null}
+                client={client}
+                machines={machines}
+                trainers={trainers}
+                authTrainer={authTrainer}
+                progressReports={progressReports}
+                onSelectReport={onSelectReport ?? noop}
+                onDeleteReport={onDeleteReport ?? noop}
+                onNewReport={onNewReport ?? noop}
+              />
+            </DossierSectionShell>
+
+            {/* ---------------- REPORTS + ASSESSMENT ---------------- */}
+            <DossierSectionShell
+              id="reports"
+              title="Reports"
+              blurb={sectionBlurb("reports")}
+              icon={SECTION_ICONS.reports}
+            >
+              <ClientJournalTab
+                areas={["progress-reports", "check-in"]}
+                journal={journal}
+                clientId={client.id || null}
+                client={client}
+                machines={machines}
+                trainers={trainers}
+                authTrainer={authTrainer}
+                progressReports={progressReports}
+                onSelectReport={onSelectReport ?? noop}
+                onDeleteReport={onDeleteReport ?? noop}
+                onNewReport={onNewReport ?? noop}
               />
             </DossierSectionShell>
 
@@ -665,7 +722,7 @@ export function ClientDossier({
             <DossierSectionShell
               id="admin"
               title="Admin"
-              blurb={DOSSIER_SECTIONS[4].blurb}
+              blurb={sectionBlurb("admin")}
               icon={SECTION_ICONS.admin}
             >
               <FieldGroup cols={3}>
@@ -767,6 +824,18 @@ export function ClientDossier({
                 )}
               </div>
 
+              {/* Also from the old Lifestyle section. How a client found the
+                  studio is acquisition data — it sits with the contract. */}
+              <FieldGroup title="How they found us">
+                <TextField label="Lead source" value={val("leadSource")} onChange={set("leadSource")} />
+                <TextField
+                  label="Referred by"
+                  value={val("referredBy")}
+                  onChange={set("referredBy")}
+                  hint="Mindbody fills this if it is blank; your edit is never overwritten."
+                />
+              </FieldGroup>
+
               <ClientMembershipsCard client={client} />
 
               <div className="flex flex-col gap-2.5">
@@ -804,112 +873,6 @@ export function ClientDossier({
               </div>
             </DossierSectionShell>
 
-            {/* ---------------- EVENTS ---------------- */}
-            <DossierSectionShell
-              id="events"
-              title="Events"
-              blurb={DOSSIER_SECTIONS[5].blurb}
-              icon={SECTION_ICONS.events}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[11.5px] text-muted-foreground">
-                  These appear on the studio calendar. Birthdays, trips, surgeries and recovery
-                  windows.
-                </p>
-                <button
-                  type="button"
-                  onClick={addEvent}
-                  className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-[#38BDF8] px-4 text-[11px] font-black uppercase tracking-wider text-white transition-colors hover:bg-[#0284c7]"
-                >
-                  <Plus className="h-3.5 w-3.5" /> Add event
-                </button>
-              </div>
-
-              {sortedEvents.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center dark:border-slate-800">
-                  <p className="text-[11.5px] text-muted-foreground">
-                    Nothing on the horizon.
-                  </p>
-                </div>
-              ) : (
-                <ul className="flex flex-col gap-3">
-                  {sortedEvents.map((event) => {
-                    const past = (toDate(event.date)?.getTime() ?? 0) < Date.now() - 86400000;
-                    return (
-                      <li
-                        key={event.id}
-                        className={cn(
-                          "rounded-xl border border-slate-200 p-3.5 dark:border-slate-800",
-                          past && "opacity-60",
-                        )}
-                      >
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          <TextField
-                            label="Title"
-                            value={event.title}
-                            onChange={(v) => patchEvent(event.id, "title", v)}
-                            placeholder="e.g. Cardiac ablation"
-                          />
-                          <SelectField
-                            label="Type"
-                            value={event.type}
-                            onChange={(v) => patchEvent(event.id, "type", v)}
-                            options={EVENT_TYPES}
-                            placeholder="Other"
-                          />
-                          <TextField
-                            label="Date"
-                            type="date"
-                            value={event.date}
-                            onChange={(v) => patchEvent(event.id, "date", v)}
-                          />
-                          <TextField
-                            label="Ends (optional)"
-                            type="date"
-                            value={event.endDate || ""}
-                            onChange={(v) => patchEvent(event.id, "endDate", v)}
-                            hint="For blocks — a trip, or a recovery window."
-                          />
-                          <SelectField
-                            label="Priority"
-                            value={event.priority}
-                            onChange={(v) => patchEvent(event.id, "priority", v)}
-                            options={["High", "Medium", "Low"]}
-                            placeholder="Medium"
-                          />
-                          <div className="flex items-end">
-                            <button
-                              type="button"
-                              onClick={() => removeEvent(event.id)}
-                              className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 text-[10.5px] font-black uppercase tracking-wider text-muted-foreground transition-colors hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-500 dark:border-slate-800"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" /> Remove
-                            </button>
-                          </div>
-                          <div className="sm:col-span-2">
-                            <TextAreaField
-                              label="Notes"
-                              value={event.notes || ""}
-                              onChange={(v) => patchEvent(event.id, "notes", v)}
-                              rows={2}
-                              placeholder="Anything a coach needs to know around this date."
-                            />
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-
-              <JournalRail
-                section="events"
-                entries={entries}
-                machines={machines}
-                onOpenJournal={onOpenJournal}
-                emptyHint="Birthday, anniversary, vacation and milestone notes from the Journal show up here too."
-              />
-            </DossierSectionShell>
           </div>
         </div>
       </div>

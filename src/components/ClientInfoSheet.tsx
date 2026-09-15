@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { X, Maximize } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
 
-import { db } from "../firebase";
-import { Client, Machine, Trainer } from "../types";
+import { auth, db } from "../firebase";
+import { Client, Machine, ProgressReport, Trainer } from "../types";
 import type { DossierSection } from "../types/journal";
 import { useActiveStudio } from "../ActiveStudioContext";
 import { useToast } from "../contexts/ToastContext";
@@ -16,14 +16,25 @@ import { authedFetch } from "../lib/authed-fetch";
  * Callers still pass tab values, so they are translated here rather than
  * chased down and changed.
  */
+/**
+ * Deep links and old callers still speak the tab names the modal had in 2025.
+ * `lifestyle` and `events` no longer exist as sections — both of their subjects
+ * now live under Life (see DOSSIER_SECTIONS in types/journal.ts) — so they are
+ * translated rather than dropped, and an old link still lands somewhere sane.
+ */
 const LEGACY_TAB_TO_SECTION: Record<string, DossierSection> = {
   identity: "general",
   general: "general",
-  lifestyle: "lifestyle",
+  lifestyle: "life",
+  life: "life",
   medical: "medical",
   goals: "goals",
+  focus: "focus",
+  notes: "notes",
+  reports: "reports",
+  journal: "notes",
   admin: "admin",
-  events: "events",
+  events: "life",
 };
 
 interface ClientInfoSheetProps {
@@ -42,7 +53,7 @@ interface ClientInfoSheetProps {
   authTrainer: Trainer | null;
   /** Legacy tab id; translated to a dossier section. */
   defaultTab?: string;
-  /** Reference data for the journal rails. */
+  /** Reference data for the journal areas and rails. */
   machines?: Machine[];
   trainers?: Trainer[];
   /** Jump the user to the Journal tab behind this modal. */
@@ -51,6 +62,14 @@ interface ClientInfoSheetProps {
   onOpenReports?: () => void;
   /** Switch to the Planner (Goals → Plans from the team → Write a plan). */
   onOpenPlanner?: () => void;
+  /**
+   * The Reports section's shelf. Passed through since the profile merge —
+   * the reports live inside this spine now, not in a separate tab.
+   */
+  progressReports?: ProgressReport[];
+  onSelectReport?: (id: string) => void;
+  onDeleteReport?: (report: ProgressReport) => void;
+  onNewReport?: () => void;
 }
 
 export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
@@ -66,6 +85,10 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
   onOpenJournal,
   onOpenReports,
   onOpenPlanner,
+  progressReports = [],
+  onSelectReport,
+  onDeleteReport,
+  onNewReport,
 }) => {
   const inline = variant === "inline";
   const { success: toastSuccess, error: toastError } = useToast();
@@ -74,6 +97,18 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
   const [dirtyFields, setDirtyFields] = useState<Set<keyof Client>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncingMb, setIsSyncingMb] = useState(false);
+
+  // The Auth uid, not authTrainer.id: the FORD rules pin authorId to it, the
+  // same way the journalEntries rule does, and the two differ on older
+  // accounts.
+  const fordAuthor = useMemo(
+    () => ({
+      id: auth.currentUser?.uid || authTrainer?.id || "",
+      initials: (authTrainer?.initials || "TR").toUpperCase(),
+      fullName: authTrainer?.fullName || "Coach",
+    }),
+    [authTrainer],
+  );
   const [activeTab, setActiveTab] = useState("identity");
 
   // Initialize form state. Inline, the sheet stays mounted for as long as the
@@ -348,6 +383,11 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
         onOpenJournal={onOpenJournal}
         onOpenReports={onOpenReports}
         onOpenPlanner={onOpenPlanner}
+        fordAuthor={fordAuthor}
+        progressReports={progressReports}
+        onSelectReport={onSelectReport}
+        onDeleteReport={onDeleteReport}
+        onNewReport={onNewReport}
         onSyncMindbody={handleSyncMindbody}
         isSyncingMb={isSyncingMb}
         scroll={inline ? "page" : "inner"}

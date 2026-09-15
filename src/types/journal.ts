@@ -382,10 +382,21 @@ export const IMPORTANCE_META: Record<
 };
 
 /** Kinds offered in the quick-add strip, in the order coaches reach for them. */
+/**
+ * What the composer offers.
+ *
+ * `life` ("Personal") was removed in the profile merge, Sep 2026. Personal
+ * detail has a real home now — FORD, on the client record, studio-scoped
+ * rather than readable by every signed-in user, and structured so a date can
+ * become a gesture. Two ways to record that a client's son is graduating is
+ * exactly the duplication this round set out to remove.
+ *
+ * Existing `life` entries still render everywhere they always did; only the
+ * way to create a NEW one has moved. See features/ford.
+ */
 export const COMPOSER_KINDS: { kind: JournalKind; label: string }[] = [
   { kind: "coaching", label: "Coaching" },
   { kind: "equipment", label: "Equipment" },
-  { kind: "life", label: "Personal" },
   { kind: "incident", label: "Incident" },
   { kind: "general", label: "Note" },
 ];
@@ -441,17 +452,50 @@ export function dateBucket(date: Date | null): string {
 /* ------------------------------------------------------------------ */
 
 /**
- * The client dossier's sections. A journal note is surfaced in the section its
- * subject belongs to, so a "Surgery" note logged mid-session shows up under
- * Medical without anyone re-typing it into a profile field.
+ * The client profile's sections — one spine holding what used to be two tabs.
+ *
+ * WHAT CHANGED, AND WHY (the profile merge, Sep 2026)
+ * --------------------------------------------------
+ * Details and Journal were separately good screens that showed each other's
+ * data. Four of the six dossier sections embedded a rail of journal notes the
+ * Journal tab was also rendering; `client.events` was an editable section AND
+ * a stream of "life" entries; six profile textareas were edited in Details and
+ * adapted into journal cards at the same time. A trainer reading a client had
+ * to visit two tabs and then work out which copy was the real one.
+ *
+ * So they are one tab now, and the sections below are the whole client, in the
+ * order someone actually reads a person:
+ *
+ *   general   who they are          — identity, contact, the Mindbody record
+ *   life      the FORD hub          — family, occupation, recreation, dreams
+ *   medical   what the load works around, plus the load they already carry
+ *   goals     the why              — original why, SMART goal, coach strategy
+ *   focus     the 4 P's            — what each coach is working on
+ *   notes     the timeline         — everything written, newest first
+ *   reports   reports + assessment — the shelf, and the living record
+ *   admin     contract, billing, access, and how they found us
+ *
+ * Two sections are gone. LIFESTYLE is replaced by `life`: its dropdowns were
+ * programming inputs and moved to `medical` beside the rest of the load
+ * picture, its acquisition fields moved to `admin`, and the personal detail it
+ * was supposed to hold now has a real home in FORD. EVENTS is gone because
+ * `client.events` is read as FORD entries instead (see features/ford), leaving
+ * one dated timeline rather than two.
+ *
+ * The per-section journal rails are also gone, with ONE exception: `medical`
+ * keeps its rail, because a limitation noticed mid-session is safety
+ * information and belongs beside the clinical fields, not one section away.
+ * Everything else reads the `notes` section, which is the single timeline.
  */
 export type DossierSection =
   | "general"
-  | "lifestyle"
+  | "life"
   | "medical"
   | "goals"
-  | "admin"
-  | "events";
+  | "focus"
+  | "notes"
+  | "reports"
+  | "admin";
 
 export const DOSSIER_SECTIONS: {
   id: DossierSection;
@@ -459,12 +503,14 @@ export const DOSSIER_SECTIONS: {
   blurb: string;
   icon: string;
 }[] = [
-  { id: "general", label: "General", blurb: "Who they are and how to reach them", icon: "User" },
-  { id: "lifestyle", label: "Lifestyle", blurb: "What their body does the other 165 hours", icon: "Activity" },
-  { id: "medical", label: "Medical", blurb: "What the load has to work around", icon: "HeartPulse" },
+  { id: "general", label: "Who they are", blurb: "Identity, contact, and what Mindbody knows", icon: "User" },
+  { id: "life", label: "Life", blurb: "Family, occupation, recreation, dreams", icon: "Heart" },
+  { id: "medical", label: "Body", blurb: "What the load has to work around", icon: "HeartPulse" },
   { id: "goals", label: "Goals", blurb: "The why, and how it has moved", icon: "Target" },
+  { id: "focus", label: "Focus", blurb: "What each coach is working on", icon: "Crosshair" },
+  { id: "notes", label: "Notes", blurb: "Everything logged, newest first", icon: "NotebookPen" },
+  { id: "reports", label: "Reports", blurb: "Progress reports and the assessment", icon: "TrendingUp" },
   { id: "admin", label: "Admin", blurb: "Contract, billing and access", icon: "Settings2" },
-  { id: "events", label: "Events", blurb: "What is coming up on the calendar", icon: "Calendar" },
 ];
 
 /**
@@ -485,9 +531,11 @@ export function sectionForEntry(entry: JournalEntry): DossierSection | null {
     case "incident":
       return "medical";
     case "life":
+      // A surgery or an injury is a load constraint before it is a personal
+      // detail. Everything else personal belongs with FORD under Life.
       return entry.category === "Surgery" || entry.category === "Injury"
         ? "medical"
-        : "events";
+        : "life";
     case "consultation":
       return "goals";
     case "general":

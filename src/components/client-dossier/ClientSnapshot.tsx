@@ -210,7 +210,7 @@ export function ClientSnapshot({
               icon={<CalendarClock className="h-4 w-4" />}
               label="Next up"
               value={`${upcoming.title} · ${relativeDay(toDate(upcoming.date))}`}
-              onClick={() => onJump("events")}
+              onClick={() => onJump("life")}
               title="Jump to Events"
             />
           )}
