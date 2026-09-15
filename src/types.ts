@@ -607,6 +607,20 @@ export interface Client {
   medicalHistory?: string;
   occupation?: string;
   isRetired?: boolean;
+  /*
+   * Life baseline (client-profile audit, Sep 2026) — coach fields, see
+   * src/features/client-life/life.ts.
+   */
+  /** What their work does to the body: "seated", "on-feet", "heavy", … */
+  workProfile?: string | null;
+  /** What they do outside the studio: "Pickleball", "Golf", or free text. */
+  recreationActivities?: string[];
+  /** Where they came from: "Never trained", "Physical therapy", … */
+  fitnessBackground?: string[];
+  /** Prior training left habits a coach has to unteach. */
+  needsUnteaching?: boolean;
+  /** Every step in protocol mastery (trainingPedigree), dated. */
+  pedigreeHistory?: { level: string; at: string; byName?: string }[];
   experienceLevel?: "Beginner" | "Intermediate" | "Advanced" | string;
   clinicalProfile?: string[];
   clinicalFlags?: string[];

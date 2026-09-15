@@ -139,7 +139,6 @@ import { mindbodyIdOf } from "../lib/mindbody-id";
 import { masterSyncLabel } from "../features/client-profile/sync-label";
 import { StrongConfirmationModal } from "./StrongConfirmationModal";
 
-import { OccupationSelect } from "./OccupationSelect";
 import { getErgonomicRisk } from "../data/occupational-matrix";
 import {
   cn,
@@ -149,7 +148,6 @@ import {
   getMuscleGroupColor,
   orderMachineSettings,
 } from "../lib/utils";
-import { CLINICAL_FLAGS_MATRIX } from "../data/clinical-matrix";
 import {
   Accordion,
   AccordionItem,
@@ -552,8 +550,6 @@ export function ClientProfileView({
     return colors[index];
   }
 
-  const [clientNotesInput, setClientNotesInput] = useState("");
-  const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [sessionNotes, setSessionNotes] = useState<SessionNote[]>([]);
 
   const [activeMachine, setActiveMachine] = useState<string | null>(null);
@@ -562,248 +558,11 @@ export function ClientProfileView({
   );
   const [hasInitializedChartMachines, setHasInitializedChartMachines] =
     useState(false);
-  const [infoForm, setInfoForm] = useState<Partial<Client>>({});
-  const [newEventForm, setNewEventForm] = useState<{
-    date: string;
-    title: string;
-    type: any;
-    notes: string;
-  }>({
-    date: studioTodayKey(),
-    title: "",
-    type: "Other",
-    notes: "",
-  });
-  const [isSavingEvent, setIsSavingEvent] = useState(false);
-  const [isSavingInfo, setIsSavingInfo] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   /** The machine open in the one machine window (Journey grid, Routine A / B rows). */
   const [machineWindowId, setMachineWindowId] = useState<string | null>(null);
   const [matrixRoutineFilter, setMatrixRoutineFilter] = useState<string>("all");
   const SESSIONS_PER_PAGE = 3;
-
-  const formatToMMDDYYYY = (dateVal: any) => {
-    if (!dateVal) return "";
-    const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal);
-    if (isNaN(d.getTime())) return "";
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const year = d.getFullYear();
-    return `${month}/${day}/${year}`;
-  };
-
-  useEffect(() => {
-    if (client) {
-      setClientNotesInput(client.notes || "");
-      setInfoForm({
-        firstName: client.firstName,
-        lastName: client.lastName,
-        email: client.email || "",
-        phone: client.phone || "",
-        // Selects start empty — see handleSaveInfo, which drops "" so an
-        // untouched dropdown never writes a default into the client record.
-        gender: client.gender || "",
-        height: client.height || "",
-        weight: client.weight || "",
-        age: client.age ?? null,
-        occupation: client.occupation || "",
-        isRetired: client.isRetired ?? false,
-        clinicalProfile: client.clinicalProfile || [],
-        clinicalFlags: client.clinicalFlags || [],
-        clinicalNotes: client.clinicalNotes || "",
-        activityLevel: client.activityLevel || "",
-        trainingPedigree: client.trainingPedigree || "",
-        recoveryMetric: client.recoveryMetric || "",
-        emergencyContactName: client.emergencyContactName || "",
-        emergencyContactPhone: client.emergencyContactPhone || "",
-        globalNotes: client.globalNotes || "",
-        isActive: client.isActive ?? true,
-        isRoutineBActive: client.isRoutineBActive ?? false,
-        consultationCompleted: client.consultationCompleted ?? false,
-        discoveryNotes: client.discoveryNotes || "",
-        packageTier: client.packageTier || "",
-        remainingSessions: client.remainingSessions ?? 0,
-        firstSessionDate: client.firstSessionDate || null,
-        firstSessionDateRaw: formatToMMDDYYYY(client.firstSessionDate),
-      });
-    }
-  }, [client]);
-
-  const handleSaveInfo = async () => {
-    if (!clientId) return;
-    setIsSavingInfo(true);
-    try {
-      const sanitizedData = { ...infoForm };
-
-      // Ensure age is a number or null, not an empty string
-      if (sanitizedData.age === "" || sanitizedData.age === undefined) {
-        delete sanitizedData.age;
-      } else {
-        const parsed = parseInt(sanitizedData.age as any, 10);
-        sanitizedData.age = isNaN(parsed) ? null : parsed;
-      }
-
-      // Ensure remainingSessions is a number
-      if (sanitizedData.remainingSessions !== undefined) {
-        const parsed = parseInt(sanitizedData.remainingSessions as any, 10);
-        sanitizedData.remainingSessions = isNaN(parsed) ? 0 : parsed;
-      }
-
-      // Parse firstSessionDate from typed MM/DD/YYYY if present
-      if (sanitizedData.firstSessionDateRaw) {
-        const cleanRaw = sanitizedData.firstSessionDateRaw.replace(/\D/g, "");
-        if (cleanRaw.length === 8) {
-          const m = parseInt(cleanRaw.slice(0, 2), 10);
-          const d_val = parseInt(cleanRaw.slice(2, 4), 10);
-          const y = parseInt(cleanRaw.slice(4, 8), 10);
-          if (m >= 1 && m <= 12 && d_val >= 1 && d_val <= 31 && y >= 1900) {
-            const selectedDate = new Date(y, m - 1, d_val);
-            sanitizedData.firstSessionDate = Timestamp.fromDate(selectedDate);
-          }
-        } else if (cleanRaw.length === 6) {
-          const m = parseInt(cleanRaw.slice(0, 2), 10);
-          const d_val = parseInt(cleanRaw.slice(2, 4), 10);
-          let y = parseInt(cleanRaw.slice(4, 6), 10);
-          if (m >= 1 && m <= 12 && d_val >= 1 && d_val <= 31) {
-            y = y < 50 ? 2000 + y : 1900 + y;
-            const selectedDate = new Date(y, m - 1, d_val);
-            sanitizedData.firstSessionDate = Timestamp.fromDate(selectedDate);
-          }
-        }
-      }
-      delete (sanitizedData as any).firstSessionDateRaw;
-
-      // Cleanup other potentially empty strings to null or delete them if rules prefer
-      Object.keys(sanitizedData).forEach((key) => {
-        if ((sanitizedData as any)[key] === undefined) {
-          delete (sanitizedData as any)[key];
-        }
-      });
-
-      // Dropdowns that were never touched stay "" in the form. Never persist
-      // that — leave the field alone so the record keeps whatever it had.
-      const SELECT_FIELDS: (keyof typeof sanitizedData)[] = [
-        "gender",
-        "activityLevel",
-        "trainingPedigree",
-        "recoveryMetric",
-        "packageTier",
-      ];
-      SELECT_FIELDS.forEach((key) => {
-        if ((sanitizedData as any)[key] === "") {
-          delete (sanitizedData as any)[key];
-        }
-      });
-
-      await updateDoc(doc(db, "clients", clientId), {
-        ...sanitizedData,
-        updatedAt: serverTimestamp(),
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `clients/${clientId}`);
-    } finally {
-      setIsSavingInfo(false);
-    }
-  };
-
-  const handleSaveNotes = async () => {
-    if (!clientId) return;
-    setIsSavingNotes(true);
-    try {
-      await updateDoc(doc(db, "clients", clientId), {
-        notes: clientNotesInput,
-        updatedAt: serverTimestamp(),
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `clients/${clientId}`);
-    } finally {
-      setIsSavingNotes(false);
-    }
-  };
-
-  const formatDateForInput = (dateVal: any) => {
-    if (!dateVal) return "";
-    const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal);
-    if (isNaN(d.getTime())) return "";
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  const handleStartDateChange = async (newVal: string) => {
-    if (!clientId || !newVal) return;
-    try {
-      let selectedDate: Date;
-      if (newVal.includes("/")) {
-        const parts = newVal.split("/");
-        const month = parseInt(parts[0], 10);
-        const day = parseInt(parts[1], 10);
-        const year = parseInt(parts[2], 10);
-        selectedDate = new Date(year, month - 1, day);
-      } else {
-        selectedDate = new Date(newVal + "T00:00:00");
-      }
-      const timestamp = Timestamp.fromDate(selectedDate);
-      await updateDoc(doc(db, "clients", clientId), {
-        firstSessionDate: timestamp,
-        updatedAt: serverTimestamp(),
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `clients/${clientId}`);
-    }
-  };
-
-  const handleAddEvent = async () => {
-    if (!clientId || !client || !newEventForm.title || !newEventForm.date)
-      return;
-    setIsSavingEvent(true);
-    try {
-      let priority: "High" | "Medium" | "Low" = "Low";
-      if (
-        newEventForm.type === "Progress Report" ||
-        newEventForm.type === "InBody Scan"
-      )
-        priority = "High";
-      else if (newEventForm.type === "Routine Change") priority = "Medium";
-
-      const newEvent = {
-        id: Math.random().toString(36).substring(2, 9),
-        ...newEventForm,
-        priority,
-        createdAt: new Date().toISOString(),
-      };
-
-      const updatedEvents = [...(client.events || []), newEvent];
-      await updateDoc(doc(db, "clients", clientId), {
-        events: updatedEvents,
-        updatedAt: serverTimestamp(),
-      });
-      setNewEventForm({
-        date: studioTodayKey(),
-        title: "",
-        type: "Other",
-        notes: "",
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `clients/${clientId}`);
-    } finally {
-      setIsSavingEvent(false);
-    }
-  };
-
-  const handleDeleteEvent = async (eventId: string) => {
-    if (!clientId || !client?.events) return;
-    try {
-      const updatedEvents = client.events.filter((e) => e.id !== eventId);
-      await updateDoc(doc(db, "clients", clientId), {
-        events: updatedEvents,
-        updatedAt: serverTimestamp(),
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `clients/${clientId}`);
-    }
-  };
 
   const handleSaveSessionCount = async () => {
     if (!clientId) return;
@@ -828,7 +587,6 @@ export function ClientProfileView({
         isRoutineBActive: checked,
         updatedAt: serverTimestamp(),
       });
-      setInfoForm((prev) => ({ ...prev, isRoutineBActive: checked }));
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `clients/${clientId}`);
     }

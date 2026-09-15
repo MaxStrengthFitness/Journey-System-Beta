@@ -260,5 +260,121 @@ export const CLINICAL_FLAGS_MATRIX: ClinicalSafetyFlag[] = [
         affectedMachineIds: ["abdominals", "lumbar_extension", "leg_press"]
       }
     ]
+  },
+
+  // 8. Common constraints (client-profile audit, Sep 2026)
+  //
+  // The quick toggles on the Body section: broad limitations a coach hears
+  // every week, as opposed to the diagnoses above. The instructions are
+  // deliberately general studio cautions — which machines load the joint, and
+  // "confirm pain-free range" — not treatment. A head trainer can refine them
+  // here; every screen that reads the matrix picks the change up.
+  {
+    id: "gen-shoulder",
+    category: "Common constraints",
+    conditionName: "Shoulder limitation",
+    severity: "Moderate / Needs Modification",
+    protocolHandling: [
+      {
+        instruction: "Confirm a pain-free range before loading. If the shoulder is aggravated, shorten the range, reduce the load, or swap the machine — and note what worked.",
+        affectedMachineIds: ["overhead_press", "lateral_raise", "chest_press", "chest_flye", "pullover", "pulldown", "seated_dip", "compound_row"]
+      }
+    ]
+  },
+  {
+    id: "gen-knee",
+    category: "Common constraints",
+    conditionName: "Knee limitation",
+    severity: "Moderate / Needs Modification",
+    protocolHandling: [
+      {
+        instruction: "Confirm a pain-free range before loading. Watch the depth at the start of the movement and adjust the seat or range if the knee complains.",
+        affectedMachineIds: ["leg_press", "leg_extension", "leg_curl"]
+      }
+    ]
+  },
+  {
+    id: "gen-low-back",
+    category: "Common constraints",
+    conditionName: "Lower back limitation",
+    severity: "Moderate / Needs Modification",
+    protocolHandling: [
+      {
+        instruction: "Check posture and pad contact before every set; start conservative on range and load and build only while it stays pain-free.",
+        affectedMachineIds: ["lumbar_extension", "leg_press", "abdominals", "torso_rotation"]
+      }
+    ]
+  },
+  {
+    id: "gen-hip",
+    category: "Common constraints",
+    conditionName: "Hip limitation",
+    severity: "Moderate / Needs Modification",
+    protocolHandling: [
+      {
+        instruction: "Confirm a comfortable range at the hip before loading; reduce the range if it pinches.",
+        affectedMachineIds: ["abduction", "adduction", "leg_press"]
+      }
+    ]
+  },
+  {
+    id: "gen-neck",
+    category: "Common constraints",
+    conditionName: "Neck limitation",
+    severity: "Moderate / Needs Modification",
+    protocolHandling: [
+      {
+        instruction: "Keep the head neutral and the load light until the neck is confirmed comfortable through the full range.",
+        affectedMachineIds: ["cervical_extension", "4_way_neck", "overhead_press"]
+      }
+    ]
+  },
+  {
+    id: "gen-elbow-wrist",
+    category: "Common constraints",
+    conditionName: "Elbow / wrist / hand limitation",
+    severity: "Moderate / Needs Modification",
+    protocolHandling: [
+      {
+        instruction: "Check the grip and handle position first; a different grip or a pad can make the set comfortable.",
+        affectedMachineIds: ["biceps_curl", "triceps_extension", "seated_dip", "compound_row", "simple_row", "pulldown", "chest_press"]
+      }
+    ]
+  },
+  {
+    id: "gen-blood-pressure",
+    category: "Common constraints",
+    conditionName: "High blood pressure (managed)",
+    severity: "Moderate / Needs Modification",
+    protocolHandling: [
+      {
+        instruction: "Keep the breathing continuous on every set — no breath-holding under load.",
+        affectedMachineIds: []
+      }
+    ]
+  },
+  {
+    id: "gen-balance",
+    category: "Common constraints",
+    conditionName: "Balance / steadiness concern",
+    severity: "Moderate / Needs Modification",
+    protocolHandling: [
+      {
+        instruction: "Be at arm's reach for every entry and exit.",
+        affectedMachineIds: []
+      }
+    ]
+  },
+  {
+    id: "gen-recent-surgery",
+    category: "Common constraints",
+    conditionName: "Recent surgery (cleared to train)",
+    severity: "Moderate / Needs Modification",
+    protocolHandling: [
+      {
+        instruction: "Confirm the clearance and any limits the surgeon set before loading, and write them in the medical history.",
+        affectedMachineIds: []
+      }
+    ]
   }
 ];

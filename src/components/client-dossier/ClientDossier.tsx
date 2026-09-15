@@ -57,8 +57,9 @@ import type {
   Studio,
   Trainer,
 } from "../../types";
-import { CLINICAL_FLAGS_MATRIX } from "../../data/clinical-matrix";
-import { OccupationSelect } from "../OccupationSelect";
+import { WorkBaseline, ActivityExperienceBaseline } from "../../features/client-life/LifeBaseline";
+import { ClinicalFlagPicker } from "../../features/clinical-flags/ClinicalFlagPicker";
+import { BodyWatchOuts } from "../../features/clinical-flags/BodyWatchOuts";
 import { ContractPanel } from "../../features/client-admin/ContractPanel";
 import { InBodyCard } from "../../features/inbody/InBodyCard";
 import { SharedNotesCard } from "../../features/planner/notes/SharedNotesCard";
@@ -242,13 +243,6 @@ export function ClientDossier({
      the Life section (features/ford/ford-rollup.ts), so the array stays on the
      record untouched and there is one dated timeline instead of two. */
 
-  const toggleFlag = (flagId: string) => {
-    const cur = formData.clinicalFlags || [];
-    updateField(
-      "clinicalFlags",
-      cur.includes(flagId) ? cur.filter((f) => f !== flagId) : [...cur, flagId],
-    );
-  };
 
   const val = (k: keyof Client) => (formData[k] as string) ?? "";
   const set = (k: keyof Client) => (v: string) => updateField(k, v);
@@ -481,48 +475,23 @@ export function ClientDossier({
               blurb={sectionBlurb("life")}
               icon={SECTION_ICONS.life}
             >
-              {/* Occupation stays a structured field even though it is also
-                  the O in FORD: the occupational matrix reads it to reason
-                  about what a client's body does all day, which a free-text
-                  detail cannot do. The sentence and the dropdown are
-                  different jobs, so both are here, in that order. */}
-              <FieldGroup title="Work">
-                <div className="flex flex-col gap-1.5 min-w-0">
-                  <FieldLabel>Occupation</FieldLabel>
-                  <OccupationSelect
-                    value={val("occupation")}
-                    onChange={(v) => updateField("occupation", v)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5 min-w-0">
-                  <FieldLabel>Retired</FieldLabel>
-                  <button
-                    type="button"
-                    onClick={() => updateField("isRetired", !formData.isRetired)}
-                    className={cn(
-                      "flex h-11 items-center justify-between rounded-xl border px-3.5 text-sm font-semibold transition-colors",
-                      formData.isRetired
-                        ? "border-[#38BDF8]/40 bg-[#38BDF8]/10 text-[#38BDF8]"
-                        : "border-slate-200 bg-slate-50 text-muted-foreground dark:border-slate-800 dark:bg-slate-800/60",
-                    )}
-                  >
-                    {formData.isRetired ? "Retired" : "Working"}
-                    <span
-                      className={cn(
-                        "h-5 w-9 rounded-full p-0.5 transition-colors",
-                        formData.isRetired ? "bg-[#38BDF8]" : "bg-slate-300 dark:bg-slate-700",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "block h-4 w-4 rounded-full bg-white transition-transform",
-                          formData.isRetired && "translate-x-4",
-                        )}
-                      />
-                    </span>
-                  </button>
-                </div>
-              </FieldGroup>
+              {/* The structured baseline first (client-profile audit, Sep
+                  2026): what their work does to the body, how active they are
+                  outside the studio, and where they came from — facts a
+                  leader can count across a studio. The stories follow in
+                  FORD. features/client-life/. */}
+              <WorkBaseline
+                client={client}
+                formData={formData}
+                updateField={updateField}
+                authorName={authTrainer?.fullName}
+              />
+              <ActivityExperienceBaseline
+                client={client}
+                formData={formData}
+                updateField={updateField}
+                authorName={authTrainer?.fullName}
+              />
 
               {fordAuthor ? (
                 <FordSection client={client} author={fordAuthor} machines={machines} />
@@ -540,89 +509,31 @@ export function ClientDossier({
               />
             </DossierSectionShell>
 
-            {/* ---------------- MEDICAL ---------------- */}
+            {/* ---------------- BODY ---------------- */}
             <DossierSectionShell
               id="medical"
-              title="Medical"
+              title="Body"
               blurb={sectionBlurb("medical")}
               icon={SECTION_ICONS.medical}
             >
-              {/* The rail leads here, before the form fields. On this section
-                  what happened in the room outranks what someone typed at
-                  intake six months ago. */}
-              <JournalRail
-                section="medical"
-                entries={entries}
+              {/* The watch-outs lead (client-profile audit: "highly visible,
+                  without digging through paragraphs"). */}
+              <BodyWatchOuts
+                flagIds={formData.clinicalFlags ?? client.clinicalFlags}
                 machines={machines}
-                onOpenJournal={onOpenJournal}
-                emptyHint="No medical notes or incidents logged. Surgery and injury notes, clinical incidents, and anything flagged critical anywhere in the Journal surface here automatically."
+                hasMedicalText={!!(val("medicalHistory").trim() || val("clinicalNotes").trim())}
               />
-
-              {/* Moved here from the old Lifestyle section in the profile
-                  merge: how much load a client already carries, and how well
-                  they recover from it, is a programming input. It belongs
-                  beside the constraints, not beside their grandchildren. */}
-              <FieldGroup title="Load outside the studio">
-                <SelectField
-                  label="Activity level"
-                  value={val("activityLevel")}
-                  onChange={set("activityLevel")}
-                  options={["Sedentary", "Light", "Moderate", "High", "Manual Labor"]}
-                />
-                <SelectField
-                  label="Recovery"
-                  value={val("recoveryMetric")}
-                  onChange={set("recoveryMetric")}
-                  options={["Poor", "Average", "Optimal"]}
-                />
-                <SelectField
-                  label="Experience level"
-                  value={val("experienceLevel")}
-                  onChange={set("experienceLevel")}
-                  options={["Beginner", "Intermediate", "Advanced"]}
-                />
-                <SelectField
-                  label="Training pedigree"
-                  value={val("trainingPedigree")}
-                  onChange={set("trainingPedigree")}
-                  options={["Novice", "Intermediate", "Advanced", "Protocol Veteran"]}
-                />
-              </FieldGroup>
-
-              <FieldGroup title="Measurements">
-                <TextField label="Height" value={val("height")} onChange={set("height")} placeholder={`e.g. 5'4"`} />
-                <TextField label="Weight" value={val("weight")} onChange={set("weight")} placeholder="lbs" />
-              </FieldGroup>
-
-              {/* Renewals round, Sep 2026: InBody scans save on their own —
-                  not through this form's Save bar. See features/inbody. */}
-              <InBodyCard client={client} authTrainer={authTrainer} />
 
               <div className="flex flex-col gap-2.5">
                 <FieldLabel>Clinical flags</FieldLabel>
                 <p className="text-[11px] text-muted-foreground">
-                  These drive machine-level contraindications in the session tracker.
+                  Flags show in the briefing, and the ones that name a machine appear on that
+                  machine in Programming, the machine window and the session.
                 </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {CLINICAL_FLAGS_MATRIX.map((flag) => {
-                    const on = (formData.clinicalFlags || []).includes(flag.id);
-                    return (
-                      <button
-                        key={flag.id}
-                        type="button"
-                        onClick={() => toggleFlag(flag.id)}
-                        className={cn(
-                          "h-9 rounded-xl border px-3 text-[10.5px] font-black uppercase tracking-wider transition-all",
-                          on
-                            ? "border-rose-500/40 bg-rose-500/15 text-rose-600 dark:text-rose-300"
-                            : "border-slate-200 bg-slate-50 text-muted-foreground hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/50 dark:hover:bg-slate-800",
-                        )}
-                      >
-                        {flag.conditionName}
-                      </button>
-                    );
-                  })}
-                </div>
+                <ClinicalFlagPicker
+                  value={formData.clinicalFlags || []}
+                  onChange={(next) => updateField("clinicalFlags", next)}
+                />
               </div>
 
               <FieldGroup cols={1}>
@@ -631,7 +542,7 @@ export function ClientDossier({
                   value={val("medicalHistory")}
                   onChange={set("medicalHistory")}
                   rows={5}
-                  placeholder="Surgeries, chronic conditions, anything a new coach must read before loading her."
+                  placeholder="Surgeries, chronic conditions, anything a new coach must read before loading them."
                 />
                 <TextAreaField
                   label="Contraindications & constraints"
@@ -641,6 +552,32 @@ export function ClientDossier({
                   placeholder="What the load has to work around. Specific movements, ranges or machines to avoid."
                 />
               </FieldGroup>
+
+              {/* What happened in the room: injury and incident notes,
+                  anything flagged critical. */}
+              <JournalRail
+                section="medical"
+                entries={entries}
+                machines={machines}
+                onOpenJournal={onOpenJournal}
+                emptyHint="No injury or incident notes logged. Injury notes, clinical incidents, and anything flagged critical anywhere surface here automatically."
+              />
+
+              <FieldGroup title="Biometrics & recovery" cols={3}>
+                <TextField label="Height" value={val("height")} onChange={set("height")} placeholder={`e.g. 5'4"`} hint="Used for machine set-up suggestions." />
+                <TextField label="Weight" value={val("weight")} onChange={set("weight")} placeholder="lbs" />
+                <SelectField
+                  label="Recovery between sessions"
+                  value={val("recoveryMetric")}
+                  onChange={set("recoveryMetric")}
+                  options={["Poor", "Average", "Optimal"]}
+                  hint="Sleep, food and daily load, as the client describes them. The Assessment tracks the detail."
+                />
+              </FieldGroup>
+
+              {/* Renewals round, Sep 2026: InBody scans save on their own —
+                  not through this form's Save bar. See features/inbody. */}
+              <InBodyCard client={client} authTrainer={authTrainer} />
             </DossierSectionShell>
 
             {/* ---------------- GOALS ---------------- */}

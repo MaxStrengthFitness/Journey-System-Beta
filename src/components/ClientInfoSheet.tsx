@@ -140,6 +140,11 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
         emergencyContactPhone: client.emergencyContactPhone || "",
         occupation: client.occupation || "",
         isRetired: client.isRetired || false,
+        workProfile: client.workProfile ?? null,
+        recreationActivities: client.recreationActivities || [],
+        fitnessBackground: client.fitnessBackground || [],
+        needsUnteaching: client.needsUnteaching || false,
+        pedigreeHistory: client.pedigreeHistory || [],
         // Dropdowns start EMPTY. Pre-filling "Sedentary"/"Novice" here made an
         // unset field look assessed, and the first save wrote it to Firestore.
         // Nothing is stored until a trainer explicitly picks an option.
