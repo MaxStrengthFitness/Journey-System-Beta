@@ -23,5 +23,12 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "exclude": ["functions", "node_modules", "dist"]
+  // `harness` is a THROWAWAY render harness, gitignored (/harness/ in
+  // .gitignore) and different on every machine. It was still being compiled,
+  // so a stale scratch file importing a module that no longer exists — the
+  // parked demo-mode feature — added a phantom typecheck error and moved the
+  // baseline on one PC only. That failed a release whose actual change was
+  // clean. A folder git does not track must never be able to fail the
+  // typecheck.
+  "exclude": ["functions", "node_modules", "dist", "harness"]
 }
