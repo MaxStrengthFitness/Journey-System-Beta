@@ -8,6 +8,7 @@ In the order agreed in `docs/ARCHITECTURE.md` §5.2. AJ is the only user, so the
 
 1. **Repo hygiene** — `scripts/ship/tidy-root.ps1` (`report`, then `apply`). Done when this page reads as it does now and the root holds only what belongs there.
 2. ~~**The floor round**~~ **Done Sep 12–13** (`docs/rounds/2026-09-12-floor-round.md`); the Active Session audit followed as the tracker round and its iPad fixes as the fix round (`docs/rounds/2026-09-13-tracker-round.md`, `2026-09-13-fix-round.md`). The floor round was — the Core tier brought in line with §1 of the architecture: the four set outcomes (Performed / Practice / Skipped with a reason / Not reached, derived) in the data and the tracker, every average filtered to *performed*; End Session confirms instead of blocking; the per-machine clock persisted and the late-start minutes derived; the faster progress-or-regress marker in the briefing and the grid; the two legacy writers (`sessionNotes` at session start, `focusRecords` status updates) moved to the canonical collections and the dead `handleSaveFocus` deleted; the "not writing notes" sentence dropped from Insights.
+2b. ~~**The cost round**~~ **Done Sep 16** (`docs/rounds/2026-09-16-cost-round.md`): the all-logs leaderboard job replaced by the weekly machine-trends job (`machineTrends/*`, no screen yet); the role mirrored onto the token by `syncTrainerClaims` so rule checks stop reading `trainers/{uid}`, and the self-edit hole closed with it; a 200-item guard rail on the journal's four unbounded listeners; the schedule listener cut to three live days with the rest fetched on demand and 15-minute fresh; the `?classic-todo` hatch, ten dead files and six unused packages gone; `knip.json`. **Follow-ups:** the Machine Trends screen (Learning; `_summary` for the list, one document per machine, the client's own `machineStats` for "you vs everyone"); "sessions completed this month" as one count query on `sessions` (`hostedAtStudioId`, `status`, `date` — needs that index and the rules test run against a count); `calculateFacilityAnalyticsV2` in Cloud Functions still reads every exercise log nightly and nothing reads its output — needs an OK to touch.
 3. **Connect or delete** — the six dead `View` ids, the legacy `history` view, the hidden profile panes, the dead hook, the two unreachable handlers; delete `clients/{id}/crossTrainAccess` and `crossTrainRequests` with their rules and types.
 4. **The Assessment round** — merge Check-in + 90-day into one perpetual living record (`clients/{id}/assessment/current` + snapshots), FORD fields on the client record (+ a dated mentions timeline), client mode, a note per update; retire the score / percent framing the coach view and renewal brief still compute. The on-screen rename ("Assessment" everywhere a trainer reads it) shipped ahead of it in the fix round (`docs/rounds/2026-09-13-fix-round.md`, Sep 13); the model is what is left.
 5. **FileMaker migration prep** — field mapping to the data dictionary (§3.2), the importer in the `scripts/migrate-machine-id.ts` shape, blanks imported as *Skipped: unknown (FileMaker)*; and the Mindbody notes import, which comes first.
@@ -25,7 +26,7 @@ In the order agreed in `docs/ARCHITECTURE.md` §5.2. AJ is the only user, so the
 - Firestore offline persistence decided and tested.
 - The "Mindbody is down / walk-in not in Mindbody" decision.
 - The trainer-identity report run; the migration only if it shows stranded or colliding ids.
-- Security holes stay open by decision (all users verified by hand) — revisited at Gate C.
+- Security holes stay open by decision (all users verified by hand) — revisited at Gate C. The self-edit hole on `trainers/{uid}` was closed in the cost round (Sep 16) because the role claim made it stick; the `studios/{id}` write and the cross-studio task writes are the two still open.
 
 ## Later — Gate C and beyond (§5.4, §5.5)
 
@@ -35,7 +36,7 @@ In the order agreed in `docs/ARCHITECTURE.md` §5.2. AJ is the only user, so the
 - The Monday-morning questions 2–4 as automatic in-app flags (attendance anomalies, performance discrepancies, incidents); skip reasons and practice counts as a fifth sentence once there are enough.
 - Mindbody `staff.*` and contract/membership webhooks, after the collision check.
 - Accessibility pass; cold-load timing on a studio iPad.
-- Not built yet, architected for: automated retention beyond flags (in-app only), the InBody Web API per studio, badges and awards, CSV export of a client's history, a second time zone, `strict` TypeScript, Cloud Functions tests in CI, `setCustomUserClaimsV2`.
+- Not built yet, architected for: automated retention beyond flags (in-app only), the InBody Web API per studio, badges and awards, CSV export of a client's history, a second time zone, `strict` TypeScript, Cloud Functions tests in CI. (`setCustomUserClaimsV2` is superseded: the role claim is mirrored by `syncTrainerClaims` since the cost round, Sep 16.)
 
 ## Not building
 

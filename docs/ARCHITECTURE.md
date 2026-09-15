@@ -450,7 +450,7 @@ The vocabulary in `types.ts` grew one round at a time, so the same idea has seve
 
 ### 3.7 Rules and indexes — facts to know
 
-- `firestore.rules`: 2,059 lines, 78 helpers; six are never called (`getTrainerByUID`, `hasAnyTrainerProfile`, `isTrainerOfStudioOrClient`, `isValidMachine`, `isValidNetwork`, `canPostAnnouncements`); two whole predicate families exist side by side by design (`isTrainerOfStudioOnly` ≈ `trainerWorksAt`, `isSuperAdmin` ≈ `roleIsSuper`, `isTrainerOfSessionData` ≈ `sessionIsReadable` — the new one adds the admin/owner bypass; `sessions/{id}/logs` still uses the old one). The JWT-claim fast paths are dead because `setCustomUserClaimsV2` is never called, so every role check costs a document read.
+- `firestore.rules`: 2,059 lines, 78 helpers; six are never called (`getTrainerByUID`, `hasAnyTrainerProfile`, `isTrainerOfStudioOrClient`, `isValidMachine`, `isValidNetwork`, `canPostAnnouncements`); two whole predicate families exist side by side by design (`isTrainerOfStudioOnly` ≈ `trainerWorksAt`, `isSuperAdmin` ≈ `roleIsSuper`, `isTrainerOfSessionData` ≈ `sessionIsReadable` — the new one adds the admin/owner bypass; `sessions/{id}/logs` still uses the old one). The JWT-claim fast path is live since the cost round (Sep 16): `syncTrainerClaims` (Cloud Function) mirrors `trainers/{id}.role` onto the token, so role checks read the token and only the studio-membership checks still read the document. Only `role` is ever set — the `studioId` claim path in `isStudioOwnerOrHeadTrainerOnly` / `trainerLeads` grants leader access with no role check and is deliberately never fed.
 - One rule reduces to "any signed-in user" by accident: `clientMachineSettings` delete (`isSuperAdmin() || isFranchiseOwner() || isAuthenticated()`).
 - Type-1 `access_requests` can be created with **no authentication** (by design for the request form; worth a rate limit or a reCAPTCHA before launch).
 - `firestore.indexes.json`: 36 composite indexes — `sessions` 9, `clients` 5, `exerciseLogs` 4, and one to two each for `clientFocuses`, `journalEntries`, `progressReports`, `roster`, `schedules`, `sessionNotes`, `focusRecords`, `trainerFocuses`, `mindbodyEventLog`, `playbook`, `wiki`, `comments` — `roster`, `playbook` and `wiki` are collection-group indexes. The machine-db README names two collection-group **field overrides** (`roster.shared`, `roster.basedOn`) that are **not** in the file (`fieldOverrides` is empty) — verify in the console.
@@ -594,7 +594,7 @@ Everything below is pre-alpha work: AJ is the only user, so the ceremony stays l
 
 ### 5.5 Later — architected for, not built
 
-Automated retention beyond flags (still in-app only); the InBody Web API with one key per studio, kept on the server; the badge and award system for client profiles; a CSV export of a client's full history; time-zone handling for a second zone; `strict` TypeScript (517 explicit `any` today); the Cloud Functions tests in CI; `setCustomUserClaimsV2` so role checks stop costing a read; the studio-leader Demo Mode track.
+Automated retention beyond flags (still in-app only); the InBody Web API with one key per studio, kept on the server; the badge and award system for client profiles; a CSV export of a client's full history; time-zone handling for a second zone; `strict` TypeScript (517 explicit `any` today); the Cloud Functions tests in CI; the Machine Trends screen over `machineTrends/*` (the data is built weekly since the cost round); the studio-leader Demo Mode track.
 
 ### 5.6 Not building
 
