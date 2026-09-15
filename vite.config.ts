@@ -90,8 +90,10 @@ export default defineConfig(() => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+      // Hot reload, with an escape hatch. Set DISABLE_HMR=true to keep the
+      // socket but suppress the error overlay — useful when a tool is
+      // rewriting files underneath the dev server and every save would
+      // otherwise flash a full-screen error for a few hundred milliseconds.
       hmr: process.env.DISABLE_HMR !== 'true' ? true : { overlay: false },
     },
   };
