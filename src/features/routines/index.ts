@@ -10,3 +10,4 @@ export {
   templateDrift,
 } from "./routine-rows";
 export type { RoutineChange, RoutineName, RoutineRow } from "./routine-rows";
+export { useRoutinesModel, type RoutinesModel, type RoutinesModelInput } from "./useRoutinesModel";

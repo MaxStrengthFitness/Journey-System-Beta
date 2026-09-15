@@ -20,23 +20,19 @@
  * (edit, use today, toggle B) is a callback back into ClientProfileView,
  * which already owns the Firestore writes and the reason dialog.
  */
-import { memo, useMemo, useState } from "react";
+import { memo, useState } from "react";
 import { ChevronDown, Pencil, PlayCircle, Sparkles } from "lucide-react";
 import type { Client, ClientMachineSetting, ExerciseLog, Machine, Routine, RoutineAdjustment, Trainer, WorkoutSession } from "../../types";
 import { Switch } from "@/components/ui/switch";
 import {
-  buildRoutineChanges,
-  buildRoutineRows,
-  changesThisMonth,
-  latestChangeFor,
   relativeTime,
-  resolveRoutine,
   shortStamp,
   templateDrift,
   type RoutineChange,
   type RoutineName,
   type RoutineRow,
 } from "./routine-rows";
+import { useRoutinesModel, type RoutinesModel } from "./useRoutinesModel";
 import "./routines.css";
 
 export interface RoutinesTabProps {
@@ -58,6 +54,25 @@ export interface RoutinesTabProps {
   /** Tapping a machine row — the profile opens its settings sheet. */
   onSelectMachine?: (machineId: string) => void;
   disabled?: boolean;
+  /**
+   * Which prescription to draw. "both" (the default) is the original
+   * side-by-side tab. A single routine is what the Programming tab renders
+   * behind its sub-toggle: one panel at full width, and the Changes list
+   * filtered to that routine, because "8 machines side by side with 8 more"
+   * is exactly the density problem the sub-toggle exists to remove.
+   */
+  view?: RoutineName | "both";
+  /**
+   * Hide the summary sentence. Programming prints the same facts in its own
+   * context line above the sub-toggle, where they stay put while the trainer
+   * switches between A, B and the roster.
+   */
+  hideSummary?: boolean;
+  /**
+   * A model computed by the parent. Omit and the tab computes its own — which
+   * is what keeps this component mountable on its own.
+   */
+  model?: RoutinesModel;
 }
 
 /* ------------------------------------------------------------------ *
@@ -284,25 +299,43 @@ export function RoutinesTab({
   onToggleB,
   onSelectMachine,
   disabled = false,
+  view = "both",
+  hideSummary = false,
+  model,
 }: RoutinesTabProps) {
-  const studioId = client?.homeStudioId || "";
-  const a = useMemo(() => resolveRoutine(routines, "Routine A", clientId, studioId), [routines, clientId, studioId]);
-  const b = useMemo(() => resolveRoutine(routines, "Routine B", clientId, studioId), [routines, clientId, studioId]);
-  const rowsA = useMemo(() => buildRoutineRows(a, machines, client, clientSettings, allLogs, sessions), [a, machines, client, clientSettings, allLogs, sessions]);
-  const rowsB = useMemo(() => buildRoutineRows(b, machines, client, clientSettings, allLogs, sessions), [b, machines, client, clientSettings, allLogs, sessions]);
-  const changes = useMemo(() => buildRoutineChanges(adjustments, routines, machines, trainers), [adjustments, routines, machines, trainers]);
-  const latestA = useMemo(() => latestChangeFor(changes, a.id || ""), [changes, a.id]);
-  const latestB = useMemo(() => latestChangeFor(changes, b.id || ""), [changes, b.id]);
-  const monthCount = useMemo(() => changesThisMonth(changes), [changes]);
+  // Hooks are unconditional; the computed model is thrown away when the
+  // parent supplied one. Cheap — every memo inside it is keyed on the same
+  // inputs the parent used, so nothing recomputes on a re-render.
+  const own = useRoutinesModel({
+    client,
+    clientId,
+    routines,
+    machines,
+    clientSettings,
+    allLogs,
+    sessions,
+    adjustments,
+    trainers,
+    selectedRoutineTodayId,
+    isBActive,
+  });
+  const m = model ?? own;
+  const { a, b, rowsA, rowsB, latestA, latestB, monthCount, todayName, setUp, total, newest } = m;
   const [changesOpen, setChangesOpen] = useState(false);
 
-  const todayName: RoutineName | null = selectedRoutineTodayId === a.id ? "Routine A" : selectedRoutineTodayId === b.id ? "Routine B" : null;
-  const setUp = rowsA.filter((r) => r.weight !== null).length + (isBActive ? rowsB.filter((r) => r.weight !== null).length : 0);
-  const total = rowsA.length + (isBActive ? rowsB.length : 0);
-  const newest = changes[0] ?? null;
+  // One prescription at a time also means one Changes list: a trainer reading
+  // Routine B does not want A's edit history in the same scroll.
+  const changes =
+    view === "both"
+      ? m.changes
+      : m.changes.filter((c) => c.routineId === (view === "Routine A" ? a.id : b.id));
+
+  const showA = view === "both" || view === "Routine A";
+  const showB = view === "both" || view === "Routine B";
 
   return (
-    <div className="rt" data-disabled={disabled || undefined}>
+    <div className="rt" data-disabled={disabled || undefined} data-view={view === "both" ? undefined : "single"}>
+      {hideSummary ? null : (
       <div className="rt-summary">
         <span className="rt-summary__count">
           <b>{total}</b> {total === 1 ? "machine" : "machines"} prescribed
@@ -338,8 +371,10 @@ export function RoutinesTab({
           )}
         </div>
       </div>
+      )}
 
       <div className="rt-body">
+        {showA && (
         <RoutinePanel
           name="Routine A"
           routine={a}
@@ -352,6 +387,8 @@ export function RoutinesTab({
           onUseToday={() => onUseToday(a)}
           onSelectMachine={onSelectMachine}
         />
+        )}
+        {showB && (
         <RoutinePanel
           name="Routine B"
           routine={b}
@@ -365,6 +402,7 @@ export function RoutinesTab({
           onToggle={onToggleB}
           onSelectMachine={onSelectMachine}
         />
+        )}
       </div>
 
       <section className="rt-changes" aria-labelledby="rt-changes-title">
@@ -373,14 +411,25 @@ export function RoutinesTab({
             Changes
           </span>
           <span className="rt-changes__meta">
-            <b>{monthCount}</b> this month · <b>{changes.length}</b> total
+            {view === "both" ? (
+              <>
+                <b>{monthCount}</b> this month · <b>{changes.length}</b> total
+              </>
+            ) : (
+              <>
+                <b>{changes.length}</b> logged for {view}
+              </>
+            )}
           </span>
           <ChevronDown size={16} strokeWidth={2.4} className={changesOpen ? "rt-changes__chev rt-changes__chev--open" : "rt-changes__chev"} aria-hidden="true" />
         </button>
         {changesOpen && (
           <ol id="rt-changes-list" className="rt-changes__list">
             {changes.length === 0 ? (
-              <li className="rt-changes__none">No routine changes have been logged for {client?.firstName || "this client"} yet.</li>
+              <li className="rt-changes__none">
+                No {view === "both" ? "routine" : view} changes have been logged for{" "}
+                {client?.firstName || "this client"} yet.
+              </li>
             ) : (
               changes.map((c) => <ChangeRow key={c.id} c={c} />)
             )}

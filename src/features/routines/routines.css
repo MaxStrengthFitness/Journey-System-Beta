@@ -132,6 +132,13 @@
 @media (min-width: 1024px) {
   .rt-body { grid-template-columns: 1fr 1fr; align-items: start; }
 }
+/* One prescription at a time (Programming's sub-toggle): the panel takes the
+   whole width in every orientation, which is the point — a routine that used
+   to share a 1024px screen with its sibling gets twice the room for the rows
+   a trainer actually reads. Capped so the rows do not stretch to a 1366px
+   landscape width and turn a dense list into a sparse one. */
+.rt[data-view="single"] .rt-body { grid-template-columns: minmax(0, 1fr); }
+.rt[data-view="single"] .rt-routine { max-width: 860px; }
 
 .rt-routine {
   background: var(--eq-surface);
