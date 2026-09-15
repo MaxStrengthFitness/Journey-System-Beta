@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { QualityMark, QUALITY_MARK_LABEL } from "./QualityMark";
 
 interface GridToolbarProps {
-  /** Section caption, e.g. "Recent journey". */
+  /** Section caption, e.g. "Session log". Optional: the profile's Journey tab has none. */
   title?: string;
   /** Controls rendered at the right end of the rail. */
   children?: ReactNode;
@@ -12,17 +12,22 @@ interface GridToolbarProps {
  * The slim row between the client header and the grid: a section caption on
  * the left, controls on the right. The density switch used to live here; the
  * grid now ships one tuned density, so there is nothing to choose.
+ *
+ * Without a title there is nothing for the spacer to push against, so it is
+ * not drawn and the controls start at the left edge.
  */
 export function GridToolbar({ title, children }: GridToolbarProps) {
   return (
-    <div className="jg-toolbar">
+    <div className={`jg-toolbar ${title ? "" : "jg-toolbar--untitled"}`}>
       {title && (
-        <span className="jg-toolbar__title">
-          <span className="jg-toolbar__bar" aria-hidden="true" />
-          {title}
-        </span>
+        <>
+          <span className="jg-toolbar__title">
+            <span className="jg-toolbar__bar" aria-hidden="true" />
+            {title}
+          </span>
+          <span className="jg-toolbar__spacer" />
+        </>
       )}
-      <span className="jg-toolbar__spacer" />
       {children}
     </div>
   );
@@ -39,8 +44,15 @@ export function GridToolbar({ title, children }: GridToolbarProps) {
  *
  * Practice and Skipped follow: the two set outcomes that are recorded but
  * never counted (src/lib/set-outcome.ts). Neither uses a quality colour.
+ *
+ * `showLatest={false}` drops the "Latest session" key: the profile grid no
+ * longer frames its newest column (AJ's call, Sep 2026), so the key would
+ * describe something that is not on screen. The Active Session keeps it.
  */
-export function QualityLegend({ compact = false }: { compact?: boolean } = {}) {
+export function QualityLegend({
+  compact = false,
+  showLatest = true,
+}: { compact?: boolean; showLatest?: boolean } = {}) {
   return (
     <div className={`jg-legend ${compact ? "jg-legend--compact" : ""}`} aria-label="Rep quality key">
       <span className="jg-legend__item">
@@ -78,10 +90,12 @@ export function QualityLegend({ compact = false }: { compact?: boolean } = {}) {
         </span>
         Skipped
       </span>
-      <span className="jg-legend__item">
-        <span className="jg-legend__swatch jg-legend__swatch--latest" aria-hidden="true" />
-        Latest session
-      </span>
+      {showLatest && (
+        <span className="jg-legend__item">
+          <span className="jg-legend__swatch jg-legend__swatch--latest" aria-hidden="true" />
+          Latest session
+        </span>
+      )}
       <span className="jg-legend__item jg-legend__item--quiet">
         <span className="jg-delta jg-delta--gain">
           <span className="jg-delta__arrow">&#9650;</span>2

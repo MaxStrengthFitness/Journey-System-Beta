@@ -15,6 +15,16 @@ import {
 import { JourneyCell } from "./JourneyCell";
 import { StatCell } from "./StatCell";
 import { TodayCell } from "./TodayCell";
+import {
+  DEFAULT_COLUMN_WIDTH,
+  OLDER_RAIL_LABEL,
+  OLDER_RAIL_SPOKEN,
+  isAtOlderEdge,
+  isOlderGesture,
+  isOlderWheel,
+  olderRailState,
+  shouldAutoLoadOlder,
+} from "./older-autoload";
 
 /* ------------------------------------------------------------------ *
  * Public props
@@ -68,6 +78,14 @@ export interface JourneyGridProps {
   onLoadOlder?: () => void;
   canLoadOlder?: boolean;
   loadingOlder?: boolean;
+  /**
+   * Profile only (Recent Journey). Reveal the next page of older sessions by
+   * itself when the trainer scrolls to within a column of the left edge, and
+   * turn the Older rail into a quiet status — "Older", "Loading…", "Start of
+   * history" — that is still a tap target. See older-autoload.ts. The Active
+   * Session leaves this off and keeps its rail exactly as it was.
+   */
+  autoLoadOlder?: boolean;
   /**
    * "auto": the scroller caps at `maxHeight` (default 72dvh).
    * "fill": the grid stretches to fill its flex-column parent — for a parent
@@ -128,6 +146,13 @@ interface RowProps {
   onJump: (sessionId: string) => void;
   onNote?: (machineId: string) => void;
   hasOlderColumn: boolean;
+  /**
+   * Auto-load rail (profile): the rail's body cells are one tall tap target
+   * that asks for older sessions. Present only while there is more to show.
+   */
+  onOlder?: () => void;
+  /** Auto-load rail (profile): draw the rail cells blank — the status lives in its header. */
+  quietOlder?: boolean;
   orderNumber?: number;
   live?: LiveColumn;
   liveValue?: LiveSet;
@@ -151,6 +176,8 @@ function RowImpl({
   onJump,
   onNote,
   hasOlderColumn,
+  onOlder,
+  quietOlder,
   orderNumber,
   live,
   liveValue,
@@ -313,11 +340,21 @@ function RowImpl({
         />
       )}
 
-      {hasOlderColumn && (
-        <div className="jg-cell jg-cell--older" role="gridcell" aria-hidden="true">
-          <span className="jg-cell--older__mark">‹</span>
-        </div>
-      )}
+      {hasOlderColumn &&
+        (quietOlder ? (
+          /* The accessible control is the rail's header button; this is the
+             same action for a thumb, the full height of the list. */
+          <div
+            className={`jg-cell jg-cell--older ${onOlder ? "is-tappable" : ""}`}
+            role="gridcell"
+            aria-hidden="true"
+            onClick={onOlder}
+          />
+        ) : (
+          <div className="jg-cell jg-cell--older" role="gridcell" aria-hidden="true">
+            <span className="jg-cell--older__mark">‹</span>
+          </div>
+        ))}
 
       {cells}
 
@@ -475,6 +512,7 @@ export function JourneyGrid({
   onLoadOlder,
   canLoadOlder = false,
   loadingOlder = false,
+  autoLoadOlder = false,
   layout = "auto",
   maxHeight,
   viewportReserve = 112,
@@ -532,6 +570,12 @@ export function JourneyGrid({
   const prevFirstId = useRef<string | null>(null);
   const prevScrollWidth = useRef(0);
   const userTouched = useRef(false);
+  /**
+   * The first session id at the moment older sessions were last asked for;
+   * `undefined` when nothing is pending. A request that does not change the
+   * timeline (an empty page, a failed read) must not repeat on every frame.
+   */
+  const olderAskedAt = useRef<string | null | undefined>(undefined);
 
   const scrollToEnd = useCallback(() => {
     const el = scrollerRef.current;
@@ -543,6 +587,7 @@ export function JourneyGrid({
     if (!el) return;
     const firstId = sessions[0]?.id ?? null;
 
+    if (firstId !== prevFirstId.current) olderAskedAt.current = undefined;
     if (prevFirstId.current && firstId !== prevFirstId.current && sessions.some((s) => s.id === prevFirstId.current)) {
       // Older columns were prepended: keep the same cells under the thumb.
       el.scrollLeft += el.scrollWidth - prevScrollWidth.current;
@@ -577,6 +622,99 @@ export function JourneyGrid({
       el.removeEventListener("keydown", touch);
     };
   }, [scrollToEnd]);
+
+  /* --- older sessions: the profile's continuous history ---------------- *
+   * Profile only (`autoLoadOlder`); the Active Session never gets here. The
+   * listeners read the latest props through a ref so they are bound once. */
+  const autoOlder = autoLoadOlder && !!onLoadOlder && !live;
+  const railState = olderRailState(loadingOlder, canLoadOlder);
+  const olderRef = useRef({ onLoadOlder, canLoadOlder, loadingOlder });
+  useLayoutEffect(() => {
+    olderRef.current = { onLoadOlder, canLoadOlder, loadingOlder };
+  }, [onLoadOlder, canLoadOlder, loadingOlder]);
+
+  /** Ask for the next page — the rail's tap, and the edge when it fires. */
+  const askOlder = useCallback(() => {
+    const cur = olderRef.current;
+    if (!cur.onLoadOlder || !cur.canLoadOlder || cur.loadingOlder) return;
+    olderAskedAt.current = prevFirstId.current;
+    cur.onLoadOlder();
+  }, []);
+
+  const maybeAutoLoad = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const colW =
+      el.querySelector<HTMLElement>(".jg-head[data-session-id]")?.offsetWidth || DEFAULT_COLUMN_WIDTH;
+    if (!isAtOlderEdge(el.scrollLeft, colW)) {
+      // Leaving the edge is what re-arms it.
+      olderAskedAt.current = undefined;
+      return;
+    }
+    const cur = olderRef.current;
+    const pending = olderAskedAt.current !== undefined && olderAskedAt.current === prevFirstId.current;
+    if (
+      shouldAutoLoadOlder({
+        scrollLeft: el.scrollLeft,
+        columnWidth: colW,
+        userTouched: userTouched.current,
+        loading: cur.loadingOlder,
+        canLoadOlder: cur.canLoadOlder,
+        pending,
+      })
+    ) {
+      askOlder();
+    }
+  }, [askOlder]);
+
+  useEffect(() => {
+    if (!autoOlder) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        maybeAutoLoad();
+      });
+    };
+    // A timeline that fits without overflowing never fires a scroll event -
+    // and on a landscape iPad fourteen columns fit exactly. There, a
+    // sideways pull (or a wheel) toward the older end is the signal instead.
+    const fits = () => el.scrollWidth - el.clientWidth <= 1;
+    let start: { x: number; y: number } | null = null;
+    const onTouchStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      start = t ? { x: t.clientX, y: t.clientY } : null;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!start || !t || !fits()) return;
+      if (isOlderGesture(t.clientX - start.x, t.clientY - start.y)) {
+        start = null;
+        userTouched.current = true;
+        maybeAutoLoad();
+      }
+    };
+    const onWheel = (e: WheelEvent) => {
+      if (fits() && isOlderWheel(e.deltaX, e.deltaY)) {
+        userTouched.current = true;
+        maybeAutoLoad();
+      }
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: true });
+    el.addEventListener("wheel", onWheel, { passive: true });
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      el.removeEventListener("scroll", onScroll);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("wheel", onWheel);
+    };
+  }, [autoOlder, maybeAutoLoad]);
 
   /** Tap on an Analytics cell: bring that session's column into view and spotlight it. */
   const jumpTo = useCallback(
@@ -715,6 +853,7 @@ export function JourneyGrid({
       data-live={live ? "true" : "false"}
       data-stats={showStats ? "true" : "false"}
       data-older={hasOlderColumn ? "true" : "false"}
+      data-autoload={autoOlder ? "true" : "false"}
       data-dense={fitVars?.dense ? "line" : "stack"}
       data-settings={settingsDisplay}
       style={style}
@@ -760,20 +899,42 @@ export function JourneyGrid({
               </div>
             )}
 
-            {hasOlderColumn && (
-              <div className="jg-head jg-head--older" role="columnheader">
-                <button
-                  type="button"
-                  className="jg-head__btn"
-                  onClick={onLoadOlder}
-                  disabled={!canLoadOlder || loadingOlder}
-                  aria-label="Load older sessions"
-                  style={{ opacity: canLoadOlder ? 1 : 0.4 }}
-                >
-                  <span>{loadingOlder ? "…" : canLoadOlder ? "‹ Older" : "Start"}</span>
-                </button>
-              </div>
-            )}
+            {hasOlderColumn &&
+              (autoOlder ? (
+                <div className="jg-head jg-head--older" role="columnheader" data-rail={railState}>
+                  <button
+                    type="button"
+                    className="jg-head__btn jg-older__btn"
+                    onClick={askOlder}
+                    disabled={railState !== "more"}
+                    aria-label={OLDER_RAIL_SPOKEN[railState]}
+                  >
+                    <span className="jg-older__glyph" aria-hidden="true">
+                      {railState === "more" ? "‹" : railState === "loading" ? "…" : ""}
+                    </span>
+                  </button>
+                  {/* The status reads down the rail, under the header. */}
+                  <span className="jg-older__label" aria-hidden="true">
+                    {OLDER_RAIL_LABEL[railState]}
+                  </span>
+                  <span className="jg-sr" aria-live="polite">
+                    {railState === "more" ? "" : OLDER_RAIL_SPOKEN[railState]}
+                  </span>
+                </div>
+              ) : (
+                <div className="jg-head jg-head--older" role="columnheader">
+                  <button
+                    type="button"
+                    className="jg-head__btn"
+                    onClick={onLoadOlder}
+                    disabled={!canLoadOlder || loadingOlder}
+                    aria-label="Load older sessions"
+                    style={{ opacity: canLoadOlder ? 1 : 0.4 }}
+                  >
+                    <span>{loadingOlder ? "…" : canLoadOlder ? "‹ Older" : "Start"}</span>
+                  </button>
+                </div>
+              ))}
 
             {sessions.map((s) => {
               const isSpot = spot === s.id;
@@ -837,6 +998,8 @@ export function JourneyGrid({
               onJump={jumpTo}
               onNote={onMachineNote}
               hasOlderColumn={hasOlderColumn}
+              onOlder={autoOlder && railState === "more" ? askOlder : undefined}
+              quietOlder={autoOlder}
               live={live}
               settingsDisplay={settingsDisplay}
             />
@@ -861,6 +1024,8 @@ interface SectionBlockProps {
   onJump: (sessionId: string) => void;
   onNote?: (machineId: string) => void;
   hasOlderColumn: boolean;
+  onOlder?: () => void;
+  quietOlder: boolean;
   live?: LiveColumn;
   settingsDisplay: "inline" | "menu";
 }
@@ -879,6 +1044,8 @@ const SectionBlock = memo(function SectionBlock({
   onJump,
   onNote,
   hasOlderColumn,
+  onOlder,
+  quietOlder,
   live,
   settingsDisplay,
 }: SectionBlockProps) {
@@ -914,6 +1081,8 @@ const SectionBlock = memo(function SectionBlock({
             onJump={onJump}
             onNote={onNote}
             hasOlderColumn={hasOlderColumn}
+            onOlder={onOlder}
+            quietOlder={quietOlder}
             orderNumber={section.numbered ? i + 1 : undefined}
             live={live}
             liveValue={live?.values[row.machine.id]}

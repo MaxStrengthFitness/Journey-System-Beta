@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft } from "lucide-react";
 import type { JourneyRow, JourneySession, StatMetric } from "./types";
 import { JourneyGrid, type GridSection } from "./JourneyGrid";
 import { GridToolbar, QualityLegend } from "./GridToolbar";
@@ -34,11 +33,21 @@ export interface RecentJourneyViewProps {
   onLoadMore?: () => Promise<void> | void;
   /** The first batch of sessions (and their sets) is still on its way. */
   loading?: boolean;
-  /** "Older" is fetching the next batch. */
+  /** The next batch of older sessions is being fetched. */
   loadingMore?: boolean;
-  /** Columns shown before the trainer taps "Older". */
+  /** Columns shown before the trainer scrolls back for older sessions. */
   initialVisible?: number;
+  /** Columns revealed each time the trainer reaches the oldest one drawn. */
   pageStep?: number;
+  /**
+   * Changes when the grid is showing a different client (the client id).
+   * The revealed history and the machine filter reset on it — and ONLY on
+   * it. They used to reset whenever `rows` changed, which is every new page
+   * of sets and every saved setting: the grid jumped back to fourteen
+   * columns in the middle of scrolling through history. Falls back to
+   * `rows` when omitted.
+   */
+  resetKey?: string | null;
   /**
    * "fill" (default): the view is a flex column that fills its parent and the
    * grid scrolls in the space under the client header. "auto": the grid caps
@@ -80,6 +89,7 @@ export function RecentJourneyView({
   loadingMore = false,
   initialVisible = 14,
   pageStep = 7,
+  resetKey,
   layout = "fill",
   maxHeight,
   viewportReserve = 72,
@@ -99,10 +109,11 @@ export function RecentJourneyView({
   // Never inherit the previous client's expansion — or their filter. This
   // view is not remounted between clients, and "B routine" left on from the
   // last client resolved against the new client's rows.
+  const resetOn: unknown = resetKey !== undefined ? resetKey : rows;
   useEffect(() => {
     setVisible(initialVisible);
     setFilter("all");
-  }, [initialVisible, rows]);
+  }, [initialVisible, resetOn]);
 
   const visibleSessions = useMemo(() => sessions.slice(Math.max(0, sessions.length - visible)), [sessions, visible]);
   const canLoadOlder = visible < sessions.length || hasMoreOnServer;
@@ -151,10 +162,13 @@ export function RecentJourneyView({
 
   return (
     <section
-      className={`jg-view ${layout === "fill" ? "jg-view--fill" : ""} ${layout === "page" ? "jg-view--page" : ""}`}
+      className={`jg-view jg-view--journey ${layout === "fill" ? "jg-view--fill" : ""} ${layout === "page" ? "jg-view--page" : ""}`}
       aria-label="Recent journey"
     >
-      <GridToolbar title="Recent journey">
+      {/* No caption: this IS the Journey tab, and "Recent journey" under a
+          tab called Journey was a heading repeating the tab (profile audit,
+          Sep 2026). The toolbar is the filter and the key, nothing else. */}
+      <GridToolbar>
         <div className="jg-seg" role="radiogroup" aria-label="Which machines to show">
           {availableFilters.map((f) => (
             <button
@@ -169,28 +183,28 @@ export function RecentJourneyView({
             </button>
           ))}
         </div>
-        <button type="button" className="jg-btn" onClick={loadOlder} disabled={!canLoadOlder || loadingMore}>
-          <ChevronLeft size={15} strokeWidth={2.5} />
-          {loadingMore ? "Loading…" : `Older +${pageStep}`}
-        </button>
-        {/* The key rides in the toolbar so the grid can take the full height
+        {/* No "Older +7" pill any more: the grid reveals older sessions as
+            the trainer scrolls back, and its sticky rail says where it is.
+            The key rides in the toolbar so the grid can take the full height
             down to the nav — in landscape that is the difference between 16
-            and 21 machines on screen. */}
+            and 21 machines on screen. No "Latest session" key: the profile
+            grid does not frame its newest column. */}
         <div className="jg-toolbar__legend">
-          <QualityLegend compact />
+          <QualityLegend compact showLatest={false} />
         </div>
       </GridToolbar>
 
       {/* The brand loading mark, never empty cells: a whole-area wait while
-          the first batch loads, and a mark over the grid while "Older" adds
-          the next batch (the columns already drawn stay where they are). */}
+          the first batch loads, and a mark over the grid if it reloads.
+          Older pages do NOT cover the grid — the trainer is mid-scroll, and
+          the rail's "Loading…" is the whole of that wait. */}
       {loading && sessions.length === 0 ? (
         <LoadingArea label="Loading the journey…" />
       ) : (
       <div className="jg-view__grid-wrap">
-        {(loading || loadingMore) && (
+        {loading && (
           <div className="jg-view__loading">
-            <LoadingMark label={loadingMore ? "Loading older sessions…" : "Loading…"} size="sm" />
+            <LoadingMark label="Loading…" size="sm" />
           </div>
         )}
       <JourneyGrid
@@ -200,9 +214,15 @@ export function RecentJourneyView({
         metric={metric}
         onMetricChange={setMetric}
         onSelectMachine={onSelectMachine}
+        /* The owner's call (Sep 2026): no LATEST frame on the profile. The
+           newest column was a blue stripe of dashes whenever its session
+           logged nothing, and the Active Session is where "baseline →
+           today" matters. */
+        latestSessionId={null}
         onLoadOlder={loadOlder}
         canLoadOlder={canLoadOlder}
         loadingOlder={loadingMore}
+        autoLoadOlder
         layout={layout}
         maxHeight={maxHeight}
         viewportReserve={viewportReserve}

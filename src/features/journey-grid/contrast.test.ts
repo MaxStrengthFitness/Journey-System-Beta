@@ -97,15 +97,43 @@ const PAIRINGS: Array<[string, string, string, number]> = [
   ["--jg-q-poor", "--jg-q-poor-fill", "the red kaizen ring", UI],
   ["--jg-q-max-edge", "--jg-surface", "the max-strength cell edge", UI],
   ["--jg-hero", "--jg-surface", "the focus row trace", UI],
+  // The chrome around the data: the header band and the sticky rails share
+  // one surface, and the profile's light retune moved it.
+  ["--jg-ink", "--jg-surface-2", "machine names on the sticky rail", TEXT],
+  ["--jg-ink-muted", "--jg-surface-2", "session numbers on the header band", TEXT],
+  ["--jg-live-text", "--jg-surface-2", "blue dates in the Analytics rail", TEXT],
+  ["--jg-ink-muted", "--jg-bg", "the section divider's label", TEXT],
 ];
 
+/**
+ * The profile's Journey tab maps its own neutrals (`--jg-pf-*`) onto the
+ * grid's names inside `.jg-view--journey`. Test that palette as the profile
+ * actually draws it.
+ */
+const PROFILE_MAP: Record<string, string> = {
+  "--jg-bg": "--jg-pf-bg",
+  "--jg-surface-2": "--jg-pf-surface-2",
+  "--jg-surface-3": "--jg-pf-surface-3",
+  "--jg-border": "--jg-pf-border",
+  "--jg-border-strong": "--jg-pf-border-strong",
+};
+
+function asProfile(vars: Record<string, string>): Record<string, string> {
+  const out = { ...vars };
+  for (const [name, pf] of Object.entries(PROFILE_MAP)) out[name] = hex(vars, pf);
+  return out;
+}
+
 describe.each([
-  ["light", ":root {", "--jg-ink", 0.035],
-  ["dark", ".dark,", "--jg-ink", 0.045],
-])("%s theme", (_theme, selector, bandInk, bandAlpha) => {
+  ["light", ":root {", "--jg-ink", 0.035, false],
+  ["dark", ".dark,", "--jg-ink", 0.045, false],
+  ["light · profile", ":root {", "--jg-ink", 0.035, true],
+  ["dark · profile", ".dark,", "--jg-ink", 0.045, true],
+])("%s theme", (_theme, selector, bandInk, bandAlpha, profile) => {
   const light = readBlock(":root {");
   // The dark block only overrides; anything it does not restate is inherited.
-  const vars = selector === ":root {" ? light : { ...light, ...readBlock(selector) };
+  const base = selector === ":root {" ? light : { ...light, ...readBlock(selector) };
+  const vars = profile ? asProfile(base) : base;
 
   it.each(PAIRINGS)("%s on %s — %s clears %s:1", (fg, bg, _what, floor) => {
     expect(ratio(hex(vars, fg), hex(vars, bg))).toBeGreaterThanOrEqual(floor);
@@ -134,5 +162,32 @@ describe.each([
         expect(ratio(hex(vars, fills[i]), hex(vars, fills[j]))).toBeGreaterThanOrEqual(1.15);
       }
     }
+  });
+
+  if (profile && selector === ":root {") {
+    it("keeps the header band visible against the cells", () => {
+      // Calmer, not gone: the band is what says "these are dates". (Dark is
+      // not retuned, so this is a check on the light palette only.)
+      expect(ratio(hex(vars, "--jg-surface-2"), hex(vars, "--jg-surface"))).toBeGreaterThanOrEqual(1.08);
+    });
+  }
+});
+
+describe("the profile retune", () => {
+  const light = readBlock(":root {");
+  const dark = { ...light, ...readBlock(".dark,") };
+
+  it("changes nothing in dark mode", () => {
+    for (const [name, pf] of Object.entries(PROFILE_MAP)) {
+      expect(hex(dark, pf)).toBe(hex(dark, name));
+    }
+  });
+
+  it("softens the light hairlines and sticky edges rather than hardening them", () => {
+    const white = hex(light, "--jg-surface");
+    expect(ratio(hex(light, "--jg-pf-border"), white)).toBeLessThan(ratio(hex(light, "--jg-border"), white));
+    expect(ratio(hex(light, "--jg-pf-border-strong"), white)).toBeLessThan(
+      ratio(hex(light, "--jg-border-strong"), white),
+    );
   });
 });

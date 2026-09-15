@@ -122,6 +122,25 @@
   --jg-font:           "Geist Variable", "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
   --jg-font-display:   "Saira Condensed", var(--jg-font);
 
+  /* ---- 3. PROFILE — LIGHT (the client profile's Journey tab) ----------- *
+     The profile grid is read for minutes at a time on a bright white page;
+     the Active Session is read in glances across a gym floor. The same
+     neutrals did not suit both: on the profile, 21 machines x 14 sessions
+     of #d3dadf hairlines under a #e8eef2 band read as a dense mesh (profile
+     audit, Sep 2026). These are the calmer neutrals the profile maps onto
+     the grid's own names (see the .jg-view--journey block at the end of
+     this file). The Active Session never sees them.
+
+     Only neutrals move. The three quality fills, the ink and the accents
+     are the grid's own, untouched: the fills' lightness is load-bearing and
+     contrast.test.ts checks this palette as its own theme.              */
+  --jg-pf-bg:            #f4f6f8;   /* group rows, the frame — near the page  */
+  --jg-pf-surface-2:     #eef2f5;   /* header band, sticky rails  1.13:1     */
+  --jg-pf-surface-3:     #e2e8ec;   /* pressed / hover                       */
+  --jg-pf-border:        #e2e7eb;   /* cell hairlines             1.25:1     */
+  --jg-pf-border-strong: #c2c9cf;   /* sticky edges, header rule  1.67:1     */
+  --jg-pf-sticky-shadow: rgba(18, 28, 35, 0.07);
+
   color-scheme: light;
 }
 
@@ -172,6 +191,15 @@
   --jg-sticky-shadow:  rgba(0, 0, 0, 0.45);
   --jg-dim:            0.34;
 
+  /* The profile's neutrals are a LIGHT retune only. In dark they are the
+     grid's own values, so the profile looks exactly as it did.            */
+  --jg-pf-bg:            var(--jg-bg);
+  --jg-pf-surface-2:     var(--jg-surface-2);
+  --jg-pf-surface-3:     var(--jg-surface-3);
+  --jg-pf-border:        var(--jg-border);
+  --jg-pf-border-strong: var(--jg-border-strong);
+  --jg-pf-sticky-shadow: var(--jg-sticky-shadow);
+
   color-scheme: dark;
 }
 
@@ -212,6 +240,25 @@
     --jg-band:           rgba(230, 236, 242, 0.045);
     --jg-sticky-shadow:  rgba(0, 0, 0, 0.45);
     --jg-dim:            0.34;
+    --jg-pf-bg:            var(--jg-bg);
+    --jg-pf-surface-2:     var(--jg-surface-2);
+    --jg-pf-surface-3:     var(--jg-surface-3);
+    --jg-pf-border:        var(--jg-border);
+    --jg-pf-border-strong: var(--jg-border-strong);
+    --jg-pf-sticky-shadow: var(--jg-sticky-shadow);
     color-scheme: dark;
   }
+}
+
+/* ---- 3. PROFILE — the mapping ---------------------------------------- */
+/* RecentJourneyView is profile-only, so this wrapper is the gate: the
+   toolbar and the grid inside it take the profile neutrals, and the Active
+   Session (which never renders .jg-view--journey) keeps the grid's own.  */
+.jg-view--journey {
+  --jg-bg:            var(--jg-pf-bg);
+  --jg-surface-2:     var(--jg-pf-surface-2);
+  --jg-surface-3:     var(--jg-pf-surface-3);
+  --jg-border:        var(--jg-pf-border);
+  --jg-border-strong: var(--jg-pf-border-strong);
+  --jg-sticky-shadow: var(--jg-pf-sticky-shadow);
 }

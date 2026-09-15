@@ -1759,6 +1759,7 @@ export function ClientProfileView({
             onLoadMore={handleLoadMoreHistory}
             loading={isLoadingSessions}
             loadingMore={isLoadingMore}
+            resetKey={clientId ?? null}
             layout="page"
             routineAMachineIds={routineAMachineIds}
             routineBMachineIds={routineBMachineIds}

@@ -472,6 +472,70 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 }
 .jg-cell.jg-cell--older { display: grid; place-items: center; }
 
+/* ---- the Older rail, profile (data-autoload) ------------------------- *
+   The profile loads older sessions as the trainer scrolls back
+   (older-autoload.ts), so the rail stopped being the way to page and became
+   a quiet status: one glyph in the header, and the word reading down the
+   rail beneath it -- "Older", "Loading…", "Start of history". It is still
+   a tap target, for a timeline too short to scroll: the header button, and
+   every body cell of the rail as one tall strip whose hit area reaches 40px
+   (the cells beside it are not interactive on the profile). The Active
+   Session's rail above is untouched. */
+.jg[data-autoload="true"] .jg-head--older .jg-head__btn {
+  writing-mode: horizontal-tb;
+  transform: none;
+  font-family: var(--jg-font);
+  letter-spacing: 0;
+}
+.jg[data-autoload="true"] .jg-head--older .jg-head__btn:disabled { cursor: default; }
+.jg-older__glyph {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--jg-live-text);
+}
+.jg-head--older[data-rail="loading"] .jg-older__glyph { color: var(--jg-ink-muted); }
+/* Start of history: a short rule, the end of the line. */
+.jg-head--older[data-rail="start"] .jg-older__glyph {
+  display: block;
+  width: 2px;
+  height: 14px;
+  border-radius: 1px;
+  background: var(--jg-border-strong);
+}
+.jg-older__label {
+  position: absolute;
+  /* below the header and the section divider, into the first rows */
+  top: calc(100% + 38px);
+  left: 50%;
+  writing-mode: vertical-rl;
+  transform: translateX(-50%) rotate(180deg);
+  font-family: var(--jg-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--jg-ink-muted);
+  pointer-events: none;
+}
+.jg-head--older[data-rail="more"] .jg-older__label { color: var(--jg-live-text); }
+.jg-head--older[data-rail="loading"] .jg-older__label { animation: jg-older-pulse 1.4s ease-in-out infinite; }
+@keyframes jg-older-pulse { 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) {
+  .jg-head--older[data-rail="loading"] .jg-older__label { animation: none; }
+}
+.jg[data-autoload="true"] .jg-cell--older.is-tappable { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.jg[data-autoload="true"] .jg-cell--older.is-tappable::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40px;
+}
+.jg[data-autoload="true"] .jg-cell--older.is-tappable:active { background: var(--jg-surface-3); }
+
 /* ---- group divider rows --------------------------------------------- */
 .jg-group {
   grid-column: 1 / -1;
@@ -2027,9 +2091,22 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 /* narrow columns: drop the session number line, keep the date */
 .jg[data-dense="line"] .jg-head.is-latest .jg-head__tag { font-size: 7.5px; }
 
-/* compact legend in the Recent Journey toolbar */
-.jg-toolbar__legend { display: flex; align-items: center; flex-basis: 100%; }
-@media (min-width: 1180px) { .jg-toolbar__legend { flex-basis: auto; order: 2; margin-left: 6px; } .jg-toolbar__spacer { order: 1; } }
+/* compact legend in the Recent Journey toolbar.
+   The toolbar has no caption any more (profile audit, Sep 2026): the filter
+   starts at the left edge and the key takes the rest of the line. Portrait
+   (744-834pt): the two do not fit side by side, so the key wraps under the
+   filter and reads from the left like the filter above it. From 1180px
+   (landscape) they share one line and the key sits at the right edge. */
+.jg-toolbar__legend { display: flex; align-items: center; flex: 1 1 auto; min-width: 0; justify-content: flex-start; }
+@media (min-width: 1180px) { .jg-toolbar__legend { justify-content: flex-end; } }
+.jg-toolbar--untitled { gap: 6px 16px; }
+/* The filter is pressed with a client beside the trainer: 40px, the floor
+   for anything tappable. */
+.jg-view--journey .jg-seg { padding: 2px; }
+.jg-view--journey .jg-seg__btn { height: 40px; padding: 0 14px; }
+/* The key sits on the app's page colour, where the grey "Completed" fill
+   all but vanishes. A hairline gives the swatch an edge. */
+.jg-view--journey .jg-legend__swatch--q2 { box-shadow: inset 0 0 0 1px var(--jg-border-strong); }
 .jg-legend--compact { gap: 10px; font-size: 10.5px; }
 .jg-legend--compact .jg-legend__gloss { display: none; }
 .jg-legend--compact .jg-legend__item--quiet { display: none; }

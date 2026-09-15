@@ -5,6 +5,35 @@ Design spec for `src/features/journey-grid/` — the sticky client-tracking grid
 
 Files: `src/features/journey-grid/`. Live prototype: the "Journey Grid" artifact (same code, compiled with Judy Daus's data).
 
+**Profile round (Sep 2026) — the Journey tab only.** Four changes, every one
+gated to the profile (`RecentJourneyView`, `.jg-view--journey`,
+`data-autoload="true"`); the Active Session looks and behaves as before, and
+`recent-journey.render.test.tsx` mounts both to prove it.
+
+- **No caption.** "Recent journey" under a tab called Journey repeated the
+  tab. The toolbar is the machine filter (40px segments) and the key; the key
+  wraps under the filter in portrait and sits at the right in landscape.
+- **No LATEST frame on the profile** (AJ's call). `RecentJourneyView` passes
+  `latestSessionId={null}` and `QualityLegend showLatest={false}`. An empty
+  newest session used to draw a blue column of dashes. The Active Session
+  keeps §1.3 exactly.
+- **Older sessions load as you scroll.** The "Older +7" pill is gone. Within
+  one column of the left edge — only after the trainer has touched the grid,
+  never while a page is loading, once per arrival — the grid reveals the next
+  seven columns (fetching when the loaded fifty run out). On a timeline too
+  short to scroll (landscape fits fourteen exactly) a sideways pull or wheel
+  is the signal. The sticky rail is now a quiet status reading down the rail
+  — *Older*, *Loading…*, *Start of history* — and still a tap target (its
+  header, and its body as one strip with a 40px hit area). Older pages no
+  longer throw the loading scrim over the grid. Rules: `older-autoload.ts`.
+  `resetKey` (the client id) is now the only thing that resets the revealed
+  history and the filter; it used to reset on every new page of sets.
+- **Calmer light neutrals on the profile.** `--jg-pf-*` in the `:root` block
+  (page, band, hairlines, sticky edges, shadow) are mapped onto the grid's
+  names inside `.jg-view--journey`. The dark blocks alias them to the grid's
+  own values, so dark is unchanged. Quality fills, ink and accents did not
+  move. `contrast.test.ts` checks the profile palette as its own theme.
+
 **v6 (Sep 6) — one channel per meaning.** The grid was spending three colour
 systems on two facts: a gold cell meant max strength, a green cell meant the
 load went up, and arrows meant reps moved. Two of those painted the same
@@ -180,9 +209,9 @@ Every figure above is the WORSE of the pairing on a plain row and on a
 pairing that only clears AA on unbanded rows clears it every other row.
 
 None of these are typed by hand any more. `contrast.test.ts` parses the
-token file, resolves the `var()` chains, and asserts all of it — 66 checks,
-both themes, banded and not — so retuning a token to something that fails AA
-fails the build instead of shipping.
+token file, resolves the `var()` chains, and asserts all of it — both themes
+and the profile's retuned light palette, banded and not — so retuning a token
+to something that fails AA fails the build instead of shipping.
 | Blue text on LATEST / Today fill | 7.7 : 1 | 7.7 : 1 |
 | Quality edge (non-text) on surface | ≥ 3.5 : 1 | ≥ 5.9 : 1 |
 
@@ -219,7 +248,7 @@ Because every pinned piece is a grid cell with `position: sticky`, the browser's
 
 Columns run **oldest → newest, left → right**; Today is the last column. The grid opens scrolled to the far right, so the first thing on screen is the LATEST column beside today's input. A `ResizeObserver` keeps it parked there through any resize that happens before the trainer touches the grid (fonts loading, orientation change, a panel opening) — the v1 prototype could open on the wrong end because of this.
 
-History loads backwards: **Older +5** in the section toolbar, and the same control at the far left of the timeline. Prepending five columns compensates the scroll offset in the same frame, so the columns under your thumb don't move.
+History loads backwards: in the Active Session, **Older** on the rail and at the far left of the timeline; on the profile, by itself as the trainer scrolls back (see the profile round note at the top). Prepending columns compensates the scroll offset in the same frame, so the columns under your thumb don't move.
 
 ### 2.4 The Target Weight box is gone
 
