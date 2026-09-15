@@ -1638,4 +1638,33 @@ describe("Firestore Security Rules", () => {
     const nobody = testEnv.unauthenticatedContext().firestore();
     await assertFails(getDoc(doc(nobody, "machineTrends", "compound-row")));
   });
+
+  // Cost round (Sep 2026): the self-edit hole. A trainer may still edit their
+  // own document, but not the fields that decide what they may do and where.
+  it("lets a trainer edit their own profile but not their own role or studios", async () => {
+    const a = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(updateDoc(doc(a, "trainers", "trainerA"), { bio: "Loves the leg press" }));
+    await assertFails(updateDoc(doc(a, "trainers", "trainerA"), { role: "StudioLeader" }));
+    await assertFails(updateDoc(doc(a, "trainers", "trainerA"), { role: "FranchiseOwner" }));
+    await assertFails(updateDoc(doc(a, "trainers", "trainerA"), { accessibleStudioIds: ["studioA", "studioB"] }));
+    await assertFails(updateDoc(doc(a, "trainers", "trainerA"), { ownedStudioIds: ["studioB"] }));
+    await assertFails(updateDoc(doc(a, "trainers", "trainerA"), { activeGuestStudioIds: ["studioB"] }));
+    await assertFails(updateDoc(doc(a, "trainers", "trainerA"), { primaryHomeStudioId: "studioB" }));
+    // Their studio's leader still can.
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(updateDoc(doc(owner, "trainers", "trainerA"), { accessibleStudioIds: ["studioA", "studioB"] }));
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore(), "trainers", "trainerA"), { accessibleStudioIds: ["studioA"] });
+    });
+  });
+
+  // Cost round (Sep 2026): a role claim on the token is read before the
+  // document, so an Admin claim with no trainer document is still an admin,
+  // and a LifeTransformer claim never reaches admin-only writes.
+  it("reads the role from the token claim before the trainer document", async () => {
+    const claimedAdmin = testEnv.authenticatedContext("claim-admin", { email: "ca@test.com", role: "Admin" }).firestore();
+    await assertSucceeds(setDoc(doc(claimedAdmin, "machineTrends", "claim-test"), { machineId: "claim-test" }));
+    const claimedTrainer = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com", role: "LifeTransformer" }).firestore();
+    await assertFails(setDoc(doc(claimedTrainer, "machineTrends", "claim-test-2"), { machineId: "claim-test-2" }));
+  });
 });

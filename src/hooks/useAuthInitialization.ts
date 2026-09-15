@@ -199,6 +199,29 @@ export function useAuthInitialization() {
 
           setAuthTrainer(trainerData);
 
+          /**
+           * ROLE CLAIM (cost round, Sep 2026). The Cloud Function
+           * syncTrainerClaims mirrors trainers/{uid}.role onto the token, and
+           * firestore.rules read the token's role before the document — so
+           * with the claim present, every role check stops costing a read.
+           * An ID token is minted for an hour, so the claim a role change (or
+           * the first deploy) set can lag the document. When they disagree,
+           * refresh the token ONCE now; every Firestore call after this point
+           * carries the new one. Disagreeing after the refresh means the
+           * function has not run for this person yet (or their document id is
+           * not their uid); the rules then fall back to the document exactly
+           * as before, so nothing is lost — it just costs the read.
+           */
+          if (trainerData && trainerData.role !== claimsRole) {
+            try {
+              const refreshed = await u.getIdTokenResult(true);
+              claimsRole = (refreshed.claims.role as string) || null;
+              setTokenRole(claimsRole);
+            } catch (err) {
+              // Ignoring token refresh error
+            }
+          }
+
           try {
             const studioSnap = await getDocs(collection(db, "studios"));
             setStudios(

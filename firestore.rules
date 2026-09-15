@@ -50,19 +50,18 @@ service cloud.firestore {
       return isAuthenticated() && trainerDocExistsByUID();
     }
 
+    // Cost round (Sep 2026): both go through getRole(), which reads the token's
+    // role claim and only falls back to trainers/{uid} when there is none. The
+    // old bodies checked the claim, then ALWAYS did an exists()/get() for any
+    // non-matching claim -- so a LifeTransformer's every isSuperAdmin() cost a
+    // read even with a claim. The Cloud Function syncTrainerClaims keeps the
+    // claim equal to the document; the answers here are unchanged either way.
     function isAdmin() {
-      return isAuthenticated() && (
-        ('role' in request.auth.token && request.auth.token.role == 'Admin') ||
-        (trainerDocExistsByUID() && getRole() == 'Admin')
-      );
+      return isAuthenticated() && getRole() == 'Admin';
     }
 
     function isFounder() {
-      return isAuthenticated() && (
-        ('role' in request.auth.token && (request.auth.token.role == 'Founder' || request.auth.token.role == 'Overseer')) ||
-        getRole() == 'Founder' || 
-        getRole() == 'Overseer'
-      );
+      return isAuthenticated() && (getRole() == 'Founder' || getRole() == 'Overseer');
     }
 
     // 1. SUPER ADMIN: Absolute master access to everything
@@ -229,10 +228,10 @@ service cloud.firestore {
     function trainerLeads(r, t, studioId) {
       return studioId != null && studioId != '' && (
         // The custom-claim fast path, carried over verbatim from
-        // isStudioOwnerOrHeadTrainerOnly. It never fires today because
-        // setCustomUserClaimsV2 has never been called -- but dropping it
-        // would silently change behaviour the day those claims get wired,
-        // which is itself the recommended follow-up to this fix.
+        // isStudioOwnerOrHeadTrainerOnly. It never fires: the only claim
+        // ever set is `role` (syncTrainerClaims, cost round Sep 2026), and
+        // `studioId` is deliberately never set -- as written it would grant
+        // studio-leader access with no role check at all.
         ('studioId' in request.auth.token &&
           request.auth.token.studioId != null &&
           request.auth.token.studioId == studioId) ||
@@ -705,6 +704,18 @@ service cloud.firestore {
         .hasAny(['rollups', 'mindbody']);
     }
 
+    // The fields that decide what a person may do and where. A trainer may
+    // edit their own document (ownsTrainerDoc) -- their photo, bio, PIN,
+    // roster -- but never these: until the cost round (Sep 2026) the
+    // self-edit path let anyone hand themselves StudioLeader or FranchiseOwner
+    // and any studio, which undid every role check in this file (the hole
+    // CLAUDE.md listed as "needs AJ's OK"). Leaders and above still set them
+    // for the people they manage, through the other branches of the rule.
+    function writesAccessFields() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['role', 'ownedStudioIds', 'accessibleStudioIds', 'activeGuestStudioIds', 'primaryHomeStudioId']);
+    }
+
     // ---------------------------------------------------------------
     // OWNING YOUR OWN TRAINER DOCUMENT (round: trainer identity, Sep 2026)
     //
@@ -869,7 +880,7 @@ service cloud.firestore {
                       !writesForeignRoster(trainerId) &&
                       (isFranchiseOwner() || 
                       (resource.data.primaryHomeStudioId != null && isStudioOwnerOrHeadTrainer(resource.data.primaryHomeStudioId)) || 
-                      ownsTrainerDoc(trainerId))
+                      (ownsTrainerDoc(trainerId) && !writesAccessFields()))
                       && 
                       (!('role' in request.resource.data) || 
                        request.resource.data.role == resource.data.role || 

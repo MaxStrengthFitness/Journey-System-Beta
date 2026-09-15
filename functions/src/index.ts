@@ -14,6 +14,9 @@ export {
   syncMindbodyStaffImages,
   refreshMindbodyStaffImage,
 } from "./mindbody/staffImage";
+// Cost round (Sep 2026): mirrors trainers/{id}.role onto the auth token so
+// the rules' role checks stop reading the trainer document.
+export { syncTrainerClaims } from "./claims";
 
 admin.initializeApp();
 const db = getFirestore("ai-studio-32cbbdcc-6e08-4770-9665-867c68878efa");
@@ -181,6 +184,7 @@ export const setCustomUserClaimsV2 = onCall(
       "Owner",
       "StudioOwner",
       "HeadTrainer",
+      "StudioLeader",
       "Trainer",
       "LifeTransformer",
     ];
