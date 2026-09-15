@@ -47,7 +47,7 @@ export interface HistoryViewProps {
   timeZone?: string;
   defaultView?: HistoryViewMode;
   /**
-   * Controlled mode. Clinical History promotes Calendar and List to its own
+   * Controlled mode. The Activity Archive promotes Calendar and List to its own
    * sub-toggle rather than nesting a switch inside a switch, so when `view` is
    * given this component stops owning the choice and stops drawing the
    * segmented control — the parent draws it, one level up, where every other

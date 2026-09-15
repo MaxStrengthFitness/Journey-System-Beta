@@ -719,7 +719,7 @@ export function ClientDossier({
                   {progressReports.length === 0
                     ? "No filed reports yet"
                     : `${progressReports.length} filed ${progressReports.length === 1 ? "report" : "reports"}`}
-                  <span className="opacity-60">· Clinical History</span>
+                  <span className="opacity-60">· Activity Archive</span>
                 </button>
               )}
             </DossierSectionShell>

@@ -29,7 +29,7 @@ describe("legacyLocation", () => {
     expect(legacyLocation("medical")).toEqual({ tab: "record", section: "medical" });
   });
 
-  it("sends History and Clinical into Clinical History, on their own segments", () => {
+  it("sends History and Clinical into the Activity Archive, on their own segments", () => {
     expect(legacyLocation("history")).toEqual({ tab: "clinical", view: "calendar" });
     expect(legacyLocation("clinical")).toEqual({ tab: "clinical", view: "trends" });
     expect(legacyLocation("reports")).toEqual({ tab: "clinical", view: "reports" });

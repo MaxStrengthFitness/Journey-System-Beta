@@ -56,7 +56,7 @@ export interface SubnavItem<T extends string> {
 }
 
 export interface ProfileSubnavProps<T extends string> {
-  /** Screen-reader name: "Programming views", "Clinical history views". */
+  /** Screen-reader name: "Programming views", "Activity archive views". */
   label: string;
   items: SubnavItem<T>[];
   value: T;
@@ -89,7 +89,7 @@ export function ProfileSubnav<T extends string>({
    *      stick 24px down and let rows slide past in the strip above it. The
    *      scroller's padding, negated, is --psub-stick-top.
    *
-   *   2. The History pane inside Clinical History has sticky month headers of
+   *   2. The History pane inside the Activity Archive has sticky month headers of
    *      its own, which want to stop UNDER this bar rather than slide beneath
    *      it. This publishes its own height as --psub-stuck-h on the enclosing
    *      .ptab, and client-history.css adds it to their offset. A CSS

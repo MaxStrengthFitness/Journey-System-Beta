@@ -14,7 +14,10 @@
  *   Journey            what has she done, in order
  *   Programming        what is she supposed to do          (Routines + Equipment)
  *   Notes & Profile    what do we know and what did we say (Journal + Details)
- *   Clinical History   what has already happened           (Clinical + History)
+ *   Activity Archive   what has already happened           (Clinical + History)
+ *                      (was "Clinical History" — renamed in the client-profile
+ *                      audit, Sep 2026: it is a ledger of visits and reports,
+ *                      not a medical tool. The tab id stays "clinical".)
  *
  * Two of those carry more than one view, so a tab is no longer a single
  * string: it is a tab AND a position inside it. That pair is a
@@ -53,7 +56,7 @@ export type ProfileTab = "journey" | "programming" | "record" | "clinical";
 export type ProgrammingView = "routine-a" | "routine-b" | "machines";
 
 /**
- * Clinical History's segments.
+ * Activity Archive's segments (tab id "clinical").
  *
  * `calendar` and `sessions` were the History tab's own internal switch. They
  * are promoted to this level rather than nested inside it: a toggle inside a
@@ -72,7 +75,7 @@ export const PROFILE_TABS: { id: ProfileTab; label: string; blurb: string }[] = 
   { id: "journey", label: "Journey", blurb: "Every machine she has performed, in order" },
   { id: "programming", label: "Programming", blurb: "What she is prescribed and how it is set up" },
   { id: "record", label: "Notes & Profile", blurb: "Everything written down, and who she is" },
-  { id: "clinical", label: "Clinical History", blurb: "What has already happened, and what it shows" },
+  { id: "clinical", label: "Activity Archive", blurb: "Every visit, the trends, and the filed reports" },
 ];
 
 /* ------------------------------------------------------------------ *

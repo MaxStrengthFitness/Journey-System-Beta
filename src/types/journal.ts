@@ -491,7 +491,7 @@ export function relativeDay(date: Date | null): string {
  *   focus     the 4 P's            — what each coach is working on
  *   notes     the catalog          — every note, in one of seven categories
  *   reports   the assessment — the living record a coach fills in over time.
- *             The FILED reports moved to Clinical History in the four-tab
+ *             The FILED reports moved to the Activity Archive (was Clinical History) in the four-tab
  *             round: the archive is the past, and the past has a tab. You
  *             still write one from here; you read the shelf over there.
  *   admin     contract, billing, access, and how they found us
@@ -530,7 +530,7 @@ export const DOSSIER_SECTIONS: {
   { id: "goals", label: "Goals", blurb: "The why, and how it has moved", icon: "Target" },
   { id: "focus", label: "Focus", blurb: "What each coach is working on", icon: "Crosshair" },
   { id: "notes", label: "Notes", blurb: "Every note, filed by category", icon: "NotebookPen" },
-  { id: "reports", label: "Assessment", blurb: "The living record — write it here, read the shelf in Clinical History", icon: "TrendingUp" },
+  { id: "reports", label: "Assessment", blurb: "The living record — write it here, read the filed reports in the Activity Archive", icon: "TrendingUp" },
   { id: "admin", label: "Admin", blurb: "Contract, billing and access", icon: "Settings2" },
 ];
 

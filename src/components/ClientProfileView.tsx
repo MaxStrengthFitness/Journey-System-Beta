@@ -492,7 +492,7 @@ export function ClientProfileView({
 
   /*
    * FOUR TABS (Sep 2026). Seven became six in the FORD merge and six become
-   * four here — Journey, Programming, Notes & Profile, Clinical History. The
+   * four here — Journey, Programming, Notes & Profile, Activity Archive. The
    * old single `activeTab` string cannot express the new shape, because two
    * of the four carry segments of their own, so where the trainer is now
    * lives in one reducer: see features/client-profile/profile-nav.ts. It also
@@ -798,7 +798,7 @@ export function ClientProfileView({
   useEffect(() => {
     if (!clientId || hasQuotaError) return;
 
-    // The Journey grid and Clinical History's calendar both read this page of
+    // The Journey grid and the Activity Archive's calendar both read this page of
     // sessions. Programming and the record do not, so they still cost nothing.
     if (activeTab !== "journey" && activeTab !== "clinical") {
       return;
@@ -1063,7 +1063,7 @@ export function ClientProfileView({
 
   useEffect(() => {
     if (!clientId || hasQuotaError || !user) return;
-    // The shelf lives in Clinical History; the record's Assessment section
+    // The shelf lives in the Activity Archive; the record's Assessment section
     // prints the count and links to it, so both tabs need the query.
     if (activeTab !== "clinical" && activeTab !== "record") return;
 
@@ -1480,13 +1480,13 @@ export function ClientProfileView({
               Journey           what has she done, in order
               Programming       what is she supposed to do
               Notes & Profile   what do we know, and what did we say
-              Clinical History  what has already happened
+              Activity Archive  what has already happened
 
             Equal tracks, not content-sized, is still what keeps the row from
             ever scrolling sideways — and four tracks is roomier than seven
             was: ~208px each at 834pt portrait, where "NOTES & PROFILE" fits
             at 13px with space to spare. `truncate` is the belt to that
-            suspender. The sub-toggle inside Programming and Clinical History
+            suspender. The sub-toggle inside Programming and the Activity Archive
             is the level below this one; see features/client-profile. */}
         <div className="mb-2 w-full">
           <div className="w-full pb-0.5">
@@ -1734,7 +1734,7 @@ export function ClientProfileView({
               onDeleteReport={setReportToDelete}
               onNewReport={() => setView("progress-report")}
               onOpenPlanner={() => setView("studio-tasks")}
-              // The filed shelf lives in Clinical History now; the record's
+              // The filed shelf lives in the Activity Archive now; the record's
               // Assessment section links across rather than keeping a copy.
               onOpenReports={() => nav.go({ tab: "clinical", view: "reports" })}
             />

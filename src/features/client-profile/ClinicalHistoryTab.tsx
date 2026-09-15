@@ -1,5 +1,10 @@
 /**
- * CLINICAL HISTORY — everything that has already happened.
+ * ACTIVITY ARCHIVE — everything that has already happened.
+ *
+ * Renamed from "Clinical History" in the client-profile audit (Sep 2026): the
+ * tab is a ledger of visits, trends and filed reports, not a medical tool.
+ * The tab id, this file and the ClinicalView type keep the old name so every
+ * saved location and legacy link still resolves.
  *
  * History and Clinical were two tabs over the same past. History drew the
  * visits; Clinical analysed them. A trainer asking "she has been off for
@@ -48,7 +53,9 @@ import type {
   Routine,
   Trainer,
 } from "../../types";
-import { CLINICAL_FLAGS_MATRIX } from "../../data/clinical-matrix";
+import { selectedFlags } from "../clinical-flags/flag-search";
+import { studioTodayKey } from "../../lib/studio-time";
+import { cprTimingCue } from "./cpr-timing";
 import { ClientHistoryTab } from "../client-history";
 import { ClinicalReviewTab } from "../clinical-review";
 import { ProgressReportArchive } from "../../components/journal/ProgressReportArchive";
@@ -80,7 +87,8 @@ export interface ClinicalHistoryTabProps {
 interface FlagChip {
   id: string;
   name: string;
-  absolute: boolean;
+  full: string;
+  tone: "alert" | "caution" | "modify";
 }
 
 export function ClinicalHistoryTab({
@@ -111,24 +119,20 @@ export function ClinicalHistoryTab({
     if (trendsSeen && view !== "trends") setTrendsSeen(false);
   }
 
-  const flags = useMemo<FlagChip[]>(() => {
-    const ids = client?.clinicalFlags || [];
-    if (ids.length === 0) return [];
-    return ids
-      .map((id) => {
-        const match = CLINICAL_FLAGS_MATRIX.find((f) => f.id === id);
-        if (!match) return null;
-        return {
-          id,
-          // The matrix names carry their own parenthetical detail, which is
-          // right in the Medical section and too long for a chip. The chip
-          // takes the condition; the full string is the tooltip.
-          name: match.conditionName.replace(/\s*\([^)]*\)\s*$/, ""),
-          absolute: /absolute/i.test(match.severity || ""),
-        };
-      })
-      .filter((f): f is FlagChip => f !== null);
-  }, [client?.clinicalFlags]);
+  // Resolved and ordered by the same code as the Body section's picker, so
+  // the common constraints show here too and the most serious comes first.
+  const flags = useMemo<FlagChip[]>(
+    () =>
+      selectedFlags(client?.clinicalFlags)
+        .filter((f) => f.category !== "Unknown")
+        .map((f) => ({ id: f.id, name: f.name, full: f.full, tone: f.tone })),
+    [client?.clinicalFlags],
+  );
+
+  const cprCue = useMemo(
+    () => cprTimingCue(client?.renewal, progressReports, studioTodayKey()),
+    [client?.renewal, progressReports],
+  );
 
   const hasMedicalText = Boolean(
     (client?.medicalHistory || "").trim() || (client?.clinicalNotes || "").trim(),
@@ -149,8 +153,8 @@ export function ClinicalHistoryTab({
             <span
               key={f.id}
               className="ptab-strip__chip"
-              data-tone={f.absolute ? "alert" : undefined}
-              title={CLINICAL_FLAGS_MATRIX.find((m) => m.id === f.id)?.conditionName}
+              data-tone={f.tone === "modify" ? undefined : f.tone}
+              title={f.full}
             >
               {f.name}
             </span>
@@ -162,7 +166,7 @@ export function ClinicalHistoryTab({
       )}
       {onEditMedical && (
         <button type="button" className="ptab-strip__edit" onClick={onEditMedical}>
-          Edit in Notes &amp; Profile
+          Edit in Body
         </button>
       )}
     </div>
@@ -191,7 +195,7 @@ export function ClinicalHistoryTab({
   return (
     <div className="ptab">
       <ProfileSubnav
-        label="Clinical history views"
+        label="Activity archive views"
         items={items}
         value={view}
         onChange={onViewChange}
@@ -232,6 +236,14 @@ export function ClinicalHistoryTab({
 
       {view === "reports" && (
         <div className="ptab-reports">
+          {cprCue && (
+            <div className="ptab-cue" role="note">
+              <p>{cprCue.text}</p>
+              <button type="button" className="ptab-cue__btn" onClick={onNewReport} disabled={disabled}>
+                Start a progress report
+              </button>
+            </div>
+          )}
           <ProgressReportArchive
             reports={progressReports}
             onSelect={onSelectReport}

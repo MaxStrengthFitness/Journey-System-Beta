@@ -271,6 +271,11 @@
   background: color-mix(in srgb, var(--psub-flag) 12%, transparent);
   color: var(--psub-flag);
 }
+.ptab-strip__chip[data-tone="caution"] {
+  border-color: color-mix(in srgb, var(--eq-warn) 45%, transparent);
+  background: var(--eq-warn-fill);
+  color: var(--eq-warn);
+}
 .ptab-strip__none {
   font-size: 11.5px;
   font-weight: 700;
@@ -314,3 +319,30 @@
   justify-content: flex-end;
   margin-bottom: 8px;
 }
+
+/* The Reports shelf's timing cue: renewal is close, write the report now. */
+.ptab-cue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-hero);
+  background: var(--eq-hero-fill);
+  color: var(--eq-hero-text);
+}
+.ptab-cue p { flex: 1 1 260px; margin: 0; font-size: 12.5px; font-weight: 700; line-height: 1.4; }
+.ptab-cue__btn {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--eq-hero);
+  background: var(--eq-surface);
+  color: var(--eq-hero-text);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.ptab-cue__btn:disabled { opacity: 0.5; cursor: default; }
