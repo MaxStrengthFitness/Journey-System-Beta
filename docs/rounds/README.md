@@ -24,3 +24,4 @@ One document per round: the brief, the decisions, what shipped, what was left. M
 | 2026-09-13 | [2026-09-13-tracker-round.md](2026-09-13-tracker-round.md) — the Active Session audit built: resume failsafe, session bar, Now bar, the post-session flow, Hub markers, the directory and profile |
 | 2026-09-13 | [2026-09-13-fix-round.md](2026-09-13-fix-round.md) — what the iPad said about the tracker round: seven fixes and the Check-in → Assessment rename |
 | 2026-09-15 | [2026-09-15-ford-and-profile-merge.md](2026-09-15-ford-and-profile-merge.md) — FORD, and Details + Journal merged into one Profile tab |
+| 2026-09-15 | [2026-09-15-four-tab-profile.md](2026-09-15-four-tab-profile.md) — six tabs become four: Programming, Notes & Profile, Clinical History, and the shared sub-toggle |

@@ -1,5 +1,11 @@
 # Client Profile — redesign spec and UX critique
 
+> **Sep 15 2026 — the profile is FOUR tabs.** Section 9 at the bottom of this
+> document is the current navigation model and supersedes every reference to
+> seven tabs below. Sections 1–8 are the Sep 5 redesign and are still the
+> reason each *pane* looks the way it does; only the tab row changed.
+
+
 Round: Client profile redesign, Sep 5 2026. Branch `client-profile-redesign`,
 one commit per phase (seven phases, seven commits). Verified with
 `npx tsc --noEmit`, `npx vitest run`, and the headless harness at 1024×1366
@@ -254,3 +260,79 @@ are superseded and can be deleted once the new tab has been used for a week;
 the `subjectiveSnapshot` panel from the old review has no home yet; the
 CSV importer already feeds the trainer tally, but the Mindbody visit import
 does not and probably should not (visits are not coached sessions).
+
+
+---
+
+## 9. Four tabs (Sep 15 2026)
+
+Full round: `docs/rounds/2026-09-15-four-tab-profile.md`.
+
+Seven tabs became six in the FORD merge and six became four here. The change
+is not really a count — it is that the tabs stopped being named after the
+screens that produced them and started being named after the questions a
+trainer asks:
+
+| Tab | Question | Was |
+| --- | --- | --- |
+| Journey | what has she done, in order | Journey |
+| Programming | what is she supposed to do | Routines + Equipment |
+| Notes & Profile | what do we know, and what did we say | Journal + Details |
+| Clinical History | what has already happened | Clinical + History |
+
+Nothing was removed. `legacyLocation()` maps every tab id the profile has ever
+answered to onto its new home.
+
+### 9.1 The files
+
+| File | What it owns |
+| --- | --- |
+| `profile-nav.ts` | the model — `ProfileLocation`, the reducer, the legacy map, the per-client resume. Pure, 23 tests |
+| `useProfileNav.ts` | the reducer plus sessionStorage and the default-segment context |
+| `ProfileSubnav.tsx` | the one sub-toggle all three consolidated tabs use, and the two sticky measurements |
+| `ProgrammingTab.tsx` | shell — Routine A / Routine B / All Machines |
+| `ClinicalHistoryTab.tsx` | shell — Calendar / Sessions / Trends / Reports, and the clinical strip |
+| `profile-nav.css` | `--psub-*` tokens, the shell, the strip |
+
+### 9.2 The rules that are load-bearing
+
+**Where the trainer is is not a string.** It is a tab *and* a segment inside
+it. One reducer owns it; never keep a second copy.
+
+**A segment is found by position, not by reading it.** The iPad is held and
+often not looked at. Segments are equal fractions of the full width, the bar
+never moves between tabs, and it is sticky. Never size a segment to its text.
+
+**A segment is never hidden.** Routine B on a client with no B reads "OFF",
+and the switch to turn it on lives behind that segment.
+
+**Switching a sub-view costs no fetch.** Every pane reads what the profile
+already loaded, or keeps its own gate. If a future pane needs a read of its
+own, gate it the way Trends does — on an explicit action, not on the toggle.
+
+**Mount, hide, unmount.** Routine A/B and Reports unmount when hidden.
+All Machines and Trends are mounted on first use and hidden thereafter,
+because they hold a selection and a generated report respectively. Calendar
+and Sessions are *one* mount of `ClientHistoryTab`. Do not tidy any of these
+into plain conditional renders.
+
+**A sticky bar needs the scroller's padding negated and an opaque
+background.** The app shell is a bounded 100dvh column; an inner `p-6`
+container is what scrolls, and every engine pins a sticky box inside that
+padding. `ProfileSubnav` measures it into `--psub-stick-top` — the same fix
+`--hist-stick-top` is in the History tab — and publishes its own height as
+`--psub-stuck-h` so History's month headers stop under it rather than behind
+it.
+
+### 9.3 Shells, not rewrites
+
+`ProgrammingTab` and `ClinicalHistoryTab` own their sub-toggle and compose the
+existing feature components untouched. No feature component knows it is inside
+a combined tab. `ClientProfileView` still owns every Firestore write — which
+is why the Routine B dialog, the discard dialog and the Edit Routine drawer
+sit beside `ProgrammingTab` rather than inside it.
+
+`useRoutinesModel` (in `features/routines/`) was lifted out of `RoutinesTab`
+so the context sentence above the toggle and the panel below it are the same
+numbers from one walk of the logs. `RoutinesTab` computes its own when no
+model is passed, so it stays mountable on its own.
