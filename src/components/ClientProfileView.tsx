@@ -96,7 +96,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { EquipmentTab } from "../features/equipment";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -108,8 +108,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getCompletedSessionCount } from "../lib/session-count-cache";
-import { ClinicalReviewTab } from "../features/clinical-review";
-import { RoutinesTab } from "../features/routines";
+import {
+  ClinicalHistoryTab,
+  PROFILE_TABS,
+  ProgrammingTab,
+  defaultProgrammingView,
+  useProfileNav,
+} from "../features/client-profile";
 import { ClientInfoSheet } from "./ClientInfoSheet";
 import {
   Client,
@@ -131,7 +136,7 @@ import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { WorkoutChartGrid } from "./WorkoutChartGrid";
 import { useToast } from "../contexts/ToastContext";
 import { StrongConfirmationModal } from "./StrongConfirmationModal";
-import { ClientHistoryTab } from "../features/client-history";
+
 import { OccupationSelect } from "./OccupationSelect";
 import { getErgonomicRisk } from "../data/occupational-matrix";
 import {
@@ -465,7 +470,29 @@ export function ClientProfileView({
       window.removeEventListener("open-bulk-import", handleOpenImport);
   }, []);
 
-  const [activeTab, setActiveTab] = useState("journey");
+  /*
+   * FOUR TABS (Sep 2026). Seven became six in the FORD merge and six become
+   * four here — Journey, Programming, Notes & Profile, Clinical History. The
+   * old single `activeTab` string cannot express the new shape, because two
+   * of the four carry segments of their own, so where the trainer is now
+   * lives in one reducer: see features/client-profile/profile-nav.ts. It also
+   * resumes per client, which is why walking to the Journey grid and back
+   * lands on the routine you were reading rather than resetting to A.
+   */
+  const nav = useProfileNav(clientId, {
+    programmingDefault: defaultProgrammingView({
+      todayRoutine:
+        selectedRoutineTodayId && routines.find((r) => r.id === selectedRoutineTodayId)?.name?.includes("B")
+          ? "Routine B"
+          : selectedRoutineTodayId
+            ? "Routine A"
+            : null,
+      countA: routines.find((r) => r.name === "Routine A")?.machineIds?.length ?? 0,
+      countB: routines.find((r) => r.name === "Routine B")?.machineIds?.length ?? 0,
+      isBActive: !!client?.isRoutineBActive,
+    }),
+  });
+  const activeTab = nav.tab;
 
   /* ------------------------------------------------------------------ *
    * HEADER FACTS (Sep 2026 redesign)
@@ -1023,7 +1050,9 @@ export function ClientProfileView({
   useEffect(() => {
     if (!clientId || hasQuotaError) return;
 
-    if (activeTab !== "journey" && activeTab !== "history") {
+    // The Journey grid and Clinical History's calendar both read this page of
+    // sessions. Programming and the record do not, so they still cost nothing.
+    if (activeTab !== "journey" && activeTab !== "clinical") {
       return;
     }
 
@@ -1281,9 +1310,9 @@ export function ClientProfileView({
 
   useEffect(() => {
     if (!clientId || hasQuotaError || !user) return;
-    // The archive renders in the Journal tab as well as Clinical — gating
-    // this on "clinical" alone is why it always looked empty there.
-    if (activeTab !== "clinical" && activeTab !== "journal") return;
+    // The shelf lives in Clinical History; the record's Assessment section
+    // prints the count and links to it, so both tabs need the query.
+    if (activeTab !== "clinical" && activeTab !== "record") return;
 
     const q = query(
       collection(db, "progressReports"),
@@ -1682,37 +1711,33 @@ export function ClientProfileView({
       <Tabs
         value={activeTab}
         className="w-full flex-1 flex flex-col min-h-0"
-        onValueChange={setActiveTab}
+        onValueChange={(v) => nav.setTab(v as typeof activeTab)}
       >
-        {/* Seven equal columns — Profile Details joined the row as "Details"
-            (Sep 2026). Equal tracks (not content-sized) are what keep the row
-            from ever scrolling sideways: at 834pt portrait each tab still
-            gets ~115px, and the condensed display face fits "EQUIPMENT" in
-            that with room. `truncate` is the belt to that suspender. */}
+        {/* FOUR equal columns (Sep 2026). Seven of these became six in the
+            FORD merge and six become four here, and the labels stopped being
+            the names of the screens that produced them and became the
+            questions a coach actually asks:
+
+              Journey           what has she done, in order
+              Programming       what is she supposed to do
+              Notes & Profile   what do we know, and what did we say
+              Clinical History  what has already happened
+
+            Equal tracks, not content-sized, is still what keeps the row from
+            ever scrolling sideways — and four tracks is roomier than seven
+            was: ~208px each at 834pt portrait, where "NOTES & PROFILE" fits
+            at 13px with space to spare. `truncate` is the belt to that
+            suspender. The sub-toggle inside Programming and Clinical History
+            is the level below this one; see features/client-profile. */}
         <div className="mb-2 w-full">
           <div className="w-full pb-0.5">
-            {/* Tabs that look like tabs (audit, Sep 13): a tray with the active
-                one lifted out as a filled pill, so the row reads as a set of
-                choices, not a line of headings. */}
-            {/* Six, not seven: Details and Journal became one PROFILE tab in
-                the merge (Sep 2026). They were separately good screens that
-                rendered each other's data — four of the six dossier sections
-                embedded a rail of the same journal notes the Journal tab was
-                showing, and a trainer had to visit both to know which copy
-                was real. The whole non-training record is one spine now. */}
-            <TabsList className="bg-slate-100 dark:bg-slate-800/60 p-1 grid grid-cols-6 w-full h-12! rounded-xl gap-1">
-              {[
-                { val: "journey", label: "Journey" },
-                { val: "routines", label: "Routines" },
-                { val: "equipment", label: "Equipment" },
-                { val: "history", label: "History" },
-                { val: "clinical", label: "Clinical" },
-                { val: "details", label: "Profile" },
-              ].map((tab) => (
+            <TabsList className="bg-slate-100 dark:bg-slate-800/60 p-1 grid grid-cols-4 w-full h-12! rounded-xl gap-1">
+              {PROFILE_TABS.map((tab) => (
                 <TabsTrigger
-                  key={tab.val}
-                  value={tab.val}
-                  className="relative w-full h-10! px-1 sm:px-2 font-display italic text-[10px] sm:text-[13px] font-bold uppercase tracking-wider sm:tracking-widest text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950 data-[state=active]:text-[#F06C22] dark:data-[state=active]:text-[#F06C22] data-[state=active]:shadow-sm transition-all text-center cursor-pointer select-none rounded-lg truncate flex items-center justify-center"
+                  key={tab.id}
+                  value={tab.id}
+                  title={tab.blurb}
+                  className="relative w-full h-10! px-1 sm:px-2 font-display italic text-[11px] sm:text-[13px] font-bold uppercase tracking-wide sm:tracking-widest text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950 data-[state=active]:text-[#F06C22] dark:data-[state=active]:text-[#F06C22] data-[state=active]:shadow-sm transition-all text-center cursor-pointer select-none rounded-lg truncate flex items-center justify-center"
                 >
                   {tab.label}
                 </TabsTrigger>
@@ -1720,46 +1745,7 @@ export function ClientProfileView({
             </TabsList>
           </div>
         </div>
-        {/* Marker 13: the settings used to live in a 100dvh-340px box with
-            its own scrollbar. Natural height now; the page scrolls. */}
-        <TabsContent
-          value="details"
-          className="mt-0 focus-visible:outline-none"
-        >
-          {client && (
-            <ClientInfoSheet
-              variant="inline"
-              isOpen
-              onOpenChange={() => setActiveTab("journey")}
-              client={client}
-              authTrainer={authTrainer ?? null}
-              defaultTab="identity"
-              machines={machines}
-              trainers={trainers}
-              progressReports={progressReports}
-              onSelectReport={onSelectReport}
-              onDeleteReport={setReportToDelete}
-              onNewReport={() => setView("progress-report")}
-              onOpenPlanner={() => setView("studio-tasks")}
-            />
-          )}
-        </TabsContent>
-        <TabsContent
-          value="equipment"
-          className="mt-0 flex-1 overflow-hidden min-h-0 flex flex-col rounded-xl relative"
-        >
-          <EquipmentTab
-            client={client}
-            clientId={clientId}
-            machines={machines}
-            clientSettings={clientSettings}
-            clientBodyWeight={parseInt(client?.weight || "150", 10)}
-            allLogs={allLogs}
-            sessions={sessions}
-            activeStudioId={activeStudioId}
-            authTrainer={authTrainer}
-          />
-        </TabsContent>
+        {/* ---------------- 1 · JOURNEY ---------------- */}
         {/* Marker 3: no `overflow-hidden`, no bounded height. The machine
             list is as long as it is and the PAGE scrolls to meet it. */}
         <TabsContent
@@ -1779,24 +1765,34 @@ export function ClientProfileView({
             onSelectMachine={openJourneyMachineSettings}
           />
         </TabsContent>
+
+        {/* ---------------- 2 · PROGRAMMING ---------------- */}
+        {/* Routines and Equipment, which were two tabs answering one
+            question. The shell owns the sub-toggle and the routine view
+            model; every Firestore write still belongs to this file, which is
+            why the drawer and the two dialogs below sit beside it rather
+            than inside it. See features/client-profile/ProgrammingTab.tsx. */}
         <TabsContent
-          value="routines"
+          value="programming"
           className="mt-0 flex-1 min-h-0 focus-visible:outline-none"
         >
-          {/* Both prescriptions as dense lists (features/routines). The
-              mutations stay here: the tab only reports taps. */}
-          <RoutinesTab
+          <ProgrammingTab
             client={client}
             clientId={clientId || ""}
             routines={routines}
             machines={machines}
             clientSettings={clientSettings}
+            clientBodyWeight={parseInt(client?.weight || "150", 10)}
             allLogs={allLogs}
             sessions={sessions}
             adjustments={routineAdjustments}
             trainers={trainers}
+            authTrainer={authTrainer}
+            activeStudioId={activeStudioId}
             selectedRoutineTodayId={selectedRoutineTodayId}
             isBActive={!!client?.isRoutineBActive}
+            view={nav.programmingView}
+            onViewChange={nav.setProgrammingView}
             onEdit={(name) => setEditRoutineTarget(name)}
             onUseToday={handleUseToday}
             onToggleB={handlePromptToggleB}
@@ -1953,19 +1949,52 @@ export function ClientProfileView({
             onRequestActivateRoutineB={() => handlePromptToggleB(true)}
           />
         </TabsContent>
-        {/* Sep 2026 (History round): every month since the first visit, drawn
-            in the Calendar tab's language, plus a list that reads like the
-            rest of the profile. No `overflow-y-auto` and no bounded height
-            here — the PAGE scrolls, which is what lets the year and month
-            headers stay pinned while you read. The old "Load More Sessions"
-            button that lived below it set a state variable nothing read; the
-            tab now loads its own history, see features/client-history. */}
+
+        {/* ---------------- 3 · NOTES & PROFILE ---------------- */}
+        {/* The whole non-training record — Journal and Details merged into
+            one spine in the FORD round. Marker 13: the settings used to live
+            in a 100dvh-340px box with its own scrollbar. Natural height now;
+            the page scrolls. */}
         <TabsContent
-          value="history"
-          className="mt-0 pb-8 focus-visible:outline-none"
+          value="record"
+          className="mt-0 focus-visible:outline-none"
+        >
+          {client && (
+            <ClientInfoSheet
+              variant="inline"
+              isOpen
+              onOpenChange={() => nav.setTab("journey")}
+              client={client}
+              authTrainer={authTrainer ?? null}
+              defaultTab={nav.recordSection || "identity"}
+              machines={machines}
+              trainers={trainers}
+              progressReports={progressReports}
+              onSelectReport={onSelectReport}
+              onDeleteReport={setReportToDelete}
+              onNewReport={() => setView("progress-report")}
+              onOpenPlanner={() => setView("studio-tasks")}
+              // The filed shelf lives in Clinical History now; the record's
+              // Assessment section links across rather than keeping a copy.
+              onOpenReports={() => nav.go({ tab: "clinical", view: "reports" })}
+            />
+          )}
+        </TabsContent>
+
+        {/* ---------------- 4 · CLINICAL HISTORY ---------------- */}
+        {/* Clinical and History, which were two tabs over the same past.
+            Calendar and Sessions are promoted out of History's own switch
+            into this tab's sub-toggle, so there is one switch on the screen
+            rather than one inside another. Nothing in Trends loads until the
+            trainer presses Generate, exactly as before. No `overflow-y-auto`
+            and no bounded height here — the PAGE scrolls, which is what lets
+            the year and month headers stay pinned while you read. */}
+        <TabsContent
+          value="clinical"
+          className="mt-0 pb-8 min-h-125 focus-visible:outline-none"
         >
           {clientId && (
-            <ClientHistoryTab
+            <ClinicalHistoryTab
               clientId={clientId}
               client={client}
               machines={machines}
@@ -1976,26 +2005,13 @@ export function ClientProfileView({
                 studios?.find((s) => s.id === client?.homeStudioId)?.timezone ||
                 undefined
               }
-              disabled={!!hasQuotaError}
-            />
-          )}
-        </TabsContent>
-        <TabsContent
-          value="clinical"
-          className="mt-0 flex-1 min-h-125 focus-visible:outline-none"
-        >
-          {/* Sep 2026: nothing loads on open. The tab is a "Generate clinical
-              report" gate with a date range; the report is compiled from
-              exactly that window. See src/features/clinical-review/. */}
-          {client && (
-            <ClinicalReviewTab
-              client={client}
-              machines={machines}
-              trainers={trainers}
-              timeZone={
-                studios?.find((s) => s.id === client.homeStudioId)?.timezone ||
-                undefined
-              }
+              progressReports={progressReports}
+              onSelectReport={onSelectReport}
+              onDeleteReport={setReportToDelete}
+              onNewReport={() => setView("progress-report")}
+              onEditMedical={() => nav.openSection("medical")}
+              view={nav.clinicalView}
+              onViewChange={nav.setClinicalView}
               disabled={!!hasQuotaError}
             />
           )}
