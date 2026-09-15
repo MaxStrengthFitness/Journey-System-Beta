@@ -1316,6 +1316,16 @@ service cloud.firestore {
       allow update, delete: if isSuperAdmin();
     }
   
+    // Written by the weekly machine-trends job (server/machine-trends-job.ts,
+    // service account, bypasses these rules). Aggregates only - never a
+    // client row - so it is readable like exerciseLogs, by any signed-in user.
+    // The old leaderboards/* documents are no longer written; the block
+    // stays so the stale documents can still be deleted from the console.
+    match /machineTrends/{machineId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
     match /leaderboards/{docId} {
       allow read: if isAuthenticated();
       allow write: if isSuperAdmin();

@@ -867,7 +867,7 @@ export interface Routine {
 
 /**
  * A reusable machine sequence a trainer can drop into a client's Routine A/B
- * in one tap. Two tiers, matching the LeaderboardDocument scope convention:
+ * in one tap. Two tiers, by scope:
  *  - scope: "global"   -> shipped in code (see data/routine-presets.ts), not
  *    a Firestore doc, so it has no studioId/createdBy.
  *  - scope: <studioId> -> a studio's own saved preset, stored in the
@@ -1543,47 +1543,6 @@ export interface HubAnnouncement {
    * bell's card opens it. Read it with parseLearningRef.
    */
   learningLink?: StoredLearningRef;
-}
-
-export interface LeaderboardRank {
-  clientId: string;
-  clientName: string;
-  weight: number;
-  rank: number;
-  percentile: number;
-  reps?: number;
-  gap?: number;
-  strengthGainPercent?: number;
-  maxWeight?: number;
-}
-
-export interface LeaderboardMachineData {
-  topPerformers: LeaderboardRank[];
-  stats: {
-    count: number;
-    avg: number;
-    max: number;
-    min: number;
-    buckets: { min: number; max: number; count: number }[];
-  };
-  percentileThresholds: {
-    p90: number;
-    p75: number;
-    p50: number;
-    p25: number;
-    p10: number;
-  };
-  clientPlacements: Record<
-    string,
-    { weight: number; rank: number; percentile: number }
-  >; // clientId -> placement details
-}
-
-export interface LeaderboardDocument {
-  id?: string;
-  lastUpdated: any;
-  scope: "global" | string; // 'global' or studioId
-  machineData: Record<string, LeaderboardMachineData>;
 }
 
 export type View =

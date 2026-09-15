@@ -20,7 +20,7 @@ You are adding one more, and putting both under one file in git.
 | Service | Type | What it does | Contacts anyone? | Cost |
 |---|---|---|---|---|
 | `maxstrength-app-beta` | Web | The app. Unchanged, just described in the file now. | No | $25/mo |
-| `journey-cron-leaderboards` | Cron, 3am ET | Rebuilds `leaderboards/global` and `leaderboards/studio_<id>` from every exercise log. | **No** | ~$1/mo |
+| `journey-cron-leaderboards` | Cron, Sundays 3am ET | The weekly **machine-trends** rebuild (`server/cron-machine-trends.ts`): reads the last 90 days of exercise logs and rewrites `machineTrends/{machineId}` + `_summary`. Keeps its old service name on purpose — see render.yaml. | **No** | <$1/mo |
 
 That is ~$26/mo of services, plus the $25/mo workspace plan.
 
@@ -214,8 +214,8 @@ notifications" by email.
 A cron job is the one kind of service that can fail completely silently. A web
 service falling over is obvious - the app stops working. A 3am job that throws
 looks exactly like a 3am job that worked: nothing happens, nobody is awake, and
-the leaderboards just quietly stop updating until somebody notices the numbers
-are stale. The alert is the only thing standing between a broken job and finding
+the machine trends just quietly stop updating until somebody notices the
+numbers are stale. The alert is the only thing standing between a broken job and finding
 out weeks later.
 
 You want notifications for: failed deploys, failed cron runs, and unhealthy
@@ -225,29 +225,29 @@ services.
 
 ## Step 5 - Check it works
 
-The cron will not run until 3am, so do not wait for it. Open
+The cron will not run until Sunday, so do not wait for it. Open
 `journey-cron-leaderboards` → **Trigger Run** → watch the log. Healthy looks
 like:
 
 ```
-[cron-leaderboards] started 2026-09-04T...
+[cron-machine-trends] started 2026-09-20T...
 [firebase-admin] Firestore ready (project=..., database=...)
-[LeaderboardCron-xxxxx] Fetching active clients...
-[LeaderboardCron-xxxxx] Processing N logs...
-[LeaderboardCron-xxxxx] Calculation complete and saved.
-[cron-leaderboards] finished OK in 12.3s
+[machine-trends] Window: 2026-06-22 → 2026-09-20 (90 days).
+[machine-trends] 312 active clients.
+[machine-trends] 18,402 exercise logs in the window.
+[machine-trends] 24 machines with performed sets; 37 sets dropped (no client, machine or load).
+[machine-trends]   compound-row: 140 clients, 1,120 sets, median best 95 lb, settings: chest-pad, seat
+[machine-trends] Done. 24 machine documents written, 0 retired.
+[cron-machine-trends] finished OK in 6.1s
 ```
 
 Check the `database=` on that second line against your `.env`. If it says
 `(default)` the job will run happily and find nothing.
 
 This is a safe thing to trigger by hand as often as you like: it only writes
-`leaderboards/*`, which it rebuilds from scratch every night regardless.
-
-If you see a warning that `leaderboards/global` is approaching 1 MB, that is
-worth telling me about - Firestore rejects documents over 1 MiB, and the fix
-(sharding the leaderboard per machine) wants doing before it starts failing at
-3am rather than after.
+`machineTrends/*`, which it rebuilds from scratch every week regardless. From
+the PC, `npx tsx scripts/run-machine-trends.ts` does the same read and prints
+the summary without writing; add `--commit` to write.
 
 ---
 

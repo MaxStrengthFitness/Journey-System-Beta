@@ -1624,4 +1624,18 @@ describe("Firestore Security Rules", () => {
       }),
     );
   });
+
+  // Cost round (Sep 2026): machineTrends is written by the weekly job's service
+  // account and holds aggregates only, so it reads like exerciseLogs.
+  it("lets any signed-in trainer read machineTrends and nobody but an admin write it", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "machineTrends", "compound-row"), { machineId: "compound-row", clients: 12, sets: 40 });
+    });
+    const a = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(getDoc(doc(a, "machineTrends", "compound-row")));
+    await assertSucceeds(getDoc(doc(a, "machineTrends", "_summary")));
+    await assertFails(setDoc(doc(a, "machineTrends", "compound-row"), { machineId: "compound-row", clients: 1 }));
+    const nobody = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(nobody, "machineTrends", "compound-row")));
+  });
 });

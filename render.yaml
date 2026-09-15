@@ -8,8 +8,9 @@
 # WHAT IS LIVE HERE
 # -----------------
 #   1. The web service (your existing one, now described in git)
-#   2. Two cron jobs: the nightly leaderboard rebuild, and the nightly
-#      renewals job (Renewals round, Sep 2026)
+#   2. Two cron jobs: the weekly machine-trends rebuild (was the nightly
+#      leaderboard until the cost round), and the nightly renewals job
+#      (Renewals round, Sep 2026)
 #
 # WHAT IS PARKED, AND WHY
 # -----------------------
@@ -19,12 +20,11 @@
 # and commented out at the bottom of this file. Turning them on later is
 # uncommenting three blocks, not writing anything new.
 #
-# The nightly leaderboard job is the one scheduled service that stays on,
-# because it contacts nobody. It reads exerciseLogs and rewrites
-# leaderboards/global and leaderboards/studio_<id>, which are in-app data the
-# platform already displays. If you would rather have nothing at all on a
-# schedule, comment out section 2 as well and the blueprint is just your web
-# service under version control.
+# The machine-trends job is a scheduled service that stays on, because it
+# contacts nobody. It reads the last 90 days of exerciseLogs and rewrites
+# machineTrends/*, which is in-app data. If you would rather have nothing at
+# all on a schedule, comment out section 2 as well and the blueprint is just
+# your web service under version control.
 #
 # Postgres and Key Value are also absent. The plan document calls Postgres "the
 # main database for the application"; for this repo that is not true. Every
@@ -168,29 +168,33 @@ services:
         value: https://maxstrength-app-beta.onrender.com
 
   # ===========================================================================
-  # 2. CRON - nightly leaderboards (server/cron-leaderboards.ts)
+  # 2. CRON - weekly machine trends (server/cron-machine-trends.ts)
   # ===========================================================================
-  # CONTACTS NOBODY. It reads exerciseLogs and rewrites two derived documents,
-  # leaderboards/global and leaderboards/studio_<id>. No message, no email, no
-  # text - just the in-app leaderboard data, recalculated overnight.
+  # CONTACTS NOBODY. It reads the last 90 days of exerciseLogs (one range
+  # query) and rewrites machineTrends/{machineId} + machineTrends/_summary:
+  # per machine, how many clients use it, what their best loads look like,
+  # and which settings clients of each height tend to use. No message, no
+  # email, no text - just in-app data, recalculated once a week.
   #
-  # The maths has been sitting in server/leaderboard-cron.ts for a while with
-  # no scheduler attached to it. This is the scheduler.
+  # HISTORY. Until the cost round (Sep 2026) this was the nightly leaderboard
+  # job: it read EVERY exercise log ever written, every night, to rank
+  # clients by load - and nothing in the app read the result any more. The
+  # service keeps its old NAME on purpose: a renamed service in a blueprint is
+  # a brand-new service to Render (and an orphaned old one). Only the
+  # schedule and the command changed.
   #
-  # It rebuilds from EVERY exercise log, which is exactly the "heavy report"
-  # shape the plan warns about, and exactly why it belongs at 3am on its own
-  # machine rather than inside a web request while a trainer waits.
-  #
-  # 07:00 UTC = 3am Eastern in summer, 2am in winter.
+  # Sundays 07:00 UTC = 3am Eastern in summer, 2am in winter. Old sets do not
+  # change, so a weekly rebuild is as current as the data needs to be.
+  # Run it now from the PC: npx tsx scripts/run-machine-trends.ts --commit
   # ===========================================================================
   - type: cron
     name: journey-cron-leaderboards
     runtime: node
     plan: 0.5c-512mb       # "Starter" - 0.5 CPU, 512 MB, billed per minute run
     branch: master
-    schedule: "0 7 * * *"
+    schedule: "0 7 * * 0"
     buildCommand: npm ci && npm run build:backend
-    startCommand: npm run cron:leaderboards
+    startCommand: npm run cron:machine-trends
     envVars:
       - key: NODE_VERSION
         value: "22"

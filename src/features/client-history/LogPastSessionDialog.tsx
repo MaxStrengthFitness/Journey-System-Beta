@@ -7,6 +7,7 @@ import {
   limit,
   orderBy,
   query,
+  serverTimestamp,
   where,
   writeBatch,
 } from "firebase/firestore";
@@ -83,8 +84,11 @@ export function LogPastSessionDialog({
       const ref = await addDoc(collection(db, "sessions"), session);
 
       // Empty sets for the machines they usually do, to fill in afterwards.
+      // Ordered by createdAt: logs have no `date` field (the day lives on the
+      // session), so the old orderBy("date") matched nothing and this list was
+      // always empty (cost round, Sep 2026). Served by the clientId+createdAt index.
       const recent = await getDocs(
-        query(collection(db, "exerciseLogs"), where("clientId", "==", clientId), orderBy("date", "desc"), limit(15)),
+        query(collection(db, "exerciseLogs"), where("clientId", "==", clientId), orderBy("createdAt", "desc"), limit(15)),
       );
       const machineIds = Array.from(new Set(recent.docs.map((d) => d.data().machineId as string))).slice(0, 5);
       const batch = writeBatch(db);
@@ -98,7 +102,9 @@ export function LogPastSessionDialog({
           reps: "0",
           seconds: "0",
           machineSettings: {},
-          createdAt: new Date().toISOString(),
+          // A Timestamp like every other writer of exerciseLogs — a string
+          // here fell outside every createdAt range query (cost round).
+          createdAt: serverTimestamp(),
           studioId: activeStudioId || clientHomeStudioId || "",
           homeStudioId: clientHomeStudioId || activeStudioId || "",
           clientHomeStudioId: clientHomeStudioId || activeStudioId || "",
