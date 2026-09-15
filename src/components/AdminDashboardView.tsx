@@ -4,7 +4,7 @@ import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, Sch
 // component file stays on disk in case it is revived; nothing imports it here.
 // import { RetentionDashboardView } from "./RetentionDashboardView";
 import { AdminLimboQueue } from "./AdminLimboQueue";
-import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Database, CalendarClock } from "lucide-react";
+import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Database, CalendarClock, Gift } from "lucide-react";
 import { AdminRoutineTemplatesTab } from "./routines/AdminRoutineTemplatesTab";
 import { cn } from "@/lib/utils";
 import "../features/admin/admin.css";
@@ -21,6 +21,7 @@ import { AdminMindbodyTab } from "../features/admin/mindbody/AdminMindbodyTab";
 import { AdminBugReportsTab } from "../features/admin/bugs/AdminBugReportsTab";
 import { AdminInsightsTab } from "../features/admin/insights/AdminInsightsTab";
 import { AdminRenewalsTab } from "../features/admin/renewals/AdminRenewalsTab";
+import { DelightQueue } from "../features/ford/DelightQueue";
 
 interface Props {
   authTrainer: Trainer;
@@ -91,6 +92,7 @@ export function AdminDashboardView({
   type AdminTab =
     | "metrics"
     | "renewals"
+    | "delight"
     | "users"
     | "studios"
     | "clients"
@@ -156,6 +158,10 @@ export function AdminDashboardView({
         { id: "metrics", label: "Overview", icon: <Activity className="w-4 h-4" /> },
         // Renewals round, Sep 2026. Every leader runs their own studio's.
         { id: "renewals", label: "Renewals", icon: <CalendarClock className="w-4 h-4" /> },
+        // FORD round, Sep 2026. The gestures the studio has promised itself,
+        // across every client, in date order. Sits beside Renewals because it
+        // answers a leader's Monday question in the same way.
+        { id: "delight", label: "Delight queue", icon: <Gift className="w-4 h-4" /> },
         { id: "studios", label: "Studios", icon: <Building2 className="w-4 h-4" /> },
         { id: "users", label: "Staff & Roles", icon: <Users className="w-4 h-4" /> },
         { id: "clients", label: "Clients", icon: <Users className="w-4 h-4" /> },
@@ -282,6 +288,26 @@ export function AdminDashboardView({
             onOpenStudioTasks={onOpenStudioTasks}
             onNavigateProfile={onNavigateProfile}
           />
+        )}
+        {activeTab === "delight" && (
+          <div className="flex flex-col gap-4">
+            <div>
+              <h2 className="font-display text-xl font-black uppercase italic tracking-tight text-foreground">
+                Delight queue
+              </h2>
+              <p className="mt-1 max-w-2xl text-[12px] leading-relaxed text-muted-foreground">
+                What the team has promised itself it would do something about,
+                for every client at this studio, soonest first. A detail becomes
+                a gesture from a client's Life section — tap the gift on any
+                detail and say what you would do about it.
+              </p>
+            </div>
+            <DelightQueue
+              studioId={activeStudioId ?? null}
+              clients={clients}
+              onOpenClient={onNavigateProfile}
+            />
+          </div>
         )}
         {activeTab === "renewals" && (
           <AdminRenewalsTab

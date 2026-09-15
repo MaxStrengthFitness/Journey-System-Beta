@@ -77,6 +77,7 @@ import {
 } from "../../types";
 import { BodyStateTracker } from "../../components/BodyStateTracker";
 import { QuickCheckInDialog } from "../subjective-report";
+import { FordBriefingCue } from "../ford/FordBriefingCue";
 import { useClientJournal } from "../../hooks/useClientJournal";
 import { JournalEntryCard } from "../../components/journal/JournalEntryCard";
 import { FOCUS_VISUALS, relativeDay, toDate } from "../../types/journal";
@@ -581,6 +582,12 @@ export function BriefingScreen({
                 );
               })}
             </section>
+
+            {/* 1b. Something to ask about. One quiet row, below the critical
+                strip on purpose — a personal detail must never compete with a
+                contraindication for the eye. Renders nothing when there is
+                nothing worth saying. FORD round, Sep 2026. */}
+            <FordBriefingCue client={client ?? null} />
 
             {/* 2. Routine. The alternation logic proposes one; the trainer
                 can override it before starting. */}
