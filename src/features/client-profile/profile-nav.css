@@ -275,3 +275,18 @@
    a generated window, and throwing either away on a toggle would turn a free
    switch into a reload. */
 .ptab-pane[hidden] { display: none !important; }
+
+/* The report shelf, given the width it never had as a sidebar card. Capped so
+   a 1366px landscape does not stretch each row into a sparse band. */
+.ptab-reports {
+  max-width: 760px;
+  padding-top: 4px;
+}
+
+/* Controlled History: the tab's own header is gone (the sub-toggle names the
+   screen), so the "Log past session" button needs its own row. */
+.hist-actions--bare {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}

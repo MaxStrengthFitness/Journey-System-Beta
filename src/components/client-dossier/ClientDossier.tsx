@@ -639,16 +639,6 @@ export function ClientDossier({
                 </FieldGroup>
               )}
 
-              {onOpenReports && (
-                <button
-                  type="button"
-                  onClick={onOpenReports}
-                  className="inline-flex h-10 w-fit items-center gap-2 rounded-xl border border-border px-4 text-[11px] font-black uppercase tracking-wider text-slate-600 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
-                >
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  Progress reports
-                </button>
-              )}
 
             </DossierSectionShell>
 
@@ -699,12 +689,18 @@ export function ClientDossier({
             {/* ---------------- REPORTS + ASSESSMENT ---------------- */}
             <DossierSectionShell
               id="reports"
-              title="Reports"
+              title="Assessment"
               blurb={sectionBlurb("reports")}
               icon={SECTION_ICONS.reports}
             >
+              {/* Writing, not reading. The filed shelf moved to Clinical
+                  History in the four-tab round — "everything that has already
+                  happened" is one tab now, and a list of finalized reports is
+                  the past. Composing one is still a thing you do from the
+                  record, next to the notes it draws on, so the Assessment
+                  panel stays and the archive is one tap away below. */}
               <ClientJournalTab
-                areas={["progress-reports", "check-in"]}
+                areas={["check-in"]}
                 journal={journal}
                 clientId={client.id || null}
                 client={client}
@@ -716,6 +712,24 @@ export function ClientDossier({
                 onDeleteReport={onDeleteReport ?? noop}
                 onNewReport={onNewReport ?? noop}
               />
+
+              {/* The one line that keeps the two halves joined. Count first,
+                  because the number is what decides whether it is worth the
+                  tap — the same reason the header's package pill reads
+                  "12 left" before it reads the package name. */}
+              {onOpenReports && (
+                <button
+                  type="button"
+                  onClick={onOpenReports}
+                  className="inline-flex h-11 w-fit items-center gap-2 rounded-xl border border-border px-4 text-[11px] font-black uppercase tracking-wider text-slate-600 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  {progressReports.length === 0
+                    ? "No filed reports yet"
+                    : `${progressReports.length} filed ${progressReports.length === 1 ? "report" : "reports"}`}
+                  <span className="opacity-60">· Clinical History</span>
+                </button>
+              )}
             </DossierSectionShell>
 
             {/* ---------------- ADMIN ---------------- */}

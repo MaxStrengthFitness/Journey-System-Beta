@@ -46,6 +46,17 @@ export interface HistoryViewProps {
   today?: DayKey;
   timeZone?: string;
   defaultView?: HistoryViewMode;
+  /**
+   * Controlled mode. Clinical History promotes Calendar and List to its own
+   * sub-toggle rather than nesting a switch inside a switch, so when `view` is
+   * given this component stops owning the choice and stops drawing the
+   * segmented control — the parent draws it, one level up, where every other
+   * tab's sub-toggle also lives.
+   */
+  view?: HistoryViewMode;
+  onViewChange?: (view: HistoryViewMode) => void;
+  /** Controlled mode: the parent already prints a heading, so suppress ours. */
+  hideHeader?: boolean;
 }
 
 /**
@@ -70,10 +81,22 @@ export function HistoryView({
   today: todayProp,
   timeZone,
   defaultView = "calendar",
+  view: viewProp,
+  onViewChange,
+  hideHeader = false,
 }: HistoryViewProps) {
   const today = todayProp ?? todayKey(new Date(), timeZone);
   const currentYear = parseKey(today).year;
-  const [view, setView] = useState<HistoryViewMode>(defaultView);
+  const controlled = viewProp !== undefined;
+  const [ownView, setOwnView] = useState<HistoryViewMode>(defaultView);
+  const view = controlled ? viewProp : ownView;
+  const setView = useCallback(
+    (next: HistoryViewMode) => {
+      if (controlled) onViewChange?.(next);
+      else setOwnView(next);
+    },
+    [controlled, onViewChange],
+  );
   const [focusMonth, setFocusMonth] = useState<string | null>(null);
 
   const { days, undated } = useMemo(
@@ -173,6 +196,15 @@ export function HistoryView({
 
   return (
     <div ref={rootRef} className="cal cal-shell hist">
+      {hideHeader ? (
+        onLogPast && (
+          <div className="hist-actions hist-actions--bare">
+            <button type="button" className="hist-btn" onClick={onLogPast}>
+              <PlusCircle size={15} strokeWidth={2.4} aria-hidden /> Log past session
+            </button>
+          </div>
+        )
+      ) : (
       <header className="cal-header">
         <div className="cal-header__title">
           <span className="cal-header__icon">
@@ -209,6 +241,7 @@ export function HistoryView({
           )}
         </div>
       </header>
+      )}
 
       {sessions.length === 0 ? (
         <div className="cal-empty">

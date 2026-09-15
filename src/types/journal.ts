@@ -472,7 +472,10 @@ export function dateBucket(date: Date | null): string {
  *   goals     the why              — original why, SMART goal, coach strategy
  *   focus     the 4 P's            — what each coach is working on
  *   notes     the timeline         — everything written, newest first
- *   reports   reports + assessment — the shelf, and the living record
+ *   reports   the assessment — the living record a coach fills in over time.
+ *             The FILED reports moved to Clinical History in the four-tab
+ *             round: the archive is the past, and the past has a tab. You
+ *             still write one from here; you read the shelf over there.
  *   admin     contract, billing, access, and how they found us
  *
  * Two sections are gone. LIFESTYLE is replaced by `life`: its dropdowns were
@@ -509,7 +512,7 @@ export const DOSSIER_SECTIONS: {
   { id: "goals", label: "Goals", blurb: "The why, and how it has moved", icon: "Target" },
   { id: "focus", label: "Focus", blurb: "What each coach is working on", icon: "Crosshair" },
   { id: "notes", label: "Notes", blurb: "Everything logged, newest first", icon: "NotebookPen" },
-  { id: "reports", label: "Reports", blurb: "Progress reports and the assessment", icon: "TrendingUp" },
+  { id: "reports", label: "Assessment", blurb: "The living record — write it here, read the shelf in Clinical History", icon: "TrendingUp" },
   { id: "admin", label: "Admin", blurb: "Contract, billing and access", icon: "Settings2" },
 ];
 

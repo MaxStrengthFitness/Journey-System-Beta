@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import type { Client, ExerciseLog, Machine, Routine, Trainer } from "../../types";
-import { HistoryView } from "./HistoryView";
+import { HistoryView, type HistoryViewMode } from "./HistoryView";
 import { LogPastSessionDialog } from "./LogPastSessionDialog";
 import { SessionDetailDialog } from "./SessionDetailDialog";
 import { trainerLookup } from "./trainers";
@@ -29,6 +29,11 @@ export interface ClientHistoryTabProps {
   timeZone?: string;
   /** True while the profile is backing off after a quota error. */
   disabled?: boolean;
+  /** Controlled Calendar/List, when the parent owns the sub-toggle. */
+  view?: HistoryViewMode;
+  onViewChange?: (view: HistoryViewMode) => void;
+  /** Suppress the tab's own header — the parent already names the screen. */
+  hideHeader?: boolean;
 }
 
 export function ClientHistoryTab({
@@ -40,6 +45,9 @@ export function ClientHistoryTab({
   seedLogs,
   timeZone,
   disabled = false,
+  view,
+  onViewChange,
+  hideHeader = false,
 }: ClientHistoryTabProps) {
   const history = useSessionHistory(clientId, !disabled);
   const { logsBySession, request, replace } = useSessionLogs(seedLogs);
@@ -69,6 +77,9 @@ export function ClientHistoryTab({
         onOpenSessions={openSessions}
         onLogPast={() => setLogPastOpen(true)}
         timeZone={timeZone}
+        view={view}
+        onViewChange={onViewChange}
+        hideHeader={hideHeader}
       />
 
       {opened && (
