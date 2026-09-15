@@ -10,14 +10,17 @@
   backups\ is gitignored. The last patch installs the permanent copy at
   scripts\ship\ship-4tab.ps1; after the round is merged, that is the one to keep.
 
-  WHAT THIS SHIPS. Thirteen commits, one per phase:
+  WHAT THIS SHIPS. Sixteen commits, one per phase:
     1-6   the FORD round (Family, Occupation, Recreation, Dreams) and the
           Details + Journal merge. Built Sep 15, never shipped - ship-ford.ps1
           stopped on its preflight and the patches sat in backups\ford-ship.
           They are folded in here unchanged rather than shipped separately.
-    7-13  the four-tab profile: the navigation model, the Programming tab,
+    7-16  the four-tab profile: the navigation model, the Programming tab,
           the Clinical History tab, the tab row itself, two layout fixes the
-          render harness caught, and the documents.
+          render harness caught, the fix for the FORD date test that went red
+          on THIS PC and green in the container (a date-only ISO string is
+          UTC, a date-time with no zone is local - the test mixed them), and
+          the documents.
 
   WHAT CHANGED IN THE PREFLIGHT, AND WHY. ship-ford.ps1 refused to start
   because `git status` was not empty - but everything in it was UNTRACKED
@@ -86,7 +89,7 @@ $ShipDir = Join-Path $RepoDir "backups\4tab-ship"
 $StateFile = Join-Path $ShipDir "checked.sha"
 $TypecheckBaselineFile = Join-Path $ShipDir "tsc-baseline.txt"
 $FirebaseProject = "prod"
-$PatchCount = 13
+$PatchCount = 16
 # The one rules test that has failed for weeks for reasons unrelated to this
 # round (docs\rounds\RUN-THIS-MORNING.md). Any other failure stops the release.
 $KnownRulesFailure = "non-empty pinHash"
