@@ -155,7 +155,6 @@ export function ClientJournalTab({
   const [windowFilter, setWindowFilter] = useState<WindowFilter>("all");
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [focusContext, setFocusContext] = useState<{ id: string; label: string } | null>(null);
 
   const author = useMemo(
     () => ({
@@ -285,10 +284,10 @@ export function ClientJournalTab({
     }
   };
 
-  const handlePass = async (focus: ClientFocus) => {
+  const handleAchieve = async (focus: ClientFocus, rewardNote: string) => {
     try {
-      await setFocusStatus(focus.id, "passed");
-      toastSuccess(`${focus.category} passed. Nice work.`);
+      await setFocusStatus(focus.id, "passed", { rewardNote });
+      toastSuccess(`${focus.category} focus achieved. Nice work.`);
     } catch {
       toastError("Could not update that focus.");
     }
@@ -312,12 +311,40 @@ export function ClientJournalTab({
     }
   };
 
-  const handleCheckIn = (focus: ClientFocus) => {
-    setFocusContext({ id: focus.id, label: `${focus.category} — ${focus.intent}` });
-    document
-      .getElementById("journal-composer")
-      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  /**
+   * A check-in is filed right here, from the focus card, carrying the focus
+   * id. It used to set state in THIS mount and scroll to the composer in the
+   * Notes mount — a different component instance that never saw the focus —
+   * so the note saved without `focusId` and the thread stayed empty.
+   */
+  const handleCheckIn = async (focus: ClientFocus, body: string): Promise<boolean> => {
+    if (!clientId || !body.trim()) return false;
+    try {
+      await createJournalEntry(clientId, client?.homeStudioId || "", author, {
+        kind: "coaching",
+        category: focus.category,
+        body: body.trim(),
+        importance: "standard",
+        machineId: focus.targetMachineId ?? null,
+        focusId: focus.id,
+        origin: "manual",
+      });
+      toastSuccess("Check-in logged.");
+      return true;
+    } catch {
+      toastError("Could not save that check-in. Check your connection and try again.");
+      return false;
+    }
   };
+
+  /** Every id the signed-in coach may be stored under on a focus. */
+  const viewerIds = useMemo(
+    () =>
+      [auth.currentUser?.uid, authTrainer?.id].filter(
+        (v): v is string => typeof v === "string" && v.length > 0,
+      ),
+    [authTrainer],
+  );
 
   /* ------------------------------- filters ----------------------------- */
 
@@ -502,15 +529,16 @@ export function ClientJournalTab({
         id="focus"
         bare={composed}
         title="Focus"
-        blurb="What each coach is working on with this client, and whether it passed."
+        blurb="What each coach is working on with this client, and whether it was achieved."
       >
         <FocusBoard
           focuses={focuses}
           entries={entries}
           machines={machines}
-          currentTrainerId={authTrainer?.id}
+          viewerIds={viewerIds}
+          viewerRole={authTrainer?.role ?? null}
           onCreate={handleCreateFocus}
-          onPass={handlePass}
+          onAchieve={handleAchieve}
           onExtend={handleExtend}
           onRetire={handleRetire}
           onCheckIn={handleCheckIn}
@@ -532,8 +560,6 @@ export function ClientJournalTab({
               <JournalComposer
                 clientFirstName={client?.firstName || ""}
                 machines={machines}
-                focusContext={focusContext}
-                onClearFocusContext={() => setFocusContext(null)}
                 onSubmit={handleCreate}
                 disabled={!clientId}
               />

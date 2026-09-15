@@ -606,6 +606,32 @@ export interface Client {
   activity?: string;
   goals?: string;
   globalNotes?: string;
+  /* ------------------------------------------------------------------ *
+   * GOALS — the SMART checklist and the achievement loop (Goals & Focus
+   * round, Sep 2026). All three are coach-edited through the dossier's
+   * Save bar; see src/features/goals/goals.ts for the rules.
+   *
+   *   smartChecks     which of S·M·A·R·T the CURRENT goal (`smartGoal`)
+   *                   meets. All five = a SMART goal; fewer = a raw one.
+   *                   null/absent = nothing checked yet.
+   *   goalTargetDate  yyyy-mm-dd, the T in SMART. A date-only key: read it
+   *                   at local noon, never with a bare `new Date(key)`.
+   *   goalHistory     goals marked achieved, newest first, capped at 30.
+   *                   Marking one achieved pushes it here and clears the
+   *                   three current-goal fields.
+   * ------------------------------------------------------------------ */
+  smartChecks?: { s: boolean; m: boolean; a: boolean; r: boolean; t: boolean } | null;
+  goalTargetDate?: string;
+  goalHistory?: {
+    goal: string;
+    targetDate?: string;
+    setAt?: string;
+    /** ISO date-time. */
+    achievedAt: string;
+    reward?: string;
+    byTrainerId?: string;
+    byName?: string;
+  }[];
   leadSource?: string;
   referredBy?: string;
   notes?: string;

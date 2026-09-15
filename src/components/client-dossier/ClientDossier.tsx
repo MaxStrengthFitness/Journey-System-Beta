@@ -64,6 +64,7 @@ import { ClientSnapshot, activeContract } from "./ClientSnapshot";
 import { JournalRail } from "./JournalRail";
 import { ClientJournalTab, type JournalAreaId } from "../journal/ClientJournalTab";
 import { FordSection } from "../../features/ford/FordSection";
+import { GoalsPanel } from "../../features/goals/GoalsPanel";
 import type { FordAuthor } from "../../features/ford/ford-write";
 import {
   DossierSectionShell,
@@ -597,28 +598,18 @@ export function ClientDossier({
               blurb={sectionBlurb("goals")}
               icon={SECTION_ICONS.goals}
             >
-              {/* Learning + Planner round, Sep 2026: plans trainers shared
-                  from their Planner. Read-only here — see features/planner/notes. */}
-              <SharedNotesCard
+              {/* Goals & Focus round, Sep 2026: the original why as the
+                  anchor, the current goal with its SMART checklist and target
+                  date, and the achieved-goal history. All field edits through
+                  updateField, so the Save bar writes them. See features/goals. */}
+              <GoalsPanel
                 client={client}
-                authTrainer={authTrainer ?? null}
-                onOpenPlanner={onOpenPlanner}
+                formData={formData}
+                updateField={updateField}
+                authTrainer={authTrainer}
               />
 
               <FieldGroup cols={1}>
-                <TextAreaField
-                  label={`The original "why"`}
-                  value={val("globalNotes")}
-                  onChange={set("globalNotes")}
-                  rows={4}
-                  placeholder="What actually brought them in. In their words, not yours."
-                />
-                <TextField
-                  label="Current SMART goal"
-                  value={val("smartGoal")}
-                  onChange={set("smartGoal")}
-                  placeholder="e.g. Carry both grandkids up the stairs by Thanksgiving"
-                />
                 <TextAreaField
                   label="Coach strategy"
                   value={val("discoveryNotes")}
@@ -627,6 +618,14 @@ export function ClientDossier({
                   placeholder="How do you coach this client? What cues land?"
                 />
               </FieldGroup>
+
+              {/* Learning + Planner round, Sep 2026: plans trainers shared
+                  from their Planner. Read-only here — see features/planner/notes. */}
+              <SharedNotesCard
+                client={client}
+                authTrainer={authTrainer ?? null}
+                onOpenPlanner={onOpenPlanner}
+              />
 
               {(longTermGoal || otherIndexes.length > 0) && (
                 <FieldGroup title="Mindbody client indexes">

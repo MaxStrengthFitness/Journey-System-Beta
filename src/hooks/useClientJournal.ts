@@ -78,10 +78,11 @@ const SESSION_SUMMARY_LIMIT = 40;
  * trainerFocuses) had NO limit: a client with a runaway import could open
  * thousands of documents every time their profile opened. Any real client has
  * a few dozen at most, so at 200 nothing changes for anyone today. It is
- * deliberately NOT a "newest 50": the focus board counts every past focus and
- * offers a new one only when the trainer has no active one, so a cut-off
- * active focus would come back as a duplicate. When a collection does hit the
- * rail, `capped` is true and the journal says so instead of miscounting.
+ * deliberately NOT a "newest 50": the focus board lists every past focus as
+ * its history and dedupes legacy focuses against the active ones, so an
+ * ordered cut would silently drop an active focus and let its legacy copy
+ * reappear. When a collection does hit the rail, `capped` is true and the
+ * journal says so instead of miscounting.
  */
 export const JOURNAL_GUARD_LIMIT = 200;
 
@@ -299,7 +300,14 @@ export function isLegacyFocusId(focusId: string): boolean {
 }
 
 /**
- * Passed = the client has got it. Retired = abandoned without being met.
+ * Passed = the client has got it (shown as ACHIEVED). Retired = abandoned
+ * without being met.
+ *
+ * Achieving stamps `achievedAt` and keeps an optional reward note ("Kaizen
+ * pin"); retiring stamps `retiredAt`, so the focus history can say how long
+ * each one ran. The clientFocuses update rule restricts WHO may do this (the
+ * owning trainer or an admin / founder / franchise owner), not which fields,
+ * so the new fields need no rules change.
  *
  * A focus adapted from the legacy focusRecords collection carries a synthetic
  * id, so the write is routed back to the document it actually came from using
@@ -310,6 +318,7 @@ export function isLegacyFocusId(focusId: string): boolean {
 export async function setFocusStatus(
   focusId: string,
   status: "active" | "passed" | "retired",
+  opts: { rewardNote?: string | null } = {},
 ): Promise<void> {
   if (isLegacyFocusId(focusId)) {
     const realId = focusId.slice(LEGACY_FOCUS_PREFIX.length);
@@ -330,12 +339,20 @@ export async function setFocusStatus(
     return;
   }
 
+  const now = Timestamp.now();
+  const patch: Record<string, unknown> = {
+    status,
+    passedAt: status === "passed" ? now : null,
+    achievedAt: status === "passed" ? now : null,
+    retiredAt: status === "retired" ? now : null,
+    updatedAt: serverTimestamp(),
+  };
+  if (status === "passed") {
+    patch.rewardNote = (opts.rewardNote || "").trim().slice(0, 200) || null;
+  }
+
   try {
-    await updateDoc(doc(db, "clientFocuses", focusId), {
-      status,
-      passedAt: status === "passed" ? Timestamp.now() : null,
-      updatedAt: serverTimestamp(),
-    });
+    await updateDoc(doc(db, "clientFocuses", focusId), patch);
   } catch (err) {
     handleFirestoreError(err, OperationType.UPDATE, `clientFocuses/${focusId}`);
     throw err;
@@ -463,6 +480,7 @@ function adaptFocusRecords(
         startedAt: f.dateAssigned,
         reviewDueAt: null,
         passedAt: f.status === "Achieved" ? f.dateUpdated || null : null,
+        achievedAt: f.status === "Achieved" ? f.dateUpdated || null : null,
         lastExtendedAt: null,
         extensionCount: 0,
         checkInCount: 0,

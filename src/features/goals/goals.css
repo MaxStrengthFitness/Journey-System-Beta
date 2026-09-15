@@ -1,0 +1,295 @@
+/* ==========================================================================
+   GOALS & FOCUS — the why, and the how
+   --------------------------------------------------------------------------
+   Goals & Focus round, Sep 2026. Two surfaces of the client record:
+
+     .gf-goals   the Goals section — the original why, the current goal and
+                 its SMART checklist, and the achieved-goal history
+     .gf-focus   the focus board — active 4 P focuses and their history
+
+   Colour comes from equipment.tokens.css; no hex below this line. Blue
+   (--eq-live) is "you can act on this", green (--eq-ok) is "achieved". Hero
+   orange stays with Start Session, and crimson stays with rep quality.
+
+   Touch targets are 40px minimum. Text alignment on buttons lives HERE, not
+   in a utility class: a <button> centres its own text and a Tailwind
+   `text-left` did not survive layer ordering in every build (FORD round).
+   ========================================================================== */
+
+@import "../equipment/equipment.tokens.css";
+
+/* ------------------------------------------------------------------ */
+/* SHARED                                                              */
+/* ------------------------------------------------------------------ */
+
+.gf-card {
+  position: relative;
+  flex: none;
+  min-width: 0;
+  background: var(--eq-surface);
+  border: 1px solid var(--eq-border);
+  border-radius: var(--eq-radius);
+  color: var(--eq-ink);
+  padding: 1rem 1.1rem;
+}
+
+.gf-kicker {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--eq-ink-muted);
+}
+
+.gf-muted { color: var(--eq-ink-muted); }
+.gf-ink-2 { color: var(--eq-ink-2); }
+
+.gf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0 0.95rem;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-2);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.gf-btn:hover:not(:disabled) { background: var(--eq-surface-3); }
+.gf-btn:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
+.gf-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.gf-btn--primary {
+  background: var(--eq-live);
+  border-color: transparent;
+  color: var(--eq-live-on);
+}
+.gf-btn--primary:hover:not(:disabled) { background: var(--eq-live); filter: brightness(1.08); }
+
+.gf-btn--ok {
+  background: var(--eq-ok-fill);
+  border-color: var(--eq-ok);
+  color: var(--eq-ok);
+}
+.gf-btn--ok:hover:not(:disabled) { background: var(--eq-ok-fill); filter: brightness(0.97); }
+
+.gf-btn--quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--eq-ink-muted);
+}
+
+.gf-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.6rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-bg);
+  color: var(--eq-ink);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  outline: none;
+}
+.gf-input::placeholder { color: var(--eq-ink-faint); }
+.gf-input:focus { border-color: var(--eq-focus-ring); background: var(--eq-surface); }
+textarea.gf-input { resize: vertical; }
+
+.gf-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-muted);
+}
+.gf-pill--ok   { background: var(--eq-ok-fill);   color: var(--eq-ok); }
+.gf-pill--live { background: var(--eq-live-fill); color: var(--eq-live-text); }
+.gf-pill--warn { background: var(--eq-warn-fill); color: var(--eq-warn); }
+
+/* A row that opens something. Left-aligned, full width, 40px+. */
+.gf-rowbtn {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 0.35rem 0;
+  color: inherit;
+  cursor: pointer;
+}
+.gf-rowbtn:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; border-radius: 8px; }
+
+/* ------------------------------------------------------------------ */
+/* GOALS                                                               */
+/* ------------------------------------------------------------------ */
+
+.gf-goals { display: flex; flex-direction: column; gap: 1rem; }
+
+/* The anchor: the original why sits above everything and says so. */
+.gf-anchor {
+  border-left: 4px solid var(--eq-live);
+  background: var(--eq-live-fill);
+}
+.gf-anchor .gf-kicker { color: var(--eq-live-text); }
+
+.gf-goal-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.gf-smart {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.5rem;
+}
+
+.gf-smart-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  min-height: 56px;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-bg);
+  color: var(--eq-ink-2);
+  text-align: left;
+  cursor: pointer;
+}
+.gf-smart-toggle:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
+.gf-smart-toggle[aria-pressed="true"] {
+  border-color: var(--eq-ok);
+  background: var(--eq-ok-fill);
+  color: var(--eq-ink);
+}
+
+.gf-smart-letter {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--eq-border-strong);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--eq-ink-muted);
+  background: var(--eq-surface);
+}
+.gf-smart-toggle[aria-pressed="true"] .gf-smart-letter {
+  border-color: var(--eq-ok);
+  background: var(--eq-ok);
+  color: var(--eq-surface);
+}
+
+.gf-smart-word { display: block; font-size: 12.5px; font-weight: 800; }
+.gf-smart-line { display: block; font-size: 11px; line-height: 1.3; color: var(--eq-ink-muted); }
+
+.gf-history { display: flex; flex-direction: column; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.gf-history li {
+  border-left: 3px solid var(--eq-ok);
+  padding: 0.45rem 0 0.45rem 0.75rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* FOCUS                                                               */
+/* ------------------------------------------------------------------ */
+
+.gf-focus { display: flex; flex-direction: column; gap: 1rem; }
+
+.gf-focus-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+
+.gf-focus-card--mine { border-color: var(--eq-live); }
+
+.gf-focus-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.75rem;
+  font-size: 11.5px;
+  color: var(--eq-ink-muted);
+}
+.gf-focus-meta strong { color: var(--eq-ink-2); font-weight: 700; }
+
+.gf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--eq-border);
+}
+
+.gf-inline {
+  margin-top: 0.6rem;
+  padding: 0.7rem;
+  border-radius: 12px;
+  background: var(--eq-surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.gf-thread {
+  margin: 0.5rem 0 0;
+  padding: 0 0 0 0.75rem;
+  list-style: none;
+  border-left: 1px solid var(--eq-border-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 12.5px;
+}
+
+.gf-past {
+  border-top: 1px solid var(--eq-border);
+  padding: 0.6rem 0;
+}
+.gf-past:first-child { border-top: 0; }
+
+.gf-chiprow { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.gf-chip {
+  min-height: 40px;
+  padding: 0 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-surface);
+  color: var(--eq-ink-2);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.gf-chip[aria-pressed="true"] {
+  border-color: var(--eq-live);
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+}
+.gf-chip:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }

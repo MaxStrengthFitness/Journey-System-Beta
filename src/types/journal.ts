@@ -143,6 +143,11 @@ export type JournalDraft = Pick<
  *
  * Replaces the old overlapping pair (`focusRecords` + `trainerFocuses`).
  */
+/**
+ * `passed` is the stored word for ACHIEVED and is shown as "Achieved" on
+ * screen (Goals & Focus round, Sep 2026). It is not renamed in the data: the
+ * legacy focusRecords adapter and every existing document already use it.
+ */
 export type FocusStatus = "active" | "passed" | "retired";
 
 export interface ClientFocus {
@@ -164,6 +169,14 @@ export interface ClientFocus {
   /** Nudge date. Extending a focus pushes this out. */
   reviewDueAt: any | null;
   passedAt: any | null;
+  /**
+   * When it was marked achieved, and what the client got for it ("Kaizen
+   * pin"). Optional: focuses achieved before Sep 2026 have only `passedAt`.
+   */
+  achievedAt?: any | null;
+  rewardNote?: string | null;
+  /** When it was retired. Older retired focuses fall back to `updatedAt`. */
+  retiredAt?: any | null;
   lastExtendedAt: any | null;
   extensionCount: number;
 
