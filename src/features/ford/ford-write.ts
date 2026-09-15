@@ -1,0 +1,278 @@
+/**
+ * FORD writes.
+ *
+ * Every function here is deliberately small and total: it either writes or it
+ * swallows the error and tells the caller. Nothing in FORD is allowed to block
+ * a trainer — a failed detail is a lost sentence, and a hard-failed save
+ * during a set is a lost client. That asymmetry decides every catch below.
+ *
+ * The rollup on `clients/{id}.fordSummary` is written after the detail lands
+ * and is fire-and-forget. It is a rendering cache, so drift is cosmetic and
+ * self-heals on the next save; the subcollection is always the truth.
+ */
+
+import {
+  collection,
+  getDocs,
+  query,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "../../firebase";
+import { handleFirestoreError, OperationType } from "../../lib/firestore-errors";
+import {
+  type ClientFordSummary,
+  type FordDraft,
+  type FordEntry,
+  type FordGestureStatus,
+  type FordOpportunity,
+  type FordPillar,
+} from "./types";
+import { summariseFord } from "./ford-rollup";
+
+export interface FordAuthor {
+  /** The Auth uid. The rules pin authorId to it, same as the journal. */
+  id: string;
+  initials: string;
+  fullName: string;
+}
+
+/** `clients/{clientId}/ford` — the one path this feature owns. */
+export function fordCollection(clientId: string) {
+  return collection(db, "clients", clientId, "ford");
+}
+
+function fordDoc(clientId: string, fordId: string) {
+  return doc(db, "clients", clientId, "ford", fordId);
+}
+
+/* ------------------------------------------------------------------ */
+/* CREATE                                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Save a detail.
+ *
+ * `pillar` may be null. That is not a defect to be validated away — it is the
+ * floor path: a trainer mid-set types the sentence and saves, and the category
+ * is chosen thirty seconds later at teardown. Requiring a pillar here would
+ * put a decision between hearing the thing and recording it, which is exactly
+ * how details get lost.
+ */
+export async function createFordEntry(
+  clientId: string,
+  studioId: string,
+  author: FordAuthor,
+  draft: FordDraft,
+): Promise<string | null> {
+  const body = (draft.body || "").trim();
+  if (!clientId || !body) return null;
+
+  const occurred = draft.occurredAt ?? new Date();
+
+  const payload = {
+    clientId,
+    studioId: studioId || "",
+    pillar: draft.pillar ?? null,
+    body,
+    subject: draft.subject?.trim() || null,
+    isPinned: draft.isPinned ?? false,
+    eventDate: draft.eventDate ? Timestamp.fromDate(draft.eventDate) : null,
+    recurrence: draft.recurrence ?? "none",
+    opportunity: draft.opportunity ?? null,
+    // Client-side Timestamp, never serverTimestamp() — see types.ts.
+    occurredAt: Timestamp.fromDate(occurred),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    authorId: author.id,
+    authorName: author.fullName,
+    authorInitials: author.initials,
+    origin: draft.origin ?? "profile",
+    sessionId: draft.sessionId ?? null,
+    isArchived: false,
+  };
+
+  try {
+    const ref = await addDoc(fordCollection(clientId), payload);
+    void refreshFordSummary(clientId);
+    return ref.id;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.CREATE, "ford");
+    return null;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* UPDATE                                                              */
+/* ------------------------------------------------------------------ */
+
+export type FordPatch = Partial<
+  Pick<
+    FordEntry,
+    "pillar" | "body" | "subject" | "isPinned" | "recurrence" | "opportunity"
+  >
+> & { eventDate?: Date | null; occurredAt?: Date | null };
+
+export async function updateFordEntry(
+  clientId: string,
+  fordId: string,
+  patch: FordPatch,
+): Promise<boolean> {
+  const next: Record<string, unknown> = { updatedAt: serverTimestamp() };
+
+  if (patch.pillar !== undefined) next.pillar = patch.pillar;
+  if (patch.body !== undefined) next.body = patch.body.trim();
+  if (patch.subject !== undefined) next.subject = patch.subject?.trim() || null;
+  if (patch.isPinned !== undefined) next.isPinned = patch.isPinned;
+  if (patch.recurrence !== undefined) next.recurrence = patch.recurrence;
+  if (patch.opportunity !== undefined) next.opportunity = patch.opportunity;
+  if (patch.eventDate !== undefined) {
+    next.eventDate = patch.eventDate ? Timestamp.fromDate(patch.eventDate) : null;
+  }
+  if (patch.occurredAt !== undefined && patch.occurredAt) {
+    next.occurredAt = Timestamp.fromDate(patch.occurredAt);
+  }
+
+  try {
+    await updateDoc(fordDoc(clientId, fordId), next);
+    void refreshFordSummary(clientId);
+    return true;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, "ford");
+    return false;
+  }
+}
+
+/**
+ * File an untagged capture.
+ *
+ * The one-tap move at teardown. Separate from `updateFordEntry` only so the
+ * call site reads like what the trainer is doing.
+ */
+export function tagFordEntry(
+  clientId: string,
+  fordId: string,
+  pillar: FordPillar,
+): Promise<boolean> {
+  return updateFordEntry(clientId, fordId, { pillar });
+}
+
+/** Archive, never delete. A detail about someone's family is not ours to destroy. */
+export async function archiveFordEntry(
+  clientId: string,
+  fordId: string,
+): Promise<boolean> {
+  try {
+    await updateDoc(fordDoc(clientId, fordId), {
+      isArchived: true,
+      updatedAt: serverTimestamp(),
+    });
+    void refreshFordSummary(clientId);
+    return true;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, "ford");
+    return false;
+  }
+}
+
+/**
+ * The exception to archive-never-delete: a capture typed by mistake and
+ * discarded in the same breath, before it was ever filed. Only reachable from
+ * the teardown sweep, and only for an untagged entry.
+ */
+export async function discardUntaggedCapture(
+  clientId: string,
+  fordId: string,
+): Promise<boolean> {
+  try {
+    await deleteDoc(fordDoc(clientId, fordId));
+    void refreshFordSummary(clientId);
+    return true;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, "ford");
+    return false;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* THE GESTURE                                                         */
+/* ------------------------------------------------------------------ */
+
+/** Promote a detail to something the team intends to do. */
+export function promoteToOpportunity(
+  clientId: string,
+  fordId: string,
+  idea: string,
+  opts: { plannedFor?: Date | null; owner?: { id: string; name: string } | null } = {},
+): Promise<boolean> {
+  const opportunity: FordOpportunity = {
+    idea: idea.trim(),
+    status: opts.owner ? "planned" : "idea",
+    ownerTrainerId: opts.owner?.id ?? null,
+    ownerName: opts.owner?.name ?? null,
+    plannedFor: opts.plannedFor ? Timestamp.fromDate(opts.plannedFor) : null,
+    doneAt: null,
+    outcome: null,
+  };
+  return updateFordEntry(clientId, fordId, { opportunity });
+}
+
+/**
+ * Move a gesture along.
+ *
+ * `outcome` is what actually happened, and it is the reason this feature is
+ * worth anything a year from now: "took the dinner bill at Giovanni's, she
+ * cried" is the institutional memory a new trainer inherits.
+ */
+export function setGestureStatus(
+  clientId: string,
+  fordId: string,
+  current: FordOpportunity,
+  status: FordGestureStatus,
+  extras: { owner?: { id: string; name: string } | null; outcome?: string } = {},
+): Promise<boolean> {
+  const opportunity: FordOpportunity = {
+    ...current,
+    status,
+    ownerTrainerId:
+      extras.owner === undefined ? current.ownerTrainerId : extras.owner?.id ?? null,
+    ownerName:
+      extras.owner === undefined ? current.ownerName : extras.owner?.name ?? null,
+    doneAt: status === "done" ? Timestamp.fromDate(new Date()) : null,
+    outcome: extras.outcome !== undefined ? extras.outcome.trim() || null : current.outcome,
+  };
+  return updateFordEntry(clientId, fordId, { opportunity });
+}
+
+/* ------------------------------------------------------------------ */
+/* THE ROLLUP                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Recompute `clients/{id}.fordSummary` from the subcollection.
+ *
+ * One extra read and one extra write per save. That is the price of every
+ * client list in the app being able to show "Anniversary in 12 days" without
+ * touching the subcollection, and it is worth paying. Failures are swallowed:
+ * a stale chip is cosmetic, and the next save fixes it.
+ */
+export async function refreshFordSummary(
+  clientId: string,
+): Promise<ClientFordSummary | null> {
+  try {
+    const snap = await getDocs(query(fordCollection(clientId)));
+    const entries = snap.docs.map(
+      (d) => ({ id: d.id, ...(d.data() as object) }) as FordEntry,
+    );
+    const summary = summariseFord(entries);
+    await updateDoc(doc(db, "clients", clientId), { fordSummary: summary });
+    return summary;
+  } catch {
+    /* cosmetic — never surfaced, never retried */
+    return null;
+  }
+}

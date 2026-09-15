@@ -1,0 +1,154 @@
+/* ==========================================================================
+   FORD — design tokens
+   --------------------------------------------------------------------------
+   Same two-layer scheme as the Journey Grid and the Equipment tab: raw brand
+   pigment, then semantic names components actually use. Light on :root, dark
+   on .dark (the class the ThemeProvider toggles) with [data-theme] and
+   prefers-color-scheme as fallbacks so a page rendered before hydration is
+   never the wrong theme.
+
+   THE RESTRAINT THAT MATTERS HERE
+   ------------------------------------------------------------------------
+   Colour in this app already carries meaning a trainer has learned: orange is
+   the current prescription, blue is something you can act on, crimson is a set
+   that needs work, green is max strength. Four loud new pillar colours would
+   compete with all of it and turn the screen AJ already called cluttered into
+   a paint chart.
+
+   So the four pillars get identity, not status: a soft tint behind a letter
+   mark, and nothing else. Every urgent thing on this screen — a date closing
+   in, a gesture that needs an owner — borrows the brand's existing meaning
+   from the urgency tokens further down. If you are tempted to colour a row by
+   its pillar, colour it by its urgency instead.
+
+   Contrast checked to WCAG 2.1 AA: text >= 4.5:1, non-text UI >= 3:1. Ratios
+   measured, not estimated, and noted beside each value so a future edit can be
+   re-checked.
+   ========================================================================== */
+
+:root {
+  /* ---- surfaces ------------------------------------------------------- */
+  --ford-bg:            #f1f5f8;   /* matches --eq-bg; the section sits on it */
+  --ford-surface:       #ffffff;   /* pillar cards, detail rows               */
+  --ford-surface-2:     #e8eef2;   /* pillar headers, the sweep tray          */
+  --ford-surface-3:     #dae1e6;   /* hover / pressed                         */
+  --ford-border:        #d3dadf;   /* hairlines                       1.4:1   */
+  --ford-border-strong: #a9b2b9;   /* card edges, focused input       2.2:1   */
+
+  --ford-ink:           #121c23;   /* the detail itself              17.3:1   */
+  --ford-ink-2:         #3e4952;   /* attribution, dates              9.2:1   */
+  --ford-ink-muted:     #5b6770;   /* labels (brand slate)            5.8:1   */
+  --ford-ink-faint:     #848e95;   /* placeholders, empty states      3.3:1   */
+
+  /* ---- the four pillars ----------------------------------------------
+     Identity only. `-ink` is the letter mark and the pillar name; `-fill` is
+     the disc behind the letter and the card's header wash.                 */
+  --ford-family-ink:        #b8430b;  /* 5.46:1 on white, 4.60:1 on its fill */
+  --ford-family-fill:       #fbe8dd;
+  --ford-occupation-ink:    #0f5285;  /* 8.18:1 on white, 6.96:1 on its fill */
+  --ford-occupation-fill:   #e4eef5;
+  --ford-recreation-ink:    #1b6f4e;  /* 6.12:1 on white, 5.21:1 on its fill */
+  --ford-recreation-fill:   #e2f0e9;
+  --ford-dreams-ink:        #5a4aa6;  /* 7.08:1 on white, 5.83:1 on its fill */
+  --ford-dreams-fill:       #eae7f7;
+
+  /* ---- urgency --------------------------------------------------------
+     The only status colour on the screen, and it is borrowed rather than
+     invented: `now` is the hero orange that means "this is the live one"
+     everywhere else in the app, `soon` is the blue that means "you can act on
+     this". Nothing here is red — crimson stays reserved for rep quality.   */
+  --ford-now:           #bc2c00;   /* 6.0:1 on white — hero orange, text-safe */
+  --ford-now-fill:      #fde7dc;
+  --ford-soon:          #034a84;   /* 9.1:1 on white                          */
+  --ford-soon-fill:     #e6eef3;
+  --ford-later:         #5b6770;   /* 5.8:1 on white — deliberately quiet     */
+  --ford-later-fill:    #e8eef2;
+
+  /* ---- the unfiled tray ----------------------------------------------
+     Captures waiting to be filed. Amber-free and alarm-free: an untagged
+     detail is not a problem, it is a trainer who kept their eyes on the
+     client. It should read as a small tidy-up, never as an error.          */
+  --ford-unfiled:       #7a5a12;   /* 5.4:1 on white                          */
+  --ford-unfiled-fill:  #f7efd9;
+
+  --ford-focus-ring:    var(--ford-soon);
+  --ford-shadow:        rgba(18, 28, 35, 0.10);
+  --ford-radius:        14px;
+  --ford-radius-sm:     9px;
+  /* The letter mark. 40px is the app's minimum touch target, and the mark is
+     tappable in the capture sheet, so it does not go below this. */
+  --ford-mark:          40px;
+}
+
+.dark,
+[data-theme="dark"] {
+  --ford-bg:            #070b0f;
+  --ford-surface:       #0e151c;
+  --ford-surface-2:     #151e27;
+  --ford-surface-3:     #1d2833;
+  --ford-border:        #1f2a35;   /* 1.5:1 on surface                        */
+  --ford-border-strong: #3a4855;   /* 2.9:1                                   */
+
+  --ford-ink:           #e9eff4;   /* 15.1:1 on surface                       */
+  --ford-ink-2:         #b3c0cb;   /* 9.4:1                                   */
+  --ford-ink-muted:     #8b98a4;   /* 5.7:1                                   */
+  --ford-ink-faint:     #66727d;   /* 3.2:1                                   */
+
+  --ford-family-ink:        #f5975e;  /* 8.29:1 on surface, 6.91:1 on its fill */
+  --ford-family-fill:       #3a1e0d;
+  --ford-occupation-ink:    #79b6e2;  /* 8.40:1 on surface, 7.26:1 on its fill */
+  --ford-occupation-fill:   #0d2436;
+  --ford-recreation-ink:    #66c39a;  /* 8.61:1 on surface, 7.20:1 on its fill */
+  --ford-recreation-fill:   #0c2a1f;
+  --ford-dreams-ink:        #a99bec;  /* 7.51:1 on surface, 6.92:1 on its fill */
+  --ford-dreams-fill:       #1d1838;
+
+  --ford-now:           #ff8a4c;   /* 9.0:1 on surface                        */
+  --ford-now-fill:      #3a1e0d;
+  --ford-soon:          #79b6e2;   /* 8.4:1 on surface                        */
+  --ford-soon-fill:     #0d2436;
+  --ford-later:         #8b98a4;   /* 5.7:1 on surface                        */
+  --ford-later-fill:    #151e27;
+
+  --ford-unfiled:       #d8b866;   /* 9.6:1 on surface                        */
+  --ford-unfiled-fill:  #2a2213;
+
+  --ford-shadow:        rgba(0, 0, 0, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not([data-theme="light"]) {
+    --ford-bg:            #070b0f;
+    --ford-surface:       #0e151c;
+    --ford-surface-2:     #151e27;
+    --ford-surface-3:     #1d2833;
+    --ford-border:        #1f2a35;
+    --ford-border-strong: #3a4855;
+
+    --ford-ink:           #e9eff4;
+    --ford-ink-2:         #b3c0cb;
+    --ford-ink-muted:     #8b98a4;
+    --ford-ink-faint:     #66727d;
+
+    --ford-family-ink:        #f5975e;
+    --ford-family-fill:       #3a1e0d;
+    --ford-occupation-ink:    #79b6e2;
+    --ford-occupation-fill:   #0d2436;
+    --ford-recreation-ink:    #66c39a;
+    --ford-recreation-fill:   #0c2a1f;
+    --ford-dreams-ink:        #a99bec;
+    --ford-dreams-fill:       #1d1838;
+
+    --ford-now:           #ff8a4c;
+    --ford-now-fill:      #3a1e0d;
+    --ford-soon:          #79b6e2;
+    --ford-soon-fill:     #0d2436;
+    --ford-later:         #8b98a4;
+    --ford-later-fill:    #151e27;
+
+    --ford-unfiled:       #d8b866;
+    --ford-unfiled-fill:  #2a2213;
+
+    --ford-shadow:        rgba(0, 0, 0, 0.45);
+  }
+}

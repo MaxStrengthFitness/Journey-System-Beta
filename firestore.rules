@@ -1384,6 +1384,72 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
+    // FORD — Family, Occupation, Recreation, Dreams.
+    //
+    // One document per personal detail, living at clients/{clientId}/ford/{id}.
+    //
+    // WHY IT IS NOT IN journalEntries: that collection is readable by every
+    // signed-in user. A client's home life is not company-wide reading. Under
+    // the client, a detail inherits the tightest boundary the app has — the
+    // studio the client belongs to.
+    //
+    // WHY THE RECURSIVE WILDCARD: the Delight queue is a collectionGroup query
+    // across every client's subcollection at one studio, and a collection group
+    // read is only legal against a {path=**} match. It also covers direct reads
+    // of a single client's details, so there is exactly one rule here to reason
+    // about rather than two that can drift apart.
+    //
+    // The studio filter is load-bearing on read. Because the condition tests
+    // resource.data.studioId, Firestore refuses any query that is not already
+    // constrained to a studio the caller trains at — which is precisely the
+    // guarantee we want, rather than one enforced only in app code.
+    match /{path=**}/ford/{fordId} {
+      allow read: if isAuthenticated()
+                  && isAnyAuthenticatedTrainer()
+                  && (
+                       isSuperAdmin()
+                       || isFranchiseOwner()
+                       || isTrainerOfStudio(resource.data.studioId)
+                     );
+
+      // pillar is deliberately NOT validated as one of the four letters: null
+      // is the floor path. A trainer mid-set types the sentence and saves, and
+      // the category is chosen at teardown. Requiring it here would put a
+      // decision between hearing the thing and recording it.
+      allow create: if isAuthenticated()
+                    && isAnyAuthenticatedTrainer()
+                    && request.resource.data.clientId is string
+                    && request.resource.data.body is string
+                    && request.resource.data.body.size() > 0
+                    && request.resource.data.body.size() <= 2000
+                    && request.resource.data.authorId == request.auth.uid
+                    && isTrainerOfStudio(request.resource.data.studioId);
+
+      // clientId and studioId are immutable: a detail cannot be moved to
+      // another client or walked out of its studio by an update.
+      allow update: if isAuthenticated()
+                    && isAnyAuthenticatedTrainer()
+                    && request.resource.data.clientId == resource.data.clientId
+                    && request.resource.data.studioId == resource.data.studioId
+                    && request.resource.data.body.size() <= 2000
+                    && (
+                         isSuperAdmin()
+                         || isFranchiseOwner()
+                         || isTrainerOfStudio(resource.data.studioId)
+                       );
+
+      // Details are archived, not deleted — see ford-write.ts. The one
+      // exception is a capture discarded before it was ever filed, which is
+      // why the author keeps a delete on an untagged entry of their own.
+      allow delete: if isSuperAdmin()
+                    || isFranchiseOwner()
+                    || (
+                         isAnyAuthenticatedTrainer()
+                         && resource.data.authorId == request.auth.uid
+                         && resource.data.pillar == null
+                       );
+    }
+
     // TRAINER FOCUSES — a trainer's standing intent for a client.
     // Only the owning trainer (or a manager) may pass, extend or retire a
     // focus; anyone can read them, because every coach in the room needs to
