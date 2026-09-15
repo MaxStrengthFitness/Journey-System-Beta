@@ -17,6 +17,8 @@ export interface MachineStats {
   totalVolume?: number;
   perfectSets?: number;
   timeUnderTension?: number;
+  /** Performed, weighted sessions behind start → current. */
+  sessionCount?: number;
 }
 
 export interface MachineProgressionStepProps {

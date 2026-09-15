@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   TrendingUp,
   CheckCircle2,
@@ -70,10 +70,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  calculateHighlightedMovements,
-  calculateComprehensiveAttendanceStats,
-  calculateDynamicHighlightMetrics,
+  attendanceStatsFrom,
+  loadTrainingHistory,
+  machineStatsFrom,
+  sessionsInWindow,
+  AVG_DURATION_MIN_SESSIONS,
+  AVG_REST_MIN_GAPS,
+  type TrainingHistory,
 } from "../lib/progress-utils";
+import type { ClientFocus } from "../types/journal";
 import { cn, parseSessionDate } from "../lib/utils";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { MaxStrengthLogo } from "./MaxStrengthLogo";
@@ -95,7 +100,28 @@ import {
   GoalsBlock,
   MachineProgressionCard,
   GoalsCard,
+  AccoladeCards,
+  AccoladeSlotEditor,
+  FocusHistoryPanel,
+  FocusSnapshotCard,
+  REPORT_STEPS,
+  STEP_INDEX,
+  FOCUS_HISTORY_LIMIT,
+  accoladeCandidates,
+  accoladeSetsFrom,
+  draftInputFrom,
+  draftSlots,
+  focusSnapshotFrom,
+  isOpenSlot,
+  newestActiveCategory,
+  padSlots,
+  refreshSlots,
+  reportCards,
+  reportJoinedDate,
+  slotKey,
+  type HighlightSlot,
   type ReportStepId,
+  type SlotContext,
 } from "../features/progress-report";
 import { SubjectiveClientCopy, answeredCount } from "../features/subjective-report";
 import { studioTodayKey } from "../lib/studio-time";
@@ -120,6 +146,47 @@ const addDays = (iso: string, days: number): string => {
   d.setDate(d.getDate() + days);
   return d.toISOString().split("T")[0];
 };
+
+/**
+ * A stat tile's number, or null when there is nothing honest to print. None
+ * of the report's tiles has a true zero: a session is never 0 minutes, a rest
+ * never 0 days, and 0 volume / reps / top-quality sets means nothing was
+ * rated or recorded — "not enough data yet", not a score of zero.
+ * (Named minimums for the two averages: progress-utils.ts.)
+ */
+const realStat = (v: number | undefined | null): number | null =>
+  typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null;
+
+function StatValue({
+  value,
+  unit,
+  className,
+  why,
+}: {
+  value: number | null;
+  unit?: string;
+  className: string;
+  /** The named minimum, said out loud under the dash. */
+  why?: string;
+}) {
+  if (value === null) {
+    return (
+      <>
+        <p className={className}>—</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[#68717A]">
+          Not enough data yet
+        </p>
+        {why && <p className="text-[10px] text-[#68717A] no-print">{why}</p>}
+      </>
+    );
+  }
+  return (
+    <p className={className}>
+      {value.toLocaleString()}
+      {unit && <span className="text-[11px] text-[#68717A] ml-1 not-italic">{unit}</span>}
+    </p>
+  );
+}
 
 interface ClientProgressReportViewProps {
   client: Client;
@@ -222,11 +289,8 @@ export function ClientProgressReportView({
       },
     },
 
-    highlights: [
-      { label: "", startValue: "", currentValue: "" },
-      { label: "", startValue: "", currentValue: "" },
-      { label: "", startValue: "", currentValue: "" },
-    ],
+    // Three distinct empty slots; the auto-draft fills them (accolades.ts).
+    highlights: padSlots([]),
 
     performanceMatrix: {
       posture: {
@@ -352,10 +416,64 @@ export function ClientProgressReportView({
     };
   }, []);
 
-  const [selectingHighlightIdx, setSelectingHighlightIdx] = useState<
-    number | null
-  >(null);
-  const [machineHistory, setMachineHistory] = useState<Record<string, any>>({});
+  /**
+   * The client's completed sessions and exercise logs, read ONCE while the
+   * editor is open. Every number in the report — tiles, machine progression,
+   * accolades — is computed from it in memory, so changing the window costs
+   * no read (progress-utils.ts). A failed read is "unknown", never "empty".
+   */
+  const [history, setHistory] = useState<TrainingHistory | null>(null);
+  const [historyStatus, setHistoryStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const historyLoadedFor = useRef<string | null>(null);
+  /** The auto-populate runs once per open report, never over the trainer's edits. */
+  const autoPopulated = useRef(false);
+
+  /** The client's coaching focuses, one bounded read (focus-history.ts). */
+  const [focuses, setFocuses] = useState<ClientFocus[]>([]);
+  const [focusStatus, setFocusStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const focusesLoadedFor = useRef<string | null>(null);
+
+  /** The report date as a moment, for "weeks active up to the report". */
+  const reportAsOf = useMemo(() => {
+    const d = new Date(`${report.date}T12:00:00`);
+    return Number.isNaN(d.getTime()) ? new Date() : d;
+  }, [report.date]);
+
+  const machineLabels = useMemo(
+    () => new Map(machines.filter((m) => m.id).map((m) => [m.id!, m.name] as [string, string])),
+    [machines],
+  );
+
+  /** Everything the accolade rules need for a given window start. */
+  const slotContextFor = (startDate: string | undefined): SlotContext => {
+    if (!history) {
+      return {
+        stats: {},
+        labels: machineLabels,
+        sets: [],
+        sessionsInWindow: 0,
+        windowStart: "",
+        windowEnd: report.date,
+      };
+    }
+    return {
+      stats: machineStatsFrom(history, startDate),
+      labels: machineLabels,
+      sets: accoladeSetsFrom(history.sessions, history.logs, startDate),
+      sessionsInWindow: sessionsInWindow(history.sessions, startDate).length,
+      windowStart: startDate || history.sessions[0]?.date || "",
+      windowEnd: report.date,
+    };
+  };
+
+  const slotCtx = useMemo(
+    () => slotContextFor(report.attendance.customStartDate),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [history, machineLabels, report.attendance.customStartDate, report.date],
+  );
+  /** machineId → window numbers (the machine picker and step 3). */
+  const machineHistory = slotCtx.stats;
+  const candidates = useMemo(() => accoladeCandidates(draftInputFrom(slotCtx)), [slotCtx]);
 
   // Load existing report
   useEffect(() => {
@@ -447,174 +565,164 @@ export function ClientProgressReportView({
     };
   }, [client.id, existingReportId]);
 
-  // Load auto data
+  // Read the client's history once while editing (auto or manual — the
+  // machine picker and step 3 want it either way).
   useEffect(() => {
-    async function loadData() {
-      if (mode !== "editing" || report.isManual) return;
-      if (existingReportId && !promotedFromCheckIn) return;
-      setLoading(true);
+    if (mode !== "editing" || !client.id) return;
+    if (historyLoadedFor.current === client.id) return;
+    let cancelled = false;
+    setHistoryStatus("loading");
+    loadTrainingHistory(client.id)
+      .then((h) => {
+        if (cancelled) return;
+        historyLoadedFor.current = client.id!;
+        setHistory(h);
+        setHistoryStatus("ready");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Report history load failed:", err);
+        setHistoryStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client.id, mode]);
+
+  // Read the client's coaching focuses once while editing. Bounded, and
+  // ordered by the (clientId, updatedAt) index that firestore.indexes.json
+  // already carries; if that index is missing the same bounded read runs
+  // unordered and focus-history.ts sorts it in memory.
+  useEffect(() => {
+    if (mode !== "editing" || !client.id) return;
+    if (focusesLoadedFor.current === client.id) return;
+    let cancelled = false;
+    setFocusStatus("loading");
+    const base = collection(db, "clientFocuses");
+    (async () => {
       try {
-        const initialStats = await calculateComprehensiveAttendanceStats(
-          client.id!,
-          report.attendance.customStartDate,
-        );
-        const activeStartDate =
-          report.attendance.customStartDate || initialStats.firstSessionDate;
-
-        // Use activeStartDate to actually get the scoped stats!
-        const stats = report.attendance.customStartDate
-          ? initialStats
-          : await calculateComprehensiveAttendanceStats(
-              client.id!,
-              activeStartDate,
-            );
-
-        const defaultHighlights = machines
-          .filter(
-            (m) =>
-              m.name.toLowerCase().includes("leg press") ||
-              m.name.toLowerCase().includes("row") ||
-              m.name.toLowerCase().includes("chest"),
-          )
-          .slice(0, 3);
-
-        const initialHighlights = [];
-        for (const m of defaultHighlights) {
-          const d = await calculateDynamicHighlightMetrics(
-            client.id!,
-            m.id!,
-            activeStartDate,
+        let snap;
+        try {
+          snap = await getDocs(
+            query(
+              base,
+              where("clientId", "==", client.id),
+              orderBy("updatedAt", "desc"),
+              limit(FOCUS_HISTORY_LIMIT),
+            ),
           );
-          if (d) {
-            initialHighlights.push({
-              machineId: m.id!,
-              label: m.name,
-              metricType: "strength_gain" as const,
-              startValue: `${d.startWeight} lbs`,
-              currentValue: `${d.currentWeight} lbs`,
-              percentageIncrease: d.percentageIncrease,
-              totalVolume: d.totalVolume,
-              perfectSets: d.perfectSets,
-              timeUnderTension: d.timeUnderTension,
-            });
-          }
+        } catch (err: any) {
+          if (err?.code !== "failed-precondition") throw err;
+          snap = await getDocs(
+            query(base, where("clientId", "==", client.id), limit(FOCUS_HISTORY_LIMIT)),
+          );
         }
-
-        setReport((prev) => ({
-          ...prev,
-          attendance: {
-            ...prev.attendance,
-            customStartDate: activeStartDate,
-            score: stats.score,
-            totalSessions: stats.totalSessions,
-            avgDuration: stats.avgDuration,
-            punctuality: stats.punctuality,
-            firstSessionDate: stats.firstSessionDate,
-            totalVolume: stats.totalVolume,
-            totalReps: stats.totalReps,
-            totalGoodReps: stats.totalGoodReps,
-            avgRestDays: stats.avgRestDays,
-            narrative: `Thank you for your consistency, ${client.firstName}. Your commitment to the protocol is driving these results.`,
-          },
-          highlights: initialHighlights
-            .concat(
-              Array(3 - initialHighlights.length).fill({
-                label: "",
-                metricType: "strength_gain",
-              }),
-            )
-            .slice(0, 3),
-        }));
+        if (cancelled) return;
+        focusesLoadedFor.current = client.id!;
+        setFocuses(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ClientFocus));
+        setFocusStatus("ready");
       } catch (err) {
-        console.error("Auto data failed:", err);
-      } finally {
-        setLoading(false);
+        if (cancelled) return;
+        // The panel says it couldn't read them; the report still works, and a
+        // save keeps whatever focus snapshot it already had.
+        console.warn("Report focus history load failed:", err);
+        setFocusStatus("error");
       }
-    }
-    if (mode === "editing" && !report.isManual) {
-      loadData();
-    }
-  }, [client, machines, mode, report.isManual, existingReportId, promotedFromCheckIn]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [client.id, mode]);
 
-  const handleRecalculateAttendance = async (customStartDate?: string) => {
-    try {
-      const activeStartDate = customStartDate; // if blank, use blank.
-      const stats = await calculateComprehensiveAttendanceStats(
-        client.id!,
-        activeStartDate,
-      );
+  // Auto-populate a new report (or a check-in promoted to a full one) once
+  // the history has landed: the tiles, and three accolades drafted from the
+  // data — never picked by machine name.
+  useEffect(() => {
+    if (mode !== "editing" || report.isManual || autoPopulated.current) return;
+    if (existingReportId && !promotedFromCheckIn) return;
+    if (historyStatus !== "ready" || !history) return;
+    autoPopulated.current = true;
 
-      const newHighlights = [...report.highlights];
-      for (let i = 0; i < newHighlights.length; i++) {
-        const h = newHighlights[i];
-        if (h.machineId && h.machineId !== "none") {
-          const d = await calculateDynamicHighlightMetrics(
-            client.id!,
-            h.machineId,
-            activeStartDate,
-          );
-          if (d) {
-            h.startValue = `${d.startWeight} lbs`;
-            h.currentValue = `${d.currentWeight} lbs`;
-            h.percentageIncrease = d.percentageIncrease;
-            h.totalVolume = d.totalVolume;
-            h.perfectSets = d.perfectSets;
-            h.timeUnderTension = d.timeUnderTension;
-          }
-        }
-      }
+    const activeStartDate =
+      report.attendance.customStartDate || history.sessions[0]?.date || "";
+    const stats = attendanceStatsFrom(history, activeStartDate);
+    const ctx = slotContextFor(activeStartDate);
 
+    setReport((prev) => ({
+      ...prev,
+      attendance: {
+        ...prev.attendance,
+        customStartDate: activeStartDate,
+        score: stats.score,
+        totalSessions: stats.totalSessions,
+        avgDuration: stats.avgDuration,
+        punctuality: stats.punctuality,
+        firstSessionDate: stats.firstSessionDate,
+        totalVolume: stats.totalVolume,
+        totalReps: stats.totalReps,
+        totalGoodReps: stats.totalGoodReps,
+        avgRestDays: stats.avgRestDays,
+        narrative:
+          prev.attendance.narrative ||
+          `Thank you for your consistency, ${client.firstName}. Your commitment to the protocol is driving these results.`,
+      },
+      // A promoted check-in may already hold trainer-chosen slots: keep
+      // them and draft around them.
+      highlights: (prev.highlights ?? []).some((h) => !isOpenSlot(h))
+        ? refreshSlots(prev.highlights, ctx)
+        : draftSlots(ctx),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, report.isManual, existingReportId, promotedFromCheckIn, historyStatus, history]);
+
+  // Pre-fill the refinement track's "4 P's Focus" from the newest ACTIVE
+  // focus while it is still empty.
+  const refinementFocusArea = report.roadmap?.refinementFocusArea;
+  useEffect(() => {
+    if (mode !== "editing" || focusStatus !== "ready" || refinementFocusArea) return;
+    const category = newestActiveCategory(focuses, reportAsOf);
+    if (!category) return;
+    setReport((r) =>
+      r.roadmap && !r.roadmap.refinementFocusArea
+        ? { ...r, roadmap: { ...r.roadmap, refinementFocusArea: category } }
+        : r,
+    );
+  }, [mode, focusStatus, focuses, refinementFocusArea, reportAsOf]);
+
+  /**
+   * The window start changed: recount the tiles and rebuild the accolades
+   * from the history already in memory. Trainer-chosen slots keep their
+   * choice with the new numbers; drafted and empty slots are re-drafted.
+   */
+  const handleRecalculateAttendance = (customStartDate?: string) => {
+    const activeStartDate = customStartDate || "";
+    if (!history) {
       setReport((prev) => ({
         ...prev,
-        attendance: {
-          ...prev.attendance,
-          customStartDate: activeStartDate || "",
-          score: stats.score,
-          totalSessions: stats.totalSessions,
-          avgDuration: stats.avgDuration,
-          punctuality: stats.punctuality,
-          firstSessionDate: stats.firstSessionDate,
-          totalVolume: stats.totalVolume,
-          totalReps: stats.totalReps,
-          totalGoodReps: stats.totalGoodReps,
-          avgRestDays: stats.avgRestDays,
-        },
-        highlights: newHighlights,
+        attendance: { ...prev.attendance, customStartDate: activeStartDate },
       }));
-    } catch (e) {
-      console.error(e);
+      return;
     }
+    const stats = attendanceStatsFrom(history, activeStartDate);
+    const ctx = slotContextFor(activeStartDate);
+    setReport((prev) => ({
+      ...prev,
+      attendance: {
+        ...prev.attendance,
+        customStartDate: activeStartDate,
+        score: stats.score,
+        totalSessions: stats.totalSessions,
+        avgDuration: stats.avgDuration,
+        punctuality: stats.punctuality,
+        firstSessionDate: stats.firstSessionDate,
+        totalVolume: stats.totalVolume,
+        totalReps: stats.totalReps,
+        totalGoodReps: stats.totalGoodReps,
+        avgRestDays: stats.avgRestDays,
+      },
+      highlights: refreshSlots(prev.highlights, ctx),
+    }));
   };
-
-  // Load history for selector
-  useEffect(() => {
-    async function loadAllHistory() {
-      if (!client.id || mode !== "editing") return;
-      try {
-        const historyMap: Record<string, any> = {};
-        const activeStartDate = report.attendance.customStartDate;
-
-        await Promise.all(
-          machines.map(async (m) => {
-            if (!m.id) return;
-            const stats = await calculateDynamicHighlightMetrics(
-              client.id!,
-              m.id,
-              activeStartDate,
-            );
-            if (stats) {
-              historyMap[m.id] = stats;
-            }
-          }),
-        );
-
-        setMachineHistory(historyMap);
-      } catch (err) {
-        console.error("History selector load failed:", err);
-      }
-    }
-    loadAllHistory();
-  }, [client.id, machines, mode, report.attendance.customStartDate]);
 
   const handleSave = async (status: "Draft" | "Finalized" = "Finalized") => {
     setSaving(true);
@@ -647,8 +755,18 @@ export function ClientProgressReportView({
           }
         : undefined;
 
+      // The focus history as it stands today, thin (focus-history.ts). If the
+      // focuses couldn't be read, keep whatever the report already had —
+      // unknown is not "none".
+      const focusSnapshot =
+        focusStatus === "ready"
+          ? focusSnapshotFrom(focuses, reportAsOf)
+          : report.focusSnapshot;
+
       const sanitizedReport = removeUndefined({
         ...report,
+        highlights: padSlots(report.highlights),
+        focusSnapshot,
         subjective,
         previousReportId: previousReport?.reportId ?? report.previousReportId ?? null,
         sessionNumber: report.sessionNumber || client.sessionCount || 0,
@@ -675,6 +793,7 @@ export function ClientProgressReportView({
         reportId = docRef.id;
         setReport((prev) => ({ ...prev, id: docRef.id }));
       }
+      setReport((prev) => ({ ...prev, focusSnapshot }));
 
       if (status === "Finalized") {
         // Denormalise the Red flags onto the client so the hub schedule can
@@ -706,39 +825,17 @@ export function ClientProgressReportView({
     }
   };
 
-  const handleHighlightConfigChange = async (
-    slotIdx: number,
-    field: "machineId" | "metricType" | "customText",
-    value: string,
-  ) => {
-    const newHighlights = [...report.highlights];
-    const h = { ...newHighlights[slotIdx], [field]: value };
+  /** Replace one accolade slot. A new array of new objects — never in place. */
+  const setSlot = (slotIdx: number, slot: HighlightSlot) =>
+    setReport((prev) => {
+      const next = padSlots(prev.highlights);
+      next[slotIdx] = { ...slot };
+      return { ...prev, highlights: next };
+    });
 
-    if (field === "machineId") {
-      const machine = machines.find((m) => m.id === value);
-      h.label = machine?.name || "";
-      if (!h.metricType) h.metricType = "strength_gain";
-    }
-
-    if (h.machineId && h.machineId !== "none" && h.metricType) {
-      const stats = await calculateDynamicHighlightMetrics(
-        client.id!,
-        h.machineId,
-        report.attendance.customStartDate,
-      );
-      if (stats) {
-        h.startValue = `${stats.startWeight} lbs`;
-        h.currentValue = `${stats.currentWeight} lbs`;
-        h.percentageIncrease = stats.percentageIncrease;
-        h.totalVolume = stats.totalVolume;
-        h.perfectSets = stats.perfectSets;
-        h.timeUnderTension = stats.timeUnderTension;
-      }
-    }
-
-    newHighlights[slotIdx] = h;
-    setReport({ ...report, highlights: newHighlights });
-  };
+  /** Fill every open slot from the data, around the trainer's own choices. */
+  const fillOpenSlots = () =>
+    setReport((prev) => ({ ...prev, highlights: refreshSlots(prev.highlights, slotCtx) }));
 
   if (mode === "selection") {
     return (
@@ -1016,10 +1113,9 @@ export function ClientProgressReportView({
                       <CheckCircle2 className="w-3 h-3 text-[#F06C22]/60" />
                       Joined:{" "}
                       <span className="text-white/60">
-                        {shortDate(client.firstAppointmentDate) ||
-                          shortDate(report.attendance.firstSessionDate) ||
-                          shortDate(client.mindbodyCreatedAt) ||
-                          "—"}
+                        {shortDate(
+                          reportJoinedDate(client, report.attendance.firstSessionDate),
+                        ) || "—"}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 opacity-80">
@@ -1069,7 +1165,7 @@ export function ClientProgressReportView({
                       <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
                       <Award className="w-8 h-8 mb-2 opacity-50 relative z-10" />
                       <p className="text-5xl font-bold italic tracking-tighter leading-none relative z-10">
-                        {report.attendance.totalSessions}
+                        {realStat(report.attendance.totalSessions)?.toLocaleString() ?? "—"}
                       </p>
                       <p className="text-[11px] font-bold uppercase tracking-widest opacity-90 mt-2 relative z-10">
                         Total Sessions
@@ -1109,12 +1205,11 @@ export function ClientProgressReportView({
                       <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
                         Total Volume Lifted
                       </h4>
-                      <p className="text-2xl font-bold text-[#0A2E46] italic">
-                        {(report.attendance.totalVolume || 0).toLocaleString()}
-                        <span className="text-[11px] text-[#68717A] ml-1 not-italic">
-                          lbs
-                        </span>
-                      </p>
+                      <StatValue
+                        value={realStat(report.attendance.totalVolume)}
+                        unit="lbs"
+                        className="text-2xl font-bold text-[#0A2E46] italic"
+                      />
                     </div>
                   )}
                   {report.attendance.toggles?.totalReps !== false && (
@@ -1122,9 +1217,10 @@ export function ClientProgressReportView({
                       <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
                         Total Reps
                       </h4>
-                      <p className="text-2xl font-bold text-[#0A2E46] italic">
-                        {(report.attendance.totalReps || 0).toLocaleString()}
-                      </p>
+                      <StatValue
+                        value={realStat(report.attendance.totalReps)}
+                        className="text-2xl font-bold text-[#0A2E46] italic"
+                      />
                     </div>
                   )}
                   {report.attendance.toggles?.totalGoodReps !== false && (
@@ -1132,11 +1228,11 @@ export function ClientProgressReportView({
                       <h4 className="text-[11px] font-bold uppercase tracking-widest text-emerald-700 mb-1">
                         Green Quality Reps
                       </h4>
-                      <p className="text-2xl font-bold text-emerald-600 italic">
-                        {(
-                          report.attendance.totalGoodReps || 0
-                        ).toLocaleString()}
-                      </p>
+                      <StatValue
+                        value={realStat(report.attendance.totalGoodReps)}
+                        className="text-2xl font-bold text-emerald-600 italic"
+                        why="No top-quality sets rated in this window."
+                      />
                     </div>
                   )}
                   {report.attendance.toggles?.avgRestDays !== false && (
@@ -1144,12 +1240,12 @@ export function ClientProgressReportView({
                       <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
                         Average Rest
                       </h4>
-                      <p className="text-2xl font-bold text-[#0A2E46] italic">
-                        {report.attendance.avgRestDays || 0}
-                        <span className="text-[11px] text-[#68717A] ml-1 not-italic">
-                          days
-                        </span>
-                      </p>
+                      <StatValue
+                        value={realStat(report.attendance.avgRestDays)}
+                        unit="days"
+                        className="text-2xl font-bold text-[#0A2E46] italic"
+                        why={`Needs ${AVG_REST_MIN_GAPS + 1} sessions in the window.`}
+                      />
                     </div>
                   )}
                   {report.attendance.toggles?.avgDuration !== false && (
@@ -1157,12 +1253,12 @@ export function ClientProgressReportView({
                       <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
                         Avg Session Length
                       </h4>
-                      <p className="text-2xl font-bold text-[#0A2E46] italic">
-                        {report.attendance.avgDuration || 0}
-                        <span className="text-[11px] text-[#68717A] ml-1 not-italic">
-                          mins
-                        </span>
-                      </p>
+                      <StatValue
+                        value={realStat(report.attendance.avgDuration)}
+                        unit="mins"
+                        className="text-2xl font-bold text-[#0A2E46] italic"
+                        why={`Needs ${AVG_DURATION_MIN_SESSIONS} sessions with a recorded start and end.`}
+                      />
                     </div>
                   )}
                 </div>
@@ -1170,91 +1266,8 @@ export function ClientProgressReportView({
             )}
             </header>
 
-            {/* 2. THE TROPHIES: HIGHLIGHTED MOVEMENTS */}
-            {!report.isCheckInOnly && (
-            <section className="space-y-3 break-inside-avoid">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-                  <TrendingUp className="w-3.5 h-3.5 text-[#F06C22]" />
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#FAF9F6] print:text-[#0A2E46]">
-                    Elite Strength Progress
-                  </h3>
-                </div>
-                <div className="h-px bg-white/10 flex-1"></div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {report.highlights.map((h, i) => {
-                  let heroText = "";
-                  let heroColor = "text-white";
-                  let contextText = "";
-
-                  switch (h.metricType) {
-                    case "strength_gain":
-                      heroText = `+${h.percentageIncrease || 0}%`;
-                      heroColor = "text-[#F06C22]";
-                      contextText = `Increase from ${h.startValue} to ${h.currentValue}`;
-                      break;
-                    case "total_volume":
-                      heroText = `${(h.totalVolume || 0).toLocaleString()} lbs Volume`;
-                      heroColor = "text-white";
-                      contextText = "Total weight moved this period";
-                      break;
-                    case "consistent_quality":
-                      heroText = `${h.perfectSets || 0} Perfect Sets`;
-                      heroColor = "text-emerald-400";
-                      contextText = "Flawless Form";
-                      break;
-                    case "time_under_tension":
-                      heroText = `${h.timeUnderTension || 0} Secs Under Load`;
-                      heroColor = "text-white";
-                      contextText = "Total time spent under tension";
-                      break;
-                    case "custom":
-                      heroText = h.customText || "Outstanding Progress";
-                      heroColor = "text-[#F06C22]";
-                      contextText = "Trainer Highlight";
-                      break;
-                    default:
-                      heroText = `+${h.percentageIncrease || 0}%`;
-                      heroColor = "text-[#F06C22]";
-                      contextText = `Increase from ${h.startValue} to ${h.currentValue}`;
-                  }
-
-                  return (
-                    <div
-                      key={i}
-                      className="bg-slate-800/50 p-6 rounded-[25px] shadow-xl flex flex-col justify-between min-h-40 border border-white/5 relative group overflow-hidden"
-                    >
-                      <div className="absolute top-0 right-0 p-3 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity">
-                        <Award className="w-24 h-24 text-white" />
-                      </div>
-
-                      <div className="relative z-10 space-y-4">
-                        <div className="text-xs text-slate-400 font-bold tracking-wider uppercase mb-2">
-                          {h.label || "Movement Slot"}
-                        </div>
-
-                        <p
-                          className={cn(
-                            "text-3xl font-black italic tracking-tighter leading-tight drop-shadow-sm",
-                            heroColor,
-                          )}
-                        >
-                          {heroText}
-                        </p>
-                      </div>
-
-                      <div className="mt-4 pt-3 border-t border-white/10 w-full relative z-10">
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                          {contextText}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-            )}
+            {/* 2. ACCOLADES — only slots with real data are drawn (accolades.ts) */}
+            {!report.isCheckInOnly && <AccoladeCards slots={report.highlights} />}
 
             {/* 2b. MACHINE PROGRESSION */}
             {report.machineProgression && (
@@ -1339,6 +1352,9 @@ export function ClientProgressReportView({
                   );
                 })}
               </div>
+
+              {/* The focus history as saved with the report — no live read. */}
+              <FocusSnapshotCard entries={report.focusSnapshot} />
 
               {(report.performanceMatrix.includedNotes || []).length > 0 && (
                 <div className="bg-[#FAF9F6] p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-inner mt-4">
@@ -1621,6 +1637,10 @@ export function ClientProgressReportView({
   // Selection view handled at start
 
   // Editing view (Standard form-based UI but matching themes)
+  const editorSlots = padSlots(report.highlights);
+  /** Keys of the slots that print — a suggestion already on the report isn't offered again. */
+  const filledSlotKeys = editorSlots.map((s) => (reportCards([s]).length > 0 ? slotKey(s) : ""));
+  const openSlotCount = editorSlots.filter((s) => isOpenSlot(s) && !s.suggested).length;
   return (
     <div className="min-h-screen bg-[#0A2E46] p-4 sm:p-8 lg:p-12 overflow-y-auto">
       <div className="max-w-4xl mx-auto space-y-8 pb-32">
@@ -1667,7 +1687,7 @@ export function ClientProgressReportView({
           onChange={goToStep}
           done={{
             celebrate: report.attendance.totalSessions > 0 || !!report.attendance.narrative,
-            highlights: report.highlights.some((h) => h.machineId && h.machineId !== "none"),
+            highlights: reportCards(report.highlights).length > 0,
             machines: (report.machineProgression?.includedMachineIds.length ?? 0) > 0,
             fourps: (report.performanceMatrix.includedNotes?.length ?? 0) > 0 ||
               (["posture", "pace", "path", "purpose"] as const).some(
@@ -1686,7 +1706,7 @@ export function ClientProgressReportView({
             <div className="flex items-center gap-3 mb-8">
               <Calendar className="w-6 h-6 text-[#F06C22]" />
               <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46]">
-                Attendance & Dedication
+                {REPORT_STEPS[STEP_INDEX.celebrate].title}
               </h2>
             </div>
 
@@ -1709,9 +1729,8 @@ export function ClientProgressReportView({
                           className="text-[11px] font-bold text-primary uppercase hover:underline"
                         >
                           Use First Session:{" "}
-                          {new Date(
-                            report.attendance.firstSessionDate,
-                          ).toLocaleDateString()}
+                          {shortDate(report.attendance.firstSessionDate) ||
+                            report.attendance.firstSessionDate}
                         </button>
                       )}
                     </div>
@@ -1759,44 +1778,44 @@ export function ClientProgressReportView({
                       {
                         key: "totalSessions",
                         label: "Total Sessions Attended (Auto-Top)",
-                        value: report.attendance.totalSessions,
+                        value: realStat(report.attendance.totalSessions),
                         unit: "",
+                        why: "No completed sessions in this window.",
                       },
                       {
                         key: "totalVolume",
                         label: "Total Volume Lifted",
-                        value: (
-                          report.attendance.totalVolume || 0
-                        ).toLocaleString(),
+                        value: realStat(report.attendance.totalVolume),
                         unit: "lbs",
+                        why: "No performed, weighted sets in this window.",
                       },
                       {
                         key: "totalReps",
                         label: "Total Reps",
-                        value: (
-                          report.attendance.totalReps || 0
-                        ).toLocaleString(),
+                        value: realStat(report.attendance.totalReps),
                         unit: "",
+                        why: "No performed, weighted sets in this window.",
                       },
                       {
                         key: "totalGoodReps",
                         label: "Green Quality Reps",
-                        value: (
-                          report.attendance.totalGoodReps || 0
-                        ).toLocaleString(),
+                        value: realStat(report.attendance.totalGoodReps),
                         unit: "reps",
+                        why: "No top-quality sets rated in this window.",
                       },
                       {
                         key: "avgRestDays",
                         label: "Average Rest",
-                        value: report.attendance.avgRestDays || 0,
+                        value: realStat(report.attendance.avgRestDays),
                         unit: "days",
+                        why: `Needs ${AVG_REST_MIN_GAPS + 1} sessions in the window.`,
                       },
                       {
                         key: "avgDuration",
                         label: "Average Session Length",
-                        value: report.attendance.avgDuration || 0,
+                        value: realStat(report.attendance.avgDuration),
                         unit: "mins",
+                        why: `Needs ${AVG_DURATION_MIN_SESSIONS} sessions with a recorded start and end — imported history has none.`,
                       },
                     ].map((metric) => (
                       <div
@@ -1848,12 +1867,21 @@ export function ClientProgressReportView({
                             <p className="text-[11px] font-bold uppercase tracking-widest text-[#0A2E46]">
                               {metric.label}
                             </p>
-                            <p className="text-[12px] font-bold text-[#F06C22]">
-                              {metric.value}{" "}
-                              <span className="text-[11px] text-[#68717A] uppercase">
-                                {metric.unit}
-                              </span>
-                            </p>
+                            {metric.value !== null ? (
+                              <p className="text-[12px] font-bold text-[#F06C22]">
+                                {metric.value.toLocaleString()}{" "}
+                                <span className="text-[11px] text-[#68717A] uppercase">
+                                  {metric.unit}
+                                </span>
+                              </p>
+                            ) : (
+                              <p className="text-[12px] font-bold text-[#68717A]">
+                                — not enough data yet
+                                <span className="block text-[11px] font-medium normal-case">
+                                  {historyStatus === "loading" ? "Reading their sessions…" : metric.why}
+                                </span>
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1865,163 +1893,47 @@ export function ClientProgressReportView({
           </section>
           )}
 
-          {/* Section 2: Highlights */}
+          {/* Section 2: Accolades — three data-backed wins (accolades.ts) */}
           {activeStep === "highlights" && (
           <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-[#0A2E46]" />
-            <div className="flex items-center gap-3 mb-8">
-              <Award className="w-6 h-6 text-[#0A2E46]" />
-              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46]">
-                Highlighted Movements
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {report.highlights.map((h, i) => (
-                <div
-                  key={i}
-                  className="flex flex-col p-6 rounded-3xl bg-slate-800 text-white shadow-xl"
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-3">
+                <Award className="w-6 h-6 text-[#0A2E46]" />
+                <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46] dark:text-white">
+                  {REPORT_STEPS[STEP_INDEX.highlights].title}
+                </h2>
+              </div>
+              {historyStatus === "ready" && openSlotCount > 0 && candidates.length > 0 && (
+                <button
+                  type="button"
+                  onClick={fillOpenSlots}
+                  className="h-11 rounded-xl border-2 border-[#0A2E46]/20 px-4 text-[11px] font-black uppercase tracking-wider text-[#0A2E46] hover:border-[#0A2E46] dark:border-white/20 dark:text-white"
                 >
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4">
-                    Slot #{i + 1}
-                  </p>
-
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-[11px] uppercase tracking-widest text-slate-400">
-                        Machine Selector
-                      </Label>
-                      <Select
-                        value={h.machineId || "none"}
-                        onValueChange={(v) =>
-                          handleHighlightConfigChange(i, "machineId", v)
-                        }
-                      >
-                        <SelectTrigger className="w-full bg-slate-900 border-slate-700 text-white">
-                          <SelectValue placeholder="Select Machine" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-slate-700 text-white max-h-72 overflow-y-auto min-w-75">
-                          <SelectItem value="none">None</SelectItem>
-                          {machines.map((m) => {
-                            const stats = machineHistory[m.id!];
-                            return (
-                              <SelectItem key={m.id!} value={m.id!}>
-                                <div className="flex justify-between items-center w-full gap-4">
-                                  <span className="font-medium">{m.name}</span>
-                                  {stats && (
-                                    <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                                      <span className="text-emerald-400 shrink-0">
-                                        +{stats.percentageIncrease || 0}%
-                                      </span>
-                                      <span className="shrink-0">
-                                        {Math.round(
-                                          (stats.totalVolume || 0) / 1000,
-                                        )}
-                                        k Vol
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-[11px] uppercase tracking-widest text-slate-400">
-                        Metric Type
-                      </Label>
-                      <Select
-                        value={h.metricType || "strength_gain"}
-                        onValueChange={(v) =>
-                          handleHighlightConfigChange(i, "metricType", v)
-                        }
-                      >
-                        <SelectTrigger className="w-full bg-slate-900 border-slate-700 text-white">
-                          <SelectValue placeholder="Select Metric" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-slate-700 text-white">
-                          <SelectItem value="strength_gain">
-                            Strength Gain
-                          </SelectItem>
-                          <SelectItem value="total_volume">
-                            Total Volume Moved
-                          </SelectItem>
-                          <SelectItem value="consistent_quality">
-                            Consistent Quality
-                          </SelectItem>
-                          <SelectItem value="time_under_tension">
-                            Time Under Tension
-                          </SelectItem>
-                          <SelectItem value="custom">
-                            Custom Highlight
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {h.metricType === "custom" && (
-                      <div className="space-y-2">
-                        <Label className="text-[11px] uppercase tracking-widest text-[#F06C22]">
-                          Custom Metric
-                        </Label>
-                        <Input
-                          value={h.customText || ""}
-                          onChange={(e) => {
-                            const newHighlights = [...report.highlights];
-                            newHighlights[i].customText = e.target.value;
-                            setReport({ ...report, highlights: newHighlights });
-                          }}
-                          placeholder="e.g. Mastered eccentric breathing!"
-                          className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-600 focus:border-[#F06C22]"
-                        />
-                      </div>
-                    )}
-
-                    {h.machineId && h.machineId !== "none" && (
-                      <div className="mt-4 p-4 bg-slate-900 rounded-xl border border-slate-700 shadow-inner">
-                        <Label className="text-[11px] uppercase tracking-widest text-slate-400 mb-2 block">
-                          Available Data To Highlight
-                        </Label>
-                        <ul className="space-y-2 text-[11px] font-medium text-slate-300">
-                          <li className="flex justify-between items-center bg-slate-800/50 p-2 rounded">
-                            <span className="text-slate-400 uppercase tracking-widest text-[11px]">
-                              Strength Gain:
-                            </span>
-                            <span className="font-bold text-[#F06C22]">
-                              +{h.percentageIncrease || 0}%
-                            </span>
-                          </li>
-                          <li className="flex justify-between items-center bg-slate-800/50 p-2 rounded">
-                            <span className="text-slate-400 uppercase tracking-widest text-[11px]">
-                              Total Volume:
-                            </span>
-                            <span className="font-bold text-white">
-                              {(h.totalVolume || 0).toLocaleString()} lbs
-                            </span>
-                          </li>
-                          <li className="flex justify-between items-center bg-slate-800/50 p-2 rounded">
-                            <span className="text-slate-400 uppercase tracking-widest text-[11px]">
-                              Flawless Sets:
-                            </span>
-                            <span className="font-bold text-emerald-400">
-                              {h.perfectSets || 0}
-                            </span>
-                          </li>
-                          <li className="flex justify-between items-center bg-slate-800/50 p-2 rounded">
-                            <span className="text-slate-400 uppercase tracking-widest text-[11px]">
-                              Time Under Load:
-                            </span>
-                            <span className="font-bold text-white">
-                              {h.timeUnderTension || 0} s
-                            </span>
-                          </li>
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  Fill empty slots from the data
+                </button>
+              )}
+            </div>
+            <p className="text-sm text-[#68717A] mb-6">
+              {historyStatus === "error"
+                ? "Couldn't read their sessions just now, so nothing could be suggested. You can still write a custom highlight, or come back to this step."
+                : candidates.length === 0 && historyStatus === "ready"
+                  ? "The data doesn't back an accolade in this window yet — widen the window in step 1, or write a custom highlight."
+                  : `The system suggests the strongest wins it can prove. ${candidates.length > 0 ? `${candidates.length} in this window. ` : ""}Swap any of them; an empty slot is never printed.`}
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {editorSlots.map((h, i) => (
+                <AccoladeSlotEditor
+                  key={i}
+                  index={i}
+                  slot={h}
+                  machines={machines}
+                  ctx={slotCtx}
+                  candidates={candidates}
+                  takenKeys={new Set(filledSlotKeys.filter((k, j) => j !== i && k))}
+                  loading={historyStatus === "loading" || historyStatus === "idle"}
+                  onChange={(next) => setSlot(i, next)}
+                />
               ))}
             </div>
           </section>
@@ -2053,9 +1965,15 @@ export function ClientProgressReportView({
             <div className="flex items-center gap-3 mb-8">
               <LayoutGrid className="w-6 h-6 text-[#68717A]" />
               <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46]">
-                Clinical Performance Matrix
+                {REPORT_STEPS[STEP_INDEX.fourps].title}
               </h2>
             </div>
+
+            <FocusHistoryPanel
+              focuses={focuses}
+              status={focusStatus === "idle" ? "loading" : focusStatus}
+              asOf={reportAsOf}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {(["posture", "pace", "path", "purpose"] as const).map((p) => {
@@ -2292,7 +2210,7 @@ export function ClientProgressReportView({
             <div className="flex items-center gap-3 mb-8">
               <Flag className="w-6 h-6 text-[#F06C22]" />
               <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46] dark:text-white">
-                Goals · The Next 90 Days
+                {REPORT_STEPS[STEP_INDEX.goals].title} · The Next 90 Days
               </h2>
             </div>
             <div className="mb-10">

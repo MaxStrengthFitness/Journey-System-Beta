@@ -1303,7 +1303,8 @@ export interface ProgressReport {
   highlights: {
     machineId?: string;
     label: string;
-    metricType?: HighlightMetricType;
+    /** "consistency" (Sep 2026) is client-wide: sessions against the twice-a-week target. */
+    metricType?: HighlightMetricType | "consistency";
     startValue?: string;
     currentValue?: string;
     percentageIncrease?: number;
@@ -1312,6 +1313,18 @@ export interface ProgressReport {
     timeUnderTension?: number;
     customText?: string;
     narrative?: string;
+    /**
+     * Accolades round (Sep 2026). The card's big line and the sentence under
+     * it, captured when the accolade is chosen so the printed copy never
+     * changes after the fact. A slot without a headline is empty and is
+     * never drawn (features/progress-report/accolades.ts).
+     */
+    headline?: string;
+    detail?: string;
+    /** Performed sessions behind the number — the accolade's sample. */
+    sessionCount?: number;
+    /** Drafted from the data and not yet touched by the trainer. */
+    suggested?: boolean;
   }[];
 
   // Step 3: The Four P's
@@ -1424,6 +1437,20 @@ export interface ProgressReport {
 
   /** Step 6 — goal continuity: how the last goal went, and the next 90 days. */
   goals?: ReportGoals;
+
+  /**
+   * The client's coaching focuses as they stood when the report was saved
+   * (accolades round, Sep 2026), so the printed 4 P's section needs no live
+   * read. Deliberately thin — progressReports are readable by any signed-in
+   * user, so no intent text, no names, nothing personal.
+   */
+  focusSnapshot?: {
+    category: "Posture" | "Pace" | "Path" | "Purpose";
+    status: "active" | "passed" | "retired";
+    /** Whole weeks the focus ran (active: up to the report date); null when its dates are missing. */
+    weeks: number | null;
+    trainerInitials: string;
+  }[];
 
   trainerNotes?: string;
 
