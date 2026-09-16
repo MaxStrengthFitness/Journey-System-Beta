@@ -1,0 +1,200 @@
+/* ==========================================================================
+   RATING — the Dial and Loudness
+   --------------------------------------------------------------------------
+   Reporting round, Sep 2026. Two controls, one look, used on every screen
+   that asks a trainer to rate or to write: the briefing, the note sheet, the
+   post-session screen, the Pulse and the report card.
+
+   Colour comes from equipment.tokens.css; no hex below this line. The
+   centre of a Dial sits on the brand blue (--eq-live) — "you can act on
+   this" everywhere else in the app, and here "this is normal". The left
+   side borrows the urgency ladder the FORD screens use (warn, then alert);
+   the right side earns green (--eq-ok). Hero orange stays with Start
+   Session and crimson with rep quality.
+
+   ERGONOMICS ARE THE DESIGN
+   ------------------------------------------------------------------------
+   The iPad is held in one hand and often not looked at. So:
+     • a segment is found by POSITION: five EQUAL fractions of the full
+       width of the card, always, never sized to its word;
+     • 48px tall, the app's minimum plus a margin for a thumb in motion;
+     • the bar is always the LAST thing in its card, at the bottom edge,
+       where a thumb rests; words go above it, never below it;
+     • a 3px gap, not a hairline, so two segments can't be hit at once;
+     • the centre segment carries a small tick even when nothing is chosen,
+       so the thumb can feel out the middle by eye in a glance.
+   Text alignment on buttons lives here (a <button> centres its own text —
+   FORD round). Touch targets never go below 40px.
+   ========================================================================== */
+
+@import "../equipment/equipment.tokens.css";
+
+/* ------------------------------------------------------------------ */
+/* SHARED                                                              */
+/* ------------------------------------------------------------------ */
+
+.rt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.rt__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.rt__ask {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--eq-ink);
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.rt__ask small {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--eq-ink-muted);
+  margin-top: 1px;
+}
+
+/* The word for the chosen position. Coloured by tone, never by identity. */
+.rt__word {
+  flex: none;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--eq-ink-faint);
+  white-space: nowrap;
+}
+.rt__word[data-tone="alert"] { color: var(--eq-alert); }
+.rt__word[data-tone="warn"] { color: var(--eq-warn); }
+.rt__word[data-tone="live"] { color: var(--eq-live-text); }
+.rt__word[data-tone="ok"],
+.rt__word[data-tone="ok-strong"] { color: var(--eq-ok); }
+
+/* The bar. Equal fractions, full width, 48px. */
+.rt__bar {
+  display: flex;
+  gap: 3px;
+  width: 100%;
+}
+
+.rt__seg {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 48px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border: 1px solid var(--eq-border);
+  border-radius: 6px;
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-2);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.rt__seg:first-child { border-radius: 12px 6px 6px 12px; }
+.rt__seg:last-child { border-radius: 6px 12px 12px 6px; }
+.rt__seg:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
+.rt__seg:disabled { opacity: 0.55; cursor: default; }
+
+/* The centre tick: a resting mark, present whether or not anything is chosen. */
+.rt__seg--centre::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: 14px;
+  height: 3px;
+  margin-left: -7px;
+  border-radius: 2px;
+  background: var(--eq-border-strong);
+  opacity: 0.9;
+}
+.rt__seg[aria-checked="true"].rt__seg--centre::after { background: currentColor; opacity: 0.7; }
+
+/* Chosen. One tone per position. */
+.rt__seg[aria-checked="true"][data-tone="live"] {
+  background: var(--eq-live);
+  border-color: var(--eq-live);
+  color: var(--eq-live-on);
+}
+.rt__seg[aria-checked="true"][data-tone="ok"] {
+  background: var(--eq-ok-fill);
+  border-color: var(--eq-ok);
+  color: var(--eq-ok);
+}
+.rt__seg[aria-checked="true"][data-tone="ok-strong"] {
+  background: var(--eq-ok);
+  border-color: var(--eq-ok);
+  color: #ffffff;
+}
+.rt__seg[aria-checked="true"][data-tone="warn"] {
+  background: var(--eq-warn-fill);
+  border-color: var(--eq-warn);
+  color: var(--eq-warn);
+}
+.rt__seg[aria-checked="true"][data-tone="alert"] {
+  background: var(--eq-alert);
+  border-color: var(--eq-alert);
+  color: #ffffff;
+}
+
+/* Words under the bar. Relative mode shows the two ends and the centre,
+   faintly, as a legend the thumb learns once; absolute mode shows all
+   five because the Pulse's words ARE the answer and a client may be
+   reading them. Never wider than its segment. */
+.rt__legend {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--eq-ink-faint);
+  text-align: center;
+}
+.rt__legend > span { min-width: 0; padding: 0 2px; }
+.rt__legend > span:first-child { text-align: left; }
+.rt__legend > span:last-child { text-align: right; }
+.rt__legend[data-all="true"] { color: var(--eq-ink-muted); }
+.rt__legend[data-all="true"] > span { text-align: center; }
+.rt__legend > span[data-on="true"] { color: var(--eq-ink); }
+
+/* ------------------------------------------------------------------ */
+/* LOUDNESS — three equal segments, words inside                       */
+/* ------------------------------------------------------------------ */
+
+.rt--loud .rt__bar { gap: 3px; }
+.rt--loud .rt__seg { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+.rt--loud .rt__seg[aria-checked="true"][data-tone="quiet"] {
+  background: var(--eq-live-fill);
+  border-color: var(--eq-live);
+  color: var(--eq-live-text);
+}
+
+.rt__hint {
+  font-size: 11px;
+  color: var(--eq-ink-muted);
+  line-height: 1.3;
+}
+
+/* Compact variant for the note sheet's narrow column. */
+.rt--compact .rt__seg { min-height: 44px; }
+.rt--compact .rt__ask { font-size: 12px; }

@@ -46,8 +46,11 @@ export type LifeCategory =
   | "Other";
 
 /**
- * How loudly the entry should shout. Deliberately separate from `kind` so the
- * two never get confused: a critical Pace note is still a Pace note.
+ * How loudly the entry should shout — LOUDNESS, since the reporting round
+ * (Sep 2026): Note · Heads up · Critical, one component (features/rating)
+ * everywhere a note is written. The stored values are unchanged.
+ * Deliberately separate from `kind` so the two never get confused: a
+ * critical Pace note is still a Pace note.
  * `critical` entries are pinned to the top of the Journal AND rendered in the
  * pre-session briefing.
  */
@@ -387,25 +390,25 @@ export const IMPORTANCE_META: Record<
   { label: string; short: string; chip: string; ring: string; hint: string }
 > = {
   standard: {
-    label: "Standard",
-    short: "Standard",
+    label: "Note",
+    short: "Note",
     chip: "bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/20",
     ring: "",
-    hint: "Good to know",
+    hint: "Filed in the record, found by its category",
   },
   elevated: {
     label: "Heads up",
     short: "Heads up",
     chip: "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30",
     ring: "ring-1 ring-amber-500/30",
-    hint: "Surfaces higher in the stream",
+    hint: "Top of the record, and on the briefing while it still matters",
   },
   critical: {
     label: "Critical",
     short: "Critical",
     chip: "bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/40",
     ring: "ring-1 ring-rose-500/45",
-    hint: "Also shown in the pre-session briefing",
+    hint: "Pinned, on the briefing, and marks the Hub card",
   },
 };
 

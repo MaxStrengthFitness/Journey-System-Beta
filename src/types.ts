@@ -51,13 +51,50 @@ export interface ClinicalTagDefinition {
 export type SleepQuality = "poor" | "average" | "optimal";
 export type BodyRegionState = "stiff" | "prime";
 
+/**
+ * One position on the Dial (features/rating/dial.ts): -2 … +2, where 0 is
+ * the centre — this client's usual, or the right dose. Left is always worse.
+ * Absent means "not asked", never "as usual".
+ */
+export type DialValue = -2 | -1 | 0 | 1 | 2;
+
 export interface BodyStateTag {
   /** Free string at the type boundary so legacy data validates.
    *  New UI enforces the BODY_REGIONS enum at the picker. */
   region: string;
+  /**
+   * The two-state read every older reader understands. Since the reporting
+   * round (Sep 2026) it is DERIVED from `dial` on write (below the centre →
+   * stiff, otherwise prime) and kept so the clinical review's history reads.
+   */
   state: BodyRegionState;
   /** Reserved for future intensity grading. */
   intensity?: 1 | 2 | 3;
+  /**
+   * The Dial (reporting round): Pain · Stiff · As usual · Better ·
+   * Recovered. Absent on sessions from before the round — read those
+   * through `dialFromRegionState(state)`.
+   */
+  dial?: DialValue;
+  /**
+   * "Matters until" — a studio day (yyyy-mm-dd). While today is on or
+   * before it, the briefing keeps showing this region from the last
+   * session it was flagged in ("keep the leg press out until Thursday").
+   * Absent = today only.
+   */
+  until?: string;
+}
+
+/**
+ * How the client arrived, on the Dial (reporting round, Sep 2026). Only the
+ * dials the trainer tapped are present; an explicit centre tap IS stored
+ * (confirmed "as usual"), an untouched dial is absent ("not asked").
+ */
+export interface SessionReadiness {
+  sleep?: DialValue;
+  energy?: DialValue;
+  recovery?: DialValue;
+  stress?: DialValue;
 }
 
 export interface PreSessionCheckIn {
@@ -85,8 +122,21 @@ export interface PreSessionCheckIn {
   energyLevel?: "low" | "normal" | "high";
   mood?: "low" | "neutral" | "good";
   note?: string;
+
+  /**
+   * THE DIAL (reporting round, Sep 2026). Sleep, energy, recovery and
+   * stress against this client's usual. Written by the briefing from this
+   * round on; `sleepQuality`, `stressLevel`, `energyLevel` and `mood` are
+   * no longer written and are read as legacy through
+   * features/rating/dial.ts (`dialFromSleepQuality` and friends).
+   */
+  readiness?: SessionReadiness;
 }
 
+/**
+ * @deprecated The post-session feel before the reporting round. Read only,
+ * through `dialFromClientFeel`; nothing writes it. See `WorkoutSession.dose`.
+ */
 export type ClientFeel = "Wiped Out" | "Good" | "Energized";
 
 export interface ClinicalIncident {
@@ -1055,7 +1105,14 @@ export interface WorkoutSession {
   /** Activity checkpoint updated during logs to detect abandonment (Lazy Cleanup) */
   lastHeartbeatAt?: any;
   notes?: string; // Original notes field (deprecated in favor of sub-collection)
+  /** @deprecated Read through `dialFromClientFeel`; the reporting round writes `dose`. */
   clientFeel?: ClientFeel | string;
+  /**
+   * How the session landed, judged by the trainer on the Dial (reporting
+   * round, Sep 2026): Wiped out · Drained · Just right · Had more · Barely
+   * worked. Goldilocks — the centre is the right dose. Absent = not judged.
+   */
+  dose?: DialValue;
   preSessionCheckIn?: PreSessionCheckIn;
   postFeel?: {
     physical: 1 | 2 | 3 | 4 | 5;
