@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commonFlags, flagsByCategory, searchFlags, selectedFlags, COMMON_CATEGORY } from "./flag-search";
+import { commonFlags, conditionDetail, flagsByCategory, searchFlags, selectedFlags, COMMON_CATEGORY, TONE_BADGE, TONE_ORDER } from "./flag-search";
 import { CLINICAL_FLAGS_MATRIX } from "../../data/clinical-matrix";
 
 describe("the matrix", () => {
@@ -35,5 +35,33 @@ describe("flagsByCategory / selectedFlags", () => {
     const s = selectedFlags(["gen-knee", "cv-hypertension", "legacy-id"]);
     expect(s[0].id).toBe("cv-hypertension");
     expect(s.map((f) => f.id)).toContain("legacy-id");
+  });
+});
+
+describe("the browse list (Sep 16 redesign)", () => {
+  it("lists every group most serious first", () => {
+    for (const g of flagsByCategory()) {
+      const ranks = g.flags.map((f) => TONE_ORDER[f.tone]);
+      expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+    }
+    const cardio = flagsByCategory().find((g) => g.category.startsWith("Cardiovascular"))!;
+    expect(cardio.flags[0].tone).toBe("alert");
+  });
+  it("keeps every flag once", () => {
+    const n = flagsByCategory().reduce((sum, g) => sum + g.flags.length, 0);
+    expect(n).toBe(CLINICAL_FLAGS_MATRIX.length);
+  });
+  it("keeps what the name drops as a detail line", () => {
+    expect(conditionDetail("Spondylolisthesis (Grade 2 or higher)")).toBe("Grade 2 or higher");
+    expect(conditionDetail("Glaucoma")).toBeNull();
+    expect(conditionDetail("A (one) / B (two)")).toBe("one · two");
+    const spondy = searchFlags("spondylolisthesis")[0];
+    expect(spondy.name).toBe("Spondylolisthesis");
+    expect(spondy.detail).toBe("Grade 2 or higher");
+  });
+  it("badges only the exceptions, with short words", () => {
+    expect(TONE_BADGE.modify).toBeNull();
+    expect(TONE_BADGE.alert!.short.length).toBeLessThanOrEqual(5);
+    expect(TONE_BADGE.caution!.short.length).toBeLessThanOrEqual(5);
   });
 });

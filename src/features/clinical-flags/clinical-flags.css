@@ -40,50 +40,128 @@
 }
 .cfl-chip__x:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
 
-.cfl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+.cfl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 6px; }
+
+/*
+ * A flag row (Sep 16 2026 redesign). A GRID, not a flex row: the name column
+ * takes whatever the badge leaves, and the badge is a short word, so nothing
+ * can ever run over the name again — which is what "ABSOLUTE CONTRAINDICATION"
+ * did on an iPad. Alignment lives here, not in a Tailwind class: a <button>
+ * centres its own text (CLAUDE.md, FORD round).
+ */
 .cfl-toggle {
-  display: flex;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  column-gap: 10px;
   min-height: 44px;
-  padding: 6px 10px;
+  padding: 7px 10px 7px 9px;
   border-radius: 10px;
   border: 1px solid var(--eq-border);
+  border-left: 3px solid var(--eq-border);
   background: var(--eq-surface-2);
   color: var(--eq-ink-2);
   font-size: 12.5px;
   font-weight: 700;
+  line-height: 1.25;
   text-align: left;
+  justify-items: start;
+  position: relative;
   cursor: pointer;
 }
+.cfl-toggle[data-tone="alert"] { border-left-color: var(--eq-alert); }
+.cfl-toggle[data-tone="caution"] { border-left-color: var(--eq-warn); }
 .cfl-toggle:focus-visible, .cfl-chip__x:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
 .cfl-toggle__mark {
   display: grid;
   place-items: center;
-  flex: none;
   width: 22px;
   height: 22px;
   border-radius: 6px;
   border: 1px solid var(--eq-border-strong);
   background: var(--eq-surface);
 }
-.cfl-toggle__name { flex: 1; min-width: 0; }
+.cfl-toggle__text { display: flex; flex-direction: column; gap: 1px; min-width: 0; text-align: left; }
+.cfl-toggle__name { overflow-wrap: anywhere; }
+.cfl-toggle__detail {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--eq-ink-muted);
+  overflow-wrap: anywhere;
+}
 .cfl-toggle--on { border-color: var(--eq-live); background: var(--eq-live-fill); color: var(--eq-live-text); }
 .cfl-toggle--on .cfl-toggle__mark { border-color: var(--eq-live); background: var(--eq-live); color: var(--eq-live-on); }
 .cfl-toggle--on[data-tone="caution"] { border-color: var(--eq-warn); background: var(--eq-warn-fill); color: var(--eq-warn); }
 .cfl-toggle--on[data-tone="caution"] .cfl-toggle__mark { border-color: var(--eq-warn); background: var(--eq-warn); color: var(--eq-surface); }
 .cfl-toggle--on[data-tone="alert"] { border-color: var(--eq-alert); background: var(--eq-alert-fill); color: var(--eq-alert); }
 .cfl-toggle--on[data-tone="alert"] .cfl-toggle__mark { border-color: var(--eq-alert); background: var(--eq-alert); color: var(--eq-surface); }
-.cfl-sev {
-  flex: none;
+
+/* The severity word: short, boxed, never wraps. */
+.cfl-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 38px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
   font-size: 9.5px;
   font-weight: 900;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
   color: var(--eq-ink-muted);
 }
-.cfl-toggle[data-tone="alert"] .cfl-sev { color: var(--eq-alert); }
-.cfl-toggle[data-tone="caution"] .cfl-sev { color: var(--eq-warn); }
+.cfl-badge[data-tone="alert"] { color: var(--eq-alert); background: var(--eq-alert-fill); }
+.cfl-badge[data-tone="caution"] { color: var(--eq-warn); background: var(--eq-warn-fill); }
+
+/* Read by screen readers (the full matrix severity), never drawn. */
+.cfl-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* The key to the badges, once, above the list. */
+.cfl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--eq-surface-2);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--eq-ink-muted);
+}
+.cfl-legend__item { display: inline-flex; align-items: center; gap: 6px; }
+.cfl-legend__blank {
+  display: inline-block;
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--eq-border);
+}
+
+/* A category in the browse list: a heading with a rule, room above it. */
+.cfl-group { display: flex; flex-direction: column; gap: 8px; }
+.cfl-group__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--eq-border);
+}
+.cfl-group__on {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--eq-live-text);
+}
 
 .cfl-search {
   display: flex;
@@ -132,9 +210,14 @@
   list-style: none;
 }
 .cfl-all > summary::-webkit-details-marker { display: none; }
+.cfl-all__count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--eq-ink-muted);
+}
 .cfl-all__chev { transition: transform 0.15s; }
 .cfl-all[open] .cfl-all__chev { transform: rotate(180deg); }
-.cfl-all[open] { display: flex; flex-direction: column; gap: 12px; }
+.cfl-all__body { display: flex; flex-direction: column; gap: 18px; padding-top: 6px; }
 
 /* ---- the banner ---- */
 .cfl-banner {
