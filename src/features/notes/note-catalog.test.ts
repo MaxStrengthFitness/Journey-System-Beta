@@ -3,13 +3,16 @@ import type { JournalEntry } from "../../types/journal";
 import {
   COMPOSER_CATEGORIES,
   EMPTY_FILTER,
+  FILING_CATEGORIES,
   NOTE_CATEGORIES,
   buildCatalog,
   catalogCoaches,
+  isUnfiled,
   matchesSearch,
   monthKeyOf,
   noteCardLabel,
   noteCategoryOf,
+  splitUnfiled,
 } from "./note-catalog";
 
 let seq = 0;
@@ -209,5 +212,37 @@ describe("withoutRecordFields", () => {
       "legacy:profile:notes",
       "native-1",
     ]);
+  });
+});
+
+describe("capture now, tag at teardown", () => {
+  it("offers exactly the five filing categories, in the composer's order", () => {
+    expect(FILING_CATEGORIES.map((c) => c.id)).toEqual(["coaching", "equipment", "incident", "injury", "preference"]);
+    expect(FILING_CATEGORIES.every((c) => c.kind !== null)).toBe(true);
+  });
+
+  it("isUnfiled is a general note this app wrote — never an import or an old Note", () => {
+    expect(isUnfiled(entry({ kind: "general", origin: "in_session" }))).toBe(true);
+    expect(isUnfiled(entry({ kind: "general", origin: "manual" }))).toBe(true);
+    expect(isUnfiled(entry({ kind: "general", origin: "manual", isLegacy: true }))).toBe(false);
+    expect(isUnfiled(entry({ kind: "general", origin: "profile", isLegacy: true }))).toBe(false);
+    expect(isUnfiled(entry({ kind: "coaching", origin: "in_session" }))).toBe(false);
+    expect(isUnfiled(entry({ kind: "preference" }))).toBe(false);
+  });
+
+  it("splitUnfiled keeps order and loses nothing", () => {
+    const a = entry({ kind: "general", origin: "in_session" });
+    const b = entry({ kind: "coaching" });
+    const c = entry({ kind: "general", origin: "manual" });
+    const d = entry({ kind: "general", isLegacy: true, origin: "legacy" });
+    const { unfiled, filed } = splitUnfiled([a, b, c, d]);
+    expect(unfiled.map((e) => e.id)).toEqual([a.id, c.id]);
+    expect(filed.map((e) => e.id)).toEqual([b.id, d.id]);
+  });
+
+  it("an unfiled note still has a shelf if it is ever listed, and its card says Note", () => {
+    const raw = entry({ kind: "general", origin: "in_session" });
+    expect(noteCategoryOf(raw)).toBe("preference");
+    expect(noteCardLabel(raw)).toBe("Note");
   });
 });

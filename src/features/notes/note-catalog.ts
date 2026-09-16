@@ -19,6 +19,23 @@
  *
  * Existing notes map in automatically at read time; nothing is rewritten and
  * nothing is deleted. Pure: no React, no Firebase, no reads.
+ *
+ * CAPTURE NOW, TAG AT TEARDOWN (reporting round, Sep 2026)
+ * ------------------------------------------------------------------------
+ * A category is no longer required to save. A note saved with no category is
+ * written as `kind: "general"` and is UNFILED (`isUnfiled`): it comes back as
+ * a card in the To-file tray — under "This session" in the Active Session
+ * sheet, on the post-session screen, and at the top of the Notes area —
+ * where one tap files it (`fileUnfiledEntry`, `NoteSweep`). Older "Note"
+ * entries and imports are not unfiled: they were deliberate notes then, and
+ * `isLegacy` tells them apart. While a note is unfiled it is in the tray and
+ * NOT on a shelf, so it is never shown twice on the record.
+ *
+ * The other two rules that keep every note surface the same (the composer,
+ * the sheet, the sweep): loudness is the shared `Loudness` control with the
+ * words Note · Heads up · Critical, and any Heads up or Critical note — of
+ * any category — may carry a "matters until" day (`effectiveUntil`), after
+ * which it leaves the briefing on its own.
  */
 import {
   COMPOSER_KINDS,
@@ -135,6 +152,33 @@ export const NOTE_CATEGORY_META: Record<NoteCategory, NoteCategoryMeta> = Object
 export const COMPOSER_CATEGORIES: readonly NoteCategoryMeta[] = NOTE_CATEGORIES.filter(
   (c) => c.id === "ford" || (c.kind !== null && COMPOSER_KINDS.includes(c.kind)),
 );
+
+/** A category a note can be FILED under: the five the composer writes as a journal entry. */
+export type FilingCategory = Exclude<NoteCategory, "ford" | "admin">;
+
+/** The five filing categories, in the composer's order. What the To-file tray offers. */
+export const FILING_CATEGORIES: readonly NoteCategoryMeta[] = NOTE_CATEGORIES.filter(
+  (c): c is NoteCategoryMeta & { id: FilingCategory } => c.id !== "ford" && c.id !== "admin",
+);
+
+/**
+ * True for a note saved without a category — "capture now, tag at teardown".
+ * Only a note this app wrote as `general` since the reporting round counts;
+ * an imported or archived "Note" (`isLegacy`) was a deliberate note then.
+ */
+export function isUnfiled(entry: Pick<JournalEntry, "kind" | "isLegacy">): boolean {
+  return entry.kind === "general" && !entry.isLegacy;
+}
+
+/** Split a list into what still needs filing and what is filed, order kept. */
+export function splitUnfiled<T extends Pick<JournalEntry, "kind" | "isLegacy">>(
+  entries: readonly T[],
+): { unfiled: T[]; filed: T[] } {
+  const unfiled: T[] = [];
+  const filed: T[] = [];
+  for (const e of entries) (isUnfiled(e) ? unfiled : filed).push(e);
+  return { unfiled, filed };
+}
 
 /** Where an adapter-produced entry came from when it is an import, not a coach's note. */
 const IMPORT_ORIGINS: ReadonlySet<JournalOrigin> = new Set<JournalOrigin>([

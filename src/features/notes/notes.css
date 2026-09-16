@@ -8,18 +8,30 @@
                    Notes area and in the Active Session sheet alike
      .nc-composer  the note box
      .nc-catalog   the tiles, the shelves and the month-by-month view
+     .nc-sweep     the To-file tray (reporting round, Sep 2026) — the notes
+                   twin of the FORD sweep, mounted in the session sheet, on
+                   the post-session screen and at the top of the Notes area
+     .nc-tofile    the small "To file" mark on an unfiled note's card
 
    Colour comes from equipment.tokens.css; no hex below this line. A
    category's own hue is a small dot borrowed from the journal's visual
    contract (types/journal.ts), never a wash over the whole control. Blue
    (--eq-live) is the selected / actionable state; hero orange stays with
-   Start Session and crimson with rep quality.
+   Start Session and crimson with rep quality. "Unfiled" borrows the FORD
+   tokens' quiet gold (--ford-unfiled): a tidy-up, not an error — never
+   amber, never red.
 
    Touch targets are 40px minimum. Text alignment on buttons lives HERE: a
    <button> centres its own text (FORD round).
+
+   The composer's vertical order is a rule shared with every capture surface
+   in the app (the round's "Consistency"): what kind (chips) → the words →
+   only what that kind needs (P, machine, dates) → how loud (Loudness) →
+   matters until → save. The save row is always last.
    ========================================================================== */
 
 @import "../equipment/equipment.tokens.css";
+@import "../ford/ford.tokens.css";
 
 /* ------------------------------------------------------------------ */
 /* SHARED                                                              */
@@ -146,11 +158,17 @@ textarea.nc-input { resize: vertical; }
   gap: 0.75rem;
 }
 
-.nc-seg {
+/* Loudness and "matters until" are full-width rows under the extras grid,
+   and the save row is the last child, always. */
+.nc-composer__loud { display: flex; flex-direction: column; gap: 0.75rem; }
+.nc-composer__save {
   display: flex;
-  gap: 0.3rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  order: 99;
 }
-.nc-seg > button { flex: 1 1 0; justify-content: center; text-align: center; }
 
 .nc-handoff {
   border-radius: 12px;
@@ -257,4 +275,104 @@ textarea.nc-input { resize: vertical; }
   background: var(--eq-live-fill);
   color: var(--eq-live-text);
   font-weight: 700;
+}
+
+/* ------------------------------------------------------------------ */
+/* THE TO-FILE TRAY                                                    */
+/* ------------------------------------------------------------------ */
+
+.nc-sweep {
+  flex: none;
+  border: 1px solid var(--eq-border);
+  border-left: 3px solid var(--ford-unfiled);
+  border-radius: var(--eq-radius);
+  background: var(--eq-surface);
+  color: var(--eq-ink);
+  overflow: hidden;
+}
+.nc-sweep__head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 0.85rem;
+  background: var(--ford-unfiled-fill);
+  border-bottom: 1px solid var(--eq-border);
+}
+.nc-sweep__mark { flex: none; color: var(--ford-unfiled); }
+.nc-sweep__title {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--eq-ink);
+}
+.nc-sweep__sub {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--eq-ink-muted);
+}
+.nc-sweep__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem;
+  border-top: 1px solid var(--eq-border);
+}
+.nc-sweep__card:first-of-type { border-top: 0; }
+.nc-sweep__quote {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--eq-ink);
+  white-space: pre-line;
+}
+.nc-sweep__machine {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--eq-ink-muted);
+}
+.nc-sweep__rows { display: flex; flex-direction: column; gap: 0.5rem; }
+.nc-sweep__ps { display: flex; flex-direction: column; gap: 0.35rem; }
+.nc-sweep__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--eq-ink-faint);
+}
+.nc-sweep__done {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem;
+  font-size: 13px;
+  color: var(--eq-ink-muted);
+}
+.nc-sweep__done svg { color: var(--eq-ok); }
+
+/* The "To file" mark on a card. Quiet gold, never amber or red. */
+.nc-tofile {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 8px;
+  border: 1px solid var(--ford-unfiled);
+  background: var(--ford-unfiled-fill);
+  color: var(--ford-unfiled);
+  padding: 0.25rem 0.5rem;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }

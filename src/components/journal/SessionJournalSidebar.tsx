@@ -13,8 +13,8 @@
  * Below the composer: every journal entry written during THIS session, live,
  * so two coaches sharing a floor see each other's notes as they are saved.
  *
- * TWO MODES, ONE BUTTON
- * ---------------------
+ * THREE MODES, ONE BUTTON (Note · Remember this · Pulse)
+ * ---------------------------------------------------------
  * The sheet has a second mode — REMEMBER THIS — for the FORD framework
  * (Family, Occupation, Recreation, Dreams): the personal detail a client
  * mentions between sets. It deliberately lives behind the Notes button a
@@ -29,21 +29,36 @@
  * keeps the capture down to type-and-save. Tapping the composer's
  * "FORD / Life" chip switches to this mode (notes catalog round, Sep 2026),
  * so the chips mean the same thing here as everywhere else.
+ *
+ * The third mode — PULSE (reporting round, Sep 2026) — mounts `PulseQuickLog`
+ * (one area, one Dial, Done) so a trainer can update the living assessment
+ * and get straight back to the session without leaving the sheet. It needs
+ * the client and trainer; when the host has not passed them yet the tab
+ * still shows and says so, rather than vanishing.
+ *
+ * CAPTURE NOW, TAG AT TEARDOWN. A note saved here with no category is
+ * unfiled; under "This session" it comes back as a To-file card
+ * (`NoteSweep`) — one tap files it between machines — and the filed notes
+ * of the session are listed beneath.
  */
 import React, { useEffect, useMemo, useState } from "react";
-import { X, NotebookPen, Loader2, Heart } from "lucide-react";
+import { X, NotebookPen, Loader2, Heart, HeartPulse } from "lucide-react";
 import { motion } from "motion/react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebase";
 import { handleFirestoreError, OperationType } from "../../lib/firestore-errors";
 import { Button } from "@/components/ui/button";
-import type { Machine, WorkoutSession } from "../../types";
+import type { Client, Machine, Trainer, WorkoutSession } from "../../types";
 import { toDate, type JournalDraft, type JournalEntry } from "../../types/journal";
 import { createJournalEntry, type JournalAuthor } from "../../hooks/useClientJournal";
 import { JournalComposer } from "./JournalComposer";
 import { JournalEntryCard } from "./JournalEntryCard";
 import { FordQuickCapture } from "../../features/ford/FordQuickCapture";
 import { useClientFord } from "../../features/ford/useClientFord";
+import { NoteSweep } from "../../features/notes/NoteSweep";
+import { discardUnfiledEntry, fileUnfiledEntry } from "../../features/notes/file-unfiled";
+import { splitUnfiled } from "../../features/notes/note-catalog";
+import { PulseQuickLog } from "../../features/subjective-report";
 
 export interface SessionJournalSidebarProps {
   session: WorkoutSession;
@@ -56,10 +71,13 @@ export interface SessionJournalSidebarProps {
   defaultMachineId?: string | null;
   /** Which mode to land on. The session bar's Notes button opens on "note". */
   defaultMode?: SidebarMode;
+  /** For the Pulse tab. Without them the tab says "Open the client to update Pulse". */
+  client?: Client | null;
+  trainer?: Trainer | null;
   onClose: () => void;
 }
 
-export type SidebarMode = "note" | "ford";
+export type SidebarMode = "note" | "ford" | "pulse";
 
 export function SessionJournalSidebar({
   session,
@@ -70,6 +88,8 @@ export function SessionJournalSidebar({
   machines,
   defaultMachineId,
   defaultMode = "note",
+  client = null,
+  trainer = null,
   onClose,
 }: SessionJournalSidebarProps) {
   const [mode, setMode] = useState<SidebarMode>(defaultMode);
@@ -112,6 +132,9 @@ export function SessionJournalSidebar({
     return () => unsub();
   }, [session.id]);
 
+  // Unfiled notes go to the To-file tray; the rest are listed as cards.
+  const { unfiled, filed } = useMemo(() => splitUnfiled(entries), [entries]);
+
   const defaultMachineName = useMemo(
     () => (defaultMachineId ? machines.find((m) => m.id === defaultMachineId)?.name : undefined),
     [machines, defaultMachineId],
@@ -149,9 +172,13 @@ export function SessionJournalSidebar({
                 <>
                   <NotebookPen className="h-5 w-5 text-orange-500" /> Session notes
                 </>
-              ) : (
+              ) : mode === "ford" ? (
                 <>
                   <Heart className="h-5 w-5 text-orange-500" /> Remember this
+                </>
+              ) : (
+                <>
+                  <HeartPulse className="h-5 w-5 text-orange-500" /> Update Pulse
                 </>
               )}
             </h2>
@@ -161,8 +188,10 @@ export function SessionJournalSidebar({
                   Filed to {clientFirstName || "the client"}&apos;s journal
                   {defaultMachineName ? ` · now on ${defaultMachineName}` : ""}
                 </>
-              ) : (
+              ) : mode === "ford" ? (
                 <>Filed to {clientFirstName || "the client"}&apos;s profile</>
+              ) : (
+                <>{clientFirstName || "The client"}&apos;s Pulse · saves as you tap</>
               )}
             </p>
           </div>
@@ -177,7 +206,8 @@ export function SessionJournalSidebar({
           </Button>
         </div>
 
-        {/* Two modes, one sheet. 40px targets — this is tapped mid-session. */}
+        {/* Three modes, one sheet. Equal widths, 40px targets — this is
+            tapped mid-session, often without looking. */}
         <div
           role="tablist"
           aria-label="What are you writing down?"
@@ -187,6 +217,7 @@ export function SessionJournalSidebar({
             [
               { id: "note" as const, label: "Note" },
               { id: "ford" as const, label: "Remember this" },
+              { id: "pulse" as const, label: "Pulse" },
             ]
           ).map((tab) => (
             <button
@@ -195,7 +226,7 @@ export function SessionJournalSidebar({
               role="tab"
               aria-selected={mode === tab.id}
               onClick={() => setMode(tab.id)}
-              className={`h-10 flex-1 rounded-lg text-[13px] font-bold transition-colors ${
+              className={`h-10 min-w-0 flex-1 basis-0 rounded-lg text-[13px] font-bold transition-colors ${
                 mode === tab.id
                   ? "bg-orange-500 text-white"
                   : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -206,7 +237,26 @@ export function SessionJournalSidebar({
           ))}
         </div>
 
-        {mode === "ford" ? (
+        {mode === "pulse" ? (
+          <div className="custom-scrollbar flex-1 overflow-y-auto p-5" data-testid="sheet-pulse">
+            {client ? (
+              <PulseQuickLog
+                key={client.id}
+                client={client}
+                trainer={trainer}
+                machines={machines}
+                compact
+                onDone={() => setMode("note")}
+              />
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 py-10 text-center dark:border-slate-800">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Open the client to update Pulse
+                </p>
+              </div>
+            )}
+          </div>
+        ) : mode === "ford" ? (
           <div className="custom-scrollbar flex-1 overflow-y-auto p-5">
             <FordQuickCapture
               clientId={clientId}
@@ -239,6 +289,13 @@ export function SessionJournalSidebar({
               </span>
               {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
             </div>
+            <NoteSweep
+              entries={unfiled}
+              machines={machines}
+              clientFirstName={clientFirstName}
+              onFile={fileUnfiledEntry}
+              onDiscard={discardUnfiledEntry}
+            />
             {entries.length === 0 && !isLoading ? (
               <div className="rounded-2xl border border-dashed border-slate-200 py-10 text-center dark:border-slate-800">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -246,7 +303,7 @@ export function SessionJournalSidebar({
                 </p>
               </div>
             ) : (
-              entries.map((entry) => <JournalEntryCard key={entry.id} entry={entry} machines={machines} dense />)
+              filed.map((entry) => <JournalEntryCard key={entry.id} entry={entry} machines={machines} dense />)
             )}
           </div>
         </div>

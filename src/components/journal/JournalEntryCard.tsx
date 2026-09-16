@@ -18,6 +18,7 @@ import {
   ClipboardList,
   Dumbbell,
   HeartPulse,
+  Inbox,
   Lock,
   MessageSquare,
   MoreHorizontal,
@@ -38,7 +39,8 @@ import {
   type JournalEntry,
 } from "../../types/journal";
 import type { Machine } from "../../types";
-import { noteCardLabel } from "../../features/notes/note-catalog";
+import { isUnfiled, noteCardLabel } from "../../features/notes/note-catalog";
+import "../../features/notes/notes.css";
 
 const ICONS: Record<string, React.ElementType> = {
   PersonStanding,
@@ -100,6 +102,9 @@ export function JournalEntryCard({
   const isCritical = entry.importance === "critical" && !entry.resolvedAt;
   const isResolved = !!entry.resolvedAt;
   const isReadOnly = !!entry.isLegacy;
+  // Saved without a category (capture now, tag at teardown): a tidy-up, not
+  // an error — the FORD unfiled tone, never red.
+  const unfiled = isUnfiled(entry);
 
   // A window that has already closed: keep the record, drop the shouting.
   const isExpired = !!until && until.getTime() < Date.now();
@@ -151,6 +156,12 @@ export function JournalEntryCard({
             {noteCardLabel(entry)}
           </span>
 
+          {unfiled && (
+            <span className="nc-tofile" data-testid="to-file-mark">
+              <Inbox className="h-3 w-3" aria-hidden /> To file
+            </span>
+          )}
+
           {entry.kind === "life" && entry.category && (
             <span className={cn("rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-wider", visual.chip)}>
               {entry.category}
@@ -174,6 +185,8 @@ export function JournalEntryCard({
               )}
             >
               <CalendarClock className="h-3 w-3" />
+              {/* The composer's "matters until" day: after it the note
+                  leaves the briefing on its own (reporting round). */}
               {isExpired ? "Ended" : "Until"}{" "}
               {until.toLocaleDateString(undefined, {
                 month: "short",

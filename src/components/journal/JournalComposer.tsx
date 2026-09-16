@@ -3,15 +3,30 @@
  *
  * CATEGORY FIRST (notes catalog round, Sep 2026). The owner's audit said the
  * old box was cumbersome: type, then pick a kind, then "More options" to find
- * the rest. Now the order is the order a coach thinks in:
+ * the rest. Now the order is the order a coach thinks in, and it is the SAME
+ * vertical order as every other capture surface in the app (reporting round,
+ * "Consistency"):
  *
  *   1. WHAT KIND — six chips, 44px: Coaching tip, Equipment, Incident,
  *      Injury, Preference, FORD / Life. Admin is never offered: it is the
  *      Mindbody and intake imports, read-only.
  *   2. THE NOTE.
  *   3. ONLY WHAT THAT KIND NEEDS — which P for a coaching tip, the machine for
- *      equipment, when it happened for an incident or injury, until when an
- *      injury matters. How loud is always there and always optional.
+ *      equipment, when it happened for an incident or injury.
+ *   4. HOW LOUD — the shared Loudness control (Note · Heads up · Critical),
+ *      always there, always optional. A category pre-sets it (an incident
+ *      starts Critical, an injury Heads up) until the trainer touches it.
+ *   5. MATTERS UNTIL — offered for any Heads up or Critical note, of any
+ *      category: after that day it stops showing on the briefing.
+ *   6. SAVE.
+ *
+ * CAPTURE NOW, TAG AT TEARDOWN (reporting round). No category is required.
+ * The chips start with nothing chosen — in the Active Session sheet and on
+ * the record alike, so a note feels the same wherever it is written — and
+ * the button reads "Save — file later" until one is picked. An untagged save
+ * writes `kind: "general"` and comes back as a card in the To-file tray
+ * (`features/notes/NoteSweep`), where one tap files it. On the record the
+ * trainer has time, so a quiet line says so.
  *
  * FORD / Life never writes a journal entry: `journalEntries` is readable by
  * every signed-in user, and a client's home life is not company-wide reading.
@@ -19,16 +34,12 @@
  * `ford`, or to the host's own FORD mode through `onPickFord` (the Active
  * Session sheet's "Remember this"). Whatever was typed in the note box is
  * kept if the coach switches back.
- *
- * The same component, chips and labels are used in the Notes area and the
- * Active Session sheet, so a note feels the same wherever it is written.
  */
 import { useState } from "react";
 import { Heart } from "lucide-react";
 import {
   FOCUS_BLURBS,
   FOCUS_CATEGORIES,
-  IMPORTANCE_META,
   type FocusCategory,
   type JournalDraft,
   type JournalImportance,
@@ -37,17 +48,17 @@ import {
 import type { Machine } from "../../types";
 import {
   NOTE_CATEGORY_META,
+  type FilingCategory,
   type NoteCategory,
 } from "../../features/notes/note-catalog";
 import { NoteCategoryChips } from "../../features/notes/NoteCategoryChips";
+import { Loudness } from "../../features/rating";
 import { FordQuickCapture } from "../../features/ford/FordQuickCapture";
 import type { FordAuthor } from "../../features/ford/ford-write";
 import type { FordOrigin } from "../../features/ford/types";
 import "../../features/notes/notes.css";
 
-type WritableCategory = Exclude<NoteCategory, "ford" | "admin">;
-
-const PLACEHOLDERS: Record<WritableCategory, string> = {
+const PLACEHOLDERS: Record<FilingCategory, string> = {
   coaching: "e.g. “Stop dumping the last two reps — cue ‘own the bottom’ at rep 8.”",
   equipment: "e.g. “Needs extra padding on the chest pad for compound row.”",
   incident: "e.g. “Reported sharp left knee pain on leg press. Stopped the set.”",
@@ -55,8 +66,10 @@ const PLACEHOLDERS: Record<WritableCategory, string> = {
   preference: "e.g. “Likes the fan on and no music during the set.”",
 };
 
+const UNTAGGED_PLACEHOLDER = "Write it down now — you can file it later.";
+
 /** How loud a new note starts, per kind. A coach can always change it. */
-const DEFAULT_IMPORTANCE: Record<WritableCategory, JournalImportance> = {
+export const DEFAULT_IMPORTANCE: Record<FilingCategory, JournalImportance> = {
   coaching: "standard",
   equipment: "standard",
   incident: "critical",
@@ -87,6 +100,9 @@ export interface JournalComposerProps {
   onOpenFord?: () => void;
 }
 
+const isFiling = (c: NoteCategory | null): c is FilingCategory =>
+  c !== null && c !== "ford" && c !== "admin";
+
 export function JournalComposer({
   clientFirstName,
   machines,
@@ -98,7 +114,8 @@ export function JournalComposer({
   onPickFord,
   onOpenFord,
 }: JournalComposerProps) {
-  const [category, setCategory] = useState<NoteCategory>("coaching");
+  // Nothing pre-selected: the same rule everywhere a note is written.
+  const [category, setCategory] = useState<NoteCategory | null>(null);
   const [p, setP] = useState<FocusCategory | null>(null);
   const [body, setBody] = useState("");
   const [importance, setImportance] = useState<JournalImportance>("standard");
@@ -110,28 +127,35 @@ export function JournalComposer({
   const [isSaving, setIsSaving] = useState(false);
 
   const name = clientFirstName || "this client";
-  const writable = category !== "ford" && category !== "admin";
-  const kind = NOTE_CATEGORY_META[category].kind;
+  const filing = isFiling(category);
   const defaultMachine = defaultMachineId
     ? machines.find((m) => m.id === defaultMachineId) ?? null
     : null;
+  const aboutMachineKinds = category === "coaching" || category === "incident" || category === "injury";
+  const dated = category === "incident" || category === "injury";
+  // Preference needs nothing extra; an untagged note in a session keeps its machine.
+  const hasExtras = category === "equipment" || aboutMachineKinds || (category === null && !!defaultMachine);
 
   const pick = (next: NoteCategory) => {
     if (next === "ford" && onPickFord) {
       onPickFord();
       return;
     }
-    setCategory(next);
-    if (next !== "ford" && next !== "admin" && !importanceTouched) {
-      setImportance(DEFAULT_IMPORTANCE[next]);
+    // A second tap on the chosen chip un-picks it: back to "file later".
+    const chosen = next === category ? null : next;
+    setCategory(chosen);
+    if (!importanceTouched) {
+      setImportance(isFiling(chosen) ? DEFAULT_IMPORTANCE[chosen] : "standard");
     }
   };
 
+  // Back to nothing chosen — the next note starts the same way the first did.
   const reset = () => {
     setBody("");
+    setCategory(null);
     setP(null);
     setImportanceTouched(false);
-    setImportance(writable ? DEFAULT_IMPORTANCE[category as WritableCategory] : "standard");
+    setImportance("standard");
     setMachineId(defaultMachineId ?? "");
     setAboutMachine(true);
     setOccurredOn("");
@@ -141,17 +165,22 @@ export function JournalComposer({
   /** Which machine the note is about, if any, for the chosen kind. */
   const chosenMachine = (): string | null => {
     if (category === "equipment") return machineId || null;
-    if (category === "coaching" || category === "incident" || category === "injury") {
+    if (aboutMachineKinds || category === null) {
       // In a session the machine being performed is offered as a toggle; on
-      // the profile any machine can be picked (optional).
+      // the profile any machine can be picked (optional). An untagged note
+      // in a session keeps the machine too — it is the one fact the trainer
+      // would otherwise have to remember at teardown.
       if (defaultMachine) return aboutMachine ? defaultMachine.id ?? null : null;
-      return machineId || null;
+      return category === null ? null : machineId || null;
     }
     return null;
   };
 
   const submit = async () => {
-    if (!writable || !kind || !body.trim() || isSaving || disabled) return;
+    if (category === "ford" || category === "admin") return;
+    if (!body.trim() || isSaving || disabled) return;
+    const kind = filing ? NOTE_CATEGORY_META[category].kind : "general";
+    if (!kind) return;
     setIsSaving(true);
     try {
       await onSubmit({
@@ -164,12 +193,9 @@ export function JournalComposer({
         origin,
         // Date inputs give yyyy-mm-dd; read at local noon / end of day, never
         // as UTC midnight (which is the previous day in Ohio).
-        occurredAt:
-          (category === "incident" || category === "injury") && occurredOn
-            ? new Date(`${occurredOn}T12:00:00`)
-            : null,
+        occurredAt: dated && occurredOn ? new Date(`${occurredOn}T12:00:00`) : null,
         effectiveUntil:
-          category === "injury" && effectiveUntil ? new Date(`${effectiveUntil}T23:59:59`) : null,
+          importance !== "standard" && effectiveUntil ? new Date(`${effectiveUntil}T23:59:59`) : null,
       });
       reset();
     } finally {
@@ -177,12 +203,25 @@ export function JournalComposer({
     }
   };
 
+  const saveLabel = isSaving
+    ? "Saving"
+    : filing
+      ? `Save ${NOTE_CATEGORY_META[category].label.toLowerCase()}`
+      : "Save — file later";
+
   return (
     <section className="nc-composer" data-testid="note-composer">
+      {/* 1 · what kind */}
       <div className="flex flex-col gap-1.5">
         <span className="nc-kicker">What kind of note?</span>
         <NoteCategoryChips value={category} onChange={pick} />
-        <p className="nc-muted text-[12px]">{NOTE_CATEGORY_META[category].blurb}</p>
+        <p className="nc-muted text-[12px]">
+          {category
+            ? NOTE_CATEGORY_META[category].blurb
+            : origin === "in_session"
+              ? "Optional — untagged notes come back to be filed at the end."
+              : "Pick a category, or save and file it later."}
+        </p>
       </div>
 
       {category === "ford" ? (
@@ -221,12 +260,13 @@ export function JournalComposer({
         )
       ) : (
         <>
+          {/* 2 · the words */}
           <textarea
             className="nc-input"
             rows={3}
             value={body}
-            aria-label={`${NOTE_CATEGORY_META[category].label} note about ${name}`}
-            placeholder={PLACEHOLDERS[category as WritableCategory]}
+            aria-label={`${filing ? NOTE_CATEGORY_META[category].label : "Untagged"} note about ${name}`}
+            placeholder={filing ? PLACEHOLDERS[category] : UNTAGGED_PLACEHOLDER}
             onChange={(e) => setBody(e.target.value)}
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -236,6 +276,8 @@ export function JournalComposer({
             }}
           />
 
+          {/* 3 · only what that kind needs */}
+          {hasExtras && (
           <div className="nc-extras">
             {category === "coaching" && (
               <div className="flex flex-col gap-1.5">
@@ -257,9 +299,7 @@ export function JournalComposer({
               </div>
             )}
 
-            {(category === "equipment" ||
-              ((category === "coaching" || category === "incident" || category === "injury") &&
-                !defaultMachine)) && (
+            {(category === "equipment" || (aboutMachineKinds && !defaultMachine)) && (
               <label className="flex flex-col gap-1.5">
                 <span className="nc-kicker">{category === "equipment" ? "Machine" : "Machine (optional)"}</span>
                 <select
@@ -277,22 +317,21 @@ export function JournalComposer({
               </label>
             )}
 
-            {(category === "coaching" || category === "incident" || category === "injury") &&
-              defaultMachine && (
-                <div className="flex flex-col gap-1.5">
-                  <span className="nc-kicker">Machine</span>
-                  <button
-                    type="button"
-                    className="nc-chip nc-chip--small self-start"
-                    aria-pressed={aboutMachine}
-                    onClick={() => setAboutMachine((v) => !v)}
-                  >
-                    About {defaultMachine.name}
-                  </button>
-                </div>
-              )}
+            {(aboutMachineKinds || category === null) && defaultMachine && (
+              <div className="flex flex-col gap-1.5">
+                <span className="nc-kicker">Machine</span>
+                <button
+                  type="button"
+                  className="nc-chip nc-chip--small self-start"
+                  aria-pressed={aboutMachine}
+                  onClick={() => setAboutMachine((v) => !v)}
+                >
+                  About {defaultMachine.name}
+                </button>
+              </div>
+            )}
 
-            {(category === "incident" || category === "injury") && (
+            {dated && (
               <label className="flex flex-col gap-1.5">
                 <span className="nc-kicker">Happened on</span>
                 <input
@@ -304,43 +343,38 @@ export function JournalComposer({
                 <span className="nc-muted text-[11px]">Leave blank for today.</span>
               </label>
             )}
+          </div>
+          )}
 
-            {category === "injury" && (
+          {/* 4 · how loud, 5 · matters until */}
+          <div className="nc-composer__loud">
+            <Loudness
+              ask="How loud? (optional)"
+              value={importance}
+              compact={origin === "in_session"}
+              onChange={(lvl) => {
+                setImportance(lvl);
+                setImportanceTouched(true);
+              }}
+            />
+
+            {importance !== "standard" && (
               <label className="flex flex-col gap-1.5">
                 <span className="nc-kicker">Matters until (optional)</span>
                 <input
                   type="date"
                   className="nc-input"
                   value={effectiveUntil}
+                  aria-label="Matters until"
                   onChange={(e) => setEffectiveUntil(e.target.value)}
                 />
-                <span className="nc-muted text-[11px]">After this it stops showing in the briefing.</span>
+                <span className="nc-muted text-[11px]">After this it stops showing on the briefing.</span>
               </label>
             )}
-
-            <div className="flex flex-col gap-1.5">
-              <span className="nc-kicker">How loud (optional)</span>
-              <div className="nc-seg" role="group" aria-label="How loud">
-                {(["standard", "elevated", "critical"] as const).map((lvl) => (
-                  <button
-                    key={lvl}
-                    type="button"
-                    className="nc-chip nc-chip--small"
-                    aria-pressed={importance === lvl}
-                    onClick={() => {
-                      setImportance(lvl);
-                      setImportanceTouched(true);
-                    }}
-                  >
-                    {IMPORTANCE_META[lvl].short}
-                  </button>
-                ))}
-              </div>
-              <span className="nc-muted text-[11px]">{IMPORTANCE_META[importance].hint}</span>
-            </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          {/* 6 · save — always last */}
+          <div className="nc-composer__save">
             {body.trim() && (
               <button type="button" className="nc-btn nc-btn--quiet" onClick={reset}>
                 Clear
@@ -352,7 +386,7 @@ export function JournalComposer({
               onClick={() => void submit()}
               disabled={!body.trim() || isSaving || disabled}
             >
-              {isSaving ? "Saving" : `Save ${NOTE_CATEGORY_META[category].label.toLowerCase()}`}
+              {saveLabel}
             </button>
           </div>
         </>

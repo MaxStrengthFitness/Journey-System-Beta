@@ -9,10 +9,29 @@
  * write path. Only a mount proves both: that the screen draws, that a tap
  * isolates a category, and that a personal detail never lands in
  * `journalEntries` (readable by every signed-in user).
+ *
+ * Reporting round (Sep 2026): the composer starts with no category and the
+ * Save button reads "Save — file later"; an untagged save writes
+ * `kind: "general"`; Heads up / Critical reveal "Matters until"; the To-file
+ * tray files with one tap; the sheet's third tab mounts the Pulse quick-log
+ * (stubbed here — its own render test covers it).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+
+vi.mock("../subjective-report", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../subjective-report")>();
+  return {
+    ...real,
+    PulseQuickLog: (props: { client: { firstName?: string }; compact?: boolean; onDone?: () => void }) => (
+      <div data-testid="pulse-stub" data-compact={props.compact ? "1" : "0"}>
+        Pulse stub for {props.client.firstName}
+        <button type="button" onClick={props.onDone}>Done</button>
+      </div>
+    ),
+  };
+});
 
 vi.mock("../../firebase", () => ({
   db: { __fake: true },
@@ -49,6 +68,10 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 import { ToastProvider } from "../../contexts/ToastContext";
 import { ClientJournalTab } from "../../components/journal/ClientJournalTab";
 import { SessionJournalSidebar } from "../../components/journal/SessionJournalSidebar";
+import { JournalEntryCard } from "../../components/journal/JournalEntryCard";
+import { NoteSweep } from "./NoteSweep";
+import { fileUnfiledEntry } from "./file-unfiled";
+import { isUnfiled, splitUnfiled } from "./note-catalog";
 import type { Client, WorkoutSession } from "../../types";
 import type { JournalEntry } from "../../types/journal";
 import type { UseClientJournalResult } from "../../hooks/useClientJournal";
@@ -158,6 +181,8 @@ const entries: JournalEntry[] = [
   entry({ id: "inj", kind: "injury", body: "Left knee — no deep flexion", occurredAt: new Date(2026, 7, 5, 12) }),
   entry({ id: "mb", kind: "consultation", isLegacy: true, origin: "mindbody", body: "Prefers 7am", authorId: "unknown" }),
   critical,
+  // Saved mid-session with no category: unfiled, in the tray, not on a shelf.
+  entry({ id: "raw", kind: "general", origin: "in_session", sessionId: "sess1", body: "Knee clicked on leg press", occurredAt: new Date(2026, 8, 14, 12) }),
 ];
 
 const journal: UseClientJournalResult = {
@@ -261,8 +286,17 @@ describe("the Notes catalog mounts", () => {
       "Preference",
       "FORD / Life",
     ]);
+    // Nothing pre-selected, and the record says what that means.
+    expect(chips.every((b) => b.getAttribute("aria-pressed") === "false")).toBe(true);
+    expect(composer.textContent).toContain("Pick a category, or save and file it later.");
+    expect(buttonByText(composer, "Save — file later")).toBeTruthy();
 
     await click(buttonByText(composer, "Injury"));
+    // Injury starts as Heads up (the shared Loudness control), which reveals "Matters until".
+    const loud = composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')!;
+    expect(Array.from(loud.querySelectorAll("button")).map((b) => b.textContent)).toEqual(["Note", "Heads up", "Critical"]);
+    expect(loud.querySelector('[aria-checked="true"]')!.textContent).toBe("Heads up");
+    expect(composer.querySelector('input[aria-label="Matters until"]')).toBeTruthy();
     await typeInto(composer.querySelector("textarea"), "Sore right shoulder since Tuesday");
     await click(buttonByText(composer, "Save injury"));
 
@@ -277,13 +311,65 @@ describe("the Notes catalog mounts", () => {
       authorId: "uid-jane",
       focusId: null,
     });
-    // The box is cleared for the next one.
+    // The box is cleared for the next one, and nothing is chosen again.
     expect((composer.querySelector("textarea") as HTMLTextAreaElement).value).toBe("");
+    expect(buttonByText(composer, "Save — file later")).toBeTruthy();
+  });
+
+  it("saves an untagged note as general — capture now, file later", async () => {
+    const host = await mount(<NotesArea />);
+    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    await typeInto(composer.querySelector("textarea"), "Said her hip felt odd on the way in");
+    // No "Matters until" while it is a plain Note.
+    expect(composer.querySelector('input[aria-label="Matters until"]')).toBeNull();
+    await click(buttonByText(composer, "Save — file later"));
+    expect(writes).toHaveLength(1);
+    expect(writes[0].data).toMatchObject({
+      kind: "general",
+      category: null,
+      importance: "standard",
+      machineId: null,
+      effectiveUntil: null,
+      body: "Said her hip felt odd on the way in",
+    });
+    expect(isUnfiled({ kind: "general", isLegacy: undefined })).toBe(true);
+  });
+
+  it("offers Matters until for any Heads up, of any category, and writes it as end of day", async () => {
+    const host = await mount(<NotesArea />);
+    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    await click(buttonByText(composer, "Preference"));
+    await typeInto(composer.querySelector("textarea"), "On a trip — no sessions");
+    expect(composer.querySelector('input[aria-label="Matters until"]')).toBeNull();
+
+    const loud = composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')!;
+    await click(buttonByText(loud, "Heads up"));
+    const until = composer.querySelector('input[aria-label="Matters until"]');
+    expect(until).toBeTruthy();
+    expect(composer.textContent).toContain("After this it stops showing on the briefing.");
+    await typeInto(until, "2026-09-20");
+    await click(buttonByText(composer, "Save preference"));
+
+    expect(writes[0].data).toMatchObject({ kind: "preference", importance: "elevated" });
+    const stored = writes[0].data.effectiveUntil.toDate() as Date;
+    expect([stored.getFullYear(), stored.getMonth(), stored.getDate(), stored.getHours()]).toEqual([2026, 8, 20, 23]);
+  });
+
+  it("keeps the incident's Critical default until the trainer touches loudness", async () => {
+    const host = await mount(<NotesArea />);
+    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    await click(buttonByText(composer, "Incident"));
+    const loud = composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')!;
+    expect(loud.querySelector('[aria-checked="true"]')!.textContent).toBe("Critical");
+    await click(buttonByText(loud, "Note"));
+    await click(buttonByText(composer, "Injury"));
+    expect(loud.querySelector('[aria-checked="true"]')!.textContent).toBe("Note");
   });
 
   it("files a coaching tip with its P", async () => {
     const host = await mount(<NotesArea />);
     const composer = host.querySelector('[data-testid="note-composer"]')!;
+    await click(buttonByText(composer, "Coaching tip"));
     await typeInto(composer.querySelector("textarea"), "Cue the exhale");
     await click(buttonByText(composer.querySelector('[aria-label="Which P"]')!, "Pace"));
     await click(buttonByText(composer, "Save coaching tip"));
@@ -310,6 +396,84 @@ describe("the Notes catalog mounts", () => {
   });
 });
 
+describe("the To-file tray", () => {
+  it("sits at the top of the Notes area, keeps the note off the shelves, and files with one tap", async () => {
+    const host = await mount(<NotesArea />);
+    const tray = host.querySelector('[data-testid="note-sweep"]')!;
+    expect(tray).toBeTruthy();
+    expect(tray.textContent).toContain("To file · 1");
+    expect(tray.textContent).toContain("Knee clicked on leg press");
+    // Not on the "Preferences & other" shelf while it is unfiled.
+    expect(host.querySelector('[data-testid="shelf-preference"]')).toBeNull();
+    expect(splitUnfiled(entries).unfiled.map((e) => e.id)).toEqual(["raw"]);
+
+    await click(buttonByText(tray.querySelector('[data-testid="sweep-raw"]')!, "Injury"));
+    expect(updates).toHaveLength(1);
+    expect(updates[0].path).toBe("journalEntries/raw");
+    expect(updates[0].data).toMatchObject({ kind: "injury", category: null });
+    // Optimistic: the card is gone and the tray says so.
+    expect(host.querySelector('[data-testid="sweep-raw"]')).toBeNull();
+    expect(host.querySelector('[data-testid="note-sweep"]')!.textContent).toContain("Filed.");
+  });
+
+  it("files a coaching tip with its P in the same tap, discards by archiving, and draws nothing when empty", async () => {
+    const onDiscard = vi.fn(async () => {});
+    const rows = [
+      entry({ id: "u1", kind: "general", origin: "in_session", body: "Own the bottom", machineId: "m1" }),
+      entry({ id: "u2", kind: "general", origin: "in_session", body: "Fan off" }),
+      entry({ id: "filed", kind: "coaching", body: "not shown" }),
+    ];
+    const host = await mount(
+      <NoteSweep
+        entries={rows}
+        machines={[{ id: "m1", name: "Leg Press" } as any]}
+        clientFirstName="Judy"
+        onFile={fileUnfiledEntry}
+        onDiscard={onDiscard}
+      />,
+    );
+    const tray = host.querySelector('[data-testid="note-sweep"]')!;
+    expect(tray.textContent).toContain("To file · 2");
+    expect(tray.textContent).not.toContain("not shown");
+    expect(tray.querySelector('[data-testid="sweep-u1"]')!.textContent).toContain("Leg Press");
+    // Every target is a 40px chip.
+    expect(tray.querySelectorAll(".nc-chip").length).toBe(2 * (5 + 4));
+
+    await click(buttonByText(tray.querySelector('[data-testid="sweep-u1"]')!, "Pace"));
+    expect(updates[0]).toMatchObject({ path: "journalEntries/u1", data: { kind: "coaching", category: "Pace" } });
+
+    await click(buttonByText(tray.querySelector('[data-testid="sweep-u2"]')!, "Discard"));
+    expect(onDiscard).toHaveBeenCalledWith("u2");
+    expect(host.querySelector('[data-testid="note-sweep"]')!.textContent).toContain("Filed.");
+
+    const empty = await mount(
+      <NoteSweep entries={[rows[2]]} machines={[]} clientFirstName="Judy" onFile={fileUnfiledEntry} />,
+    );
+    expect(empty.querySelector('[data-testid="note-sweep"]')).toBeNull();
+  });
+});
+
+describe("the entry card says the Loudness words", () => {
+  it("marks an unfiled note To file, a Heads up as Heads up, and shows its until day", async () => {
+    const host = await mount(
+      <div>
+        <JournalEntryCard entry={entry({ id: "a", kind: "general", origin: "in_session", body: "raw" })} machines={[]} />
+        <JournalEntryCard
+          entry={entry({ id: "b", kind: "preference", importance: "elevated", effectiveUntil: new Date(2099, 8, 20, 23, 59), body: "away" })}
+          machines={[]}
+        />
+        <JournalEntryCard entry={entry({ id: "c", kind: "general", isLegacy: true, origin: "profile", body: "old" })} machines={[]} />
+      </div>,
+    );
+    const cards = host.querySelectorAll("article");
+    expect(cards[0].querySelector('[data-testid="to-file-mark"]')!.textContent).toContain("To file");
+    expect(cards[1].querySelector('[data-testid="to-file-mark"]')).toBeNull();
+    expect(cards[1].textContent).toContain("Heads up");
+    expect(cards[1].textContent).toContain("Until Sep 20");
+    expect(cards[2].querySelector('[data-testid="to-file-mark"]')).toBeNull();
+  });
+});
+
 describe("the Active Session notes sheet mounts", () => {
   it("shows the same category chips, and FORD / Life switches to Remember this", async () => {
     const host = await mount(
@@ -332,5 +496,81 @@ describe("the Active Session notes sheet mounts", () => {
     expect(host.querySelector('[data-testid="note-composer"]')).toBeNull();
     expect(host.querySelector(".ford-capture")).toBeTruthy();
     expect(host.textContent).toContain("Remember this");
+  });
+
+  it("has a third tab, Pulse, that mounts the quick-log and comes back to the note on Done", async () => {
+    const host = await mount(
+      <SessionJournalSidebar
+        session={{ id: "sess1" } as WorkoutSession}
+        clientId="c1"
+        clientFirstName="Judy"
+        studioId="s1"
+        author={{ id: "uid-jane", initials: "JC", fullName: "Jane Coach" }}
+        machines={[]}
+        client={client}
+        trainer={trainer}
+        onClose={() => {}}
+      />,
+    );
+    const tabs = Array.from(host.querySelectorAll('[role="tab"]'));
+    expect(tabs.map((t) => t.textContent)).toEqual(["Note", "Remember this", "Pulse"]);
+    // Equal widths, 40px: every tab shares the same classes.
+    expect(new Set(tabs.map((t) => t.className.includes("h-10 min-w-0 flex-1 basis-0"))).size).toBe(1);
+
+    await click(tabs[2]);
+    const stub = host.querySelector('[data-testid="pulse-stub"]')!;
+    expect(stub).toBeTruthy();
+    expect(stub.getAttribute("data-compact")).toBe("1");
+    expect(stub.textContent).toContain("Judy");
+    expect(host.textContent).toContain("Update Pulse");
+
+    await click(buttonByText(stub, "Done"));
+    expect(host.querySelector('[data-testid="pulse-stub"]')).toBeNull();
+    expect(host.querySelector('[data-testid="note-composer"]')).toBeTruthy();
+  });
+
+  it("keeps the Pulse tab without a client, and says why", async () => {
+    const host = await mount(
+      <SessionJournalSidebar
+        session={{ id: "sess1" } as WorkoutSession}
+        clientId="c1"
+        clientFirstName="Judy"
+        studioId="s1"
+        author={{ id: "uid-jane", initials: "JC", fullName: "Jane Coach" }}
+        machines={[]}
+        onClose={() => {}}
+      />,
+    );
+    await click(Array.from(host.querySelectorAll('[role="tab"]'))[2]);
+    expect(host.querySelector('[data-testid="pulse-stub"]')).toBeNull();
+    expect(host.textContent).toContain("Open the client to update Pulse");
+  });
+
+  it("saves an untagged in-session note about the machine on screen, and the Loudness bar is compact", async () => {
+    const host = await mount(
+      <SessionJournalSidebar
+        session={{ id: "sess1" } as WorkoutSession}
+        clientId="c1"
+        clientFirstName="Judy"
+        studioId="s1"
+        author={{ id: "uid-jane", initials: "JC", fullName: "Jane Coach" }}
+        machines={[{ id: "m1", name: "Leg Press" } as any]}
+        defaultMachineId="m1"
+        onClose={() => {}}
+      />,
+    );
+    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    expect(composer.querySelector(".rt--compact")).toBeTruthy();
+    expect(composer.textContent).toContain("untagged notes come back to be filed at the end");
+    expect(buttonByText(composer, "About Leg Press")).toBeTruthy();
+    await typeInto(composer.querySelector("textarea"), "Seat one notch higher next time");
+    await click(buttonByText(composer, "Save — file later"));
+    expect(writes[0].data).toMatchObject({
+      kind: "general",
+      category: null,
+      machineId: "m1",
+      origin: "in_session",
+      sessionId: "sess1",
+    });
   });
 });

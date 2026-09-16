@@ -3,6 +3,11 @@
  *
  * Replaces the date-grouped timeline (Sep 2026). Top to bottom:
  *
+ *   TO FILE             notes saved without a category (reporting round,
+ *                       "capture now, tag at teardown"), each with the five
+ *                       categories under it — one tap files. While a note is
+ *                       here it is NOT on a shelf, so it is never shown twice.
+ *                       Nothing when there is nothing to file.
  *   CRITICAL & PINNED   unresolved critical notes, same selection as the
  *                       pre-session briefing. Never filtered away.
  *   SEARCH              across every category, author and source.
@@ -31,11 +36,14 @@ import {
   NOTE_CATEGORY_META,
   buildCatalog,
   catalogCoaches,
+  splitUnfiled,
   withoutRecordFields,
   type CatalogFilter,
   type NoteCategory,
 } from "./note-catalog";
 import { NoteCategoryIcon, categoryDotClass } from "./NoteCategoryChips";
+import { NoteSweep } from "./NoteSweep";
+import { discardUnfiledEntry, fileUnfiledEntry } from "./file-unfiled";
 import "./notes.css";
 
 export interface NotesCatalogProps {
@@ -47,6 +55,8 @@ export interface NotesCatalogProps {
   onResolve?: (entry: JournalEntry, resolved: boolean) => void;
   /** Jump to the Life section, where FORD details live. */
   onOpenFord?: () => void;
+  /** Named in the To-file tray ("a note about Judy"). */
+  clientFirstName?: string;
 }
 
 const fmtShort = (d: Date | null) =>
@@ -60,10 +70,13 @@ export function NotesCatalog({
   onArchive,
   onResolve,
   onOpenFord,
+  clientFirstName = "",
 }: NotesCatalogProps) {
   const [filter, setFilter] = useState<CatalogFilter>(EMPTY_FILTER);
-  // Fields the record shows in their own sections are not repeated here.
-  const listed = useMemo(() => withoutRecordFields(entries), [entries]);
+  // Fields the record shows in their own sections are not repeated here, and
+  // an unfiled note sits in the tray above the catalog, not on a shelf too.
+  const { unfiled, filed } = useMemo(() => splitUnfiled(withoutRecordFields(entries)), [entries]);
+  const listed = filed;
   const catalog = useMemo(() => buildCatalog(listed, filter), [listed, filter]);
   const coaches = useMemo(() => catalogCoaches(listed), [listed]);
 
@@ -97,6 +110,14 @@ export function NotesCatalog({
 
   return (
     <div className="nc-catalog" data-testid="notes-catalog">
+      <NoteSweep
+        entries={unfiled}
+        machines={machines}
+        clientFirstName={clientFirstName}
+        onFile={fileUnfiledEntry}
+        onDiscard={onArchive ? discardUnfiledEntry : undefined}
+      />
+
       <CriticalStrip entries={criticalEntries} machines={machines} title="Critical & pinned" />
 
       <div className="nc-searchrow">
