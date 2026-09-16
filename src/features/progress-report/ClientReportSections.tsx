@@ -5,8 +5,10 @@
  */
 import React from "react";
 import { Dumbbell, Flag, Target } from "lucide-react";
-import type { MachineProgression, ReportGoals } from "../../types";
+import type { MachineProgression, ProgressReport, ReportGoals } from "../../types";
 import { GOAL_OUTCOME_LABELS } from "./steps";
+import { FOUR_PILLARS_DATA, FOUR_PS, masteryWord, rankFromScore, toneFromRank } from "./four-ps";
+import "./progress-report.css";
 
 const fmt = (iso?: string | null) => {
   if (!iso) return null;
@@ -153,5 +155,45 @@ export function GoalsCard({ value, clientFirstName }: { value: ReportGoals; clie
         </div>
       )}
     </section>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * The 4 P's — client copy (reporting round, Sep 2026)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Four cards: the P, its mastery WORD (never the number), a five-segment
+ * picture of the Dial, and the trainer's note if there is one. An unrated P
+ * says "Not rated" rather than pretending — a confident wrong number is
+ * worse than a missing one. Reads `four-ps.ts` so an August report (score
+ * 80) and an October one (Dial +1) print the same word.
+ */
+export function FourPsCards({ value }: { value: ProgressReport["performanceMatrix"] | undefined }) {
+  if (!value) return null;
+  return (
+    <div className="pr-pcards" data-testid="fourps-cards">
+      {FOUR_PS.map((p) => {
+        const entry = value[p];
+        const rank = rankFromScore(entry?.score);
+        const tone = toneFromRank(rank);
+        return (
+          <div key={p} className="pr-pcard" data-tone={tone}>
+            <div>
+              <h4 className="pr-pcard__title">{FOUR_PILLARS_DATA[p].title}</h4>
+              <span className="pr-pcard__word" data-tone={tone === "none" ? undefined : tone}>
+                {masteryWord(rank)}
+              </span>
+              <div className="pr-pcard__bar" aria-hidden>
+                {[1, 2, 3, 4, 5].map((step) => (
+                  <span key={step} data-on={rank !== null && step <= rank} />
+                ))}
+              </div>
+            </div>
+            {entry?.note && <p className="pr-pcard__note">“{entry.note}”</p>}
+          </div>
+        );
+      })}
+    </div>
   );
 }

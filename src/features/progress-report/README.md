@@ -1,10 +1,11 @@
-# Progress Report — the six-step conversation (the CPR)
+# Progress Report — the five-step conversation (the CPR)
 
-Round: Subjective Report, Sep 2026. Companion to
-`src/features/subjective-report/` (the 90-day check-in that is step 5).
+Round: Subjective Report, Sep 2026; reshaped in the reporting round (Sep 16,
+see the section at the end). Companion to `src/features/subjective-report/`
+(the Pulse — read-only here since the reporting round).
 `ClientProgressReportView.tsx` still owns the data flow; this folder holds
-the step rail, the two new steps and the client-copy renderers so the view
-file stops growing.
+the step rail, the steps that have been extracted, the client-copy renderers,
+the 4 P's logic and the report's tokens so the view file stops growing.
 
 ## Why a stepper
 
@@ -22,16 +23,19 @@ load" very differently from a client who got the criticism first.
 | 1 | Volume & gratitude (`celebrate`) | Attendance, volume, rest and the thank-you narrative |
 | 2 | Accolades (`highlights`) | Exactly three data-backed wins, drafted from the data (see below) |
 | 3 | Machine progression (`machines`) | Start → now for every machine with history; trainer ticks what the client sees |
-| 4 | The 4 P's (`fourps`) | Focus history, then the Clinical Performance Matrix |
-| 5 | Assessment (`checkin`) | `SubjectiveStep` — the reference document + hydration, pain map, stress anchors |
-| 6 | Kaizen blueprint (`goals`) | Goal continuity block + the training-track picker + closing notes |
+| 4 | The 4 P's (`fourps`) | Focus history, then one Dial per P (`FourPsStep`) |
+| 5 | Kaizen blueprint (`goals`) | The Pulse snapshot (read-only), the goal continuity block, the training-track picker, closing notes |
+
+(The Assessment step, `checkin`, was step 5 until the reporting round.
+`resolveStepId()` lands the old id on the blueprint.)
 
 The titles follow the owner's four-phase report (Volume, Validation &
 Gratitude → Targeted Accolades → Clinical Methodology & the 4 P's → the
 Strategic Blueprint). Step ids never change — saved state keys on them.
 
-`steps.ts` carries the guide text; `ReportStepper` renders the rail and the
-guide, `ReportStepNav` the Back / Next / Finalize row at the bottom.
+`steps.ts` carries the guide text and each step's short tab `label`;
+`ReportStepper` renders the rail and the guide, `ReportStepNav` the Back /
+Next / Finalize row at the bottom.
 
 ## Goal continuity
 
@@ -137,3 +141,70 @@ Email: the Email button opens the trainer's own mail app with subject and a
 short body filled in; they print to PDF and attach. The app itself still
 never contacts clients — no provider is wired and client-contact features
 are switched off (see RENDER-DEPLOYMENT.md).
+
+## Reporting round, Sep 2026
+
+AJ's Client Reports Audit, action item A: "Remove [the assessment] from the
+client progress report." Round document: `docs/rounds/2026-09-16-reporting-round.md`.
+
+### Pulse is out of the report
+
+- The Assessment step is gone (`steps.ts` has five steps; `RETIRED_STEP_IDS`
+  maps `checkin` → `goals`). The report **never writes `subjective`** again:
+  `handleSave` strips it from the write, so an older report keeps the block
+  it already has in Firestore and a new report never gets one. The
+  `clients/{id}.subjectiveSnapshot` stamp moved out with it — the Pulse flow
+  (`features/subjective-report`) owns that.
+- In its place the Kaizen blueprint step opens with a **Pulse snapshot**
+  (`PulseSnapshot.tsx`): the client's most recent FINALIZED Pulse through
+  `loadPreviousCheckIn(clientId)`, drawn with `SubjectiveDashboard`,
+  read-only, headed "Pulse · as of <date> · by <trainer>" and a one-line
+  "Update Pulse in the client's record" — text, not a button. "Since last
+  time" and the trend come from the report's existing bounded read of the
+  client's reports (no extra fetch). Three honest states: reading, couldn't
+  read (unknown, never "none"), and "No Pulse on file yet — nothing is
+  printed."
+- The printed client copy: an older report prints the Pulse it saved; a
+  report from this round on prints the snapshot, dated in its heading. Either
+  way `SubjectiveClientCopy` honours the Pulse's own client-copy switches,
+  and nothing prints when there is no Pulse or nothing was answered.
+- "Build the full report" from a Pulse-only report still opens the editor;
+  there is just no step to fill for the Pulse any more.
+
+### The 4 P's on the Dial
+
+- `four-ps.ts` (pure, tested) and `FourPsStep.tsx` (render-tested in
+  `FourPs.render.test.tsx`). Each P is ONE `Dial` on `MASTERY_SCALE` (Needs
+  work · Developing · Solid · Strong · Mastered). The red / black / green
+  status control and the 1–5 bars are gone.
+- **Storage is unchanged**: `performanceMatrix.<p>.score` = rank × 20, the
+  field every older report carries. Dial −2…+2 ↔ rank 1…5 (`rank = v + 3`);
+  `withDial()` writes the score and DERIVES every talking point's `status`
+  (≤ 2 red, 3 black, ≥ 4 green) so older readers keep working.
+- **Untouched = not rated.** A new report starts each P at `UNRATED_SCORE`
+  (0 — a value no old report ever wrote) and the card says "Not rated"; the
+  old default of 80 is gone. An old report's 80 still reads as Strong.
+- The printed card (`FourPsCards` in `ClientReportSections.tsx`) shows the
+  mastery WORD, a five-segment picture of the Dial and the note — never the
+  number. The personalised note, the "include in summary" toggle and the
+  coaching-focus history all stay.
+- `src/types.ts` was not touched: `score` remains the store. If a `rank`
+  field is ever wanted on the document, add it there and in `withDial`.
+
+### Spruce-up
+
+- `progress-report.tokens.css` (`--pr-*`: the brand navy / hero / paper /
+  slate / blue as fixed pigments, the editor's card surfaces and ink
+  following the app theme, urgency colours aliased from the equipment
+  tokens) and `progress-report.css` (the step rail, guide, buttons, cards,
+  the 4 P's, the Pulse snapshot). The view's ~150 raw hex literals are now
+  `text-(--pr-hero)`-style token utilities; the print stylesheet reads the
+  same tokens.
+- The step rail is five EQUAL columns found by position, 56px tabs, short
+  labels that fit an iPad in portrait (Volume · Accolades · Machines · 4 P's
+  · Blueprint) and **never truncate**; the subtitle appears only where there
+  is room. Nothing tappable is under 44px (nav buttons 48, the Dial 48, the
+  include switch 44).
+- The report keeps its identity — navy on screen, orange rules and Finalize —
+  because it is the client-facing brand look; the ACTIVE step tab is paper
+  white on navy, not orange.

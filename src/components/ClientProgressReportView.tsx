@@ -83,13 +83,11 @@ import { cn, parseSessionDate } from "../lib/utils";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { MaxStrengthLogo } from "./MaxStrengthLogo";
 import {
-  SubjectiveStep,
   SubjectiveDashboard,
+  SubjectiveClientCopy,
+  answeredCount,
+  loadPreviousCheckIn,
   type HistoryPoint,
-  emptyAssessment,
-  parseWeightLbs,
-  snapshotForClient,
-  summarize,
   type PreviousAssessmentRef,
 } from "../features/subjective-report";
 import { HeartPulse, Flag } from "lucide-react";
@@ -100,6 +98,12 @@ import {
   GoalsBlock,
   MachineProgressionCard,
   GoalsCard,
+  FourPsCards,
+  FourPsStep,
+  FOUR_PS,
+  PulseSnapshot,
+  UNRATED_SCORE,
+  rankFromScore,
   AccoladeCards,
   AccoladeSlotEditor,
   FocusHistoryPanel,
@@ -121,9 +125,10 @@ import {
   slotKey,
   type HighlightSlot,
   type ReportStepId,
+  type PulseSnapshotState,
   type SlotContext,
 } from "../features/progress-report";
-import { SubjectiveClientCopy, answeredCount } from "../features/subjective-report";
+import "../features/progress-report/progress-report.css";
 import { studioTodayKey } from "../lib/studio-time";
 import { InBodyReportSection } from "../features/inbody/InBodyReportSection";
 
@@ -173,17 +178,17 @@ function StatValue({
     return (
       <>
         <p className={className}>—</p>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[#68717A]">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-(--pr-slate)">
           Not enough data yet
         </p>
-        {why && <p className="text-[10px] text-[#68717A] no-print">{why}</p>}
+        {why && <p className="text-[10px] text-(--pr-slate) no-print">{why}</p>}
       </>
     );
   }
   return (
     <p className={className}>
       {value.toLocaleString()}
-      {unit && <span className="text-[11px] text-[#68717A] ml-1 not-italic">{unit}</span>}
+      {unit && <span className="text-[11px] text-(--pr-slate) ml-1 not-italic">{unit}</span>}
     </p>
   );
 }
@@ -195,53 +200,6 @@ interface ClientProgressReportViewProps {
   onBack: () => void;
   existingReportId?: string;
 }
-
-const FOUR_PILLARS_DATA = {
-  posture: {
-    title: "POSTURE",
-    definition:
-      "Maintaining a perfectly rigid midsection and stable setup from head to toe to prevent energy leaks and ensure precise loading of the target muscle.",
-    rank5:
-      "Maintained a completely locked torso, neutral head, and relaxed face through the hardest reps. Zero shifting or wiggling.",
-    rank3:
-      "Great initial setup, but experienced structural breakdown (e.g., chest collapsing, chin tucking, or wiggling) as discomfort increased.",
-    rank1:
-      "Required constant cueing to maintain basic joint stacking, keep hips anchored, or keep feet planted.",
-  },
-  pace: {
-    title: "PACE",
-    definition:
-      "Moving at a smooth, continuous 6-to-10-second speed to eliminate momentum, forcing the muscles to manage the load at all times.",
-    rank5:
-      "Masterful, unvarying speed. Turnarounds were perfectly seamless ('touch and go') with absolutely no pausing or resting at the bottom.",
-    rank3:
-      "Mostly controlled, but instinctively sped up during the pushing phase or paused slightly at the turnarounds to catch a break.",
-    rank1:
-      "Movements were fast, segmented, or jerky. Struggled to control the weight on the descent (dropping the weight).",
-  },
-  path: {
-    title: "PATH",
-    definition:
-      "Keeping the limbs in the exact prescribed plane of motion to force the intended muscle to do the work, fighting the instinct to shift to fresh muscles.",
-    rank5:
-      "Limbs tracked flawlessly. Completely overcame the survival instinct to shift the load, keeping tension exactly where it belonged.",
-    rank3:
-      "Path altered slightly under heavy load (e.g., elbows flaring, shoulders shrugging) in an attempt to find the path of least resistance.",
-    rank1:
-      "Major deviations from the prescribed movement path, which unloads the target muscle and requires physical correction.",
-  },
-  purpose: {
-    title: "PURPOSE",
-    definition:
-      "The mental intent to maximize Motor Unit Recruitment (MUR) by actively pushing harder as fatigue sets in, rather than just trying to survive the set.",
-    rank5:
-      "Actively embraced the discomfort. Voluntarily increased effort (pushed/pulled harder) as the weight bogged down to reach the Stimulating Reps.",
-    rank3:
-      "Tolerated the high effort but mentally 'hung on' to survive rather than actively attacking the final reps. Needed heavy vocal prompting.",
-    rank1:
-      "Aborted the set at the first sensation of muscle burning. Unwilling to exert the meaningful effort required to trigger an adaptation.",
-  },
-};
 
 export function ClientProgressReportView({
   client,
@@ -294,7 +252,7 @@ export function ClientProgressReportView({
 
     performanceMatrix: {
       posture: {
-        score: 80,
+        score: UNRATED_SCORE,
         note: "",
         talkingPoints: [
           { id: "pos-1", text: "Ribcage Stability", status: "black" },
@@ -303,7 +261,7 @@ export function ClientProgressReportView({
         ],
       },
       pace: {
-        score: 80,
+        score: UNRATED_SCORE,
         note: "",
         talkingPoints: [
           { id: "pac-1", text: "Constant Tension", status: "black" },
@@ -312,7 +270,7 @@ export function ClientProgressReportView({
         ],
       },
       path: {
-        score: 80,
+        score: UNRATED_SCORE,
         note: "",
         talkingPoints: [
           { id: "pat-1", text: "Active ROM", status: "black" },
@@ -321,7 +279,7 @@ export function ClientProgressReportView({
         ],
       },
       purpose: {
-        score: 80,
+        score: UNRATED_SCORE,
         note: "",
         talkingPoints: [
           { id: "pur-1", text: "Motor Unit Recruitment", status: "black" },
@@ -364,7 +322,8 @@ export function ClientProgressReportView({
       },
     },
     machineProgression: { includedMachineIds: [], rows: [] },
-    subjective: emptyAssessment({ bodyWeightLbs: parseWeightLbs(client.weight) }),
+    // No `subjective` block: the Pulse lives on the client's record now
+    // (reporting round). An older report keeps whatever it saved.
     goals: {
       originalWhy: client.globalNotes || "",
       previousGoal: client.smartGoal || "",
@@ -380,19 +339,32 @@ export function ClientProgressReportView({
   });
 
   /**
-   * The most recent FINALIZED report for this client that carries a 90-day
-   * check-in. Everything "since last time" (category deltas, pain trends,
-   * goal carry-over) is measured against it. Found with the same
-   * clientId + createdAt query the archive uses, filtered in memory, so no
-   * new composite index is needed.
+   * The most recent FINALIZED report for this client other than this one —
+   * the goal carry-over ("how did last time's goal go?") and the header's
+   * "Prev report" date come from it. Found with the same clientId +
+   * createdAt query the archive uses, filtered in memory, so no new
+   * composite index is needed.
    */
-  const [previousReport, setPreviousReport] = useState<
-    (PreviousAssessmentRef & { goals?: ProgressReport["goals"] }) | null
-  >(null);
-  /** Every older finalized check-in, oldest first — the dashboard's trend line. */
-  const [checkInHistory, setCheckInHistory] = useState<HistoryPoint[]>([]);
+  const [previousReport, setPreviousReport] = useState<{
+    reportId: string;
+    date: string;
+    goals?: ProgressReport["goals"];
+  } | null>(null);
+  /**
+   * Every finalized report of this client that carries a Pulse (the old
+   * `subjective` block), newest first, from that same read. Feeds the
+   * snapshot's "since last time" and trend line, and — for an older report
+   * that still carries its own Pulse — the printed copy's deltas.
+   */
+  const [pulseRefs, setPulseRefs] = useState<PreviousAssessmentRef[]>([]);
+  /**
+   * The Pulse snapshot: the client's most recent finalized Pulse, read
+   * through the Pulse feature's own loader (reporting round). Read-only
+   * here; the report never writes a Pulse again.
+   */
+  const [pulseState, setPulseState] = useState<PulseSnapshotState>({ status: "loading" });
   const [showCoachView, setShowCoachView] = useState(false);
-  /** Which of the six steps the editor is showing. */
+  /** Which of the five steps the editor is showing. */
   const [activeStep, setActiveStep] = useState<ReportStepId>("celebrate");
   /** Set when a check-in-only report is promoted to a full one, so the
    *  auto-populate runs even though the report already has an id. */
@@ -500,7 +472,8 @@ export function ClientProgressReportView({
     fetchExisting();
   }, [existingReportId]);
 
-  // Load the previous finalized check-in for deltas + goal carry-over
+  // Load the previous finalized report (goal carry-over, "Prev report") and
+  // the client's Pulse history from ONE bounded read.
   useEffect(() => {
     let cancelled = false;
     async function fetchPrevious() {
@@ -514,28 +487,27 @@ export function ClientProgressReportView({
             limit(10),
           ),
         );
-        const finalized = snap.docs
-          .map((d) => ({ id: d.id, ...(d.data() as ProgressReport) }))
-          .filter(
-            (r) =>
-              r.id !== existingReportId &&
-              r.status === "Finalized" &&
-              !!r.subjective,
-          );
-        const prev = finalized[0];
+        const docs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as ProgressReport) }));
         if (cancelled) return;
-        setCheckInHistory(
-          [...finalized]
-            .reverse()
-            .map((r) => ({ date: r.date, assessment: r.subjective! })),
+        // Every finalized Pulse, newest first — including this report's own
+        // if it is a finalized check-in being promoted: that IS the newest.
+        setPulseRefs(
+          docs
+            .filter((r) => r.status === "Finalized" && !!r.subjective)
+            .map((r) => ({
+              reportId: r.id!,
+              date: r.date,
+              assessment: r.subjective!,
+              trainerName: r.trainerName ?? null,
+              enteredBy: r.subjective!.enteredBy ?? null,
+            })),
         );
-        if (prev && prev.subjective) {
-          setPreviousReport({
-            reportId: prev.id!,
-            date: prev.date,
-            assessment: prev.subjective,
-            goals: prev.goals,
-          });
+        // The last FULL report: a Pulse-only report has no goal to carry over.
+        const prev = docs.find(
+          (r) => r.id !== existingReportId && r.status === "Finalized" && !r.isCheckInOnly,
+        );
+        if (prev) {
+          setPreviousReport({ reportId: prev.id!, date: prev.date, goals: prev.goals });
           // A brand-new report inherits the goal set last time as the goal
           // to review now. An existing report keeps whatever it saved.
           if (!existingReportId) {
@@ -564,6 +536,69 @@ export function ClientProgressReportView({
       cancelled = true;
     };
   }, [client.id, existingReportId]);
+
+  // The Pulse snapshot: the client's most recent finalized Pulse, through
+  // the Pulse feature's own loader. A failed read is "unknown", never "none".
+  useEffect(() => {
+    let cancelled = false;
+    if (!client.id) {
+      setPulseState({ status: "ready", pulse: null, previous: null, history: [] });
+      return;
+    }
+    setPulseState({ status: "loading" });
+    loadPreviousCheckIn(client.id)
+      .then((pulse) => {
+        if (cancelled) return;
+        setPulseState({ status: "ready", pulse, previous: null, history: [] });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.warn("Report Pulse snapshot load failed:", err);
+        setPulseState({ status: "error" });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client.id]);
+
+  /**
+   * The snapshot with its "since last time" and trend filled in from the
+   * Pulse list already read: the one before the snapshot, and the ones
+   * before that, oldest first. Nothing is fetched for this.
+   */
+  const pulseSnapshot = useMemo<PulseSnapshotState>(() => {
+    if (pulseState.status !== "ready" || !pulseState.pulse) return pulseState;
+    const i = pulseRefs.findIndex((r) => r.reportId === pulseState.pulse!.reportId);
+    const older = i >= 0 ? pulseRefs.slice(i + 1) : pulseRefs.filter((r) => r.date <= pulseState.pulse!.date);
+    return {
+      status: "ready",
+      pulse: pulseState.pulse,
+      previous: older[0] ?? null,
+      history: older
+        .slice(1)
+        .reverse()
+        .map((r) => ({ date: r.date, assessment: r.assessment })),
+    };
+  }, [pulseState, pulseRefs]);
+
+  /**
+   * For an older report that still carries its own Pulse block: the Pulse
+   * before IT, so its printed deltas read as they did when it was written.
+   */
+  const previousPulseForReport = useMemo<PreviousAssessmentRef | null>(() => {
+    if (!report.subjective) return null;
+    const i = report.id ? pulseRefs.findIndex((r) => r.reportId === report.id) : -1;
+    return (i >= 0 ? pulseRefs[i + 1] : pulseRefs.find((r) => r.reportId !== report.id)) ?? null;
+  }, [report.subjective, report.id, pulseRefs]);
+  /** Older Pulses still, oldest first, for the coach view's trend line. */
+  const historyForReport = useMemo<HistoryPoint[]>(() => {
+    if (!previousPulseForReport) return [];
+    const i = pulseRefs.findIndex((r) => r.reportId === previousPulseForReport.reportId);
+    return pulseRefs
+      .slice(i + 1)
+      .reverse()
+      .map((r) => ({ date: r.date, assessment: r.assessment }));
+  }, [previousPulseForReport, pulseRefs]);
 
   // Read the client's history once while editing (auto or manual — the
   // machine picker and step 3 want it either way).
@@ -743,17 +778,12 @@ export function ClientProgressReportView({
         return res;
       };
 
-      // Score the check-in against the previous one and cache the result on
-      // the report. The UI recomputes from the answers when it renders; the
-      // cached copy is for lists, the hub and anything that never mounts the
-      // scoring code.
-      const subjective = report.subjective
-        ? {
-            ...report.subjective,
-            completedAt: report.subjective.completedAt || report.date,
-            summary: summarize(report.subjective, previousReport),
-          }
-        : undefined;
+      // The report never writes a Pulse (reporting round). `subjective` is
+      // left out of the write: an older report keeps the block it already
+      // has in Firestore (updateDoc leaves untouched fields alone), and a
+      // new report never gets one.
+      const { subjective: _keptOnTheDocument, ...reportWithoutPulse } = report;
+      void _keptOnTheDocument;
 
       // The focus history as it stands today, thin (focus-history.ts). If the
       // focuses couldn't be read, keep whatever the report already had —
@@ -764,10 +794,9 @@ export function ClientProgressReportView({
           : report.focusSnapshot;
 
       const sanitizedReport = removeUndefined({
-        ...report,
+        ...reportWithoutPulse,
         highlights: padSlots(report.highlights),
         focusSnapshot,
-        subjective,
         previousReportId: previousReport?.reportId ?? report.previousReportId ?? null,
         sessionNumber: report.sessionNumber || client.sessionCount || 0,
         trainerInitials: trainer.initials,
@@ -796,23 +825,6 @@ export function ClientProgressReportView({
       setReport((prev) => ({ ...prev, focusSnapshot }));
 
       if (status === "Finalized") {
-        // Denormalise the Red flags onto the client so the hub schedule can
-        // show them without reading the report. Best-effort: a failure here
-        // must not un-finalize a report that already saved.
-        if (subjective?.summary && client.id && reportId) {
-          try {
-            await updateDoc(doc(db, "clients", client.id), {
-              subjectiveSnapshot: snapshotForClient(
-                reportId,
-                report.date,
-                subjective.summary,
-              ),
-            });
-          } catch (err) {
-            handleFirestoreError(err, OperationType.UPDATE, "clients");
-          }
-        }
-        setReport((prev) => (subjective ? { ...prev, subjective } : prev));
         setShowExportOptions(true);
         setMode("view");
       } else {
@@ -839,19 +851,19 @@ export function ClientProgressReportView({
 
   if (mode === "selection") {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[80dvh] p-6 space-y-12 max-w-2xl mx-auto text-center bg-[#0A2E46] rounded-[60px] my-12 border border-white/5 shadow-2xl">
+      <div className="flex flex-col items-center justify-center min-h-[80dvh] p-6 space-y-12 max-w-2xl mx-auto text-center bg-(--pr-navy) rounded-[60px] my-12 border border-white/5 shadow-2xl">
         <div className="space-y-4">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="w-24 h-24 rounded-[40px] bg-[#F06C22]/10 flex items-center justify-center mx-auto mb-8 border border-[#F06C22]/20 shadow-[0_0_40px_rgba(240,108,34,0.1)]"
+            className="w-24 h-24 rounded-[40px] bg-(--pr-hero)/10 flex items-center justify-center mx-auto mb-8 border border-(--pr-hero)/20 shadow-[0_0_40px_var(--pr-hero-glow)]"
           >
-            <Award className="w-12 h-12 text-[#F06C22]" />
+            <Award className="w-12 h-12 text-(--pr-hero)" />
           </motion.div>
           <h2 className="text-4xl font-bold uppercase italic tracking-tighter text-white">
             Initialize Report
           </h2>
-          <p className="text-[#68717A] font-bold uppercase text-xs tracking-widest leading-relaxed">
+          <p className="text-(--pr-slate) font-bold uppercase text-xs tracking-widest leading-relaxed">
             Choose your documentation methodology for <br />{" "}
             <span className="text-white">
               {client.firstName} {client.lastName}
@@ -867,15 +879,15 @@ export function ClientProgressReportView({
               setReport((prev) => ({ ...prev, isManual: false }));
               setMode("editing");
             }}
-            className="flex flex-col items-center p-8 bg-white/5 border-2 border-[#F06C22]/20 rounded-[40px] hover:border-[#F06C22] transition-all group hover:bg-[#F06C22]/2 text-center"
+            className="flex flex-col items-center p-8 bg-white/5 border-2 border-(--pr-hero)/20 rounded-[40px] hover:border-(--pr-hero) transition-all group hover:bg-(--pr-hero)/2 text-center"
           >
-            <div className="w-14 h-14 rounded-2xl bg-[#F06C22] flex items-center justify-center mb-6 shadow-lg shadow-[#F06C22]/20 group-hover:scale-110 transition-transform">
+            <div className="w-14 h-14 rounded-2xl bg-(--pr-hero) flex items-center justify-center mb-6 shadow-lg shadow-(color:--pr-hero)/20 group-hover:scale-110 transition-transform">
               <Zap className="w-7 h-7 text-white" />
             </div>
             <h3 className="text-xl font-bold uppercase italic mb-2 text-white">
               Auto-Populate
             </h3>
-            <p className="text-[11px] text-[#68717A] font-bold uppercase tracking-widest leading-relaxed">
+            <p className="text-[11px] text-(--pr-slate) font-bold uppercase tracking-widest leading-relaxed">
               Scan database for sessions, lift deltas, and punctuality patterns.
             </p>
           </motion.button>
@@ -896,7 +908,7 @@ export function ClientProgressReportView({
             <h3 className="text-xl font-bold uppercase italic mb-2 text-white">
               Manual Entry
             </h3>
-            <p className="text-[11px] text-[#68717A] font-bold uppercase tracking-widest leading-relaxed">
+            <p className="text-[11px] text-(--pr-slate) font-bold uppercase tracking-widest leading-relaxed">
               Start with a blank canvas. Ideal for clients with external
               history.
             </p>
@@ -908,7 +920,7 @@ export function ClientProgressReportView({
           onClick={onBack}
           className="text-slate-300 hover:text-white hover:bg-slate-800 font-bold uppercase tracking-[0.3em] text-[11px] h-12 px-8"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" /> Abort Mission
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back to the record
         </Button>
       </div>
     );
@@ -918,7 +930,7 @@ export function ClientProgressReportView({
     return (
       <div
         data-print-root
-        className="min-h-screen bg-[#0A2E46] text-[#FAF9F6] selection:bg-[#F06C22]/30 selection:text-white print:bg-white print:text-[#0A2E46]"
+        className="min-h-screen bg-(--pr-navy) text-(--pr-paper) selection:bg-(--pr-hero)/30 selection:text-white print:bg-white print:text-(--pr-navy)"
       >
         <style>{`
           @media print {
@@ -927,34 +939,34 @@ export function ClientProgressReportView({
                background keep it (translucent white surfaces become solid
                navy so the white text inside them stays readable). */
             body, html {
-               background-color: #ffffff !important;
+               background-color: var(--pr-print-paper) !important;
                -webkit-print-color-adjust: exact !important;
                print-color-adjust: exact !important;
             }
             .print-area {
                width: 100% !important;
                max-width: none !important;
-               color: #0A2E46;
+               color: var(--pr-navy);
             }
             /* translucent-white surfaces become pale paper cards… */
             .print-area .bg-white\\/5,
             .print-area .bg-white\\/10 {
-               background-color: #F1F5F8 !important;
-               border-color: #D3DADF !important;
+               background-color: var(--pr-print-card) !important;
+               border-color: var(--pr-print-border) !important;
                backdrop-filter: none !important;
             }
             /* …and white ink on them becomes navy… */
             .print-area :is(.text-white, .text-white\\/60, .text-white\\/70, .text-white\\/80,
-                            .text-white\\/85, .text-white\\/90, .text-\\[\\#FAF9F6\\]) {
-               color: #0A2E46 !important;
+                            .text-white\\/85, .text-white\\/90, .text-\\(--pr-paper\\)) {
+               color: var(--pr-navy) !important;
             }
             /* …except inside cards that keep a solid dark or orange fill. */
-            .print-area :is(.bg-\\[\\#F06C22\\], .bg-slate-800\\/50, .bg-\\[\\#0A2E46\\])
+            .print-area :is(.bg-\\(--pr-hero\\), .bg-slate-800\\/50, .bg-\\(--pr-navy\\))
               :is(.text-white, .text-white\\/60, .text-white\\/70, .text-white\\/80, .text-white\\/85, .text-white\\/90) {
-               color: #ffffff !important;
+               color: var(--pr-hero-on) !important;
             }
-            .print-area .bg-slate-800\\/50 { background-color: #0A2E46 !important; }
-            .print-area .border-white\\/10, .print-area .border-white\\/20 { border-color: #D3DADF !important; }
+            .print-area .bg-slate-800\\/50 { background-color: var(--pr-navy) !important; }
+            .print-area .border-white\\/10, .print-area .border-white\\/20 { border-color: var(--pr-print-border) !important; }
             .print-area .translate-y-full { display: none !important; } /* hover overlays */
             .print-area .no-print { display: none !important; }
             .no-print { display: none !important; }
@@ -971,7 +983,7 @@ export function ClientProgressReportView({
             <Button
               variant="ghost"
               onClick={onBack}
-              className="text-white hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
+              className="h-12 text-white hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
             >
               <ArrowLeft className="w-5 h-5" /> Back
             </Button>
@@ -979,15 +991,17 @@ export function ClientProgressReportView({
               {report.isCheckInOnly ? (
                 <Button
                   onClick={() => {
-                    // A quick check-in becomes step 5 of a full report: clear
-                    // the flag, drop into the editor at the start of the
-                    // conversation, and let the auto-populate fill the rest.
+                    // A Pulse-only report becomes a full one: clear the flag,
+                    // drop into the editor at the start of the conversation,
+                    // and let the auto-populate fill the rest. Its Pulse block
+                    // stays on the document and is the snapshot the Blueprint
+                    // step shows; there is no step to fill for it.
                     setReport((r) => ({ ...r, isCheckInOnly: false, status: "Draft", isManual: false }));
                     setPromotedFromCheckIn(true);
                     setActiveStep("celebrate");
                     setMode("editing");
                   }}
-                  className="bg-white text-[#0A2E46] hover:bg-white/90 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
+                  className="h-12 bg-white text-(--pr-navy) hover:bg-white/90 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
                 >
                   <Flag className="w-5 h-5" /> Build the full report
                 </Button>
@@ -995,7 +1009,7 @@ export function ClientProgressReportView({
                 <Button
                   onClick={() => setMode("editing")}
                   variant="outline"
-                  className="text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
+                  className="h-12 text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
                 >
                   Edit Data
                 </Button>
@@ -1007,7 +1021,7 @@ export function ClientProgressReportView({
                   // app itself never emails clients (no provider is wired,
                   // and client-contact features are switched off for now).
                   const subject = encodeURIComponent(
-                    `${client.firstName}, your 90-day progress report from Max Strength`,
+                    `${client.firstName}, your progress report from Max Strength`,
                   );
                   const body = encodeURIComponent(
                     `Hi ${client.firstName},\n\nYour progress report from ${shortDate(report.date) || report.date} is attached.` +
@@ -1018,21 +1032,21 @@ export function ClientProgressReportView({
                   window.location.href = `mailto:${client.email || ""}?subject=${subject}&body=${body}`;
                 }}
                 variant="outline"
-                className="text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
+                className="h-12 text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
                 title="Opens your mail app with the subject filled in — print to PDF first and attach it"
               >
                 <Mail className="w-5 h-5" /> Email
               </Button>
               <Button
                 onClick={() => window.print()}
-                className="bg-[#F06C22] hover:bg-[#D95B16] text-white rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-8 shadow-lg shadow-[#F06C22]/20"
+                className="h-12 bg-(--pr-hero) hover:bg-(--pr-hero-hover) text-white rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-8 shadow-lg shadow-(color:--pr-hero)/20"
               >
                 <Printer className="w-5 h-5" /> Print Report
               </Button>
             </div>
           </div>
 
-          {/* Coach-only: the check-in dashboard. On screen, never on paper. */}
+          {/* Coach-only: an older report's own Pulse. On screen, never on paper. */}
           {report.subjective && (
             <div className="no-print rounded-3xl border border-white/10 bg-white/5 p-4">
               <button
@@ -1042,7 +1056,7 @@ export function ClientProgressReportView({
                 className="flex w-full items-center justify-between gap-3 text-left"
               >
                 <span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-white">
-                  <HeartPulse className="h-4 w-4 text-[#F06C22]" /> Coach view · Assessment
+                  <HeartPulse className="h-4 w-4 text-(--pr-hero)" /> Coach view · Pulse (as saved with this report)
                   {(report.subjective.summary?.flags.length ?? 0) > 0 && (
                     <span className="rounded-md bg-rose-500 px-1.5 py-0.5 text-[10px] text-white">
                       {report.subjective.summary!.flags.filter((f) => f.severity === "red").length} red ·{" "}
@@ -1058,8 +1072,8 @@ export function ClientProgressReportView({
                 <div className="mt-4 rounded-2xl bg-white p-4 dark:bg-slate-900">
                   <SubjectiveDashboard
                     assessment={report.subjective}
-                    previous={previousReport}
-                    history={checkInHistory}
+                    previous={previousPulseForReport}
+                    history={historyForReport}
                     machines={machines}
                   />
                 </div>
@@ -1074,32 +1088,32 @@ export function ClientProgressReportView({
           >
             {/* 1. HERO HEADER: ATTENDANCE & DEDICATION */}
             <header className="space-y-3 break-inside-avoid">
-              <div className="flex flex-col md:flex-row md:items-end justify-between border-b-2 border-[#F06C22] pb-4 gap-4">
+              <div className="flex flex-col md:flex-row md:items-end justify-between border-b-2 border-(--pr-hero) pb-4 gap-4">
                 <div>
-                  <h1 className="text-4xl font-bold uppercase italic tracking-tighter leading-none mb-3 print:text-[#0A2E46]">
+                  <h1 className="text-4xl font-bold uppercase italic tracking-tighter leading-none mb-3 print:text-(--pr-navy)">
                     {report.isCheckInOnly ? (
                       <>
                         Client <br />
-                        <span className="text-[#F06C22]">Assessment</span>
+                        <span className="text-(--pr-hero)">Pulse</span>
                       </>
                     ) : (
                       <>
                         Performance <br />
-                        <span className="text-[#F06C22]">Report Card</span>
+                        <span className="text-(--pr-hero)">Report Card</span>
                       </>
                     )}
                   </h1>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-[11px] font-bold uppercase tracking-[0.25em] text-[#68717A]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-[11px] font-bold uppercase tracking-[0.25em] text-(--pr-slate)">
                     <div className="flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5 text-[#F06C22]" />
-                      <span className="text-white print:text-[#0A2E46]">
+                      <User className="w-3.5 h-3.5 text-(--pr-hero)" />
+                      <span className="text-white print:text-(--pr-navy)">
                         {client.firstName} {client.lastName}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-[#F06C22]" />
+                      <Calendar className="w-3.5 h-3.5 text-(--pr-hero)" />
                       Report:{" "}
-                      <span className="text-white print:text-[#0A2E46]">
+                      <span className="text-white print:text-(--pr-navy)">
                         {new Date(
                           parseSessionDate(report.date),
                         ).toLocaleDateString("en-US", {
@@ -1110,7 +1124,7 @@ export function ClientProgressReportView({
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 opacity-80">
-                      <CheckCircle2 className="w-3 h-3 text-[#F06C22]/60" />
+                      <CheckCircle2 className="w-3 h-3 text-(--pr-hero)/60" />
                       Joined:{" "}
                       <span className="text-white/60">
                         {shortDate(
@@ -1119,7 +1133,7 @@ export function ClientProgressReportView({
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 opacity-80">
-                      <CheckCircle2 className="w-3 h-3 text-[#F06C22]/60" />
+                      <CheckCircle2 className="w-3 h-3 text-(--pr-hero)/60" />
                       Prev Report:{" "}
                       <span className="text-white/60">
                         {shortDate(previousReport?.date) || "First report"}
@@ -1142,13 +1156,13 @@ export function ClientProgressReportView({
                       className="hidden print:flex"
                     />
                   </div>
-                  <p className="text-[7px] font-bold uppercase tracking-[0.4em] text-[#68717A] mb-1">
+                  <p className="text-[7px] font-bold uppercase tracking-[0.4em] text-(--pr-slate) mb-1">
                     Authenticated By
                   </p>
-                  <p className="text-base font-bold uppercase italic tracking-tight print:text-[#0A2E46] leading-none mb-1">
+                  <p className="text-base font-bold uppercase italic tracking-tight print:text-(--pr-navy) leading-none mb-1">
                     {trainer.fullName}
                   </p>
-                  <div className="bg-[#F06C22] px-2 py-0.5 rounded-md">
+                  <div className="bg-(--pr-hero) px-2 py-0.5 rounded-md">
                     <p className="text-[7px] font-bold text-white uppercase tracking-widest">
                       Life Transformer • MSF Studio
                     </p>
@@ -1161,7 +1175,7 @@ export function ClientProgressReportView({
                 {/* Highlighted Primary Stats & Narrative */}
                 <div className="flex flex-col md:flex-row gap-4">
                   {report.attendance.toggles?.totalSessions !== false && (
-                    <div className="bg-[#F06C22] p-6 rounded-[25px] text-white flex flex-col justify-center items-center text-center shadow-xl shadow-[#F06C22]/30 relative overflow-hidden group min-w-50">
+                    <div className="bg-(--pr-hero) p-6 rounded-[25px] text-white flex flex-col justify-center items-center text-center shadow-xl shadow-(color:--pr-hero)/30 relative overflow-hidden group min-w-50">
                       <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
                       <Award className="w-8 h-8 mb-2 opacity-50 relative z-10" />
                       <p className="text-5xl font-bold italic tracking-tighter leading-none relative z-10">
@@ -1188,8 +1202,8 @@ export function ClientProgressReportView({
                   )}
 
                   <div className="flex-1 bg-white/5 backdrop-blur-md p-6 rounded-[25px] border border-white/10 flex flex-col justify-center relative">
-                    <Quote className="w-12 h-12 text-[#F06C22] absolute top-4 right-4 opacity-10" />
-                    <p className="text-lg md:text-xl font-bold italic uppercase tracking-tight leading-tight text-white print:text-[#0A2E46] max-w-[90%]">
+                    <Quote className="w-12 h-12 text-(--pr-hero) absolute top-4 right-4 opacity-10" />
+                    <p className="text-lg md:text-xl font-bold italic uppercase tracking-tight leading-tight text-white print:text-(--pr-navy) max-w-[90%]">
                       "
                       {report.attendance.narrative ||
                         `Incredible work, ${client.firstName}. Your dedication to this clinical protocol is exactly what drives meaningful biological change.`}
@@ -1202,24 +1216,24 @@ export function ClientProgressReportView({
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
                   {report.attendance.toggles?.totalVolume !== false && (
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-center">
-                      <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
+                      <h4 className="text-[11px] font-bold uppercase tracking-widest text-(--pr-slate) mb-1">
                         Total Volume Lifted
                       </h4>
                       <StatValue
                         value={realStat(report.attendance.totalVolume)}
                         unit="lbs"
-                        className="text-2xl font-bold text-[#0A2E46] italic"
+                        className="text-2xl font-bold text-(--pr-navy) italic"
                       />
                     </div>
                   )}
                   {report.attendance.toggles?.totalReps !== false && (
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-center">
-                      <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
+                      <h4 className="text-[11px] font-bold uppercase tracking-widest text-(--pr-slate) mb-1">
                         Total Reps
                       </h4>
                       <StatValue
                         value={realStat(report.attendance.totalReps)}
-                        className="text-2xl font-bold text-[#0A2E46] italic"
+                        className="text-2xl font-bold text-(--pr-navy) italic"
                       />
                     </div>
                   )}
@@ -1237,26 +1251,26 @@ export function ClientProgressReportView({
                   )}
                   {report.attendance.toggles?.avgRestDays !== false && (
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-center">
-                      <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
+                      <h4 className="text-[11px] font-bold uppercase tracking-widest text-(--pr-slate) mb-1">
                         Average Rest
                       </h4>
                       <StatValue
                         value={realStat(report.attendance.avgRestDays)}
                         unit="days"
-                        className="text-2xl font-bold text-[#0A2E46] italic"
+                        className="text-2xl font-bold text-(--pr-navy) italic"
                         why={`Needs ${AVG_REST_MIN_GAPS + 1} sessions in the window.`}
                       />
                     </div>
                   )}
                   {report.attendance.toggles?.avgDuration !== false && (
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-center">
-                      <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] mb-1">
+                      <h4 className="text-[11px] font-bold uppercase tracking-widest text-(--pr-slate) mb-1">
                         Avg Session Length
                       </h4>
                       <StatValue
                         value={realStat(report.attendance.avgDuration)}
                         unit="mins"
-                        className="text-2xl font-bold text-[#0A2E46] italic"
+                        className="text-2xl font-bold text-(--pr-navy) italic"
                         why={`Needs ${AVG_DURATION_MIN_SESSIONS} sessions with a recorded start and end.`}
                       />
                     </div>
@@ -1283,82 +1297,21 @@ export function ClientProgressReportView({
             {!report.isCheckInOnly && (
             <section className="space-y-4 break-inside-avoid">
               <div className="flex items-center gap-2">
-                <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-(--pr-hero) shrink-0">
                   Methodology Mastery: The 4 P's
                 </h3>
-                <div className="h-px bg-[#F06C22]/20 flex-1"></div>
+                <div className="h-px bg-(--pr-hero)/20 flex-1"></div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                {(["posture", "pace", "path", "purpose"] as const).map((p) => {
-                  const matrixItem = report.performanceMatrix?.[p];
-                  const score = matrixItem?.score ?? 100;
-                  const rank = Math.round(score / 20) || 1;
-                  const data = FOUR_PILLARS_DATA[p];
-
-                  let colorClasses = {
-                    text: "text-emerald-500",
-                    bg: "bg-emerald-500",
-                  };
-                  if (rank === 1)
-                    colorClasses = { text: "text-rose-500", bg: "bg-rose-500" };
-                  else if (rank === 2 || rank === 3)
-                    colorClasses = {
-                      text: "text-amber-400",
-                      bg: "bg-amber-400",
-                    };
-
-                  return (
-                    <div
-                      key={p}
-                      className="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 flex flex-col justify-between shadow-xl"
-                    >
-                      <div>
-                        <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white print:text-[#0A2E46]">
-                          {data.title}
-                        </h4>
-
-                        <div className="mt-4 flex flex-col gap-1.5">
-                          <span
-                            className={cn(
-                              "text-[11px] font-black italic",
-                              colorClasses.text,
-                            )}
-                          >
-                            {rank} / 5
-                          </span>
-                          <div className="flex gap-0.5">
-                            {[1, 2, 3, 4, 5].map((step) => (
-                              <div
-                                key={step}
-                                className={cn(
-                                  "w-full h-1.5 rounded-[1px] transition-all",
-                                  step <= rank ? colorClasses.bg : "bg-white/5",
-                                )}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      {matrixItem?.note && (
-                        <div className="mt-3 bg-black/20 p-2 rounded-lg border border-white/5">
-                          <p className="text-[11px] font-bold text-white/80 leading-relaxed italic">
-                            "{matrixItem.note}"
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              {/* The mastery word per P, never the number (four-ps.ts). */}
+              <FourPsCards value={report.performanceMatrix} />
 
               {/* The focus history as saved with the report — no live read. */}
               <FocusSnapshotCard entries={report.focusSnapshot} />
 
               {(report.performanceMatrix.includedNotes || []).length > 0 && (
-                <div className="bg-[#FAF9F6] p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-inner mt-4">
-                  <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#68717A] mb-3">
+                <div className="bg-(--pr-paper) p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-inner mt-4">
+                  <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] text-(--pr-slate) mb-3">
                     Clinical Highlights
                   </h4>
                   <ul className="space-y-2">
@@ -1368,8 +1321,8 @@ export function ClientProgressReportView({
                           key={idx}
                           className="flex gap-2 items-start opacity-90"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5 text-[#F06C22] shrink-0 mt-0.5" />
-                          <span className="text-xs font-bold text-[#0A2E46] leading-relaxed italic">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-(--pr-hero) shrink-0 mt-0.5" />
+                          <span className="text-xs font-bold text-(--pr-navy) leading-relaxed italic">
                             "{note}"
                           </span>
                         </li>
@@ -1381,26 +1334,39 @@ export function ClientProgressReportView({
             </section>
             )}
 
-            {/* 3b. THE 90-DAY CHECK-IN (client copy) — only once something was answered */}
-            {report.subjective && answeredCount(report.subjective) > 0 && (
-              <section className="space-y-3 break-inside-avoid">
-                <div className="flex items-center gap-2">
-                  <HeartPulse className="w-4 h-4 text-[#F06C22]" />
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
-                    Your Assessment
-                  </h3>
-                  <div className="h-px bg-[#F06C22]/20 flex-1"></div>
-                </div>
-                <div className="rounded-[24px] bg-[#FAF9F6] p-4 text-[#0A2E46] dark:bg-slate-900 dark:text-white">
-                  <SubjectiveClientCopy
-                    assessment={report.subjective}
-                    previous={previousReport}
-                    clientFirstName={client.firstName}
-                    machines={machines}
-                  />
-                </div>
-              </section>
-            )}
+            {/* 3b. THE PULSE (client copy). An older report prints the Pulse
+                it saved; a report from the reporting round on prints the
+                client's most recent finalized Pulse as a dated snapshot.
+                Either way only what the Pulse's own client-copy switches
+                allow (SubjectiveClientCopy honours them), and nothing at
+                all when there is no Pulse or nothing was answered. */}
+            {(() => {
+              const printed = report.subjective
+                ? { assessment: report.subjective, date: report.subjective.completedAt || report.date, previous: previousPulseForReport }
+                : pulseSnapshot.status === "ready" && pulseSnapshot.pulse
+                  ? { assessment: pulseSnapshot.pulse.assessment, date: pulseSnapshot.pulse.date, previous: pulseSnapshot.previous }
+                  : null;
+              if (!printed || answeredCount(printed.assessment) === 0) return null;
+              return (
+                <section className="space-y-3 break-inside-avoid">
+                  <div className="flex items-center gap-2">
+                    <HeartPulse className="w-4 h-4 text-(--pr-hero)" />
+                    <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-(--pr-hero) shrink-0">
+                      Your Pulse · as of {shortDate(printed.date) || printed.date}
+                    </h3>
+                    <div className="h-px bg-(--pr-hero)/20 flex-1"></div>
+                  </div>
+                  <div className="rounded-[24px] bg-(--pr-paper) p-4 text-(--pr-navy) dark:bg-slate-900 dark:text-white">
+                    <SubjectiveClientCopy
+                      assessment={printed.assessment}
+                      previous={printed.previous}
+                      clientFirstName={client.firstName}
+                      machines={machines}
+                    />
+                  </div>
+                </section>
+              );
+            })()}
 
             {/* 4. GOALS */}
             {report.goals && <GoalsCard value={report.goals} clientFirstName={client.firstName} />}
@@ -1409,17 +1375,17 @@ export function ClientProgressReportView({
             {!report.isCheckInOnly && (
             <section className="break-inside-avoid space-y-4">
               <div className="flex items-center gap-2">
-                <Target className="w-4 h-4 text-[#F06C22]" />
-                <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#F06C22] shrink-0">
+                <Target className="w-4 h-4 text-(--pr-hero)" />
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-(--pr-hero) shrink-0">
                   Your Training Plan
                 </h3>
-                <div className="h-px bg-[#F06C22]/20 flex-1"></div>
+                <div className="h-px bg-(--pr-hero)/20 flex-1"></div>
               </div>
 
               {report.roadmap && (
                 <>
                   {report.roadmap.trackType === "maintenance" && (
-                    <div className="bg-[#FAF9F6] dark:bg-slate-900/50 p-6 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-lg relative overflow-hidden">
+                    <div className="bg-(--pr-paper) dark:bg-slate-900/50 p-6 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-lg relative overflow-hidden">
                       <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                         <Activity className="w-16 h-16 text-blue-500" />
                       </div>
@@ -1450,7 +1416,7 @@ export function ClientProgressReportView({
 
                         {report.roadmap.routineChangeRequested && (
                           <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border-l-4 border-l-blue-500">
-                            <p className="text-[11px] font-bold uppercase tracking-widest text-[#0A2E46] dark:text-slate-300 mb-1">
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-(--pr-navy) dark:text-slate-300 mb-1">
                               Routine Modification
                             </p>
                             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -1464,11 +1430,11 @@ export function ClientProgressReportView({
                   )}
 
                   {report.roadmap.trackType === "goals" && (
-                    <div className="bg-[#FAF9F6] dark:bg-slate-900/50 p-6 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-lg relative overflow-hidden">
+                    <div className="bg-(--pr-paper) dark:bg-slate-900/50 p-6 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-lg relative overflow-hidden">
                       <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                        <Target className="w-16 h-16 text-[#F06C22]" />
+                        <Target className="w-16 h-16 text-(--pr-hero)" />
                       </div>
-                      <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#F06C22] mb-4 flex items-center gap-1.5">
+                      <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-(--pr-hero) mb-4 flex items-center gap-1.5">
                         <Target className="w-4 h-4" /> Goal Setting Track:
                         Performance
                       </div>
@@ -1490,7 +1456,7 @@ export function ClientProgressReportView({
                             <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-1">
                               SMART Goal
                             </p>
-                            <p className="text-sm font-bold text-[#0A2E46] dark:text-slate-200">
+                            <p className="text-sm font-bold text-(--pr-navy) dark:text-slate-200">
                               {report.roadmap.smartGoal}
                             </p>
                           </div>
@@ -1499,11 +1465,11 @@ export function ClientProgressReportView({
 
                       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
                         {report.roadmap.targetMachineId && (
-                          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border-l-4 border-[#F06C22]">
-                            <p className="text-[11px] font-bold uppercase tracking-widest text-[#F06C22] mb-1 flex items-center gap-1">
+                          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border-l-4 border-(--pr-hero)">
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-(--pr-hero) mb-1 flex items-center gap-1">
                               <Dumbbell className="w-3 h-3" /> Target Machine
                             </p>
-                            <p className="text-sm font-black uppercase text-[#0A2E46] dark:text-slate-200">
+                            <p className="text-sm font-black uppercase text-(--pr-navy) dark:text-slate-200">
                               {machines.find(
                                 (m) => m.id === report.roadmap?.targetMachineId,
                               )?.name || "Specified Machine"}
@@ -1522,7 +1488,7 @@ export function ClientProgressReportView({
                                     key={action}
                                     className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"
                                   >
-                                    <div className="w-1.5 h-1.5 rounded-full bg-[#F06C22]"></div>{" "}
+                                    <div className="w-1.5 h-1.5 rounded-full bg-(--pr-hero)"></div>{" "}
                                     {action}
                                   </li>
                                 ))}
@@ -1532,7 +1498,7 @@ export function ClientProgressReportView({
                       </div>
 
                       {report.roadmap.machinePlan && (
-                        <div className="mt-4 bg-[#0A2E46] text-white p-4 rounded-xl shadow-sm relative z-10">
+                        <div className="mt-4 bg-(--pr-navy) text-white p-4 rounded-xl shadow-sm relative z-10">
                           <p className="text-[11px] font-bold uppercase tracking-widest text-white/70 mb-1">
                             Integration Plan
                           </p>
@@ -1545,7 +1511,7 @@ export function ClientProgressReportView({
                   )}
 
                   {report.roadmap.trackType === "refinement" && (
-                    <div className="bg-[#FAF9F6] dark:bg-slate-900/50 p-6 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-lg relative overflow-hidden">
+                    <div className="bg-(--pr-paper) dark:bg-slate-900/50 p-6 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-lg relative overflow-hidden">
                       <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                         <Search className="w-16 h-16 text-emerald-500" />
                       </div>
@@ -1570,7 +1536,7 @@ export function ClientProgressReportView({
                             <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-1">
                               Target Machine
                             </p>
-                            <p className="text-sm font-black uppercase text-[#0A2E46] dark:text-slate-200">
+                            <p className="text-sm font-black uppercase text-(--pr-navy) dark:text-slate-200">
                               {machines.find(
                                 (m) => m.id === report.roadmap?.targetMachineId,
                               )?.name || "Specified Machine"}
@@ -1581,7 +1547,7 @@ export function ClientProgressReportView({
 
                       {report.roadmap.routineIntervention && (
                         <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border-l-4 border-l-emerald-500 relative z-10">
-                          <p className="text-[11px] font-bold uppercase tracking-widest text-[#0A2E46] dark:text-slate-300 mb-1">
+                          <p className="text-[11px] font-bold uppercase tracking-widest text-(--pr-navy) dark:text-slate-300 mb-1">
                             Intervention Strategy
                           </p>
                           <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -1599,15 +1565,15 @@ export function ClientProgressReportView({
             {/* 5. NOTES & FOOTER */}
             {!report.isCheckInOnly && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch break-inside-avoid">
-              <div className="col-span-2 bg-[#FAF9F6] p-3 rounded-[20px] border border-slate-100 dark:border-slate-800 relative">
+              <div className="col-span-2 bg-(--pr-paper) p-3 rounded-[20px] border border-slate-100 dark:border-slate-800 relative">
                 <div className="flex items-center gap-2 mb-1">
-                  <FileText className="w-3 h-3 text-[#F06C22]" />
-                  <h4 className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#0A2E46]">
+                  <FileText className="w-3 h-3 text-(--pr-hero)" />
+                  <h4 className="text-[11px] font-bold uppercase tracking-[0.3em] text-(--pr-navy)">
                     Summative Analysis
                   </h4>
                 </div>
                 <div className="bg-white dark:bg-slate-900 rounded-xl p-2 shadow-inner min-h-12.5">
-                  <p className="text-[11px] font-medium italic text-[#0A2E46] leading-relaxed">
+                  <p className="text-[11px] font-medium italic text-(--pr-navy) leading-relaxed">
                     {report.trainerNotes ||
                       "Incredible work this quarter. Your neurological adaptations are now clearly visible in the data. Your force output is reaching peak clinical efficiency. Keep showing up."}
                   </p>
@@ -1615,12 +1581,12 @@ export function ClientProgressReportView({
               </div>
               <div className="col-span-1 flex flex-col justify-end text-right space-y-2 pb-2">
                 <div className="space-y-1">
-                  <div className="text-[7px] font-bold uppercase tracking-[0.3em] text-[#68717A] mb-1">
+                  <div className="text-[7px] font-bold uppercase tracking-[0.3em] text-(--pr-slate) mb-1">
                     Document Ref: MSF-
                     {report.id?.slice(-8).toUpperCase() || "SYSTEM-NEW"}
                   </div>
-                  <div className="h-px bg-[#F06C22]/20 w-3/4 ml-auto" />
-                  <div className="text-[12px] font-bold italic text-[#F06C22] uppercase tracking-[0.2em] leading-none pt-1">
+                  <div className="h-px bg-(--pr-hero)/20 w-3/4 ml-auto" />
+                  <div className="text-[12px] font-bold italic text-(--pr-hero) uppercase tracking-[0.2em] leading-none pt-1">
                     Max Strength <br />
                     Professional
                   </div>
@@ -1642,7 +1608,7 @@ export function ClientProgressReportView({
   const filledSlotKeys = editorSlots.map((s) => (reportCards([s]).length > 0 ? slotKey(s) : ""));
   const openSlotCount = editorSlots.filter((s) => isOpenSlot(s) && !s.suggested).length;
   return (
-    <div className="min-h-screen bg-[#0A2E46] p-4 sm:p-8 lg:p-12 overflow-y-auto">
+    <div className="min-h-screen bg-(--pr-navy) p-4 sm:p-8 lg:p-12 overflow-y-auto">
       <div className="max-w-4xl mx-auto space-y-8 pb-32">
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 no-print print:hidden sticky top-4 z-50">
           <div className="flex items-center gap-4">
@@ -1650,7 +1616,7 @@ export function ClientProgressReportView({
               variant="ghost"
               size="icon"
               onClick={onBack}
-              className="text-white hover:bg-white/10 rounded-2xl w-10 h-10 print:hidden"
+              className="text-white hover:bg-white/10 rounded-2xl w-11 h-11 print:hidden"
             >
               <ArrowLeft className="w-6 h-6" />
             </Button>
@@ -1658,27 +1624,28 @@ export function ClientProgressReportView({
               <h1 className="text-xl font-bold uppercase italic tracking-tighter text-white">
                 Progress Report
               </h1>
-              <p className="text-[11px] font-bold text-[#68717A] uppercase tracking-widest mt-0.5">
+              <p className="text-[11px] font-bold text-(--pr-slate) uppercase tracking-widest mt-0.5">
                 {client.firstName} {client.lastName} · {report.date}
               </p>
             </div>
           </div>
           <div className="flex gap-3 w-full sm:w-auto print:hidden">
-            <Button
-              variant="outline"
+            <button
+              type="button"
               onClick={() => handleSave("Draft")}
               disabled={saving}
-              className="flex-1 sm:flex-none border-white/20 bg-[#0A2E46]/50 text-white hover:bg-[#0A2E46] hover:text-white rounded-2xl font-bold uppercase tracking-widest h-12 print:hidden"
+              className="pr-btn pr-btn--ghost flex-1 sm:flex-none print:hidden"
             >
               Save Draft
-            </Button>
-            <Button
+            </button>
+            <button
+              type="button"
               onClick={() => handleSave("Finalized")}
               disabled={saving}
-              className="flex-1 sm:flex-none bg-[#F06C22] hover:bg-[#D95B16] text-white rounded-2xl font-bold uppercase tracking-widest h-12 shadow-lg shadow-[#F06C22]/20 print:hidden"
+              className="pr-btn pr-btn--hero flex-1 sm:flex-none print:hidden"
             >
               Finalize Report
-            </Button>
+            </button>
           </div>
         </header>
 
@@ -1690,10 +1657,11 @@ export function ClientProgressReportView({
             highlights: reportCards(report.highlights).length > 0,
             machines: (report.machineProgression?.includedMachineIds.length ?? 0) > 0,
             fourps: (report.performanceMatrix.includedNotes?.length ?? 0) > 0 ||
-              (["posture", "pace", "path", "purpose"] as const).some(
-                (k) => !!report.performanceMatrix[k]?.note,
+              FOUR_PS.some(
+                (k) =>
+                  !!report.performanceMatrix[k]?.note ||
+                  rankFromScore(report.performanceMatrix[k]?.score) !== null,
               ),
-            checkin: report.subjective ? answeredCount(report.subjective) === 24 : false,
             goals: !!report.goals?.nextGoal,
           }}
         />
@@ -1701,14 +1669,11 @@ export function ClientProgressReportView({
         <div className="space-y-8">
           {/* Section 1: Attendance */}
           {activeStep === "celebrate" && (
-          <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-2 h-full bg-[#F06C22]" />
-            <div className="flex items-center gap-3 mb-8">
-              <Calendar className="w-6 h-6 text-[#F06C22]" />
-              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46]">
-                {REPORT_STEPS[STEP_INDEX.celebrate].title}
-              </h2>
-            </div>
+          <section className="pr-card" data-accent="hero">
+            <h2 className="pr-card__title">
+              <Calendar className="w-6 h-6" />
+              {REPORT_STEPS[STEP_INDEX.celebrate].title}
+            </h2>
 
             <div className="flex flex-col gap-8">
               {/* Date Filter & Narrative */}
@@ -1716,7 +1681,7 @@ export function ClientProgressReportView({
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label className="text-[11px] font-bold uppercase tracking-widest text-[#68717A]">
+                      <Label className="text-[11px] font-bold uppercase tracking-widest text-(--pr-slate)">
                         Timeframe Start Date (Blank = All Time)
                       </Label>
                       {report.attendance.firstSessionDate && (
@@ -1740,16 +1705,16 @@ export function ClientProgressReportView({
                       onChange={(e) =>
                         handleRecalculateAttendance(e.target.value)
                       }
-                      className="h-12 rounded-xl font-medium border-2 border-slate-100 dark:border-slate-800 focus:border-[#F06C22] transition-all"
+                      className="h-12 rounded-xl font-medium border-2 border-slate-100 dark:border-slate-800 focus:border-(--pr-hero) transition-all"
                     />
-                    <p className="text-[11px] text-[#68717A] italic mt-1 pb-2">
+                    <p className="text-[11px] text-(--pr-slate) italic mt-1 pb-2">
                       Changing this will auto-recalculate the metrics below
                       based on the selected timeframe.
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[11px] font-bold uppercase tracking-widest text-[#68717A]">
+                    <Label className="text-[11px] font-bold uppercase tracking-widest text-(--pr-slate)">
                       Trainer Narrative (The Vibe)
                     </Label>
                     <Textarea
@@ -1763,14 +1728,14 @@ export function ClientProgressReportView({
                           },
                         })
                       }
-                      className="min-h-25 rounded-3xl font-medium border-2 border-slate-100 dark:border-slate-800 focus:border-[#F06C22] transition-all p-4"
+                      className="min-h-25 rounded-3xl font-medium border-2 border-slate-100 dark:border-slate-800 focus:border-(--pr-hero) transition-all p-4"
                       placeholder="Celebrate their wins and consistency here..."
                     />
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <Label className="text-[11px] font-bold uppercase tracking-widest text-[#68717A]">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest text-(--pr-slate)">
                     Report Metrics Configuration
                   </Label>
                   <div className="grid grid-cols-1 gap-2">
@@ -1825,7 +1790,7 @@ export function ClientProgressReportView({
                           report.attendance.toggles?.[
                             metric.key as keyof typeof report.attendance.toggles
                           ]
-                            ? "border-[#F06C22] bg-[#F06C22]/5"
+                            ? "border-(--pr-hero) bg-(--pr-hero)/5"
                             : "border-slate-100 bg-slate-50 opacity-60",
                         )}
                       >
@@ -1857,25 +1822,25 @@ export function ClientProgressReportView({
                               report.attendance.toggles?.[
                                 metric.key as keyof typeof report.attendance.toggles
                               ]
-                                ? "bg-[#F06C22] justify-end"
+                                ? "bg-(--pr-hero) justify-end"
                                 : "bg-slate-300 justify-start",
                             )}
                           >
                             <div className="w-4 h-4 rounded-full bg-white dark:bg-slate-900 shadow-sm" />
                           </button>
                           <div>
-                            <p className="text-[11px] font-bold uppercase tracking-widest text-[#0A2E46]">
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-(--pr-navy)">
                               {metric.label}
                             </p>
                             {metric.value !== null ? (
-                              <p className="text-[12px] font-bold text-[#F06C22]">
+                              <p className="text-[12px] font-bold text-(--pr-hero)">
                                 {metric.value.toLocaleString()}{" "}
-                                <span className="text-[11px] text-[#68717A] uppercase">
+                                <span className="text-[11px] text-(--pr-slate) uppercase">
                                   {metric.unit}
                                 </span>
                               </p>
                             ) : (
-                              <p className="text-[12px] font-bold text-[#68717A]">
+                              <p className="text-[12px] font-bold text-(--pr-slate)">
                                 — not enough data yet
                                 <span className="block text-[11px] font-medium normal-case">
                                   {historyStatus === "loading" ? "Reading their sessions…" : metric.why}
@@ -1895,26 +1860,19 @@ export function ClientProgressReportView({
 
           {/* Section 2: Accolades — three data-backed wins (accolades.ts) */}
           {activeStep === "highlights" && (
-          <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-2 h-full bg-[#0A2E46]" />
+          <section className="pr-card" data-accent="navy">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-              <div className="flex items-center gap-3">
-                <Award className="w-6 h-6 text-[#0A2E46]" />
-                <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46] dark:text-white">
-                  {REPORT_STEPS[STEP_INDEX.highlights].title}
-                </h2>
-              </div>
+              <h2 className="pr-card__title pr-card__title--tight">
+                <Award className="w-6 h-6" />
+                {REPORT_STEPS[STEP_INDEX.highlights].title}
+              </h2>
               {historyStatus === "ready" && openSlotCount > 0 && candidates.length > 0 && (
-                <button
-                  type="button"
-                  onClick={fillOpenSlots}
-                  className="h-11 rounded-xl border-2 border-[#0A2E46]/20 px-4 text-[11px] font-black uppercase tracking-wider text-[#0A2E46] hover:border-[#0A2E46] dark:border-white/20 dark:text-white"
-                >
+                <button type="button" onClick={fillOpenSlots} className="pr-btn pr-btn--outline pr-btn--sm">
                   Fill empty slots from the data
                 </button>
               )}
             </div>
-            <p className="text-sm text-[#68717A] mb-6">
+            <p className="pr-lede">
               {historyStatus === "error"
                 ? "Couldn't read their sessions just now, so nothing could be suggested. You can still write a custom highlight, or come back to this step."
                 : candidates.length === 0 && historyStatus === "ready"
@@ -1941,14 +1899,11 @@ export function ClientProgressReportView({
 
           {/* Section 2b: Machine progression */}
           {activeStep === "machines" && (
-          <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-2 h-full bg-[#0A548B]" />
-            <div className="flex items-center gap-3 mb-8">
-              <Dumbbell className="w-6 h-6 text-[#0A548B]" />
-              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46] dark:text-white">
-                Machine Progression
-              </h2>
-            </div>
+          <section className="pr-card" data-accent="blue">
+            <h2 className="pr-card__title">
+              <Dumbbell className="w-6 h-6" />
+              Machine Progression
+            </h2>
             <MachineProgressionStep
               machines={machines}
               history={machineHistory}
@@ -1960,14 +1915,11 @@ export function ClientProgressReportView({
 
           {/* Section 3: Performance Matrix */}
           {activeStep === "fourps" && (
-          <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-2 h-full bg-[#68717A]" />
-            <div className="flex items-center gap-3 mb-8">
-              <LayoutGrid className="w-6 h-6 text-[#68717A]" />
-              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46]">
-                {REPORT_STEPS[STEP_INDEX.fourps].title}
-              </h2>
-            </div>
+          <section className="pr-card" data-accent="slate">
+            <h2 className="pr-card__title">
+              <LayoutGrid className="w-6 h-6" />
+              {REPORT_STEPS[STEP_INDEX.fourps].title}
+            </h2>
 
             <FocusHistoryPanel
               focuses={focuses}
@@ -1975,244 +1927,22 @@ export function ClientProgressReportView({
               asOf={reportAsOf}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(["posture", "pace", "path", "purpose"] as const).map((p) => {
-                const data = FOUR_PILLARS_DATA[p];
-                const score = report.performanceMatrix[p]?.score ?? 100;
-                const rank = Math.round(score / 20) || 1;
-
-                let talkingPoint = data.rank3;
-                if (rank >= 5) talkingPoint = data.rank5;
-                if (rank <= 2) talkingPoint = data.rank1;
-
-                const included = (
-                  report.performanceMatrix.includedNotes || []
-                ).includes(talkingPoint);
-
-                let colorClasses = {
-                  text: "text-emerald-500",
-                  bg: "bg-emerald-500",
-                  border: "border-emerald-500",
-                };
-                if (rank === 1)
-                  colorClasses = {
-                    text: "text-rose-500",
-                    bg: "bg-rose-500",
-                    border: "border-rose-500",
-                  };
-                else if (rank === 2 || rank === 3)
-                  colorClasses = {
-                    text: "text-amber-400",
-                    bg: "bg-amber-400",
-                    border: "border-amber-400",
-                  };
-
-                return (
-                  <div
-                    key={p}
-                    className="bg-slate-800 border-slate-700 border p-6 rounded-3xl flex flex-col space-y-6"
-                  >
-                    <div>
-                      <h3 className="text-2xl font-bold uppercase tracking-tighter text-white">
-                        {data.title}
-                      </h3>
-                      <p className="text-[11px] text-slate-400 uppercase tracking-wider mt-1 leading-relaxed">
-                        {data.definition}
-                      </p>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div
-                        className={cn(
-                          "flex justify-between items-center text-[11px] font-black uppercase tracking-widest",
-                          colorClasses.text,
-                        )}
-                      >
-                        <span>Rank</span>
-                        <span className="text-sm">{rank} / 5</span>
-                      </div>
-                      <div className="flex gap-1.5 w-full">
-                        {[1, 2, 3, 4, 5].map((step) => (
-                          <button
-                            key={step}
-                            onClick={() => {
-                              setReport({
-                                ...report,
-                                performanceMatrix: {
-                                  ...report.performanceMatrix,
-                                  [p]: {
-                                    ...report.performanceMatrix[p],
-                                    score: step * 20,
-                                  },
-                                },
-                              });
-                            }}
-                            className={cn(
-                              "flex-1 h-8 rounded-lg transition-all duration-300 border-2",
-                              step <= rank
-                                ? cn(colorClasses.bg, colorClasses.border)
-                                : "bg-slate-900 border-slate-900 hover:border-slate-700",
-                            )}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-[11px] font-bold uppercase text-slate-400 tracking-widest pl-1">
-                        Personalized Note (Optional)
-                      </Label>
-                      <Textarea
-                        value={report.performanceMatrix[p]?.note || ""}
-                        onChange={(e) => {
-                          setReport({
-                            ...report,
-                            performanceMatrix: {
-                              ...report.performanceMatrix,
-                              [p]: {
-                                ...report.performanceMatrix[p],
-                                note: e.target.value,
-                              },
-                            },
-                          });
-                        }}
-                        placeholder={`Add a specific note about their ${data.title.toLowerCase()}...`}
-                        className="bg-slate-900 border-slate-700 text-sm h-16 resize-none focus:border-slate-500 rounded-xl placeholder:text-slate-600 italic text-white"
-                      />
-                    </div>
-
-                    <div className="bg-slate-900 p-4 rounded-xl border border-slate-700 flex-1 flex flex-col justify-between gap-4">
-                      <p className="text-xs text-slate-300 font-medium leading-relaxed italic">
-                        "{talkingPoint}"
-                      </p>
-
-                      <Button
-                        variant="ghost"
-                        onClick={() => {
-                          const notes =
-                            report.performanceMatrix.includedNotes || [];
-                          if (!included) {
-                            setReport({
-                              ...report,
-                              performanceMatrix: {
-                                ...report.performanceMatrix,
-                                includedNotes: [...notes, talkingPoint],
-                              },
-                            });
-                          } else {
-                            setReport({
-                              ...report,
-                              performanceMatrix: {
-                                ...report.performanceMatrix,
-                                includedNotes: notes.filter(
-                                  (n) => n !== talkingPoint,
-                                ),
-                              },
-                            });
-                          }
-                        }}
-                        className={cn(
-                          "w-full text-[11px] font-black uppercase tracking-widest h-10 transition-all",
-                          included
-                            ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                            : "bg-white/10 hover:bg-white/20 text-white",
-                        )}
-                      >
-                        {included
-                          ? "✓ Included in Summary"
-                          : "+ Include in Summary"}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {(report.performanceMatrix.includedNotes || []).length > 0 && (
-              <div className="mt-8 p-6 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-inner">
-                <Label className="text-[11px] font-bold uppercase tracking-widest text-[#0A2E46] mb-4 block">
-                  Included Talking Points Summary
-                </Label>
-                <ul className="space-y-3">
-                  {(report.performanceMatrix.includedNotes || []).map(
-                    (note, idx) => (
-                      <li
-                        key={idx}
-                        className="flex gap-3 text-sm text-[#0A2E46] items-start"
-                      >
-                        <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                        <span className="font-medium italic leading-relaxed">
-                          "{note}"
-                        </span>
-                      </li>
-                    ),
-                  )}
-                </ul>
-              </div>
-            )}
-          </section>
-          )}
-
-          {/* Section 3b: the 90-day check-in */}
-          {activeStep === "checkin" && (
-          <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-2 h-full bg-[#0A548B]" />
-            <div className="flex items-center gap-3 mb-2">
-              <HeartPulse className="w-6 h-6 text-[#0A548B]" />
-              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46] dark:text-white">
-                Assessment
-              </h2>
-            </div>
-            <p className="text-sm text-[#68717A] mb-4">
-              How {client.firstName} feels life is going — sleep, energy, pain, habits, food — scored the
-              same way every 90 days so the trend is real. This is a conversation, not a form: ask, listen,
-              then tap.
-            </p>
-            <div className="mb-6">
-              <button
-                type="button"
-                onClick={() => setShowCoachView((v) => !v)}
-                className="sr-btn"
-                aria-expanded={showCoachView}
-              >
-                {showCoachView ? "Hide coach view" : "Show coach view (live scores, flags, trend)"}
-              </button>
-              {showCoachView && (
-                <div className="mt-4">
-                  <SubjectiveDashboard
-                    assessment={
-                      report.subjective ??
-                      emptyAssessment({ bodyWeightLbs: parseWeightLbs(client.weight) })
-                    }
-                    previous={previousReport}
-                    history={checkInHistory}
-                    machines={machines}
-                  />
-                </div>
-              )}
-            </div>
-            <SubjectiveStep
-              value={report.subjective ?? emptyAssessment({ bodyWeightLbs: parseWeightLbs(client.weight) })}
-              onChange={(subjective) => setReport((r) => ({ ...r, subjective }))}
-              previous={previousReport}
-              machines={machines}
-              clientId={client.id}
-              clientFirstName={client.firstName}
-              bodyWeightLbs={parseWeightLbs(client.weight)}
+            <FourPsStep
+              value={report.performanceMatrix}
+              onChange={(performanceMatrix) => setReport((r) => ({ ...r, performanceMatrix }))}
             />
           </section>
           )}
 
           {/* Section 4: Goals + Roadmap */}
           {activeStep === "goals" && (
-          <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-2 h-full bg-[#F06C22]" />
-            <div className="flex items-center gap-3 mb-8">
-              <Flag className="w-6 h-6 text-[#F06C22]" />
-              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46] dark:text-white">
-                {REPORT_STEPS[STEP_INDEX.goals].title} · The Next 90 Days
-              </h2>
-            </div>
+          <section className="pr-card" data-accent="hero">
+            <h2 className="pr-card__title">
+              <Flag className="w-6 h-6" />
+              {REPORT_STEPS[STEP_INDEX.goals].title} · The Next 90 Days
+            </h2>
+            {/* Read-only: the client's most recent finalized Pulse. */}
+            <PulseSnapshot state={pulseSnapshot} machines={machines} />
             <div className="mb-10">
               <GoalsBlock
                 value={
@@ -2233,17 +1963,15 @@ export function ClientProgressReportView({
               />
             </div>
 
-            <div className="flex items-center gap-3 mb-8">
-              <MapIcon className="w-6 h-6 text-[#F06C22]" />
-              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46] dark:text-white">
-                Training Plan
-              </h2>
-            </div>
+            <h2 className="pr-card__title">
+              <MapIcon className="w-6 h-6" />
+              Training Plan
+            </h2>
 
             <div className="space-y-8">
               {/* Track Selection */}
               <div className="space-y-4">
-                <Label className="text-[11px] font-bold uppercase tracking-widest text-[#68717A] ml-1">
+                <Label className="text-[11px] font-bold uppercase tracking-widest text-(--pr-slate) ml-1">
                   Step 1: Select Diagnostic Track
                 </Label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -2643,16 +2371,13 @@ export function ClientProgressReportView({
 
           {/* Section 5: Trainer Notes */}
           {activeStep === "goals" && (
-          <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-2 h-full bg-[#0A2E46]" />
-            <div className="flex items-center gap-3 mb-8">
-              <FileText className="w-6 h-6 text-[#0A2E46]" />
-              <h2 className="text-2xl font-bold uppercase italic tracking-tighter text-[#0A2E46]">
-                Closing Trainer Notes
-              </h2>
-            </div>
+          <section className="pr-card" data-accent="navy">
+            <h2 className="pr-card__title">
+              <FileText className="w-6 h-6" />
+              Closing Trainer Notes
+            </h2>
             <div className="space-y-4">
-              <Label className="text-[11px] font-bold uppercase tracking-widest text-[#68717A]">
+              <Label className="text-[11px] font-bold uppercase tracking-widest text-(--pr-slate)">
                 Lead Practitioner Wrap-Up
               </Label>
               <Textarea
@@ -2660,7 +2385,7 @@ export function ClientProgressReportView({
                 onChange={(e) =>
                   setReport({ ...report, trainerNotes: e.target.value })
                 }
-                className="min-h-30 rounded-3xl font-medium border-2 border-slate-100 dark:border-slate-800 focus:border-[#F06C22] transition-all p-4 print:border-none print:p-0 print:bg-transparent"
+                className="min-h-30 rounded-3xl font-medium border-2 border-slate-100 dark:border-slate-800 focus:border-(--pr-hero) transition-all p-4 print:border-none print:p-0 print:bg-transparent"
                 placeholder="Incredible work this quarter... Keep showing up."
               />
             </div>

@@ -1,0 +1,519 @@
+/* ==========================================================================
+   Client Progress Report — the stepper, the cards, the buttons, the 4 P's
+   --------------------------------------------------------------------------
+   Reporting round, Sep 2026. Colour comes from progress-report.tokens.css;
+   no hex below this line. The rules that shaped it:
+
+     • The iPad is held in portrait and often not looked at, so the five
+       step tabs are EQUAL fractions of the full width, found by position,
+       and their names are never truncated — each step has a short label
+       that fits ("Volume", "Accolades", "Machines", "4 P's", "Blueprint")
+       and the subtitle only appears where there is room for it.
+     • Nothing tappable under 44px (the step tabs are 56, the nav 48, the
+       Dial 48).
+     • A <button> centres its own text; alignment lives here, not in a
+       utility class.
+     • Colour by urgency, never by identity: the four P's cards are the same
+       surface, and only the chosen mastery word carries a tone.
+   ========================================================================== */
+
+@import "./progress-report.tokens.css";
+
+/* ------------------------------------------------------------------ */
+/* THE STEP RAIL                                                       */
+/* ------------------------------------------------------------------ */
+
+.pr-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pr-steps > li { min-width: 0; }
+
+.pr-step {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 2px solid var(--pr-raise-border);
+  border-radius: var(--pr-radius-sm);
+  background: var(--pr-raise);
+  color: var(--pr-on-navy);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.pr-step:hover { border-color: var(--pr-raise-border-2); }
+.pr-step:focus-visible { outline: 2px solid var(--pr-on-navy); outline-offset: 2px; }
+.pr-step[aria-current="step"] {
+  background: var(--pr-paper);
+  border-color: var(--pr-paper);
+  color: var(--pr-navy);
+}
+
+.pr-step__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pr-step__n {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  background: var(--pr-raise-2);
+  color: var(--pr-on-navy-muted);
+}
+.pr-step[aria-current="step"] .pr-step__n { background: var(--pr-navy); color: var(--pr-paper); }
+.pr-step[data-done="true"]:not([aria-current="step"]) .pr-step__n { background: var(--pr-ok); color: #ffffff; }
+
+/* Never `text-overflow: ellipsis` here: a name that doesn't fit wraps. */
+.pr-step__title {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  white-space: normal;
+  overflow-wrap: normal;
+}
+
+.pr-step__sub {
+  display: none;
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--pr-on-navy-faint);
+  white-space: normal;
+}
+.pr-step[aria-current="step"] .pr-step__sub { color: var(--pr-ink-muted); }
+@media (min-width: 900px) {
+  .pr-step__sub { display: block; }
+}
+@media (max-width: 480px) {
+  .pr-step { padding: 8px 6px; }
+  .pr-step__title { font-size: 11px; }
+  .pr-step__n { width: 18px; height: 18px; font-size: 10px; }
+}
+
+/* The guide under the rail: what the step is for, what to fill in, what
+   the client sees. */
+.pr-guide {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 20px;
+  border: 1px solid var(--pr-raise-border);
+  border-radius: var(--pr-radius);
+  background: var(--pr-raise);
+  color: var(--pr-on-navy);
+}
+.pr-guide__icon { flex: none; margin-top: 2px; color: var(--pr-hero); }
+.pr-guide__cols {
+  display: grid;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+@media (min-width: 768px) {
+  .pr-guide__cols { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.pr-guide__label {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pr-hero);
+}
+.pr-guide__text { margin: 0; color: var(--pr-on-navy-2); }
+.pr-guide__text--quiet { color: var(--pr-on-navy-muted); }
+
+/* Back / Next / Finalize. */
+.pr-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pr-nav__where {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--pr-on-navy-faint);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------ */
+/* BUTTONS                                                             */
+/* ------------------------------------------------------------------ */
+
+.pr-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: var(--pr-radius-sm);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+}
+.pr-btn:disabled { opacity: 0.35; cursor: default; }
+.pr-btn:focus-visible { outline: 2px solid var(--pr-on-navy); outline-offset: 2px; }
+
+/* On the navy page. */
+.pr-btn--ghost { border-color: var(--pr-raise-border-2); background: transparent; color: var(--pr-on-navy); }
+.pr-btn--ghost:hover:not(:disabled) { background: var(--pr-raise-2); }
+.pr-btn--light { background: var(--pr-paper); color: var(--pr-navy); }
+.pr-btn--light:hover:not(:disabled) { background: #ffffff; }
+.pr-btn--hero {
+  background: var(--pr-hero);
+  color: var(--pr-hero-on);
+  box-shadow: 0 10px 24px var(--pr-hero-glow);
+}
+.pr-btn--hero:hover:not(:disabled) { background: var(--pr-hero-hover); }
+
+/* Inside a paper card. */
+.pr-btn--outline { border-color: var(--pr-border-strong); background: transparent; color: var(--pr-ink); }
+.pr-btn--outline:hover:not(:disabled) { border-color: var(--pr-ink); }
+.pr-btn--sm { min-height: 44px; padding: 0 14px; font-size: 11px; }
+
+/* ------------------------------------------------------------------ */
+/* THE EDITOR'S STEP CARDS                                             */
+/* ------------------------------------------------------------------ */
+
+.pr-card {
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+  border-radius: var(--pr-radius-lg);
+  background: var(--pr-surface);
+  color: var(--pr-ink);
+  box-shadow: 0 25px 50px -12px var(--pr-shadow);
+}
+@media (min-width: 640px) { .pr-card { padding: 32px; } }
+/* The accent bar down the left, per step. */
+.pr-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  background: var(--pr-accent, var(--pr-hero));
+}
+.pr-card[data-accent="hero"]  { --pr-accent: var(--pr-hero); }
+.pr-card[data-accent="navy"]  { --pr-accent: var(--pr-navy); }
+.pr-card[data-accent="blue"]  { --pr-accent: var(--pr-blue); }
+.pr-card[data-accent="slate"] { --pr-accent: var(--pr-slate); }
+.dark .pr-card[data-accent="navy"],
+[data-theme="dark"] .pr-card[data-accent="navy"] { --pr-accent: var(--pr-paper); }
+
+.pr-card__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 24px;
+  font-size: 24px;
+  font-weight: 700;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.04em;
+  color: var(--pr-ink);
+}
+.pr-card__title > svg { flex: none; color: var(--pr-accent, var(--pr-hero)); }
+.pr-card__title--tight { margin-bottom: 8px; }
+
+.pr-label {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pr-ink-muted);
+}
+.pr-lede {
+  margin: 0 0 24px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--pr-ink-muted);
+}
+
+/* ------------------------------------------------------------------ */
+/* THE 4 P's — editor                                                  */
+/* ------------------------------------------------------------------ */
+
+.pr-fourps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+@media (min-width: 768px) {
+  .pr-fourps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* One P. Words above, the Dial LAST — where a thumb rests. */
+.pr-p {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--pr-border);
+  border-radius: var(--pr-radius);
+  background: var(--pr-surface-2);
+  color: var(--pr-ink);
+}
+.pr-p__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--pr-ink);
+}
+.pr-p__def {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pr-ink-muted);
+}
+.pr-p__note {
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 12px;
+  border: 1px solid var(--pr-border-strong);
+  border-radius: 12px;
+  background: var(--pr-surface);
+  color: var(--pr-ink);
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.4;
+  resize: none;
+}
+.pr-p__note::placeholder { color: var(--pr-ink-muted); opacity: 0.7; }
+.pr-p__note:focus { outline: 2px solid var(--pr-live); outline-offset: 1px; }
+
+/* The suggested talking point and its include switch. */
+.pr-p__tp {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--pr-border);
+  border-radius: 12px;
+  background: var(--pr-surface);
+}
+.pr-p__tp-text {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--pr-ink-2);
+}
+.pr-p__include {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--pr-border-strong);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--pr-ink);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.pr-p__include[aria-pressed="true"] {
+  background: var(--pr-ok);
+  border-color: var(--pr-ok);
+  color: #ffffff;
+}
+
+/* The included talking points, summarised. */
+.pr-fourps__summary {
+  margin-top: 24px;
+  padding: 20px 24px;
+  border: 1px solid var(--pr-border);
+  border-radius: var(--pr-radius);
+  background: var(--pr-surface-2);
+}
+.pr-fourps__summary ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.pr-fourps__summary li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; font-style: italic; line-height: 1.5; color: var(--pr-ink); }
+.pr-fourps__summary li > svg { flex: none; margin-top: 2px; color: var(--pr-ok); }
+
+/* ------------------------------------------------------------------ */
+/* THE 4 P's — client copy (on the navy page and on paper)             */
+/* ------------------------------------------------------------------ */
+
+.pr-pcards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+@media (min-width: 640px) { .pr-pcards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 768px) { .pr-pcards { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.pr-pcard {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--pr-raise-border);
+  border-radius: var(--pr-radius-sm);
+  background: var(--pr-raise);
+  color: var(--pr-on-navy);
+  break-inside: avoid;
+}
+.pr-pcard__title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+/* The mastery WORD. Never the number. */
+.pr-pcard__word {
+  display: block;
+  margin-top: 12px;
+  font-size: 15px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  color: var(--pr-on-navy-muted);
+}
+.pr-pcard__word[data-tone="alert"] { color: var(--eq-alert); }
+.pr-pcard__word[data-tone="warn"] { color: var(--eq-warn); }
+.pr-pcard__word[data-tone="live"] { color: var(--pr-on-navy); }
+.pr-pcard__word[data-tone="ok"],
+.pr-pcard__word[data-tone="ok-strong"] { color: var(--eq-ok); }
+/* Five equal segments, filled up to the rank. A picture of the Dial. */
+.pr-pcard__bar {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+  margin-top: 6px;
+}
+.pr-pcard__bar > span {
+  height: 6px;
+  border-radius: 2px;
+  background: var(--pr-raise-2);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.pr-pcard[data-tone="alert"] .pr-pcard__bar > span[data-on="true"] { background: var(--eq-alert); }
+.pr-pcard[data-tone="warn"] .pr-pcard__bar > span[data-on="true"] { background: var(--eq-warn); }
+.pr-pcard[data-tone="live"] .pr-pcard__bar > span[data-on="true"] { background: var(--pr-blue); }
+.pr-pcard[data-tone="ok"] .pr-pcard__bar > span[data-on="true"],
+.pr-pcard[data-tone="ok-strong"] .pr-pcard__bar > span[data-on="true"] { background: var(--eq-ok); }
+.pr-pcard__note {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--pr-raise-border);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 11px;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--pr-on-navy-2);
+}
+
+/* ------------------------------------------------------------------ */
+/* THE PULSE SNAPSHOT                                                  */
+/* ------------------------------------------------------------------ */
+
+.pr-pulse {
+  margin-bottom: 32px;
+  border: 1px solid var(--pr-border);
+  border-radius: var(--pr-radius);
+  background: var(--pr-surface-2);
+  overflow: hidden;
+}
+.pr-pulse__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 14px 18px;
+}
+.pr-pulse__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pr-ink);
+}
+.pr-pulse__title > svg { color: var(--pr-hero); }
+.pr-pulse__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--pr-ink-muted);
+}
+.pr-pulse__body {
+  padding: 16px;
+  border-top: 1px solid var(--pr-border);
+  background: var(--pr-surface);
+}
+.pr-pulse__empty {
+  margin: 0;
+  padding: 0 18px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--pr-ink-muted);
+}
+
+/* ------------------------------------------------------------------ */
+/* PRINT                                                               */
+/* ------------------------------------------------------------------ */
+
+@media print {
+  .pr-pcard {
+    background: var(--pr-print-card) !important;
+    border-color: var(--pr-print-border) !important;
+    color: var(--pr-navy) !important;
+  }
+  .pr-pcard__word[data-tone="live"],
+  .pr-pcard__word:not([data-tone]) { color: var(--pr-navy) !important; }
+  .pr-pcard__note { background: #ffffff !important; color: var(--pr-navy) !important; border-color: var(--pr-print-border) !important; }
+  .pr-pcard__bar > span { background: var(--pr-print-border); }
+}

@@ -1,0 +1,107 @@
+/* ==========================================================================
+   Client Progress Report — design tokens (reporting round, Sep 2026)
+   --------------------------------------------------------------------------
+   The report is the client-facing brand look: a navy page with the hero
+   orange as its rule and headline colour, white ink, and paper-white cards
+   for the editor's steps. That identity is deliberate and stays. What
+   changed is that the values now live here, named, instead of as ~150 raw
+   hex literals in the view — so the print stylesheet, the stepper, the
+   cards and the 4 P's all draw from one place.
+
+   Two kinds of token:
+     --pr-navy / --pr-hero / --pr-paper / --pr-blue / --pr-slate
+         The brand pigments. The same in both themes: the report page is
+         ALWAYS navy on screen (it is in the neutral-ramp test's always-dark
+         list) and always white paper in print.
+     --pr-surface / --pr-ink / --pr-border …
+         The editor's cards, which sit on the navy page but follow the
+         app's theme (white in light, slate-900 in dark, like every other
+         card in the app). Dark on .dark / [data-theme] / prefers-color-scheme
+         with the same fallbacks equipment.tokens.css uses.
+
+   Urgency colours (ok / warn / alert) are ALIASES of the equipment tokens,
+   so a "Needs work" P on the report is the same red a "Rough night" is on
+   the briefing. Colour by urgency, never by identity.
+   ========================================================================== */
+
+@import "../equipment/equipment.tokens.css";
+
+:root {
+  /* Brand pigments — fixed in both themes. */
+  --pr-navy:            #0a2e46;   /* the page on screen, the ink on paper */
+  --pr-navy-deep:       #071f30;
+  --pr-hero:            #f06c22;   /* rules, headline accent, Finalize      */
+  --pr-hero-hover:      #d95b16;
+  --pr-hero-on:         #ffffff;
+  --pr-paper:           #faf9f6;   /* white ink on navy; paper cards        */
+  --pr-blue:            #0a548b;   /* the machines step's accent           */
+  --pr-slate:           #68717a;   /* muted labels (brand slate)            */
+
+  /* Ink and surfaces ON THE NAVY PAGE. */
+  --pr-on-navy:         var(--pr-paper);
+  --pr-on-navy-2:       rgba(250, 249, 246, 0.85);
+  --pr-on-navy-muted:   rgba(250, 249, 246, 0.6);
+  --pr-on-navy-faint:   rgba(250, 249, 246, 0.5);
+  --pr-raise:           rgba(255, 255, 255, 0.05);  /* translucent card     */
+  --pr-raise-2:         rgba(255, 255, 255, 0.1);
+  --pr-raise-border:    rgba(255, 255, 255, 0.1);
+  --pr-raise-border-2:  rgba(255, 255, 255, 0.2);
+  --pr-hero-glow:       rgba(240, 108, 34, 0.2);    /* the orange shadow    */
+
+  /* The editor's cards — follow the app theme. */
+  --pr-surface:         #ffffff;
+  --pr-surface-2:       #f8fafc;
+  --pr-surface-3:       #f1f5f9;
+  --pr-ink:             var(--pr-navy);
+  --pr-ink-2:           #334155;
+  --pr-ink-muted:       var(--pr-slate);
+  --pr-border:          #f1f5f9;
+  --pr-border-strong:   #cbd5e1;
+  --pr-shadow:          rgba(10, 46, 70, 0.25);
+
+  /* Urgency — the equipment tokens, by name. */
+  --pr-ok:              var(--eq-ok);
+  --pr-ok-fill:         var(--eq-ok-fill);
+  --pr-warn:            var(--eq-warn);
+  --pr-warn-fill:       var(--eq-warn-fill);
+  --pr-alert:           var(--eq-alert);
+  --pr-alert-fill:      var(--eq-alert-fill);
+  --pr-live:            var(--eq-live);
+  --pr-live-fill:       var(--eq-live-fill);
+
+  /* Print: white paper, navy ink, pale cards. */
+  --pr-print-paper:     #ffffff;
+  --pr-print-card:      #f1f5f8;
+  --pr-print-border:    #d3dadf;
+
+  --pr-radius:          24px;
+  --pr-radius-lg:       40px;
+  --pr-radius-sm:       16px;
+}
+
+.dark,
+[data-theme="dark"] {
+  --pr-surface:         #0f172a;
+  --pr-surface-2:       #1e293b;
+  --pr-surface-3:       #334155;
+  --pr-ink:             var(--pr-paper);
+  --pr-ink-2:           #cbd5e1;
+  --pr-ink-muted:       #94a3b8;
+  --pr-border:          #1e293b;
+  --pr-border-strong:   #475569;
+  --pr-shadow:          rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not([data-theme="light"]) {
+    --pr-surface:         #0f172a;
+    --pr-surface-2:       #1e293b;
+    --pr-surface-3:       #334155;
+    --pr-ink:             var(--pr-paper);
+    --pr-ink-2:           #cbd5e1;
+    --pr-ink-muted:       #94a3b8;
+    --pr-border:          #1e293b;
+    --pr-border-strong:   #475569;
+    --pr-shadow:          rgba(0, 0, 0, 0.5);
+  }
+}

@@ -1,15 +1,20 @@
 /**
- * The step rail for the report editor: six tappable steps with a done-mark,
+ * The step rail for the report editor: five tappable steps with a done-mark,
  * the plain-language guide for the active one, and Back / Next.
  *
  * The rail is the trainer's map of the conversation. It is rendered twice:
  * `<ReportStepper>` at the top (rail + guide) and `<ReportStepNav>` at the
  * bottom (Back / Next / Finalize), so the trainer never scrolls back up to
  * move on.
+ *
+ * Reporting round, Sep 2026: five EQUAL columns found by position, a short
+ * label per step that is never truncated, 56px tabs, tokens instead of hex
+ * (progress-report.css).
  */
 import React from "react";
 import { ArrowLeft, ArrowRight, Check, Info } from "lucide-react";
 import { REPORT_STEPS, STEP_INDEX, type ReportStepId } from "./steps";
+import "./progress-report.css";
 
 export interface ReportStepperProps {
   active: ReportStepId;
@@ -22,7 +27,7 @@ export function ReportStepper({ active, onChange, done }: ReportStepperProps) {
   const step = REPORT_STEPS[STEP_INDEX[active]];
   return (
     <div className="space-y-4 print:hidden">
-      <ol className="grid grid-cols-3 md:grid-cols-6 gap-2" aria-label="Report steps">
+      <ol className="pr-steps" aria-label="Report steps">
         {REPORT_STEPS.map((s) => {
           const isActive = s.id === active;
           const isDone = !!done[s.id];
@@ -32,66 +37,39 @@ export function ReportStepper({ active, onChange, done }: ReportStepperProps) {
                 type="button"
                 onClick={() => onChange(s.id)}
                 aria-current={isActive ? "step" : undefined}
-                className={[
-                  "w-full min-h-[64px] rounded-2xl px-3 py-2 text-left border-2 transition-colors",
-                  isActive
-                    ? "bg-[#F06C22] border-[#F06C22] text-white shadow-lg shadow-[#F06C22]/20"
-                    : "bg-white/5 border-white/10 text-white hover:border-white/30",
-                ].join(" ")}
+                aria-label={`Step ${s.n}: ${s.title}`}
+                data-done={isDone}
+                className="pr-step"
               >
-                <span className="flex items-center gap-2">
-                  <span
-                    className={[
-                      "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black",
-                      isActive
-                        ? "bg-white text-[#F06C22]"
-                        : isDone
-                          ? "bg-emerald-500 text-white"
-                          : "bg-white/10 text-white/70",
-                    ].join(" ")}
-                  >
+                <span className="pr-step__head">
+                  <span className="pr-step__n" aria-hidden>
                     {isDone && !isActive ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : s.n}
                   </span>
-                  <span className="text-[13px] font-black uppercase italic tracking-tight leading-none truncate">
-                    {s.title}
-                  </span>
+                  <span className="pr-step__title">{s.label}</span>
                 </span>
-                <span
-                  className={[
-                    "mt-1 block text-[11px] leading-tight truncate",
-                    isActive ? "text-white/85" : "text-white/50",
-                  ].join(" ")}
-                >
-                  {s.subtitle}
-                </span>
+                <span className="pr-step__sub">{s.subtitle}</span>
               </button>
             </li>
           );
         })}
       </ol>
 
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-5 text-white">
-        <div className="flex items-start gap-3">
-          <Info className="mt-0.5 h-5 w-5 shrink-0 text-[#F06C22]" />
-          <div className="grid gap-3 md:grid-cols-3 text-[13px] leading-relaxed">
-            <div>
-              <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#F06C22]">
-                Step {step.n} · What it's for
-              </p>
-              <p className="text-white/90">{step.purpose}</p>
-            </div>
-            <div>
-              <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#F06C22]">
-                What to fill in
-              </p>
-              <p className="text-white/90">{step.howTo}</p>
-            </div>
-            <div>
-              <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#F06C22]">
-                The client will see
-              </p>
-              <p className="text-white/70">{step.clientSees}</p>
-            </div>
+      <div className="pr-guide">
+        <Info className="pr-guide__icon h-5 w-5" />
+        <div className="pr-guide__cols">
+          <div>
+            <p className="pr-guide__label">
+              Step {step.n} · {step.title} · What it's for
+            </p>
+            <p className="pr-guide__text">{step.purpose}</p>
+          </div>
+          <div>
+            <p className="pr-guide__label">What to fill in</p>
+            <p className="pr-guide__text">{step.howTo}</p>
+          </div>
+          <div>
+            <p className="pr-guide__label">The client will see</p>
+            <p className="pr-guide__text pr-guide__text--quiet">{step.clientSees}</p>
           </div>
         </div>
       </div>
@@ -114,35 +92,26 @@ export function ReportStepNav({
   const prev = REPORT_STEPS[i - 1];
   const next = REPORT_STEPS[i + 1];
   return (
-    <div className="flex items-center justify-between gap-3 print:hidden">
+    <div className="pr-nav print:hidden">
       <button
         type="button"
         disabled={!prev}
         onClick={() => prev && onChange(prev.id)}
-        className="inline-flex h-12 items-center gap-2 rounded-2xl border border-white/20 px-5 text-[12px] font-black uppercase tracking-widest text-white disabled:opacity-30"
+        className="pr-btn pr-btn--ghost"
       >
         <ArrowLeft className="h-4 w-4" />
-        {prev ? prev.title : "Back"}
+        {prev ? prev.label : "Back"}
       </button>
-      <span className="text-[11px] font-bold uppercase tracking-widest text-white/50">
+      <span className="pr-nav__where">
         Step {i + 1} of {REPORT_STEPS.length}
       </span>
       {next ? (
-        <button
-          type="button"
-          onClick={() => onChange(next.id)}
-          className="inline-flex h-12 items-center gap-2 rounded-2xl bg-white px-5 text-[12px] font-black uppercase tracking-widest text-[#0A2E46]"
-        >
-          {next.title}
+        <button type="button" onClick={() => onChange(next.id)} className="pr-btn pr-btn--light">
+          {next.label}
           <ArrowRight className="h-4 w-4" />
         </button>
       ) : (
-        <button
-          type="button"
-          onClick={onFinalize}
-          disabled={saving}
-          className="inline-flex h-12 items-center gap-2 rounded-2xl bg-[#F06C22] px-6 text-[12px] font-black uppercase tracking-widest text-white shadow-lg shadow-[#F06C22]/20 disabled:opacity-50"
-        >
+        <button type="button" onClick={onFinalize} disabled={saving} className="pr-btn pr-btn--hero">
           Finalize report
           <Check className="h-4 w-4" strokeWidth={3} />
         </button>
