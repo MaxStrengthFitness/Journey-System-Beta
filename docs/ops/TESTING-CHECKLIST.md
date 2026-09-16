@@ -79,6 +79,24 @@ If any of these is wrong, stop and fix it before continuing — everything downs
 - [ ] **Predicted problem — try to edit a journal entry you just wrote.** *Expected:* you cannot. The edit mutations exist (`useClientJournal.ts:180,357`) with no UI calling them, so entries are append-only. A mistyped clinical note is permanent. Decide if that is acceptable.
 - [ ] **Predicted problem — save something slow and watch the button.** Four `isSaving*` flags are set and never rendered, so a slow save looks like a dead button and invites a double-tap.
 
+### Client profile audit · *branch `client-profile-audit` (Sep 16)*
+
+- [ ] **Tap all four tabs twice**, then open a machine from the Journey grid, close it, and tap the SAME machine again. The machine window opens both times.
+- [ ] **Journey:** no "Recent journey" caption, no blue Latest column. Scroll the grid left: older sessions appear on their own and the rail says "Start of history" at the end. The Active Session grid still shows its Today and Latest columns.
+- [ ] **Machine window on a client with a disc or knee flag:** the watch-out card leads; change a setting — it asks for a reason and the change appears in the history and the journal.
+- [ ] **Set up a machine a client has never used, for a client with a height:** a "most common setting" line may appear under an empty field; nothing is filled until you tap Use. A client with no height shows nothing.
+- [ ] **Sync (header) on a real Mindbody client.** The toast says how many fields refreshed; Who they are shows address, waiver, status, "In Mindbody since". Name and contact are read-only. Try a client with no Mindbody id — the button is disabled and says why.
+- [ ] **Nickname:** set one, Save, and check the header, the briefing, the session bar and the post-session screen.
+- [ ] **Body:** search "stent", toggle Knee limitation, Save. The banner, the briefing, the Activity Archive strip and Programming's leg press row all show it.
+- [ ] **Life:** a Teacher lands on "On their feet"; toggle Retired and the previous work stays in the sentence; step protocol mastery up and Save — the trail is dated.
+- [ ] **Goals:** tick SMART boxes, Mark achieved with a reward, and see it in the history. **Focus:** two active focuses at once; Achieved with a reward; check in on one — the note carries the focus.
+- [ ] **Notes:** tap a category tile to isolate it; write an injury with a machine; FORD / Life opens the FORD capture instead of writing a note. Medical history does not appear twice.
+- [ ] **Assessment:** change a score, add "why?", reload — the change and the note are in the history log.
+- [ ] **Admin:** the tier reads sensibly; lock it, Save, and "Use Mindbody's" undoes it. A client visiting another studio says whether they are cleared.
+- [ ] **Activity Archive → Reports** on a client with ≤10 sessions left and no recent report: the renewal cue shows. **Start a new progress report:** three accolades are drafted from data, none reads "undefined" or "+0%", and the 4 P's step lists recent focuses.
+- [ ] **Report banner above the header** on the Journey tab for a client WITH reports: it never says "no progress report on file".
+- [ ] **Portrait, record tab:** nothing shows below the Save bar or above the jump rail while scrolling.
+
 ### Journey grid & live session · *branches `journey-grid`, `session-density-round4`*
 
 - [ ] **Portrait: 8 history columns and 8 machines with no vertical scroll.** That was the measured result of the Now-bar round. *If you get fewer:* the 8-machine rule broke, and it is the whole point of that round.

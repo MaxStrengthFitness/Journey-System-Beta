@@ -278,7 +278,7 @@ trainer asks:
 | Journey | what has she done, in order | Journey |
 | Programming | what is she supposed to do | Routines + Equipment |
 | Notes & Profile | what do we know, and what did we say | Journal + Details |
-| Clinical History | what has already happened | Clinical + History |
+| Activity Archive (was Clinical History; id `clinical`) | what has already happened | Clinical + History |
 
 Nothing was removed. `legacyLocation()` maps every tab id the profile has ever
 answered to onto its new home.
