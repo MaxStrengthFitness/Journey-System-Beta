@@ -43,13 +43,17 @@ describe("attendance", () => {
       [
         { startTime: "2026-09-10T13:00:00Z", clientFeel: "Wiped Out" } as any,
         { startTime: "2026-09-08T13:00:00Z", preSessionCheckIn: { energyLevel: "low" } } as any,
+        // Reporting round: a session on the Dial, with nothing legacy on it.
+        { startTime: "2026-09-07T13:00:00Z", dose: 0, preSessionCheckIn: { readiness: { energy: -2 } } } as any,
         { startTime: "2026-09-06T13:00:00Z" } as any,
       ],
       TZ,
     );
+    // The legacy words are kept, and read onto the Dial beside them.
     expect(rows).toEqual([
-      { day: "2026-09-10", clientFeel: "Wiped Out", energyLevel: null, mood: null },
-      { day: "2026-09-08", clientFeel: null, energyLevel: "low", mood: null },
+      { day: "2026-09-10", clientFeel: "Wiped Out", energyLevel: null, mood: null, dose: -2, energy: null },
+      { day: "2026-09-08", clientFeel: null, energyLevel: "low", mood: null, dose: null, energy: -1 },
+      { day: "2026-09-07", clientFeel: null, energyLevel: null, mood: null, dose: 0, energy: -2 },
     ]);
   });
 });

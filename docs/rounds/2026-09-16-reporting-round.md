@@ -149,4 +149,114 @@ longer written; they are read as legacy through `features/rating/dial.ts`.
 8. Kaizen Deep Dive.
 9. Docs.
 
-(Filled in per phase below as each lands.)
+## What landed, phase by phase
+
+Ten commits on `reporting-round`. Verified on the integrated branch: `tsc`
+**11** errors (master was 13 — retiring the tonnage charts removed two
+pre-existing ones), **2,900 tests** at `TZ=America/New_York`, `vite build`
+clean, and every screen below rendered in a throwaway harness (fake
+Firestore, light and dark, 834pt) with no console errors. The harness was
+deleted, not shipped.
+
+### 1 · `feat(rating)` — the Dial and Loudness
+
+`src/features/rating/`: `dial.ts` (the scales and words, every legacy
+conversion, `compactReadiness`, `worstReadiness`), `Dial.tsx`,
+`Loudness.tsx`, `rating.css` (on `--eq-*`), `session-reads.ts` (`doseOf`,
+`readinessDial`, `regionDial` — the Dial with its legacy fallback, so every
+reader outside the clinical review goes through one place). Tests for all
+of it and a render test for both controls. `IMPORTANCE_META` says Note ·
+Heads up · Critical.
+
+### 2 · `feat(pulse)` — Update Pulse
+
+`PulseQuickLog` / `PulseQuickLogDialog` in `subjective-report/`: tiles per
+area with "3 weeks ago" / "Never asked", one area's statements on the
+frequency Dial, one note, Done; writes through `useCheckInDraft`.
+
+### 3 · `feat(briefing)` — the pre-session briefing
+
+"Before you start" gained **Heads ups** (`headsUpEntries` in
+`useClientJournal`: elevated, unresolved, inside their "until" day or the
+last `HEADS_UP_WINDOW_DAYS = 21`) drawn quieter than Critical, and **body
+regions carried over** from the last session while their "until" day holds.
+The FORD cue is the capture (tap → `FordQuickCapture` with the pillar
+pre-selected). Each routine button says when THAT routine last ran
+(`briefing-facts.ts`). "On the way in" is four Dials in two columns from
+700px; `checkIn.readiness` is written only when something was tapped. The
+`BodyStateTracker` opens the region Dial with an optional "Matters until"
+day. "Assessment" → "Update Pulse". Cards tightened. Render test.
+
+### 4 · `feat(notes)` — capture now, file later
+
+The composer starts with no category; "Save — file later" writes
+`kind: "general"`. `Loudness` replaces the hand-rolled chips; "Matters
+until" is offered for any Heads up or Critical. `NoteSweep` (the To-file
+tray) at the top of the Notes catalog and under "This session" in the
+sheet; `fileUnfiledEntry` / `discardUnfiledEntry` (archive, never delete);
+`isUnfiled` = `kind === "general" && !isLegacy`. The sheet's third tab,
+**Pulse**, mounts `PulseQuickLog`. An unfiled card wears a "To file" mark.
+
+### 5 · `feat(post-session)`
+
+The dose Dial replaces Wiped Out / Good / Energized and writes
+`sessions/{id}.dose` the moment it is tapped (a cleared dial writes
+`deleteField()`); `clientFeel` is never written again. `doseSentence`
+under it. The closing note uses `Loudness` (default Note) and offers
+"Matters until"; `leavePostSession` passes `importance` and
+`effectiveUntil` through to the journal. `NoteSweep` for this session's
+unfiled notes, above the FORD sweep. "Update Pulse" opens the quick-log.
+`FeelToggle.tsx` deleted. Render test.
+
+### 6 · `feat(pulse)` — the living assessment on the Dial
+
+`ScaleInput` is the frequency Dial (stored 0/3/5/8/10 — scoring, history and
+the change log untouched); `Range10` is the intensity Dial (Worst → None,
+reversed for the stored 10-is-worst). Per-statement notes gone (old ones
+render read-only); one note per area. `ClientCheckInPanel` is **Pulse** on
+the feature tokens. **Client mode** (`PulseClientMode.tsx`): "Judy, tap the
+word that fits", one area at a time, writes `enteredBy: "client"`. Labels
+swept app-wide (record spine, archive rows, schedule flag, renewal brief).
+`QuickCheckInDialog` retired (nothing opens a full-screen finalizing form
+any more).
+
+### 7 · `feat(report)` — the Client Progress Report
+
+The assessment step is gone; the Kaizen Blueprint step opens with a
+read-only **Pulse snapshot** (`loadPreviousCheckIn` → `SubjectiveDashboard`).
+The report no longer writes `subjective` or `clients.subjectiveSnapshot`.
+The 4 P's are one mastery Dial each (`four-ps.ts`: Dial ↔ rank ↔ the
+stored `score`, `status` derived on write for older readers; a new report
+starts at `UNRATED_SCORE`). Steps as five equal columns that never
+truncate. ~150 hex literals → `--pr-*` tokens. Render test.
+
+### 8 · `feat(deep-dive)` — the Kaizen Deep Dive
+
+`SessionFact` carries `readiness`, `dose` and `regionDials`, filled from the
+Dial or the legacy words so both eras share one axis. Correlations by Dial
+level (off days · as usual · up days) under `RULE_OF_THREE`. Panels, in
+order: Progression stalls → Readiness vs output → Attendance rhythm
+(`attendanceRhythm`) → Pain & incidents + Pulse trend (`painTimeline`,
+`pulse-trend.ts` over `loadAssessmentHistory`) → Time under tension → the
+form heat map. Tonnage and RPE retired. The caveat line sits under the
+sticky bar. Render test.
+
+### 9 · docs and the last readers
+
+The renewal engine's "rough patch" flag, the session detail dialog and the
+Insights "has feel" metric read the Dial through `session-reads.ts`. This
+document, CLAUDE.md, ROADMAP.md, the rounds index, the iPad checklist,
+ARCHITECTURE Appendix C.
+
+## Left for later
+
+- `PainPoint.severity` and `StressAnchor.intensity` are required numbers, so
+  a cleared intensity Dial is a no-op there (a new point starts Moderate).
+- A finalized report prints the *current* Pulse snapshot, not one frozen
+  at save time (no field for a pointer without a type change).
+- The clinical review's facts keep their own copy of the legacy fallback;
+  `session-reads.ts` is the one everyone else uses.
+- Pulse client mode still stamps the trainer's `byId/byName` on change-log
+  rows (display only).
+- The Deep Dive's `Summary.tonnage` / `WeekBucket.tonnage` still exist,
+  unused.

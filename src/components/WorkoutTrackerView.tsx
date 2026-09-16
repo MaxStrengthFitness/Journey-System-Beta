@@ -4081,9 +4081,10 @@ export function WorkoutTrackerView({
           90 days are up. It autosaves per edit, so there is nothing to
           submit and nothing to lose by closing it.
 
-          Deliberately NOT the full QuickCheckInDialog: that one takes the
-          whole screen and saves as Finalized, which ends the assessment. A
-          session is a stream of small observations, not a sitting.
+          Deliberately NOT a full-screen form that saves as Finalized (the
+          old QuickCheckInDialog did, and was retired in the reporting round):
+          a session is a stream of small observations, not a sitting. The
+          note sheet's Pulse tab is the even shorter path — one area, one Dial.
 
           A slide-over rather than a modal because the session has to stay
           visible behind it: the timer is running, the client is on a

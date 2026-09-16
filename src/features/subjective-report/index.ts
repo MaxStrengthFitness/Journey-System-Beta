@@ -13,7 +13,6 @@ export {
 } from "./SubjectiveStep";
 export * from "./ui";
 export { SubjectiveDashboard, SubjectiveClientCopy, type HistoryPoint } from "./SubjectiveDashboard";
-export { QuickCheckInDialog } from "./QuickCheckInDialog";
 // Update Pulse: one area, one Dial, back to the session (reporting round).
 export { PulseQuickLog, PulseQuickLogDialog, touchedSentence } from "./PulseQuickLog";
 // Client mode: hand the iPad over, the client taps the words (reporting round).

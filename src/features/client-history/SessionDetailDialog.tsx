@@ -22,6 +22,7 @@ import { formatStudioTime } from "../../lib/studio-time";
 import { cn } from "../../lib/utils";
 import { TrainerAvatar, type TrainerRef } from "../calendar";
 import { QualityMark } from "../journey-grid";
+import { DOSE_SCALE, READINESS_KEYS, READINESS_SCALES, REGION_SCALE, dialWord, doseOf, readinessDial, regionDial } from "../rating";
 import { OUTCOME_LABEL, SKIP_REASON_LABEL, outcomeOf, skipReasonOf } from "../../lib/set-outcome";
 import {
   isBackfilledSession,
@@ -243,7 +244,12 @@ export function SessionDetailDialog({
   const routineName = selected ? (routineNameFor ? routineNameFor(selected) : selected.routineName ?? null) : null;
   const letter = routineLetter(routineName);
   const checkIn = selected?.preSessionCheckIn;
-  const feel = typeof selected?.clientFeel === "string" ? selected.clientFeel : null;
+  // Reporting round (Sep 2026): the Dial's words, with the legacy words behind them.
+  const dose = doseOf(selected);
+  const readinessRows = checkIn
+    ? READINESS_KEYS.map((k) => ({ key: k, value: readinessDial(checkIn, k) })).filter((r) => r.value !== null)
+    : [];
+  const feel = dose !== null || readinessRows.length > 0 || checkIn?.mood || checkIn?.hydration || checkIn?.note || (checkIn?.bodyStates?.length ?? 0) > 0;
 
   return (
     <>
@@ -469,21 +475,27 @@ export function SessionDetailDialog({
                   </section>
 
                   <section className="hsd-panel">
-                    <h4 className="hsd-panel__title">Assessment &amp; feel</h4>
-                    {checkIn || feel ? (
+                    <h4 className="hsd-panel__title">On the way in &amp; how it landed</h4>
+                    {feel ? (
                       <dl className="hsd-facts">
-                        {checkIn?.sleepQuality && <Fact label="Sleep" value={checkIn.sleepQuality} />}
-                        {checkIn?.energyLevel && <Fact label="Energy" value={checkIn.energyLevel} />}
+                        {readinessRows.map((r) => (
+                          <Fact
+                            key={r.key}
+                            label={READINESS_SCALES[r.key].ask.replace(/\?$/, "")}
+                            value={dialWord(READINESS_SCALES[r.key], r.value)}
+                          />
+                        ))}
                         {checkIn?.mood && <Fact label="Mood" value={checkIn.mood} />}
-                        {checkIn?.stressLevel && <Fact label="Stress" value={`${checkIn.stressLevel} / 5`} />}
                         {checkIn?.hydration && <Fact label="Hydration" value={checkIn.hydration} />}
                         {checkIn?.bodyStates && checkIn.bodyStates.length > 0 && (
                           <Fact
                             label="Body"
-                            value={checkIn.bodyStates.map((b) => `${b.region} ${b.state}`).join(", ")}
+                            value={checkIn.bodyStates
+                              .map((b) => `${b.region} · ${dialWord(REGION_SCALE, regionDial(b))}${b.until ? ` (until ${b.until})` : ""}`)
+                              .join(", ")}
                           />
                         )}
-                        {feel && <Fact label="Felt after" value={feel} />}
+                        {dose !== null && <Fact label="How it landed" value={dialWord(DOSE_SCALE, dose)} />}
                         {checkIn?.note && <Fact label="Note" value={checkIn.note} />}
                       </dl>
                     ) : (

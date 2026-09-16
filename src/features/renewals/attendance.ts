@@ -11,6 +11,7 @@
  * reads. A day with a booking AND a workout is still one visit day.
  */
 
+import { doseOf, readinessDial } from "../rating/session-reads";
 import type { ScheduleEntry, WorkoutSession } from "../../types";
 import { studioDateKey, toDate } from "../../lib/studio-time";
 import { sessionDayKey, type HistorySession } from "../client-history/model";
@@ -68,7 +69,13 @@ export function feelFromSessions(
     const clientFeel = typeof s.clientFeel === "string" ? s.clientFeel : null;
     const energyLevel = check?.energyLevel ?? null;
     const mood = check?.mood ?? null;
-    if (clientFeel || energyLevel || mood) out.push({ day, clientFeel, energyLevel, mood });
+    // Reporting round (Sep 2026): the Dial is what new sessions carry. The
+    // legacy words are read alongside so August and October sit on one axis.
+    const dose = doseOf(s as WorkoutSession);
+    const energy = readinessDial(check, "energy");
+    if (clientFeel || energyLevel || mood || dose !== null || energy !== null) {
+      out.push({ day, clientFeel, energyLevel, mood, dose, energy });
+    }
   }
   return out;
 }

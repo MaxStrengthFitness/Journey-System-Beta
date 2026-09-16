@@ -104,6 +104,10 @@ export interface SessionFeelRow {
   clientFeel?: string | null;
   energyLevel?: string | null;
   mood?: string | null;
+  /** The Dial (reporting round): how the session landed, −2…2, null = not judged. */
+  dose?: number | null;
+  /** The Dial: energy on the way in, −2…2, null = not asked. */
+  energy?: number | null;
 }
 
 export interface RenewalEngineInput {
@@ -820,17 +824,28 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     }
   }
   const feel = (input.sessionFeel ?? [])
-    .filter((f) => f.day <= today && (f.clientFeel || f.energyLevel || f.mood))
+    .filter(
+      (f) =>
+        f.day <= today &&
+        (f.clientFeel || f.energyLevel || f.mood || (f.dose ?? null) !== null || (f.energy ?? null) !== null),
+    )
     .sort((a, b) => b.day.localeCompare(a.day))
     .slice(0, ROUGH_PATCH_LOOKBACK);
   if (feel.length >= ROUGH_PATCH_MIN) {
+    // A rough session: wiped out on the Dial (−2), or energy below the
+    // client's usual — or the legacy words that meant the same thing.
     const rough = feel.filter(
-      (f) => f.clientFeel === "Wiped Out" || f.energyLevel === "low" || f.mood === "low",
+      (f) =>
+        (f.dose ?? null) === -2 ||
+        ((f.energy ?? null) !== null && (f.energy as number) < 0) ||
+        f.clientFeel === "Wiped Out" ||
+        f.energyLevel === "low" ||
+        f.mood === "low",
     ).length;
     if (rough >= ROUGH_PATCH_MIN) {
       flags.push({
         code: "rough-patch",
-        text: `${rough} of the last ${feel.length} sessions: wiped out, or low energy or mood.`,
+        text: `${rough} of the last ${feel.length} sessions: wiped out, or arrived below their usual energy.`,
       });
     }
   }

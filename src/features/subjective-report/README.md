@@ -209,7 +209,7 @@ client that carries a `subjective` block — found with the existing
 | `SubjectiveDashboard.tsx` | Coach dashboard + the client-copy variant (read-only; the Progress Report shows it as the Pulse snapshot). |
 | `ui.tsx` | The small controls. `ScaleInput` and `Range10` are the Dial (§6). |
 | `subjective-report.css` | Scoped styles; light on `:root`, dark on `.dark`. Also the panel chrome (`.sra-*`), the quick-log (`.pq*`) and client mode (`.pcm*`). |
-| `QuickCheckInDialog.tsx` | The whole form as a full-screen sheet, saved as one finalized round. |
+| `PulseQuickLog.tsx` | Update Pulse: one area, one Dial, Done — the floor entry point (with `PulseQuickLogDialog`). |
 | `PulseQuickLog.tsx` | Update Pulse: one area, one Dial, back to the session (content + dialog). |
 | `PulseClientMode.tsx` | Client mode: the sheet the client holds (§6.4). |
 | `useCheckInDraft.ts` | The open draft: load, autosave, the change log, finalize, discard. |

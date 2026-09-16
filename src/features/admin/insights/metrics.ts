@@ -130,7 +130,7 @@ export function hasNote(s: WorkoutSession): boolean {
 
 /** Was a post-session feel recorded? */
 export function hasFeel(s: WorkoutSession): boolean {
-  return Boolean(s.clientFeel) || Boolean(s.postFeel);
+  return s.dose !== undefined && s.dose !== null ? true : Boolean(s.clientFeel) || Boolean(s.postFeel);
 }
 
 export function machineCount(s: WorkoutSession): number {
