@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,45 +12,32 @@ import { taskLocationOf, taskScopeOf } from "./types";
 import type { TaskScope } from "./types";
 import { useStudioMachines } from "../../hooks/useStudioMachines";
 import { useStudioTaskCategories } from "./useStudioTaskCategories";
+import { studioDateKey } from "../../lib/studio-time";
+import { TaskWizard } from "./TaskWizard";
+import { firstStep, normaliseTime, problemsFor, taskSentence, type WizardStep } from "./task-wizard";
 import {
   deleteTaskTemplate,
   newTemplateId,
   saveTaskTemplate,
   setTaskTemplateActive,
 } from "./mutations";
-import {
-  categoryLabel,
-  CLIENT_ACTION_LABEL,
-  SHIFT_LABEL,
-  TASK_SHIFTS,
-  type ClientTaskAction,
-  type TaskCategory,
-  type TaskKind,
-  type TaskShift,
-  type TaskTemplate,
-} from "./types";
+import { categoryLabel, type TaskTemplate } from "./types";
 
 /**
  * The manager's side of the to-do list.
  *
  * Round: Studio To-Do, Sep 2026.
  *
- * Deliberately a small, boring form. Everything here is a decision a studio
- * manager makes once and revisits rarely, so it optimises for being
- * unambiguous rather than for being fast — the opposite of the trainer screen.
+ * Deliberately unambiguous rather than fast. Since the Planner rework (Sep
+ * 2026) the form is a three-step wizard (./TaskWizard.tsx, rules in
+ * ./task-wizard.ts): What, When, Rules — ending on a sentence that says what
+ * saving will do. Opened with `openWith` it is a single-purpose dialog
+ * (Cancel and Save close it); opened bare it is the list first.
  *
  * Retiring is the default; hard delete is behind a second tap and warns, since
  * completed instances reference the template and deleting it orphans the
  * history of every time the task was done.
  */
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-const KINDS: { value: TaskKind; label: string; category: TaskCategory }[] = [
-  { value: "machine", label: "Machines", category: "cleaning" },
-  { value: "facility", label: "Facility", category: "ops" },
-  { value: "client", label: "With a client", category: "client-service" },
-];
-
 function blank(
   studioId: string,
   scope: TaskScope,
@@ -90,7 +77,7 @@ export interface TaskManagerProps {
    * manager who backs out to the list is not shoved forward again.
    */
   openWith?:
-    | { mode: "new"; scope: TaskScope }
+    | { mode: "new"; scope: TaskScope; preset?: Partial<TaskTemplate> }
     | { mode: "edit"; template: TaskTemplate }
     | null;
 }
@@ -121,6 +108,9 @@ export function TaskManager({
   const [isNew, setIsNew] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [step, setStep] = useState<WizardStep>("what");
+  const [showProblems, setShowProblems] = useState(false);
+  const todayKey = studioDateKey(new Date()) ?? "";
 
   // A trainer without manage rights opens this dialog to write their OWN
   // list, so they must not be shown - or be able to open - the shared studio
@@ -147,25 +137,33 @@ export function TaskManager({
   const set = <K extends keyof TaskTemplate>(k: K, v: TaskTemplate[K]) =>
     setDraft((d) => (d ? { ...d, [k]: v } : d));
 
-  const startNew = (scope: TaskScope) => {
+  const startNew = (scope: TaskScope, preset?: Partial<TaskTemplate>) => {
     if (!studioId) return;
     if (scope === "studio" && !canManageStudio) return;
     if (scope === "personal" && !ownerId) return;
-    setDraft(blank(studioId, scope, ownerId));
+    setDraft({ ...blank(studioId, scope, ownerId), ...(preset ?? {}) });
     setIsNew(true);
     setConfirmDelete(false);
+    setShowProblems(false);
+    // A preset has already answered What's shape; the title is still needed.
+    setStep(firstStep(true));
   };
 
   const startEdit = (t: TaskTemplate) => {
     setDraft({ ...t });
     setIsNew(false);
     setConfirmDelete(false);
+    setShowProblems(false);
+    setStep(firstStep(false));
   };
 
   const close = () => {
     setDraft(null);
     setConfirmDelete(false);
   };
+  // Opened for one task (New task, Edit), finishing closes the dialog;
+  // opened on the list, it goes back to the list.
+  const finish = () => (openWith ? onOpenChange(false) : close());
 
   // Fires on the false -> true edge only. `openWith` is read here rather than
   // in a render branch so that backing out of the form with the chevron
@@ -178,14 +176,14 @@ export function TaskManager({
     }
     if (!openWith) return;
     if (openWith.mode === "edit") startEdit(openWith.template);
-    else startNew(openWith.scope);
+    else startNew(openWith.scope, openWith.preset);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const save = async () => {
     if (!draft || !studioId) return;
-    if (!draft.title.trim()) {
-      toastError("Give the task a title.");
+    if (problemsFor(draft).length) {
+      setShowProblems(true);
       return;
     }
     setBusy(true);
@@ -193,12 +191,29 @@ export function TaskManager({
       const id = draft.id || newTemplateId(draft.title);
       await saveTaskTemplate({
         location: taskLocationOf(draft, studioId),
-        template: { ...draft, id, order: draft.order ?? sorted.length + 1 },
+        template: {
+          ...draft,
+          id,
+          title: draft.title.trim(),
+          timeOfDay: normaliseTime(draft.timeOfDay) ?? undefined,
+          // A reminder is a personal thing; a studio task never carries one.
+          remindMinutesBefore:
+            taskScopeOf(draft) === "personal" && normaliseTime(draft.timeOfDay)
+              ? draft.remindMinutesBefore ?? null
+              : null,
+          order: draft.order ?? sorted.length + 1,
+        },
         author: author ?? null,
         isNew,
       });
-      toastSuccess(isNew ? "Task added." : "Task saved.");
-      close();
+      toastSuccess(
+        isNew
+          ? typeof draft.remindMinutesBefore === "number" && taskScopeOf(draft) === "personal"
+            ? "Added — your bell will remind you."
+            : "Task added."
+          : "Task saved.",
+      );
+      finish();
     } catch (err) {
       console.error("Failed to save task template:", err);
       toastError("Could not save the task. Check your connection.");
@@ -228,7 +243,7 @@ export function TaskManager({
     try {
       await deleteTaskTemplate(taskLocationOf(draft, studioId), draft.id);
       toastSuccess("Task deleted.");
-      close();
+      finish();
     } catch {
       toastError("Could not delete the task.");
     } finally {
@@ -236,580 +251,117 @@ export function TaskManager({
     }
   };
 
-  const label = "text-[10px] font-bold uppercase tracking-widest text-muted-foreground";
-  const input =
-    "w-full rounded-lg border border-border bg-background p-2.5 text-sm min-h-11";
+  const machineName = (id: string) => machines.find((m) => m.machineId === id)?.name ?? "";
+  const clientName = (id: string) => {
+    const c = (clients ?? []).find((x) => x.id === id);
+    return c ? `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() : "";
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="st max-w-2xl sm:max-w-2xl max-h-[85dvh] overflow-y-auto">
+      <DialogContent className="pk-sheet sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base">
-            {draft && (
-              <button
-                type="button"
-                className="st__row-action"
-                onClick={close}
-                aria-label="Back to the task list"
-              >
+          <DialogTitle className="pk-title">
+            {draft && !openWith && (
+              <button type="button" className="st__row-action" onClick={close} aria-label="Back to the task list">
                 <ChevronLeft size={18} aria-hidden />
               </button>
             )}
             {draft
               ? isNew
                 ? taskScopeOf(draft) === "personal"
-                  ? "New personal task"
+                  ? typeof draft.remindMinutesBefore === "number"
+                    ? "New reminder"
+                    : "New task for you"
                   : "New studio task"
                 : taskScopeOf(draft) === "personal"
-                  ? "Edit personal task"
+                  ? "Edit your task"
                   : "Edit studio task"
               : canManageStudio
-                ? "Studio tasks"
-                : "My tasks"}
+                ? "Standing tasks"
+                : "All your tasks"}
           </DialogTitle>
+          {!draft && (
+            <p className="pk-lede">
+              {canManageStudio
+                ? "The duties this studio is held to, and your own. Trainers see the studio's on the Studio tab on the days they fall due."
+                : "Everything on your own list, including the ones that aren't due today. Only you see these."}
+            </p>
+          )}
         </DialogHeader>
 
         {!draft && (
-          <div className="flex flex-col gap-2 p-1">
-            <p className="text-[12px] leading-relaxed text-muted-foreground">
-              These are the standing duties for this studio. Trainers see them
-              in the Planner on the days they are due.
-            </p>
-
-            {sorted.length === 0 && (
-              <p className="rounded-lg border border-border p-4 text-center text-[12px] text-muted-foreground">
-                No tasks yet.
-              </p>
-            )}
-
-            {sorted.map((t) => (
-              <div
-                key={t.id}
-                className="flex items-center gap-2 rounded-lg border border-border p-2"
-              >
-                <button
-                  type="button"
-                  className="min-w-0 flex-1 text-left"
-                  onClick={() => startEdit(t)}
-                >
-                  <span className="block truncate text-[13px] font-bold">
-                    {t.title}
-                  </span>
-                  <span className="block text-[11px] text-muted-foreground">
-                    {categoryLabel(t.category, categories)} ·{" "}
-                    {t.recurrence.type === "weekly"
-                      ? (t.recurrence.daysOfWeek ?? []).length === 0
-                        ? "Every day"
-                        : (t.recurrence.daysOfWeek ?? [])
-                            .map((d) => DAYS[d])
-                            .join(", ")
-                      : t.recurrence.type === "monthly"
-                        ? `Day ${t.recurrence.dayOfMonth} each month`
-                        : t.recurrence.type === "once"
-                          ? t.recurrence.onDate
-                          : "Every day"}
-                    {!t.active && " · retired"}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="st__btn st__btn--ghost"
-                  onClick={() => toggleActive(t)}
-                >
-                  {t.active ? "Retire" : "Restore"}
-                </button>
-              </div>
-            ))}
-
-            {canManageStudio && (
+          <>
+            <div className="pk-body">
+              {sorted.length === 0 ? (
+                <p className="pk-empty">Nothing yet.</p>
+              ) : (
+                <ul className="tw-list">
+                  {sorted.map((t) => (
+                    <li key={t.id} className={`tw-item${t.active ? "" : " tw-item--retired"}`}>
+                      <button type="button" className="tw-item__open" onClick={() => startEdit(t)}>
+                        <span className="tw-item__title">
+                          {t.title}
+                          {canManageStudio && taskScopeOf(t) === "personal" && (
+                            <span className="pk-tag">Just you</span>
+                          )}
+                          {!t.active && <span className="pk-tag">Retired</span>}
+                        </span>
+                        <span className="tw-item__sub">
+                          {categoryLabel(t.category, categories)} ·{" "}
+                          {taskSentence(t, { todayKey, machineName, clientName }).split(". ")[0]}
+                        </span>
+                      </button>
+                      <button type="button" className="pl__btn" onClick={() => toggleActive(t)}>
+                        {t.active ? "Retire" : "Restore"}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="pk-foot">
               <button
                 type="button"
-                className="st__btn st__btn--primary mt-2 flex items-center justify-center gap-2"
-                onClick={() => startNew("studio")}
-                disabled={!studioId}
+                className="pl__btn"
+                onClick={() => startNew("personal")}
+                disabled={!studioId || !ownerId}
               >
-                <Plus size={14} aria-hidden /> New studio task
+                <Plus size={14} aria-hidden /> Task for me
               </button>
-            )}
-            <button
-              type="button"
-              className="st__btn mt-2 flex items-center justify-center gap-2"
-              onClick={() => startNew("personal")}
-              disabled={!studioId || !ownerId}
-            >
-              <Plus size={14} aria-hidden /> New personal task
-            </button>
-          </div>
+              {canManageStudio && (
+                <button
+                  type="button"
+                  className="pl__btn pl__btn--primary"
+                  onClick={() => startNew("studio")}
+                  disabled={!studioId}
+                >
+                  <Plus size={14} aria-hidden /> Studio task
+                </button>
+              )}
+            </div>
+          </>
         )}
 
         {draft && (
-          <div className="flex flex-col gap-3 p-1">
-            <label className="flex flex-col gap-1.5">
-              <span className={label}>Title</span>
-              <input
-                className={input}
-                value={draft.title}
-                autoFocus
-                onChange={(e) => set("title", e.target.value)}
-                placeholder="Wipe down and sanitize"
-              />
-            </label>
-
-            <label className="flex flex-col gap-1.5">
-              <span className={label}>Instructions (optional)</span>
-              <textarea
-                className={`${input} min-h-16 resize-y`}
-                value={draft.detail ?? ""}
-                onChange={(e) => set("detail", e.target.value)}
-                placeholder="Pads, handles and any contact surface."
-              />
-            </label>
-
-            <div className="flex flex-col gap-1.5">
-              <span className={label}>What is it about</span>
-              <div className="flex flex-wrap gap-1.5">
-                {KINDS.map((k) => (
-                  <button
-                    key={k.value}
-                    type="button"
-                    className="st__btn"
-                    aria-pressed={draft.kind === k.value}
-                    style={
-                      draft.kind === k.value
-                        ? {
-                            background: "var(--st-live)",
-                            color: "#fff",
-                            borderColor: "transparent",
-                          }
-                        : undefined
-                    }
-                    onClick={() =>
-                      setDraft((d) =>
-                        d
-                          ? {
-                              ...d,
-                              kind: k.value,
-                              category: k.category,
-                              target:
-                                k.value === "machine"
-                                  ? { kind: "machine", machineIds: "all" }
-                                  : k.value === "facility"
-                                    ? { kind: "facility" }
-                                    : { kind: "client" },
-                            }
-                          : d,
-                      )
-                    }
-                  >
-                    {k.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <label className="flex flex-col gap-1.5">
-              <span className={label}>Category</span>
-              <select
-                className={input}
-                value={draft.category}
-                onChange={(e) =>
-                  set("category", e.target.value as TaskCategory)
-                }
-              >
-                {/* The studio's own list, not a hard-coded four. A studio
-                    that renames Cleaning keeps the upkeep behaviour, because
-                    the id is what carries upkeepRole — see types.ts. */}
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {draft.target.kind === "machine" && (
-              <div className="flex flex-col gap-1.5">
-                <span className={label}>Which machines</span>
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    className="st__btn"
-                    style={
-                      draft.target.machineIds === "all"
-                        ? {
-                            background: "var(--st-live)",
-                            color: "#fff",
-                            borderColor: "transparent",
-                          }
-                        : undefined
-                    }
-                    onClick={() =>
-                      set("target", { kind: "machine", machineIds: "all" })
-                    }
-                  >
-                    Every machine
-                  </button>
-                  <button
-                    type="button"
-                    className="st__btn"
-                    style={
-                      draft.target.machineIds !== "all"
-                        ? {
-                            background: "var(--st-live)",
-                            color: "#fff",
-                            borderColor: "transparent",
-                          }
-                        : undefined
-                    }
-                    onClick={() =>
-                      set("target", { kind: "machine", machineIds: [] })
-                    }
-                  >
-                    Choose
-                  </button>
-                </div>
-                {draft.target.machineIds === "all" ? (
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
-                    Equipment added later is included automatically — this is not
-                    a snapshot of today's roster.
-                  </p>
-                ) : (
-                  <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto rounded-lg border border-border p-2">
-                    {machines.map((m) => {
-                      const ids = draft.target.kind === "machine" &&
-                        draft.target.machineIds !== "all"
-                          ? draft.target.machineIds
-                          : [];
-                      const on = ids.includes(m.machineId);
-                      return (
-                        <button
-                          key={m.machineId}
-                          type="button"
-                          className="st__btn"
-                          aria-pressed={on}
-                          style={
-                            on
-                              ? {
-                                  background: "var(--st-live)",
-                                  color: "#fff",
-                                  borderColor: "transparent",
-                                }
-                              : undefined
-                          }
-                          onClick={() =>
-                            set("target", {
-                              kind: "machine",
-                              machineIds: on
-                                ? ids.filter((x) => x !== m.machineId)
-                                : [...ids, m.machineId],
-                            })
-                          }
-                        >
-                          {m.name}
-                        </button>
-                      );
-                    })}
-                    {machines.length === 0 && (
-                      <p className="text-[11px] leading-relaxed text-muted-foreground">
-                        No equipment is available for this studio yet, so there
-                        is nothing to choose. Add this location’s machines in
-                        Admin → Machines, or pick “Every machine” above.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {draft.target.kind === "client" && (
-              <>
-                <label className="flex flex-col gap-1.5">
-                  <span className={label}>Which client</span>
-                  <select
-                    className={input}
-                    value={draft.target.clientId ?? ""}
-                    onChange={(e) =>
-                      set("target", {
-                        ...(draft.target as { kind: "client" }),
-                        kind: "client",
-                        clientId: e.target.value || undefined,
-                      })
-                    }
-                  >
-                    <option value="">Choose a client…</option>
-                    {[...(clients ?? [])]
-                      .sort((a, b) =>
-                        `${a.lastName}${a.firstName}`.localeCompare(
-                          `${b.lastName}${b.firstName}`,
-                        ),
-                      )
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.firstName} {c.lastName}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-
-                <label className="flex flex-col gap-1.5">
-                  <span className={label}>What opens when a trainer taps it</span>
-                  <select
-                    className={input}
-                    value={draft.target.action ?? "custom"}
-                    onChange={(e) =>
-                      set("target", {
-                        ...(draft.target as { kind: "client" }),
-                        kind: "client",
-                        action: e.target.value as ClientTaskAction,
-                      })
-                    }
-                  >
-                    {(
-                      Object.keys(CLIENT_ACTION_LABEL) as ClientTaskAction[]
-                    ).map((a) => (
-                      <option key={a} value={a}>
-                        {CLIENT_ACTION_LABEL[a]}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="text-[11px] leading-relaxed text-muted-foreground">
-                    The task opens that screen for this client rather than being
-                    a tick that claims the work happened.
-                  </span>
-                </label>
-              </>
-            )}
-
-            <label className="flex flex-col gap-1.5">
-              <span className={label}>How often</span>
-              <select
-                className={input}
-                value={draft.recurrence.type}
-                onChange={(e) =>
-                  set("recurrence", {
-                    ...draft.recurrence,
-                    type: e.target.value as TaskTemplate["recurrence"]["type"],
-                  })
-                }
-              >
-                <option value="daily">Every day</option>
-                <option value="weekly">Certain days of the week</option>
-                <option value="monthly">Once a month</option>
-                <option value="once">One time only</option>
-              </select>
-            </label>
-
-            {draft.recurrence.type === "weekly" && (
-              <div className="flex flex-col gap-1.5">
-                <span className={label}>Which days</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {DAYS.map((d, i) => {
-                    const days = draft.recurrence.daysOfWeek ?? [];
-                    const on = days.includes(i);
-                    return (
-                      <button
-                        key={d}
-                        type="button"
-                        className="st__btn"
-                        aria-pressed={on}
-                        style={
-                          on
-                            ? {
-                                background: "var(--st-live)",
-                                color: "#fff",
-                                borderColor: "transparent",
-                              }
-                            : undefined
-                        }
-                        onClick={() =>
-                          set("recurrence", {
-                            ...draft.recurrence,
-                            daysOfWeek: on
-                              ? days.filter((x) => x !== i)
-                              : [...days, i].sort(),
-                          })
-                        }
-                      >
-                        {d}
-                      </button>
-                    );
-                  })}
-                </div>
-                {(draft.recurrence.daysOfWeek ?? []).length === 0 && (
-                  <p className="text-[11px] text-muted-foreground">
-                    No days picked — this will run every day until you choose
-                    some.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {draft.recurrence.type === "monthly" && (
-              <label className="flex flex-col gap-1.5">
-                <span className={label}>Day of the month</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={31}
-                  className={input}
-                  value={draft.recurrence.dayOfMonth ?? 1}
-                  onChange={(e) =>
-                    set("recurrence", {
-                      ...draft.recurrence,
-                      dayOfMonth: Number(e.target.value),
-                    })
-                  }
-                />
-                {(draft.recurrence.dayOfMonth ?? 1) > 28 && (
-                  <p className="text-[11px] text-muted-foreground">
-                    Months without this day are skipped rather than moved, so a
-                    service check never slides to the wrong week.
-                  </p>
-                )}
-              </label>
-            )}
-
-            {draft.recurrence.type === "once" && (
-              <label className="flex flex-col gap-1.5">
-                <span className={label}>Date</span>
-                <input
-                  type="date"
-                  className={input}
-                  value={draft.recurrence.onDate ?? ""}
-                  onChange={(e) =>
-                    set("recurrence", {
-                      ...draft.recurrence,
-                      onDate: e.target.value,
-                    })
-                  }
-                />
-              </label>
-            )}
-
-            <div className="flex flex-col gap-1.5">
-              <span className={label}>When in the day</span>
-              <div className="flex flex-wrap gap-1.5">
-                {TASK_SHIFTS.map((sft: TaskShift) => {
-                  const shifts = draft.recurrence.shifts ?? ["any"];
-                  const on = shifts.includes(sft);
-                  return (
-                    <button
-                      key={sft}
-                      type="button"
-                      className="st__btn"
-                      aria-pressed={on}
-                      style={
-                        on
-                          ? {
-                              background: "var(--st-live)",
-                              color: "#fff",
-                              borderColor: "transparent",
-                            }
-                          : undefined
-                      }
-                      onClick={() => {
-                        // 'any' is exclusive: a task is either an all-day task
-                        // or it belongs to specific shifts.
-                        const next =
-                          sft === "any"
-                            ? ["any" as TaskShift]
-                            : (on
-                                ? shifts.filter((x) => x !== sft)
-                                : [...shifts.filter((x) => x !== "any"), sft]
-                              ).filter(Boolean);
-                        set("recurrence", {
-                          ...draft.recurrence,
-                          shifts: next.length ? next : ["any"],
-                        });
-                      }}
-                    >
-                      {SHIFT_LABEL[sft]}
-                    </button>
-                  );
-                })}
-              </div>
-              {(draft.recurrence.shifts ?? []).length > 1 && (
-                <p className="text-[11px] text-muted-foreground">
-                  Opening and closing are separate tasks — closing is not
-                  satisfied by having opened.
-                </p>
-              )}
-            </div>
-
-            <label className="flex items-start gap-2.5 rounded-lg border border-border p-3">
-              <input
-                type="checkbox"
-                className="mt-0.5 h-4 w-4"
-                checked={Boolean(draft.requiresNote)}
-                onChange={(e) => set("requiresNote", e.target.checked)}
-              />
-              <span className="text-[12px] leading-relaxed">
-                <strong>Require a note to complete.</strong>
-                <span className="block text-muted-foreground">
-                  For inspections, where "done" without a finding is not an
-                  answer.
-                </span>
-              </span>
-            </label>
-
-            <label className="flex items-start gap-2.5">
-              <input
-                type="checkbox"
-                className="mt-0.5 h-4 w-4"
-                checked={
-                  draft.notifyCreatorOnComplete ??
-                  draft.recurrence.type === "once"
-                }
-                onChange={(e) =>
-                  set("notifyCreatorOnComplete", e.target.checked)
-                }
-              />
-              <span className="text-[12px] leading-relaxed">
-                <strong>Tell me when someone finishes this.</strong>
-                <span className="block text-muted-foreground">
-                  In-app only — nothing is emailed or texted. Off by default
-                  for repeating tasks: forty cleaning receipts a day is how a
-                  studio learns to ignore the bell.
-                </span>
-              </span>
-            </label>
-
-            <div className="flex flex-wrap justify-end gap-2 pt-1">
-              {!isNew && (
-                <button
-                  type="button"
-                  className="st__btn st__btn--ghost mr-auto flex items-center gap-1.5"
-                  onClick={() =>
-                    confirmDelete ? hardDelete() : setConfirmDelete(true)
-                  }
-                  disabled={busy}
-                  style={confirmDelete ? { color: "var(--st-flag)" } : undefined}
-                >
-                  <Trash2 size={14} aria-hidden />
-                  {confirmDelete ? "Delete permanently?" : "Delete"}
-                </button>
-              )}
-              <button type="button" className="st__btn" onClick={close}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="st__btn st__btn--primary"
-                onClick={save}
-                disabled={busy}
-              >
-                {busy ? "Saving…" : "Save task"}
-              </button>
-            </div>
-
-            {confirmDelete && (
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Completed instances reference this task; deleting it orphans the
-                record of every time it was done. Retiring keeps the history and
-                stops it appearing.
-              </p>
-            )}
-          </div>
+          <TaskWizard
+            draft={draft}
+            onChange={setDraft}
+            isNew={isNew}
+            step={step}
+            onStep={setStep}
+            showProblems={showProblems}
+            onShowProblems={() => setShowProblems(true)}
+            machines={machines}
+            categories={categories}
+            clients={clients ?? []}
+            todayKey={todayKey}
+            busy={busy}
+            onSave={save}
+            onCancel={finish}
+            confirmDelete={confirmDelete}
+            onDelete={() => (confirmDelete ? hardDelete() : setConfirmDelete(true))}
+          />
         )}
       </DialogContent>
     </Dialog>

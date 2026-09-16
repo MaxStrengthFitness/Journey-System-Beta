@@ -337,6 +337,60 @@
   .pk-toggle__knob::after { transition: none; }
 }
 
+/* ------------------------------------------------------------------ *
+ * The task wizard and the standing-task list (studio-tasks/TaskWizard)
+ * ------------------------------------------------------------------ */
+
+.tw { display: flex; flex-direction: column; gap: 0.875rem; min-width: 0; }
+.tw-day { min-width: 3.25rem; justify-content: center; }
+.tw-narrow { max-width: 14rem; }
+.tw-time { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.pk-label svg { display: inline; vertical-align: -1px; }
+
+.tw-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--st-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.tw-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem 0.25rem 0;
+}
+.tw-item + .tw-item { border-top: 1px solid var(--st-border); }
+.tw-item--retired { opacity: 0.6; }
+.tw-item__open {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 0.375rem 0.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--st-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tw-item__open:focus-visible { outline: 2px solid var(--st-live); outline-offset: -2px; }
+.tw-item__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 14px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.tw-item__sub { font-size: 12px; line-height: 1.45; color: var(--st-ink-muted); }
+
 /* A search box with its icon inside. */
 .pk-search { position: relative; display: block; }
 .pk-search > svg {

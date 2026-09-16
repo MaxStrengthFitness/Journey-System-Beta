@@ -39,6 +39,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "../../firebase";
+import { withoutUndefined } from "./task-wizard";
 import type {
   PlannedInstance,
   StudioTaskCategory,
@@ -444,7 +445,7 @@ export async function saveTaskTemplate(params: {
   }
   if (!template.title.trim()) throw new Error("A task needs a title.");
 
-  const { id, ...rest } = template;
+  const { id, ...rest } = withoutUndefined(template);
   await setDoc(
     templateDocRef(location, id),
     {
