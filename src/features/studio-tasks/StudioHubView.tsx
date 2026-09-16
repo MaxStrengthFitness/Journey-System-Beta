@@ -65,6 +65,7 @@ import { JobComposer } from "../planner/jobs/JobComposer";
 import { JobSheet } from "../planner/jobs/JobSheet";
 import { isOnJob, isUpForGrabs, jobTopic } from "../planner/jobs/jobs";
 import { GlanceBand, type GlanceCounts } from "../planner/GlanceBand";
+import { leadsHere } from "../planner/leads";
 import type { TeamJob } from "../planner/jobs/types";
 import "./studio-tasks.css";
 import "./studio-hub.css";
@@ -161,9 +162,11 @@ export function StudioHubView({
   const { search, stale } = usePlaybook(activeStudioId ?? null);
   /*
    * TEAM JOBS (Planner rework, Sep 2026) — one piece of work several people
-   * share. Posting is a leader's act (canAssign is the same set); taking one
-   * that is up for grabs, ticking parts and closing it are the floor's.
+   * share. Posting is a leader's act — of THIS studio, as the teamJobs rules
+   * check it (planner/leads.ts); taking one that is up for grabs, ticking
+   * parts and closing it are the floor's.
    */
+  const leadsJobs = leadsHere(authTrainer, activeStudioId);
   const teamJobs = useTeamJobs(activeStudioId ?? null);
   const [composingJob, setComposingJob] = useState(false);
   const [openJobKey, setOpenJobKey] = useState<string | null>(null);
@@ -376,7 +379,7 @@ export function StudioHubView({
             error={teamJobs.error}
             me={author}
             mineOnly={mineOnly}
-            canPost={canAssign}
+            canPost={leadsJobs}
             onPost={() => setComposingJob(true)}
             onOpen={(job) => setOpenJobKey(job.id)}
             onError={toastError}
@@ -440,7 +443,7 @@ export function StudioHubView({
         open={openJobKey !== null}
         onOpenChange={(o) => !o && setOpenJobKey(null)}
         me={author}
-        canLead={canAssign}
+        canLead={leadsJobs}
         people={roster}
         onOpenClient={onOpenClientTask ? (id) => onOpenClientTask(id) : undefined}
       />

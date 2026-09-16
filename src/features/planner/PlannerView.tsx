@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Building2, NotebookPen, StickyNote, UserRound, Users } from "lucide-react";
 import { useActiveStudio } from "../../ActiveStudioContext";
-import { isStudioLeader } from "../../lib/permissions";
 import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
 import type { Client, Trainer } from "../../types";
 import { StudioHubView } from "../studio-tasks/StudioHubView";
@@ -9,6 +8,7 @@ import type { ClientTaskAction } from "../studio-tasks/types";
 import { MyTasksPanel } from "./MyTasksPanel";
 import { NotesPanel } from "./notes/NotesPanel";
 import { TeamPanel } from "./team/TeamPanel";
+import { leadsHere } from "./leads";
 import { clearPlannerIntent, peekPlannerIntent, type PlannerIntent } from "./intent";
 import "../studio-tasks/studio-tasks.css";
 import "../studio-tasks/studio-hub.css";
@@ -78,10 +78,11 @@ export function PlannerView({
   trainers,
   onOpenClientTask,
 }: PlannerViewProps) {
-  const { activeStudio } = useActiveStudio();
-  // Team is a leader's view. Hiding the tab is a convenience — the rules
-  // decide what anyone can read or write — but a trainer is never offered it.
-  const canLead = isStudioLeader(authTrainer ?? null);
+  const { activeStudio, activeStudioId } = useActiveStudio();
+  // Team is a leader's view — of THIS studio (./leads.ts). Hiding the tab is a
+  // convenience — the rules decide what anyone can read or write — but a
+  // trainer, or a leader visiting another studio, is never offered it.
+  const canLead = leadsHere(authTrainer, activeStudioId);
   const tabs = TABS.filter((t) => !t.leadersOnly || canLead);
 
   // A request from a client's profile or a notification, read on arrival —

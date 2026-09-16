@@ -156,6 +156,12 @@ describe("the Planner", () => {
     expect(document.body.textContent).not.toContain("Post a job");
   });
 
+  it("treats a head trainer visiting another studio as a trainer there", async () => {
+    await mount({ ...(lead as object), primaryHomeStudioId: "s9" });
+    expect(tab("Team")).toBeUndefined();
+    expect(document.body.textContent).not.toContain("Post a job");
+  });
+
   it("opens a new note, the task wizard and the job composer", async () => {
     const h = await mount(lead);
     await click(tab("Notes"));

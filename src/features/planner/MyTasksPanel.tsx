@@ -19,7 +19,7 @@ import { clockLabel, reminderPreset } from "../studio-tasks/task-wizard";
 import { dayWords } from "./jobs/jobs";
 import { addDays } from "../studio-tasks/recurrence";
 import { studioDateKey } from "../../lib/studio-time";
-import { isStudioLeader } from "../../lib/permissions";
+import { leadsHere } from "./leads";
 import { studioRoster } from "../studio-tasks/initiatives";
 import { useTeamJobs } from "./jobs/useTeamJobs";
 import { TeamJobsLane } from "./jobs/TeamJobsLane";
@@ -332,7 +332,7 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
         open={openJobId !== null && openJob !== null}
         onOpenChange={(o) => !o && setOpenJobId(null)}
         me={author}
-        canLead={isStudioLeader(authTrainer ?? null)}
+        canLead={leadsHere(authTrainer, activeStudioId)}
         people={roster}
         onOpenClient={onOpenClientTask ? (id) => onOpenClientTask(id) : undefined}
       />
