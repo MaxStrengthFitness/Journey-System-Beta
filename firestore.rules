@@ -809,6 +809,23 @@ service cloud.firestore {
           && d.updatedAt == request.time;
     }
 
+    /* A TEAM JOB (Planner rework, Sep 2026). Limits match
+       src/features/planner/jobs/types.ts. Shape only: who may write what is
+       in the match block. */
+    function teamJobValid(d, studioId) {
+      return d.studioId == studioId
+          && d.title is string && d.title.size() > 0 && d.title.size() <= 160
+          && (!('detail' in d) || (d.detail is string && d.detail.size() <= 2000))
+          && d.status in ['open', 'done', 'cancelled']
+          && d.createdBy is map && d.createdBy.id is string
+          && d.assignees is list && d.assignees.size() <= 30
+          && d.assigneeIds is list && d.assigneeIds.size() <= 30
+          && d.parts is map && d.parts.size() <= 60
+          && (!('closingNote' in d) || d.closingNote == null
+              || (d.closingNote is string && d.closingNote.size() <= 1000))
+          && (!('dueOn' in d) || d.dueOn == null || d.dueOn is string);
+    }
+
     /* STUDIO CONTENT WRITES (Learning + Planner round, Sep 2026).
        Someone who works at, or runs, this studio -- or an administrator or a
        franchise owner. Before this round the machine notes, upkeep log,
@@ -1941,6 +1958,52 @@ service cloud.firestore {
         allow read: if isAuthenticated();
         allow create, update, delete:
           if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
+      }
+
+      // TEAM JOBS (Planner rework, Sep 2026) -- one piece of work several
+      // people share: a deep clean, the birthday cards, calls to clients who
+      // have gone quiet. See src/features/planner/jobs/types.ts.
+      //
+      // Read: the studio's own people (the path is the tenancy, checked on
+      // read like comments). A client job carries client names.
+      //
+      // Posting and editing the job itself is a leader's act. The FLOOR may
+      // touch exactly the fields that doing the work needs -- ticking parts
+      // (one map key at a time), joining or leaving, closing and reopening --
+      // and may not cancel it. Nothing here locks the work to the people named
+      // on it, on purpose: anyone at the studio can finish it.
+      //
+      // Ordered cheapest-first: affectedKeys() is field math; the leader
+      // check resolves the caller through document reads.
+      match /teamJobs/{jobId} {
+        allow read: if isAuthenticated() && writesForStudio(studioId);
+
+        allow create: if isAuthenticated()
+                      && request.resource.data.createdBy.id == request.auth.uid
+                      && request.resource.data.status == 'open'
+                      && teamJobValid(request.resource.data, studioId)
+                      && (isSuperAdmin() || isFranchiseOwnerOnly() || isStudioOwnerOrHeadTrainer(studioId));
+
+        allow update: if isAuthenticated()
+                      && teamJobValid(request.resource.data, studioId)
+                      && request.resource.data.createdBy == resource.data.createdBy
+                      && (
+                           (
+                             request.resource.data.diff(resource.data).affectedKeys()
+                               .hasOnly(['parts', 'assignees', 'assigneeIds', 'status', 'closedOn',
+                                         'closingNote', 'completedBy', 'completedAt', 'updatedAt'])
+                             && (request.resource.data.status != 'cancelled'
+                                 || resource.data.status == 'cancelled')
+                             && writesForStudio(studioId)
+                           )
+                        || isSuperAdmin()
+                        || isFranchiseOwnerOnly()
+                        || isStudioOwnerOrHeadTrainer(studioId)
+                      );
+
+        allow delete: if isSuperAdmin()
+                      || resource.data.createdBy.id == request.auth.uid
+                      || isStudioOwnerOrHeadTrainer(studioId);
       }
 
       // COMMENTS ON LEARNING PAGES (Learning + Planner round, Sep 2026).

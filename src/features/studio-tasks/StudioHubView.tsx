@@ -25,7 +25,7 @@
  * round (Sep 2026) once the hub had had its week on the floor; the Planner
  * now embeds this as its Studio lane.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Settings2, UserRound, Users } from "lucide-react";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -61,6 +61,12 @@ import { useTaskActions } from "./useTaskActions";
 import { confirmPlaybookEntry, retirePlaybookEntry } from "./playbook-mutations";
 import type { PlaybookEntry } from "./playbook";
 import { RenewalsLane } from "../renewals/RenewalsLane";
+import { useTeamJobs } from "../planner/jobs/useTeamJobs";
+import { TeamJobsLane } from "../planner/jobs/TeamJobsLane";
+import { JobComposer } from "../planner/jobs/JobComposer";
+import { JobSheet } from "../planner/jobs/JobSheet";
+import { jobTopic } from "../planner/jobs/jobs";
+import type { TeamJob } from "../planner/jobs/types";
 import "./studio-tasks.css";
 import "./studio-hub.css";
 
@@ -83,6 +89,9 @@ export interface StudioHubViewProps {
    * is a pointer at the screen where the work is actually done.
    */
   onOpenClientTask?: (clientId: string, action?: ClientTaskAction) => void;
+  /** Open this team job's sheet on arrival (a notification's link). */
+  openJobId?: string | null;
+  onOpenedJob?: () => void;
   /**
    * Rendered as the Planner's Studio tab (Learning + Planner round, Sep 2026).
    * The Planner's masthead already names the studio and the day, so the
@@ -97,6 +106,8 @@ export function StudioHubView({
   clients,
   trainers,
   onOpenClientTask,
+  openJobId = null,
+  onOpenedJob,
   embedded = false,
 }: StudioHubViewProps) {
   const { activeStudioId, activeStudio } = useActiveStudio();
@@ -160,6 +171,24 @@ export function StudioHubView({
   const { categories } = useStudioTaskCategories(activeStudioId);
   const { open: openRequests } = useStudioRequests(activeStudioId ?? null);
   const { search, stale } = usePlaybook(activeStudioId ?? null);
+  /*
+   * TEAM JOBS (Planner rework, Sep 2026) — one piece of work several people
+   * share. Posting is a leader's act (canAssign is the same set); taking one
+   * that is up for grabs, ticking parts and closing it are the floor's.
+   */
+  const teamJobs = useTeamJobs(activeStudioId ?? null);
+  const [composingJob, setComposingJob] = useState(false);
+  const [openJobKey, setOpenJobKey] = useState<string | null>(null);
+  const openJob: TeamJob | null = useMemo(
+    () => teamJobs.jobs.find((j) => j.id === openJobKey) ?? null,
+    [teamJobs.jobs, openJobKey],
+  );
+  // Arrived from a notification: open that job once the jobs have loaded.
+  useEffect(() => {
+    if (!openJobId || teamJobs.loading) return;
+    setOpenJobKey(openJobId);
+    onOpenedJob?.();
+  }, [openJobId, teamJobs.loading, onOpenedJob]);
 
   const author = authTrainer?.id
     ? { id: authTrainer.id, name: authTrainer.fullName ?? "A trainer" }
@@ -173,6 +202,16 @@ export function StudioHubView({
   const roster = useMemo(
     () => studioRoster(trainers ?? [], activeStudioId ?? null),
     [trainers, activeStudioId],
+  );
+
+  const visibleJobs = useMemo(
+    () =>
+      topic === "all"
+        ? teamJobs.jobs
+        : topic === "initiatives"
+          ? []
+          : teamJobs.jobs.filter((j) => jobTopic(j) === topic),
+    [teamJobs.jobs, topic],
   );
 
   /*
@@ -368,6 +407,20 @@ export function StudioHubView({
           ))}
         </nav>
 
+        {topic !== "initiatives" && (
+          <TeamJobsLane
+            jobs={visibleJobs}
+            loading={teamJobs.loading}
+            error={teamJobs.error}
+            me={author}
+            mineOnly={mineOnly}
+            canPost={canAssign}
+            onPost={() => setComposingJob(true)}
+            onOpen={(job) => setOpenJobKey(job.id)}
+            onError={toastError}
+          />
+        )}
+
         {showClients && (
           <ClientTasksLane
             rows={clientRows}
@@ -427,6 +480,26 @@ export function StudioHubView({
         author={author}
         clients={clients}
         openWith={managerIntent}
+      />
+
+      <JobComposer
+        open={composingJob}
+        onOpenChange={setComposingJob}
+        studioId={activeStudioId ?? null}
+        author={author}
+        authTrainer={authTrainer ?? null}
+        people={roster}
+        clients={clients ?? []}
+        categories={categories}
+      />
+      <JobSheet
+        job={openJob}
+        open={openJobKey !== null}
+        onOpenChange={(o) => !o && setOpenJobKey(null)}
+        me={author}
+        canLead={canAssign}
+        people={roster}
+        onOpenClient={onOpenClientTask ? (id) => onOpenClientTask(id) : undefined}
       />
 
       {/*

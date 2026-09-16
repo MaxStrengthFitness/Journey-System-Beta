@@ -43,7 +43,17 @@ export type NotificationKind =
   | "machine-flagged"
   /* Someone tagged you in a comment on a Learning page (Learning + Planner
      round). The link carries the page as a Learning ref. */
-  | "comment-mention";
+  | "comment-mention"
+  /* Planner rework (Sep 2026). A leader named you on a team job; someone
+     took a job nobody was on; a job you posted was finished. */
+  | "job-assigned"
+  | "job-taken"
+  | "job-done"
+  /* A colleague shared a Planner note with you (a handoff or cover). */
+  | "note-shared"
+  /* One of your own reminders came due. Written by your own iPad, to
+     yourself, so it is the one kind whose actor is the recipient. */
+  | "reminder";
 
 /** Where tapping the notification should land. */
 export interface NotificationLink {

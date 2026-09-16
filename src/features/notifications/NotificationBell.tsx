@@ -29,12 +29,16 @@ import {
   AtSign,
   Bell,
   BookOpen,
+  BellRing,
   Check,
+  ClipboardCheck,
+  Hand,
   CheckCheck,
   Megaphone,
   MessageSquare,
   Sparkles,
   TriangleAlert,
+  StickyNote,
   UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,6 +67,11 @@ const ICON: Record<NotificationKind, typeof Bell> = {
   "request-resolved": CheckCheck,
   "machine-flagged": TriangleAlert,
   "comment-mention": AtSign,
+  "job-assigned": UserCheck,
+  "job-taken": Hand,
+  "job-done": ClipboardCheck,
+  "note-shared": StickyNote,
+  reminder: BellRing,
 };
 
 function ago(v: unknown): string {

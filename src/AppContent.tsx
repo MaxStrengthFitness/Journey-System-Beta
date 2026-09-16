@@ -172,6 +172,7 @@ const ClientProgressReportView = lazy(() =>
 );
 import { FeedbackProvider, FeedbackButton } from "./features/feedback";
 import { NotificationBell } from "./features/notifications";
+import { plannerIntentFromLink, requestPlanner } from "./features/planner/intent";
 // Type-only, and from the module rather than the barrel, so nothing about the
 // studio-tasks chunk is pulled into the initial bundle.
 import type { ClientTaskAction } from "./features/studio-tasks/types";
@@ -1877,6 +1878,10 @@ export default function AppContent({
             return;
           }
           if (view === "profile" && id) setSelectedClientId(id);
+          if (view === "studio-tasks") {
+            const intent = plannerIntentFromLink(id);
+            if (intent) requestPlanner(intent);
+          }
           setCurrentView(view as any);
         }}
       />

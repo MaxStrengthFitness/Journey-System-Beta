@@ -127,7 +127,7 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
   useEffect(() => {
     if (!intent) return;
     if (intent.kind === "new-note") startNew(intent.client, intent.noteKind ?? "plan");
-    else setSelected(intent.noteId);
+    else if (intent.kind === "open-note") setSelected(intent.noteId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intent]);
 

@@ -1,0 +1,350 @@
+/* ==========================================================================
+   PLANNER KIT — the few controls every Planner dialog and panel shares
+   --------------------------------------------------------------------------
+   Round: Planner rework, Sep 2026. On the --st-* tokens (global, so they
+   reach dialogs rendered in a portal outside .pl). Prefix .pk-.
+
+   One vocabulary for "pick one", "pick several", "on/off" and "a labelled
+   field", so the task wizard, the job composer and the share sheet feel like
+   one product — the "clinical and controlled" brief: quiet surfaces, clear
+   borders, one accent (the brand blue) for what is selected, and every
+   target at least 40px.
+   ========================================================================== */
+
+.pk-sheet {
+  color: var(--st-ink);
+  background: var(--st-surface);
+}
+.pk-sheet *, .pk-sheet *::before, .pk-sheet *::after { box-sizing: border-box; }
+
+.pk-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--st-ink);
+}
+.pk-title svg { flex: none; color: var(--st-live); }
+
+.pk-lede {
+  margin: 0.25rem 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--st-ink-muted);
+}
+
+.pk-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: min(64dvh, 640px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 2px 4px;
+}
+
+.pk-field { display: flex; flex-direction: column; gap: 0.375rem; min-width: 0; }
+.pk-row { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.pk-row > .pk-field { flex: 1 1 12rem; }
+
+.pk-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--st-ink-muted);
+}
+.pk-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--st-ink-muted);
+}
+.pk-problem {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--st-flag);
+}
+
+.pk-input,
+.pk-select,
+.pk-textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--st-border-strong);
+  border-radius: 10px;
+  background: var(--st-bg);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 14px;
+}
+.pk-textarea { min-height: 88px; resize: vertical; line-height: 1.5; }
+.pk-input::placeholder,
+.pk-textarea::placeholder { color: var(--st-ink-faint); }
+.pk-input:focus-visible,
+.pk-select:focus-visible,
+.pk-textarea:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+.pk-input[aria-invalid="true"],
+.pk-textarea[aria-invalid="true"] { border-color: var(--st-flag); }
+
+/* Pick one — a segmented control. Segments are equal widths. */
+.pk-seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--st-border);
+  border-radius: 12px;
+  background: var(--st-surface-2);
+}
+.pk-seg > button {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--st-ink-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: center;
+}
+.pk-seg > button[aria-pressed="true"] {
+  background: var(--st-surface);
+  color: var(--st-live);
+  box-shadow: 0 1px 2px var(--st-shadow);
+}
+.pk-seg > button:focus-visible { outline: 2px solid var(--st-live); outline-offset: -2px; }
+.pk-seg > button svg { flex: none; }
+
+/* Pick several — chips. */
+.pk-chips { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.pk-chips--scroll { max-height: 11rem; overflow-y: auto; padding: 2px; }
+.pk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 40px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--st-border-strong);
+  border-radius: 999px;
+  background: var(--st-surface);
+  color: var(--st-ink-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+.pk-chip[aria-pressed="true"] {
+  border-color: var(--st-live);
+  background: var(--st-live-fill);
+  color: var(--st-live);
+}
+.pk-chip:disabled { opacity: 0.5; cursor: default; }
+.pk-chip:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+.pk-chip svg { flex: none; }
+
+/* A person, drawn as initials in a disc. */
+.pk-avatar {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--st-surface-3);
+  color: var(--st-ink-2);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+.pk-chip[aria-pressed="true"] .pk-avatar { background: var(--st-live); color: var(--st-surface); }
+.pk-avatars { display: inline-flex; }
+.pk-avatars .pk-avatar { width: 24px; height: 24px; border: 2px solid var(--st-surface); }
+.pk-avatars .pk-avatar + .pk-avatar { margin-left: -7px; }
+
+/* On/off, with the sentence beside it. The whole row is the target. */
+.pk-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 52px;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--st-border);
+  border-radius: 12px;
+  background: var(--st-surface);
+  color: var(--st-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pk-toggle:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+.pk-toggle[aria-checked="true"] { border-color: var(--st-live); background: var(--st-live-fill); }
+.pk-toggle__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pk-toggle__title { font-size: 13px; font-weight: 800; }
+.pk-toggle__body { font-size: 11px; line-height: 1.5; color: var(--st-ink-muted); }
+.pk-toggle__knob {
+  flex: none;
+  position: relative;
+  width: 44px;
+  height: 26px;
+  margin-top: 1px;
+  border-radius: 999px;
+  background: var(--st-surface-3);
+  transition: background 120ms ease;
+}
+.pk-toggle__knob::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--st-surface);
+  box-shadow: 0 1px 2px var(--st-shadow);
+  transition: transform 120ms ease;
+}
+.pk-toggle[aria-checked="true"] .pk-toggle__knob { background: var(--st-live); }
+.pk-toggle[aria-checked="true"] .pk-toggle__knob::after { transform: translateX(18px); }
+
+/* The sentence that says what will happen — the review line of every form. */
+.pk-summary {
+  margin: 0;
+  padding: 0.75rem 0.875rem;
+  border-left: 3px solid var(--st-live);
+  border-radius: 0 10px 10px 0;
+  background: var(--st-live-fill);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--st-ink);
+}
+
+.pk-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--st-border);
+}
+.pk-foot__left { margin-right: auto; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+/* A progress bar: done over total. Colour is never the only cue — the
+   numbers sit beside it. */
+.pk-bar {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--st-surface-3);
+  overflow: hidden;
+}
+.pk-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--st-live);
+}
+.pk-bar--done > span { background: var(--st-done); }
+
+/* Small status words: DUE FRIDAY, OVERDUE, UP FOR GRABS. */
+.pk-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--st-border);
+  background: var(--st-surface-2);
+  color: var(--st-ink-2);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pk-tag svg { flex: none; }
+.pk-tag--live { border-color: transparent; background: var(--st-live-fill); color: var(--st-live); }
+.pk-tag--flag { border-color: var(--st-flag-border); background: var(--st-flag-fill); color: var(--st-flag); }
+.pk-tag--done { border-color: transparent; background: var(--st-done-fill); color: var(--st-done); }
+.pk-tag--hero { border-color: transparent; background: var(--st-hero); color: #fff; }
+
+/* A step indicator for the task wizard. */
+.pk-steps { display: flex; gap: 0.375rem; }
+.pk-step {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0.25rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--st-ink-faint);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+.pk-step::before {
+  content: "";
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--st-surface-3);
+}
+.pk-step[data-state="done"] { color: var(--st-ink-2); }
+.pk-step[data-state="done"]::before { background: var(--st-done); }
+.pk-step[aria-current="step"] { color: var(--st-live); }
+.pk-step[aria-current="step"]::before { background: var(--st-live); }
+.pk-step:disabled { cursor: default; }
+
+.pk-empty {
+  margin: 0;
+  padding: 1rem;
+  border: 1px dashed var(--st-border-strong);
+  border-radius: 12px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--st-ink-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-toggle__knob,
+  .pk-toggle__knob::after { transition: none; }
+}
+
+/* A search box with its icon inside. */
+.pk-search { position: relative; display: block; }
+.pk-search > svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--st-ink-faint);
+  pointer-events: none;
+}
+.pk-search > .pk-input { padding-left: 2.25rem; }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { NotebookPen, StickyNote, UserRound, Users } from "lucide-react";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
@@ -66,9 +66,10 @@ export function PlannerView({
     clearPlannerIntent(intent);
   }, [intent]);
   const [tab, setTab] = useState<PlannerTab>(() => {
-    if (intent) rememberedTab = "notes";
+    if (intent) rememberedTab = intent.kind === "open-job" ? "studio" : "notes";
     return rememberedTab;
   });
+  const clearIntent = useCallback(() => setIntent(null), []);
   const choose = (next: PlannerTab) => {
     rememberedTab = next;
     setTab(next);
@@ -122,6 +123,8 @@ export function PlannerView({
             clients={clients}
             trainers={trainers}
             onOpenClientTask={onOpenClientTask}
+            openJobId={intent?.kind === "open-job" ? intent.jobId : null}
+            onOpenedJob={clearIntent}
           />
         )}
         {tab === "mine" && (
@@ -135,7 +138,7 @@ export function PlannerView({
           <NotesPanel
             authTrainer={authTrainer}
             clients={clients}
-            intent={intent}
+            intent={intent?.kind === "open-job" ? null : intent}
             onOpenClient={onOpenClientTask ? (clientId) => onOpenClientTask(clientId) : undefined}
           />
         )}

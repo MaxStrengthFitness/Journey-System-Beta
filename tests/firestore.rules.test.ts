@@ -1225,6 +1225,109 @@ describe("Firestore Security Rules", () => {
     await assertSucceeds(deleteDoc(doc(owner, ...path)));
   });
 
+  // ── TEAM JOBS: leaders post, the studio's floor does the work ───────────
+  //
+  // Round: Planner rework, Sep 2026.
+
+  const jobData = (over: Record<string, unknown> = {}) => ({
+    studioId: "studioA",
+    title: "Deep clean",
+    detail: "",
+    category: "ops",
+    about: { kind: "facility" },
+    assignees: [{ id: "trainerA", name: "Trainer A" }],
+    assigneeIds: ["trainerA"],
+    openToAll: true,
+    parts: { p01: { id: "p01", label: "Mirrors", order: 0, refId: null, doneBy: null } },
+    dueOn: null,
+    requiresNote: false,
+    notifyOnDone: true,
+    status: "open",
+    closingNote: null,
+    completedBy: null,
+    closedOn: null,
+    createdBy: { id: "ownerA", name: "Owner A" },
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...over,
+  });
+
+  async function seedJobs() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "studios", "studioA", "teamJobs", "j1"), jobData());
+    });
+  }
+
+  it("lets a studio's leader post a team job, and nobody else", async () => {
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(setDoc(doc(owner, "studios", "studioA", "teamJobs", "new"), jobData()));
+    // In someone else's name, or at a studio they don't lead.
+    await assertFails(
+      setDoc(doc(owner, "studios", "studioA", "teamJobs", "n2"), jobData({ createdBy: { id: "trainerA", name: "A" } })),
+    );
+    await assertFails(setDoc(doc(owner, "studios", "studioB", "teamJobs", "n3"), jobData({ studioId: "studioB" })));
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertFails(
+      setDoc(doc(trainer, "studios", "studioA", "teamJobs", "n4"), jobData({ createdBy: { id: "trainerA", name: "A" } })),
+    );
+    // Shape: a studio mismatch, or too many parts.
+    const tooMany = Object.fromEntries(Array.from({ length: 61 }, (_, i) => [`p${i}`, { label: "x", order: i }]));
+    await assertFails(setDoc(doc(owner, "studios", "studioA", "teamJobs", "n5"), jobData({ parts: tooMany })));
+    await assertFails(setDoc(doc(owner, "studios", "studioA", "teamJobs", "n6"), jobData({ studioId: "studioB" })));
+  });
+
+  it("keeps team jobs to the studio's own people", async () => {
+    await seedJobs();
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(getDocs(collection(trainer, "studios", "studioA", "teamJobs")));
+    const elsewhere = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(getDocs(collection(elsewhere, "studios", "studioA", "teamJobs")));
+    await assertFails(getDoc(doc(elsewhere, "studios", "studioA", "teamJobs", "j1")));
+  });
+
+  it("lets the floor tick parts, join, leave and close — but not rewrite or cancel the job", async () => {
+    await seedJobs();
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const ref = doc(trainer, "studios", "studioA", "teamJobs", "j1");
+    await assertSucceeds(
+      updateDoc(ref, { "parts.p01.doneBy": { id: "trainerA", name: "Trainer A" }, updatedAt: serverTimestamp() }),
+    );
+    await assertSucceeds(
+      updateDoc(ref, {
+        status: "done",
+        closedOn: "2026-09-16",
+        closingNote: "All clean",
+        completedBy: { id: "trainerA", name: "Trainer A" },
+        completedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    await assertSucceeds(updateDoc(ref, { status: "open", closedOn: null, updatedAt: serverTimestamp() }));
+    await assertFails(updateDoc(ref, { title: "Something else", updatedAt: serverTimestamp() }));
+    await assertFails(updateDoc(ref, { status: "cancelled", updatedAt: serverTimestamp() }));
+    await assertFails(updateDoc(ref, { createdBy: { id: "trainerA", name: "A" } }));
+
+    const elsewhere = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(
+      updateDoc(doc(elsewhere, "studios", "studioA", "teamJobs", "j1"), {
+        "parts.p01.doneBy": { id: "trainerB", name: "Trainer B" },
+      }),
+    );
+
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(updateDoc(doc(owner, "studios", "studioA", "teamJobs", "j1"), { title: "Deep clean (Sat)" }));
+    await assertSucceeds(updateDoc(doc(owner, "studios", "studioA", "teamJobs", "j1"), { status: "cancelled" }));
+  });
+
+  it("lets the poster or a leader delete a team job, not the floor", async () => {
+    await seedJobs();
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertFails(deleteDoc(doc(trainer, "studios", "studioA", "teamJobs", "j1")));
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(deleteDoc(doc(owner, "studios", "studioA", "teamJobs", "j1")));
+  });
+
   // ── THE MSF MACHINE DATABASE: studio content, sharing, and the lists ────
   //
   // Round: Learning + Planner, Sep 2026. Also closes the hole where any
