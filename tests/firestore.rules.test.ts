@@ -1439,6 +1439,9 @@ describe("Firestore Security Rules", () => {
     const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
     await assertSucceeds(updateDoc(doc(owner, "studios", "studioA", "teamJobs", "j1"), { title: "Deep clean (Sat)" }));
     await assertSucceeds(updateDoc(doc(owner, "studios", "studioA", "teamJobs", "j1"), { status: "cancelled" }));
+    // A job a leader called off stays off for the floor.
+    await assertFails(updateDoc(ref, { status: "open", updatedAt: serverTimestamp() }));
+    await assertSucceeds(updateDoc(doc(owner, "studios", "studioA", "teamJobs", "j1"), { status: "open" }));
   });
 
   it("lets the poster or a leader delete a team job, not the floor", async () => {

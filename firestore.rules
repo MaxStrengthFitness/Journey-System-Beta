@@ -2010,7 +2010,7 @@ service cloud.firestore {
       // Posting and editing the job itself is a leader's act. The FLOOR may
       // touch exactly the fields that doing the work needs -- ticking parts
       // (one map key at a time), joining or leaving, closing and reopening --
-      // and may not cancel it. Nothing here locks the work to the people named
+      // and may not cancel a job or touch one a leader has called off. Nothing here locks the work to the people named
       // on it, on purpose: anyone at the studio can finish it.
       //
       // Ordered cheapest-first: affectedKeys() is field math; the leader
@@ -2032,8 +2032,8 @@ service cloud.firestore {
                              request.resource.data.diff(resource.data).affectedKeys()
                                .hasOnly(['parts', 'assignees', 'assigneeIds', 'status', 'closedOn',
                                          'closingNote', 'completedBy', 'completedAt', 'updatedAt'])
-                             && (request.resource.data.status != 'cancelled'
-                                 || resource.data.status == 'cancelled')
+                             && request.resource.data.status != 'cancelled'
+                             && resource.data.status != 'cancelled'
                              && writesForStudio(studioId)
                            )
                         || isSuperAdmin()
