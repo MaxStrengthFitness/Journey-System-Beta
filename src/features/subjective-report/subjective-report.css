@@ -910,3 +910,136 @@
   text-align: left;
   cursor: pointer;
 }
+
+/* ==========================================================================
+   UPDATE PULSE — the quick-log (reporting round, Sep 2026)
+   --------------------------------------------------------------------------
+   `.pq` is the content (tiles → one area → done); `.pq-dialog` wraps it on
+   the briefing and the post-session screen. Same tokens as the rest of this
+   file. 44px minimum on anything tappable; the Dial itself brings its own
+   48px bar from features/rating.
+   ========================================================================== */
+
+.pq { display: flex; flex-direction: column; gap: 14px; }
+.pq__lead { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--sr-ink-muted); }
+
+.pq__pillar { display: flex; flex-direction: column; gap: 6px; }
+.pq__pillar-title {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sr-ink-muted);
+}
+.pq__tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.pq--compact .pq__tiles { grid-template-columns: 1fr; }
+.pq__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid var(--sr-border);
+  border-radius: 12px;
+  background: var(--sr-surface);
+  color: var(--sr-ink);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.pq__tile:hover { background: var(--sr-surface-2); }
+.pq__tile:focus-visible { outline: 2px solid var(--sr-navy); outline-offset: 2px; }
+.pq__tile-title { font-size: 13px; font-weight: 700; line-height: 1.2; }
+.pq__tile-when { font-size: 11px; color: var(--sr-ink-muted); }
+.pq__tile[data-fresh="never"] .pq__tile-when,
+.pq__tile[data-fresh="stale"] .pq__tile-when { color: var(--sr-yellow); font-weight: 700; }
+
+.pq__full {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-height: 48px;
+  padding: 8px 14px;
+  border: 1px dashed var(--sr-border-strong);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--sr-navy);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+.pq__full-sub { flex-basis: 100%; font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--sr-ink-muted); }
+
+.pq__area-head { display: flex; align-items: flex-start; gap: 10px; }
+.pq__back {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--sr-border);
+  border-radius: 12px;
+  background: var(--sr-surface);
+  color: var(--sr-ink-2);
+  cursor: pointer;
+}
+.pq__area-title { margin: 0; font-size: 15px; font-weight: 800; line-height: 1.2; color: var(--sr-ink); }
+.pq__area-prompt { margin: 2px 0 0; font-size: 12px; line-height: 1.35; color: var(--sr-ink-muted); }
+.pq__save { margin-left: auto; flex: none; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sr-ink-faint); }
+.pq__save[data-state="saved"] { color: var(--sr-green); }
+.pq__save[data-state="error"] { color: var(--sr-red); }
+
+.pq__statements { display: flex; flex-direction: column; gap: 12px; }
+.pq__statement { padding: 10px 12px 12px; border: 1px solid var(--sr-border); border-radius: 12px; background: var(--sr-surface); }
+
+.pq__note { display: flex; flex-direction: column; gap: 4px; }
+.pq__note-label { font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sr-ink-muted); }
+
+.pq__done {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: var(--sr-navy);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* The dialog */
+.pq-dialog { position: fixed; inset: 0; z-index: 120; display: flex; align-items: flex-end; justify-content: center; }
+@media (min-width: 700px) { .pq-dialog { align-items: center; } }
+.pq-dialog__scrim { position: absolute; inset: 0; background: rgba(18, 28, 35, 0.45); }
+.pq-dialog__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+  max-height: min(88dvh, 760px);
+  border-radius: 18px 18px 0 0;
+  background: var(--sr-bg);
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+@media (min-width: 700px) { .pq-dialog__panel { border-radius: 18px; } }
+.pq-dialog__head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--sr-border); background: var(--sr-surface); }
+.pq-dialog__mark { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: var(--sr-navy-fill); color: var(--sr-navy); flex: none; }
+.pq-dialog__title { margin: 0; font-size: 15px; font-weight: 900; text-transform: uppercase; font-style: italic; letter-spacing: -0.01em; color: var(--sr-ink); }
+.pq-dialog__sub { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sr-ink-muted); }
+.pq-dialog__close { margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: none; border-radius: 12px; background: var(--sr-surface-2); color: var(--sr-ink-2); cursor: pointer; }
+.pq-dialog__body { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 14px; }

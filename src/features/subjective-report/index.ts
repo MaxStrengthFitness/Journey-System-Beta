@@ -14,6 +14,8 @@ export {
 export * from "./ui";
 export { SubjectiveDashboard, SubjectiveClientCopy, type HistoryPoint } from "./SubjectiveDashboard";
 export { QuickCheckInDialog } from "./QuickCheckInDialog";
+// Update Pulse: one area, one Dial, back to the session (reporting round).
+export { PulseQuickLog, PulseQuickLogDialog, touchedSentence } from "./PulseQuickLog";
 export * from "./checkin-write";
 export * from "./checkin-draft";
 export { useCheckInDraft } from "./useCheckInDraft";
