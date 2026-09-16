@@ -159,6 +159,18 @@ The round is `docs/rounds/2026-09-16-planner-rework.md`. Two iPads, one signed i
 - [ ] **Share a note that names a client coached at another studio.** *Expected:* the card says so and Save is refused.
 - [ ] **Old iPad (iPadOS 15/16) cold load.** *Expected:* the app opens (a regex the old Safari can't parse would blank the whole app).
 
+### Hub sync fixes · *branch `hub-sync-fixes` (Sep 16)*
+
+The round is `docs/rounds/2026-09-16-hub-sync-fixes.md`.
+
+- [ ] **Open the Hub at Solon, then switch to Strongsville.** *Expected:* for a second the blocks show a small grey dot (loading), then names resolve. No block says "Not synced" unless its client really has no profile. *If every block stays "Not synced":* the roster listener was refused — the console says why.
+- [ ] **Client directory after that switch.** *Expected:* only Strongsville clients (a visitor booked at Strongsville may show "Visiting"). No Solon clients left over. The line under the search box says "…most recent of N"; **Show all N** lists them all.
+- [ ] **Type a name in the directory.** *Expected:* results appear instantly (no spinner); "Search entire corporate network" still finds other studios' clients.
+- [ ] **Leave the iPad on the Hub for an hour, run a sync that adds a new client.** *Expected:* the new client's block resolves by itself, without a reload.
+- [ ] **Edit Routine, iPad portrait, a routine with 8+ machines.** *Expected:* the list scrolls, and the **Add / Ideas / warnings** bar stays visible above the notes. Tap Add: the picker opens. Focus the notes field: the keyboard doesn't hide it. Landscape: the rail's picker scrolls too.
+- [ ] **Body → Browse every condition.** *Expected:* a legend (STOP · HIGH · unmarked); no label overlaps a name; each group starts with its most serious conditions; the bracketed detail ("Grade 2 or higher") shows under the name.
+- [ ] **Run a sync, then look at yesterday on the Hub.** *Expected:* yesterday's bookings are still there (they used to turn "Cancelled" on every sync).
+
 ### Calendar · *branch `calendar-redesign`*
 
 - [ ] **Month with a heavy Thursday** — row heights hold, no trainer names wrapping.
