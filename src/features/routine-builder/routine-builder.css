@@ -204,6 +204,11 @@
   gap: 0.375rem;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* iPad: claim vertical pans at once (Safari otherwise waits ~300ms to rule
+     out a pinch) and keep momentum. The drag handle sets touch-action: none
+     on itself, which wins for a touch that starts on the handle. */
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .rb-rail { display: none; }
@@ -536,7 +541,7 @@
 .rb-seg__btn[aria-pressed="true"] { background: var(--rb-live); color: var(--rb-live-on); }
 .rb-seg__btn:focus-visible { outline: 2px solid var(--rb-focus-ring); outline-offset: -2px; }
 
-.rb-rail__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.rb-rail__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
 
 .rb-sect__label {
   font-size: 0.63rem;

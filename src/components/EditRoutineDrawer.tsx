@@ -218,6 +218,9 @@ export function EditRoutineDrawer({
           top: keyboardOffset.top + 12,
           left: "50%",
           transform: "translateX(-50%)",
+          // A HEIGHT, not only a max: the builder inside needs a definite
+          // box to scroll in (see the DialogContent note below).
+          height: keyboardOffset.maxHeight,
           maxHeight: keyboardOffset.maxHeight,
         }
       : {};
@@ -523,9 +526,9 @@ export function EditRoutineDrawer({
       <DialogContent
         showCloseButton={false}
         style={dialogPositionStyle}
-        className="w-[97vw] sm:max-w-[97vw] xl:max-w-[1360px] max-h-[94dvh] overflow-hidden flex flex-col p-0 gap-0 bg-card rounded-2xl border border-div-l"
+        className="w-[97vw] sm:max-w-[97vw] xl:max-w-[1360px] h-[94dvh] max-h-[94dvh] overflow-hidden flex flex-col p-0 gap-0 bg-card rounded-2xl border border-div-l"
       >
-        <DialogHeader className="p-5 sm:p-6 pb-4 border-b border-div-l shrink-0 space-y-4">
+        <DialogHeader className="p-5 sm:p-6 pb-4 border-b border-div-l shrink-0 space-y-4 max-h-[42dvh] overflow-y-auto overscroll-contain touch-pan-y">
           <div className="flex items-start justify-between gap-4">
             <div>
               <DialogTitle className="text-xl font-bold uppercase tracking-tight text-slate-900 dark:text-neutral-100 italic font-display">
@@ -744,7 +747,20 @@ export function EditRoutineDrawer({
             editing a client's BASELINE routine: the A/B slot switch, the
             preset tiers, template provenance, the mandatory reason, and the
             Firestore write. */}
-        <div className="flex-1 min-h-0 overflow-hidden">
+        {/* WHY THIS SCROLLS NOW (Sep 16 2026 fix — "the Add button is cut
+            off on the iPad"). The builder scrolls its own list and pins its
+            Add / Ideas / Warnings bar under it, which only works inside a box
+            of KNOWN height. Two things denied it one:
+              1. the dialog had only a max-height, so nothing above this box
+                 had a definite height, and the builder's `height: 100%`
+                 resolved to "as tall as my content";
+              2. this wrapper was a plain block, so the builder's `flex: 1`
+                 did nothing.
+            The builder grew past the dialog and `overflow-hidden` clipped it
+            — list and bar alike. The dialog now has a real height (h-[94dvh])
+            and this wrapper is a flex column, so the builder fills exactly
+            the space between header and footer and scrolls inside it. */}
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           <RoutineBuilder
             mode="baseline"
             slot={activeSlot === "Routine A" ? "A" : "B"}
