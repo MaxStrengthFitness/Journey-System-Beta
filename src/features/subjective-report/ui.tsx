@@ -1,12 +1,18 @@
 /**
- * Small touch-first controls shared by the check-in form and the dashboard.
+ * Small touch-first controls shared by the Pulse form and the dashboard.
  * Nothing here knows about Firestore or the report; everything is
  * value + onChange.
+ *
+ * Reporting round (Sep 2026): every rating here is the Dial from
+ * features/rating. A statement is answered on the document's five frequency
+ * words (stored at the 0–10 anchors scoring already uses); pain and stress
+ * intensity on Worst → None. Nothing a trainer rates is shown as a number.
  */
 import React from "react";
 import type { Rag } from "./types";
-import { SCALE_ANCHORS, SCALE_MAX } from "./questions";
-import { ragForDaysPerWeek, ragForFraction } from "./scoring";
+import { SCALE_ANCHORS } from "./questions";
+import { ragForDaysPerWeek } from "./scoring";
+import { Dial, FREQUENCY_SCALE, INTENSITY_SCALE, absoluteToTen, dialWord, tenToAbsolute } from "../rating";
 
 /* ---------- Status ---------------------------------------------------- */
 
@@ -60,9 +66,9 @@ export function Delta({
   );
 }
 
-/* ---------- The 0–10 scale ------------------------------------------- */
+/* ---------- A statement on the Dial ---------------------------------- */
 
-/** Nearest frequency word for a value: 7 → "Often". */
+/** Nearest frequency word for a stored 0–10 value: 7 → "Often". */
 export function scaleWord(value: number | null): string {
   if (value === null) return "";
   return SCALE_ANCHORS.reduce((best, a) =>
@@ -70,53 +76,44 @@ export function scaleWord(value: number | null): string {
   ).label;
 }
 
+/** Nearest intensity word for a stored 0–10 severity (10 = worst): 7 → "Severe". */
+export function intensityWord(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "";
+  return dialWord(INTENSITY_SCALE, tenToAbsolute(value, INTENSITY_SCALE));
+}
+
+/**
+ * One statement of the Pulse: the statement is the question, the five
+ * frequency words are the answer. `value` is the stored 0–10 (null = not
+ * asked); a tap stores the word's anchor, a second tap on the same word
+ * clears it. The old 0…10 grid (eleven buttons per statement, 264 on one
+ * screen) is gone; scoring never moved because the anchors are the same.
+ */
 export function ScaleInput({
   value,
   onChange,
-  anchorLow,
-  anchorHigh,
   ariaLabel,
+  sub,
+  compact,
 }: {
   value: number | null;
   onChange: (v: number | null) => void;
-  anchorLow: string;
-  anchorHigh: string;
+  /** The statement text — it is the question the Dial asks. */
   ariaLabel: string;
+  /** A quieter second line under the statement (optional). */
+  sub?: string;
+  compact?: boolean;
 }) {
-  const rag = value === null ? null : ragForFraction(value / SCALE_MAX);
   return (
-    <div>
-      <div className="sr-scale" role="radiogroup" aria-label={ariaLabel}>
-        {Array.from({ length: SCALE_MAX + 1 }, (_, i) => i).map((i) => {
-          const on = value === i;
-          const lit = value !== null && i < value;
-          return (
-            <button
-              key={i}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              aria-label={`${i}`}
-              onClick={() => onChange(on ? null : i)}
-              className={[
-                "sr-scale__btn",
-                lit ? "sr-scale__btn--lit" : "",
-                on ? "sr-scale__btn--on" : "",
-                on && rag ? `sr-scale__btn--${rag}` : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              {i}
-            </button>
-          );
-        })}
-      </div>
-      <div className="sr-scale__anchors">
-        <span>0 · {anchorLow}</span>
-        <span>{anchorHigh} · 10</span>
-      </div>
-    </div>
+    <Dial
+      scale={FREQUENCY_SCALE}
+      ask={ariaLabel}
+      sub={sub}
+      value={tenToAbsolute(value)}
+      onChange={(v) => onChange(v === null ? null : absoluteToTen(v))}
+      compact={compact}
+      legend="all"
+    />
   );
 }
 
@@ -210,30 +207,35 @@ export function Stepper({
   );
 }
 
-/* ---------- Range 0–10 ----------------------------------------------- */
+/* ---------- Intensity (pain severity, stress) on the Dial ------------ */
 
+/**
+ * Pain severity and stress intensity, stored 0–10 with 10 the worst. On
+ * screen it is the Dial's Worst · Severe · Moderate · Mild · None (worst on
+ * the left, like every Dial); `absoluteToTen` reverses the stored number.
+ * A cleared Dial hands back null — the caller decides whether its field can
+ * hold that (overall stress can; a pain point's severity cannot).
+ */
 export function Range10({
   value,
   onChange,
   ariaLabel,
+  sub,
 }: {
-  value: number;
-  onChange: (v: number) => void;
+  value: number | null;
+  onChange: (v: number | null) => void;
   ariaLabel: string;
+  sub?: string;
 }) {
   return (
-    <div className="sr-range">
-      <input
-        type="range"
-        min={0}
-        max={10}
-        step={1}
-        value={value}
-        aria-label={ariaLabel}
-        onChange={(e) => onChange(parseInt(e.target.value, 10))}
-      />
-      <span className="sr-range__val">{value}</span>
-    </div>
+    <Dial
+      scale={INTENSITY_SCALE}
+      ask={ariaLabel}
+      sub={sub}
+      value={tenToAbsolute(value, INTENSITY_SCALE)}
+      onChange={(v) => onChange(v === null ? null : absoluteToTen(v, INTENSITY_SCALE))}
+      legend="all"
+    />
   );
 }
 

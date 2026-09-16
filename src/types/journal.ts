@@ -533,7 +533,7 @@ export const DOSSIER_SECTIONS: {
   { id: "goals", label: "Goals", blurb: "The why, and how it has moved", icon: "Target" },
   { id: "focus", label: "Focus", blurb: "What each coach is working on", icon: "Crosshair" },
   { id: "notes", label: "Notes", blurb: "Every note, filed by category", icon: "NotebookPen" },
-  { id: "reports", label: "Assessment", blurb: "The living record — write it here, read the filed reports in the Activity Archive", icon: "TrendingUp" },
+  { id: "reports", label: "Pulse", blurb: "How life is going, filled a little at a time — write it here, read the filed reports in the Activity Archive", icon: "TrendingUp" },
   { id: "admin", label: "Admin", blurb: "Contract, billing and access", icon: "Settings2" },
 ];
 

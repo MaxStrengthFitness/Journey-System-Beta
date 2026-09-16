@@ -60,7 +60,7 @@ describe("the Brief", () => {
   it("leads with health: InBody, the check-in, the goal", () => {
     expect(healthLines(client, snap, TODAY)).toEqual([
       "InBody since Jan 15: muscle up 2.3 lb, body fat down 1.8 points",
-      "Assessment, Jun 2: overall Green (72%)",
+      "Pulse, Jun 2: overall Green (72%)",
       "Red on: Sleep & Recovery",
       "Their goal: Carry groceries without back pain",
     ]);

@@ -300,7 +300,7 @@ export function ClientJournalTab({
         // Inside the record the section and the panel already say
         // "Assessment" — a third heading is noise.
         bare={composed}
-        title="Assessment"
+        title="Pulse"
         blurb="A living record, filled in a piece at a time and saved as you go. Open one topic, answer it, come back next session."
       >
         <ClientCheckInPanel client={client} trainer={authTrainer ?? null} machines={machines} />

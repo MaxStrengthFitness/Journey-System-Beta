@@ -1,11 +1,12 @@
-# 90-Day Subjective Progress Report
+# The Pulse (the subjective report, the living assessment)
 
-Round: Subjective Report, Sep 2026. Lives inside the Progress Report
-(`progressReports/{id}.subjective`) and the trainer's editing flow for it.
+On screen it is the **Pulse** since the reporting round (§6). Round:
+Subjective Report, Sep 2026. Lives at `progressReports/{id}.subjective` —
+as a resumable draft the record's panel keeps open, and as finalized rounds.
 
 This folder is the data model, the question bank and the scoring. The form
-(`SubjectiveStep`) and the coach dashboard (`SubjectiveDashboard`) sit
-beside them; `ClientProgressReportView` mounts both.
+(`SubjectiveStep`), the panel's cards, client mode, the quick-log and the
+coach dashboard (`SubjectiveDashboard`) sit beside them.
 
 ---
 
@@ -204,9 +205,15 @@ client that carries a `subjective` block — found with the existing
 | `questions.ts` | Every string and number from the document, plus enhancement labels. |
 | `scoring.ts` | Pure functions. `summarize()` is the entry point. |
 | `scoring.test.ts` | Pins the thresholds. `npx vitest run src/features/subjective-report`. |
-| `SubjectiveStep.tsx` | The coach-entered form (step 5 of the report). |
-| `SubjectiveDashboard.tsx` | Coach dashboard + the client-copy variant. |
-| `subjective-report.css` | Scoped styles; light on `:root`, dark on `.dark`. |
+| `SubjectiveStep.tsx` | The whole form at once, plus the five cards the panel mounts one at a time (`CategoryCard`, `ProteinCard`, `HydrationCard`, `PainMapCard`, `StressCard`). |
+| `SubjectiveDashboard.tsx` | Coach dashboard + the client-copy variant (read-only; the Progress Report shows it as the Pulse snapshot). |
+| `ui.tsx` | The small controls. `ScaleInput` and `Range10` are the Dial (§6). |
+| `subjective-report.css` | Scoped styles; light on `:root`, dark on `.dark`. Also the panel chrome (`.sra-*`), the quick-log (`.pq*`) and client mode (`.pcm*`). |
+| `QuickCheckInDialog.tsx` | The whole form as a full-screen sheet, saved as one finalized round. |
+| `PulseQuickLog.tsx` | Update Pulse: one area, one Dial, back to the session (content + dialog). |
+| `PulseClientMode.tsx` | Client mode: the sheet the client holds (§6.4). |
+| `useCheckInDraft.ts` | The open draft: load, autosave, the change log, finalize, discard. |
+| `../../components/journal/ClientCheckInPanel.tsx` | The Pulse panel in the record and the session slide-over. |
 
 ---
 
@@ -299,3 +306,112 @@ coaching context. InBody numbers never go in here.
 | `assessment-history.ts` (+ test) | Measures, the change log, deltas, the merged log, freshness. Pure. |
 | `AssessmentHistoryLog.tsx` | The log on screen: newest six, "Show all", inline notes on draft rows. |
 | `ClientCheckInPanel.render.test.tsx` | Mounts the panel (null client → client, pillars, log, a logged change with a note). |
+
+---
+
+## 6. Pulse (reporting round, Sep 2026)
+
+The owner: "this is a lot of information to go through… the idea is that we
+really fill this out over time with the client as we slowly learn
+information about them… as long as trainers actively update this we can see
+how the client has progressed in ways that are not in the studio." And: it
+"could use a general spruce up to feel like the rest of our app".
+
+Everything in §1–§5 still holds: the question bank, the scoring, every
+threshold, the pillars, the change log. This round changed the name, the
+control and the chrome — and dropped one thing.
+
+### 6.1 The name
+
+The living record is the **Pulse** everywhere a person reads it: the
+record's section, the session slide-over, the archive rows, the renewal
+brief. Code identifiers, file names and Firestore fields (`progressReports`,
+`isCheckInOnly`, `subjectiveSnapshot`, `checkInSectionsReviewed`) keep their
+names. The journal's focus "check-ins" are a different feature and keep
+theirs. One sentence for the whole system: **Pulse sets the baseline, the
+floor records drift from it, the Kaizen Deep Dive reads the drift against
+the sets.**
+
+### 6.2 The Dial
+
+Every statement is answered on the Dial (`features/rating`) with the
+document's five frequency words — Not at all · Rarely · Sometimes · Often ·
+Nearly always — stored at the 0 / 3 / 5 / 8 / 10 anchors scale v2 already
+had (`absoluteToTen` / `tenToAbsolute`). So nothing in `scoring.ts`, the
+history or the change log moved; an old 0–10 answer lands on the nearest
+word. The 0…10 tap grid (24 statements × 11 buttons = 264 targets on one
+screen) is gone, and so is the "0 · anchor … anchor · 10" line under it; the
+per-area scale ends (`ScaleEnds`, §5.2) still say what the low and high end
+mean.
+
+Pain severity, stress intensity and the overall stress level are the Dial
+too, on **Worst · Severe · Moderate · Mild · None** — worst on the LEFT like
+every Dial, with `absoluteToTen(v, INTENSITY_SCALE)` reversing it for the
+stored 0–10 where 10 is worst. The dashboard prints those as words
+(`intensityWord`) and a pain point's movement as "easing / same / worse".
+
+Rules that follow: nowhere on the Pulse does a trainer see the 0–10 number
+for a statement. The area's "10 / 12" score and its Green / Yellow / Red are
+the document's own and stay. **Untouched is `null`** — "not asked" — never
+0; the overall stress level no longer defaults to 0 on screen. A pain
+point's `severity` and a stressor's `intensity` are required numbers on the
+type, so a cleared Dial there is a no-op rather than a made-up value (a new
+pain point still starts at 5 / "Moderate" — the type needs a number; TODO
+for a later round if the owner wants it nullable).
+
+### 6.3 One note per topic
+
+Per-statement notes ("+ Add note" under every statement) are retired. One
+note per topic — "In their words / worth remembering" — is the record. A
+note already stored on a statement (`answers[id].note`) still renders,
+read-only in italics under its statement, so nothing written is hidden; no
+new ones can be added. `StatementAnswer.note` stays on the type for that
+reason.
+
+Kept, because the owner chose to keep them: protein (ideal weight, g/lb,
+days, typical grams, the sources chips), hydration (typical, target, unit,
+who set it, days, the sources chips), the pain map, the stress anchors and
+the client-copy switches.
+
+### 6.4 Client mode — "Hand to client"
+
+`PulseClientMode`: a full-screen sheet (portal, like the quick-log dialog)
+the client holds. Plain wording ("Judy, tap the word that fits."), one area
+at a time in the pillars' order with Back / Next on a 48px bar, the area's
+three statements on the frequency Dial with all five words showing, large
+type (17px statements), and "Done — hand back" at the end. Nothing of the
+coach's is on it: no notes, no flags, no scores, no history, no pain map, no
+stress anchors.
+
+Answers go through the same `useCheckInDraft.update` as the panel's, so they
+autosave into the open draft and land in the change log. While the client
+holds the iPad the draft is `enteredBy: "client"`; the panel's header says
+"Judy's own answers", and the coach's next edit (the panel wraps its own
+writes in `coachUpdate`) marks it `"coach"` again. `enteredBy` is per
+assessment, not per answer — that is what the type has had since §3.
+
+### 6.5 The panel's chrome
+
+`ClientCheckInPanel` draws its header ("Pulse" · "How life is going — filled
+a little at a time, never done."), the search box, the area rows, "Mark
+reviewed" and the footer from the feature's tokens (`.sra-*` in
+`subjective-report.css`) instead of raw Tailwind greys, so it reads in light
+and dark inside the record spine. Every tappable is 44px or more; the Dial
+is 48. "Save assessment" is now "Save this round".
+
+### 6.6 Update Pulse (phase 2) and the full-form dialog
+
+`PulseQuickLog` / `PulseQuickLogDialog` are what the floor opens (briefing,
+note sheet, post-session): pick an area → its statements on the Dial → Done,
+with "Open full Pulse" as the escape hatch for the lists. `QuickCheckInDialog`
+(the whole form as a sheet, saved as one finalized round) stays for the
+flows that still want it, retitled Pulse and running on the same rebuilt
+`SubjectiveStep`.
+
+### 6.7 Tests
+
+`ClientCheckInPanel.render.test.tsx` mounts the panel and proves: the five
+words on a statement and no 0…10 button anywhere; a tap logs "11 → 7" with
+a note and autosaves `enteredBy: "coach"`; "Hand to client" opens the sheet,
+a tap there autosaves `enteredBy: "client"`, Next walks the eight areas,
+Done hands back, and the coach's next edit restores `"coach"`.

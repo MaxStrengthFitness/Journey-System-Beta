@@ -255,7 +255,7 @@ export function RenewalBrief({
 
               <AdminPanel title="2. Health wins" subtitle="Lead with these. Most clients came to be healthy, not to lift more.">
                 {health.length === 0 ? (
-                  <p className="adm-hint">No InBody scans, assessment or goal on file yet.</p>
+                  <p className="adm-hint">No InBody scans, Pulse or goal on file yet.</p>
                 ) : (
                   <div className="adm-brief__lines">
                     {health.map((l) => (

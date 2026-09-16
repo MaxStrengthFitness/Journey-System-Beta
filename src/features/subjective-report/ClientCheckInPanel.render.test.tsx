@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Mounts the Assessment panel (ClientCheckInPanel) against a fake Firestore.
+ * Mounts the Pulse panel (ClientCheckInPanel) against a fake Firestore.
  *
  * WHY THIS EXISTS. The panel returned early for "no client" and declared the
  * search box's `useState` and `useEffect` BELOW that return. Mounted with no
@@ -12,6 +12,10 @@
  * It also proves the round's screen is really there: the three pillar
  * headers, the scale ends, the history log with a saved note, and a change
  * made in the draft landing in the log and in the autosaved `changeLog`.
+ *
+ * Reporting round: a statement is the five frequency words on the Dial (no
+ * 0…10 buttons anywhere), and "Hand to client" opens client mode, where a
+ * tap writes the answer with `enteredBy: "client"`.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -197,8 +201,9 @@ describe("ClientCheckInPanel mounts", () => {
     for (const p of host.querySelectorAll(".sra-pillar")) {
       expect(p.querySelectorAll(".sra-area-btn")).toHaveLength(4);
     }
-    // The living framing and who touched it last.
-    expect(text).toContain("never finished");
+    // The name, the living framing and who touched it last.
+    expect(host.querySelector(".sra-head__title")?.textContent).toBe("Pulse");
+    expect(text).toContain("never done");
     expect(text).toContain("by Ana Lopez");
     // The pillar's sentence: sleep was updated 25 days ago; the rest of the pillar was not.
     expect(text).toContain("1 of 4 updated in the last 90 days");
@@ -209,7 +214,7 @@ describe("ClientCheckInPanel mounts", () => {
     expect(protein.querySelector(".sra-stale")?.textContent).toBe("90+ days");
 
     // The history log, with the note saved at the time.
-    const log = host.querySelector('section[aria-label="Assessment history"]')!;
+    const log = host.querySelector('section[aria-label="Pulse history"]')!;
     expect(log).not.toBeNull();
     expect(log.textContent).toContain("Client finally purchased a new mattress; sleep improved");
     expect(log.textContent).toContain("6 → 11");
@@ -227,22 +232,41 @@ describe("ClientCheckInPanel mounts", () => {
     await act(async () => root.unmount());
   });
 
+  it("answers a statement on the five frequency words, never a 0…10 button", async () => {
+    const { host, root } = await mount(<ClientCheckInPanel client={client} trainer={trainer} machines={[]} />);
+    await settle();
+
+    // The open area (sleep) shows its three statements on the frequency Dial.
+    const dials = host.querySelectorAll('[data-scale="frequency"]');
+    expect(dials).toHaveLength(3);
+    const legend = Array.from(dials[0].querySelectorAll(".rt__legend > span")).map((n) => n.textContent);
+    expect(legend).toEqual(["Not at all", "Rarely", "Sometimes", "Often", "Nearly always"]);
+    // Nothing on the panel is a 0…10 button, and no "+ Add note" per statement.
+    for (let i = 0; i <= 10; i++) {
+      expect(host.querySelector(`button[aria-label="${i}"]`)).toBeNull();
+    }
+    expect(host.querySelectorAll(".sr-scale, .sr-range, .sr-note-toggle")).toHaveLength(0);
+    expect(host.textContent).not.toContain("Add note");
+    await act(async () => root.unmount());
+  });
+
   it("logs a change made in the draft, takes a note inline, and autosaves both", async () => {
     const { host, root } = await mount(<ClientCheckInPanel client={client} trainer={trainer} machines={[]} />);
     await settle();
 
-    // Sleep statement 1 → 2. The other two carry forward from the last save
-    // (9, 9), so the area goes 11 → 8.
+    // Sleep statement 1 → "Not at all" (0). The other two carry forward from
+    // the last save (9, 9), so the area goes 11 → 7.
     const group = host.querySelector('[role="radiogroup"][aria-label="I am getting consistent, quality sleep."]')!;
-    const two = group.querySelector<HTMLButtonElement>('button[aria-label="2"]')!;
+    const notAtAll = group.querySelector<HTMLButtonElement>('button[aria-label="Not at all"]')!;
     await act(async () => {
-      two.click();
+      notAtAll.click();
     });
+    expect(group.parentElement?.querySelector(".rt__word")?.textContent).toBe("Not at all");
 
     const just = host.querySelector(".sra-justnow")!;
-    expect(just.textContent).toContain("11 → 8");
-    const log = host.querySelector('section[aria-label="Assessment history"]')!;
-    expect(log.querySelector(".sra-row--draft")?.textContent).toContain("In the open assessment");
+    expect(just.textContent).toContain("11 → 7");
+    const log = host.querySelector('section[aria-label="Pulse history"]')!;
+    expect(log.querySelector(".sra-row--draft")?.textContent).toContain("In the open round");
 
     const input = just.querySelector<HTMLInputElement>("input")!;
     await act(async () => {
@@ -258,13 +282,64 @@ describe("ClientCheckInPanel mounts", () => {
       expect.objectContaining({
         categoryId: "sleepRecovery",
         from: 11,
-        to: 8,
+        to: 7,
         byId: "t1",
         byName: "Christian Moore",
         note: "Up with a new grandchild",
       }),
     ]);
+    expect(write!.data.subjective.answers.sleepRecovery_1.value).toBe(0);
+    expect(write!.data.subjective.enteredBy).toBe("coach");
     expect(addDocCalls).toHaveLength(0);
+    await act(async () => root.unmount());
+  });
+
+  it("hands the iPad to the client: a plain sheet, one area at a time, and a tap writes enteredBy client", async () => {
+    const { host, root } = await mount(<ClientCheckInPanel client={client} trainer={trainer} machines={[]} />);
+    await settle();
+
+    const hand = host.querySelector<HTMLButtonElement>(".sra-hand")!;
+    expect(hand.textContent).toContain("Hand to client");
+    await act(async () => hand.click());
+
+    const sheet = document.querySelector<HTMLElement>('[data-testid="pulse-client-mode"]')!;
+    expect(sheet).not.toBeNull();
+    expect(sheet.textContent).toContain("Judy, tap the word that fits.");
+    expect(sheet.querySelector(".pcm__title")?.textContent).toBe("Sleep & Recovery");
+    expect(sheet.querySelector(".pcm__step")?.textContent).toBe("1 of 8");
+    // Three statements on the frequency Dial with all five words; nothing of the coach's.
+    expect(sheet.querySelectorAll('[data-scale="frequency"]')).toHaveLength(3);
+    expect(sheet.textContent).not.toMatch(/of 12|history|note|flag/i);
+    expect(sheet.querySelector(".sr-score, .sra-log, .sr-pill, textarea")).toBeNull();
+
+    // "Often" on the second statement.
+    const group = sheet.querySelector('[role="radiogroup"][aria-label="I wake up feeling rested."]')!;
+    await act(async () => group.querySelector<HTMLButtonElement>('button[aria-label="Often"]')!.click());
+
+    // Next walks the areas; the last one offers Done.
+    const next = () => sheet.querySelector<HTMLButtonElement>(".pcm__nav--primary")!;
+    expect(next().textContent).toContain("Next");
+    for (let i = 0; i < 7; i++) await act(async () => next().click());
+    expect(sheet.querySelector(".pcm__step")?.textContent).toBe("8 of 8");
+    expect(next().textContent).toContain("Done");
+    await act(async () => next().click());
+    expect(document.querySelector('[data-testid="pulse-client-mode"]')).toBeNull();
+
+    // The panel now says whose answers these are, and the autosave carries the mark.
+    expect(host.textContent).toContain("Judy's own answers");
+    await settle(1400);
+    const write = updateDocCalls.find((c) => c.path === "progressReports/d1");
+    expect(write).toBeDefined();
+    expect(write!.data.subjective.enteredBy).toBe("client");
+    expect(write!.data.subjective.answers.sleepRecovery_2.value).toBe(8);
+
+    // The coach's next edit takes it back.
+    const coachGroup = host.querySelector('[role="radiogroup"][aria-label="I am getting consistent, quality sleep."]')!;
+    await act(async () => coachGroup.querySelector<HTMLButtonElement>('button[aria-label="Sometimes"]')!.click());
+    expect(host.textContent).not.toContain("Judy's own answers");
+    await settle(1400);
+    const later = updateDocCalls.filter((c) => c.path === "progressReports/d1").pop()!;
+    expect(later.data.subjective.enteredBy).toBe("coach");
     await act(async () => root.unmount());
   });
 

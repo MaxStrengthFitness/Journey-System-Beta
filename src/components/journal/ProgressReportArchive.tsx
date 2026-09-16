@@ -87,7 +87,7 @@ export function ProgressReportArchive({
                 <span className="min-w-0">
                   <span className="block truncate text-xs font-bold text-slate-700 dark:text-slate-200">
                     {r.isCheckInOnly
-                      ? `Assessment${r.checkInOrigin === "pre_session" ? " · pre-session" : r.checkInOrigin === "post_session" ? " · post-session" : ""}`
+                      ? `Pulse${r.checkInOrigin === "pre_session" ? " · pre-session" : r.checkInOrigin === "post_session" ? " · post-session" : ""}`
                       : `Session #${r.sessionNumber || "—"}`}
                     <span
                       className={cn(
@@ -106,7 +106,7 @@ export function ProgressReportArchive({
                     {summary && (
                       <span
                         className="inline-flex items-center gap-1 rounded px-1 py-0.5 bg-slate-100 text-muted-foreground dark:bg-slate-800"
-                        title={`Assessment${redFlags ? ` · ${redFlags} red flag${redFlags > 1 ? "s" : ""}` : ""}`}
+                        title={`Pulse${redFlags ? ` · ${redFlags} red flag${redFlags > 1 ? "s" : ""}` : ""}`}
                       >
                         <HeartPulse className="h-2.5 w-2.5" />
                         {dot && <span className={cn("h-1.5 w-1.5 rounded-full", dot)} />}

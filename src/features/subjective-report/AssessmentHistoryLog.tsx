@@ -78,9 +78,9 @@ function whenText(row: AssessmentLogRow): string {
 }
 
 const SOURCE_LABEL: Record<AssessmentLogRow["source"], string> = {
-  draft: "In the open assessment",
-  logged: "Saved assessment",
-  derived: "Compared with the assessment before",
+  draft: "In the open round",
+  logged: "Saved round",
+  derived: "Compared with the round before",
 };
 
 function NoteField({ row, onNote }: { row: AssessmentLogRow; onNote: (row: AssessmentLogRow, note: string) => void }) {
@@ -125,10 +125,10 @@ export function AssessmentHistoryLog({ rows, status, complete, onNote }: Assessm
   const hidden = rows.length - visible.length;
 
   return (
-    <section className="sra-log" aria-label="Assessment history">
+    <section className="sra-log" aria-label="Pulse history">
       <header className="sra-log__head">
         <History className="h-4 w-4 shrink-0" aria-hidden="true" />
-        <h4 className="sra-log__title">Assessment history</h4>
+        <h4 className="sra-log__title">Pulse history</h4>
         {rows.length > 0 && (
           <span className="sra-log__count">
             {rows.length} change{rows.length === 1 ? "" : "s"}
@@ -139,7 +139,7 @@ export function AssessmentHistoryLog({ rows, status, complete, onNote }: Assessm
 
       {status === "error" && (
         <p className="sra-log__state" role="status">
-          The saved history couldn't be loaded, so only changes in the open assessment are listed.
+          The saved history couldn't be loaded, so only changes in the open round are listed.
         </p>
       )}
       {status === "loading" && rows.length === 0 ? (

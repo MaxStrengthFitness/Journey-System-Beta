@@ -227,7 +227,7 @@ export function ScheduleBlock({
               emergency — so a pulse glyph, not the warning triangle. */}
           {flagCheckIn && (
             <span
-              aria-label={checkInFlagLabel || "Assessment flag"}
+              aria-label={checkInFlagLabel || "Pulse flag"}
               title={checkInFlagLabel || undefined}
               className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-[4px] bg-rose-500/15 text-rose-600 ring-1 ring-rose-500/40 dark:text-rose-300"
             >

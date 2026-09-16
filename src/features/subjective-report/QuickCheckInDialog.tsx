@@ -1,12 +1,17 @@
 /**
- * Run the Client Check-in on its own — from the pre-session briefing or the
- * post-session screen — without building the whole progress report.
+ * The whole Pulse form in one sitting, as a full-screen sheet.
  *
- * NOTE: this dialog still saves a FINALIZED check-in in one sitting. The
- * resumable draft lives in the Journal tab's Check-in panel
+ * Reporting round (Sep 2026): the floor screens (briefing, note sheet,
+ * post-session) open Update Pulse (`PulseQuickLogDialog`) instead — one
+ * area, one Dial, back to the session. This dialog stays for the flows that
+ * still want the whole form at once; it runs on the same rebuilt
+ * `SubjectiveStep` (the Dial everywhere, no per-statement notes).
+ *
+ * NOTE: this dialog still saves a FINALIZED round in one sitting. The
+ * resumable draft lives in the record's Pulse panel
  * (components/journal/ClientCheckInPanel). Wiring these two together — so a
- * check-in begun at the briefing continues in the panel — needs the dialog
- * to load the open draft first, and is deliberately left for its own round.
+ * round begun here continues in the panel — needs the dialog to load the
+ * open draft first, and is deliberately left for its own round.
  *
  * Full-screen sheet (the form is long; a centred modal would be a scroll
  * inside a scroll on an iPad). Saves as a check-in-only report; see
@@ -16,6 +21,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { HeartPulse, X } from "lucide-react";
+import "./subjective-report.css";
 import type { Client, Machine, Trainer } from "../../types";
 import type { SubjectiveAssessment } from "./types";
 import { SubjectiveStep } from "./SubjectiveStep";
@@ -107,24 +113,24 @@ export function QuickCheckInDialog({
       className="fixed inset-0 z-[120] flex flex-col bg-slate-100 dark:bg-slate-950"
       role="dialog"
       aria-modal="true"
-      aria-label="Assessment"
+      aria-label="Pulse"
     >
       {/* header */}
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-card px-4 py-3 dark:border-slate-800">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0A548B]/10 text-[#0A548B] dark:bg-[#6fb1e6]/15 dark:text-[#6fb1e6]">
-            <HeartPulse className="h-5 w-5" />
+          <span className="sr-mark">
+            <HeartPulse className="h-5 w-5" aria-hidden />
           </span>
           <div className="min-w-0">
             <h2 className="truncate text-base font-black uppercase italic tracking-tight text-foreground">
-              Assessment · {client.firstName} {client.lastName}
+              Pulse · {client.firstName} {client.lastName}
             </h2>
             <p className="truncate text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               {origin === "pre_session" ? "Before the session" : origin === "post_session" ? "After the session" : "Standalone"}
               {" · "}
               {previous
                 ? `compared with ${fmtDate(previous.date)}${previous.trainerName ? ` by ${previous.trainerName}` : ""}`
-                : "first assessment"}
+                : "first Pulse"}
               {" · "}
               {answered}/24 answered
             </p>
@@ -173,7 +179,7 @@ export function QuickCheckInDialog({
       {/* footer */}
       <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-card px-4 py-3 dark:border-slate-800">
         <p className="hidden min-w-0 flex-1 text-[12px] leading-snug text-muted-foreground sm:block">
-          Saves to {client.firstName}'s assessment in the journal. Open it later and press{" "}
+          Saves a round of {client.firstName}'s Pulse to the record. Open it later and press{" "}
           <b>Build the full report</b> to turn it into a progress report.
         </p>
         <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
@@ -188,9 +194,9 @@ export function QuickCheckInDialog({
             type="button"
             onClick={handleSave}
             disabled={!canSave || saving}
-            className="h-12 flex-1 rounded-2xl bg-[#F06C22] px-6 text-[12px] font-black uppercase tracking-widest text-white shadow-lg shadow-[#F06C22]/20 disabled:opacity-50 sm:flex-none"
+            className="sr-btn sr-btn--tall sr-btn--navy flex-1 sm:flex-none"
           >
-            {saving ? "Saving…" : "Save assessment"}
+            {saving ? "Saving…" : "Save this round"}
           </button>
         </div>
       </div>

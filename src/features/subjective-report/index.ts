@@ -16,6 +16,8 @@ export { SubjectiveDashboard, SubjectiveClientCopy, type HistoryPoint } from "./
 export { QuickCheckInDialog } from "./QuickCheckInDialog";
 // Update Pulse: one area, one Dial, back to the session (reporting round).
 export { PulseQuickLog, PulseQuickLogDialog, touchedSentence } from "./PulseQuickLog";
+// Client mode: hand the iPad over, the client taps the words (reporting round).
+export { PulseClientMode, CLIENT_MODE_AREAS } from "./PulseClientMode";
 export * from "./checkin-write";
 export * from "./checkin-draft";
 export { useCheckInDraft } from "./useCheckInDraft";

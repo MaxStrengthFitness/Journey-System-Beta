@@ -1,6 +1,6 @@
 /**
- * CLIENT CHECK-IN — the Assessment on screen: a living record, updated a
- * piece at a time between and during sessions.
+ * THE PULSE — the living record of how the client's life is going, filled a
+ * little at a time between and during sessions, never "done".
  *
  * It used to be a full-screen sheet with twelve topics in it, opened from
  * the briefing and expected to be finished in one sitting. Nobody has that
@@ -9,9 +9,9 @@
  * on the floor.
  *
  * So this is a persistent panel over a draft that lives between sessions:
- * one topic open at a time, every edit autosaved, and a progress line that
- * says exactly how much is left. Pain and stress need an explicit "nothing
- * to report" because an empty list cannot otherwise be told apart from a
+ * one topic open at a time, every edit autosaved, and a line that says
+ * exactly where it got to. Pain and stress need an explicit "nothing to
+ * report" because an empty list cannot otherwise be told apart from a
  * conversation that never happened.
  *
  * ASSESSMENT ROUND (Sep 2026) — the owner's audit:
@@ -20,17 +20,30 @@
  *    saying how many of its areas were updated in the last 90 days.
  *  - Every area shows what its two ends mean, in the question bank's words.
  *  - An area untouched for 90+ days carries a quiet marker.
- *  - The ASSESSMENT HISTORY LOG sits on the same screen: every change, was →
- *    now, when, who, and the note attached at the time. Nothing is
- *    overwritten any more (assessment-history.ts).
+ *  - The HISTORY LOG sits on the same screen: every change, was → now,
+ *    when, who, and the note attached at the time. Nothing is overwritten
+ *    any more (assessment-history.ts).
  *  - Every hook runs before the "no client" return. The search box's state
  *    and effect used to sit below it, which is a rules-of-hooks crash the
  *    moment the client goes from null to set.
  *
- * Props are unchanged: the profile's Assessment section and the Active
- * Session's slide-over both mount it as before.
+ * REPORTING ROUND (Sep 2026) — the name and the Dial:
+ *  - It is called the Pulse on screen. Same draft, same fields, same log.
+ *  - Every statement is answered on the Dial with the document's five
+ *    frequency words; pain and stress intensity on Worst → None. No 0–10
+ *    grid anywhere, and no number for anything a trainer rates.
+ *  - Per-statement notes are gone; one note per topic stays.
+ *  - "Hand to client" opens client mode (PulseClientMode): the client taps
+ *    the words themselves, with nothing of the coach's showing. Answers
+ *    made there mark the draft `enteredBy: "client"`; the coach's next edit
+ *    marks it "coach" again.
+ *  - The chrome (header, search, footer) draws from the feature's tokens so
+ *    light and dark both read inside the record spine; every tappable ≥ 44px.
+ *
+ * Props are unchanged: the profile's Pulse section and the Active Session's
+ * slide-over both mount it as before.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -41,11 +54,12 @@ import {
   Loader2,
   RotateCcw,
   Search,
+  Users,
 } from "lucide-react";
-import { cn } from "../../lib/utils";
 import { sectionMatches } from "../../features/subjective-report/search";
 import { fmtDate } from "../../features/subjective-report/ui";
 import { formatStudioDateTime } from "../../lib/studio-time";
+import { clientFirstName } from "../../lib/client-name";
 import type { Client, Machine, Trainer } from "../../types";
 import {
   CategoryCard,
@@ -79,7 +93,9 @@ import {
   AssessmentHistoryLog,
   DeltaChip,
 } from "../../features/subjective-report/AssessmentHistoryLog";
-import type { AssessmentChange } from "../../features/subjective-report/types";
+import { PulseClientMode } from "../../features/subjective-report/PulseClientMode";
+import type { AssessmentChange, SubjectiveAssessment } from "../../features/subjective-report/types";
+import "../../features/subjective-report/subjective-report.css";
 
 export interface ClientCheckInPanelProps {
   client: Client | null;
@@ -100,12 +116,12 @@ const relative = (ms: number | null): string | null => {
 
 function StatusDot({ section }: { section: CheckInSectionState }) {
   if (section.isComplete)
-    return <CircleCheck className="h-4 w-4 shrink-0 text-emerald-500" aria-label="answered" />;
+    return <CircleCheck className="h-4 w-4 shrink-0" style={{ color: "var(--sr-green)" }} aria-label="answered" />;
   if (section.isReviewed)
-    return <Check className="h-4 w-4 shrink-0 text-emerald-500" aria-label="reviewed, nothing to report" />;
+    return <Check className="h-4 w-4 shrink-0" style={{ color: "var(--sr-green)" }} aria-label="reviewed, nothing to report" />;
   if (section.isPartial)
-    return <CircleAlert className="h-4 w-4 shrink-0 text-amber-500" aria-label="part answered" />;
-  return <CircleDashed className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" aria-label="not started" />;
+    return <CircleAlert className="h-4 w-4 shrink-0" style={{ color: "var(--sr-yellow)" }} aria-label="part answered" />;
+  return <CircleDashed className="h-4 w-4 shrink-0" style={{ color: "var(--sr-border-strong)" }} aria-label="not started" />;
 }
 
 /** What the two ends of an area's scale mean, in the question bank's words. */
@@ -134,7 +150,7 @@ function ScaleEnds({ sectionId }: { sectionId: string }) {
 /**
  * The change the coach just made to this area, with room for the reason.
  * Drawn BELOW the editor on purpose: appearing above it would push the
- * scale down under a finger that is still tapping.
+ * Dial down under a finger that is still tapping.
  */
 function JustChanged({
   change,
@@ -187,6 +203,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
   const [openId, setOpenId] = useState<string | null>(null);
   const [confirmFinalize, setConfirmFinalize] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [clientMode, setClientMode] = useState(false);
   /**
    * Auto-open happens ONCE. Keyed on `openId === null` it fought the user:
    * collapsing a section sets openId to null, which was also the re-open
@@ -220,6 +237,14 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
+  /* A coach's edit marks the draft as the coach's again. Client mode writes
+     through `draft.update` directly and marks it "client" itself. */
+  const { update } = draft;
+  const coachUpdate = useCallback(
+    (next: SubjectiveAssessment) => update(next.enteredBy === "coach" ? next : { ...next, enteredBy: "coach" }),
+    [update],
+  );
+
   /* ---- the history, and what it says about each area ---------------- */
   const changeLog = draft.assessment.changeLog;
   const rows = useMemo(
@@ -245,6 +270,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
 
   if (!client) return null;
 
+  const first = clientFirstName(client);
   const pct = draft.totalSections
     ? Math.round((draft.doneCount / draft.totalSections) * 100)
     : 0;
@@ -259,14 +285,15 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
       ? "The saved history couldn't be loaded"
       : draft.historyStatus === "loading"
         ? null
-        : "Not assessed yet";
+        : "Nothing recorded yet";
   const clientOwn =
     draft.previous?.enteredBy === "client" && last && !last.hasTime
       ? " (client's own answers)"
       : "";
+  const draftByClient = draft.hasDraft && draft.assessment.enteredBy === "client";
 
   const renderBody = (section: CheckInSectionState) => {
-    const common = { value: draft.assessment, onChange: draft.update };
+    const common = { value: draft.assessment, onChange: coachUpdate };
     if (section.id === "protein")
       return <ProteinCard {...common} bodyWeightLbs={draft.bodyWeightLbs} />;
     if (section.id === "hydration")
@@ -281,7 +308,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
         />
       );
     if (section.id === "stress")
-      return <StressCard {...common} clientFirstName={client.firstName || ""} />;
+      return <StressCard {...common} clientFirstName={first} />;
 
     const def = SUBJECTIVE_CATEGORIES.find((c) => c.key === section.id);
     if (!def) return null;
@@ -289,7 +316,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
       <CategoryCard
         def={def}
         value={draft.assessment}
-        onChange={draft.update}
+        onChange={coachUpdate}
         score={scoreCategory(def.key, draft.assessment.answers, draft.assessment.scaleVersion)}
         previousScore={
           draft.previous
@@ -346,16 +373,11 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
             </span>
             <span className="sra-area__now">{nowLine(section.id)}</span>
           </span>
-          <ChevronDown
-            className={cn(
-              "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-              open && "rotate-180",
-            )}
-          />
+          <ChevronDown className="sra-area__chev" data-open={open} aria-hidden />
         </button>
 
         {open && (
-          <div id={`checkin-${section.id}`} className="px-4 pb-4">
+          <div id={`checkin-${section.id}`} className="sra-area__body">
             <ScaleEnds sectionId={section.id} />
             {renderBody(section)}
             {latest && (
@@ -365,21 +387,17 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
                 "we talked, nothing moved". */}
             <button
               type="button"
+              className="sra-reviewed"
+              aria-pressed={section.isReviewed}
               onClick={() => draft.toggleReviewed(section.id)}
-              className={cn(
-                "mt-3 inline-flex h-10 items-center gap-1.5 rounded-xl border px-3 text-[10px] font-black uppercase tracking-wider transition-colors",
-                section.isReviewed
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  : "border-border bg-slate-50 text-muted-foreground hover:bg-slate-100 dark:bg-slate-800/50",
-              )}
             >
               {section.isReviewed ? (
                 <>
-                  <Check className="h-3 w-3" /> Reviewed
+                  <Check className="h-3.5 w-3.5" aria-hidden /> Reviewed
                 </>
               ) : (
                 <>
-                  <CircleDashed className="h-3 w-3" /> Mark reviewed
+                  <CircleDashed className="h-3.5 w-3.5" aria-hidden /> Mark reviewed
                 </>
               )}
             </button>
@@ -390,25 +408,16 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
   };
 
   return (
-    <section
-      id="client-check-in"
-      className="sra rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/70"
-      aria-label="Assessment"
-    >
+    <section id="client-check-in" className="sra" aria-label="Pulse">
       {/* ---------------------------- header ---------------------------- */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-cta/25 bg-cta/10 text-cta">
-          <HeartPulse className="h-4.5 w-4.5" />
+      <div className="sra-head">
+        <span className="sr-mark">
+          <HeartPulse className="h-5 w-5" aria-hidden />
         </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="font-display text-base font-black uppercase italic tracking-tight text-foreground">
-            Assessment
-          </h3>
-          <p className="sra-living">
-            A living assessment, not a one-time questionnaire. Update a little at a time —
-            before, during or after a session. It is never finished.
-          </p>
-          <p className="mt-1 text-[11px] font-medium text-muted-foreground">
+        <div className="sra-head__text">
+          <h3 className="sra-head__title">Pulse</h3>
+          <p className="sra-living">How life is going — filled a little at a time, never done.</p>
+          <p className="sra-head__meta">
             {draft.loading
               ? "Loading…"
               : [
@@ -416,6 +425,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
                   draft.hasDraft
                     ? [
                         `${draft.doneCount} of ${draft.totalSections} areas in this round`,
+                        draftByClient && `${first}'s own answers`,
                         started && `started ${started}`,
                         draft.saveState === "saving"
                           ? "saving…"
@@ -432,36 +442,42 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
           </p>
         </div>
 
-        {draft.hasDraft && (
-          <div className="flex items-center gap-2">
-            <span className="hidden h-1.5 w-28 overflow-hidden rounded-full bg-slate-200 sm:block dark:bg-slate-800">
-              <span
-                className="block h-full rounded-full bg-cta transition-[width] duration-500"
-                style={{ width: `${pct}%` }}
-              />
+        <div className="sra-head__actions">
+          {draft.hasDraft && (
+            <span className="sra-progress" aria-label={`${pct}% of this round's areas updated`}>
+              <span className="sra-progress__bar" aria-hidden>
+                <span className="sra-progress__fill" style={{ width: `${pct}%` }} />
+              </span>
+              <span className="sra-progress__pct">{pct}%</span>
             </span>
-            <span className="text-[11px] font-black tabular-nums text-muted-foreground">
-              {pct}%
-            </span>
-          </div>
-        )}
+          )}
+          <button
+            type="button"
+            className="sra-hand"
+            disabled={draft.loading}
+            onClick={() => setClientMode(true)}
+            title={`Hand the iPad to ${first}: they tap the words themselves`}
+          >
+            <Users className="h-4 w-4" aria-hidden /> Hand to client
+          </button>
+        </div>
       </div>
 
       <div className="sra-layout">
         <div className="min-w-0">
           {/* --------------------------- find an area ----------------------- */}
-          <div className="relative border-b border-slate-200 px-4 py-2 dark:border-slate-800">
-            <Search className="pointer-events-none absolute left-7 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="sra-search">
+            <Search className="sra-search__icon" aria-hidden />
             <input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Find an area — sleep, meals, knee, stress…"
-              aria-label="Find an assessment area"
-              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-[13px] text-foreground placeholder:text-muted-foreground focus:border-cta focus:outline-none dark:border-slate-800 dark:bg-slate-800/50"
+              aria-label="Find a Pulse area"
+              className="sra-search__input"
             />
             {query.trim() && visibleSections.length === 0 && (
-              <p className="mt-2 text-[12px] text-muted-foreground">No area matches "{query.trim()}". Try another word, or clear the box.</p>
+              <p className="sra-search__none">No area matches "{query.trim()}". Try another word, or clear the box.</p>
             )}
           </div>
 
@@ -478,9 +494,7 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
                   {pillar && <p className="sra-pillar__blurb">{pillar.blurb}</p>}
                   {status && <p className="sra-pillar__status">{status}</p>}
                 </div>
-                <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {items.map(renderSection)}
-                </ul>
+                <ul className="sra-areas">{items.map(renderSection)}</ul>
               </div>
             );
           })}
@@ -499,62 +513,51 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
 
       {/* ---------------------------- footer ---------------------------- */}
       {draft.hasDraft && (
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 px-4 py-3 dark:border-slate-800">
+        <div className="sra-foot">
           {/* Two taps: this deletes answers that may represent several
-              sessions of conversation, and it sits beside Finish. */}
+              sessions of conversation, and it sits beside Save. */}
           {confirmDiscard ? (
-            <span className="mr-auto flex items-center gap-2">
-              <span className="text-[11px] font-medium text-red-600 dark:text-red-400">
-                Delete this draft and its answers?
-              </span>
-              <button
-                type="button"
-                onClick={() => setConfirmDiscard(false)}
-                className="h-10 rounded-xl border border-border px-3 text-[10px] font-black uppercase tracking-wider text-slate-500"
-              >
+            <span className="sra-foot__spacer">
+              <span className="sra-foot__ask sra-foot__ask--danger">Delete this draft and its answers?</span>
+              <button type="button" className="sra-btn" onClick={() => setConfirmDiscard(false)}>
                 Keep
               </button>
               <button
                 type="button"
+                className="sra-btn sra-btn--danger"
                 onClick={async () => {
                   await draft.discard();
                   setConfirmDiscard(false);
                   setOpenId(null);
                   autoOpened.current = false;
                 }}
-                className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-red-500/40 bg-red-500/10 px-3 text-[10px] font-black uppercase tracking-wider text-red-600 dark:text-red-400"
               >
-                <RotateCcw className="h-3 w-3" /> Discard
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Discard
               </button>
             </span>
           ) : (
-            <button
-              type="button"
-              onClick={() => setConfirmDiscard(true)}
-              className="mr-auto inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
-            >
-              <RotateCcw className="h-3 w-3" /> Discard draft
-            </button>
+            <span className="sra-foot__spacer">
+              <button type="button" className="sra-btn sra-btn--quiet" onClick={() => setConfirmDiscard(true)}>
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Discard draft
+              </button>
+            </span>
           )}
 
           {confirmFinalize ? (
             <>
-              <span className="text-[11px] font-medium text-muted-foreground">
+              <span className="sra-foot__ask">
                 {draft.doneCount < draft.totalSections
                   ? `Save this round with ${draft.totalSections - draft.doneCount} area${
                       draft.totalSections - draft.doneCount === 1 ? "" : "s"
                     } not updated?`
                   : "Save this round to the history?"}
               </span>
-              <button
-                type="button"
-                onClick={() => setConfirmFinalize(false)}
-                className="h-10 rounded-xl border border-border px-3 text-[10px] font-black uppercase tracking-wider text-slate-500"
-              >
+              <button type="button" className="sra-btn" onClick={() => setConfirmFinalize(false)}>
                 Cancel
               </button>
               <button
                 type="button"
+                className="sra-btn sra-btn--primary"
                 disabled={draft.finalizing}
                 onClick={async () => {
                   const ok = await draft.finalize();
@@ -564,24 +567,32 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
                     autoOpened.current = false;
                   }
                 }}
-                className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-cta-strong px-4 text-[10px] font-black uppercase tracking-wider text-white transition-colors hover:brightness-105 disabled:opacity-60"
               >
-                {draft.finalizing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                Save assessment
+                {draft.finalizing ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Check className="h-3.5 w-3.5" aria-hidden />}
+                Save this round
               </button>
             </>
           ) : (
             <button
               type="button"
+              className="sra-btn sra-btn--outline"
               disabled={!canFinalize}
               onClick={() => setConfirmFinalize(true)}
-              className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-cta/40 bg-cta/10 px-4 text-[10px] font-black uppercase tracking-wider text-cta-strong transition-colors hover:bg-cta/20 disabled:opacity-40 dark:text-cta"
             >
-              <Check className="h-3 w-3" /> Save assessment
+              <Check className="h-3.5 w-3.5" aria-hidden /> Save this round
             </button>
           )}
         </div>
       )}
+
+      {/* ---------------------------- client mode ------------------------ */}
+      <PulseClientMode
+        open={clientMode}
+        client={client}
+        assessment={draft.assessment}
+        onUpdate={draft.update}
+        onClose={() => setClientMode(false)}
+      />
     </section>
   );
 }

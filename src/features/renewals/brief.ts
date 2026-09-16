@@ -96,7 +96,7 @@ export function healthLines(client: Client, s: RenewalSnapshot | null, today: st
         }`
       : null;
     lines.push(
-      `Assessment, ${dayLabel(snap.date.slice(0, 10), today)}${overall ? `: ${overall}` : ""}`,
+      `Pulse, ${dayLabel(snap.date.slice(0, 10), today)}${overall ? `: ${overall}` : ""}`,
     );
     if (snap.redCategories?.length) {
       lines.push(`Red on: ${snap.redCategories.map((k) => CATEGORY_BY_KEY[k]?.title ?? k).join(", ")}`);

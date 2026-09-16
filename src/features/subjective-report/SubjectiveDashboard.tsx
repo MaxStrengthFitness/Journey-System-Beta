@@ -28,11 +28,23 @@ import {
   TRAINING_IMPACT_LABELS,
 } from "./questions";
 import { scoreAllCategories, scoreOverall, summarize, type PreviousAssessmentRef } from "./scoring";
-import { Delta, RAG_LABEL, RagPill, fmtDate } from "./ui";
+import { Delta, RAG_LABEL, RagPill, fmtDate, intensityWord } from "./ui";
 
 export interface HistoryPoint {
   date: string;
   assessment: SubjectiveAssessment;
+}
+
+/**
+ * A pain point's movement since last time, in words. A number of points on
+ * a trainer-rated 0–10 is exactly what the Dial rule forbids; "easing",
+ * "worse" and "same" carry the meaning.
+ */
+function SeverityChange({ change }: { change: number | null }) {
+  if (change === null) return <Delta value={null} />;
+  const dir = change === 0 ? "flat" : change < 0 ? "up" : "down";
+  const word = change === 0 ? "same" : change < 0 ? "easing" : "worse";
+  return <span className={`sr-delta sr-delta--${dir}`}>{word}</span>;
 }
 
 const painName = (p: PainPoint) =>
@@ -146,7 +158,7 @@ export function SubjectiveDashboard({
         <div className={`sr-tile${s.largestImprovement ? " sr-tile--green" : ""}`}>
           <span className="sr-tile__label">Largest improvement</span>
           <span className="sr-tile__value" style={{ fontSize: 17 }}>
-            {s.largestImprovement ? s.largestImprovement.title : previous ? "No topic improved" : "First assessment"}
+            {s.largestImprovement ? s.largestImprovement.title : previous ? "No topic improved" : "First Pulse"}
           </span>
           {s.largestImprovement && (
             <span className="sr-tile__sub">
@@ -209,7 +221,7 @@ export function SubjectiveDashboard({
         <div className="sr-card">
           <div className="sr-card__head">
             <h3 className="sr-card__title">Overall score over time</h3>
-            <span className="sr-hint">{trend.length} assessments</span>
+            <span className="sr-hint">{trend.length} rounds</span>
           </div>
           <Sparkline points={trend} />
         </div>
@@ -224,7 +236,7 @@ export function SubjectiveDashboard({
               status={
                 s.pain.worstSeverity === null ? "green" : s.pain.worstSeverity >= 7 ? "red" : s.pain.worstSeverity >= 4 ? "yellow" : "green"
               }
-              label={s.pain.activeCount ? `${s.pain.activeCount} active · worst ${s.pain.worstSeverity}/10` : "None active"}
+              label={s.pain.activeCount ? `${s.pain.activeCount} active · worst ${intensityWord(s.pain.worstSeverity).toLowerCase()}` : "None active"}
             />
           </div>
           {s.pain.trends.length === 0 && s.pain.resolvedSinceLast.length === 0 ? (
@@ -251,12 +263,9 @@ export function SubjectiveDashboard({
                         </div>
                       )}
                     </td>
+                    <td className="num">{intensityWord(t.point.severity)}</td>
                     <td className="num">
-                      {t.point.severity}
-                      <small> / 10</small>
-                    </td>
-                    <td className="num">
-                      {t.isNew ? <span className="sr-hint">new</span> : <Delta value={t.severityChange} invert />}
+                      {t.isNew ? <span className="sr-hint">new</span> : <SeverityChange change={t.severityChange} />}
                     </td>
                     <td>
                       <RagPill
@@ -270,7 +279,7 @@ export function SubjectiveDashboard({
                   <tr key={`res-${p.id}`}>
                     <td>
                       <div className="sr-table__title" style={{ opacity: 0.7 }}>
-                        {painName(p)} <span className="sr-hint">was {p.severity}/10 last time</span>
+                        {painName(p)} <span className="sr-hint">was {intensityWord(p.severity).toLowerCase()} last time</span>
                       </div>
                     </td>
                     <td className="num">—</td>
@@ -299,7 +308,7 @@ export function SubjectiveDashboard({
                       : "green"
               }
               label={
-                assessment.overallStressLevel === null ? "Not rated" : `Life load ${assessment.overallStressLevel} / 10`
+                assessment.overallStressLevel === null ? "Not rated" : `Life load: ${intensityWord(assessment.overallStressLevel).toLowerCase()}`
               }
             />
           </div>
@@ -318,7 +327,7 @@ export function SubjectiveDashboard({
                     {a.label && <span className="sr-hint"> — “{a.label}”</span>}
                   </div>
                   <div className="sr-hint">
-                    intensity {a.intensity}/10 · {TRAINING_IMPACT_LABELS[a.trainingImpact]} · {a.status}
+                    {intensityWord(a.intensity)} · {TRAINING_IMPACT_LABELS[a.trainingImpact]} · {a.status}
                   </div>
                   {a.coachResponse && <div style={{ fontSize: 13 }}>Plan: {a.coachResponse}</div>}
                 </div>
@@ -523,11 +532,8 @@ export function SubjectiveClientCopy({
                       <div className="sr-hint">we're watching this on {t.point.aggravatingMachineIds.map(machineName).join(", ")}</div>
                     )}
                   </td>
-                  <td className="num">
-                    {t.point.severity}
-                    <small> / 10</small>
-                  </td>
-                  <td className="num">{t.isNew ? <span className="sr-hint">new</span> : <Delta value={t.severityChange} invert />}</td>
+                  <td className="num">{intensityWord(t.point.severity)}</td>
+                  <td className="num">{t.isNew ? <span className="sr-hint">new</span> : <SeverityChange change={t.severityChange} />}</td>
                 </tr>
               ))}
               {s.pain.resolvedSinceLast.map((p) => (
@@ -568,7 +574,7 @@ export function SubjectiveClientCopy({
       )}
 
       {!copy.includeCategoryScores && !copy.includeProteinHydration && !copy.includePainMap && !assessment.coachSummary && (
-        <div className="sr-empty">{clientFirstName}'s assessment is on file for the coaching team.</div>
+        <div className="sr-empty">{clientFirstName}'s Pulse is on file for the coaching team.</div>
       )}
     </div>
   );

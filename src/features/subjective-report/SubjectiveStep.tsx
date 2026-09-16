@@ -1,6 +1,14 @@
 /**
- * Step 5 of the progress report: the 90-day check-in, entered by the coach
- * during the conversation.
+ * The Pulse form, whole: the eight topics, protein, hydration, the pain map,
+ * the stress anchors and the client-copy switches. The living panel
+ * (components/journal/ClientCheckInPanel) mounts the cards one at a time;
+ * `SubjectiveStep` is the all-at-once form the Pulse dialog still uses.
+ *
+ * Reporting round (Sep 2026): every statement is answered on the Dial with
+ * the document's five frequency words (ui.tsx → ScaleInput), pain and stress
+ * intensity on Worst → None (Range10). Per-statement notes are gone — one
+ * note per topic, in the client's words, is the record; a note already
+ * stored on a statement still shows, read-only, so nothing written is lost.
  *
  * Layout: eight category cards (two columns in landscape), then protein and
  * hydration side by side, then the pain map and stress anchors full width,
@@ -36,7 +44,6 @@ import {
   PROTEIN_INSTRUCTOR_PROMPT,
   PROTEIN_QUESTION,
   PROTEIN_SOURCE_SUGGESTIONS,
-  SCALE_MAX,
   STRESS_CATEGORY_LABELS,
   SUBJECTIVE_CATEGORIES,
   TRAINING_IMPACT_LABELS,
@@ -63,7 +70,7 @@ import {
   Stepper,
   Switch,
   fmtDate,
-  scaleWord,
+  intensityWord,
 } from "./ui";
 import { useJournalSuggestions } from "./useJournalSuggestions";
 
@@ -120,16 +127,16 @@ export function SubjectiveStep({
         <div className="sr-tile">
           <span className="sr-tile__label">Compared with</span>
           <span className="sr-tile__value" style={{ fontSize: 18 }}>
-            {previous ? fmtDate(previous.date) : "First assessment"}
+            {previous ? fmtDate(previous.date) : "First Pulse"}
           </span>
-          <span className="sr-tile__sub">{previous ? "Changes shown per topic" : "No previous assessment on file"}</span>
+          <span className="sr-tile__sub">{previous ? "Changes shown per topic" : "No previous Pulse on file"}</span>
         </div>
         <div className="sr-tile">
-          <span className="sr-tile__label">Assessment date</span>
+          <span className="sr-tile__label">Pulse date</span>
           <input
             type="date"
             className="sr-input"
-            aria-label="Assessment date"
+            aria-label="Pulse date"
             value={value.completedAt ?? ""}
             onChange={(e) => patch({ completedAt: e.target.value || null })}
           />
@@ -137,9 +144,9 @@ export function SubjectiveStep({
       </div>
 
       <p className="sr-card__help sr-no-print">
-        Read each statement to {clientFirstName} and tap the number that fits. The words under the
-        scale are what a 0 and a 10 look like for that statement — use them, not your own sense of
-        “often”. Tap a number again to clear it. “Add note” keeps what they said, in their words.
+        Read each statement to {clientFirstName} and tap the word that fits — Not at all, Rarely,
+        Sometimes, Often or Nearly always. Tap the same word again to clear it. Anything untouched is
+        “not asked”, and the topic note keeps what they said, in their words.
       </p>
 
       {/* ---- the eight categories ---- */}
@@ -197,7 +204,7 @@ export function SubjectiveStep({
         ))}
         <div>
           <label className="sr-label" htmlFor="sr-coach-summary">
-            Your summary of the assessment (prints on the client copy)
+            Your summary of the Pulse (prints on the client copy)
           </label>
           <textarea
             id="sr-coach-summary"
@@ -222,6 +229,7 @@ export function CategoryCard({
   onChange,
   score,
   previousScore,
+  compact,
 }: {
   key?: string;
   def: SubjectiveCategoryDef;
@@ -229,18 +237,12 @@ export function CategoryCard({
   onChange: (next: SubjectiveAssessment) => void;
   score: ReturnType<typeof scoreCategory>;
   previousScore: ReturnType<typeof scoreCategory> | null;
+  compact?: boolean;
 }) {
-  const [notesOpen, setNotesOpen] = useState<Record<string, boolean>>({});
-
   const setAnswer = (id: string, v: number | null) =>
     onChange({
       ...value,
       answers: { ...value.answers, [id]: { ...(value.answers[id] ?? {}), value: v } },
-    });
-  const setNote = (id: string, note: string) =>
-    onChange({
-      ...value,
-      answers: { ...value.answers, [id]: { value: value.answers[id]?.value ?? null, note } },
     });
 
   const pct = score.percent === null ? 0 : Math.round(score.percent * 100);
@@ -275,45 +277,20 @@ export function CategoryCard({
       {def.statements.map((st) => {
         const a = value.answers[st.id];
         const v = a?.value ?? null;
-        const open = notesOpen[st.id] || !!a?.note;
+        const note = a?.note?.trim();
         return (
           <div className="sr-statement" key={st.id}>
-            <div className="sr-statement__row">
-              <p className="sr-statement__text">{st.text}</p>
-              <span className="sr-statement__value">
-                {v === null ? "—" : <><b>{v}</b> · {scaleWord(v)}</>}
-              </span>
-            </div>
-            <ScaleInput
-              value={v}
-              onChange={(n) => setAnswer(st.id, n)}
-              anchorLow={st.anchorLow}
-              anchorHigh={st.anchorHigh}
-              ariaLabel={st.text}
-            />
-            {open ? (
-              <input
-                className="sr-input"
-                placeholder="What they said, in their words…"
-                value={a?.note ?? ""}
-                onChange={(e) => setNote(st.id, e.target.value)}
-              />
-            ) : (
-              <button
-                type="button"
-                className="sr-note-toggle sr-no-print"
-                onClick={() => setNotesOpen((s) => ({ ...s, [st.id]: true }))}
-              >
-                + Add note
-              </button>
-            )}
+            <ScaleInput value={v} onChange={(n) => setAnswer(st.id, n)} ariaLabel={st.text} compact={compact} />
+            {/* A note written before this round, on this one statement.
+                Shown so nothing already recorded is hidden; no new ones. */}
+            {note ? <p className="sr-statement__note">“{note}”</p> : null}
           </div>
         );
       })}
 
       <div>
         <label className="sr-label" htmlFor={`sr-cat-note-${def.key}`}>
-          Coach note for this topic
+          In their words / worth remembering
         </label>
         <textarea
           id={`sr-cat-note-${def.key}`}
@@ -706,7 +683,7 @@ export function PainMapCard({
       title="Pain map"
       prompt="Show me where. Is it the joint itself, or the muscle around it?"
       wide
-      help="Tap a body area (and a side) for every spot that bothers them, then rate each one. Link it to the incident or injury note it came from so the session notes and this assessment describe the same event. Last time's spots can be carried forward and re-rated."
+      help="Tap a body area (and a side) for every spot that bothers them, then rate each one. Link it to the incident or injury note it came from so the session notes and the Pulse describe the same event. Last time's spots can be carried forward and re-rated."
       right={
         carryable > 0 ? (
           <button type="button" className="sr-btn sr-btn--sm sr-no-print" onClick={carryForward}>
@@ -797,11 +774,7 @@ function PainPointEditor({
         <h4 className="sr-pain__title">
           {BODY_REGION_LABELS[point.region]}
           <small>{BODY_SIDE_LABELS[point.side]}</small>
-          {previous && (
-            <small>
-              · was {previous.severity}/10 <Delta value={point.severity - previous.severity} />
-            </small>
-          )}
+          {previous && <small>· was {intensityWord(previous.severity)} last time</small>}
         </h4>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <Seg
@@ -822,8 +795,13 @@ function PainPointEditor({
 
       <div className="sr-field-row">
         <div className="sr-field" style={{ flex: 1, minWidth: 220 }}>
-          <span className="sr-label">Severity (0 none → 10 worst)</span>
-          <Range10 value={point.severity} onChange={(severity) => set({ severity })} ariaLabel="Pain severity" />
+          {/* A pain point always has a severity (the type requires one), so a
+              cleared Dial is a no-op here rather than a made-up number. */}
+          <Range10
+            value={point.severity}
+            onChange={(severity) => severity !== null && set({ severity })}
+            ariaLabel="How bad is it?"
+          />
         </div>
         <div className="sr-field">
           <span className="sr-label">Type</span>
@@ -959,11 +937,11 @@ export function StressCard({
     >
       <div className="sr-field-row">
         <div className="sr-field" style={{ flex: 1, minWidth: 240 }}>
-          <span className="sr-label">Overall — how heavy does life feel right now? (0 light → 10 crushing)</span>
+          {/* Untouched is null — "not asked" — never a light day by default. */}
           <Range10
-            value={value.overallStressLevel ?? 0}
+            value={value.overallStressLevel}
             onChange={(overallStressLevel) => onChange({ ...value, overallStressLevel })}
-            ariaLabel="Overall stress level"
+            ariaLabel="Overall — how heavy does life feel right now?"
           />
         </div>
       </div>
@@ -980,7 +958,7 @@ export function StressCard({
       </div>
 
       {anchors.length === 0 ? (
-        <div className="sr-empty">Nothing recorded. That's fine — not every assessment has one.</div>
+        <div className="sr-empty">Nothing recorded. That's fine — not every Pulse has one.</div>
       ) : (
         anchors.map((a) => {
           const set = (patch: Partial<StressAnchor>) =>
@@ -1020,8 +998,12 @@ export function StressCard({
               />
               <div className="sr-field-row">
                 <div className="sr-field" style={{ flex: 1, minWidth: 200 }}>
-                  <span className="sr-label">How intense</span>
-                  <Range10 value={a.intensity} onChange={(intensity) => set({ intensity })} ariaLabel="Stress intensity" />
+                  {/* Intensity is required on a stressor; a cleared Dial changes nothing. */}
+                  <Range10
+                    value={a.intensity}
+                    onChange={(intensity) => intensity !== null && set({ intensity })}
+                    ariaLabel="How intense"
+                  />
                 </div>
                 <div className="sr-field">
                   <span className="sr-label">Effect on training</span>

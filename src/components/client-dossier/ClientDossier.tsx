@@ -576,7 +576,7 @@ export function ClientDossier({
                   value={val("recoveryMetric")}
                   onChange={set("recoveryMetric")}
                   options={["Poor", "Average", "Optimal"]}
-                  hint="Sleep, food and daily load, as the client describes them. The Assessment tracks the detail."
+                  hint="Sleep, food and daily load, as the client describes them. The Pulse tracks the detail."
                 />
               </FieldGroup>
 
@@ -686,7 +686,7 @@ export function ClientDossier({
             {/* ---------------- REPORTS + ASSESSMENT ---------------- */}
             <DossierSectionShell
               id="reports"
-              title="Assessment"
+              title="Pulse"
               blurb={sectionBlurb("reports")}
               icon={SECTION_ICONS.reports}
             >

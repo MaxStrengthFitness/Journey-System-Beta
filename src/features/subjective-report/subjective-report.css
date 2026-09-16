@@ -1,5 +1,5 @@
 /* ==========================================================================
-   90-Day Subjective Progress Report — form + coach dashboard
+   The Pulse (the living subjective record) — form, panel, coach dashboard
    --------------------------------------------------------------------------
    Scoped under `.sr`. Light tokens on :root, dark on `.dark` (and the OS
    preference when no explicit theme class is set), same convention as the
@@ -193,92 +193,26 @@
 .sr-pill--none::before { background: var(--sr-border-strong); }
 .sr-pill--lg { height: 32px; font-size: 13px; padding: 0 14px; }
 
-/* ---------- Statement + 0–10 scale ---------------------------------- */
+/* ---------- Statement on the Dial ------------------------------------ */
 
 .sr-statement {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   padding: 12px 0;
   border-top: 1px solid var(--sr-border);
 }
 .sr-statement:first-of-type { border-top: 0; padding-top: 4px; }
-
-.sr-statement__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-.sr-statement__text {
+/* The statement IS the question: read it out loud, so it gets body size. */
+.sr-statement .rt__ask { font-size: 15px; line-height: 1.3; }
+/* A note stored on one statement before per-statement notes were retired. */
+.sr-statement__note {
   margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.3;
-}
-.sr-statement__value {
   font-size: 13px;
-  font-weight: 800;
-  color: var(--sr-ink-muted);
-  white-space: nowrap;
-  min-width: 9ch;
-  text-align: right;
-}
-.sr-statement__value b {
-  font-size: 18px;
-  color: var(--sr-ink);
-}
-
-.sr-scale {
-  display: grid;
-  grid-template-columns: repeat(11, minmax(0, 1fr));
-  gap: 4px;
-}
-.sr-scale__btn {
-  height: var(--sr-tap);
-  min-width: 0;
-  border-radius: var(--sr-radius-sm);
-  border: 1.5px solid var(--sr-border);
-  background: var(--sr-surface-2);
+  font-style: italic;
+  line-height: 1.35;
   color: var(--sr-ink-2);
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: background 120ms, border-color 120ms, transform 80ms;
-  -webkit-tap-highlight-color: transparent;
 }
-.sr-scale__btn:active { transform: scale(0.96); }
-/* Filled up to the chosen value so the row reads as a bar, not a lone dot */
-.sr-scale__btn--lit { background: var(--sr-navy-fill); border-color: color-mix(in srgb, var(--sr-navy) 40%, var(--sr-border)); }
-.sr-scale__btn--on  { background: var(--sr-navy); border-color: var(--sr-navy); color: #fff; }
-.dark .sr-scale__btn--on { color: #071a2b; }
-.sr-scale__btn--on.sr-scale__btn--red    { background: var(--sr-red);    border-color: var(--sr-red); }
-.sr-scale__btn--on.sr-scale__btn--yellow { background: var(--sr-yellow); border-color: var(--sr-yellow); }
-.sr-scale__btn--on.sr-scale__btn--green  { background: var(--sr-green);  border-color: var(--sr-green); }
-
-.sr-scale__anchors {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  font-size: 11.5px;
-  line-height: 1.3;
-  color: var(--sr-ink-faint);
-}
-.sr-scale__anchors span:last-child { text-align: right; }
-
-.sr-note-toggle {
-  align-self: flex-start;
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px dashed var(--sr-border-strong);
-  background: transparent;
-  color: var(--sr-ink-muted);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.sr-note-toggle--on { border-style: solid; color: var(--sr-navy); background: var(--sr-navy-fill); }
 
 .sr-textarea,
 .sr-input,
@@ -410,12 +344,6 @@
 .sr-field-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
 .sr-field { display: flex; flex-direction: column; }
 
-/* ---------- Range (0–10 slider used for severity / intensity) ------- */
-
-.sr-range { display: flex; align-items: center; gap: 12px; }
-.sr-range input[type="range"] { flex: 1; height: var(--sr-tap); accent-color: var(--sr-navy); }
-.sr-range__val { font-size: 20px; font-weight: 900; min-width: 2.5ch; text-align: right; }
-
 /* ---------- Big stat tile ------------------------------------------- */
 
 .sr-tile {
@@ -503,6 +431,14 @@
 .sr-btn--ghost { border-color: transparent; background: transparent; color: var(--sr-ink-muted); }
 .sr-btn--sm { height: 32px; padding: 0 10px; font-size: 12px; }
 .sr-btn--danger { color: var(--sr-red); border-color: var(--sr-red); }
+.sr-btn--tall { height: 48px; padding: 0 20px; font-size: 12px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 14px; }
+.sr-btn--navy { background: var(--sr-navy); border-color: var(--sr-navy); color: #fff; }
+.dark .sr-btn--navy { color: #071a2b; }
+.sr-mark {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 40px; height: 40px; border-radius: 12px;
+  background: var(--sr-navy-fill); color: var(--sr-navy);
+}
 .sr-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ---------- Segmented control --------------------------------------- */
@@ -1043,3 +979,264 @@
 .pq-dialog__sub { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sr-ink-muted); }
 .pq-dialog__close { margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: none; border-radius: 12px; background: var(--sr-surface-2); color: var(--sr-ink-2); cursor: pointer; }
 .pq-dialog__body { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 14px; }
+
+/* ==========================================================================
+   THE PULSE PANEL CHROME (reporting round, Sep 2026)
+   --------------------------------------------------------------------------
+   `.sra` is still ClientCheckInPanel; these are its header, search box,
+   footer and the "Hand to client" button, moved off raw Tailwind greys onto
+   the feature tokens so light and dark both read inside the record spine.
+   Every tappable is 44px or more. Text alignment on buttons lives here.
+   ========================================================================== */
+
+.sra {
+  color: var(--sr-ink);
+  border: 1px solid var(--sr-border);
+  border-radius: var(--sr-radius);
+  background: var(--sr-surface);
+}
+
+.sra-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--sr-border);
+}
+.sra-head__text { min-width: 0; flex: 1 1 240px; }
+.sra-head__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--sr-ink);
+}
+.sra-head__meta {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--sr-ink-muted);
+}
+.sra-head__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+.sra-progress { display: inline-flex; align-items: center; gap: 8px; }
+.sra-progress__bar {
+  display: block;
+  width: 96px;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--sr-surface-3);
+}
+.sra-progress__fill { display: block; height: 100%; border-radius: 999px; background: var(--sr-navy); transition: width 500ms; }
+.sra-progress__pct { font-size: 11px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--sr-ink-muted); }
+
+/* "Hand to client": the one button on the header. Brand blue, never hero orange. */
+.sra-hand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--sr-navy);
+  border-radius: 12px;
+  background: var(--sr-navy-fill);
+  color: var(--sr-navy);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.sra-hand:disabled { opacity: 0.5; cursor: default; }
+.sra-hand:focus-visible { outline: 2px solid var(--sr-navy); outline-offset: 2px; }
+
+.sra-search { position: relative; padding: 10px 16px; border-bottom: 1px solid var(--sr-border); }
+.sra-search__icon { position: absolute; left: 28px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); pointer-events: none; color: var(--sr-ink-muted); }
+.sra-search__input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px 0 40px;
+  border-radius: 12px;
+  border: 1.5px solid var(--sr-border);
+  background: var(--sr-surface-2);
+  color: var(--sr-ink);
+  font: inherit;
+  font-size: 14px;
+}
+.sra-search__input::placeholder { color: var(--sr-ink-faint); }
+.sra-search__input:focus { outline: 2px solid var(--sr-navy); outline-offset: 1px; border-color: var(--sr-navy); }
+.sra-search__none { margin: 8px 0 0; font-size: 12px; color: var(--sr-ink-muted); }
+
+.sra-areas { list-style: none; margin: 0; padding: 0; }
+.sra-areas > li + li { border-top: 1px solid var(--sr-border); }
+.sra-area__body { padding: 0 16px 16px; }
+.sra-area__chev { flex: none; width: 16px; height: 16px; color: var(--sr-ink-muted); transition: transform 150ms; }
+.sra-area__chev[data-open="true"] { transform: rotate(180deg); }
+
+/* "Mark reviewed": 44px, quiet until on. */
+.sra-reviewed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 0 14px;
+  border: 1px solid var(--sr-border);
+  border-radius: 12px;
+  background: var(--sr-surface-2);
+  color: var(--sr-ink-muted);
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+.sra-reviewed[aria-pressed="true"] { border-color: color-mix(in srgb, var(--sr-green) 45%, var(--sr-border)); background: var(--sr-green-fill); color: var(--sr-green); }
+
+.sra-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--sr-border);
+}
+.sra-foot__ask { font-size: 11.5px; font-weight: 600; color: var(--sr-ink-muted); }
+.sra-foot__ask--danger { color: var(--sr-red); }
+.sra-foot__spacer { margin-right: auto; display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sra-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--sr-border);
+  border-radius: 12px;
+  background: var(--sr-surface);
+  color: var(--sr-ink-2);
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.sra-btn:disabled { opacity: 0.45; cursor: default; }
+.sra-btn--quiet { border-color: transparent; color: var(--sr-ink-muted); }
+.sra-btn--danger { border-color: color-mix(in srgb, var(--sr-red) 45%, var(--sr-border)); background: var(--sr-red-fill); color: var(--sr-red); }
+.sra-btn--primary { border-color: var(--sr-navy); background: var(--sr-navy); color: #fff; }
+.dark .sra-btn--primary { color: #071a2b; }
+.sra-btn--outline { border-color: var(--sr-navy); background: var(--sr-navy-fill); color: var(--sr-navy); }
+
+/* ==========================================================================
+   CLIENT MODE — "Hand to client" (reporting round, Sep 2026)
+   --------------------------------------------------------------------------
+   `.pcm` is PulseClientMode: a full-screen sheet the client holds. One area
+   at a time, the statement in large type, the five frequency words on the
+   Dial, Back / Next on a 48px bar at the bottom where a thumb rests. No
+   scores, no flags, no notes, no history — none of that is theirs to see.
+   ========================================================================== */
+
+.pcm {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: flex;
+  flex-direction: column;
+  background: var(--sr-bg);
+  color: var(--sr-ink);
+}
+.pcm__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--sr-border);
+  background: var(--sr-surface);
+}
+.pcm__kicker {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sr-navy);
+}
+.pcm__title { margin: 2px 0 0; font-size: 17px; font-weight: 800; line-height: 1.2; color: var(--sr-ink); }
+.pcm__step { margin-left: auto; flex: none; font-size: 12px; font-weight: 800; color: var(--sr-ink-muted); font-variant-numeric: tabular-nums; }
+.pcm__close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 12px;
+  background: var(--sr-surface-2);
+  color: var(--sr-ink-2);
+  cursor: pointer;
+}
+.pcm__body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px;
+}
+.pcm__inner { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.pcm__ask { margin: 0; font-size: 20px; font-weight: 800; line-height: 1.25; color: var(--sr-ink); }
+.pcm__area { margin: 0; font-size: 13px; font-weight: 700; color: var(--sr-ink-muted); }
+.pcm__statement {
+  padding: 14px 14px 12px;
+  border: 1px solid var(--sr-border);
+  border-radius: 14px;
+  background: var(--sr-surface);
+  box-shadow: var(--sr-shadow);
+}
+/* Large type: the client is reading this at arm's length. */
+.pcm__statement .rt__ask { font-size: 17px; line-height: 1.3; }
+.pcm__statement .rt__word { font-size: 12px; }
+.pcm__statement .rt__legend { font-size: 11px; }
+.pcm__done-text { margin: 0; font-size: 14px; line-height: 1.4; color: var(--sr-ink-2); }
+.pcm__foot {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--sr-border);
+  background: var(--sr-surface);
+}
+.pcm__nav {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border: 1px solid var(--sr-border);
+  border-radius: 12px;
+  background: var(--sr-surface-2);
+  color: var(--sr-ink-2);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.pcm__nav:disabled { opacity: 0.4; cursor: default; }
+.pcm__nav--primary { flex: 2 1 0; border-color: var(--sr-navy); background: var(--sr-navy); color: #fff; }
+.dark .pcm__nav--primary { color: #071a2b; }

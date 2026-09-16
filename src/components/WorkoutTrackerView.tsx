@@ -3433,11 +3433,11 @@ export function WorkoutTrackerView({
             type="button"
             className="jg-sbar__btn"
             onClick={() => setIsShowingAssessment(true)}
-            aria-label="Open the assessment"
-            title="Add to the assessment without leaving the session"
+            aria-label="Open the Pulse"
+            title="Update the Pulse without leaving the session"
           >
             <HeartPulse size={15} strokeWidth={2.5} />
-            <span>Assessment</span>
+            <span>Pulse</span>
           </button>
           {/* Past the divider: the two buttons that END the session. Discard
               is a trash icon because it is pressed once a month; Finish is
@@ -4106,12 +4106,12 @@ export function WorkoutTrackerView({
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="relative flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-slate-50 shadow-2xl dark:border-slate-800 dark:bg-slate-950"
               role="dialog"
-              aria-label="Assessment"
+              aria-label="Pulse"
             >
               <div className="flex shrink-0 items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
                 <div className="flex flex-col">
                   <h2 className="flex items-center gap-2 text-xl font-black uppercase tracking-tighter text-foreground">
-                    <HeartPulse className="h-5 w-5 text-orange-500" /> Assessment
+                    <HeartPulse className="h-5 w-5 text-orange-500" /> Pulse
                   </h2>
                   <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                     Saves as you type · session keeps running
@@ -4121,7 +4121,7 @@ export function WorkoutTrackerView({
                   variant="ghost"
                   size="icon"
                   onClick={() => setIsShowingAssessment(false)}
-                  aria-label="Close assessment"
+                  aria-label="Close the Pulse"
                   className="rounded-full hover:bg-white dark:hover:bg-surface-1/10"
                 >
                   <X className="h-5 w-5 text-muted-foreground" />
@@ -4131,7 +4131,7 @@ export function WorkoutTrackerView({
                 <React.Suspense
                   fallback={
                     <div className="flex items-center justify-center py-16 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading assessment…
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the Pulse…
                     </div>
                   }
                 >
