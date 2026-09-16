@@ -31,6 +31,7 @@ import {
   type TrainerNote,
 } from "./types";
 import { plainText, safeHref } from "./format";
+import { cleanTeamShare, teamShareFromDoc, teamShareProblem } from "./team-share";
 
 /** Which notes the list shows. */
 export type NotesView =
@@ -38,10 +39,13 @@ export type NotesView =
   | { kind: "pinned" }
   | { kind: "shared" }
   | { kind: "unfiled" }
-  | { kind: "folder"; folderId: string };
+  | { kind: "folder"; folderId: string }
+  /* Notes colleagues shared with you (Planner rework): the list shows their
+     copies, not your notes. */
+  | { kind: "withme" };
 
 export interface NoteProblem {
-  field: "title" | "body" | "kind" | "clients" | "share" | "links";
+  field: "title" | "body" | "kind" | "clients" | "share" | "links" | "team";
   message: string;
 }
 
@@ -67,7 +71,7 @@ export function effectiveTitle(d: Pick<NoteDraft, "title" | "body">): string {
   return first.length > 80 ? `${clipText(first, 79).trimEnd()}…` : first;
 }
 
-export function validateNoteDraft(d: NoteDraft): NoteProblem[] {
+export function validateNoteDraft(d: NoteDraft, todayKey: string = studioDateKey(new Date()) ?? ""): NoteProblem[] {
   const out: NoteProblem[] = [];
   const title = d.title.trim();
   if (!effectiveTitle(d)) out.push({ field: "title", message: "Write something first — a title or a line." });
@@ -93,6 +97,8 @@ export function validateNoteDraft(d: NoteDraft): NoteProblem[] {
   if ((d.links ?? []).length > NOTE_MAX_LINKS) {
     out.push({ field: "links", message: `A note can hold ${NOTE_MAX_LINKS} sources at most.` });
   }
+  const team = teamShareProblem(d.teamShare ?? null, todayKey);
+  if (team) out.push({ field: "team", message: team.message });
   return out;
 }
 
@@ -141,6 +147,7 @@ export function normaliseDraft(d: NoteDraft): NoteDraft {
     clientIds,
     clientNames,
     links: cleanLinks(d.links),
+    teamShare: cleanTeamShare(d.teamShare),
   };
 }
 
@@ -160,6 +167,7 @@ export function noteFields(
     pinned: n.pinned,
     sharedWith,
     links: n.links,
+    teamShare: n.teamShare,
   };
 }
 
@@ -230,6 +238,7 @@ export function noteFromDoc(id: string, d: Record<string, unknown> | undefined):
     sharedWith,
     links: cleanLinks(Array.isArray(data.links) ? (data.links as NoteLink[]) : []),
     log: logFromDoc(data.log),
+    teamShare: teamShareFromDoc(data.teamShare),
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   };
@@ -363,11 +372,13 @@ export function inView(note: TrainerNote, view: NotesView, folderIds?: ReadonlyS
     case "pinned":
       return note.pinned;
     case "shared":
-      return Boolean(note.sharedWith);
+      return Boolean(note.sharedWith || note.teamShare);
     case "unfiled":
       return !inAFolder(note, folderIds);
     case "folder":
       return note.folderId === view.folderId;
+    case "withme":
+      return false;
   }
 }
 
@@ -530,6 +541,7 @@ export function blankDraft(client?: { id: string; name: string } | null): NoteDr
     pinned: false,
     share: false,
     links: [],
+    teamShare: null,
   };
 }
 
@@ -545,6 +557,9 @@ export function draftFromNote(n: TrainerNote): NoteDraft {
     pinned: n.pinned,
     share: Boolean(n.sharedWith),
     links: (n.links ?? []).map((l) => ({ ...l })),
+    teamShare: n.teamShare
+      ? { ...n.teamShare, people: n.teamShare.people.map((p) => ({ ...p })) }
+      : null,
   };
 }
 

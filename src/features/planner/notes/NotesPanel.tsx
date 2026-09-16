@@ -1,12 +1,15 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { Folder, FolderPlus, Pin, Plus, Search, Share2, StickyNote, X } from "lucide-react";
+import { Folder, FolderPlus, Pin, Plus, Search, Share2, StickyNote, Users, X } from "lucide-react";
 import { useActiveStudio } from "../../../ActiveStudioContext";
 import { auth } from "../../../firebase";
 import type { Client, Trainer } from "../../../types";
 import type { PlannerIntent } from "../intent";
 import { dropDraft, stashDraft, stashedDraft, stashedDrafts, type StashedDraft } from "./draft-stash";
-import { useTrainerNotes } from "./hooks";
-import { createNoteFolder, deleteNote, deleteNoteFolder, newNoteId, renameNoteFolder } from "./mutations";
+import { useNotesSharedWithMe, useTrainerNotes } from "./hooks";
+import { createNoteFolder, deleteNote, deleteNoteFolder, endTeamShare, newNoteId, renameNoteFolder } from "./mutations";
+import { shareExpired, type NoteShare } from "./team-share";
+import { SharedNoteView } from "./SharedNoteView";
+import { studioDateKey } from "../../../lib/studio-time";
 import {
   blankDraft,
   clientLabel,
@@ -65,6 +68,9 @@ function remember(uid: string | null, patch: Partial<{ view: NotesView; selected
 
 const BLANK: NoteDraft = blankDraft();
 
+/** Expired shares already taken down this session. */
+const swept = new Set<string>();
+
 const sameView = (a: NotesView, b: NotesView) =>
   a.kind === b.kind && (a.kind !== "folder" || a.folderId === (b as { folderId: string }).folderId);
 
@@ -79,11 +85,17 @@ export interface NotesPanelProps {
   intent?: PlannerIntent | null;
 }
 
-export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: NotesPanelProps) {
+export function NotesPanel({ authTrainer, trainers, clients, onOpenClient, intent }: NotesPanelProps) {
   // The Firebase Auth uid: notes live at trainers/{uid}/notes, private by path.
   const uid = auth.currentUser?.uid ?? null;
-  const { activeStudioId } = useActiveStudio();
+  const { activeStudioId, activeStudio } = useActiveStudio();
   const { notes, folders, loading, error } = useTrainerNotes(uid);
+  // Notes colleagues shared here (Planner rework).
+  const withMe = useNotesSharedWithMe(uid, activeStudioId);
+  const [selectedShare, setSelectedShare] = useState<string | null>(null);
+  // A note just created elsewhere (a saved copy): open it once it arrives.
+  const [openWhenSaved, setOpenWhenSaved] = useState<string | null>(null);
+  const openShare = withMe.shares.find((sh) => sh.id === selectedShare) ?? null;
 
   const [view, setViewState] = useState<NotesView>(() => recall(uid).view);
   const setView = (v: NotesView) => {
@@ -97,6 +109,7 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
     (id: string | null) => {
       remember(uid, { selected: id });
       setSelectedState(id);
+      if (id) setSelectedShare(null);
     },
     [uid],
   );
@@ -136,6 +149,11 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
     if (intent.kind === "new-note") startNew(intent.client, intent.noteKind ?? "plan");
     else if (intent.kind === "open-note") setSelected(intent.noteId);
     else if (intent.kind === "jot") setJotFor(intent.client);
+    else if (intent.kind === "open-share") {
+      setView({ kind: "withme" });
+      setSelected(null);
+      setSelectedShare(intent.noteId);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intent]);
 
@@ -158,6 +176,25 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
     }
     setJotFor(null);
   }, [jotFor, loading, notes, uid, setSelected]);
+
+  // Take down this trainer's own colleague shares that are past their date
+  // (the rules can't — see team-share.ts). Once per note per session.
+  useEffect(() => {
+    if (loading || error || !uid) return;
+    const today = studioDateKey(new Date()) ?? "";
+    for (const n of notes) {
+      if (!n.teamShare || !shareExpired(n.teamShare, today) || swept.has(n.id)) continue;
+      swept.add(n.id);
+      endTeamShare(uid, n).catch((err) => console.warn("[notes] could not end an expired share:", err));
+    }
+  }, [notes, loading, error, uid]);
+
+  useEffect(() => {
+    if (openWhenSaved && notes.some((n) => n.id === openWhenSaved)) {
+      setSelected(openWhenSaved);
+      setOpenWhenSaved(null);
+    }
+  }, [openWhenSaved, notes, setSelected]);
 
   const saved = selected ? notes.find((n) => n.id === selected) ?? null : null;
   const restored = selected ? stashedDraft(uid, selected) : null;
@@ -213,7 +250,7 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
   );
   const counts = useMemo(() => folderCounts(notes, folderIds), [notes, folderIds]);
   const pinnedCount = useMemo(() => notes.filter((n) => n.pinned).length, [notes]);
-  const sharedCount = useMemo(() => notes.filter((n) => n.sharedWith).length, [notes]);
+  const sharedCount = useMemo(() => notes.filter((n) => n.sharedWith || n.teamShare).length, [notes]);
   const activeFolder = view.kind === "folder" ? folders.find((f) => f.id === view.folderId) ?? null : null;
 
   const removeNote = async (note: TrainerNote) => {
@@ -235,12 +272,18 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
     { view: { kind: "pinned" }, label: "Pinned", count: pinnedCount, show: pinnedCount > 0 || view.kind === "pinned" },
     { view: { kind: "shared" }, label: "Shared", count: sharedCount, show: sharedCount > 0 || view.kind === "shared" },
     { view: { kind: "unfiled" }, label: "Unfiled", count: counts.unfiled, show: folders.length > 0 || view.kind === "unfiled" },
+    {
+      view: { kind: "withme" },
+      label: "From colleagues",
+      count: withMe.shares.length,
+      show: withMe.shares.length > 0 || view.kind === "withme",
+    },
   ];
 
   const filtering = queryText.trim() !== "" || kind !== "all";
 
   return (
-    <div className="pn" data-open={editorOpen ? "note" : "list"}>
+    <div className="pn" data-open={editorOpen || (view.kind === "withme" && openShare) ? "note" : "list"}>
       <aside className="pn__side" aria-label="Your notes">
         <div className="pn__head">
           <div className="pn__head-titles">
@@ -266,6 +309,7 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
               >
                 {s.label === "Pinned" && <Pin size={13} aria-hidden />}
                 {s.label === "Shared" && <Share2 size={13} aria-hidden />}
+                {s.label === "From colleagues" && <Users size={13} aria-hidden />}
                 {s.label}
                 <span className="pn__view-n">{s.count}</span>
               </button>
@@ -341,7 +385,29 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
         )}
 
         <div className="pn__list-wrap touch-pane">
-          {error ? (
+          {view.kind === "withme" ? (
+            withMe.error ? (
+              <p className="pn__state">{withMe.error}</p>
+            ) : withMe.loading && withMe.shares.length === 0 ? (
+              <p className="pn__state">Loading…</p>
+            ) : withMe.shares.length === 0 ? (
+              <div className="pl__empty">
+                <p className="pl__empty-title">Nothing shared with you here</p>
+                <p className="pl__empty-body">
+                  When a colleague hands over a plan — for a vacation, a cover, or the whole team — it shows up here.
+                </p>
+              </div>
+            ) : (
+              <ShareList
+                shares={withMe.shares.filter((sh) => shareMatches(sh, queryText, kind))}
+                selected={selectedShare}
+                onOpen={(id) => {
+                  setSelected(null);
+                  setSelectedShare(id);
+                }}
+              />
+            )
+          ) : error ? (
             <p className="pn__state">{error}</p>
           ) : loading && notes.length === 0 ? (
             <p className="pn__state">Loading your notes…</p>
@@ -379,7 +445,20 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
       </aside>
 
       <section className="pn__main" aria-label={editorOpen ? "Open note" : undefined}>
-        {editorOpen && uid && selected ? (
+        {view.kind === "withme" && openShare && uid ? (
+          <SharedNoteView
+            key={openShare.id}
+            share={openShare}
+            uid={uid}
+            onBack={() => setSelectedShare(null)}
+            onOpenClient={onOpenClient}
+            onCopied={(id) => {
+              setView({ kind: "all" });
+              setSelectedShare(null);
+              setOpenWhenSaved(id);
+            }}
+          />
+        ) : editorOpen && uid && selected ? (
           <NoteEditor
             key={selected}
             uid={uid}
@@ -391,6 +470,8 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
             roster={roster}
             authTrainer={authTrainer ?? null}
             activeStudioId={activeStudioId}
+            activeStudioName={activeStudio?.name ?? ""}
+            trainers={trainers ?? []}
             onDraft={(entry) => stashFor(selected, entry)}
             onClose={() => {
               dropDraft(uid, selected);
@@ -460,6 +541,12 @@ const NoteList = memo(function NoteList({
                     Shared
                   </span>
                 )}
+                {n.teamShare && (
+                  <span className="pn__shared">
+                    <Users size={12} aria-hidden />
+                    {n.teamShare.audience === "team" ? "Team" : `${n.teamShare.people.length} colleague${n.teamShare.people.length === 1 ? "" : "s"}`}
+                  </span>
+                )}
                 <span className="pn__when">{item.isNew ? "Not saved yet" : whenLabel(n.updatedAt)}</span>
               </span>
               <span className="pn__card-title">{n.title || "Untitled"}</span>
@@ -489,6 +576,65 @@ const NoteList = memo(function NoteList({
     </ul>
   );
 });
+
+/* ------------------------------------------------------------------ *
+ * Notes colleagues shared (Planner rework)
+ * ------------------------------------------------------------------ */
+
+function shareMatches(sh: NoteShare, queryText: string, kind: NoteKind | "all"): boolean {
+  if (kind !== "all" && sh.kind !== kind) return false;
+  const words = queryText.toLowerCase().split(/\s+/).filter(Boolean);
+  const hay = [sh.title, sh.body, sh.authorName, sh.message, ...Object.values(sh.clientNames)].join(" ").toLowerCase();
+  return words.every((w) => hay.includes(w));
+}
+
+function ShareList({
+  shares,
+  selected,
+  onOpen,
+}: {
+  shares: NoteShare[];
+  selected: string | null;
+  onOpen: (id: string) => void;
+}) {
+  const today = studioDateKey(new Date()) ?? "";
+  if (shares.length === 0) return <p className="pn__state">Nothing matches.</p>;
+  return (
+    <ul className="pn__list">
+      {shares.map((sh) => (
+        <li key={sh.id}>
+          <button
+            type="button"
+            className="pn__card"
+            aria-current={selected === sh.id ? "true" : undefined}
+            onClick={() => onOpen(sh.id)}
+          >
+            <span className="pn__card-top">
+              <span className={`pn__kind pn__kind--${sh.kind}`}>{NOTE_KIND_LABEL[sh.kind]}</span>
+              <span className="pn__shared">
+                <Users size={12} aria-hidden />
+                {sh.audience === "team" ? "Team" : "You"}
+              </span>
+              <span className="pn__when">{whenLabel(sh.updatedAt)}</span>
+            </span>
+            <span className="pn__card-title">{sh.title}</span>
+            {sh.message ? (
+              <span className="pn__card-excerpt">“{sh.message}”</span>
+            ) : (
+              sh.body && <span className="pn__card-excerpt">{excerpt(sh.body)}</span>
+            )}
+            <span className="pn__card-foot">
+              <span className="pn__card-clients">From {sh.authorName}</span>
+              {sh.expiresOn && (
+                <span className="pn__stage">{sh.expiresOn === today ? "Last day today" : `Until ${sh.expiresOn.slice(5).replace("-", "/")}`}</span>
+              )}
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /* ------------------------------------------------------------------ *
  * Folders

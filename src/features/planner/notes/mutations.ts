@@ -26,7 +26,9 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
+import { notify } from "../../notifications";
 import { cleanFolderName, draftFromNote, noteFields, sharePlan, sharedFields } from "./notes";
+import { newlyNamed, noteShareFields, teamSharePlan, type NoteShare } from "./team-share";
 import type { NoteDraft, NoteFolder, NoteLogEntry, TrainerNote } from "./types";
 
 export function notesRef(uid: string) {
@@ -39,6 +41,11 @@ export function noteFoldersRef(uid: string) {
 
 export function sharedNotesRef(clientId: string) {
   return collection(db, "clients", clientId, "sharedNotes");
+}
+
+/** studios/{studioId}/noteShares — colleague copies (./team-share.ts). */
+export function noteSharesRef(studioId: string) {
+  return collection(db, "studios", studioId, "noteShares");
 }
 
 /**
@@ -94,8 +101,75 @@ export async function saveNote({ uid, noteId, draft, before, author }: SaveNoteA
   }
   if (plan.remove) batch.delete(doc(sharedNotesRef(plan.remove), noteId));
 
+  // The colleague copy (Planner rework): rewritten whole with the note, or
+  // taken down, in the same batch — so the marker and the copy agree.
+  const team = teamSharePlan(before?.teamShare, fields.teamShare);
+  if (team.write && fields.teamShare) {
+    batch.set(doc(noteSharesRef(team.write), noteId), {
+      ...noteShareFields({ noteId, ...fields }, fields.teamShare, author),
+      updatedAt: now,
+    });
+  }
+  if (team.remove) batch.delete(doc(noteSharesRef(team.remove), noteId));
+
   await batch.commit();
+
+  // Tell the people newly named — after the write, and never failing it.
+  if (fields.teamShare) {
+    const until = fields.teamShare.expiresOn ? ` until ${fields.teamShare.expiresOn}` : "";
+    await Promise.all(
+      newlyNamed(before?.teamShare, fields.teamShare).map((p) =>
+        notify({
+          to: p.id,
+          actor: author,
+          kind: "note-shared",
+          title: `${author.name || "A colleague"} shared “${fields.title}” with you${until}`.slice(0, 200),
+          ...(fields.teamShare?.message ? { body: fields.teamShare.message } : {}),
+          studioId: fields.teamShare!.studioId,
+          link: { view: "studio-tasks", id: `share:${noteId}` },
+        }),
+      ),
+    );
+  }
   return draftFromNote({ id: noteId, ...fields, log: [] });
+}
+
+/**
+ * Ends a colleague share without touching anything else in the note — the
+ * Planner's sweep of shares past their date, and "Stop sharing" on a note
+ * with no other changes.
+ */
+export async function endTeamShare(uid: string, note: Pick<TrainerNote, "id" | "teamShare">): Promise<void> {
+  if (!note.teamShare) return;
+  const batch = writeBatch(db);
+  batch.update(doc(notesRef(uid), note.id), { teamShare: null, updatedAt: serverTimestamp() });
+  batch.delete(doc(noteSharesRef(note.teamShare.studioId), note.id));
+  await batch.commit();
+}
+
+/**
+ * A colleague's shared note, kept as the reader's own private note — so a
+ * trainer covering a client can keep working from it after the share ends.
+ * Returns the new note's id.
+ */
+export async function copyShareToMyNotes(uid: string, share: NoteShare): Promise<string> {
+  const ref = doc(notesRef(uid));
+  const now = serverTimestamp();
+  const intro = `From ${share.authorName}${share.message ? ` — “${share.message}”` : ""}`;
+  await setDoc(ref, {
+    title: share.title,
+    body: `> ${intro}\n\n${share.body}`.slice(0, 10000),
+    kind: share.kind,
+    folderId: null,
+    clientIds: share.clientIds,
+    clientNames: share.clientNames,
+    pinned: false,
+    sharedWith: null,
+    links: share.links,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return ref.id;
 }
 
 /** Every field a save owns — all of a note but its working log. */
@@ -109,6 +183,7 @@ const NOTE_OWN_FIELDS = [
   "pinned",
   "sharedWith",
   "links",
+  "teamShare",
   "createdAt",
   "updatedAt",
 ] as const;
@@ -133,13 +208,17 @@ export async function removeNoteLog(uid: string, noteId: string, entry: NoteLogE
   });
 }
 
-/** Deletes a note — and its copy on the client's record, if it was shared. */
-export async function deleteNote(uid: string, note: Pick<TrainerNote, "id" | "sharedWith">): Promise<void> {
+/** Deletes a note — and its copies on a client's record and with colleagues. */
+export async function deleteNote(
+  uid: string,
+  note: Pick<TrainerNote, "id" | "sharedWith"> & { teamShare?: TrainerNote["teamShare"] },
+): Promise<void> {
   const batch = writeBatch(db);
   batch.delete(doc(notesRef(uid), note.id));
   // The rules let the author delete a copy that is already gone (a leader may
   // have removed it), so this never blocks deleting the note itself.
   if (note.sharedWith) batch.delete(doc(sharedNotesRef(note.sharedWith), note.id));
+  if (note.teamShare) batch.delete(doc(noteSharesRef(note.teamShare.studioId), note.id));
   await batch.commit();
 }
 

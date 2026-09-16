@@ -1032,7 +1032,7 @@
 
 /* Sources */
 .ns { margin-top: 1.25rem; }
-.ns__title { display: inline-flex; align-items: center; gap: 0.375rem; margin: 0 0 0.5rem; }
+.ns__title { display: flex; align-items: center; gap: 0.375rem; margin: 0 0 0.5rem; }
 .ns__list { display: flex; flex-direction: column; gap: 0.375rem; margin: 0 0 0.5rem; padding: 0; list-style: none; }
 .ns__item { display: flex; align-items: center; gap: 0.25rem; }
 .ns__link {
@@ -1116,3 +1116,33 @@
 }
 .pn__stage--building { color: var(--st-live); }
 .wl__more { margin-top: 0.5rem; }
+
+/* Colleague sharing (Planner rework) */
+.ne__team { margin-top: 0.75rem; }
+.ne__team-body { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem; }
+.ne__team-row { display: flex; flex-direction: column; gap: 0.375rem; }
+.ne__team-date { max-width: 14rem; }
+
+/* A colleague's shared note, open */
+.sv__tags { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; margin-top: 0.25rem; }
+.sv__title {
+  margin: 0.625rem 0 0;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.sv__message {
+  margin: 0.625rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--st-live);
+  border-radius: 0 8px 8px 0;
+  background: var(--st-live-fill);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--st-ink);
+}
+.sv__clients { margin-top: 0.75rem; }
+.sv__foot { margin-top: 1rem; }
+.ne__status svg { display: inline; vertical-align: -2px; }

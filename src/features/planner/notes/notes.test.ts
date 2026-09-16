@@ -44,6 +44,7 @@ const note = (id: string, over: Partial<TrainerNote> = {}): TrainerNote => ({
   sharedWith: null,
   links: [],
   log: [],
+  teamShare: null,
   ...over,
 });
 

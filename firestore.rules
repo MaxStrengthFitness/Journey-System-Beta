@@ -838,6 +838,34 @@ service cloud.firestore {
           && (!('dueOn' in d) || d.dueOn == null || d.dueOn is string);
     }
 
+    /* A NOTE SHARED WITH COLLEAGUES (Planner rework, Sep 2026). Signed by
+       the caller and stamped with this write's time; limits match
+       src/features/planner/notes/team-share.ts and notes/types.ts. */
+    function noteShareValid(d, studioId, noteId) {
+      return d.keys().hasOnly(['noteId', 'studioId', 'authorId', 'authorName', 'title', 'body', 'kind',
+                               'links', 'clientIds', 'clientNames', 'audience', 'audienceIds',
+                               'expiresOn', 'message', 'updatedAt'])
+          && d.keys().hasAll(['noteId', 'studioId', 'authorId', 'authorName', 'title', 'body', 'kind',
+                              'links', 'clientIds', 'clientNames', 'audience', 'audienceIds',
+                              'expiresOn', 'message', 'updatedAt'])
+          && d.noteId == noteId
+          && d.studioId == studioId
+          && d.authorId == request.auth.uid
+          && d.authorName is string && d.authorName.size() <= 80
+          && d.title is string && d.title.size() > 0 && d.title.size() <= 160
+          && d.body is string && d.body.size() <= 10000
+          && noteKindValid(d.kind)
+          && d.links is list && d.links.size() <= 10
+          && d.clientIds is list && d.clientIds.size() <= 10
+          && d.clientNames is map && d.clientNames.size() <= 10
+          && d.audience in ['people', 'team']
+          && d.audienceIds is list && d.audienceIds.size() <= 20
+          && (d.audience == 'team' || d.audienceIds.size() > 0)
+          && (d.expiresOn == null || d.expiresOn is string)
+          && d.message is string && d.message.size() <= 300
+          && d.updatedAt == request.time;
+    }
+
     /* STUDIO CONTENT WRITES (Learning + Planner round, Sep 2026).
        Someone who works at, or runs, this studio -- or an administrator or a
        franchise owner. Before this round the machine notes, upkeep log,
@@ -2016,6 +2044,43 @@ service cloud.firestore {
         allow delete: if isSuperAdmin()
                       || resource.data.createdBy.id == request.auth.uid
                       || isStudioOwnerOrHeadTrainer(studioId);
+      }
+
+      // NOTES SHARED WITH COLLEAGUES (Planner rework, Sep 2026) -- a COPY of
+      // a trainer's private note, for a handoff, a cover, or the whole team.
+      // See src/features/planner/notes/team-share.ts.
+      //
+      // Read: the people it names (their uid is in audienceIds -- what the
+      // app's `array-contains` query proves), or, for a team share, anyone
+      // who works at the studio; and always its author.
+      // Write: its author only, as themselves, at a studio they work at, the
+      // whole document checked every time (the app overwrites it).
+      // Delete: its author (even when already gone, so a batch never fails),
+      // the studio's leaders, administrators.
+      //
+      // NOT ENFORCED HERE: `expiresOn`. A list query cannot be checked against
+      // the clock; the app hides an expired copy and its author's Planner
+      // deletes it. Ending a share by hand removes the copy immediately.
+      match /noteShares/{noteId} {
+        allow read: if isAuthenticated() && (
+                      request.auth.uid in resource.data.audienceIds
+                   || resource.data.authorId == request.auth.uid
+                   || (resource.data.audience == 'team' && writesForStudio(studioId)));
+
+        allow create: if isAuthenticated()
+                      && noteShareValid(request.resource.data, studioId, noteId)
+                      && writesForStudio(studioId);
+
+        allow update: if isAuthenticated()
+                      && resource.data.authorId == request.auth.uid
+                      && noteShareValid(request.resource.data, studioId, noteId)
+                      && writesForStudio(studioId);
+
+        allow delete: if isAuthenticated() && (
+                        resource == null
+                     || resource.data.authorId == request.auth.uid
+                     || isSuperAdmin()
+                     || isStudioOwnerOrHeadTrainer(studioId));
       }
 
       // COMMENTS ON LEARNING PAGES (Learning + Planner round, Sep 2026).

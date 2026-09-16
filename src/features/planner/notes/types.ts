@@ -27,6 +27,8 @@
  * to the client's record now, not to a person's account.
  */
 
+import type { TeamShare } from "./team-share";
+
 export type NoteKind = "note" | "plan" | "routine" | "retention" | "injury" | "research";
 
 export const NOTE_KINDS: NoteKind[] = ["note", "plan", "routine", "retention", "injury", "research"];
@@ -104,6 +106,11 @@ export interface TrainerNote {
   links: NoteLink[];
   /** The working log, oldest first (Planner rework). Absent on older notes. */
   log: NoteLogEntry[];
+  /**
+   * Where this note's colleague copy lives, while it is shared with people
+   * at a studio (Planner rework) — see ./team-share.ts. Null: not shared.
+   */
+  teamShare: TeamShare | null;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
@@ -142,6 +149,8 @@ export interface NoteDraft {
   /** Whether it should be shared once saved. Needs exactly one client. */
   share: boolean;
   links: NoteLink[];
+  /** The colleague share it should have once saved, or null. */
+  teamShare: TeamShare | null;
 }
 
 /* Limits. Mirrored in firestore.rules (trainerNoteValid, sharedNoteValid). */

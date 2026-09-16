@@ -20,7 +20,9 @@ import {
 import { db } from "../../../firebase";
 import { queryStudioIds } from "../../../lib/tenancy";
 import type { Client, Trainer } from "../../../types";
-import { noteFoldersRef, notesRef, sharedNotesRef } from "./mutations";
+import { noteFoldersRef, noteSharesRef, notesRef, sharedNotesRef } from "./mutations";
+import { noteShareFromDoc, visibleShares, type NoteShare } from "./team-share";
+import { studioDateKey } from "../../../lib/studio-time";
 import { folderFromDoc, noteFromDoc, sharedNoteFromDoc, sortFolders } from "./notes";
 import type { NoteFolder, SharedNote, TrainerNote } from "./types";
 
@@ -279,4 +281,129 @@ export function useClientSearch(
   }, [term, studioKey]);
 
   return state;
+}
+
+/* ------------------------------------------------------------------ *
+ * Planner rework (Sep 2026): notes colleagues shared, and the client
+ * check a colleague share needs
+ * ------------------------------------------------------------------ */
+
+export interface SharedWithMeState {
+  /** Addressed to me or my team at this studio, not expired, not mine. */
+  shares: NoteShare[];
+  loading: boolean;
+  error: string | null;
+}
+
+/**
+ * Notes colleagues shared with this trainer at the studio they're standing
+ * in: two listeners — the ones naming them (`audienceIds array-contains`),
+ * and the studio's team shares (`audience == team`). Both single-field
+ * filters, so no index to deploy. Each is what the rule can prove.
+ */
+export function useNotesSharedWithMe(uid: string | null, studioId: string | null | undefined): SharedWithMeState {
+  const [mine, setMine] = useState<{ list: NoteShare[]; ready: boolean; error: string | null }>({
+    list: [],
+    ready: false,
+    error: null,
+  });
+  const [team, setTeam] = useState<{ list: NoteShare[]; ready: boolean; error: string | null }>({
+    list: [],
+    ready: false,
+    error: null,
+  });
+  useEffect(() => {
+    if (!uid || !studioId) {
+      setMine({ list: [], ready: true, error: null });
+      setTeam({ list: [], ready: true, error: null });
+      return;
+    }
+    setMine((p) => ({ ...p, ready: false, error: null }));
+    setTeam((p) => ({ ...p, ready: false, error: null }));
+    const failed = (err: any) =>
+      err?.code === "permission-denied"
+        ? "Shared notes couldn't load — the new database rules may not be deployed yet."
+        : "Couldn't load notes shared with you. Check the connection.";
+    const offMine = onSnapshot(
+      query(noteSharesRef(studioId), where("audienceIds", "array-contains", uid), limit(100)),
+      (snap) => setMine({ list: snap.docs.map((d) => noteShareFromDoc(d.id, d.data(ESTIMATE))), ready: true, error: null }),
+      (err) => {
+        console.warn("[notes] shared-with-me read failed:", err);
+        setMine({ list: [], ready: true, error: failed(err) });
+      },
+    );
+    const offTeam = onSnapshot(
+      query(noteSharesRef(studioId), where("audience", "==", "team"), limit(100)),
+      (snap) => setTeam({ list: snap.docs.map((d) => noteShareFromDoc(d.id, d.data(ESTIMATE))), ready: true, error: null }),
+      (err) => {
+        console.warn("[notes] team notes read failed:", err);
+        setTeam({ list: [], ready: true, error: failed(err) });
+      },
+    );
+    return () => {
+      offMine();
+      offTeam();
+    };
+  }, [uid, studioId]);
+
+  const todayKey = studioDateKey(new Date()) ?? "";
+  return {
+    shares: visibleShares([...mine.list, ...team.list], uid, todayKey),
+    loading: !mine.ready || !team.ready,
+    error: mine.error ?? team.error,
+  };
+}
+
+export type ClientStudioCheck = "idle" | "checking" | "ok" | "elsewhere" | "unknown";
+
+/**
+ * Are all these clients coached at this studio? A colleague copy at the
+ * studio shows their names there, so the answer must be yes before the share
+ * saves. Clients the Planner already holds answer for themselves; the rest
+ * (at most ten — a note's limit) are read once each, only while `enabled`.
+ */
+export function useClientsAtStudio(
+  clientIds: string[],
+  studioId: string | null | undefined,
+  known: ReadonlyMap<string, Client>,
+  enabled: boolean,
+): { state: ClientStudioCheck; elsewhere: string[] } {
+  const [lookedUp, setLookedUp] = useState<Record<string, string | null | "failed">>({});
+  const key = clientIds.join(",");
+  useEffect(() => {
+    if (!enabled) return;
+    const missing = clientIds.filter((id) => !known.has(id) && !(id in lookedUp));
+    if (missing.length === 0) return;
+    let live = true;
+    Promise.all(
+      missing.map((id) =>
+        getDoc(doc(db, "clients", id)).then(
+          (snap) => [id, snap.exists() ? (((snap.data() as Client).homeStudioId as string | undefined) ?? null) : null] as const,
+          () => [id, "failed"] as const,
+        ),
+      ),
+    ).then((pairs) => {
+      if (!live) return;
+      setLookedUp((prev) => ({ ...prev, ...Object.fromEntries(pairs) }));
+    });
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, enabled, known]);
+
+  if (!enabled || !studioId) return { state: "idle", elsewhere: [] };
+  const elsewhere: string[] = [];
+  let pending = false;
+  let failed = false;
+  for (const id of clientIds) {
+    const home = known.has(id) ? (known.get(id)!.homeStudioId ?? null) : lookedUp[id];
+    if (home === undefined) pending = true;
+    else if (home === "failed") failed = true;
+    else if (home !== studioId) elsewhere.push(id);
+  }
+  if (pending) return { state: "checking", elsewhere };
+  if (elsewhere.length) return { state: "elsewhere", elsewhere };
+  if (failed) return { state: "unknown", elsewhere };
+  return { state: "ok", elsewhere };
 }

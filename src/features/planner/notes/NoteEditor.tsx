@@ -3,7 +3,10 @@ import { ChevronLeft, ExternalLink, Eye, Lock, PenLine, Pin, Search, Send, Share
 import type { Client, Trainer } from "../../../types";
 import { canShareOnto } from "./access";
 import type { StashedDraft } from "./draft-stash";
-import { useClientDoc, useClientSearch, useSharedCopy } from "./hooks";
+import { useClientDoc, useClientSearch, useClientsAtStudio, useSharedCopy } from "./hooks";
+import { peopleAtStudio, TeamShareCard } from "./TeamShareCard";
+import { writesForStudioPerRules } from "../../learning/permissions";
+import { studioDateKey } from "../../../lib/studio-time";
 import { appendNoteLog, removeNoteLog, saveNote } from "./mutations";
 import { applyFormat, toggleCheck, type FormatAction } from "./format";
 import { NoteBody, NoteToolbar } from "./NoteBody";
@@ -61,6 +64,10 @@ export interface NoteEditorProps {
   roster: Client[];
   authTrainer: Trainer | null;
   activeStudioId: string | null;
+  /** The studio the trainer is standing in, by name — where a colleague share goes. */
+  activeStudioName?: string;
+  /** Everyone on the app — the colleagues a note can be shared with. */
+  trainers?: Trainer[];
   /** Keep (or, with null, forget) this note's unsaved draft. */
   onDraft: (entry: StashedDraft | null) => void;
   /** A never-saved note was discarded: close it. */
@@ -113,6 +120,8 @@ export function NoteEditor({
   roster,
   authTrainer,
   activeStudioId,
+  activeStudioName = "",
+  trainers = [],
   onDraft,
   onClose,
   onDelete,
@@ -228,6 +237,24 @@ export function NoteEditor({
 
   /* --------------------------- save/delete ------------------------- */
 
+  /* ------------------------ colleague share ------------------------ */
+
+  const todayKey = studioDateKey(new Date()) ?? "";
+  const shareStudioId = draft.teamShare?.studioId ?? activeStudioId;
+  const knownClients = useMemo(() => {
+    const m = new Map<string, Client>(rosterById);
+    for (const [id, c] of found) m.set(id, c);
+    return m;
+  }, [rosterById, found]);
+  const clientCheck = useClientsAtStudio(
+    draft.clientIds,
+    shareStudioId,
+    knownClients,
+    Boolean(draft.teamShare) && draft.clientIds.length > 0,
+  );
+  const colleagues = useMemo(() => peopleAtStudio(trainers, shareStudioId, uid), [trainers, shareStudioId, uid]);
+  const canShareHere = writesForStudioPerRules(authTrainer, activeStudioId);
+
   /** Saves the draft — or `override`, when a caller has just changed it. */
   const save = async (override?: NoteDraft): Promise<boolean> => {
     const current = override ?? draft;
@@ -238,6 +265,24 @@ export function NoteEditor({
     const continuing = sharedNow && saved?.sharedWith === onlyClientId;
     if (current.share && !continuing && shareBlocked && !issues.some((p) => p.field === "share")) {
       issues.push({ field: "share", message: shareBlocked });
+    }
+    // A colleague copy shows client names at its studio: every client it
+    // names must be coached there, and that has to be known, not assumed.
+    if (
+      current.teamShare &&
+      current.clientIds.length > 0 &&
+      clientCheck.state !== "ok" &&
+      !issues.some((p) => p.field === "team")
+    ) {
+      issues.push({
+        field: "team",
+        message:
+          clientCheck.state === "checking"
+            ? "Still checking the clients this note names — try again in a moment."
+            : clientCheck.state === "elsewhere"
+              ? "A client this note names is coached at another studio. Unlink them to share it here."
+              : "Couldn't confirm where the clients this note names are coached. Try again when the connection is back.",
+      });
     }
     if (issues.length) {
       setProblems(issues);
@@ -667,6 +712,20 @@ export function NoteEditor({
           {problemFor("share") && <p className="ne__problem">{problemFor("share")}</p>}
         </section>
 
+        <TeamShareCard
+          value={draft.teamShare}
+          savedValue={saved?.teamShare ?? null}
+          onChange={(teamShare) => edit({ teamShare })}
+          studio={activeStudioId ? { id: activeStudioId, name: activeStudioName || "this studio" } : null}
+          people={colleagues}
+          canShareHere={canShareHere}
+          clientCheck={clientCheck.state}
+          clientCount={draft.clientIds.length}
+          todayKey={todayKey}
+          disabled={busy !== null}
+          problem={problemFor("team")}
+        />
+
         {saved && (
           <div className="ne__danger">
             {confirmDelete ? (
@@ -674,6 +733,7 @@ export function NoteEditor({
                 <p>
                   Delete “{saved.title}” for good?
                   {saved.sharedWith ? ` It also comes off ${firstName(onlyName)}'s record.` : ""}
+                  {saved.teamShare ? " Colleagues you shared it with lose it too." : ""}
                 </p>
                 <div className="ne__confirm-actions">
                   <button type="button" className="pl__btn pl__btn--danger" onClick={() => onDelete(saved)} disabled={busy !== null}>

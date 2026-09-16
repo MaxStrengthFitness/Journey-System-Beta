@@ -1194,6 +1194,97 @@ describe("Firestore Security Rules", () => {
     );
   });
 
+  // ── NOTES SHARED WITH COLLEAGUES (Planner rework) ──────────────────────
+  const shareData = (uid: string, over: Record<string, unknown> = {}) => ({
+    noteId: "t1",
+    studioId: "studioA",
+    authorId: uid,
+    authorName: "Trainer A",
+    title: "Knee plan",
+    body: "Week 2: add lumbar at 50%.",
+    kind: "plan",
+    links: [],
+    clientIds: ["notesClient"],
+    clientNames: { notesClient: "Notes Client" },
+    audience: "people",
+    audienceIds: ["trainerA2"],
+    expiresOn: "2026-09-30",
+    message: "Covering my Tuesdays",
+    updatedAt: serverTimestamp(),
+    ...over,
+  });
+  const marker = { studioId: "studioA", studioName: "Studio A", audience: "people", people: [{ id: "trainerA2", name: "A2" }], expiresOn: null, message: "" };
+
+  it("shares a note with named colleagues, readable by them and not by others", async () => {
+    await seedNotes();
+    const a = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const batch = writeBatch(a);
+    batch.set(doc(a, "trainers", "trainerA", "notes", "t1"), noteData({ teamShare: marker }));
+    batch.set(doc(a, "studios", "studioA", "noteShares", "t1"), shareData("trainerA"));
+    await assertSucceeds(batch.commit());
+
+    const named = testEnv.authenticatedContext("trainerA2", { email: "trainera2@test.com" }).firestore();
+    await assertSucceeds(
+      getDocs(query(collection(named, "studios", "studioA", "noteShares"), where("audienceIds", "array-contains", "trainerA2"))),
+    );
+    // A colleague who wasn't named, at the same studio, can't list or read it.
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertFails(getDoc(doc(owner, "studios", "studioA", "noteShares", "t1")));
+    const teamList = await getDocs(
+      query(collection(owner, "studios", "studioA", "noteShares"), where("audience", "==", "team")),
+    );
+    expect(teamList.docs.map((d) => d.id)).not.toContain("t1");
+    const elsewhere = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(getDoc(doc(elsewhere, "studios", "studioA", "noteShares", "t1")));
+  });
+
+  it("shares a note with the whole studio team, and nobody outside it", async () => {
+    await seedNotes();
+    const a = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(
+      setDoc(doc(a, "studios", "studioA", "noteShares", "t1"), shareData("trainerA", { audience: "team", audienceIds: [] })),
+    );
+    const colleague = testEnv.authenticatedContext("trainerA2", { email: "trainera2@test.com" }).firestore();
+    await assertSucceeds(
+      getDocs(query(collection(colleague, "studios", "studioA", "noteShares"), where("audience", "==", "team"))),
+    );
+    const elsewhere = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(
+      getDocs(query(collection(elsewhere, "studios", "studioA", "noteShares"), where("audience", "==", "team"))),
+    );
+  });
+
+  it("won't share in someone else's name, at another studio, or with nobody", async () => {
+    await seedNotes();
+    const a = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const ref = doc(a, "studios", "studioA", "noteShares", "t1");
+    await assertFails(setDoc(ref, shareData("trainerA2")));
+    await assertFails(setDoc(ref, shareData("trainerA", { audienceIds: [] })));
+    await assertFails(setDoc(ref, shareData("trainerA", { log: [] })));
+    await assertFails(setDoc(ref, shareData("trainerA", { noteId: "other" })));
+    await assertFails(
+      setDoc(doc(a, "studios", "studioB", "noteShares", "t1"), shareData("trainerA", { studioId: "studioB" })),
+    );
+  });
+
+  it("lets only the author change a colleague copy, and the author or a leader take it down", async () => {
+    await seedNotes();
+    const a = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(setDoc(doc(a, "studios", "studioA", "noteShares", "t1"), shareData("trainerA")));
+    const named = testEnv.authenticatedContext("trainerA2", { email: "trainera2@test.com" }).firestore();
+    await assertFails(
+      setDoc(doc(named, "studios", "studioA", "noteShares", "t1"), shareData("trainerA2", { title: "Mine now" })),
+    );
+    await assertFails(deleteDoc(doc(named, "studios", "studioA", "noteShares", "t1")));
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(deleteDoc(doc(owner, "studios", "studioA", "noteShares", "t1")));
+    // The author's later unshare still succeeds with the copy already gone.
+    const unshare = writeBatch(a);
+    unshare.set(doc(a, "trainers", "trainerA", "notes", "t1"), noteData({ teamShare: null }));
+    unshare.delete(doc(a, "studios", "studioA", "noteShares", "t1"));
+    await assertSucceeds(unshare.commit());
+  });
+
   it("shares a note onto the client's record in one batch, readable by the client's studio only", async () => {
     await seedNotes();
     const db = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
