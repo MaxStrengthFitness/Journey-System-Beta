@@ -10,7 +10,7 @@ import {
   QueryConstraint,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { Client, ScheduleEntry } from "../types";
+import { ScheduleEntry } from "../types";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { startOfStudioDay, endOfStudioDay } from "../lib/studio-time";
 import {
@@ -50,27 +50,14 @@ import {
  * `schedules` is the MERGE of the two (`mergeSchedules`: live wins by id,
  * cancelled dropped, sorted by start) — the same list every consumer already
  * received, so nothing downstream had to change.
- */
-
-/** Pause client fetching for this long after Firestore reports a quota error. */
-const QUOTA_COOLDOWN_MS = 30_000;
-
-/**
- * How far ahead the client roster reaches, in studio days.
  *
- * The hub's day tabs span the current week and the grid renders whichever tab
- * is selected — but this hook used to fetch client documents for TODAY only, so
- * every block on any other day had no client in the array and rendered
- * "Not synced" whether or not its document existed. AppContent builds its whole
- * `clients` list out of this roster, so the gap affected the entire app.
- *
- * Since the cost clean-up this is the same number as `WEEK_AHEAD_DAYS`: the
- * roster reaches exactly as far as the bookings the hook keeps fresh.
+ * CLIENTS ARE NOT HERE ANY MORE (hub sync fixes, Sep 16 2026). This hook used
+ * to fetch the client documents its bookings named. That roster dropped
+ * re-reads that arrived while one was running (so a studio switch often
+ * never loaded the new studio's clients) and never noticed a client document
+ * created after its first read. `useStudioRoster` owns the roster now; see
+ * `src/lib/studio-roster.ts`.
  */
-const ROSTER_DAYS_AHEAD = WEEK_AHEAD_DAYS;
-
-/** Hard ceiling on client documents fetched in one pass (~n/10 reads). */
-const ROSTER_CLIENT_CAP = 400;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -85,7 +72,6 @@ function weekAheadRange(): { from: Date; to: Date } {
 export function useLiveSchedule(activeStudioId: string | null, isReady: boolean) {
   /** What the listener currently holds: the three live days. */
   const [liveSchedules, setLiveSchedules] = useState<ScheduleEntry[]>([]);
-  const [liveRosterClients, setLiveRosterClients] = useState<Client[]>([]);
 
   /**
    * The fetched cache. Refs rather than state because a range fetch stores
@@ -109,25 +95,6 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
    */
   const [dayTick, setDayTick] = useState(0);
 
-  /**
-   * The client-id set we last fetched for. Schedule snapshots fire on every
-   * write — and a 432-appointment sync produces a great many — but the roster
-   * only changes when the SET of client ids changes. Without this, each
-   * snapshot fired ceil(n/10) `in` queries and the browser quota was gone in
-   * seconds.
-   */
-  const lastFetchedKeyRef = useRef<string>("");
-  const quotaCooldownUntilRef = useRef<number>(0);
-  const inFlightRef = useRef(false);
-  /** Latest schedules, so a retry timer can work without a new snapshot. */
-  const latestSchedulesRef = useRef<ScheduleEntry[]>([]);
-  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /**
-   * The roster refresher for the current studio, so the effect that watches
-   * the merged list can call it without being the effect that defines it.
-   */
-  const refreshRosterRef = useRef<() => Promise<void>>(async () => {});
-
   /* ---------------- the merged list ---------------- */
 
   const schedules = useMemo(
@@ -145,9 +112,9 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
    */
   useEffect(() => {
     if (!isReady) return;
-    // A studio switch must not reuse the previous studio's roster key — nor
-    // its fetched bookings, which carry the old studio's id.
-    lastFetchedKeyRef.current = "";
+    // A studio switch must not show the previous studio's bookings — neither
+    // the fetched ones nor the live days — while the new ones load.
+    setLiveSchedules([]);
     cacheRef.current = new Map();
     coverageRef.current = new Map();
     inFlightRangesRef.current = new Set();
@@ -264,146 +231,6 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
 
     let cancelled = false;
 
-    const clearRetry = () => {
-      if (retryTimerRef.current) {
-        clearTimeout(retryTimerRef.current);
-        retryTimerRef.current = null;
-      }
-    };
-
-    const scheduleRetry = (delayMs: number) => {
-      clearRetry();
-      retryTimerRef.current = setTimeout(() => {
-        retryTimerRef.current = null;
-        if (!cancelled) void refreshRoster();
-      }, Math.max(500, delayMs));
-    };
-
-    /**
-     * Fetches the client documents referenced by the currently loaded
-     * schedules. Reads from a ref rather than closure state so that a retry
-     * after a quota cooldown does not need a fresh snapshot to fire — writes
-     * may well have stopped, and the grid would otherwise sit on an empty
-     * roster indefinitely.
-     *
-     * The ref holds the MERGED list (live + fetched), so a block on any day
-     * tab, not just the three live days, finds its client.
-     */
-    const refreshRoster = async () => {
-      if (cancelled || inFlightRef.current) return;
-
-      // The window covers yesterday through the end of the visible week, so
-      // switching day tabs does not strand every block as "Not synced".
-      const rosterStart = new Date(
-        startOfStudioDay().getTime() - 24 * 60 * 60 * 1000,
-      );
-      const rosterEnd = endOfStudioDay(
-        new Date(Date.now() + ROSTER_DAYS_AHEAD * 24 * 60 * 60 * 1000),
-      );
-
-      const rosterSchedules = latestSchedulesRef.current.filter((s) => {
-        if (!s.startTime) return false;
-        // Handle both Firestore Timestamp and JS Date/ISO string
-        const d = s.startTime.toDate
-          ? s.startTime.toDate()
-          : new Date(s.startTime);
-        return d >= rosterStart && d <= rosterEnd;
-      });
-
-      const allClientIds = Array.from(
-        new Set(rosterSchedules.map((s) => s.clientId).filter(Boolean)),
-      ) as string[];
-
-      if (allClientIds.length === 0) {
-        lastFetchedKeyRef.current = "";
-        setLiveRosterClients([]);
-        return;
-      }
-
-      // Capped so an unexpectedly large window cannot fire hundreds of reads.
-      const clientIds = allClientIds.slice(0, ROSTER_CLIENT_CAP);
-      if (allClientIds.length > ROSTER_CLIENT_CAP) {
-        console.warn(
-          `useLiveSchedule: ${allClientIds.length} clients in the roster window; fetching the first ${ROSTER_CLIENT_CAP}.`,
-        );
-      }
-
-      // Same roster as last time? Nothing to re-read.
-      const key = clientIds.slice().sort().join(",");
-      if (key === lastFetchedKeyRef.current) return;
-
-      if (Date.now() < quotaCooldownUntilRef.current) {
-        // Still cooling off. Keep whatever roster we have rather than clearing
-        // it — a stale name beats an empty grid — and come back on a timer.
-        scheduleRetry(quotaCooldownUntilRef.current - Date.now() + 500);
-        return;
-      }
-
-      inFlightRef.current = true;
-      try {
-        const chunks: string[][] = [];
-        for (let i = 0; i < clientIds.length; i += 10)
-          chunks.push(clientIds.slice(i, i + 10));
-
-        const snapshots = await Promise.all(
-          chunks.map((chunk) =>
-            getDocs(
-              query(collection(db, "clients"), where("__name__", "in", chunk)),
-            ),
-          ),
-        );
-        if (cancelled) return;
-
-        const fetchedClients = snapshots.flatMap((snap) =>
-          snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Client),
-        );
-
-        lastFetchedKeyRef.current = key;
-        setLiveRosterClients(fetchedClients);
-
-        // NOTE: a "self-heal" step used to live here. It wrote
-        // `clientId: null` onto any schedule whose client was not in
-        // `fetchedClients`, so that a fuzzy auto-linker could re-resolve it.
-        //
-        // It was removed (Aug 2026) for three reasons:
-        //   1. There is no fuzzy auto-linker any more. Under strict mode a
-        //      schedule's clientId IS `clients/{mindbodyClientId}` — the only
-        //      valid value — so there is nothing to re-resolve it to.
-        //   2. It wrote from inside the snapshot handler, and each write
-        //      re-triggered that listener: a write -> snapshot -> write loop
-        //      that burned quota continuously.
-        //   3. Worst of all, when the fetch above failed or came back short
-        //      (exactly what happens under a 429), every schedule looked
-        //      invalid and it erased perfectly good clientIds — turning a
-        //      transient read failure into permanent data loss.
-        //
-        // A schedule pointing at a client document that does not exist yet is
-        // now simply shown as "Not synced" until the next sync creates it.
-      } catch (error: any) {
-        const code = error?.code || "";
-        if (
-          code === "resource-exhausted" ||
-          String(error?.message || "").includes("Quota exceeded")
-        ) {
-          quotaCooldownUntilRef.current = Date.now() + QUOTA_COOLDOWN_MS;
-          console.warn(
-            `useLiveSchedule: Firestore quota exceeded; pausing roster reads for ${
-              QUOTA_COOLDOWN_MS / 1000
-            }s. The grid keeps the roster it already has.`,
-          );
-          scheduleRetry(QUOTA_COOLDOWN_MS + 500);
-        } else {
-          handleFirestoreError(error, OperationType.GET, "clients");
-        }
-        // Deliberately NOT clearing liveRosterClients: a failed read must
-        // never be allowed to look like "these clients do not exist".
-      } finally {
-        inFlightRef.current = false;
-      }
-    };
-
-    refreshRosterRef.current = refreshRoster;
-
     // The three live days, anchored to the studio's day at the time this
     // effect runs; `dayTick` re-runs it just after the studio's midnight.
     const now = new Date();
@@ -423,6 +250,7 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
     const unsubscribeSchedules = onSnapshot(
       query(collection(db, "schedules"), ...scheduleConstraints),
       (snap) => {
+        if (cancelled) return;
         const schedulesData = snap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
@@ -430,8 +258,6 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
         const activeSchedulesData = schedulesData.filter(
           (s) => s.status !== "Cancelled",
         );
-        // The merged-list effect below updates latestSchedulesRef and calls
-        // refreshRoster once this state lands.
         setLiveSchedules(activeSchedulesData);
       },
       (error) => {
@@ -446,23 +272,10 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
 
     return () => {
       cancelled = true;
-      clearRetry();
       clearTimeout(dayTimer);
       unsubscribeSchedules();
-      refreshRosterRef.current = async () => {};
     };
   }, [activeStudioId, isReady, dayTick]);
 
-  /**
-   * The roster follows the MERGED list: it must run after either the live
-   * snapshot or a range fetch lands, and this one effect sees both. The
-   * refresher it calls belongs to the current studio's listener effect, so a
-   * cancelled effect's roster read is never triggered from here.
-   */
-  useEffect(() => {
-    latestSchedulesRef.current = schedules;
-    void refreshRosterRef.current();
-  }, [schedules]);
-
-  return { schedules, liveRosterClients, ensureRange, refresh, lastFetchedAt, isFetching };
+  return { schedules, ensureRange, refresh, lastFetchedAt, isFetching };
 }

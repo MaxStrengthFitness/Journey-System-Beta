@@ -18,6 +18,12 @@ interface ScheduleBlockProps {
   /** Today's workout session for this client, if one exists. */
   workoutSession?: WorkoutSession | null;
   onOpenClient: (clientId: string) => void;
+  /**
+   * The roster is still loading. A block that names a client we don't hold
+   * YET is drawn as pending rather than "Not synced" — which would be a
+   * confident wrong answer for the second it takes the roster to arrive.
+   */
+  rosterLoading?: boolean;
 }
 
 /* One tone per kind; the words carry the meaning, the tint only groups them:
@@ -62,6 +68,7 @@ export function ScheduleBlock({
   client,
   workoutSession,
   onOpenClient,
+  rosterLoading = false,
 }: ScheduleBlockProps) {
   const isUnavailable = Boolean(
     session?.clientName?.toLowerCase().includes("unavailab"),
@@ -75,6 +82,8 @@ export function ScheduleBlock({
         getMillis(session.startTime || session.StartDateTime) < Date.now()),
   );
   const isUnlinked = !client && !isUnavailable;
+  /** Names a client, and the roster that would hold them hasn't arrived. */
+  const isPending = isUnlinked && rosterLoading && Boolean(session?.clientId);
 
   // Where the client is in their journey. Unknown until the profile resolves.
   const sessionNumber = client
@@ -140,7 +149,9 @@ export function ScheduleBlock({
             ? "border-l-orange-500"
             : "border-l-cyan";
 
-  const surface = isUnavailable
+  const surface = isPending
+    ? "bg-white/70 dark:bg-slate-800/50 ring-1 ring-inset ring-slate-200/80 dark:ring-white/5 cursor-progress"
+    : isUnavailable
     ? "bg-[repeating-linear-gradient(45deg,#f8fafc,#f8fafc_8px,#eef2f7_8px,#eef2f7_16px)] dark:bg-[repeating-linear-gradient(45deg,#0f172a,#0f172a_8px,#1e293b_8px,#1e293b_16px)] cursor-not-allowed"
     : isUnlinked
       ? "bg-slate-100/80 dark:bg-slate-800/40 outline outline-1 outline-dashed -outline-offset-1 outline-slate-300 dark:outline-slate-700 cursor-default"
@@ -279,7 +290,12 @@ export function ScheduleBlock({
 
       {/* Bottom-right corner: sync state or journey number */}
       {!isUnavailable &&
-        (isUnlinked ? (
+        (isPending ? (
+          <span
+            aria-label="Loading this client"
+            className="absolute bottom-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 motion-safe:animate-pulse"
+          />
+        ) : isUnlinked ? (
           <CloudOff
             aria-label="Not synced to a Max Strength profile yet"
             className="absolute bottom-1 right-1 w-3 h-3 text-slate-400 dark:text-slate-500"

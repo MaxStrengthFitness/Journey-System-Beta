@@ -536,6 +536,7 @@ import { useNetworks } from "./hooks/useNetworks";
 import { useMachines } from "./hooks/useMachines";
 import { useSessions } from "./hooks/useSessions";
 import { useLiveSchedule } from "./hooks/useLiveSchedule";
+import { useStudioRoster } from "./hooks/useStudioRoster";
 import { useClientMutations } from "./hooks/useClientMutations";
 import { StrongConfirmationModal } from "./components/StrongConfirmationModal";
 // Pure and tiny, and imported from the module rather than the barrel (the
@@ -770,12 +771,21 @@ export default function AppContent({
   const { machines } = useMachines(isDataReady, DEFAULT_MACHINES);
   const {
     schedules,
-    liveRosterClients,
     ensureRange,
     refresh: refreshSchedules,
     lastFetchedAt: schedulesFetchedAt,
     isFetching: isFetchingSchedules,
   } = useLiveSchedule(activeStudioId, isDataReady);
+  /**
+   * Every client of the studio the iPad is in (a live listener), plus any
+   * booked visitor from elsewhere. Replaced the booking-window roster on
+   * Sep 16 2026 — see src/lib/studio-roster.ts for what that got wrong.
+   */
+  const { clients: rosterClients, status: rosterStatus } = useStudioRoster(
+    activeStudioId,
+    isDataReady,
+    schedules,
+  );
   const { sessions } = useSessions(activeStudioId, isDataReady);
 
   /**
@@ -789,7 +799,7 @@ export default function AppContent({
     studios,
     activeStudioId,
     trainers,
-    clients: liveRosterClients,
+    clients: rosterClients,
     enabled: isDataReady,
   });
 
@@ -828,13 +838,19 @@ export default function AppContent({
    * features/notifications/useHubAnnouncements.ts.
    */
 
-  const clients = Array.from(
-    new Map(
-      [
-        ...(selectedClientDoc ? [selectedClientDoc] : []),
-        ...liveRosterClients,
-      ].map((c) => [c.id, c]),
-    ).values(),
+  // Memoised: this array is a dependency of effects in several screens, and a
+  // new array on every AppContent render re-ran them all for nothing.
+  const clients = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          [
+            ...(selectedClientDoc ? [selectedClientDoc] : []),
+            ...rosterClients,
+          ].map((c) => [c.id, c]),
+        ).values(),
+      ),
+    [selectedClientDoc, rosterClients],
   );
   const [showNewClientsDialog, setShowNewClientsDialog] = useState(false);
   const [isReorderingTrainers, setIsReorderingTrainers] = useState(false);
@@ -2081,6 +2097,7 @@ export default function AppContent({
                     liveAuthTrainer={liveAuthTrainer}
                     onUpdateSessions={updateClientSessions}
                     onStartNewClientOnboarding={setNewClientOnboardingName}
+                    studioRosterReady={rosterStatus === "ready"}
                   />
                 )}
                 {currentView === "clients" && (
@@ -2117,6 +2134,7 @@ export default function AppContent({
                     }}
                     searchTerm={hubSearchTerm}
                     onSearchTermChange={setHubSearchTerm}
+                    rosterLoading={rosterStatus === "loading"}
                   />
                 )}
                 {isLearningView && (

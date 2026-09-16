@@ -49,6 +49,14 @@ interface Props {
     delta: number,
   ) => Promise<void>;
   onStartNewClientOnboarding?: (name: string) => void;
+  /**
+   * The app holds every client of the studio the iPad is in (useStudioRoster,
+   * Sep 16 2026). While that is true the directory reads nothing of its own
+   * for this studio: the recent list and a name search both come from the
+   * roster, instantly and for free. "Search entire corporate network" still
+   * queries, since other studios are not in the roster.
+   */
+  studioRosterReady?: boolean;
 }
 
 /** Rows shown with an empty search box. */
@@ -139,6 +147,7 @@ export function ClientDirectoryView({
   liveAuthTrainer,
   onUpdateSessions,
   onStartNewClientOnboarding,
+  studioRosterReady = false,
 }: Props) {
   const { availableStudios, activeStudioId } = useActiveStudio();
   const [searchTerm, setSearchTerm] = useState("");
@@ -146,9 +155,17 @@ export function ClientDirectoryView({
   const [rosterOnly, setRosterOnly] = useState(false);
   const [dbSearchResults, setDbSearchResults] = useState<Client[]>([]);
   const [isSearchingDb, setIsSearchingDb] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
+  /** This studio's clients are all in `clients` already; no query needed. */
+  const rosterCoversQuery = studioRosterReady && !isGlobalSearch && !!activeStudioId;
 
   React.useEffect(() => {
+    if (rosterCoversQuery) {
+      setDbSearchResults([]);
+      setIsSearchingDb(false);
+      return;
+    }
     if (!searchTerm.trim()) {
       setIsSearchingDb(true);
       const fetchRecentClients = async () => {
@@ -272,14 +289,14 @@ export function ClientDirectoryView({
       }
     }, 300);
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, isGlobalSearch, activeStudioId]);
+  }, [searchTerm, isGlobalSearch, activeStudioId, rosterCoversQuery]);
 
   const [clientLastSessionMap, setClientLastSessionMap] = useState<
     Record<string, string>
   >({});
 
   const today = studioTodayKey();
-  const displayClients = useMemo(() => {
+  const matchedClients = useMemo(() => {
     // 1. Studio filtering
     const allowedStudioIds = [
       authTrainer?.primaryHomeStudioId,
@@ -334,11 +351,7 @@ export function ClientDirectoryView({
           : 0;
       return bTime - aTime;
     });
-    /* No search, no roster filter: show the recent few, not the whole
-       studio. Every row was rendered before — 300 rows on a 300-client
-       studio — and the audit called it out. The count line under the
-       search box says how many more a search reaches. */
-    return searchTerm.trim() || rosterOnly ? sorted : sorted.slice(0, RECENT_LIMIT);
+    return sorted;
   }, [
     clients,
     searchTerm,
@@ -350,13 +363,41 @@ export function ClientDirectoryView({
     dbSearchResults,
   ]);
 
+  /* No search, no roster filter: show the recent few, not the whole
+     studio. Every row was rendered before — 300 rows on a 300-client
+     studio — and the audit called it out. The count line under the
+     search box says how many there are, and "Show all" lists them. */
+  const isTrimmed = !searchTerm.trim() && !rosterOnly && !showAll;
+  const displayClients = useMemo(
+    () => (isTrimmed ? matchedClients.slice(0, RECENT_LIMIT) : matchedClients),
+    [isTrimmed, matchedClients],
+  );
+  // A studio switch starts trimmed again.
+  React.useEffect(() => setShowAll(false), [activeStudioId]);
+
+  /**
+   * Ids already asked about at this studio. A client with no session here
+   * never gets an entry in the map, so without this every re-render of the
+   * list asked about the same thirty clients again — and since the studio
+   * roster is live, the list re-renders whenever any client changes.
+   */
+  const askedLastSessionRef = React.useRef<{ studio: string | null; ids: Set<string> }>({
+    studio: null,
+    ids: new Set(),
+  });
+
   React.useEffect(() => {
+    if (askedLastSessionRef.current.studio !== (activeStudioId ?? null)) {
+      askedLastSessionRef.current = { studio: activeStudioId ?? null, ids: new Set() };
+    }
+    const asked = askedLastSessionRef.current.ids;
     const clientsMissingDate = displayClients.filter(
-      (c) => c.id && !c.lastSessionDate && !clientLastSessionMap[c.id],
+      (c) => c.id && !c.lastSessionDate && !clientLastSessionMap[c.id] && !asked.has(c.id),
     );
     if (clientsMissingDate.length === 0) return;
 
     const idsToFetch = clientsMissingDate.slice(0, 30).map((c) => c.id!);
+    for (const id of idsToFetch) asked.add(id);
 
     const fetchLastSessions = async () => {
       try {
@@ -394,11 +435,13 @@ export function ClientDirectoryView({
           setClientLastSessionMap((prev) => ({ ...prev, ...map }));
         }
       } catch (err) {
+        // Unknown, not "no sessions": let a later render ask again.
+        for (const id of idsToFetch) asked.delete(id);
         console.error("Could not fetch last sessions for clients:", err);
       }
     };
     fetchLastSessions();
-  }, [displayClients, clientLastSessionMap]);
+  }, [displayClients, clientLastSessionMap, activeStudioId]);
 
 
   return (
@@ -457,8 +500,23 @@ export function ClientDirectoryView({
         </div>
 
         {!searchTerm.trim() && !rosterOnly && (
-          <p className="mt-3 px-2 text-xs font-medium text-muted-foreground">
-            Showing the {Math.min(RECENT_LIMIT, displayClients.length)} most recent — type a name to search all clients.
+          <p className="mt-3 px-2 text-xs font-medium text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span>
+              {showAll
+                ? `Showing all ${matchedClients.length} clients.`
+                : rosterCoversQuery && matchedClients.length > displayClients.length
+                  ? `Showing the ${displayClients.length} most recent of ${matchedClients.length} — type a name to search them all.`
+                  : `Showing the ${displayClients.length} most recent — type a name to search all clients.`}
+            </span>
+            {rosterCoversQuery && matchedClients.length > RECENT_LIMIT && (
+              <button
+                type="button"
+                onClick={() => setShowAll((v) => !v)}
+                className="min-h-10 px-2 font-bold uppercase tracking-wider text-primary hover:underline cursor-pointer"
+              >
+                {showAll ? "Show recent only" : `Show all ${matchedClients.length}`}
+              </button>
+            )}
           </p>
         )}
 

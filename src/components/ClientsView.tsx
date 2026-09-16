@@ -158,6 +158,7 @@ export function ClientsView({
   authTrainer,
   searchTerm,
   onSearchTermChange,
+  rosterLoading = false,
 }: {
   clients: Client[];
   trainers: Trainer[];
@@ -181,6 +182,12 @@ export function ClientsView({
   /** Search term owned by the app shell (the input lives in the header). */
   searchTerm: string;
   onSearchTermChange: (term: string) => void;
+  /**
+   * The studio's clients are still loading (a studio switch, an app open).
+   * Blocks whose client isn't in hand yet say "loading" instead of
+   * "Not synced" for that beat.
+   */
+  rosterLoading?: boolean;
 }) {
   const [dbSearchResults, setDbSearchResults] = useState<Client[]>([]);
   const [isSearchingDb, setIsSearchingDb] = useState(false);
@@ -1340,6 +1347,7 @@ export function ClientsView({
                                             }
                                             session={session}
                                             client={clientObj}
+                                            rosterLoading={rosterLoading}
                                             workoutSession={workoutSession}
                                             onOpenClient={(clientId) => {
                                               onSelectClient(clientId);
