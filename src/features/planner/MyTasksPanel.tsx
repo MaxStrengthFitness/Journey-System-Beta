@@ -14,6 +14,11 @@ import {
   type TaskTemplate,
 } from "../studio-tasks/types";
 import { myTaskBuckets, taskMeta } from "./my-tasks";
+import { isStudioLeader } from "../../lib/permissions";
+import { studioRoster } from "../studio-tasks/initiatives";
+import { useTeamJobs } from "./jobs/useTeamJobs";
+import { TeamJobsLane } from "./jobs/TeamJobsLane";
+import { JobSheet } from "./jobs/JobSheet";
 
 /**
  * MY TASKS — the Planner's second tab: a trainer's own list.
@@ -29,10 +34,12 @@ import { myTaskBuckets, taskMeta } from "./my-tasks";
 export interface MyTasksPanelProps {
   authTrainer?: Trainer | null;
   clients?: Client[];
+  /** Everyone on the app — the studio's team, for a job's people. */
+  trainers?: Trainer[];
   onOpenClientTask?: (clientId: string, action?: ClientTaskAction) => void;
 }
 
-export function MyTasksPanel({ authTrainer, clients, onOpenClientTask }: MyTasksPanelProps) {
+export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask }: MyTasksPanelProps) {
   const { activeStudioId, activeStudio } = useActiveStudio();
   const studioName = activeStudio?.name ?? "this studio";
 
@@ -57,6 +64,17 @@ export function MyTasksPanel({ authTrainer, clients, onOpenClientTask }: MyTasks
   const [noteRow, setNoteRow] = useState<TaskRow | null>(null);
   const actions = useTaskActions({ author, onNeedsNote: setNoteRow });
 
+  // The team jobs this trainer is on (Planner rework) — the same listener the
+  // Studio tab uses; only one of the two is mounted at a time.
+  const teamJobs = useTeamJobs(activeStudioId ?? null);
+  const myOpenJobs = useMemo(
+    () => teamJobs.jobs.filter((j) => j.status === "open" && trainerId && j.assigneeIds.includes(trainerId)),
+    [teamJobs.jobs, trainerId],
+  );
+  const [openJobId, setOpenJobId] = useState<string | null>(null);
+  const openJob = teamJobs.jobs.find((j) => j.id === openJobId) ?? null;
+  const roster = useMemo(() => studioRoster(trainers ?? [], activeStudioId ?? null), [trainers, activeStudioId]);
+
   const buckets = useMemo(() => myTaskBuckets(rows, trainerId), [rows, trainerId]);
   const repeating = useMemo(
     () => templates.filter((t) => taskScopeOf(t) === "personal" && t.active !== false),
@@ -73,7 +91,8 @@ export function MyTasksPanel({ authTrainer, clients, onOpenClientTask }: MyTasks
     !error &&
     buckets.open.length === 0 &&
     buckets.done.length === 0 &&
-    buckets.assigned.length === 0;
+    buckets.assigned.length === 0 &&
+    myOpenJobs.length === 0;
 
   const renderRow = (r: TaskRow) => {
     const done = r.status === "done";
@@ -179,6 +198,18 @@ export function MyTasksPanel({ authTrainer, clients, onOpenClientTask }: MyTasks
               </section>
             )}
 
+            <TeamJobsLane
+              jobs={teamJobs.jobs}
+              loading={teamJobs.loading}
+              error={teamJobs.error}
+              me={author}
+              mineOnly
+              hideWhenEmpty
+              canPost={false}
+              title="Your team jobs"
+              onOpen={(job) => setOpenJobId(job.id)}
+            />
+
             {buckets.assigned.length > 0 && (
               <section className="pl__list" aria-labelledby="pl-assigned">
                 <h3 className="pl__list-head" id="pl-assigned">
@@ -221,6 +252,16 @@ export function MyTasksPanel({ authTrainer, clients, onOpenClientTask }: MyTasks
         author={author}
         clients={clients}
         openWith={intent}
+      />
+
+      <JobSheet
+        job={openJob}
+        open={openJobId !== null && openJob !== null}
+        onOpenChange={(o) => !o && setOpenJobId(null)}
+        me={author}
+        canLead={isStudioLeader(authTrainer ?? null)}
+        people={roster}
+        onOpenClient={onOpenClientTask ? (id) => onOpenClientTask(id) : undefined}
       />
 
       <TaskNoteDialog

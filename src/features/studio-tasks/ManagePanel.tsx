@@ -163,6 +163,12 @@ export interface ManagePanelProps {
    * pieces of work the ask actually adds up to before it is posted.
    */
   trainers?: Trainer[];
+  /**
+   * The seven-day read, when the caller already has it (the Planner's Team
+   * tab reads the same week for its people cards). Without it the panel
+   * reads for itself.
+   */
+  compliance?: ReturnType<typeof useTaskCompliance>;
 }
 
 export function ManagePanel({
@@ -174,9 +180,13 @@ export function ManagePanel({
   onNewTask,
   onEditTask,
   trainers,
+  compliance,
 }: ManagePanelProps) {
   const { success: toastSuccess, error: toastError } = useToast();
-  const { rows, dateKeys, loading } = useTaskCompliance(studioId, templates, 7);
+  // Hooks can't be skipped, so an injected read turns this one off (no studio
+  // means no query) rather than running a second copy of it.
+  const own = useTaskCompliance(compliance ? null : studioId, templates, 7);
+  const { rows, dateKeys, loading, error: complianceError } = compliance ?? own;
   const { open: openRequests, expired } = useStudioRequests(studioId);
   const [busy, setBusy] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
@@ -371,12 +381,14 @@ export function ManagePanel({
           <span className="stm__hint">Worst first</span>
         </header>
 
-        {loading && rows.length === 0 ? (
+        {complianceError ? (
+          <p className="stm__empty">{complianceError}</p>
+        ) : loading && rows.length === 0 ? (
           <p className="stm__empty">Loading…</p>
         ) : rows.length === 0 ? (
           <p className="stm__empty">
-            No studio templates yet. Add some from Manage to start tracking
-            whether they get done.
+            No standing tasks yet. Add some above to start tracking whether
+            they get done.
           </p>
         ) : (
           <div className="stm__scroll">
@@ -391,7 +403,7 @@ export function ManagePanel({
                       {dayLabel(d)}
                     </th>
                   ))}
-                  <th scope="col">Rate</th>
+                  <th scope="col">Days done</th>
                 </tr>
               </thead>
               <tbody>
@@ -431,9 +443,9 @@ export function ManagePanel({
                       );
                     })}
                     <td className="stm__rate">
-                      {r.dueDays === 0
-                        ? "—"
-                        : `${Math.round((r.doneDays / r.dueDays) * 100)}%`}
+                      {/* A count, not a rate: "2 of 3" says how little it
+                          rests on; "67%" does not (Planner rework). */}
+                      {r.dueDays === 0 ? "—" : `${r.doneDays} of ${r.dueDays}`}
                     </td>
                   </tr>
                 ))}

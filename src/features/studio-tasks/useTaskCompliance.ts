@@ -70,6 +70,9 @@ export function useTaskCompliance(
 ) {
   const [instances, setInstances] = useState<TaskInstance[]>([]);
   const [loading, setLoading] = useState(false);
+  // A failed read is "unknown", never "nothing was done" (Planner rework):
+  // the Team tab must not tell a leader the whole floor missed everything.
+  const [error, setError] = useState<string | null>(null);
 
   const dateKeys = useMemo(() => recentDateKeys(days), [days]);
   const from = dateKeys[0];
@@ -87,6 +90,7 @@ export function useTaskCompliance(
     }
     let cancelled = false;
     setLoading(true);
+    setError(null);
     // A one-shot read, not a subscription: this is a review panel, not a live
     // board, and a manager reading last week does not need it to tick over.
     getDocs(
@@ -110,6 +114,7 @@ export function useTaskCompliance(
         if (!cancelled) {
           setInstances([]);
           setLoading(false);
+          setError("Couldn't load the last week's task records. Check the connection and open this again.");
         }
       });
     return () => {
@@ -157,5 +162,11 @@ export function useTaskCompliance(
       });
   }, [templates, instances, dateKeys, machineIds]);
 
-  return { rows, dateKeys, loading };
+  const machineNames = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const m of machines) map[m.machineId] = m.name;
+    return map;
+  }, [machines]);
+
+  return { rows, dateKeys, loading, error, instances, machineIds, machineNames };
 }

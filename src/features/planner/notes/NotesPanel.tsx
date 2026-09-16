@@ -67,6 +67,8 @@ const sameView = (a: NotesView, b: NotesView) =>
 
 export interface NotesPanelProps {
   authTrainer?: Trainer | null;
+  /** Everyone on the app — colleagues a note can be shared with. */
+  trainers?: Trainer[];
   /** Clients the app already holds — today's roster, and the open profile. */
   clients?: Client[];
   onOpenClient?: (clientId: string) => void;

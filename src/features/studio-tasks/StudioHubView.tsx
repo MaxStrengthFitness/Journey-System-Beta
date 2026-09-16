@@ -26,7 +26,7 @@
  * now embeds this as its Studio lane.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Settings2, UserRound, Users } from "lucide-react";
+import { UserRound, Users } from "lucide-react";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import { auth } from "../../firebase";
@@ -34,7 +34,7 @@ import { studioDateKey, formatStudioDate } from "../../lib/studio-time";
 import { cn } from "../../lib/utils";
 import { isStudioLeader } from "../../lib/permissions";
 import type { Client, Trainer } from "../../types";
-import type { ClientTaskAction, TaskRow, TaskTemplate } from "./types";
+import type { ClientTaskAction, TaskRow } from "./types";
 import {
   BOARD_TOPIC_LABEL,
   mineRows,
@@ -51,8 +51,6 @@ import { ClientTasksLane } from "./ClientTasksLane";
 import { PlaybookLane } from "./PlaybookLane";
 import { RequestsLane } from "./RequestsLane";
 import { TaskNoteDialog } from "./TaskNoteDialog";
-import { TaskManager } from "./TaskManager";
-import { ManagePanel } from "./ManagePanel";
 import { usePlaybook } from "./usePlaybook";
 import { useStudioRequests } from "./useStudioRequests";
 import { useStudioTasks } from "./useStudioTasks";
@@ -129,23 +127,12 @@ export function StudioHubView({
   const [assignGroup, setAssignGroup] = useState<ShiftGroup | null>(null);
 
   /*
-   * MANAGE COMES WITH THE HUB, and it has to.
-   *
-   * The hub is now the To-Do screen, and Manage is where a studio manager who
-   * never sets foot on the floor lives -- it is also the ONLY place an
-   * initiative can be posted from. Routing the hub without bringing Manage
-   * across would have quietly removed both.
-   *
-   * Same documents and the same authoring dialog as the old screen; only the
-   * way in is different.
+   * MANAGE MOVED TO THE TEAM TAB (Planner rework, Sep 2026). It used to be a
+   * toggle in this header, open to everyone "until RBAC lands" — while the
+   * rules only ever let leaders write what it edits. The standing task list,
+   * the seven-day table, initiatives and flags now live on the Planner's
+   * Team tab, which only studio leaders see (features/planner/team).
    */
-  const [mode, setMode] = useState<"hub" | "manage">("hub");
-  const [managing, setManaging] = useState(false);
-  const [managerIntent, setManagerIntent] = useState<
-    | { mode: "new"; scope: "studio" | "personal" }
-    | { mode: "edit"; template: TaskTemplate }
-    | null
-  >(null);
 
   const clientNames = useMemo(() => {
     const map: Record<string, string> = {};
@@ -164,7 +151,7 @@ export function StudioHubView({
    */
   const ownerId = auth.currentUser?.uid ?? null;
 
-  const { rows, templates, loading } = useStudioTasks(activeStudioId, {
+  const { rows, loading } = useStudioTasks(activeStudioId, {
     ownerId,
     clientNames,
   });
@@ -280,11 +267,6 @@ export function StudioHubView({
 
   const showClients = topic === "all" || topic === "clients";
 
-  const flaggedRows = useMemo(
-    () => rows.filter((r) => r.instance?.flagged),
-    [rows],
-  );
-
   return (
     <div className="st">
       <div className="st__scroll touch-pane">
@@ -319,55 +301,19 @@ export function StudioHubView({
             me what I wrote" is the opposite of what it is for.
           */}
           <div className="sh__head-actions">
-            {mode === "hub" && (
-              <button
-                type="button"
-                className="sh__mine"
-                aria-pressed={mineOnly}
-                onClick={() => setMineOnly((v) => !v)}
-              >
-                {mineOnly ? <UserRound size={14} /> : <Users size={14} />}
-                {mineOnly ? "Mine" : "Everyone"}
-              </button>
-            )}
-
-            {/*
-              Same temporary ungating as StudioTasksView, and the same caveat:
-              this is a UI gate only and always was -- firestore.rules decides
-              who may actually write a template or post an initiative. Restore
-              a permission check here when RBAC lands.
-            */}
             <button
               type="button"
               className="sh__mine"
-              aria-pressed={mode === "manage"}
-              onClick={() => setMode(mode === "manage" ? "hub" : "manage")}
+              aria-pressed={mineOnly}
+              onClick={() => setMineOnly((v) => !v)}
             >
-              <Settings2 size={14} />
-              {mode === "manage" ? "Back to hub" : "Manage"}
+              {mineOnly ? <UserRound size={14} /> : <Users size={14} />}
+              {mineOnly ? "Mine" : "Everyone"}
             </button>
+
           </div>
         </header>
 
-        {mode === "manage" ? (
-          <ManagePanel
-            studioId={activeStudioId}
-            templates={templates}
-            categories={categories}
-            flaggedRows={flaggedRows}
-            author={author}
-            trainers={trainers}
-            onNewTask={() => {
-              setManagerIntent({ mode: "new", scope: "studio" });
-              setManaging(true);
-            }}
-            onEditTask={(template) => {
-              setManagerIntent({ mode: "edit", template });
-              setManaging(true);
-            }}
-          />
-        ) : (
-          <>
         {/*
           Loading is said once, at the top, rather than as a spinner per lane.
           Four spinners on a tablet reads as four things going wrong.
@@ -461,26 +407,7 @@ export function StudioHubView({
           onConfirm={onConfirm}
           onRetire={onRetire}
         />
-          </>
-        )}
       </div>
-
-      <TaskManager
-        open={managing}
-        onOpenChange={(o) => {
-          setManaging(o);
-          // Consumed on close, so re-opening lands on the list rather than on
-          // whatever Manage last asked for.
-          if (!o) setManagerIntent(null);
-        }}
-        studioId={activeStudioId}
-        canManageStudio
-        ownerId={ownerId}
-        templates={templates}
-        author={author}
-        clients={clients}
-        openWith={managerIntent}
-      />
 
       <JobComposer
         open={composingJob}

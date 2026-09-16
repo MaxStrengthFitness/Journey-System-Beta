@@ -39,6 +39,8 @@ export interface JobComposerProps {
   clients: Client[];
   categories: StudioTaskCategory[];
   onPosted?: (jobId: string) => void;
+  /** Start from these values — "Post a job for Marcus" names Marcus. */
+  preset?: Partial<JobDraft> | null;
 }
 
 const ABOUT: { value: JobAboutKind; label: string; icon: ReactNode }[] = [
@@ -64,6 +66,7 @@ export function JobComposer({
   clients,
   categories,
   onPosted,
+  preset = null,
 }: JobComposerProps) {
   const { success: toastSuccess } = useToast();
   const { machines } = useStudioMachines(open ? studioId : null, { bridgeWhenRosterEmpty: true });
@@ -79,12 +82,13 @@ export function JobComposer({
   // A fresh form each time it opens.
   useEffect(() => {
     if (!open) return;
-    setDraft(blankJobDraft());
+    setDraft({ ...blankJobDraft(), ...(preset ?? {}) });
     setPartsText("");
     setPickedClients([]);
     setProblems([]);
     setError(null);
     setCustomDate(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const edit = (patch: Partial<JobDraft>) => {
