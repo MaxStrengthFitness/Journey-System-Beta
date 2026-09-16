@@ -1,15 +1,43 @@
 /**
- * CLINICAL REVIEW — view models.
+ * KAIZEN DEEP DIVE — view models.
+ *
+ * (The folder is still `clinical-review` and the screen was "Trends Clinical
+ * Review" until the reporting round, Sep 2026, renamed it the Kaizen Deep
+ * Dive. Identifiers keep their names; labels say Deep Dive.)
  *
  * Everything the dashboard renders is derived from ONE normalised row per
  * completed session (`SessionFact`). `facts.ts` builds those rows from the
- * app's Firestore records; `analytics.ts` turns them into trends,
- * correlations, heatmaps and plateau flags; `insights.ts` turns the numbers
- * into sentences. None of it imports React or Firestore, so it is unit-tested
- * as plain functions (analytics.test.ts).
+ * app's Firestore records; `analytics.ts` turns them into rhythms,
+ * correlations, heatmaps and stalls; `pulse-trend.ts` reads the Pulse
+ * history; `insights.ts` turns the numbers into sentences. None of it
+ * imports React, so it is unit-tested as plain functions.
+ *
+ * THE REPORTING-ROUND CHANGE
+ * --------------------------
+ *  • Every subjective reading is on THE DIAL (features/rating/dial.ts):
+ *    `readiness` (sleep · energy · recovery · stress), `dose` (how the
+ *    session landed) and `regionDials` (a body region's Pain … Recovered).
+ *    Sessions from before the round are read through the legacy conversions
+ *    (`dialFromSleepQuality` and friends) so an August session and an
+ *    October session sit on ONE axis. The old `sleep / stress / energy /
+ *    mood / postFeel` fields stay populated for older readers; nothing new
+ *    reads them. Mood has no Dial and is dropped from the correlations.
+ *  • THE RULE OF THREE (`RULE_OF_THREE`): nothing under three sessions is
+ *    ever a finding. A Dial level with fewer than three sessions is
+ *    `insufficient` and the screen says "not enough sessions yet (needs 3)".
+ *  • Weekly tonnage is RETIRED (it rises with attendance, not strength).
+ *    `tonnage` is still computed on the fact row for the baseline index
+ *    tests, but no panel, KPI or sentence shows it.
+ *  • New panels: attendance rhythm (`attendanceRhythm`), the pain /
+ *    incident timeline (`painTimeline`) and the Pulse trend (`pulseTrend`).
+ *  • The frame says, in a fixed line at the top, that the app built this and
+ *    it can be wrong.
  */
 
-import type { RepQuality, SleepQuality } from "../../types";
+import type { DialValue, RepQuality, SleepQuality } from "../../types";
+
+/** The rule of three: the smallest sample any line on the Deep Dive may speak from. */
+export const RULE_OF_THREE = 3;
 
 /* ------------------------------------------------------------------ *
  * Subjective vocab
@@ -51,16 +79,36 @@ export interface SessionFact {
   trainerInitials: string;
   isCrossTrain: boolean;
 
-  /* ---- subjective: before the session ---- */
+  /* ---- subjective, on the Dial (reporting round) ---- */
+  /**
+   * How the client arrived, −2 … +2 against their own usual. Read from
+   * `preSessionCheckIn.readiness` when the briefing wrote it, else from the
+   * legacy words through `features/rating/dial.ts`. `null` = not asked.
+   * Recovery has no legacy field, so it is null on every older session.
+   */
+  readiness: SessionReadinessFact;
+  /** How the session landed (Wiped out … Barely worked); legacy `clientFeel` converted. `null` = not judged. */
+  dose: DialValue | null;
+  /** Every body region tapped, with its Dial (Pain · Stiff · As usual · Better · Recovered). */
+  regionDials: RegionDial[];
+
+  /* ---- subjective: legacy fields, still populated for older readers ---- */
+  /** @deprecated Read `readiness.sleep`. */
   sleep: SleepQuality | null;
+  /** @deprecated Read `readiness.stress`. */
   stress: 1 | 2 | 3 | 4 | 5 | null;
+  /** @deprecated Read `readiness.energy`. */
   energy: EnergyLevel | null;
+  /** Mood has no Dial; kept for older readers, not correlated. */
   mood: MoodLevel | null;
   hydration: "low" | "ok" | "good" | null;
+  /** Regions below the centre (legacy `stiff`, or a Dial of Pain / Stiff). */
   stiffRegions: string[];
+  /** Regions above the centre (legacy `prime`, or a Dial of Better / Recovered). */
   primeRegions: string[];
 
   /* ---- subjective: after the session ---- */
+  /** @deprecated Read `dose`. */
   postFeel: PostFeel | null;
   postPhysical: number | null;
   postMental: number | null;
@@ -86,6 +134,20 @@ export interface SessionFact {
   symptomCount: number;
   symptomRegions: string[];
   incidentCount: number;
+  /** Machines named on the session's clinical incidents (ids; may be empty when an incident named none). */
+  incidentMachineIds: string[];
+}
+
+export interface SessionReadinessFact {
+  sleep: DialValue | null;
+  energy: DialValue | null;
+  recovery: DialValue | null;
+  stress: DialValue | null;
+}
+
+export interface RegionDial {
+  region: string;
+  dial: DialValue;
 }
 
 /** One rated set, denormalised with its session's date — the heatmap and plateau engines read these. */
@@ -150,10 +212,10 @@ export interface Correlation {
 
 export type DimensionKey =
   | "sleep"
-  | "stress"
   | "energy"
-  | "mood"
-  | "postFeel"
+  | "recovery"
+  | "stress"
+  | "dose"
   | "stiffness"
   | "restGap"
   | "timeOfDay"
@@ -161,7 +223,15 @@ export type DimensionKey =
   | "trainer"
   | "crossTrain";
 
-export type OutcomeKey = "poorRate" | "maxRate" | "tonnageIndex" | "tutIndex" | "repsIndex" | "avgRpe";
+/**
+ * What a session is measured by. Tonnage was retired in the reporting round
+ * (it rises with attendance, not strength) and RPE is a rating, which the
+ * app never shows as a number.
+ */
+export type OutcomeKey = "poorRate" | "maxRate" | "repsIndex" | "tutIndex";
+
+/** A Dial dimension's three levels: below the centre (−2, −1) · the centre (0) · above it (+1, +2). */
+export type DialLevel = "below" | "centre" | "above";
 
 export interface WeekBucket {
   /** ISO Monday of the week, YYYY-MM-DD. */
@@ -267,7 +337,7 @@ export interface Summary {
   spanDays: number;
 }
 
-export type InsightKind = "correlation" | "rhythm" | "plateau" | "volume" | "coverage" | "form";
+export type InsightKind = "correlation" | "rhythm" | "plateau" | "coverage" | "form";
 export type InsightTone = "notable" | "good" | "info";
 
 export interface Insight {
@@ -283,4 +353,78 @@ export interface Insight {
   machineId?: string;
   dimension?: DimensionKey;
   outcome?: OutcomeKey;
+}
+
+/* ------------------------------------------------------------------ *
+ * Reporting-round panels
+ * ------------------------------------------------------------------ */
+
+/** Attendance rhythm — the leader's Monday question: is she coming in as she usually does? */
+export interface AttendanceRhythm {
+  /** `insufficient` under `RULE_OF_THREE` sessions; every number below is then null. */
+  status: "insufficient" | "ok";
+  sessions: number;
+  /** Sessions per week from the first session in range to the range's end. */
+  perWeek: number | null;
+  /** In words: "Twice a week". */
+  perWeekWords: string | null;
+  /** The longest stretch with no session, with the sessions either side of it. */
+  longestGap: { days: number; from: string; to: string } | null;
+  /** Days from the last session to the end of the range. */
+  currentGapDays: number | null;
+  sessionsLast2Weeks: number | null;
+  sessionsLast4Weeks: number | null;
+  /**
+   * True when the last four weeks ran below three quarters of the client's
+   * own pace; null when the range is too short to have a "usual" (under
+   * eight weeks of history).
+   */
+  belowUsual: boolean | null;
+  /** One sentence. */
+  sentence: string;
+}
+
+export type PainEventKind = "region" | "symptom" | "incident";
+
+/** One line on the pain / incident timeline. */
+export interface PainEvent {
+  date: string;
+  sessionId: string;
+  kind: PainEventKind;
+  /** "Lower back · Stiff", "Left knee · flagged during a set", "Incident on Leg press". */
+  text: string;
+  /** The region's Dial when the event is a region reading. */
+  dial?: DialValue;
+}
+
+export interface PainTimeline {
+  /** Oldest → newest. */
+  events: PainEvent[];
+  /** Sessions in the range that raised nothing at all. */
+  quietSessions: number;
+  sessions: number;
+}
+
+export type PulseRag = "green" | "yellow" | "red";
+export type PulseDirection = "up" | "down" | "same" | "single";
+
+/** One Pulse area, first saved reading vs the latest. */
+export interface PulseAreaTrend {
+  key: string;
+  title: string;
+  first: { date: string; rag: PulseRag } | null;
+  latest: { date: string; rag: PulseRag } | null;
+  direction: PulseDirection | null;
+  /** "Sleep & Recovery: yellow → green since Jul", or "not assessed yet". */
+  sentence: string;
+}
+
+export interface PulseTrend {
+  /** `unavailable` when the history read failed; `none` when nothing is saved yet. */
+  status: "ok" | "none" | "unavailable";
+  areas: PulseAreaTrend[];
+  /** Saved Pulses the read saw. */
+  reports: number;
+  /** False when older Pulses exist that the read did not reach. */
+  complete: boolean;
 }

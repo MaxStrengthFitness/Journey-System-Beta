@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Clinical Review — layout & tokens
+   Kaizen Deep Dive (folder: clinical-review) — layout & tokens
    --------------------------------------------------------------------------
    Semantic tokens ride on the journey-grid brand tokens (already global via
    journey-grid.tokens.css) so the review speaks the same colour language as
@@ -32,6 +32,19 @@
   --cr-poor-fill: var(--jg-q-poor-fill, #f4e9f0);
   --cr-done: var(--jg-q-done-edge, #a5abb0);
   --cr-done-fill: var(--jg-q-done-fill, #edeeef);
+  --cr-on-dark: var(--eq-live-on, #ffffff);
+
+  /* Urgency, never identity (reporting round): the pain timeline and the
+     Pulse trend colour by how bad, on the equipment tokens' names. Yellow
+     is the Pulse's own amber (the reference document's RAG), not plum. */
+  --cr-ok: var(--eq-ok, #1c7a52);
+  --cr-ok-fill: var(--eq-ok-fill, #e3f1ea);
+  --cr-warn: var(--eq-warn, #a2457e);
+  --cr-warn-fill: var(--eq-warn-fill, #f4e9f0);
+  --cr-alert: var(--eq-alert, #c0203f);
+  --cr-alert-fill: var(--eq-alert-fill, #fce3e8);
+  --cr-amber: var(--sr-yellow, #a3650a);
+  --cr-amber-fill: var(--sr-yellow-fill, #fbefd6);
 
   --cr-radius: 14px;
   --cr-radius-sm: 8px;
@@ -147,7 +160,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 @media (min-width: 700px)  { .cr-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media (min-width: 1180px) { .cr-kpis { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+@media (min-width: 1180px) { .cr-kpis { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
 .cr-kpi { background: var(--cr-surface); padding: 12px 14px 11px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .cr-kpi__label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cr-ink-muted); line-height: 1.1; }
 .cr-kpi__value { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: var(--cr-ink); font-variant-numeric: normal; }
@@ -176,8 +189,6 @@
 .cr-empty { border: 1px dashed var(--cr-border-strong); border-radius: var(--cr-radius); padding: 22px; text-align: center; color: var(--cr-ink-muted); font-size: 13px; }
 
 /* ---- charts ------------------------------------------------------------- */
-.cr-charts { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 1024px) { .cr-charts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .cr-chart { height: 190px; }
 .cr-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11.5px; color: var(--cr-ink-muted); font-weight: 600; margin-top: 6px; }
 .cr-legend__item { display: inline-flex; align-items: center; gap: 6px; }
@@ -246,12 +257,7 @@
 .cr-heat__table th, .cr-heat__table td { padding: 6px 8px; border-bottom: 1px solid var(--cr-border); text-align: right; }
 .cr-heat__table th:first-child, .cr-heat__table td:first-child { text-align: left; }
 
-/* ---- plateaus ------------------------------------------------------------ */
-.cr-plateaus { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 900px) { .cr-plateaus { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.cr-plateau { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 12px; align-items: center; padding: 10px 14px; }
-.cr-plateau__name { font-size: 13.5px; font-weight: 800; color: var(--cr-ink); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.cr-plateau__meta { font-size: 12px; color: var(--cr-ink-2); margin-top: 2px; line-height: 1.4; }
+/* ---- machine sparkline & pills ---------------------------------------------- */
 .cr-plateau__spark { height: 44px; width: 120px; }
 .cr-pill {
   display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 999px;
@@ -264,6 +270,52 @@
 .cr-pill--insufficient { background: var(--cr-surface-2); color: var(--cr-ink-faint); }
 .cr-pill--mb { background: var(--cr-live-fill); color: var(--cr-live-text); }
 
+/* ---- the caveat (reporting round) ---------------------------------------- */
+.cr-caveat {
+  margin: 0; display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 14px; border-radius: var(--cr-radius-sm);
+  background: var(--cr-amber-fill); color: var(--cr-ink-2);
+  border-left: 4px solid var(--cr-amber);
+  font-size: 12.5px; line-height: 1.45;
+}
+.cr-caveat svg { flex: none; margin-top: 2px; color: var(--cr-amber); }
+
+/* ---- progression stalls (sentences) ---------------------------------------- */
+.cr-stalls { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .cr-stalls { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cr-stall { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 12px; align-items: center; padding: 10px 14px; }
+.cr-stall__text { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.cr-stall__sentence { font-size: 13.5px; font-weight: 800; color: var(--cr-ink); line-height: 1.3; }
+.cr-stall__meta { font-size: 12px; color: var(--cr-ink-2); line-height: 1.4; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cr-sentences { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 12.5px; color: var(--cr-ink-2); line-height: 1.4; }
+
+/* ---- readiness key under a Dial card -------------------------------------- */
+.cr-dim__key { margin-top: 4px; color: var(--cr-ink-faint); }
+
+/* ---- attendance rhythm ------------------------------------------------------ */
+.cr-rhythm { display: flex; flex-direction: column; gap: 6px; border-left: 4px solid var(--cr-live); }
+.cr-rhythm--below { border-left-color: var(--cr-warn); }
+.cr-rhythm__sentence { margin: 0; font-size: 15px; font-weight: 800; color: var(--cr-ink); line-height: 1.35; }
+
+/* ---- pain & incidents + Pulse ---------------------------------------------- */
+.cr-painpulse { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1024px) { .cr-painpulse { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cr-timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 420px; overflow-y: auto; }
+.cr-timeline__row { display: grid; grid-template-columns: 52px 10px minmax(0, 1fr); gap: 8px; align-items: center; min-height: 28px; font-size: 12.5px; color: var(--cr-ink-2); }
+.cr-timeline__date { font-weight: 700; color: var(--cr-ink-muted); font-size: 11.5px; white-space: nowrap; }
+.cr-timeline__dot { width: 10px; height: 10px; border-radius: 999px; background: var(--cr-warn); }
+.cr-timeline__row--symptom .cr-timeline__dot { background: var(--cr-warn); opacity: 0.6; }
+.cr-timeline__row--incident .cr-timeline__dot { background: var(--cr-alert); }
+.cr-timeline__row.is-pain .cr-timeline__dot { background: var(--cr-alert); }
+.cr-timeline__row--incident .cr-timeline__text, .cr-timeline__row.is-pain .cr-timeline__text { font-weight: 700; color: var(--cr-ink); }
+.cr-pulse { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.cr-pulse__row { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 10px; align-items: baseline; font-size: 12.5px; color: var(--cr-ink-2); line-height: 1.4; }
+.cr-pulse__dot { width: 10px; height: 10px; border-radius: 999px; background: var(--cr-border-strong); position: relative; top: 1px; }
+.cr-pulse__row--green .cr-pulse__dot { background: var(--cr-ok); }
+.cr-pulse__row--yellow .cr-pulse__dot { background: var(--cr-amber); }
+.cr-pulse__row--red .cr-pulse__dot { background: var(--cr-alert); }
+.cr-pulse__text b { color: var(--cr-ink); }
+
 /* ---- footnote ------------------------------------------------------------ */
 .cr-method { font-size: 11.5px; color: var(--cr-ink-muted); line-height: 1.5; border-top: 1px solid var(--cr-border); padding-top: 12px; }
 .cr-method b { color: var(--cr-ink-2); }
@@ -275,4 +327,5 @@
   .cr-bar .cr-seg, .cr-bar .cr-iconbtn { display: none; }
   .cr-card, .cr-insight, .cr-kpis { break-inside: avoid; }
   .cr-heat { overflow: visible; }
+  .cr-timeline { max-height: none; overflow: visible; }
 }

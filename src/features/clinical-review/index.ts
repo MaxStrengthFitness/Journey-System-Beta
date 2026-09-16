@@ -1,6 +1,7 @@
 export * from "./types";
 export * from "./facts";
 export * from "./analytics";
+export * from "./pulse-trend";
 export * from "./insights";
 export * from "./report";
 export { useClinicalReport, type ClinicalReportState, type ReportData } from "./useClinicalReport";

@@ -9,9 +9,17 @@
  * knows all of that. Everything downstream reads `SessionFact` / `SetFact`.
  */
 
-import type { ClinicalIncident, ExerciseLog, WorkoutSession } from "../../types";
+import type { ClinicalIncident, DialValue, ExerciseLog, WorkoutSession } from "../../types";
 import { isPerformedLog } from "../../lib/set-outcome";
-import type { EnergyLevel, MoodLevel, PostFeel, SessionFact, SetFact } from "./types";
+import {
+  dialFromClientFeel,
+  dialFromEnergyLevel,
+  dialFromRegionState,
+  dialFromSleepQuality,
+  dialFromStressLevel,
+  isDialValue,
+} from "../rating/dial";
+import type { EnergyLevel, MoodLevel, PostFeel, RegionDial, SessionFact, SessionReadinessFact, SetFact } from "./types";
 
 /* ------------------------------------------------------------------ *
  * Small parsers
@@ -135,6 +143,61 @@ function postFeelOf(v: unknown): PostFeel | null {
 }
 
 /* ------------------------------------------------------------------ *
+ * The Dial (reporting round, Sep 2026)
+ *
+ * The briefing now writes `preSessionCheckIn.readiness` (−2 … +2 per
+ * question), the post-session screen writes `session.dose`, and a body
+ * region carries `dial`. Every session from before the round is read
+ * through the legacy conversions in features/rating/dial.ts, so the deep
+ * dive sees ONE axis: an August "poor" sleep and an October "A bit short"
+ * both land at −1. Nothing here defaults an untouched dial to the centre —
+ * absent means "not asked", which is what keeps the correlations honest.
+ * ------------------------------------------------------------------ */
+
+/** Sleep on the Dial: the Dial itself, else the legacy word, else the legacy hours through the same word. */
+function sleepDialOf(c: CheckIn | undefined): DialValue | null {
+  if (!c) return null;
+  if (isDialValue(c.readiness?.sleep)) return c.readiness.sleep;
+  return dialFromSleepQuality(sleepOf(c));
+}
+
+export function readinessOf(c: CheckIn | undefined): SessionReadinessFact {
+  if (!c) return { sleep: null, energy: null, recovery: null, stress: null };
+  const r = c.readiness;
+  return {
+    sleep: sleepDialOf(c),
+    energy: isDialValue(r?.energy) ? r.energy : dialFromEnergyLevel(c.energyLevel),
+    // Recovery is new with the Dial: no older field ever asked it.
+    recovery: isDialValue(r?.recovery) ? r.recovery : null,
+    stress: isDialValue(r?.stress) ? r.stress : dialFromStressLevel(c.stressLevel),
+  };
+}
+
+export function doseOf(s: Pick<WorkoutSession, "dose" | "clientFeel">): DialValue | null {
+  if (isDialValue(s.dose)) return s.dose;
+  return dialFromClientFeel(s.clientFeel);
+}
+
+/** Every region the check-in tapped, on the Dial; legacy soreness regions read as Stiff. */
+export function regionDialsOf(c: CheckIn | undefined): RegionDial[] {
+  const out: RegionDial[] = [];
+  const seen = new Set<string>();
+  for (const b of c?.bodyStates ?? []) {
+    if (!b?.region || seen.has(b.region)) continue;
+    const dial = isDialValue(b.dial) ? b.dial : dialFromRegionState(b.state);
+    if (dial === null) continue;
+    seen.add(b.region);
+    out.push({ region: b.region, dial });
+  }
+  for (const r of c?.sorenessRegions ?? []) {
+    if (!r || seen.has(r)) continue;
+    seen.add(r);
+    out.push({ region: r, dial: -1 });
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
  * Sets
  * ------------------------------------------------------------------ */
 
@@ -214,10 +277,12 @@ export function buildFacts(
     list.push(l);
     logsBySession.set(l.sessionId, list);
   }
-  const incidentsBySession = new Map<string, number>();
+  const incidentsBySession = new Map<string, ClinicalIncident[]>();
   for (const inc of incidents) {
     if (!inc?.sessionId) continue;
-    incidentsBySession.set(inc.sessionId, (incidentsBySession.get(inc.sessionId) ?? 0) + 1);
+    const list = incidentsBySession.get(inc.sessionId) ?? [];
+    list.push(inc);
+    incidentsBySession.set(inc.sessionId, list);
   }
 
   const completed = sessions
@@ -253,10 +318,11 @@ export function buildFacts(
       startMs !== null && endMs !== null && endMs > startMs ? Math.round((endMs - startMs - paused) / 60_000) : null;
 
     const c = s.preSessionCheckIn as CheckIn | undefined;
-    const stiff = (c?.bodyStates ?? []).filter((b) => b.state === "stiff").map((b) => b.region);
-    const prime = (c?.bodyStates ?? []).filter((b) => b.state === "prime").map((b) => b.region);
-    // Legacy soreness regions count as stiffness.
-    for (const r of c?.sorenessRegions ?? []) if (!stiff.includes(r)) stiff.push(r);
+    const regionDials = regionDialsOf(c);
+    // Below the centre (Pain / Stiff, legacy stiff or sore) vs above it (Better / Recovered, legacy prime).
+    const stiff = regionDials.filter((r) => r.dial < 0).map((r) => r.region);
+    const prime = regionDials.filter((r) => r.dial > 0).map((r) => r.region);
+    const sessionIncidents = incidentsBySession.get(id) ?? [];
 
     let setsRated = 0;
     let setsMax = 0;
@@ -313,6 +379,9 @@ export function buildFacts(
       trainerKey: s.trainerId && s.trainerId !== "legacy-trainer" ? s.trainerId : s.trainerInitials ? `initials:${s.trainerInitials.toUpperCase()}` : null,
       trainerInitials: (s.trainerInitials || "—").toUpperCase(),
       isCrossTrain: !!s.isCrossTrain,
+      readiness: readinessOf(c),
+      dose: doseOf(s),
+      regionDials,
       sleep: sleepOf(c),
       stress: stressOf(c),
       energy: c?.energyLevel ?? null,
@@ -337,7 +406,8 @@ export function buildFacts(
       avgRpe: rpeN ? rpeSum / rpeN : null,
       symptomCount,
       symptomRegions: [...symptomRegions],
-      incidentCount: incidentsBySession.get(id) ?? 0,
+      incidentCount: sessionIncidents.length,
+      incidentMachineIds: [...new Set(sessionIncidents.map((i) => i.machineId).filter((m): m is string => !!m))],
     });
     sets.push(...setFacts);
     previousDate = date;

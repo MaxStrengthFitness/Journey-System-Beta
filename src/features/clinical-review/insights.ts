@@ -2,21 +2,23 @@
  * INSIGHTS — the numbers, as sentences a trainer can say out loud.
  *
  * Every insight is generated from a rule with an explicit evidence gate:
- * a level must be at least "early" (3+ sessions) and the effect must clear
- * the outcome's `meaningfulDelta`. The `score` orders the cards; solid
- * evidence on a big effect wins, thin evidence on a small effect never
- * appears at all. Wording is deliberately plain — "poor-quality sets run
- * 14 points higher", not "a statistically significant association".
+ * the rule of three (a level must have `RULE_OF_THREE` sessions — "early"
+ * at 3–5, "solid" at 6+) and the effect must clear the outcome's
+ * `meaningfulDelta`. The `score` orders the cards; solid evidence on a big
+ * effect wins, thin evidence on a small effect never appears at all.
+ * Wording is deliberately plain — "poor-quality sets run 14 points higher",
+ * not "a statistically significant association" — and every card is a
+ * question to ask, not a fact to act on (the frame says so).
  */
 
-import type { Correlation, Heatmap, Insight, LevelStat, MachinePlateau, Summary, WeekBucket } from "./types";
-import { OUTCOME_BY_KEY, shortDate, signed } from "./analytics";
+import type { AttendanceRhythm, Correlation, Heatmap, Insight, LevelStat, MachinePlateau, Summary } from "./types";
+import { NOT_ENOUGH_SESSIONS, OUTCOME_BY_KEY, meetsRuleOfThree, shortDate, signed } from "./analytics";
 
 const RHYTHM_DIMENSIONS = new Set(["restGap", "timeOfDay", "dayOfWeek"]);
 const DAY_NAMES: Record<string, string> = { Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday" };
 const CONTEXT_DIMENSIONS = new Set(["trainer", "crossTrain"]);
 /** Rates are the cleanest signal; the baseline indexes are noisier and rank a notch lower. */
-const OUTCOME_WEIGHT: Record<string, number> = { poorRate: 1, maxRate: 1, tonnageIndex: 0.9, repsIndex: 0.8, tutIndex: 0.7, avgRpe: 0.7 };
+const OUTCOME_WEIGHT: Record<string, number> = { poorRate: 1, maxRate: 1, repsIndex: 0.8, tutIndex: 0.7 };
 
 function fmtLevelValue(value: number, unit: "pp" | "%" | ""): string {
   if (unit === "pp") return `${Math.round(value)}%`;
@@ -30,20 +32,27 @@ function fmtDelta(delta: number, unit: "pp" | "%" | ""): string {
   return signed(delta, 1);
 }
 
+/** "on off days for sleep", "on up days for energy" — the Dial's three levels in words. */
+function dialLevelPhrase(what: string, level: LevelStat): string {
+  if (level.level === "below") return `on off days for ${what}`;
+  if (level.level === "above") return `on up days for ${what}`;
+  return `when ${what} is as usual`;
+}
+
 function levelPhrase(dimension: string, level: LevelStat): string {
   switch (dimension) {
     case "sleep":
-      return `when sleep is ${level.label.toLowerCase()}`;
-    case "stress":
-      return `when stress is ${level.label.toLowerCase().replace(/ \(.*\)/, "")}`;
+      return dialLevelPhrase("sleep", level);
     case "energy":
-      return `when energy is ${level.label.toLowerCase()}`;
-    case "mood":
-      return `when mood is ${level.label.toLowerCase()}`;
+      return dialLevelPhrase("energy", level);
+    case "recovery":
+      return dialLevelPhrase("recovery", level);
+    case "stress":
+      return dialLevelPhrase("stress", level);
     case "stiffness":
-      return level.level === "stiff" ? "when something feels stiff" : level.level === "prime" ? "when the body feels prime" : "when nothing is flagged";
-    case "postFeel":
-      return `in sessions that end "${level.label.toLowerCase()}"`;
+      return level.level === "below" ? "when something hurt or was stiff" : level.level === "above" ? "when a region felt better than usual" : "when nothing was flagged";
+    case "dose":
+      return level.level === "below" ? "in sessions that landed wiped out or drained" : level.level === "above" ? "in sessions that left more in the tank" : "in sessions that landed just right";
     case "restGap":
       return level.level === "1" ? "after a single rest day" : `after ${level.label.toLowerCase()} off`;
     case "timeOfDay":
@@ -72,11 +81,6 @@ function outcomePhrase(outcome: string, level: LevelStat, overall: number, unit:
         verb: delta > 0 ? "hit max strength more often" : "reach max strength less often",
         body: `max-strength sets land at ${fmtLevelValue(level.mean!, unit)} vs ${fmtLevelValue(overall, unit)} overall (${fmtDelta(delta, unit)}).`,
       };
-    case "tonnageIndex":
-      return {
-        verb: delta > 0 ? "move more weight" : "move less weight",
-        body: `tonnage comes in ${fmtLevelValue(level.mean!, unit)} against the trailing baseline, vs ${fmtLevelValue(overall, unit)} overall.`,
-      };
     case "repsIndex":
       return {
         verb: delta > 0 ? "get more reps" : "get fewer reps",
@@ -86,11 +90,6 @@ function outcomePhrase(outcome: string, level: LevelStat, overall: number, unit:
       return {
         verb: delta > 0 ? "hold tension longer" : "hold tension for less time",
         body: `time under tension comes in ${fmtLevelValue(level.mean!, unit)} against the trailing baseline, vs ${fmtLevelValue(overall, unit)} overall.`,
-      };
-    case "avgRpe":
-      return {
-        verb: delta > 0 ? "feel harder" : "feel easier",
-        body: `average RPE is ${level.mean!.toFixed(1)} vs ${overall.toFixed(1)} overall (${fmtDelta(delta, unit)}).`,
       };
     default:
       return { verb: "differ", body: `${fmtLevelValue(level.mean!, unit)} vs ${fmtLevelValue(overall, unit)} overall.` };
@@ -107,8 +106,10 @@ export function correlationInsights(correlations: Correlation[], firstName: stri
   const out: Insight[] = [];
   for (const c of correlations) {
     const spec = OUTCOME_BY_KEY[c.outcome];
-    if (!c.standout || c.overallMean === null || c.standout.delta === null) continue;
+    if (!spec || !c.standout || c.overallMean === null || c.standout.delta === null) continue;
     const level = c.standout;
+    // The rule of three, restated where the sentence is born.
+    if (!meetsRuleOfThree(level.n)) continue;
     if (Math.abs(level.delta!) < spec.meaningfulDelta) continue;
     // Trainer/studio splits are context, never a verdict on a coach: keep
     // them to the matrix panel rather than the headline cards.
@@ -149,6 +150,36 @@ function runStart(p: MachinePlateau): string {
   const weighted = p.series.filter((s) => s.weight !== null);
   const start = weighted[Math.max(0, weighted.length - p.sessionsAtCurrentWeight)];
   return start?.date ?? p.firstDate ?? "";
+}
+
+/**
+ * One row of the Progression stalls panel, as a sentence:
+ *   "Leg press — 120 lb for 6 sessions since Aug 3, no gain"
+ *   "Lumbar — 40 → 50 lb over 12 sessions, progressing"
+ *   "Chest press — not enough sessions yet (needs 3)"
+ */
+export function stallSentence(p: MachinePlateau): string {
+  if (p.status === "insufficient" || p.lastWeight === null) return `${p.machineName} — ${NOT_ENOUGH_SESSIONS}`;
+  const unit = p.isTSC ? "s" : "";
+  const outcome = p.isTSC ? "hold" : "reps";
+  const gain =
+    p.repsAtCurrentFirst !== null && p.repsAtCurrentLast !== null
+      ? p.repsAtCurrentLast > p.repsAtCurrentFirst
+        ? `${outcome} ${p.repsAtCurrentFirst} → ${p.repsAtCurrentLast}${unit}`
+        : p.repsAtCurrentLast < p.repsAtCurrentFirst
+          ? `${outcome} slipping ${p.repsAtCurrentFirst} → ${p.repsAtCurrentLast}${unit}`
+          : "no gain"
+      : "no gain";
+  const since = shortDate(runStart(p));
+  const run = `${p.lastWeight} lb for ${p.sessionsAtCurrentWeight} ${p.sessionsAtCurrentWeight === 1 ? "session" : "sessions"} since ${since}`;
+  if (p.status === "regressing") {
+    if (p.firstWeight !== null && p.lastWeight < p.firstWeight) return `${p.machineName} — down from ${p.firstWeight} to ${p.lastWeight} lb over ${p.sessions} sessions, ${gain}`;
+    return `${p.machineName} — ${run}, ${gain}`;
+  }
+  if (p.status === "plateau" || p.stalled) return `${p.machineName} — ${run}, ${gain}`;
+  // Progressing.
+  if (p.firstWeight !== null && p.firstWeight !== p.lastWeight) return `${p.machineName} — ${p.firstWeight} → ${p.lastWeight} lb over ${p.sessions} sessions, progressing`;
+  return `${p.machineName} — ${p.lastWeight} lb, ${gain} over ${p.sessions} sessions, progressing`;
 }
 
 export function plateauInsights(plateaus: MachinePlateau[]): Insight[] {
@@ -225,37 +256,33 @@ export function formInsights(heat: Heatmap, summary: Summary, firstName: string)
   return out;
 }
 
-export function volumeInsights(weeks: WeekBucket[], summary: Summary, firstName: string): Insight[] {
+/**
+ * The attendance rhythm as a card, when there is something to say: a long
+ * gap, or the last month running below the client's own pace. Nothing under
+ * three sessions (the rhythm itself says so).
+ */
+export function rhythmInsights(rhythm: AttendanceRhythm, firstName: string): Insight[] {
   const out: Insight[] = [];
-  const active = weeks.filter((w) => w.sessions > 0);
-  if (active.length >= 6) {
-    const recent = active.slice(-3);
-    const prior = active.slice(-6, -3);
-    const r = recent.reduce((a, w) => a + w.tonnage, 0) / recent.length;
-    const p = prior.reduce((a, w) => a + w.tonnage, 0) / prior.length;
-    if (p > 0) {
-      const change = ((r - p) / p) * 100;
-      if (Math.abs(change) >= 8) {
-        out.push({
-          id: "volume:trend",
-          kind: "volume",
-          tone: change > 0 ? "good" : "notable",
-          title: change > 0 ? `Weekly tonnage is up ${Math.round(change)}%` : `Weekly tonnage is down ${Math.abs(Math.round(change))}%`,
-          body: `The last three training weeks averaged ${Math.round(r).toLocaleString()} lb per week against ${Math.round(p).toLocaleString()} lb for the three before.`,
-          evidence: `6 training weeks compared`,
-          score: 0.5 + Math.min(0.5, Math.abs(change) / 40),
-        });
-      }
-    }
-  }
-  if (summary.longestGapDays !== null && summary.longestGapDays >= 14) {
+  if (rhythm.status !== "ok") return out;
+  if (rhythm.belowUsual) {
     out.push({
-      id: "volume:gap",
+      id: "rhythm:below-usual",
+      kind: "rhythm",
+      tone: "notable",
+      title: `${firstName} has trained less than usual in the last four weeks`,
+      body: `${rhythm.sessionsLast4Weeks} ${rhythm.sessionsLast4Weeks === 1 ? "session" : "sessions"} in four weeks against ${rhythm.perWeekWords!.toLowerCase()} on average. Worth asking what changed before the strength numbers say it.`,
+      evidence: `${rhythm.sessions} sessions in range`,
+      score: 0.9,
+    });
+  }
+  if (rhythm.longestGap && rhythm.longestGap.days >= 14) {
+    out.push({
+      id: "rhythm:gap",
       kind: "rhythm",
       tone: "info",
-      title: `Longest break in the range: ${summary.longestGapDays} days`,
-      body: `Median rest between sessions is ${summary.medianRestDays ?? "—"} days. The "Days since last session" row below shows how ${firstName} performs coming back from a layoff.`,
-      evidence: `${summary.sessions} sessions over ${summary.spanDays} days`,
+      title: `Longest break in the range: ${rhythm.longestGap.days} days`,
+      body: `${shortDate(rhythm.longestGap.from)} to ${shortDate(rhythm.longestGap.to)}. The "Days since last session" row in Readiness vs output shows how ${firstName} performs coming back from a layoff.`,
+      evidence: `${rhythm.sessions} sessions in range`,
       score: 0.35,
     });
   }
@@ -264,7 +291,7 @@ export function volumeInsights(weeks: WeekBucket[], summary: Summary, firstName:
 
 export function coverageInsights(summary: Summary): Insight[] {
   const out: Insight[] = [];
-  if (summary.sessions >= 3 && summary.tutCoverage < 0.5) {
+  if (meetsRuleOfThree(summary.sessions) && summary.tutCoverage < 0.5) {
     out.push({
       id: "coverage:tut",
       kind: "coverage",
@@ -275,13 +302,13 @@ export function coverageInsights(summary: Summary): Insight[] {
       score: 0.2,
     });
   }
-  if (summary.sessions >= 3 && summary.checkInCoverage < 0.5) {
+  if (meetsRuleOfThree(summary.sessions) && summary.checkInCoverage < 0.5) {
     out.push({
       id: "coverage:checkin",
       kind: "coverage",
       tone: "info",
-      title: `Pre-session check-ins cover ${Math.round(summary.checkInCoverage * 100)}% of sessions`,
-      body: "Sleep, stress, energy and mood correlations need the briefing assessment filled in. Two taps per session is enough.",
+      title: `The briefing's dials were tapped on ${Math.round(summary.checkInCoverage * 100)}% of sessions`,
+      body: "Readiness vs output needs sleep, energy, recovery or stress on the Dial before the session. One tap per session is enough.",
       evidence: `${summary.sessions} sessions`,
       score: 0.2,
     });
@@ -292,7 +319,7 @@ export function coverageInsights(summary: Summary): Insight[] {
       kind: "coverage",
       tone: "info",
       title: "No rep-quality ratings in this range",
-      body: "Imported paper charts carry no quality rating, so the form heatmap and quality correlations stay empty until live sessions are logged.",
+      body: `Imported paper charts carry no quality rating, so the form heat map and the quality outcomes stay empty until live sessions are logged — ${NOT_ENOUGH_SESSIONS} with a rating.`,
       evidence: `${summary.sessions} sessions`,
       score: 0.25,
     });
@@ -302,7 +329,7 @@ export function coverageInsights(summary: Summary): Insight[] {
 
 /**
  * Rank with breadth: the first pass takes the single best card per subject
- * (a dimension, a machine, or the kind for volume/coverage cards) so the top
+ * (a dimension, a machine, or the kind for rhythm/coverage cards) so the top
  * eight cover eight different things; the second pass fills any remaining
  * slots by raw score.
  */

@@ -1,13 +1,42 @@
 /**
- * Panels — the dashboard's building blocks. Each takes a slice of `Report`
+ * Panels — the Deep Dive's building blocks. Each takes a slice of `Report`
  * and renders it; none fetches or computes beyond formatting.
+ *
+ * Order on the page (ClinicalDashboard.tsx), and the question each answers:
+ *   Progression stalls     — what is stuck?
+ *   Readiness vs output    — does how she arrives change how she lifts?
+ *   Attendance rhythm      — is she coming in as she usually does?
+ *   Pain & incidents       — what hurt, when, and what does her Pulse say?
+ *   Time under tension     — is the work getting longer?
+ *   Where form breaks      — which machines, which weeks?
+ *
+ * Every panel obeys the rule of three: under `RULE_OF_THREE` sessions it
+ * says so and shows no number that could be mistaken for a finding.
  */
 import { memo, useMemo, useState, type ReactNode } from "react";
-import { ArrowDownRight, ArrowUpRight, Minus, Table2, LayoutGrid } from "lucide-react";
-import type { Correlation, Heatmap, Insight, LevelStat, MachinePlateau, OutcomeKey, Summary } from "./types";
-import { compact, formatMinutes, OUTCOMES, OUTCOME_BY_KEY, pct, shortDate, shortDateYear, signed } from "./analytics";
+import { ArrowDownRight, ArrowUpRight, Minus, Table2, LayoutGrid, AlertTriangle } from "lucide-react";
+import type { AttendanceRhythm, Correlation, Heatmap, Insight, LevelStat, MachinePlateau, OutcomeKey, PainTimeline, PulseTrend, Summary } from "./types";
+import { RULE_OF_THREE } from "./types";
+import { DIMENSION_BY_KEY, NOT_ENOUGH_SESSIONS, OUTCOMES, OUTCOME_BY_KEY, dialLevelKey, formatMinutes, pct, shortDate, signed } from "./analytics";
+import { stallSentence } from "./insights";
 import { deltaPct } from "./report";
 import { Sparkline } from "./charts";
+
+/* ------------------------------------------------------------------ *
+ * The frame's fixed line
+ * ------------------------------------------------------------------ */
+
+export const DEEP_DIVE_CAVEAT =
+  "Built by the app from this client's sessions and Pulse. It can be wrong — treat every line as a question to ask, not a fact to act on. Nothing under three sessions counts.";
+
+export function CaveatLine() {
+  return (
+    <p className="cr-caveat" role="note">
+      <AlertTriangle size={14} aria-hidden="true" />
+      <span>{DEEP_DIVE_CAVEAT}</span>
+    </p>
+  );
+}
 
 /* ------------------------------------------------------------------ *
  * KPI strip
@@ -38,9 +67,9 @@ function Kpi({ label, value, unit, sub, hero }: { label: string; value: ReactNod
   );
 }
 
+/** Headline numbers. Tonnage is gone (reporting round); the sets' own facts stay. */
 export function KpiStrip({ summary, prior }: { summary: Summary; prior: Summary | null }) {
   const s = summary;
-  const priorNote = prior ? "vs prior period" : null;
   return (
     <div className="cr-kpis" role="list" aria-label="Headline numbers">
       <Kpi
@@ -54,20 +83,9 @@ export function KpiStrip({ summary, prior }: { summary: Summary; prior: Summary 
         }
       />
       <Kpi
-        label="Tonnage"
-        value={compact(s.tonnage)}
-        unit="lb"
-        hero
-        sub={
-          <>
-            <span>{s.reps.toLocaleString()} reps</span>
-            {prior && <Delta value={deltaPct(s.tonnage, prior.tonnage)} />}
-          </>
-        }
-      />
-      <Kpi
         label="Time under tension"
         value={s.tutSeconds > 0 ? formatMinutes(s.tutSeconds) : "—"}
+        hero
         sub={
           s.tutCoverage < 0.999 ? (
             <span>recorded on {Math.round(s.tutCoverage * 100)}% of sets</span>
@@ -102,16 +120,12 @@ export function KpiStrip({ summary, prior }: { summary: Summary; prior: Summary 
         unit={s.medianRestDays === null ? undefined : "days"}
         sub={s.longestGapDays !== null ? <span>longest gap {s.longestGapDays} d</span> : undefined}
       />
-      <Kpi
-        label="Check-ins"
-        value={`${Math.round(s.checkInCoverage * 100)}%`}
-        sub={<span>of sessions have sleep / stress / energy</span>}
-      />
+      <Kpi label="Dials tapped" value={`${Math.round(s.checkInCoverage * 100)}%`} sub={<span>of sessions asked sleep, energy, recovery, stress or a region</span>} />
       <Kpi
         label="Span"
         value={s.spanDays}
         unit="days"
-        sub={s.firstDate && s.lastDate ? <span>{shortDate(s.firstDate)} → {shortDate(s.lastDate)}</span> : priorNote ?? undefined}
+        sub={s.firstDate && s.lastDate ? <span>{shortDate(s.firstDate)} → {shortDate(s.lastDate)}</span> : undefined}
       />
     </div>
   );
@@ -125,7 +139,6 @@ const KIND_LABEL: Record<Insight["kind"], string> = {
   correlation: "Pattern",
   rhythm: "Rhythm",
   plateau: "Progression",
-  volume: "Volume",
   coverage: "Data coverage",
   form: "Form",
 };
@@ -147,10 +160,71 @@ export function InsightCards({ insights, emptyHint }: { insights: Insight[]; emp
 }
 
 /* ------------------------------------------------------------------ *
- * Subjective × objective matrix
+ * 1. Progression stalls
  * ------------------------------------------------------------------ */
 
-const SUBJECTIVE_ORDER = ["sleep", "stress", "energy", "mood", "stiffness", "postFeel"];
+/**
+ * One sentence per machine. Stalls and regressions first, progress last,
+ * and anything under three sessions says so instead of a verdict.
+ */
+export function StallPanel({ plateaus }: { plateaus: MachinePlateau[] }) {
+  if (!plateaus.length) return <div className="cr-empty">No machine was logged in this range.</div>;
+  const stuck = plateaus.filter((p) => p.status === "plateau" || p.status === "regressing" || (p.stalled && p.status !== "insufficient"));
+  const moving = plateaus.filter((p) => p.status === "progressing" && !p.stalled);
+  const thin = plateaus.filter((p) => p.status === "insufficient");
+  return (
+    <div className="cr-section" style={{ gap: 10 }}>
+      {stuck.length ? (
+        <ul className="cr-stalls" aria-label="Machines that have stalled or slipped">
+          {stuck.map((p) => (
+            <StallRow key={p.machineId} p={p} />
+          ))}
+        </ul>
+      ) : (
+        <div className="cr-empty">Every machine with {RULE_OF_THREE} or more sessions moved in this range. Nothing is stuck.</div>
+      )}
+      {moving.length > 0 && (
+        <div className="cr-card" style={{ padding: "10px 14px" }}>
+          <p className="cr-card__title" style={{ marginBottom: 6 }}>Progressing ({moving.length})</p>
+          <ul className="cr-sentences">
+            {moving.map((p) => (
+              <li key={p.machineId}>{stallSentence(p)}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {thin.length > 0 && (
+        <p className="cr-section__sub">
+          {NOT_ENOUGH_SESSIONS.charAt(0).toUpperCase() + NOT_ENOUGH_SESSIONS.slice(1)} on {thin.map((p) => p.machineName).join(", ")}.
+        </p>
+      )}
+    </div>
+  );
+}
+
+const StallRow = memo(function StallRow({ p }: { p: MachinePlateau }) {
+  const pill = p.status === "plateau" ? "plateau" : p.status === "regressing" ? "regressing" : "stalled";
+  const pillLabel = p.status === "plateau" ? "Same load all range" : p.status === "regressing" ? "Slipping" : `Stalled ${p.sessionsAtCurrentWeight} sessions`;
+  return (
+    <li className="cr-card cr-stall">
+      <div className="cr-stall__text">
+        <span className="cr-stall__sentence">{stallSentence(p)}</span>
+        <span className="cr-stall__meta">
+          <span className={`cr-pill cr-pill--${pill}`}>{pillLabel}</span>
+          {p.firstDate && p.lastDate ? `${p.sessions} sessions · ${shortDate(p.firstDate)} → ${shortDate(p.lastDate)}` : `${p.sessions} sessions`}
+          {p.poorRate !== null && p.poorRate > 0 && ` · ${Math.round(p.poorRate * 100)}% poor quality`}
+        </span>
+      </div>
+      <Sparkline series={p.series} />
+    </li>
+  );
+});
+
+/* ------------------------------------------------------------------ *
+ * 2. Readiness vs output — the Dial × the sets
+ * ------------------------------------------------------------------ */
+
+const SUBJECTIVE_ORDER = ["sleep", "energy", "recovery", "stress", "stiffness", "dose"];
 const RHYTHM_ORDER = ["restGap", "timeOfDay", "dayOfWeek"];
 const CONTEXT_ORDER = ["trainer", "crossTrain"];
 
@@ -162,16 +236,18 @@ const LevelBar = memo(function LevelBar({ level, outcome, maxAbs }: { level: Lev
   const v = level.mean;
   const thin = level.confidence === "insufficient";
   let width = 0;
-  if (v !== null && maxAbs > 0) width = Math.min(100, (Math.abs(v) / maxAbs) * (signedScale ? 50 : 100));
+  if (v !== null && maxAbs > 0 && !thin) width = Math.min(100, (Math.abs(v) / maxAbs) * (signedScale ? 50 : 100));
   const isBad = level.delta !== null && Math.abs(level.delta) >= spec.meaningfulDelta && (spec.higherIsBetter ? level.delta < 0 : level.delta > 0);
   const isGood = level.delta !== null && Math.abs(level.delta) >= spec.meaningfulDelta && (spec.higherIsBetter ? level.delta > 0 : level.delta < 0);
-  const barCls = ["cr-level__bar", isBad && !thin ? "cr-level__bar--poor" : "", isGood && !thin ? "cr-level__bar--good" : "", thin ? "cr-level__bar--thin" : "", v !== null && v < 0 ? "is-neg" : ""]
+  const barCls = ["cr-level__bar", isBad && !thin ? "cr-level__bar--poor" : "", isGood && !thin ? "cr-level__bar--good" : "", v !== null && v < 0 ? "is-neg" : ""]
     .filter(Boolean)
     .join(" ");
-  const label =
-    v === null ? "—" : spec.unit === "pp" ? `${Math.round(v)}%` : spec.unit === "%" ? signed(v, 0, "%") : v.toFixed(1);
+  // The rule of three, on the bar itself: a thin level draws no bar and no
+  // number — a value there would read as a finding.
+  const label = thin ? `needs ${RULE_OF_THREE}` : v === null ? "—" : spec.unit === "pp" ? `${Math.round(v)}%` : signed(v, 0, "%");
+  const title = thin ? `${level.label}: ${level.n} ${level.n === 1 ? "session" : "sessions"} — ${NOT_ENOUGH_SESSIONS}` : `${level.label}: ${label} (${level.n} sessions, ${level.confidence})`;
   return (
-    <div className="cr-level" title={`${level.label}: ${label} (${level.n} sessions, ${level.confidence})`}>
+    <div className="cr-level" title={title}>
       <span className="cr-level__label">
         <span className={`cr-conf cr-conf--${level.confidence}`} aria-hidden="true" />
         <span>{level.label}</span>
@@ -187,7 +263,9 @@ const LevelBar = memo(function LevelBar({ level, outcome, maxAbs }: { level: Lev
 
 const DimensionCard = memo(function DimensionCard({ c }: { c: Correlation }) {
   const spec = OUTCOME_BY_KEY[c.outcome];
-  const maxAbs = Math.max(1e-9, ...c.levels.map((l) => Math.abs(l.mean ?? 0)));
+  const dim = DIMENSION_BY_KEY[c.dimension];
+  const solid = c.levels.filter((l) => l.confidence !== "insufficient");
+  const maxAbs = Math.max(1e-9, ...solid.map((l) => Math.abs(l.mean ?? 0)));
   return (
     <div className="cr-card cr-dim">
       <div className="cr-dim__head">
@@ -200,12 +278,17 @@ const DimensionCard = memo(function DimensionCard({ c }: { c: Correlation }) {
         ))}
       </div>
       <div className="cr-dim__foot">
-        {c.overallMean !== null && (
-          <>
-            Overall {spec.unit === "pp" ? `${Math.round(c.overallMean)}%` : spec.unit === "%" ? signed(c.overallMean, 0, "%") : c.overallMean.toFixed(1)}
-            {c.spread !== null && ` · spread ${spec.unit === "pp" ? `${Math.round(c.spread)} pts` : spec.unit === "%" ? `${Math.round(c.spread)}%` : c.spread.toFixed(1)}`}
-          </>
+        {solid.length === 0 ? (
+          <>No level has {RULE_OF_THREE} sessions yet.</>
+        ) : (
+          c.overallMean !== null && (
+            <>
+              Overall {spec.unit === "pp" ? `${Math.round(c.overallMean)}%` : signed(c.overallMean, 0, "%")}
+              {c.spread !== null && ` · spread ${spec.unit === "pp" ? `${Math.round(c.spread)} pts` : `${Math.round(c.spread)}%`}`}
+            </>
+          )
         )}
+        {dim?.scale && <div className="cr-dim__key">{dialLevelKey(dim.scale)}</div>}
       </div>
     </div>
   );
@@ -215,7 +298,7 @@ export function CorrelationMatrix({ correlations }: { correlations: Correlation[
   const available = useMemo(() => OUTCOMES.filter((o) => correlations.some((c) => c.outcome === o.key)), [correlations]);
   const [outcome, setOutcome] = useState<OutcomeKey>(available[0]?.key ?? "poorRate");
   const active = available.some((o) => o.key === outcome) ? outcome : available[0]?.key;
-  if (!available.length) return <div className="cr-empty">No session has both an assessment and rated sets yet — the matrix fills in as briefings are completed.</div>;
+  if (!available.length) return <div className="cr-empty">No session has both a Dial reading and rated sets yet — this fills in as briefings are tapped. {NOT_ENOUGH_SESSIONS}.</div>;
 
   const rows = correlations.filter((c) => c.outcome === active);
   const order = [...SUBJECTIVE_ORDER, ...RHYTHM_ORDER, ...CONTEXT_ORDER];
@@ -232,7 +315,7 @@ export function CorrelationMatrix({ correlations }: { correlations: Correlation[
         ))}
       </div>
       {[
-        { title: "How the client arrived", items: group(SUBJECTIVE_ORDER) },
+        { title: "How the client arrived, on the Dial", items: group(SUBJECTIVE_ORDER) },
         { title: "Rhythm", items: group(RHYTHM_ORDER) },
         { title: "Context", items: group(CONTEXT_ORDER) },
       ]
@@ -251,8 +334,8 @@ export function CorrelationMatrix({ correlations }: { correlations: Correlation[
         ))}
       <div className="cr-legend">
         <span className="cr-legend__item"><span className="cr-conf cr-conf--solid" /> 6+ sessions</span>
-        <span className="cr-legend__item"><span className="cr-conf cr-conf--early" /> 3–5 sessions (early)</span>
-        <span className="cr-legend__item"><span className="cr-conf" /> under 3 (shown, not trusted)</span>
+        <span className="cr-legend__item"><span className="cr-conf cr-conf--early" /> 3–5 sessions (early signal)</span>
+        <span className="cr-legend__item"><span className="cr-conf" /> under {RULE_OF_THREE} — {NOT_ENOUGH_SESSIONS}</span>
         <span className="cr-legend__item"><span className="cr-legend__swatch cr-legend__swatch--poor" /> worse than the client's own average</span>
         <span className="cr-legend__item"><span className="cr-legend__swatch cr-legend__swatch--max" /> better</span>
       </div>
@@ -261,7 +344,83 @@ export function CorrelationMatrix({ correlations }: { correlations: Correlation[
 }
 
 /* ------------------------------------------------------------------ *
- * Form-breakdown heatmap
+ * 3. Attendance rhythm
+ * ------------------------------------------------------------------ */
+
+export function AttendancePanel({ rhythm }: { rhythm: AttendanceRhythm }) {
+  if (rhythm.status !== "ok") return <div className="cr-empty">{rhythm.sentence}</div>;
+  return (
+    <div className={`cr-card cr-rhythm ${rhythm.belowUsual ? "cr-rhythm--below" : ""}`}>
+      <p className="cr-rhythm__sentence">{rhythm.sentence}</p>
+      <p className="cr-card__sub" style={{ margin: 0 }}>
+        {rhythm.sessions} sessions in range
+        {rhythm.belowUsual === null ? " · too little history to say what \"usual\" is (needs eight weeks)" : rhythm.belowUsual ? "" : " · the last four weeks are on the usual pace"}
+      </p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * 4. Pain & incidents + the Pulse trend
+ * ------------------------------------------------------------------ */
+
+export function PainPulsePanel({ pain, pulse }: { pain: PainTimeline; pulse: PulseTrend }) {
+  return (
+    <div className="cr-painpulse">
+      <div className="cr-card">
+        <p className="cr-card__title">Pain &amp; incidents</p>
+        <p className="cr-card__sub">
+          Every region below the centre of its Dial, every symptom flagged during a set, every incident. Oldest first.
+          {pain.sessions > 0 && ` ${pain.quietSessions} of ${pain.sessions} sessions raised nothing.`}
+        </p>
+        {pain.events.length === 0 ? (
+          <div className="cr-empty">{pain.sessions === 0 ? "No sessions in this range." : "Nothing hurt, nothing was flagged and no incident was filed in this range."}</div>
+        ) : (
+          <ol className="cr-timeline" aria-label="Pain and incident timeline">
+            {pain.events.map((e, i) => (
+              <li key={`${e.sessionId}:${e.kind}:${i}`} className={`cr-timeline__row cr-timeline__row--${e.kind}${e.dial === -2 ? " is-pain" : ""}`}>
+                <span className="cr-timeline__date">{shortDate(e.date)}</span>
+                <span className="cr-timeline__dot" aria-hidden="true" />
+                <span className="cr-timeline__text">{e.text}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+      <div className="cr-card">
+        <p className="cr-card__title">Pulse trend</p>
+        <p className="cr-card__sub">Each Pulse area, first saved reading → latest. The client's own account beside the sets.</p>
+        {pulse.status === "unavailable" ? (
+          <div className="cr-empty">Pulse history unavailable — the read did not complete. The sets above stand on their own.</div>
+        ) : pulse.status === "none" ? (
+          <div className="cr-empty">No Pulse saved for this client yet.</div>
+        ) : (
+          <>
+            <ul className="cr-pulse" aria-label="Pulse trend by area">
+              {pulse.areas.map((a) => (
+                <li key={a.key} className={`cr-pulse__row ${a.latest ? `cr-pulse__row--${a.latest.rag}` : ""}`}>
+                  <span className="cr-pulse__dot" aria-hidden="true" />
+                  <span className="cr-pulse__text">
+                    {/* The sentence always opens with the area's title. */}
+                    <b>{a.title}</b>
+                    {a.sentence.slice(a.title.length)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="cr-card__sub" style={{ margin: "8px 0 0" }}>
+              {pulse.reports} saved {pulse.reports === 1 ? "Pulse" : "Pulses"}
+              {!pulse.complete && " · older Pulses exist that this read did not reach"}
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * 6. Form-breakdown heatmap
  * ------------------------------------------------------------------ */
 
 /** Sequential plum ramp — one hue, light → dark, five steps + empty. */
@@ -271,7 +430,7 @@ function heatStyle(rate: number | null, maxRate: number): { background: string; 
   const top = Math.max(0.25, maxRate);
   const t = Math.min(1, rate / top); // 0..1
   const alpha = 0.18 + t * 0.82;
-  return { background: `color-mix(in srgb, var(--cr-poor) ${Math.round(alpha * 100)}%, var(--cr-surface))`, color: alpha > 0.55 ? "#fff" : "var(--cr-ink)", ink: alpha > 0.55 };
+  return { background: `color-mix(in srgb, var(--cr-poor) ${Math.round(alpha * 100)}%, var(--cr-surface))`, color: alpha > 0.55 ? "var(--cr-on-dark)" : "var(--cr-ink)", ink: alpha > 0.55 };
 }
 
 export function FormHeatmapPanel({ heatmap, period }: { heatmap: Heatmap; period: "week" | "month" }) {
@@ -383,89 +542,18 @@ const HeatRowView = memo(function HeatRowView({ row, maxRate, group = false }: {
 });
 
 /* ------------------------------------------------------------------ *
- * Plateaus
- * ------------------------------------------------------------------ */
-
-export function PlateauPanel({ plateaus }: { plateaus: MachinePlateau[] }) {
-  const flagged = plateaus.filter((p) => p.status === "plateau" || p.status === "regressing" || p.stalled);
-  const moving = plateaus.filter((p) => p.status === "progressing" && !p.stalled);
-  const thin = plateaus.filter((p) => p.status === "insufficient");
-  if (!plateaus.length) return <div className="cr-empty">No machine was logged in this range.</div>;
-  return (
-    <div className="cr-section" style={{ gap: 10 }}>
-      {flagged.length ? (
-        <div className="cr-plateaus">
-          {flagged.map((p) => <PlateauCard key={p.machineId} p={p} />)}
-        </div>
-      ) : (
-        <div className="cr-empty">Every machine with four or more sessions moved in this range. Nothing is stuck.</div>
-      )}
-      {moving.length > 0 && (
-        <div className="cr-card" style={{ padding: "10px 14px" }}>
-          <p className="cr-card__title" style={{ marginBottom: 6 }}>Progressing ({moving.length})</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {moving.map((p) => (
-              <span key={p.machineId} className="cr-pill cr-pill--progressing" title={`${p.firstWeight} → ${p.lastWeight} lb over ${p.sessions} sessions`}>
-                {p.machineName} {p.weightChangePct !== null && p.weightChangePct !== 0 ? signed(p.weightChangePct, 0, "%") : "+reps"}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-      {thin.length > 0 && (
-        <p className="cr-section__sub">
-          Not enough sessions to judge: {thin.map((p) => p.machineName).join(", ")}.
-        </p>
-      )}
-    </div>
-  );
-}
-
-const PlateauCard = memo(function PlateauCard({ p }: { p: MachinePlateau }) {
-  const pill = p.status === "plateau" ? "plateau" : p.status === "regressing" ? "regressing" : "stalled";
-  const pillLabel = p.status === "plateau" ? "0% over range" : p.status === "regressing" ? "Regressing" : `Stalled ${p.sessionsAtCurrentWeight} sessions`;
-  const outcomeUnit = p.isTSC ? "s hold" : " reps";
-  return (
-    <div className="cr-card cr-plateau">
-      <div>
-        <div className="cr-plateau__name">
-          {p.machineName}
-          <span className={`cr-pill cr-pill--${pill}`}>{pillLabel}</span>
-        </div>
-        <div className="cr-plateau__meta">
-          {p.lastWeight !== null && (
-            <>
-              <b>{p.lastWeight} lb</b>
-              {p.firstWeight !== null && p.firstWeight !== p.lastWeight && <> (from {p.firstWeight})</>}
-              {" · "}
-            </>
-          )}
-          {p.repsAtCurrentFirst !== null && p.repsAtCurrentLast !== null && (
-            <>
-              {p.repsAtCurrentFirst === p.repsAtCurrentLast ? `${p.repsAtCurrentLast}${outcomeUnit} every time` : `${p.repsAtCurrentFirst} → ${p.repsAtCurrentLast}${outcomeUnit}`}
-              {" · "}
-            </>
-          )}
-          {p.sessions} sessions{p.firstDate && p.lastDate ? ` · ${shortDate(p.firstDate)} → ${shortDateYear(p.lastDate)}` : ""}
-          {p.poorRate !== null && p.poorRate > 0 && ` · ${Math.round(p.poorRate * 100)}% poor quality`}
-        </div>
-      </div>
-      <Sparkline series={p.series} />
-    </div>
-  );
-});
-
-/* ------------------------------------------------------------------ *
  * Methodology footnote
  * ------------------------------------------------------------------ */
 
 export function MethodNote() {
   return (
     <p className="cr-method">
-      <b>How to read this.</b> Rates (max strength, poor quality) are shares of the sets that carried a quality rating. Tonnage, reps and time
-      under tension are compared as an <b>index against the client's own trailing baseline</b> (the five sessions before each one), so a session
-      counts as strong or weak relative to where the client was — a rising trend does not masquerade as a correlation. Every level shows its
-      session count; anything under three is displayed but never turned into a finding. Time under tension only counts sets that recorded it.
+      <b>How to read this.</b> Rates (max strength, poor quality) are shares of the sets that carried a quality rating. Reps and time under tension
+      are compared as an <b>index against the client's own trailing baseline</b> (the five sessions before each one), so a session counts as
+      strong or weak relative to where the client was — a rising trend does not masquerade as a pattern. Sleep, energy, recovery, stress and how
+      the session landed are read off the Dial, grouped below the centre · as usual · above it; sessions from before the Dial are converted onto
+      the same axis. Every level shows its session count and <b>nothing under {RULE_OF_THREE} sessions is a finding</b>. Time under tension only
+      counts sets that recorded it.
     </p>
   );
 }

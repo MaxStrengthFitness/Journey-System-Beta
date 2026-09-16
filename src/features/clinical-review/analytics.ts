@@ -1,29 +1,39 @@
 /**
  * ANALYTICS — pure functions over SessionFact / SetFact.
  *
- * Design rules that keep these honest for a trainer reading them on a gym
- * floor:
+ * Design rules that keep these honest for a trainer reading them off the
+ * floor, in prep time or when a client stalls:
  *
- *  1. OUTCOMES ARE DETRENDED WHERE THE DATA TRENDS. A client's tonnage rises
- *     as they progress, so "poor sleep → lower tonnage" would otherwise just
- *     mean "the poor-sleep sessions happened early". Tonnage / reps / TUT are
- *     therefore compared as an INDEX against the client's own trailing
- *     baseline (mean of the previous N sessions). Rates (poor / max share) are
- *     already stationary and are used as-is.
+ *  1. OUTCOMES ARE DETRENDED WHERE THE DATA TRENDS. A client's reps and time
+ *     under tension rise as they progress, so "off-day sleep → fewer reps"
+ *     would otherwise just mean "the off days happened early". Reps / TUT
+ *     are therefore compared as an INDEX against the client's own trailing
+ *     baseline (mean of the previous N sessions). Rates (poor / max share)
+ *     are already stationary and are used as-is. (Tonnage is still indexed
+ *     on the fact row but retired from every panel — it rises with
+ *     attendance, not strength.)
  *
- *  2. EVERY NUMBER CARRIES ITS n. A level with two sessions is shown but
- *     labelled "insufficient"; three to five is "early"; six or more is
- *     "solid". Insights are only generated from early/solid levels and only
- *     when the effect clears a size threshold (see insights.ts).
+ *  2. THE RULE OF THREE. Every number carries its n. A level with fewer than
+ *     `RULE_OF_THREE` sessions is "insufficient" and is never a finding;
+ *     three to five is "early"; six or more is "solid". Insights come only
+ *     from early/solid levels and only when the effect clears a size
+ *     threshold (see insights.ts).
  *
- *  3. NOTHING HERE FABRICATES DATA. If time under tension was never captured
+ *  3. THE DIAL IS THE AXIS. Sleep, energy, recovery, stress and the dose are
+ *     read as −2 … +2 and grouped below the centre · centre · above the
+ *     centre. Legacy sessions were converted onto the same axis in facts.ts.
+ *
+ *  4. NOTHING HERE FABRICATES DATA. If time under tension was never captured
  *     the TUT panel says so (see `Summary.tutCoverage`) instead of estimating.
  */
 
-import type { RepQuality } from "../../types";
+import type { DialValue, RepQuality } from "../../types";
+import { DOSE_SCALE, ENERGY_SCALE, RECOVERY_SCALE, REGION_SCALE, SLEEP_SCALE, STRESS_SCALE, dialWord, type DialScale } from "../rating/dial";
 import type {
+  AttendanceRhythm,
   Confidence,
   Correlation,
+  DialLevel,
   DimensionKey,
   HeatCell,
   HeatRow,
@@ -31,13 +41,16 @@ import type {
   LevelStat,
   MachinePlateau,
   OutcomeKey,
+  PainEvent,
+  PainTimeline,
   PlateauStatus,
+  ReportRange,
   SessionFact,
   SetFact,
   Summary,
   WeekBucket,
 } from "./types";
-import { ENERGY_ORDER, MOOD_ORDER, POST_FEEL_ORDER, SLEEP_ORDER } from "./types";
+import { RULE_OF_THREE } from "./types";
 import { dayMs, daysBetween } from "./facts";
 
 /* ------------------------------------------------------------------ *
@@ -55,8 +68,21 @@ export const median = (xs: number[]): number | null => {
 
 export function confidenceFor(n: number): Confidence {
   if (n >= 6) return "solid";
-  if (n >= 3) return "early";
+  if (n >= RULE_OF_THREE) return "early";
   return "insufficient";
+}
+
+/** The rule of three, as a predicate: may this sample be spoken about at all? */
+export const meetsRuleOfThree = (n: number): boolean => n >= RULE_OF_THREE;
+
+/** What the screen says under the rule. */
+export const NOT_ENOUGH_SESSIONS = `not enough sessions yet (needs ${RULE_OF_THREE})`;
+
+/** Add whole days to an ISO day. */
+export function addDays(iso: string, days: number): string {
+  const d = new Date(dayMs(iso));
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -80,6 +106,22 @@ export function weekStartOf(iso: string): string {
 }
 export function monthKeyOf(iso: string): string {
   return iso.slice(0, 7);
+}
+
+/* ------------------------------------------------------------------ *
+ * The Dial, read
+ * ------------------------------------------------------------------ */
+
+/** Below the centre (−2, −1) · the centre (0) · above it (+1, +2). */
+export function dialLevel(v: DialValue | null | undefined): DialLevel | null {
+  if (v === null || v === undefined) return null;
+  return v < 0 ? "below" : v > 0 ? "above" : "centre";
+}
+
+/** True when the briefing or the post-session screen asked anything at all. */
+export function anyDialAsked(f: SessionFact): boolean {
+  const r = f.readiness;
+  return r.sleep !== null || r.energy !== null || r.recovery !== null || r.stress !== null || f.regionDials.length > 0;
 }
 
 /* ------------------------------------------------------------------ *
@@ -109,7 +151,7 @@ export function summarize(facts: SessionFact[]): Summary {
     setsMax += f.setsMax;
     setsDone += f.setsDone;
     setsPoor += f.setsPoor;
-    if (f.sleep || f.stress || f.energy || f.mood || f.stiffRegions.length || f.primeRegions.length) withCheckIn += 1;
+    if (anyDialAsked(f)) withCheckIn += 1;
     if (f.restDays !== null && f.restDays > 0) rests.push(f.restDays);
   }
   const first = facts[0]?.date ?? null;
@@ -193,6 +235,8 @@ export interface DimensionSpec {
   order: string[];
   labels: Record<string, string>;
   levelOf: (f: SessionFact) => string | null;
+  /** The Dial scale behind a Dial dimension — its words explain the levels. */
+  scale?: DialScale;
 }
 
 export const REST_BUCKETS = ["1", "2", "3-4", "5-7", "8-14", "15+"] as const;
@@ -217,50 +261,53 @@ export function timeBucket(hour: number | null): string | null {
 
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+export const DIAL_LEVELS: readonly DialLevel[] = ["below", "centre", "above"] as const;
+
+/**
+ * The three level labels for a readiness Dial, in words. "Off days" is the
+ * two positions left of the centre — for sleep that is "Rough night" and "A
+ * bit short" — and the card's footnote quotes the scale's own words so a
+ * trainer knows what "off" covered.
+ */
+export const READINESS_LEVEL_LABELS: Record<DialLevel, string> = { below: "Off days", centre: "As usual", above: "Up days" };
+export const DOSE_LEVEL_LABELS: Record<DialLevel, string> = { below: "Wiped out / drained", centre: "Just right", above: "Had more / barely worked" };
+
+/** "off = Rough night / A bit short · up = Slept well / Best in a while". */
+export function dialLevelKey(scale: DialScale): string {
+  const w = scale.words;
+  const below = `${w[0]} / ${w[1]}`;
+  const above = `${w[3]} / ${w[4]}`;
+  return scale.id === "dose" ? `wiped out / drained = ${below} · had more = ${above}` : `off = ${below} · up = ${above}`;
+}
+
+function dialDimension(key: DimensionKey, label: string, scale: DialScale, pick: (f: SessionFact) => DialValue | null): DimensionSpec {
+  return {
+    key,
+    label,
+    order: [...DIAL_LEVELS],
+    labels: scale.id === "dose" ? DOSE_LEVEL_LABELS : READINESS_LEVEL_LABELS,
+    levelOf: (f) => dialLevel(pick(f)),
+    scale,
+  };
+}
+
 export const DIMENSIONS: DimensionSpec[] = [
-  {
-    key: "sleep",
-    label: "Sleep",
-    order: SLEEP_ORDER,
-    labels: { poor: "Poor", average: "Average", optimal: "Optimal" },
-    levelOf: (f) => f.sleep,
-  },
-  {
-    key: "stress",
-    label: "Stress",
-    order: ["low", "moderate", "high"],
-    labels: { low: "Low (1–2)", moderate: "Moderate (3)", high: "High (4–5)" },
-    levelOf: (f) => (f.stress === null ? null : f.stress <= 2 ? "low" : f.stress === 3 ? "moderate" : "high"),
-  },
-  {
-    key: "energy",
-    label: "Energy",
-    order: ENERGY_ORDER,
-    labels: { low: "Low", normal: "Normal", high: "High" },
-    levelOf: (f) => f.energy,
-  },
-  {
-    key: "mood",
-    label: "Mood",
-    order: MOOD_ORDER,
-    labels: { low: "Low", neutral: "Neutral", good: "Good" },
-    levelOf: (f) => f.mood,
-  },
+  dialDimension("sleep", "Sleep", SLEEP_SCALE, (f) => f.readiness.sleep),
+  dialDimension("energy", "Energy", ENERGY_SCALE, (f) => f.readiness.energy),
+  dialDimension("recovery", "Recovery since last time", RECOVERY_SCALE, (f) => f.readiness.recovery),
+  dialDimension("stress", "Stress", STRESS_SCALE, (f) => f.readiness.stress),
   {
     key: "stiffness",
-    label: "Body state",
-    order: ["prime", "none", "stiff"],
-    labels: { prime: "Felt prime", none: "Nothing flagged", stiff: "Stiff somewhere" },
-    levelOf: (f) =>
-      f.stiffRegions.length ? "stiff" : f.primeRegions.length ? "prime" : f.sleep || f.stress || f.energy || f.mood ? "none" : null,
+    label: "Body regions",
+    order: ["below", "none", "above"],
+    labels: { below: "Something hurt or was stiff", none: "Nothing flagged", above: "A region felt better" },
+    // "Nothing flagged" only counts when the trainer asked something that
+    // session; a session with no check-in at all is not evidence of a
+    // pain-free client.
+    levelOf: (f) => (f.stiffRegions.length ? "below" : f.primeRegions.length ? "above" : anyDialAsked(f) ? "none" : null),
+    scale: REGION_SCALE,
   },
-  {
-    key: "postFeel",
-    label: "Felt after",
-    order: POST_FEEL_ORDER,
-    labels: { "Wiped Out": "Wiped out", Good: "Good", Energized: "Energized" },
-    levelOf: (f) => f.postFeel,
-  },
+  dialDimension("dose", "How the session landed", DOSE_SCALE, (f) => f.dose),
   {
     key: "restGap",
     label: "Days since last session",
@@ -314,6 +361,12 @@ export interface OutcomeSpec {
   valueOf: (f: IndexedFact) => number | null;
 }
 
+/**
+ * The outcomes a session is measured by. Weekly tonnage was retired in the
+ * reporting round (`tonnageIndex` is still computed by `withBaselines` for
+ * the baseline tests; nothing shows it) and RPE is a rating, never a number
+ * on screen.
+ */
 export const OUTCOMES: OutcomeSpec[] = [
   {
     key: "poorRate",
@@ -332,14 +385,6 @@ export const OUTCOMES: OutcomeSpec[] = [
     valueOf: (f) => (f.setsRated ? (f.setsMax / f.setsRated) * 100 : null),
   },
   {
-    key: "tonnageIndex",
-    label: "Tonnage vs baseline",
-    unit: "%",
-    higherIsBetter: true,
-    meaningfulDelta: 5,
-    valueOf: (f) => f.tonnageIndex,
-  },
-  {
     key: "repsIndex",
     label: "Total reps vs baseline",
     unit: "%",
@@ -354,14 +399,6 @@ export const OUTCOMES: OutcomeSpec[] = [
     higherIsBetter: true,
     meaningfulDelta: 5,
     valueOf: (f) => f.tutIndex,
-  },
-  {
-    key: "avgRpe",
-    label: "Average RPE",
-    unit: "",
-    higherIsBetter: false,
-    meaningfulDelta: 0.8,
-    valueOf: (f) => f.avgRpe,
   },
 ];
 
@@ -424,7 +461,7 @@ export function correlationMatrix(facts: IndexedFact[]): Correlation[] {
   for (const d of DIMENSIONS) {
     for (const o of OUTCOMES) {
       const c = correlate(facts, d, o);
-      if (c.levels.length >= 2 && c.n >= 3) out.push(c);
+      if (c.levels.length >= 2 && meetsRuleOfThree(c.n)) out.push(c);
     }
   }
   return out;
@@ -542,6 +579,129 @@ export function monthlyTrend(facts: SessionFact[]): WeekBucket[] {
 }
 
 /* ------------------------------------------------------------------ *
+ * Attendance rhythm (reporting round)
+ * ------------------------------------------------------------------ */
+
+/** Sessions per week, in a trainer's words. */
+export function perWeekWords(perWeek: number): string {
+  if (perWeek >= 3.5) return "Four or more times a week";
+  if (perWeek >= 2.5) return "Three times a week";
+  if (perWeek >= 1.5) return "Twice a week";
+  if (perWeek >= 0.75) return "Once a week";
+  if (perWeek >= 0.4) return "Every other week";
+  return "Less than every other week";
+}
+
+/** Weeks of history that make "the client's usual" worth comparing against. */
+export const USUAL_MIN_WEEKS = 8;
+/** The last four weeks count as "below usual" under this share of the client's own pace. */
+export const BELOW_USUAL_SHARE = 0.75;
+
+/**
+ * Sessions per week over the range, the longest gap, the current gap, and
+ * whether the last four weeks ran below the client's own average. Pure;
+ * `facts` are the sessions inside the range, oldest → newest, and the span
+ * runs from the first of them to the range's end (so a client who is
+ * drifting away is measured against the day the report was asked for, not
+ * against her last visit).
+ */
+export function attendanceRhythm(facts: SessionFact[], range: ReportRange): AttendanceRhythm {
+  const sessions = facts.length;
+  const insufficient: AttendanceRhythm = {
+    status: "insufficient",
+    sessions,
+    perWeek: null,
+    perWeekWords: null,
+    longestGap: null,
+    currentGapDays: null,
+    sessionsLast2Weeks: null,
+    sessionsLast4Weeks: null,
+    belowUsual: null,
+    sentence: `${sessions} ${sessions === 1 ? "session" : "sessions"} in the range — ${NOT_ENOUGH_SESSIONS}.`,
+  };
+  if (!meetsRuleOfThree(sessions)) return insufficient;
+
+  const sorted = [...facts].sort((a, b) => a.date.localeCompare(b.date));
+  const first = sorted[0].date;
+  const last = sorted[sorted.length - 1].date;
+  const to = range.to >= last ? range.to : last;
+  const spanDays = Math.max(1, daysBetween(first, to) + 1);
+  const perWeek = sessions / (spanDays / 7);
+
+  let longestGap: AttendanceRhythm["longestGap"] = null;
+  for (let i = 1; i < sorted.length; i++) {
+    const gap = daysBetween(sorted[i - 1].date, sorted[i].date);
+    if (!longestGap || gap > longestGap.days) longestGap = { days: gap, from: sorted[i - 1].date, to: sorted[i].date };
+  }
+  const currentGapDays = daysBetween(last, to);
+  const twoWeeksAgo = addDays(to, -14);
+  const fourWeeksAgo = addDays(to, -28);
+  const sessionsLast2Weeks = sorted.filter((f) => f.date > twoWeeksAgo).length;
+  const sessionsLast4Weeks = sorted.filter((f) => f.date > fourWeeksAgo).length;
+  const hasUsual = spanDays >= USUAL_MIN_WEEKS * 7;
+  const belowUsual = hasUsual ? sessionsLast4Weeks / 4 < perWeek * BELOW_USUAL_SHARE : null;
+
+  const words = perWeekWords(perWeek);
+  const parts: string[] = [`${words} on average`];
+  if (longestGap && longestGap.days >= 10) parts.push(`longest gap ${longestGap.days} days (${shortDate(longestGap.from)}–${shortDate(longestGap.to)})`);
+  parts.push(`${sessionsLast2Weeks} ${sessionsLast2Weeks === 1 ? "session" : "sessions"} in the last 2 weeks${belowUsual ? " — below the usual pace" : ""}`);
+  if (currentGapDays >= 10) parts.push(`last session ${currentGapDays} days ago`);
+
+  return {
+    status: "ok",
+    sessions,
+    perWeek,
+    perWeekWords: words,
+    longestGap,
+    currentGapDays,
+    sessionsLast2Weeks,
+    sessionsLast4Weeks,
+    belowUsual,
+    sentence: parts.join(" · "),
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * Pain / incident timeline (reporting round)
+ * ------------------------------------------------------------------ */
+
+/**
+ * One line per thing that hurt: a region below the centre on the Dial, a
+ * symptom flagged during a set, an incident on the floor. Oldest → newest,
+ * so a trainer reads an injury coming and going. No minimum sample — a
+ * single incident is a fact, not a finding.
+ */
+export function painTimeline(facts: SessionFact[], machineName: (id: string) => string = (id) => id): PainTimeline {
+  const events: PainEvent[] = [];
+  let quiet = 0;
+  for (const f of [...facts].sort((a, b) => a.date.localeCompare(b.date))) {
+    let raised = false;
+    const seen = new Set<string>();
+    for (const r of f.regionDials) {
+      if (r.dial >= 0) continue;
+      raised = true;
+      seen.add(r.region);
+      events.push({ date: f.date, sessionId: f.id, kind: "region", text: `${r.region} · ${dialWord(REGION_SCALE, r.dial)}`, dial: r.dial });
+    }
+    for (const region of f.symptomRegions) {
+      if (seen.has(region)) continue;
+      raised = true;
+      events.push({ date: f.date, sessionId: f.id, kind: "symptom", text: `${region} · flagged during a set` });
+    }
+    if (f.incidentCount > 0) {
+      raised = true;
+      if (f.incidentMachineIds.length) {
+        for (const m of f.incidentMachineIds) events.push({ date: f.date, sessionId: f.id, kind: "incident", text: `Incident on ${machineName(m)}` });
+      } else {
+        events.push({ date: f.date, sessionId: f.id, kind: "incident", text: f.incidentCount === 1 ? "Incident on the floor" : `${f.incidentCount} incidents on the floor` });
+      }
+    }
+    if (!raised) quiet += 1;
+  }
+  return { events, quietSessions: quiet, sessions: facts.length };
+}
+
+/* ------------------------------------------------------------------ *
  * Form-breakdown heatmap
  * ------------------------------------------------------------------ */
 
@@ -627,7 +787,7 @@ export function formHeatmap(sets: SetFact[], options: HeatmapOptions): Heatmap {
 export interface PlateauOptions {
   machineName: (id: string) => string;
   machineGroup: (id: string) => string;
-  /** Sessions on a machine needed before a verdict (default 4). */
+  /** Sessions on a machine needed before a verdict (default `RULE_OF_THREE`). */
   minSessions?: number;
   /** Consecutive same-load sessions with no outcome gain that count as a stall (default 5). */
   stallSessions?: number;
@@ -646,7 +806,7 @@ export interface PlateauOptions {
  * gain that counts as progress is +2 reps or +10 seconds.
  */
 export function detectPlateaus(sets: SetFact[], options: PlateauOptions): MachinePlateau[] {
-  const minSessions = options.minSessions ?? 4;
+  const minSessions = options.minSessions ?? RULE_OF_THREE;
   const stallSessions = options.stallSessions ?? 5;
   const outcomeOf = (s: SetFact): number | null => (s.isTSC ? s.seconds : s.reps);
   const gainFor = (s: SetFact): number => (s.isTSC ? 10 : 2);

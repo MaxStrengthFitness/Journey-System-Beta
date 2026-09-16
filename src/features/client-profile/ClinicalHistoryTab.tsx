@@ -108,7 +108,7 @@ export function ClinicalHistoryTab({
   onViewChange,
   disabled = false,
 }: ClinicalHistoryTabProps) {
-  // Trends is mounted on first visit and kept. See decision 4.
+  // The Deep Dive (view id "trends") is mounted on first visit and kept. See decision 4.
   const [trendsSeen, setTrendsSeen] = useState(view === "trends");
   useEffect(() => {
     if (view === "trends") setTrendsSeen(true);
@@ -176,7 +176,8 @@ export function ClinicalHistoryTab({
     () => [
       { id: "calendar", label: "Calendar", meta: "every month" },
       { id: "sessions", label: "Sessions", meta: "with detail" },
-      { id: "trends", label: "Trends", meta: trendsSeen ? "generated" : "on request" },
+      // The Kaizen Deep Dive (reporting round). The view id stays "trends".
+      { id: "trends", label: "Deep Dive", meta: trendsSeen ? "built" : "on request" },
       {
         id: "reports",
         label: "Reports",

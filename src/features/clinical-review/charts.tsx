@@ -1,19 +1,14 @@
 /**
- * Charts — three small multiples that share one x-axis (training weeks).
- *
- * Deliberately NOT one dual-axis chart: tonnage (thousands of lb) and time
- * under tension (seconds) on two y-scales would invent a correlation that is
- * not in the data. Side by side on the same weeks, the eye still reads them
- * together and each keeps an honest axis.
+ * Charts — the time-under-tension line (per week or month) and the machine
+ * sparkline. The weekly tonnage column chart and the rep-quality mix were
+ * retired in the reporting round: tonnage rises with attendance, not
+ * strength, and form lives in the heat map.
  */
-import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { WeekBucket } from "./types";
-import { compact, formatMinutes } from "./analytics";
+import { formatMinutes } from "./analytics";
 
 const BLUE = "var(--cr-live)";
-const ORANGE = "var(--cr-hero)";
-const SLATE = "var(--cr-done)";
-const PLUM = "var(--cr-poor)";
 const GRID = "var(--cr-border)";
 const MUTED = "var(--cr-ink-muted)";
 
@@ -40,36 +35,6 @@ function WeekTooltip({ active, payload, rows, period = "week" }: { active?: bool
           <b>{r.value}</b>
         </div>
       ))}
-    </div>
-  );
-}
-
-/** Weekly tonnage, columns. Single series → no legend; the title names it. */
-export function TonnageChart({ weeks, period = "week" }: { weeks: WeekBucket[]; period?: "week" | "month" }) {
-  return (
-    <div className="cr-chart">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={weeks} margin={{ top: 8, right: 8, bottom: 0, left: -12 }} barCategoryGap="30%">
-          <CartesianGrid vertical={false} stroke={GRID} />
-          <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
-          <YAxis {...axisProps} tickFormatter={(v: number) => compact(v)} width={44} />
-          <Tooltip
-            cursor={{ fill: "var(--cr-surface-2)" }}
-            content={(p) => (
-              <WeekTooltip
-                {...(p as { active?: boolean; payload?: TipPayload })}
-                period={period}
-                rows={(w) => [
-                  { key: "t", label: "Tonnage", value: `${w.tonnage.toLocaleString()} lb` },
-                  { key: "s", label: "Sessions", value: String(w.sessions) },
-                  { key: "r", label: "Reps", value: w.reps.toLocaleString() },
-                ]}
-              />
-            )}
-          />
-          <Bar dataKey="tonnage" fill={BLUE} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
-        </BarChart>
-      </ResponsiveContainer>
     </div>
   );
 }
@@ -109,52 +74,6 @@ export function TutChart({ weeks, period = "week" }: { weeks: WeekBucket[]; peri
           />
         </LineChart>
       </ResponsiveContainer>
-    </div>
-  );
-}
-
-/** Weekly rep-quality mix, stacked: max (orange) · completed (slate) · poor (plum). */
-export function QualityMixChart({ weeks, period = "week" }: { weeks: WeekBucket[]; period?: "week" | "month" }) {
-  const data = weeks.map((w) => ({
-    ...w,
-    max: w.setsRated ? (w.setsMax / w.setsRated) * 100 : 0,
-    done: w.setsRated ? (w.setsDone / w.setsRated) * 100 : 0,
-    poor: w.setsRated ? (w.setsPoor / w.setsRated) * 100 : 0,
-  }));
-  return (
-    <div>
-      <div className="cr-chart">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: -12 }} barCategoryGap="30%" stackOffset="none">
-            <CartesianGrid vertical={false} stroke={GRID} />
-            <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
-            <YAxis {...axisProps} tickFormatter={(v: number) => `${v}%`} domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} width={44} />
-            <Tooltip
-              cursor={{ fill: "var(--cr-surface-2)" }}
-              content={(p) => (
-                <WeekTooltip
-                  {...(p as { active?: boolean; payload?: TipPayload })}
-                  period={period}
-                  rows={(w) => [
-                    { key: "m", label: "Max strength", value: `${w.setsMax} sets`, color: ORANGE },
-                    { key: "d", label: "Completed", value: `${w.setsDone} sets`, color: SLATE },
-                    { key: "p", label: "Poor quality", value: `${w.setsPoor} sets`, color: PLUM },
-                  ]}
-                />
-              )}
-            />
-            {/* 2px surface gap between segments via stroke in the surface colour. */}
-            <Bar dataKey="max" stackId="q" fill={ORANGE} stroke="var(--cr-surface)" strokeWidth={1} maxBarSize={24} isAnimationActive={false} />
-            <Bar dataKey="done" stackId="q" fill={SLATE} stroke="var(--cr-surface)" strokeWidth={1} maxBarSize={24} isAnimationActive={false} />
-            <Bar dataKey="poor" stackId="q" fill={PLUM} stroke="var(--cr-surface)" strokeWidth={1} maxBarSize={24} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="cr-legend" aria-label="Rep quality key">
-        <span className="cr-legend__item"><span className="cr-legend__swatch cr-legend__swatch--max" /> Max strength</span>
-        <span className="cr-legend__item"><span className="cr-legend__swatch cr-legend__swatch--done" /> Completed</span>
-        <span className="cr-legend__item"><span className="cr-legend__swatch cr-legend__swatch--poor" /> Poor quality</span>
-      </div>
     </div>
   );
 }

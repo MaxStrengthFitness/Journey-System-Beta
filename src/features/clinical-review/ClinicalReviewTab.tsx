@@ -1,5 +1,6 @@
 /**
- * Client profile → Clinical tab.
+ * Client profile → Activity Archive → Deep Dive (the Kaizen Deep Dive;
+ * "Trends Clinical Review" until the reporting round).
  *
  * Nothing loads on open. The trainer picks a range and generates; the hook
  * fetches exactly that window (plus one window before it for the deltas and
@@ -12,7 +13,8 @@ import type { Client, Machine, Trainer } from "../../types";
 import type { RangePreset, ReportRange } from "./types";
 import { useClinicalReport } from "./useClinicalReport";
 import { buildReport, rangeForPreset, rangeLabel, todayIso } from "./report";
-import { ClinicalDashboard } from "./ClinicalDashboard";
+import { ClinicalDashboard, DEEP_DIVE_TITLE } from "./ClinicalDashboard";
+import { CaveatLine } from "./panels";
 import { BrandTiles } from "../client-profile/BrandTiles";
 import "./clinical-review.css";
 
@@ -50,7 +52,17 @@ export function ClinicalReviewTab({ client, machines, trainers, timeZone, disabl
 
   const report = useMemo(() => {
     if (!data) return null;
-    return buildReport({ client, machines, trainers, sessions: data.sessions, logs: data.logs, incidents: data.incidents, range: data.range, timeZone });
+    return buildReport({
+      client,
+      machines,
+      trainers,
+      sessions: data.sessions,
+      logs: data.logs,
+      incidents: data.incidents,
+      pulseHistory: data.pulseHistory,
+      range: data.range,
+      timeZone,
+    });
   }, [data, client, machines, trainers, timeZone]);
 
   const pick = (preset: RangePreset) => {
@@ -93,19 +105,21 @@ export function ClinicalReviewTab({ client, machines, trainers, timeZone, disabl
       <div className="cr-gate">
         <div>
           <span className="cr-gate__eyebrow">
-            <BrandTiles size={7} gap={2} /> Clinical review
+            <BrandTiles size={7} gap={2} /> {DEEP_DIVE_TITLE}
           </span>
-          <h2 className="cr-gate__title">Generate {client.firstName}'s clinical report</h2>
+          <h2 className="cr-gate__title">Build {client.firstName}'s Deep Dive</h2>
           <p className="cr-gate__lede">
-            Compiles every completed session in the range and cross-references how {client.firstName} arrived — sleep, stress, energy, mood,
-            stiffness, days since the last session, time of day — with how the session went: load, reps, time under tension and rep quality.
+            Compiles every completed session in the range and reads how {client.firstName} arrived — sleep, energy, recovery and stress on the
+            Dial, any region that hurt, days since the last session — against how the session went: reps, time under tension and rep quality.
+            For prep time, a stall, or an investigation; not for the floor.
           </p>
           <ul className="cr-gate__list">
-            <li>Correlations with the session count behind every number; nothing under three sessions becomes a finding.</li>
-            <li>Weekly tonnage, time under tension and the rep-quality mix, side by side.</li>
-            <li>A form-breakdown heatmap: which machines, which weeks, how often tension broke.</li>
-            <li>Plateaus and stalls — machines at the same load with no rep or time gain.</li>
+            <li>Progression stalls — machines at the same load with no rep or time gain.</li>
+            <li>Readiness vs output, with the session count behind every bar; nothing under three sessions is a finding.</li>
+            <li>Attendance rhythm, the pain and incident timeline, and the Pulse trend beside it.</li>
+            <li>Time under tension over time, and the form heat map: which machines, which weeks.</li>
           </ul>
+          <CaveatLine />
         </div>
 
         <div className="cr-range">
@@ -146,7 +160,7 @@ export function ClinicalReviewTab({ client, machines, trainers, timeZone, disabl
           >
             {status === "loading" ? <Loader2 size={18} className="animate-spin" /> : <Play size={16} fill="currentColor" />}
             <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.1 }}>
-              <span>{status === "loading" ? "Compiling…" : "Generate clinical report"}</span>
+              <span>{status === "loading" ? "Compiling…" : "Build the Deep Dive"}</span>
               <span className="cr-generate__sub">{status === "loading" ? progress : activeRange ? rangeLabel(activeRange) : "Pick a valid range"}</span>
             </span>
           </button>

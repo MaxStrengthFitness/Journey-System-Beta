@@ -13,6 +13,10 @@
  *              exact); beyond that one `clientId ==` query (one round-trip,
  *              filtered in memory).
  *   incidents  clientId == X, once.
+ *   pulses     the client's saved Pulses, through the Pulse feature's own
+ *              bounded read (`loadAssessmentHistory`, reporting round). A
+ *              failed read is `null` — "Pulse history unavailable" — and
+ *              never sinks the report.
  *
  * Results are cached per range key for the life of the component so
  * flipping between two ranges is instant; "Regenerate" bypasses the cache.
@@ -21,6 +25,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import { db } from "../../firebase";
 import type { ClinicalIncident, ExerciseLog, WorkoutSession } from "../../types";
+import { loadAssessmentHistory, type AssessmentHistory } from "../subjective-report";
 import type { ReportRange } from "./types";
 import { priorRange } from "./report";
 
@@ -29,6 +34,8 @@ export interface ReportData {
   sessions: WorkoutSession[];
   logs: ExerciseLog[];
   incidents: ClinicalIncident[];
+  /** Saved Pulses, or null when that read failed. */
+  pulseHistory: AssessmentHistory | null;
   fetchedAt: number;
 }
 
@@ -128,8 +135,18 @@ export function useClinicalReport(clientId: string | null, options: { enabled?: 
         }
         if (requestId.current !== myId) return;
 
+        setProgress("Loading the Pulse…");
+        let pulseHistory: AssessmentHistory | null = null;
+        try {
+          pulseHistory = await loadAssessmentHistory(clientId);
+        } catch (e) {
+          // The Pulse trend panel says "unavailable"; the sets still compile.
+          console.warn("Pulse history skipped:", e);
+        }
+        if (requestId.current !== myId) return;
+
         setProgress("Compiling…");
-        const result: ReportData = { range, sessions, logs, incidents, fetchedAt: Date.now() };
+        const result: ReportData = { range, sessions, logs, incidents, pulseHistory, fetchedAt: Date.now() };
         cache.current.set(key, result);
         setData(result);
         setStatus("ready");

@@ -1,24 +1,33 @@
 /**
- * The compiled report. A pure function of `Report` — no fetching, no
- * Firestore, which is what lets the harness render it with synthetic data.
+ * The compiled Kaizen Deep Dive. A pure function of `Report` — no fetching,
+ * no Firestore, which is what lets a render test mount it with synthetic
+ * data.
  *
- * Reading order, top to bottom, the way a trainer prepares for a client:
+ * Reading order, top to bottom, the way a trainer prepares off the floor —
+ * in prep time, when a client stalls, or in an investigation (reporting
+ * round, Sep 2026):
+ *   0. the fixed caveat: the app built this, it can be wrong, rule of three
  *   1. the headline numbers with their deltas
  *   2. what moves the needle — the ranked findings
- *   3. volume & tension over time
- *   4. the subjective × objective matrix (pick an outcome, read every input)
- *   5. where form breaks (heatmap)
- *   6. what is stuck (plateaus)
+ *   3. Progression stalls
+ *   4. Readiness vs output (the Dial × the sets)
+ *   5. Attendance rhythm
+ *   6. Pain & incidents + the Pulse trend
+ *   7. Time under tension
+ *   8. Where form breaks (the heat map), last
  */
 import { useState, type ReactNode } from "react";
 import { Printer, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import type { Report } from "./report";
 import { rangeLabel } from "./report";
 import type { RangePreset } from "./types";
+import { RULE_OF_THREE } from "./types";
 import { BrandTiles } from "../client-profile/BrandTiles";
-import { KpiStrip, InsightCards, CorrelationMatrix, FormHeatmapPanel, PlateauPanel, MethodNote } from "./panels";
-import { QualityMixChart, TonnageChart, TutChart } from "./charts";
+import { AttendancePanel, CaveatLine, CorrelationMatrix, FormHeatmapPanel, InsightCards, KpiStrip, MethodNote, PainPulsePanel, StallPanel } from "./panels";
+import { TutChart } from "./charts";
 import { shortDateYear } from "./analytics";
+
+export const DEEP_DIVE_TITLE = "Kaizen Deep Dive";
 
 export interface ClinicalDashboardProps {
   report: Report;
@@ -60,7 +69,7 @@ export function ClinicalDashboard({ report, clientName, presets, onPreset, onReg
       <div className="cr-bar">
         <div className="cr-bar__title">
           <BrandTiles size={7} gap={2} />
-          <span className="cr-bar__name">Clinical review</span>
+          <span className="cr-bar__name">{DEEP_DIVE_TITLE}</span>
           <span className="cr-bar__meta">
             {clientName} · {rangeLabel(report.range)}
             {summary.firstDate && summary.lastDate ? ` · ${shortDateYear(summary.firstDate)} → ${shortDateYear(summary.lastDate)}` : ""} · generated{" "}
@@ -90,6 +99,9 @@ export function ClinicalDashboard({ report, clientName, presets, onPreset, onReg
         </button>
       </div>
 
+      {/* ---- 0. the fixed caveat, always, even on an empty range ---- */}
+      <CaveatLine />
+
       {summary.sessions === 0 ? (
         <div className="cr-empty">No completed sessions with logged sets in this range. Widen the range or pick All time.</div>
       ) : (
@@ -100,7 +112,7 @@ export function ClinicalDashboard({ report, clientName, presets, onPreset, onReg
           {/* ---- 2. findings ---- */}
           <Section
             title="What moves the needle"
-            sub={`${report.allInsights.length} findings · ranked by effect size and evidence`}
+            sub={`${report.allInsights.length} findings · ranked by effect size and evidence · questions, not verdicts`}
             right={
               report.allInsights.length > report.insights.length ? (
                 <button type="button" className="cr-iconbtn" onClick={() => setShowAll((v) => !v)}>
@@ -109,43 +121,47 @@ export function ClinicalDashboard({ report, clientName, presets, onPreset, onReg
               ) : undefined
             }
           >
-            <InsightCards insights={insights} emptyHint="No pattern clears the evidence bar yet. Findings appear once a level has three or more sessions and the effect is meaningful." />
+            <InsightCards
+              insights={insights}
+              emptyHint={`No pattern clears the evidence bar yet. Findings appear once a level has ${RULE_OF_THREE} or more sessions and the effect is meaningful.`}
+            />
           </Section>
 
-          {/* ---- 3. volume & tension ---- */}
-          <Section title="Volume & tension" sub={`per ${report.trendPeriod} — three honest axes, not one dual axis`}>
-            <div className="cr-charts">
-              <div className="cr-card">
-                <p className="cr-card__title">Tonnage</p>
-                <p className="cr-card__sub">lb × reps, non-timed sets</p>
-                <TonnageChart weeks={report.weeks} period={report.trendPeriod} />
-              </div>
-              <div className="cr-card">
-                <p className="cr-card__title">Time under tension</p>
-                <p className="cr-card__sub">{tutWorthShowing ? `minutes · recorded on ${Math.round(summary.tutCoverage * 100)}% of sets` : "not recorded on enough sets yet"}</p>
-                {tutWorthShowing ? <TutChart weeks={report.weeks} period={report.trendPeriod} /> : <div className="cr-empty" style={{ height: 190, display: "grid", placeItems: "center" }}>Fills in as timed sets are logged.</div>}
-              </div>
-              <div className="cr-card">
-                <p className="cr-card__title">Rep quality mix</p>
-                <p className="cr-card__sub">share of rated sets</p>
-                <QualityMixChart weeks={report.weeks} period={report.trendPeriod} />
-              </div>
-            </div>
+          {/* ---- 3. progression stalls ---- */}
+          <Section title="Progression stalls" sub="machines at the same load with no gain — stalls and slips first, progress last">
+            <StallPanel plateaus={report.plateaus} />
           </Section>
 
-          {/* ---- 4. matrix ---- */}
-          <Section title="How the client arrived vs how the session went" sub="pick an outcome; each card shows it by the client's state, with the session count behind every bar">
+          {/* ---- 4. readiness vs output ---- */}
+          <Section title="Readiness vs output" sub="pick an outcome; each card shows it by where the Dial sat, with the session count behind every bar">
             <CorrelationMatrix correlations={report.correlations} />
           </Section>
 
-          {/* ---- 5. heatmap ---- */}
-          <Section title="Where form breaks" sub="poor-quality share by machine over time">
-            <FormHeatmapPanel heatmap={report.heatmap} period={report.heatmapPeriod} />
+          {/* ---- 5. attendance rhythm ---- */}
+          <Section title="Attendance rhythm" sub="sessions per week, the longest gap, and whether the last month is below the client's own pace">
+            <AttendancePanel rhythm={report.rhythm} />
           </Section>
 
-          {/* ---- 6. plateaus ---- */}
-          <Section title="Progression check" sub="0% load change over the range, current stalls, and regressions">
-            <PlateauPanel plateaus={report.plateaus} />
+          {/* ---- 6. pain & incidents + Pulse ---- */}
+          <Section title="Pain & incidents, and the Pulse" sub="what hurt and when, beside what the client says in her Pulse">
+            <PainPulsePanel pain={report.pain} pulse={report.pulse} />
+          </Section>
+
+          {/* ---- 7. time under tension ---- */}
+          <Section title="Time under tension" sub={`per ${report.trendPeriod} — only sets that recorded it`}>
+            <div className="cr-card">
+              <p className="cr-card__sub">{tutWorthShowing ? `minutes · recorded on ${Math.round(summary.tutCoverage * 100)}% of sets` : "not recorded on enough sets yet"}</p>
+              {tutWorthShowing ? (
+                <TutChart weeks={report.weeks} period={report.trendPeriod} />
+              ) : (
+                <div className="cr-empty" style={{ height: 190, display: "grid", placeItems: "center" }}>Fills in as timed sets are logged.</div>
+              )}
+            </div>
+          </Section>
+
+          {/* ---- 8. heat map, last ---- */}
+          <Section title="Where form breaks" sub="poor-quality share by machine over time">
+            <FormHeatmapPanel heatmap={report.heatmap} period={report.heatmapPeriod} />
           </Section>
 
           <MethodNote />

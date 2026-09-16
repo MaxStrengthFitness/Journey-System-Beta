@@ -9,20 +9,38 @@
  */
 
 import type { Client, ClinicalIncident, ExerciseLog, Machine, Trainer, WorkoutSession } from "../../types";
+import type { AssessmentHistory } from "../subjective-report";
 import { getBroadMuscleGroup } from "../../lib/clinical-review-utils";
 import { buildFacts, dayMs, factsInRange } from "./facts";
 import {
+  attendanceRhythm,
   correlationMatrix,
   detectPlateaus,
   formHeatmap,
   monthlyTrend,
+  painTimeline,
   summarize,
   weeklyTrend,
   withBaselines,
   type IndexedFact,
 } from "./analytics";
-import { coverageInsights, correlationInsights, formInsights, plateauInsights, rankInsights, volumeInsights } from "./insights";
-import type { Correlation, Heatmap, Insight, MachinePlateau, RangePreset, ReportRange, SessionFact, SetFact, Summary, WeekBucket } from "./types";
+import { pulseTrend } from "./pulse-trend";
+import { coverageInsights, correlationInsights, formInsights, plateauInsights, rankInsights, rhythmInsights } from "./insights";
+import type {
+  AttendanceRhythm,
+  Correlation,
+  Heatmap,
+  Insight,
+  MachinePlateau,
+  PainTimeline,
+  PulseTrend,
+  RangePreset,
+  ReportRange,
+  SessionFact,
+  SetFact,
+  Summary,
+  WeekBucket,
+} from "./types";
 
 export interface ReportInput {
   client: Client;
@@ -33,6 +51,12 @@ export interface ReportInput {
   incidents: ClinicalIncident[];
   range: ReportRange;
   timeZone?: string;
+  /**
+   * The client's saved Pulses (reporting round). `undefined` = the caller did
+   * not ask for them; `null` = the read failed, which the panel says as
+   * "Pulse history unavailable", never as "no Pulse".
+   */
+  pulseHistory?: AssessmentHistory | null;
 }
 
 export interface Report {
@@ -52,6 +76,10 @@ export interface Report {
   heatmap: Heatmap;
   heatmapPeriod: "week" | "month";
   plateaus: MachinePlateau[];
+  /** Reporting-round panels. */
+  rhythm: AttendanceRhythm;
+  pain: PainTimeline;
+  pulse: PulseTrend;
   insights: Insight[];
   /** Everything, not just the top eight — the "all findings" drawer. */
   allInsights: Insight[];
@@ -146,13 +174,16 @@ export function buildReport(input: ReportInput): Report {
   const heatmapPeriod: "week" | "month" = summary.spanDays <= 98 ? "week" : "month";
   const heatmap = formHeatmap(sets, { period: heatmapPeriod, machineName, machineGroup });
   const plateaus = detectPlateaus(sets, { machineName, machineGroup });
+  const rhythm = attendanceRhythm(facts, range);
+  const pain = painTimeline(facts, machineName);
+  const pulse = pulseTrend(input.pulseHistory ?? null);
 
   const firstName = client.firstName || "This client";
   const allInsights = [
     ...correlationInsights(correlations, firstName),
     ...plateauInsights(plateaus),
     ...formInsights(heatmap, summary, firstName),
-    ...volumeInsights(weeklyBuckets, summary, firstName),
+    ...rhythmInsights(rhythm, firstName),
     ...coverageInsights(summary),
   ];
 
@@ -170,6 +201,9 @@ export function buildReport(input: ReportInput): Report {
     heatmap,
     heatmapPeriod,
     plateaus,
+    rhythm,
+    pain,
+    pulse,
     insights: rankInsights(allInsights, 8),
     allInsights: rankInsights(allInsights, 100),
     machineName,
