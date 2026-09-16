@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  doseSentence,
   formatNextBooking,
   journeySentence,
   nextBookingFor,
@@ -124,5 +125,25 @@ describe("nextBookingFor", () => {
     expect(formatNextBooking(new Date(2026, 8, 13, 14, 0), today)).toMatch(/^Today · /);
     expect(formatNextBooking(new Date(2026, 8, 14, 14, 0), today)).toMatch(/^Tomorrow · /);
     expect(formatNextBooking(new Date(2026, 8, 16, 14, 0), today)).toMatch(/^Wed, Sep 16 · /);
+  });
+});
+
+describe("doseSentence", () => {
+  it("says nothing until the dial is tapped", () => {
+    expect(doseSentence(null, "Judy")).toBeNull();
+    expect(doseSentence(undefined, "Judy")).toBeNull();
+  });
+
+  it("repeats the trainer's judgement in words, never a number", () => {
+    expect(doseSentence(0, "Judy")).toBe("Judy left just right.");
+    expect(doseSentence(-2, "Judy")).toBe("Judy left wiped out — worth a lighter start next time.");
+    expect(doseSentence(-1, "Judy")).toBe("Judy left drained — ease off a touch next time.");
+    expect(doseSentence(1, "Judy")).toBe("Judy had more in the tank — room to add a little next time.");
+    expect(doseSentence(2, "Judy")).toBe("Today barely worked Judy — plenty of room to add next time.");
+    for (const d of [-2, -1, 0, 1, 2] as const) expect(doseSentence(d, "Judy")).not.toMatch(/-?\d/);
+  });
+
+  it("falls back to 'The client' without a first name", () => {
+    expect(doseSentence(0, "")).toBe("The client left just right.");
   });
 });

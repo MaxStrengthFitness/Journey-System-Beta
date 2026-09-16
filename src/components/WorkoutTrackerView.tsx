@@ -40,6 +40,7 @@ import {
   getDoc,
   limit,
   Timestamp,
+  deleteField,
 } from "firebase/firestore";
 import { User as FirebaseUser } from "firebase/auth";
 
@@ -130,7 +131,8 @@ import {
   type LiveSet,
 } from "../features/journey-grid";
 import { isBig5Machine } from "../lib/utils";
-import type { ClientFeel, RepQuality } from "../types";
+import type { DialValue, RepQuality } from "../types";
+import type { JournalImportance } from "../types/journal";
 import { useToast } from "../contexts/ToastContext";
 import {
   hasCount,
@@ -2442,18 +2444,19 @@ export function WorkoutTrackerView({
     }
   };
 
-  /** The Feel toggle writes the moment it is tapped — no save button. */
-  const savePostSessionFeel = async (feel: ClientFeel) => {
+  /** The dose Dial writes the moment it is tapped — no save button. A cleared
+      dial stores nothing (`deleteField`): untouched is "not judged", never 0. */
+  const savePostSessionDose = async (dose: DialValue | null) => {
     if (!postSession?.session.id) return;
     try {
-      await updateDoc(doc(db, "sessions", postSession.session.id), { clientFeel: feel });
+      await updateDoc(doc(db, "sessions", postSession.session.id), { dose: dose === null ? deleteField() : dose });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, "sessions");
     }
   };
 
   /** Leaving the post-session screen files the closing note, if any, and goes home. */
-  const leavePostSession = async (closing?: { noteContent: string; notePriority: "High" | "Medium" | "Low" }) => {
+  const leavePostSession = async (closing?: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => {
     const snap = postSession;
     const body = closing?.noteContent.trim() ?? "";
     if (snap && body && user?.uid) {
@@ -2466,7 +2469,8 @@ export function WorkoutTrackerView({
             kind: "general",
             category: null,
             body: body.slice(0, 5000),
-            importance: closing?.notePriority === "High" ? "critical" : closing?.notePriority === "Medium" ? "elevated" : "standard",
+            importance: closing?.importance ?? "standard",
+            effectiveUntil: closing?.importance && closing.importance !== "standard" ? (closing.effectiveUntil ?? null) : null,
             machineId: null,
             focusId: null,
             sessionId: snap.session.id ?? null,
@@ -3188,7 +3192,7 @@ export function WorkoutTrackerView({
         journey={postSession.journey}
         schedules={schedules}
         authTrainer={authTrainer}
-        onFeel={savePostSessionFeel}
+        onDose={savePostSessionDose}
         onLeave={leavePostSession}
         machines={machines}
         rightControls={rightControls}
@@ -4157,6 +4161,8 @@ export function WorkoutTrackerView({
             }}
             machines={machines}
             defaultMachineId={gridFocusMachineId}
+            client={selectedClient}
+            trainer={authTrainer}
             onClose={() => setIsShowingSessionNotes(false)}
           />
         )}

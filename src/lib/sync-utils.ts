@@ -108,10 +108,19 @@ import { studioTodayKey } from "./studio-time";
 import { isPerformedLog } from './set-outcome';
 import { createJournalEntry } from '../hooks/useClientJournal';
 import type { JournalImportance } from '../types/journal';
+import type { DialValue } from '../types';
 
-/** The post-session note's priority in the Journal's terms — the same map the legacy adapter uses. */
-export function journalImportanceOf(priority: 'High' | 'Medium' | 'Low' | undefined | null): JournalImportance {
-  return priority === 'High' ? 'critical' : priority === 'Medium' ? 'elevated' : 'standard';
+/**
+ * What the post-session screen may hand Finish (reporting round, Sep 2026):
+ * the dose Dial's position (`sessions.dose`, −2…2; absent when the trainer
+ * never tapped — "not judged", never a default) and the closing note with
+ * its Loudness (the journal's own importance). `clientFeel` and the old
+ * Low/Medium/High priority are no longer written by anything.
+ */
+export interface PostSessionData {
+  dose?: DialValue | null;
+  noteContent: string;
+  importance: JournalImportance;
 }
 
 /**
@@ -133,7 +142,7 @@ export async function completeWorkoutSession(
   currentSession: any,
   selectedClient: any,
   sessionLogs: any[],
-  postData: { clientFeel: string; noteContent: string; notePriority: 'High' | 'Medium' | 'Low' } | undefined,
+  postData: PostSessionData | undefined,
   currentSessionNotes: string,
   authTrainer: any,
   clientMachineSettings: Record<string, any>,
@@ -168,8 +177,8 @@ export async function completeWorkoutSession(
     if (selectedClient.clinicalProfile) updateData.clientClinicalProfile = selectedClient.clinicalProfile;
   }
 
-  if (postData?.clientFeel) {
-    updateData.clientFeel = postData.clientFeel;
+  if (postData?.dose !== undefined && postData?.dose !== null) {
+    updateData.dose = postData.dose;
   }
   if (currentSessionNotes.trim()) {
     updateData.notes = currentSessionNotes.trim();
@@ -373,7 +382,7 @@ export async function completeWorkoutSession(
         kind: 'general',
         category: null,
         body: noteBody.slice(0, 5000),
-        importance: journalImportanceOf(postData?.notePriority),
+        importance: postData?.importance ?? 'standard',
         machineId: null,
         focusId: null,
         sessionId: currentSession.id,

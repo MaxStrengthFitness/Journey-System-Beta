@@ -10,6 +10,7 @@
  * "sentences, not scores" rule in CLAUDE.md).
  */
 
+import type { DialValue } from "../types";
 import { isPerformedLog, outcomeOf, type SetOutcome } from "./set-outcome";
 
 export interface TodayLog {
@@ -264,4 +265,34 @@ function formatShortDay(iso: string): string {
   const d = new Date(iso.length === 10 ? `${iso}T12:00:00` : iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+}
+
+/* ------------------------------------------------------------------ *
+ * The dose — how the session landed (reporting round, Sep 2026)
+ * ------------------------------------------------------------------ */
+
+/**
+ * One sentence for the Dial's position under "How did it land?", read the
+ * moment it is tapped. Factual and short: the Dial is the trainer's own
+ * judgement, so the sentence repeats it in words and, at the two ends,
+ * says what it means for next time. `null` when nothing was judged — an
+ * untouched dial is "not asked", never "just right".
+ */
+export function doseSentence(dose: DialValue | null | undefined, firstName: string): string | null {
+  if (dose === null || dose === undefined) return null;
+  const who = firstName || "The client";
+  switch (dose) {
+    case -2:
+      return `${who} left wiped out — worth a lighter start next time.`;
+    case -1:
+      return `${who} left drained — ease off a touch next time.`;
+    case 0:
+      return `${who} left just right.`;
+    case 1:
+      return `${who} had more in the tank — room to add a little next time.`;
+    case 2:
+      return `Today barely worked ${who} — plenty of room to add next time.`;
+    default:
+      return null;
+  }
 }

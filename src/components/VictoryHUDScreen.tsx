@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { db } from "../firebase";
+import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
 import { AppHeader } from "./AppHeader";
-import { FeelToggle } from "./FeelToggle";
-import type { ClientFeel } from "../types";
+import type { DialValue } from "../types";
 import {
   Client,
   WorkoutSession,
@@ -11,10 +13,13 @@ import {
   ScheduleEntry,
   Machine,
 } from "../types";
+import type { JournalEntry, JournalImportance } from "../types/journal";
 import { safeToDate } from "../lib/utils";
-import { QuickCheckInDialog } from "../features/subjective-report";
+import { PulseQuickLogDialog } from "../features/subjective-report";
 import { FordSweep } from "../features/ford/FordSweep";
 import { useClientFord } from "../features/ford/useClientFord";
+import { NoteSweep, discardUnfiledEntry, fileUnfiledEntry, isUnfiled } from "../features/notes";
+import { Dial, DOSE_SCALE, Loudness } from "../features/rating";
 import { ArrowLeft, CalendarCheck2, CalendarX2, Check, HeartPulse, MessageSquareText, Star } from "lucide-react";
 import {
   LogConversationDialog,
@@ -23,7 +28,9 @@ import {
 } from "../features/renewals";
 import { getBroadMuscleGroup } from "../lib/clinical-review-utils";
 import { performedOnly, SKIP_REASON_SHORT } from "../lib/set-outcome";
+import { studioTodayKey } from "../lib/studio-time";
 import {
+  doseSentence,
   formatNextBooking,
   journeySentence,
   nextBookingFor,
@@ -43,22 +50,35 @@ import { clientFirstName } from "../lib/client-name";
  *      are up 21% since July across four machines — strongest on lower
  *      body". Says "not enough history yet" below the bar, never a number
  *      it cannot stand behind.
- *   3. NEXT — are they booked? Then how they feel (saves as it is tapped),
- *      a closing note (saved when the trainer leaves), the check-in and
- *      the renewal conversation when one is due.
- *   3b. WHAT THEY TOLD YOU — anything caught with "Remember this" during the
- *      session that has no FORD letter on it yet, with four buttons to file
- *      it. Renders NOTHING when there is nothing outstanding, which is most
- *      sessions. It sits here, after Next and before Lifetime, because
- *      filing three sentences is seconds and the assessment is minutes —
- *      short thing first is what gets both done. Like everything else on
- *      this screen it blocks nothing: walking away costs the trainer
- *      nothing, the captures simply wait in the profile's Life section.
+ *   3. NEXT — are they booked? Then how the session landed — the dose Dial
+ *      (reporting round, Sep 2026: Wiped out · Drained · Just right · Had
+ *      more · Barely worked, the trainer's own judgement, saved the moment it
+ *      is tapped as `sessions.dose`; untouched is "not judged", never a
+ *      default) — a closing note with its Loudness (Note · Heads up ·
+ *      Critical, default Note; Heads up and Critical may carry a "matters
+ *      until" day so the note leaves the briefing on its own), filed to the
+ *      journal when the trainer leaves; then Update Pulse and the renewal
+ *      conversation when one is due.
+ *   3b. WHAT THEY TOLD YOU — two trays, both silent when empty, which is
+ *      most sessions. Notes first: anything saved during the session with no
+ *      category yet ("capture now, tag at teardown") comes back as a card
+ *      with the categories underneath — one tap files it. Then FORD:
+ *      anything caught with "Remember this" that has no letter on it yet.
+ *      They sit here, after Next and before Lifetime, because filing three
+ *      sentences is seconds and Pulse is minutes — short thing first is
+ *      what gets both done. Like everything else on this screen they block
+ *      nothing: walking away costs the trainer nothing, the notes wait in
+ *      the record's Notes area and the captures in its Life section.
  *   4. LIFETIME — small, at the bottom. Not the thing to go over every
  *      time, but nice to have.
  *
  * There is NO save button. The session was submitted when End Session was
  * confirmed (commitEndSession in the tracker). "Back to Hub" only leaves.
+ *
+ * The screen is DARK whatever the app theme is, so every token-driven
+ * feature mounted on it (the Dial, Loudness, the two trays) is wrapped in a
+ * `.dark` + `data-theme="dark"` container that pins `--eq-*` and the FORD /
+ * notes tokens to their dark values.
  */
 
 export interface VictoryHUDScreenProps {
@@ -71,17 +91,15 @@ export interface VictoryHUDScreenProps {
   journey: JourneyRead;
   schedules?: ScheduleEntry[];
   authTrainer: Trainer | null;
-  /** Writes sessions.clientFeel the moment it is tapped. */
-  onFeel: (feel: ClientFeel) => void | Promise<void>;
-  /** Leaves the screen; the closing note (if any) is filed on the way out. */
-  onLeave: (closing: { noteContent: string; notePriority: "High" | "Medium" | "Low" }) => void | Promise<void>;
+  /** Writes `sessions.dose` the moment it is tapped; `null` clears it (stores nothing). */
+  onDose: (dose: DialValue | null) => void | Promise<void>;
+  /** Leaves the screen; the closing note (if any) is filed on the way out with its Loudness and "until" day. */
+  onLeave: (closing: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => void | Promise<void>;
   machines?: Machine[];
   rightControls?: React.ReactNode;
   trainerDropdown?: React.ReactNode;
   onStudioClick?: () => void;
 }
-
-type Priority = "High" | "Medium" | "Low";
 
 const GROUP_TONE: Record<string, string> = {
   "Lower Body": "bg-emerald-500",
@@ -164,18 +182,39 @@ export function VictoryHUDScreen({
   journey,
   schedules = [],
   authTrainer,
-  onFeel,
+  onDose,
   onLeave,
   machines = [],
   rightControls,
   trainerDropdown,
   onStudioClick,
 }: VictoryHUDScreenProps) {
-  const [feel, setFeel] = useState<ClientFeel | null>(null);
-  const [feelSaved, setFeelSaved] = useState(false);
+  const [dose, setDose] = useState<DialValue | null>(null);
+  const [doseSaved, setDoseSaved] = useState(false);
   const [notes, setNotes] = useState("");
-  const [priority, setPriority] = useState<Priority>("Medium");
-  const [showCheckIn, setShowCheckIn] = useState(false);
+  const [importance, setImportance] = useState<JournalImportance>("standard");
+  const [effectiveUntil, setEffectiveUntil] = useState("");
+  const [showPulse, setShowPulse] = useState(false);
+  const todayKey = useMemo(() => studioTodayKey(), []);
+
+  // This session's journal entries, for the To-file tray: one single-field
+  // equality query (no composite index), the same stream the Active Session
+  // sheet used. Only the unfiled ones are kept; a filed note leaves on the
+  // next snapshot.
+  const [unfiledNotes, setUnfiledNotes] = useState<JournalEntry[]>([]);
+  useEffect(() => {
+    if (!session.id) return;
+    const q = query(collection(db, "journalEntries"), where("sessionId", "==", session.id));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as JournalEntry);
+        setUnfiledNotes(rows.filter((e) => !e.isArchived && isUnfiled(e)));
+      },
+      (err) => handleFirestoreError(err, OperationType.GET, "journalEntries"),
+    );
+    return () => unsub();
+  }, [session.id]);
 
   // Anything caught with "Remember this" during the session and not yet filed.
   // `client: null` because the legacy client.events adapter has nothing to add
@@ -184,7 +223,6 @@ export function VictoryHUDScreen({
     clientId: client.id,
     client: null,
   });
-  const [checkInSavedId, setCheckInSavedId] = useState<string | null>(null);
   const [showRenewal, setShowRenewal] = useState(false);
   const [renewalLogged, setRenewalLogged] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -204,14 +242,21 @@ export function VictoryHUDScreen({
 
   /* The closing note is filed when the trainer leaves — by the button, or by
      closing the tab. Keep the latest text in a ref so an unload can read it. */
-  const notesRef = useRef({ notes, priority });
-  notesRef.current = { notes, priority };
+  const notesRef = useRef({ notes, importance, effectiveUntil });
+  notesRef.current = { notes, importance, effectiveUntil };
   const leftRef = useRef(false);
   const leave = () => {
     if (leftRef.current) return;
     leftRef.current = true;
     setLeaving(true);
-    void onLeave({ noteContent: notesRef.current.notes, notePriority: notesRef.current.priority });
+    const { notes: noteContent, importance: loud, effectiveUntil: until } = notesRef.current;
+    void onLeave({
+      noteContent,
+      importance: loud,
+      // End of the studio day, as the composer writes it — never a raw
+      // date-only string, which would be UTC midnight (CLAUDE.md).
+      effectiveUntil: loud !== "standard" && until ? new Date(`${until}T23:59:59`) : null,
+    });
   };
   useEffect(() => {
     const onHide = () => {
@@ -222,10 +267,10 @@ export function VictoryHUDScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const pickFeel = (v: ClientFeel) => {
-    setFeel(v);
-    setFeelSaved(false);
-    Promise.resolve(onFeel(v)).then(() => setFeelSaved(true));
+  const pickDose = (v: DialValue | null) => {
+    setDose(v);
+    setDoseSaved(false);
+    Promise.resolve(onDose(v)).then(() => setDoseSaved(true));
   };
 
   /* --- today ------------------------------------------------------------ */
@@ -369,15 +414,27 @@ export function VictoryHUDScreen({
               </span>
             </div>
 
-            <div className="flex items-baseline justify-between mt-1">
-              <span className="font-display italic text-ink-d1 text-[15px] uppercase">How does {clientFirstName(client)} feel?</span>
-              {feelSaved && (
-                <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
-                  <Check size={12} strokeWidth={3} /> Saved
-                </span>
+            <div className="text-[11px] text-ink-d3 font-semibold mt-1">How did it land · closing note · Pulse</div>
+
+            {/* The dose Dial — the trainer's own judgement, saved as it is
+                tapped. Wrapped dark so the rating tokens resolve for this
+                screen whatever the app theme is. */}
+            <div className="dark flex flex-col gap-2" data-theme="dark" data-testid="dose-card">
+              <div className="flex items-baseline justify-between">
+                <span className="font-display italic text-ink-d1 text-[15px] uppercase">How did it land?</span>
+                {doseSaved && dose !== null && (
+                  <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                    <Check size={12} strokeWidth={3} /> Saved
+                  </span>
+                )}
+              </div>
+              <Dial scale={DOSE_SCALE} value={dose} onChange={pickDose} ask="Your read" sub={`Judged by you — nothing to ask ${clientFirstName(client)}`} data-testid="dose-dial" />
+              {doseSentence(dose, clientFirstName(client)) && (
+                <p className="text-[12.5px] text-ink-d2" data-testid="dose-sentence" aria-live="polite">
+                  {doseSentence(dose, clientFirstName(client))}
+                </p>
               )}
             </div>
-            <FeelToggle value={feel} onChange={pickFeel} />
 
             <textarea
               className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[13px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic resize-none outline-none focus:border-cyan transition-colors"
@@ -386,37 +443,32 @@ export function VictoryHUDScreen({
               onChange={(e) => setNotes(e.target.value)}
               aria-label="Closing note"
             />
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-[11px] text-ink-d3 uppercase tracking-wider font-bold">Priority for next time</span>
-              <div className="flex gap-1" role="group" aria-label="Priority">
-                {(["Low", "Medium", "High"] as const).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    aria-pressed={priority === p}
-                    onClick={() => setPriority(p)}
-                    className={`min-h-10 px-3 rounded-lg text-[11px] font-bold uppercase tracking-wider border transition-colors ${
-                      priority === p
-                        ? p === "High"
-                          ? "bg-orange-500/20 border-orange-500/40 text-orange-300"
-                          : "bg-cyan/15 border-cyan/40 text-cyan"
-                        : "bg-bg-dark-3 border-div-d text-ink-d2"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
+            <div className="dark flex flex-col gap-2" data-theme="dark">
+              <Loudness value={importance} onChange={setImportance} />
+              {importance !== "standard" && (
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[11px] text-ink-d3 uppercase tracking-wider font-bold">Matters until (optional)</span>
+                  <input
+                    type="date"
+                    className="w-full min-h-11 bg-bg-dark-3 border border-div-d rounded-[10px] px-3 text-[13px] text-ink-d1 outline-none focus:border-cyan transition-colors"
+                    value={effectiveUntil}
+                    min={todayKey}
+                    aria-label="Matters until"
+                    onChange={(e) => setEffectiveUntil(e.target.value)}
+                  />
+                  <span className="text-[11px] text-ink-d3">After this it stops showing on the briefing.</span>
+                </label>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
-                onClick={() => setShowCheckIn(true)}
+                onClick={() => setShowPulse(true)}
                 className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 font-display italic text-[12px] uppercase tracking-wider text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
               >
                 <HeartPulse className="w-4 h-4 text-cyan" />
-                {checkInSavedId ? "Assessment saved ✓" : "Quick assessment question"}
+                Update Pulse
               </button>
               {/* Always reachable while a package is on file ("there's not
                   really a good way to open it"); loud only when due. */}
@@ -441,7 +493,25 @@ export function VictoryHUDScreen({
             </div>
           </Card>
 
-          {/* 3b · what they told you — see the header. Silent when empty. */}
+          {/* 3b · what they told you — see the header. Both silent when empty. */}
+          {unfiledNotes.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.22 }}
+              className="mx-5 dark"
+              data-theme="dark"
+            >
+              <NoteSweep
+                entries={unfiledNotes}
+                machines={machines}
+                clientFirstName={clientFirstName(client, "them")}
+                onFile={fileUnfiledEntry}
+                onDiscard={discardUnfiledEntry}
+                dark
+              />
+            </motion.div>
+          )}
           {fordUntagged.length > 0 && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -501,15 +571,12 @@ export function VictoryHUDScreen({
         onSaved={() => setRenewalLogged(true)}
       />
 
-      <QuickCheckInDialog
-        open={showCheckIn}
-        onClose={() => setShowCheckIn(false)}
+      <PulseQuickLogDialog
+        open={showPulse}
+        onClose={() => setShowPulse(false)}
         client={client}
         trainer={authTrainer}
         machines={machines}
-        origin="post_session"
-        sessionId={session.id}
-        onSaved={setCheckInSavedId}
       />
     </div>
   );
