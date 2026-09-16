@@ -1,8 +1,11 @@
 import {
   collection,
+  getDoc,
   getDocs,
+  setDoc,
   writeBatch,
   doc,
+  documentId,
   query,
   where,
   Timestamp,
@@ -17,6 +20,8 @@ import {
   isValidTimeZone,
   DEFAULT_TIME_ZONE,
   studioTodayKey,
+  studioDayBoundsForKey,
+  toDate,
 } from "./studio-time";
 
 export interface MindbodySyncResult {
@@ -214,6 +219,87 @@ export function resolveStudioId(
   return studiosOnSite.length === 1 ? studiosOnSite[0].id || null : null;
 }
 
+/**
+ * WHICH OF THESE CLIENTS ALREADY EXIST (hub sync fixes, Sep 16 2026).
+ *
+ * Phase 1 used to decide "missing" by reading the WHOLE `clients` collection
+ * — every client in every studio, on every sync, every 15 minutes. For an
+ * administrator that was the app's biggest read bill. For anyone else the
+ * rules refused that read, so the sync fell back to the caller's partial
+ * roster, and every client not in it was "created" again with a merge write
+ * that reset `sessionCount`, `completedSessions`, `remainingSessions`,
+ * `height` and `createdAt` on the existing record.
+ *
+ * Now only the ids the caller's roster does not hold are checked, by id:
+ *   existing  a document came back                → never written over
+ *   missing   confirmed absent                     → safe to create
+ *   refused   the rules would not say              → a trainer may not read a
+ *             document that is not there, NOR another studio's client. The
+ *             create is tried on its own: it succeeds for a new client and is
+ *             refused for someone else's (the update rule is narrower than
+ *             the read rule), so nothing is overwritten either way.
+ *   unchecked the read failed for another reason   → unknown, not absent:
+ *             nothing is created for it this run.
+ */
+export interface ClientIdCheck {
+  existing: Client[];
+  missing: Set<string>;
+  refused: Set<string>;
+  unchecked: Set<string>;
+}
+
+const isPermissionDenied = (e: unknown) => {
+  const err = e as { code?: string; message?: string } | null;
+  return (
+    err?.code === "permission-denied" ||
+    String(err?.message ?? "").toLowerCase().includes("insufficient permissions")
+  );
+};
+
+export async function checkClientIds(ids: readonly string[]): Promise<ClientIdCheck> {
+  const out: ClientIdCheck = {
+    existing: [],
+    missing: new Set(),
+    refused: new Set(),
+    unchecked: new Set(),
+  };
+  const CHUNK = 10;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const part = ids.slice(i, i + CHUNK);
+    try {
+      const snap = await getDocs(
+        query(collection(db, "clients"), where(documentId(), "in", part)),
+      );
+      const found = new Set<string>();
+      snap.docs.forEach((d) => {
+        found.add(d.id);
+        out.existing.push({ id: d.id, ...d.data() } as Client);
+      });
+      for (const id of part) if (!found.has(id)) out.missing.add(id);
+    } catch {
+      // One document the rules won't show refuses the whole batch. Ask one
+      // at a time so each id gets its own answer.
+      await Promise.all(
+        part.map(async (id) => {
+          try {
+            const d = await getDoc(doc(db, "clients", id));
+            if (d.exists()) out.existing.push({ id: d.id, ...d.data() } as Client);
+            else out.missing.add(id);
+          } catch (e) {
+            (isPermissionDenied(e) ? out.refused : out.unchecked).add(id);
+          }
+        }),
+      );
+    }
+  }
+  return out;
+}
+
+/** A schedule row's start, whatever shape the read gave it. */
+function rowStartMs(value: unknown): number | null {
+  return toDate(value as Parameters<typeof toDate>[0])?.getTime() ?? null;
+}
+
 export async function syncMindbodySchedules(
   siteId: string,
   trainers: Trainer[],
@@ -372,27 +458,29 @@ export async function syncMindbodySchedules(
       return result;
     }
 
-    // Fetch all clients from Firestore to guarantee clientId matching across all dates/studios
-    let allClients = [...clients];
-    try {
-      const clientsSnap = await getDocs(collection(db, "clients"));
-      if (!clientsSnap.empty) {
-        allClients = clientsSnap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        })) as Client[];
-      }
-    } catch (e) {
-      console.warn(
-        "Could not fetch all clients snapshot, fallback to passed clients array:",
-        e,
-      );
-    }
+    // The clients we already know about: the caller's roster (the app passes
+    // the studio's whole live roster), topped up below by an id check of
+    // only the ones it does not hold. See checkClientIds.
+    const allClients: Client[] = [...clients];
+
+    // THE SYNC WINDOW, as instants. Only rows inside it are compared with
+    // Mindbody's answer. This read used to take every booking the studio has
+    // ever had (1,000+ at Willoughby) on every sync — and then marked every
+    // one outside today..+30 days "Cancelled", because Mindbody was only
+    // asked about today..+30 days (hub sync fixes, Sep 16 2026).
+    const windowFrom = studioDayBoundsForKey(start.slice(0, 10), studioTimeZone).start;
+    const windowTo = studioDayBoundsForKey(end.slice(0, 10), studioTimeZone).end;
+    const inWindow = (value: unknown) => {
+      const ms = rowStartMs(value);
+      return ms !== null && ms >= windowFrom.getTime() && ms <= windowTo.getTime();
+    };
 
     const existingSnap = await getDocs(
       query(
         collection(db, "schedules"),
         where("studioId", "==", targetStudioId),
+        where("startTime", ">=", Timestamp.fromDate(windowFrom)),
+        where("startTime", "<=", Timestamp.fromDate(windowTo)),
       ),
     );
 
@@ -457,12 +545,52 @@ export async function syncMindbodySchedules(
       missingClients.set(mbId, appt);
     }
 
+    // Candidates are only "not in the caller's roster". Ask Firestore about
+    // exactly those before writing anything.
+    const toCreate = new Map<string, MindbodyAppointment>();
+    const createAlone = new Map<string, MindbodyAppointment>();
     if (missingClients.size > 0) {
+      const check = await checkClientIds([...missingClients.keys()]);
+      for (const c of check.existing) allClients.push(c);
+      for (const [mbId, appt] of missingClients) {
+        if (check.missing.has(mbId)) toCreate.set(mbId, appt);
+        else if (check.refused.has(mbId)) createAlone.set(mbId, appt);
+      }
+      if (check.unchecked.size > 0) {
+        result.errors.push(
+          `Could not check whether ${check.unchecked.size} client profile(s) exist; none were created for them this run. They will be checked again on the next sync.`,
+        );
+      }
+    }
+
+    // Refused reads, one write each: a new client is created, someone else's
+    // client is refused by the rules and simply stays theirs.
+    let createdAlone = 0;
+    for (const [mbId, appt] of createAlone) {
+      const payload = buildCanonicalClientPayload(
+        appt,
+        mbId,
+        targetStudioId,
+        earliestApptByClient.get(mbId) ?? null,
+      );
+      try {
+        await setDoc(doc(db, "clients", mbId), payload, { merge: true });
+        allClients.push({ id: mbId, ...payload } as unknown as Client);
+        createdAlone++;
+      } catch {
+        // Exists at another studio. The booking still points at the one
+        // canonical id; nothing about that client is written from here.
+        allClients.push({ id: mbId } as Client);
+      }
+    }
+    result.clientsCreated = createdAlone;
+
+    if (toCreate.size > 0) {
       let clientBatch = writeBatch(db);
       let pending = 0;
       let created = 0;
       try {
-        for (const [mbId, appt] of missingClients) {
+        for (const [mbId, appt] of toCreate) {
           const payload = buildCanonicalClientPayload(
             appt,
             mbId,
@@ -481,7 +609,7 @@ export async function syncMindbodySchedules(
           }
         }
         if (pending > 0) await clientBatch.commit();
-        result.clientsCreated = created;
+        result.clientsCreated = createdAlone + created;
         console.log(
           `[REFRESH SCHEDULE] Created/updated ${created} canonical client profile(s) before writing schedules.`,
         );
@@ -489,7 +617,7 @@ export async function syncMindbodySchedules(
         // Schedules are still written below; those rows simply stay unlinked
         // and will resolve on the next sync rather than being lost.
         result.errors.push(
-          `Could not create ${missingClients.size} client profile(s): ${e?.message || e}`,
+          `Could not create ${toCreate.size} client profile(s): ${e?.message || e}`,
         );
       }
     }
@@ -621,7 +749,14 @@ export async function syncMindbodySchedules(
 
         if (clientId) {
           const matchedClient = allClients.find((c) => c.id === clientId);
-          if (matchedClient) {
+          // Only this studio's own clients are filled in from its bookings. A
+          // visitor's record belongs to another studio, and the rules refuse
+          // that update — which would fail the whole batch of schedule rows.
+          const homeOf = (c: Client) =>
+            (c as { homeStudioId?: string | null; studioId?: string | null }).homeStudioId ??
+            (c as { studioId?: string | null }).studioId ??
+            null;
+          if (matchedClient && homeOf(matchedClient) === targetStudioId) {
             const clientUpdates: Record<string, any> = {};
             if (mbClientId && !matchedClient.mindbodyClientId) {
               clientUpdates.mindbodyClientId = mbClientId;
@@ -783,8 +918,14 @@ export async function syncMindbodySchedules(
       }
     }
 
+    // Gone from Mindbody means cancelled — but only for a booking inside the
+    // window Mindbody was asked about. Anything else was simply not asked.
     for (const [mbId, existing] of Object.entries(existingByMbId)) {
-      if (!currentMbIds.has(mbId) && existing.data.status !== "Cancelled") {
+      if (
+        !currentMbIds.has(mbId) &&
+        existing.data.status !== "Cancelled" &&
+        inWindow(existing.data.startTime)
+      ) {
         batch.update(doc(db, "schedules", existing.docId), {
           status: "Cancelled",
           lastSyncAt: Timestamp.now(),

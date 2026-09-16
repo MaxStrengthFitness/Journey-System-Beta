@@ -18,6 +18,12 @@ let setDocOps: Array<{ path: string; id: string; data: any }> = [];
 
 /** Snapshots keyed by collection path, set per test. */
 let snapshots: Record<string, Array<{ id: string; data: () => any }>> = {};
+/** Every getDocs target, so a test can see what was read. */
+let reads: any[] = [];
+/** Client ids whose single read the "rules" refuse. */
+let refusedClientIds = new Set<string>();
+/** Client ids whose write the "rules" refuse (another studio's client). */
+let refusedWrites = new Set<string>();
 
 function makeSnapshot(docs: Array<{ id: string; data: () => any }>) {
   return {
@@ -38,10 +44,38 @@ vi.mock("firebase/firestore", () => {
         : { __path: path!, __id: id! },
     query: (coll: any, ...constraints: any[]) => ({ ...coll, constraints }),
     where: (field: string, op: string, value: unknown) => ({ field, op, value }),
-    getDocs: vi.fn(async (target: any) =>
-      makeSnapshot(snapshots[target.__collection] ?? []),
-    ),
+    documentId: () => "__name__",
+    getDocs: vi.fn(async (target: any) => {
+      reads.push(target);
+      const docs = snapshots[target.__collection] ?? [];
+      // A by-id query answers with just those ids; the "rules" refuse a
+      // batch holding one they would refuse on its own.
+      const byId = (target.constraints ?? []).find((c: any) => c.field === "__name__");
+      if (byId) {
+        if (byId.value.some((id: string) => refusedClientIds.has(id))) {
+          throw Object.assign(new Error("Missing or insufficient permissions."), {
+            code: "permission-denied",
+          });
+        }
+        return makeSnapshot(docs.filter((d) => byId.value.includes(d.id)));
+      }
+      return makeSnapshot(docs);
+    }),
+    getDoc: vi.fn(async (ref: any) => {
+      if (refusedClientIds.has(ref.__id)) {
+        throw Object.assign(new Error("Missing or insufficient permissions."), {
+          code: "permission-denied",
+        });
+      }
+      const hit = (snapshots[ref.__path] ?? []).find((d) => d.id === ref.__id);
+      return { id: ref.__id, exists: () => !!hit, data: () => hit?.data() };
+    }),
     setDoc: vi.fn(async (ref: any, data: any) => {
+      if (ref.__path === "clients" && refusedWrites.has(ref.__id)) {
+        throw Object.assign(new Error("Missing or insufficient permissions."), {
+          code: "permission-denied",
+        });
+      }
       setDocOps.push({ path: ref.__path, id: ref.__id, data });
     }),
     writeBatch: () => ({
@@ -152,6 +186,9 @@ beforeEach(() => {
   setDocOps = [];
   commits = 0;
   snapshots = { clients: [], schedules: [] };
+  reads = [];
+  refusedClientIds = new Set();
+  refusedWrites = new Set();
   vi.clearAllMocks();
 });
 
@@ -650,6 +687,8 @@ describe("syncMindbodySchedules — studio isolation", () => {
           mindbodyAppointmentId: "999",
           studioId: "studio-westlake",
           status: "Scheduled",
+          // Tomorrow: inside the window Mindbody was asked about.
+          startTime: { toMillis: () => Date.now() + 24 * 60 * 60 * 1000 },
         }),
       },
     ];
@@ -671,5 +710,125 @@ describe("syncMindbodySchedules — studio isolation", () => {
     );
     expect(cancelled).toHaveLength(1);
     expect(cancelled[0].id).toBe("sched-gone");
+  });
+
+  it("never cancels a booking outside the window Mindbody was asked about", async () => {
+    // The sync asks for today..+30 days. Yesterday's session and one two
+    // months out are simply not in the answer — that is not a cancellation.
+    mockAppointments([appointment({ Id: 1, LocationId: 1 })]);
+    const DAY = 24 * 60 * 60 * 1000;
+    const row = (id: string, offsetDays: number) => ({
+      id,
+      data: () => ({
+        mindbodyAppointmentId: id,
+        studioId: "studio-westlake",
+        status: "Scheduled",
+        startTime: { toMillis: () => Date.now() + offsetDays * DAY },
+      }),
+    });
+    snapshots.schedules = [row("past", -1), row("far", 60), row("soon", 3)];
+
+    await syncMindbodySchedules(
+      SITE,
+      TRAINERS,
+      CLIENTS,
+      SHARED_SITE_STUDIOS,
+      null,
+      undefined,
+      undefined,
+      "studio-westlake",
+      "1",
+    );
+
+    const cancelled = batchOps.filter(
+      (op) => op.kind === "update" && op.data.status === "Cancelled",
+    );
+    expect(cancelled.map((op) => op.id)).toEqual(["soon"]);
+
+    // And the read itself is bounded to the window, not the studio's history.
+    const scheduleRead = reads.find((r) => r.__collection === "schedules");
+    const fields = scheduleRead.constraints.map((c: any) => `${c.field}${c.op}`);
+    expect(fields).toEqual(["studioId==", "startTime>=", "startTime<="]);
+  });
+});
+
+describe("syncMindbodySchedules — phase 1 never overwrites an existing client", () => {
+  it("does not read the whole clients collection", async () => {
+    mockAppointments([appointment({ ClientId: "mb-new", LocationId: 2 })]);
+    await syncMindbodySchedules(
+      SITE, TRAINERS, [], SHARED_SITE_STUDIOS, null, undefined, undefined, "studio-solon", "2",
+    );
+    const clientReads = reads.filter((r) => r.__collection === "clients");
+    expect(clientReads.length).toBeGreaterThan(0);
+    // Every clients read names the ids it wants.
+    expect(
+      clientReads.every((r) => (r.constraints ?? []).some((c: any) => c.field === "__name__")),
+    ).toBe(true);
+  });
+
+  it("skips a client the caller's roster lacks but Firestore has", async () => {
+    // The trainer's roster did not hold her; the old code "created" her again
+    // and reset her session count, height and createdAt.
+    mockAppointments([appointment({ ClientId: "mb-known", LocationId: 2 })]);
+    snapshots.clients = [
+      {
+        id: "mb-known",
+        data: () => ({ firstName: "Known", homeStudioId: "studio-solon", sessionCount: 42, height: "5'4\"" }),
+      },
+    ];
+
+    const result = await syncMindbodySchedules(
+      SITE, TRAINERS, [], SHARED_SITE_STUDIOS, null, undefined, undefined, "studio-solon", "2",
+    );
+
+    expect(result.clientsCreated ?? 0).toBe(0);
+    const clientSets = batchOps.filter((op) => op.path === "clients" && op.kind === "set");
+    expect(clientSets).toHaveLength(0);
+    expect(setDocOps.filter((op) => op.path === "clients")).toHaveLength(0);
+    // The booking still links to her.
+    const [row] = batchOps.filter((op) => op.path === "schedules");
+    expect(row.data.clientId).toBe("mb-known");
+  });
+
+  it("creates a client the rules won't describe on its own, and leaves another studio's alone", async () => {
+    // A trainer can't read a document that isn't there, nor another studio's.
+    mockAppointments([
+      appointment({ Id: 7001, ClientId: "mb-brand-new", LocationId: 2 }),
+      appointment({ Id: 7002, ClientId: "mb-elsewhere", LocationId: 2 }),
+    ]);
+    refusedClientIds = new Set(["mb-brand-new", "mb-elsewhere"]);
+    refusedWrites = new Set(["mb-elsewhere"]);
+
+    const result = await syncMindbodySchedules(
+      SITE, TRAINERS, [], SHARED_SITE_STUDIOS, null, undefined, undefined, "studio-solon", "2",
+    );
+
+    expect(result.clientsCreated).toBe(1);
+    expect(setDocOps.filter((op) => op.path === "clients").map((op) => op.id)).toEqual(["mb-brand-new"]);
+    // Neither is written through the batch, and both bookings keep the canonical id.
+    expect(batchOps.filter((op) => op.path === "clients")).toHaveLength(0);
+    const rows = batchOps.filter((op) => op.path === "schedules");
+    expect(rows.map((r) => r.data.clientId).sort()).toEqual(["mb-brand-new", "mb-elsewhere"]);
+  });
+
+  it("does not fill in a visitor's record from this studio's booking", async () => {
+    mockAppointments([appointment({ ClientId: "mb-visitor", LocationId: 2, ClientEmail: "v@example.com" })]);
+    const visitor = {
+      id: "mb-visitor",
+      firstName: "Vi",
+      lastName: "Sitor",
+      homeStudioId: "studio-westlake",
+      height: "",
+      isActive: true,
+      remainingSessions: 0,
+    } as Client;
+
+    await syncMindbodySchedules(
+      SITE, TRAINERS, [visitor], SHARED_SITE_STUDIOS, null, undefined, undefined, "studio-solon", "2",
+    );
+
+    expect(batchOps.filter((op) => op.path === "clients")).toHaveLength(0);
+    const [row] = batchOps.filter((op) => op.path === "schedules");
+    expect(row.data.clientId).toBe("mb-visitor");
   });
 });
