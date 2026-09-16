@@ -68,6 +68,7 @@ import {
   type JournalImportance,
 } from "../types/journal";
 import { adaptClientEvents as adaptFordEvents } from "../features/ford/ford-rollup";
+import { startOfStudioDay } from "../lib/studio-time";
 
 const STREAM_LIMIT = 300;
 const LEGACY_NOTE_LIMIT = 200;
@@ -85,6 +86,39 @@ const SESSION_SUMMARY_LIMIT = 40;
  * journal says so instead of miscounting.
  */
 export const JOURNAL_GUARD_LIMIT = 200;
+
+/**
+ * How long a Heads up stays on the briefing when it has no "until" day
+ * (reporting round, Sep 2026). Three weeks: long enough to cover a fortnight
+ * of missed sessions, short enough that "a bit sore after the move" is not
+ * still being read out in November.
+ */
+export const HEADS_UP_WINDOW_DAYS = 21;
+
+/**
+ * Is this Heads up (importance `elevated`) still live at `nowMs`?
+ *
+ *   • resolved → no.
+ *   • it has an "until" day → live while that day is today or later
+ *     (compared against the start of the studio day, so a note that says
+ *     "until Thursday" is still read out on Thursday morning).
+ *   • otherwise → live for HEADS_UP_WINDOW_DAYS after it was written.
+ *
+ * Pure; `src/features/briefing/heads-up.test.ts` pins it.
+ */
+export function isHeadsUpLive(
+  entry: Pick<JournalEntry, "importance" | "resolvedAt" | "effectiveUntil" | "occurredAt">,
+  nowMs: number,
+): boolean {
+  if (entry.importance !== "elevated") return false;
+  if (entry.resolvedAt) return false;
+  const until = toDate(entry.effectiveUntil);
+  if (until) return until.getTime() >= startOfStudioDay(new Date(nowMs)).getTime();
+  const occurred = toDate(entry.occurredAt);
+  if (!occurred) return false;
+  // A note dated ahead ("away from the 20th") is younger than zero and live.
+  return nowMs - occurred.getTime() <= HEADS_UP_WINDOW_DAYS * 86_400_000;
+}
 
 /* ------------------------------------------------------------------ */
 /* WRITES                                                              */
@@ -773,6 +807,13 @@ export interface UseClientJournalResult {
   entries: JournalEntry[];
   focuses: ClientFocus[];
   criticalEntries: JournalEntry[];
+  /**
+   * Heads ups still worth reading out (reporting round, Sep 2026): elevated,
+   * unresolved, inside their "until" day or the three-week window. Optional
+   * on the TYPE only so a fixture built before the round still typechecks;
+   * the hook always returns it. Read it as `headsUpEntries ?? []`.
+   */
+  headsUpEntries?: JournalEntry[];
   isLoading: boolean;
   /** True when the composite index has not been deployed yet. */
   needsIndex: boolean;
@@ -1074,7 +1115,12 @@ export function useClientJournal({
     });
   }, [entries]);
 
+  const headsUpEntries = useMemo(() => {
+    const now = Date.now();
+    return entries.filter((e) => isHeadsUpLive(e, now));
+  }, [entries]);
+
   const capped = Object.values(cappedBy).some(Boolean);
 
-  return { entries, focuses, criticalEntries, isLoading, needsIndex, capped };
+  return { entries, focuses, criticalEntries, headsUpEntries, isLoading, needsIndex, capped };
 }

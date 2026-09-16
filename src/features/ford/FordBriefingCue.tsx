@@ -1,5 +1,6 @@
 /**
- * ONE LINE ON THE BRIEFING: something to ask about.
+ * ONE LINE ON THE BRIEFING: something to ask about — and, since the
+ * reporting round (Sep 2026), the place to catch the answer.
  *
  * The briefing is the 1–5 minutes before hands go on a client, and roughly a
  * minute of it is conversation. That minute is where FORD details are earned
@@ -20,29 +21,44 @@
  *      which is how the record gets filled in the first place. Rotated by day
  *      so the studio's trainers are not all asking about the dog on the same
  *      Tuesday.
+ *
+ * WHAT A TAP DOES (audit action item C)
+ *   The row used to be read-only and told the trainer to "catch the answer
+ *   with Remember this" — on another screen. Now the row is a 48px button
+ *   and a tap opens the capture right underneath it, already filed under the
+ *   pillar the cue was about. Same component as the floor sheet
+ *   (`FordQuickCapture`), same one-box-one-button rule, same nullable pillar.
+ *   Given no `author` the row stays read-only, as it was.
  */
 
-import { useMemo } from "react";
-import { MessageCircle } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronDown, MessageCircle } from "lucide-react";
 import type { Client } from "../../types";
 import { FORD_META, FORD_PILLARS, type FordEntry, type FordPillar } from "./types";
 import { useClientFord } from "./useClientFord";
 import { FordMark, WhenChip, pillarPrompt } from "./ui";
+import { FordQuickCapture } from "./FordQuickCapture";
+import type { FordAuthor } from "./ford-write";
+import { clientFirstName } from "../../lib/client-name";
 import "./ford.css";
 
 export interface FordBriefingCueProps {
   client: Client | null;
+  /** The signed-in trainer (Auth uid as `id`). Without it the row is read-only. */
+  author?: FordAuthor | null;
+  studioId?: string;
 }
 
 type Cue =
   | { kind: "detail"; entry: FordEntry }
   | { kind: "prompt"; pillar: FordPillar };
 
-export function FordBriefingCue({ client }: FordBriefingCueProps) {
+export function FordBriefingCue({ client, author = null, studioId = "" }: FordBriefingCueProps) {
   const { entries, buckets, upcoming } = useClientFord({
     clientId: client?.id ?? null,
     client,
   });
+  const [open, setOpen] = useState(false);
 
   const cue = useMemo<Cue | null>(() => {
     const soonest = upcoming[0];
@@ -63,42 +79,79 @@ export function FordBriefingCue({ client }: FordBriefingCueProps) {
 
   if (!client || !cue) return null;
 
+  const canCapture = Boolean(author && client.id);
+  const pillar: FordPillar | null = cue.kind === "detail" ? cue.entry.pillar : cue.pillar;
+
+  const body =
+    cue.kind === "detail" ? (
+      <>
+        <FordMark pillar={cue.entry.pillar} size={30} />
+        <span className="ford-upnext__body">
+          <span className="ford-upnext__text">{cue.entry.body}</span>
+          <span className="ford-upnext__meta">
+            {cue.entry.opportunity?.idea
+              ? cue.entry.opportunity.idea
+              : canCapture
+                ? "Worth asking about today · tap to note what they say"
+                : "Worth asking about today"}
+          </span>
+        </span>
+        <WhenChip date={cue.entry.eventDate} recurrence={cue.entry.recurrence} />
+      </>
+    ) : (
+      <>
+        <span className="ford-mark ford-mark--unfiled" style={{ width: 30, height: 30 }}>
+          <MessageCircle size={15} strokeWidth={2.5} />
+        </span>
+        <span className="ford-upnext__body">
+          <span className="ford-upnext__text">“{pillarPrompt(cue.pillar)}”</span>
+          <span className="ford-upnext__meta">
+            {canCapture
+              ? `Nothing on file under ${FORD_META[cue.pillar].label} yet — tap to note the answer`
+              : `Nothing on file under ${FORD_META[cue.pillar].label} yet — catch the answer with Remember this`}
+          </span>
+        </span>
+      </>
+    );
+
   return (
-    <div className="ford-upnext" style={{ marginBlock: "0.5rem" }}>
-      <div className="ford-upnext__row" style={{ cursor: "default" }}>
-        {cue.kind === "detail" ? (
-          <>
-            <FordMark pillar={cue.entry.pillar} size={30} />
-            <span className="ford-upnext__body">
-              <span className="ford-upnext__text">{cue.entry.body}</span>
-              <span className="ford-upnext__meta">
-                {cue.entry.opportunity?.idea
-                  ? cue.entry.opportunity.idea
-                  : "Worth asking about today"}
-              </span>
-            </span>
-            <WhenChip
-              date={cue.entry.eventDate}
-              recurrence={cue.entry.recurrence}
-            />
-          </>
-        ) : (
-          <>
-            <span className="ford-mark ford-mark--unfiled" style={{ width: 30, height: 30 }}>
-              <MessageCircle size={15} strokeWidth={2.5} />
-            </span>
-            <span className="ford-upnext__body">
-              <span className="ford-upnext__text">
-                “{pillarPrompt(cue.pillar)}”
-              </span>
-              <span className="ford-upnext__meta">
-                Nothing on file under {FORD_META[cue.pillar].label} yet — catch
-                the answer with Remember this
-              </span>
-            </span>
-          </>
-        )}
-      </div>
+    <div className="ford-upnext" style={{ marginBlock: "0.5rem" }} data-testid="ford-briefing-cue">
+      {canCapture ? (
+        <button
+          type="button"
+          className="ford-upnext__row"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-controls="ford-briefing-capture"
+        >
+          {body}
+          <ChevronDown
+            size={16}
+            aria-hidden
+            style={{ flex: "none", transition: "transform 120ms ease", transform: open ? "rotate(180deg)" : undefined }}
+          />
+        </button>
+      ) : (
+        <div className="ford-upnext__row" style={{ cursor: "default" }}>
+          {body}
+        </div>
+      )}
+
+      {canCapture && open && author ? (
+        <div
+          id="ford-briefing-capture"
+          style={{ padding: "0.85rem", borderTop: "1px solid var(--ford-border)", background: "var(--ford-surface-2)" }}
+        >
+          <FordQuickCapture
+            clientId={client.id as string}
+            clientFirstName={clientFirstName(client) || "them"}
+            studioId={studioId || client.homeStudioId || ""}
+            author={author}
+            origin="briefing"
+            defaultPillar={pillar}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

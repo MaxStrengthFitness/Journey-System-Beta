@@ -25,6 +25,14 @@
    So: `.br` fills its parent and does not scroll. The CTA is `position:
    sticky` at the bottom of the page flow, which keeps it reachable without
    claiming a height the layout then has to work around.
+
+   REPORTING ROUND, SEP 2026 — DENSITY
+   -----------------------------------
+   "The trainer will have the iPad right in their face so there is room to
+   squeeze more things on the screen so there isn't so much scrolling." Card
+   padding and the check-in's gaps came down, the four readiness Dials sit
+   two-up from 700px, Heads ups and carried-over body regions are one dense
+   row each. The START bar is untouched — it is the one loud action.
    ========================================================================== */
 @import "./briefing.tokens.css";
 
@@ -68,7 +76,7 @@
   border: 1px solid var(--br-border);
   border-radius: var(--br-radius-lg);
   box-shadow: 0 1px 2px var(--br-shadow);
-  padding: 16px;
+  padding: 14px;
 }
 
 .br-section { display: flex; flex-direction: column; gap: 10px; }
@@ -443,7 +451,7 @@
 
 /* --- 5. check-in --------------------------------------------------------- */
 
-.br__checkin { display: flex; flex-direction: column; gap: 16px; }
+.br__checkin { display: flex; flex-direction: column; gap: 12px; }
 
 .br__checkin-head {
   display: flex;
@@ -464,37 +472,26 @@
 .br__field { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .br__field legend { padding: 0; }
 
-.br__grid2 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
-
-@media (min-width: 640px) {
-  .br__grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* The four readiness Dials (reporting round). One column on a narrow
+   portrait iPad; two-up from 700px so landscape shows all four without a
+   scroll. Each Dial is the LAST thing in its cell (thumb zone) — the cell
+   adds nothing under it. The pill groups they replaced are gone. */
+.br__dials {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px 14px;
 }
 
-/* The pill group. Four of these used to be copy-pasted with the same 12-line
-   class string; they are one component and one rule now. */
-.br__pills { display: flex; gap: 8px; }
+@media (min-width: 700px) {
+  .br__dials { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
-.br__pill {
-  flex: 1;
-  min-height: 48px;
-  border: 1px solid var(--br-border-strong);
+.br__dial {
+  min-width: 0;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--br-border);
   border-radius: var(--br-radius);
-  background: var(--br-surface);
-  color: var(--br-ink-2);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
-}
-.br__pill:hover { background: var(--br-surface-2); }
-.br__pill:focus-visible { outline: 2px solid var(--br-focus-ring); outline-offset: 2px; }
-
-.br__pill[aria-pressed="true"] {
-  border-color: transparent;
-  background: var(--br-live);
-  color: var(--br-live-on);
+  background: var(--br-surface-2);
 }
 
 .br__textarea {
@@ -605,3 +602,52 @@
 .br__marker--birthday, .br__marker--milestone { border-color: var(--br-hero, var(--br-border)); }
 .br__focus--line { padding-top: 8px; padding-bottom: 8px; gap: 2px; }
 .br__focus--line .br__quote { margin-top: 2px; font-size: 13px; }
+
+/* --- heads ups and carried-over regions (reporting round, Sep 2026) ---- */
+
+/* Heads ups sit under the critical strip and are deliberately quieter: an
+   inset panel with the warn edge, no fill wash, small-caps label. */
+.br__headsup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--br-border);
+  border-left: 4px solid var(--br-warn);
+  border-radius: var(--br-radius);
+  background: var(--br-surface-2);
+  padding: 8px 12px 10px;
+}
+.br__headsup .br__label { color: var(--br-warn); }
+
+/* One sentence per region, coloured by urgency, never by region. */
+.br__carried { display: flex; flex-direction: column; gap: 4px; }
+.br__carried-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--br-border);
+  border-left-width: 4px;
+  border-radius: var(--br-radius);
+  background: var(--br-surface-2);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--br-ink-2);
+}
+.br__carried-row strong { color: var(--br-ink); font-weight: 800; }
+.br__carried-from {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--br-ink-faint);
+}
+.br__carried-row[data-tone="warn"] { border-left-color: var(--br-warn); background: var(--br-warn-fill); }
+.br__carried-row[data-tone="warn"] strong { color: var(--br-warn); }
+.br__carried-row[data-tone="alert"] { border-left-color: var(--br-critical); background: var(--br-critical-fill); }
+.br__carried-row[data-tone="alert"] strong { color: var(--br-critical); }
+.br__carried-row[data-tone="ok"],
+.br__carried-row[data-tone="ok-strong"] { border-left-color: var(--br-ok); }
+.br__carried-row[data-tone="live"] { border-left-color: var(--br-live); }

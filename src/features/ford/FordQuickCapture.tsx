@@ -50,6 +50,11 @@ export interface FordQuickCaptureProps {
   /** Rendered under the box so a trainer can see what they already caught. */
   recent?: { id: string; body: string; pillar: FordPillar | null }[];
   onSaved?: () => void;
+  /**
+   * A letter to start on — the briefing's cue opens the capture already
+   * filed under the pillar it asked about. Still one tap to clear.
+   */
+  defaultPillar?: FordPillar | null;
 }
 
 export function FordQuickCapture({
@@ -61,9 +66,10 @@ export function FordQuickCapture({
   origin = "in_session",
   recent = [],
   onSaved,
+  defaultPillar = null,
 }: FordQuickCaptureProps) {
   const [body, setBody] = useState("");
-  const [pillar, setPillar] = useState<FordPillar | null>(null);
+  const [pillar, setPillar] = useState<FordPillar | null>(defaultPillar);
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const boxRef = useRef<HTMLTextAreaElement | null>(null);
@@ -90,7 +96,7 @@ export function FordQuickCapture({
       // Clear and hand the keyboard straight back: a client who is talking
       // usually says two things, not one.
       setBody("");
-      setPillar(null);
+      setPillar(defaultPillar);
       setJustSaved(true);
       if (flashRef.current) window.clearTimeout(flashRef.current);
       flashRef.current = window.setTimeout(() => setJustSaved(false), 2200);

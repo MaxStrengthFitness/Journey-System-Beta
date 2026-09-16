@@ -1,8 +1,25 @@
+/**
+ * BODY REGIONS on the briefing — where it hurts, how much, and for how long.
+ *
+ * Reporting round, Sep 2026. Step one is unchanged: pick a region from
+ * BODY_REGIONS. Step two used to be two buttons (Stiff / Prime); it is now
+ * the Dial — Pain · Stiff · As usual · Better · Recovered — so an injury can
+ * be tracked coming back rather than only flagged. Once a value below the
+ * centre is chosen (Pain, Stiff) a "Matters until" day can be added: the
+ * briefing keeps showing the region from the last session until that day.
+ *
+ * What is written per region: `{ region, state, dial, until? }`. `state` is
+ * derived from the dial (below the centre → stiff) so every older reader
+ * still works; `until` is omitted, never `undefined`, because Firestore
+ * refuses undefined. Chips read the Dial's word, never a number.
+ */
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, ChevronLeft, ChevronDown, X } from 'lucide-react';
-import { BodyStateTag, BodyRegionState } from '../types';
+import { Plus, ChevronLeft, ChevronDown, X, Check } from 'lucide-react';
+import { BodyStateTag, DialValue } from '../types';
 import { BODY_REGIONS } from '../data/body-regions';
 import { cn } from '../lib/utils';
+import { Dial, REGION_SCALE, dialFromRegionState, dialTone, dialWord, regionStateFromDial } from '../features/rating';
+import { studioTodayKey } from '../lib/studio-time';
 
 interface BodyStateTrackerProps {
   value: BodyStateTag[];
@@ -13,6 +30,37 @@ interface BodyStateTrackerProps {
 
 type View = 'region' | 'state';
 
+/** "until Thu" / "until Sep 25" for a chip, from a yyyy-mm-dd studio day. */
+function untilChipLabel(until: string | undefined): string | null {
+  if (!until || !/^\d{4}-\d{2}-\d{2}$/.test(until)) return null;
+  const d = new Date(`${until}T12:00:00`);
+  if (isNaN(d.getTime())) return null;
+  const today = studioTodayKey();
+  if (until === today) return 'until today';
+  const [ty, tm, td] = today.split('-').map(Number);
+  const [uy, um, ud] = until.split('-').map(Number);
+  const diff = Math.round((Date.UTC(uy, um - 1, ud) - Date.UTC(ty, tm - 1, td)) / 86_400_000);
+  if (diff === 1) return 'until tomorrow';
+  if (diff > 1 && diff < 7) return `until ${d.toLocaleDateString('en-US', { weekday: 'short' })}`;
+  return `until ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+}
+
+/** Chip colour by urgency — the Dial's own tones, from the equipment tokens. */
+function chipStyle(dial: DialValue | null): React.CSSProperties {
+  const tone = dial === null ? 'live' : dialTone(dial);
+  switch (tone) {
+    case 'alert':
+      return { background: 'var(--eq-alert-fill)', color: 'var(--eq-alert)', borderColor: 'var(--eq-alert)' };
+    case 'warn':
+      return { background: 'var(--eq-warn-fill)', color: 'var(--eq-warn)', borderColor: 'var(--eq-warn)' };
+    case 'ok':
+    case 'ok-strong':
+      return { background: 'var(--eq-ok-fill)', color: 'var(--eq-ok)', borderColor: 'var(--eq-ok)' };
+    default:
+      return { background: 'var(--eq-live-fill)', color: 'var(--eq-live-text)', borderColor: 'var(--eq-live)' };
+  }
+}
+
 export function BodyStateTracker({
   value,
   onChange,
@@ -22,6 +70,8 @@ export function BodyStateTracker({
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View>('region');
   const [pendingRegion, setPendingRegion] = useState<string | null>(null);
+  const [pendingDial, setPendingDial] = useState<DialValue | null>(null);
+  const [pendingUntil, setPendingUntil] = useState<string>('');
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Click-outside / Escape dismiss
@@ -53,18 +103,31 @@ export function BodyStateTracker({
     setOpen(false);
     setView('region');
     setPendingRegion(null);
+    setPendingDial(null);
+    setPendingUntil('');
   };
 
   const handleSelectRegion = (region: string) => {
+    const existing = value.find((t) => t.region === region);
     setPendingRegion(region);
+    setPendingDial(existing ? (existing.dial ?? dialFromRegionState(existing.state)) : null);
+    setPendingUntil(existing?.until ?? '');
     setView('state');
   };
 
-  const handleSelectState = (state: BodyRegionState) => {
-    if (!pendingRegion) return;
-    // Dedupe: if region already tagged, replace its state.
+  const handleSave = () => {
+    if (!pendingRegion || pendingDial === null) return;
+    // Dedupe: if region already tagged, replace it.
     const next = value.filter((t) => t.region !== pendingRegion);
-    next.push({ region: pendingRegion, state });
+    const tag: BodyStateTag = {
+      region: pendingRegion,
+      state: regionStateFromDial(pendingDial),
+      dial: pendingDial,
+    };
+    // "Matters until" only makes sense for something that is wrong today,
+    // and the key is OMITTED when empty — Firestore refuses `undefined`.
+    if (pendingDial < 0 && /^\d{4}-\d{2}-\d{2}$/.test(pendingUntil)) tag.until = pendingUntil;
+    next.push(tag);
     onChange(next);
     closePopover();
   };
@@ -74,36 +137,43 @@ export function BodyStateTracker({
   };
 
   const taggedRegions = new Set(value.map((t) => t.region));
+  const todayKey = studioTodayKey();
 
   return (
     <div className={cn('relative w-full', className)} ref={containerRef}>
       {/* Chips row */}
       {value.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2">
-          {value.map((tag) => (
-            <button
-              key={tag.region}
-              type="button"
-              onClick={() => handleRemoveTag(tag.region)}
-              className={cn(
-                'inline-flex items-center gap-2 h-11 min-w-[140px] px-3 rounded-xl border text-[13px] font-medium uppercase tracking-wide transition-all active:scale-95',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan',
-                tag.state === 'stiff'
-                  ? 'bg-red/15 text-red border-red/40 hover:bg-red/25'
-                  : 'bg-green/15 text-green border-green/40 hover:bg-green/25'
-              )}
-              aria-label={`Remove ${tag.region} (${tag.state})`}
-            >
-              <span className="pointer-events-none truncate">{tag.region}</span>
-              <span className="pointer-events-none text-[11px] opacity-70">·</span>
-              <span className="pointer-events-none">
-                {tag.state === 'stiff' ? 'Stiff' : 'Prime'}
-              </span>
-              <span className="pointer-events-none ml-auto opacity-70">
-                <X className="w-4 h-4" />
-              </span>
-            </button>
-          ))}
+          {value.map((tag) => {
+            const dial = tag.dial ?? dialFromRegionState(tag.state);
+            const word = dialWord(REGION_SCALE, dial);
+            const untilText = untilChipLabel(tag.until);
+            return (
+              <button
+                key={tag.region}
+                type="button"
+                onClick={() => handleRemoveTag(tag.region)}
+                style={chipStyle(dial)}
+                className={cn(
+                  'inline-flex items-center gap-2 h-11 min-w-[140px] px-3 rounded-xl border text-[13px] font-medium uppercase tracking-wide transition-all active:scale-95',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan',
+                )}
+                aria-label={`Remove ${tag.region} (${word}${untilText ? `, ${untilText}` : ''})`}
+              >
+                <span className="pointer-events-none">{tag.region}</span>
+                <span className="pointer-events-none text-[11px] opacity-70">·</span>
+                <span className="pointer-events-none">{word}</span>
+                {untilText && (
+                  <span className="pointer-events-none text-[11px] normal-case tracking-normal opacity-80">
+                    {untilText}
+                  </span>
+                )}
+                <span className="pointer-events-none ml-auto opacity-70">
+                  <X className="w-4 h-4" />
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -136,7 +206,7 @@ export function BodyStateTracker({
 
       {/* Modal Overlay */}
       {open && (
-        <div 
+        <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
           onClick={closePopover}
         >
@@ -152,7 +222,7 @@ export function BodyStateTracker({
                   <span className="text-[11px] uppercase tracking-widest text-ink-d2 font-bold">
                     Select Region
                   </span>
-                  <button type="button" onClick={closePopover} className="text-ink-d2 hover:text-white transition-colors" aria-label="Close">
+                  <button type="button" onClick={closePopover} className="flex items-center justify-center w-11 h-11 -mr-2 text-ink-d2 hover:text-white transition-colors" aria-label="Close">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -189,6 +259,8 @@ export function BodyStateTracker({
                     onClick={() => {
                       setView('region');
                       setPendingRegion(null);
+                      setPendingDial(null);
+                      setPendingUntil('');
                     }}
                     className="flex items-center justify-center w-11 h-11 rounded-lg text-ink-d2 hover:bg-bg-dark-3 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
                     aria-label="Back to region list"
@@ -198,26 +270,46 @@ export function BodyStateTracker({
                   <span className="text-[13px] font-medium uppercase tracking-wide text-ink-d1">
                     {pendingRegion}
                   </span>
-                  <div className="ml-auto flex items-center pr-2">
-                     <button type="button" onClick={closePopover} className="text-ink-d2 hover:text-white transition-colors p-1" aria-label="Close">
+                  <div className="ml-auto flex items-center">
+                    <button type="button" onClick={closePopover} className="flex items-center justify-center w-11 h-11 text-ink-d2 hover:text-white transition-colors" aria-label="Close">
                       <X className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
-                <div className="p-4 space-y-3 overflow-y-auto">
+                <div className="p-4 space-y-4 overflow-y-auto">
+                  <Dial
+                    scale={REGION_SCALE}
+                    sub={pendingRegion ?? undefined}
+                    value={pendingDial}
+                    onChange={setPendingDial}
+                    legend="all"
+                  />
+
+                  {pendingDial !== null && pendingDial < 0 && (
+                    <label className="flex flex-col gap-1.5" data-testid="body-until">
+                      <span className="text-[11px] uppercase tracking-widest text-ink-d2 font-bold">
+                        Matters until <span className="normal-case tracking-normal font-medium opacity-80">(optional)</span>
+                      </span>
+                      <input
+                        type="date"
+                        min={todayKey}
+                        value={pendingUntil}
+                        onChange={(e) => setPendingUntil(e.target.value)}
+                        className="h-11 px-3 rounded-lg border border-div-d bg-surface-2 text-ink-d1 text-[14px]"
+                        aria-label="Matters until"
+                      />
+                      <span className="text-[12px] text-ink-d2">Keeps showing on the briefing until then</span>
+                    </label>
+                  )}
+
                   <button
                     type="button"
-                    onClick={() => handleSelectState('stiff')}
-                    className="w-full h-14 rounded-xl bg-red/15 border border-red/40 text-red text-[14px] font-bold uppercase tracking-widest hover:bg-red/25 active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+                    onClick={handleSave}
+                    disabled={pendingDial === null}
+                    className="inline-flex w-full h-12 items-center justify-center gap-2 rounded-xl bg-cyan text-[14px] font-bold uppercase tracking-widest text-black disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
                   >
-                    Stiff / Fatigued
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectState('prime')}
-                    className="w-full h-14 rounded-xl bg-green/15 border border-green/40 text-green text-[14px] font-bold uppercase tracking-widest hover:bg-green/25 active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
-                  >
-                    Prime / Fresh
+                    <Check className="w-4 h-4" aria-hidden />
+                    {pendingDial === null ? 'Tap how it is today' : `Save · ${dialWord(REGION_SCALE, pendingDial)}`}
                   </button>
                 </div>
               </div>

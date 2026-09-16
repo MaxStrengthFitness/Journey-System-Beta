@@ -3270,6 +3270,7 @@ export function WorkoutTrackerView({
         lastSession={
           sessions.filter((s) => s.status === "Completed")[0] || null
         }
+        sessions={sessions.filter((s) => s.status === "Completed")}
         onStart={(routineType, customMachines, note, checkIn) =>
           startNewSession(
             routineType,

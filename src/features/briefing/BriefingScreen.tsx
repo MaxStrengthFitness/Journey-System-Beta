@@ -31,6 +31,28 @@
  * `bodyStates` state plus the branch in handleStart that saves it into
  * PreSessionCheckIn were therefore dead. The element was the only missing
  * piece; everything downstream of it already worked.
+ *
+ * REPORTING ROUND, SEP 2026
+ * -------------------------
+ * AJ's audit: "cluttered … the trainer has most likely trained that person a
+ * dozen times over but they need to know if anything is new and what's going
+ * on for today." So the page got denser and every part of it started saying
+ * something new:
+ *   • "Before you start" now also reads out Heads ups (elevated journal notes
+ *     still inside their "until" day or three weeks — `headsUpEntries`,
+ *     quieter than the Critical ones) and the body regions carried over from
+ *     the last session with a "matters until" day (`carriedRegions`).
+ *   • The FORD cue is the capture itself: tap it, note what they said, filed
+ *     under the pillar it asked about (audit action item C).
+ *   • Each routine button says when THAT routine last ran (action item D),
+ *     not just when the last session was.
+ *   • "On the way in" is four Dials — Sleep · Energy · Recovery · Stress —
+ *     written as `checkIn.readiness`; sleepQuality / stressLevel / energyLevel
+ *     / mood are no longer written and Mood has no dial. Body regions open the
+ *     same Dial with an optional "matters until" day.
+ *   • "Assessment" became "Update Pulse" (PulseQuickLogDialog).
+ * The pure parts live in briefing-facts.ts; BriefingScreen.render.test.tsx
+ * mounts the screen.
  */
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -72,11 +94,10 @@ import {
   FocusRecord,
   ExerciseLog,
   PreSessionCheckIn,
-  SleepQuality,
   BodyStateTag,
 } from "../../types";
 import { BodyStateTracker } from "../../components/BodyStateTracker";
-import { QuickCheckInDialog } from "../subjective-report";
+import { PulseQuickLogDialog } from "../subjective-report";
 import { FordBriefingCue } from "../ford/FordBriefingCue";
 import { useClientJournal } from "../../hooks/useClientJournal";
 import { JournalEntryCard } from "../../components/journal/JournalEntryCard";
@@ -84,42 +105,13 @@ import { FOCUS_VISUALS, relativeDay, toDate } from "../../types/journal";
 import { CLINICAL_FLAGS_MATRIX } from "../../data/clinical-matrix";
 import { safeToDate } from "../../lib/utils";
 import { isPerformedLog } from "../../lib/set-outcome";
+import { studioTodayKey } from "../../lib/studio-time";
+import { auth } from "../../firebase";
+import { Dial, READINESS_KEYS, READINESS_SCALES, compactReadiness, type Readiness } from "../rating";
+import { carriedRegions, lastRunLabel, lastRunOfRoutine } from "./briefing-facts";
 import "./briefing.css";
 
 import { clientDisplayName } from "../../lib/client-name";
-function PillGroup<T extends string | number>({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: T | undefined;
-  options: readonly { value: T; label: string }[];
-  onChange: (next: T | undefined) => void;
-}) {
-  return (
-    <fieldset className="br__field">
-      <legend className="br__label">{label}</legend>
-      <div className="br__pills">
-        {options.map((opt) => {
-          const active = value === opt.value;
-          return (
-            <button
-              key={String(opt.value)}
-              type="button"
-              className="br__pill"
-              aria-pressed={active}
-              onClick={() => onChange(active ? undefined : opt.value)}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
-    </fieldset>
-  );
-}
 
 export interface BriefingScreenProps {
   authTrainer: Trainer | null;
@@ -139,6 +131,11 @@ export interface BriefingScreenProps {
   sessionNotes: SessionNote[];
   /** Used to resolve initials on legacy journal rows. */
   trainers?: Trainer[];
+  /**
+   * The client's completed sessions (any order), so each routine button can
+   * say when THAT routine last ran. Reporting round, Sep 2026.
+   */
+  sessions?: WorkoutSession[];
   logs?: ExerciseLog[];
   isIntroSession?: boolean;
   rightControls?: React.ReactNode;
@@ -158,6 +155,7 @@ export function BriefingScreen({
   focusRecords = [],
   sessionNotes,
   trainers = [],
+  sessions = [],
   logs = [],
   isIntroSession = false,
   rightControls,
@@ -174,19 +172,15 @@ export function BriefingScreen({
   const [adjustedMachineIds, setAdjustedMachineIds] = useState<string[]>([]);
   const [adjustmentNote, setAdjustmentNote] = useState("");
   const [isAdjusting, setIsAdjusting] = useState(false);
-  /** The 90-day check-in, run here instead of inside a full progress report. */
-  const [showCheckIn, setShowCheckIn] = useState(false);
-  const [sleepQuality, setSleepQuality] = useState<SleepQuality | undefined>(
-    undefined,
-  );
-  const [stressLevel, setStressLevel] = useState<1 | 2 | 3 | 4 | 5 | undefined>(
-    undefined,
-  );
+  /** Update Pulse — the living assessment, one area at a time, from here. */
+  const [showPulse, setShowPulse] = useState(false);
   const [bodyStates, setBodyStates] = useState<BodyStateTag[]>([]);
-  // Energy + mood (Sep 2026): one tap each, optional, so the Clinical Review
-  // can cross-reference how the client arrived with how the session went.
-  const [energyLevel, setEnergyLevel] = useState<"low" | "normal" | "high" | undefined>(undefined);
-  const [mood, setMood] = useState<"low" | "neutral" | "good" | undefined>(undefined);
+  /**
+   * "On the way in" (reporting round, Sep 2026): four Dials against this
+   * client's usual. Untouched = not asked = left out of the write. Mood has
+   * no dial — the trainer can see it.
+   */
+  const [readiness, setReadiness] = useState<Readiness>({});
 
   const routineA = findRoutineByLetter(routines, "A");
   const routineB = findRoutineByLetter(routines, "B");
@@ -277,10 +271,9 @@ export function BriefingScreen({
 
   const handleStart = () => {
     const checkIn: PreSessionCheckIn = {};
-    if (sleepQuality) checkIn.sleepQuality = sleepQuality;
-    if (stressLevel) checkIn.stressLevel = stressLevel;
-    if (energyLevel) checkIn.energyLevel = energyLevel;
-    if (mood) checkIn.mood = mood;
+    // Only the dials that were tapped; nothing when none were.
+    const tapped = compactReadiness(readiness);
+    if (tapped) checkIn.readiness = tapped;
     if (bodyStates.length > 0) checkIn.bodyStates = bodyStates;
 
     onStart(
@@ -404,13 +397,22 @@ export function BriefingScreen({
    * The old code filtered sessionNotes for priority === "High"; those rows are
    * still covered, because the adapter maps High -> critical.
    */
-  const { criticalEntries, focuses } = useClientJournal({
+  const journal = useClientJournal({
     clientId: client.id || null,
     client,
     trainers,
   });
+  const { criticalEntries, focuses } = journal;
+  /* Heads ups (reporting round): quieter than Critical, and only while they
+     still matter — their "until" day, or three weeks. */
+  const headsUpEntries = journal.headsUpEntries ?? [];
 
   const activeJournalFocuses = focuses.filter((f) => f.status === "active");
+
+  /* Body regions the last session said still matter today ("keep the leg
+     press out until Thursday"). Studio day, string compare. */
+  const todayKey = studioTodayKey();
+  const carried = useMemo(() => carriedRegions(lastSession, todayKey), [lastSession, todayKey]);
 
   /* Everything that belongs under "Before you start", counted once so the
      heading can say how many things there are. */
@@ -419,8 +421,24 @@ export function BriefingScreen({
     [client],
   );
   const beforeCount =
-    clientFlags.length + criticalEntries.length + markers.length + activeJournalFocuses.length;
+    clientFlags.length +
+    criticalEntries.length +
+    headsUpEntries.length +
+    carried.length +
+    markers.length +
+    activeJournalFocuses.length;
   const hasBefore = beforeCount > 0 || renewalPromptDue(client.renewal);
+
+  /* When each routine last ran — a different date from the last session's. */
+  const lastRunA = useMemo(() => lastRunOfRoutine(sessions, routines, "A"), [sessions, routines]);
+  const lastRunB = useMemo(() => lastRunOfRoutine(sessions, routines, "B"), [sessions, routines]);
+
+  /* The FORD capture writes as the signed-in person (the Auth uid — the rules
+     pin authorId to it, and it differs from authTrainer.id on older accounts). */
+  const uid = auth.currentUser?.uid ?? authTrainer?.id ?? null;
+  const fordAuthor = uid
+    ? { id: uid, initials: (authTrainer?.initials || "TR").toUpperCase(), fullName: authTrainer?.fullName || "Coach" }
+    : null;
 
 
   const lastRoutineName = lastSession
@@ -538,6 +556,36 @@ export function BriefingScreen({
                 </div>
               )}
 
+              {/* Heads ups: under the critical ones, and quieter. Reporting
+                  round, Sep 2026. */}
+              {headsUpEntries.length > 0 && (
+                <div className="br__headsup" data-testid="briefing-headsup">
+                  <span className="br__label">Heads up</span>
+                  {headsUpEntries.map((entry) => (
+                    <JournalEntryCard
+                      key={entry.id}
+                      entry={entry}
+                      machines={machines}
+                      dense
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Body regions carried over from the last session, while their
+                  "matters until" day has not passed. One sentence-shaped row
+                  each, coloured by urgency. */}
+              {carried.length > 0 && (
+                <div className="br__carried" data-testid="briefing-carried">
+                  {carried.map((r) => (
+                    <span key={r.region} className="br__carried-row" data-tone={r.tone}>
+                      <strong>{r.region}</strong> · {r.word} · {r.untilLabel}
+                      <span className="br__carried-from">last session</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* Upcoming events and milestones, the same markers the Hub card
                   shows (lib/hub-markers.ts): a break starting Saturday, surgery
                   on the 25th, a birthday, session 100. */}
@@ -588,7 +636,11 @@ export function BriefingScreen({
                 strip on purpose — a personal detail must never compete with a
                 contraindication for the eye. Renders nothing when there is
                 nothing worth saying. FORD round, Sep 2026. */}
-            <FordBriefingCue client={client ?? null} />
+            <FordBriefingCue
+              client={client ?? null}
+              author={fordAuthor}
+              studioId={client.homeStudioId || ""}
+            />
 
             {/* 2. Routine. The alternation logic proposes one; the trainer
                 can override it before starting. */}
@@ -608,6 +660,7 @@ export function BriefingScreen({
               >
                 {(["A", "B"] as const).map((type) => {
                   const routine = type === "A" ? routineA : routineB;
+                  const lastRun = type === "A" ? lastRunA : lastRunB;
                   const active =
                     type === "A"
                       ? ["A", "Create_A"].includes(selectedRoutineType)
@@ -623,7 +676,7 @@ export function BriefingScreen({
                       <span className="br__routine-name">Routine {type}</span>
                       <span className="br__routine-sub">
                         {routine
-                          ? `${routine.machineIds?.length || 0} machines`
+                          ? `${lastRunLabel(lastRun)} · ${routine.machineIds?.length || 0} machines`
                           : "Not set up - tap to build"}
                       </span>
                     </button>
@@ -674,77 +727,50 @@ export function BriefingScreen({
             </section>
 
             {/* 5. How they turned up today. Optional, and the last stop
-                before START. */}
+                before START. Four Dials against this client's usual, the
+                body regions, the arrival note. Reporting round, Sep 2026. */}
             <section className="br-card br__checkin">
               <div className="br__checkin-head">
                 <h2 className="br-section__title">
                   <Activity className="w-4 h-4" />
-                  What they told you on the way in
+                  On the way in
                   <span className="br__optional">Optional</span>
                 </h2>
-                {/* The assessment - sleep, energy, pain, habits, food - saved
-                    to the journal; the full report can be built from it
-                    later. */}
+                {/* The Pulse — the living assessment — one area at a time,
+                    saved as you tap, without leaving the briefing. */}
                 <button
                   type="button"
-                  onClick={() => setShowCheckIn(true)}
+                  onClick={() => setShowPulse(true)}
                   className="br__link-btn"
                 >
-                  <HeartPulse className="w-3.5 h-3.5" aria-hidden /> Assessment
+                  <HeartPulse className="w-3.5 h-3.5" aria-hidden /> Update Pulse
                 </button>
               </div>
 
-              <PillGroup<SleepQuality>
-                label="Sleep"
-                value={sleepQuality}
-                onChange={(v) => setSleepQuality(v)}
-                options={[
-                  { value: "poor", label: "Poor" },
-                  { value: "average", label: "Average" },
-                  { value: "optimal", label: "Optimal" },
-                ]}
-              />
-
-              <PillGroup<1 | 2 | 3 | 4 | 5>
-                label="Stress level (1-5)"
-                value={stressLevel}
-                onChange={(v) => setStressLevel(v)}
-                options={([1, 2, 3, 4, 5] as const).map((n) => ({
-                  value: n,
-                  label: String(n),
-                }))}
-              />
-
-              <div className="br__grid2">
-                <PillGroup<"low" | "normal" | "high">
-                  label="Energy"
-                  value={energyLevel}
-                  onChange={(v) => setEnergyLevel(v)}
-                  options={[
-                    { value: "low", label: "Low" },
-                    { value: "normal", label: "Normal" },
-                    { value: "high", label: "High" },
-                  ]}
-                />
-                <PillGroup<"low" | "neutral" | "good">
-                  label="Mood"
-                  value={mood}
-                  onChange={(v) => setMood(v)}
-                  options={[
-                    { value: "low", label: "Low" },
-                    { value: "neutral", label: "Neutral" },
-                    { value: "good", label: "Good" },
-                  ]}
-                />
+              {/* Sleep · Energy · Recovery · Stress. Untouched = not asked. */}
+              <div className="br__dials" data-testid="briefing-dials">
+                {READINESS_KEYS.map((key) => (
+                  <div key={key} className="br__dial">
+                    <Dial
+                      scale={READINESS_SCALES[key]}
+                      value={readiness[key] ?? null}
+                      onChange={(v) =>
+                        setReadiness((prev) => {
+                          const next = { ...prev };
+                          if (v === null) delete next[key];
+                          else next[key] = v;
+                          return next;
+                        })
+                      }
+                    />
+                  </div>
+                ))}
               </div>
 
-              {/* Where it hurts, and how. The tracker, the `bodyStates` state
-                  and the branch in handleStart that writes it into
-                  PreSessionCheckIn all already existed - only this element was
-                  missing, so the state could never be anything but empty and
-                  the save was dead code. */}
+              {/* Where it hurts, and how — the same Dial per region, with an
+                  optional "matters until" day the briefing honours next time. */}
               <fieldset className="br__field">
-                <legend className="br__label">Body state</legend>
+                <legend className="br__label">Body regions</legend>
                 <BodyStateTracker
                   value={bodyStates}
                   onChange={setBodyStates}
@@ -771,13 +797,12 @@ export function BriefingScreen({
             </div>
         </div>
 
-      <QuickCheckInDialog
-        open={showCheckIn}
-        onClose={() => setShowCheckIn(false)}
+      <PulseQuickLogDialog
+        open={showPulse}
+        onClose={() => setShowPulse(false)}
         client={client}
         trainer={authTrainer}
         machines={machines}
-        origin="pre_session"
       />
     </div>
   );
