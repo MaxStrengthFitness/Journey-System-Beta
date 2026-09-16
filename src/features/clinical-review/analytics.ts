@@ -28,7 +28,7 @@
  */
 
 import type { DialValue, RepQuality } from "../../types";
-import { DOSE_SCALE, ENERGY_SCALE, RECOVERY_SCALE, REGION_SCALE, SLEEP_SCALE, STRESS_SCALE, dialWord, type DialScale } from "../rating/dial";
+import { DOSE_SCALE, ENERGY_SCALE, RECOVERY_SCALE, REGION_SCALE, SLEEP_SCALE, STRESS_SCALE, dialWord, type DialScale } from "../rating/scales";
 import type {
   AttendanceRhythm,
   Confidence,

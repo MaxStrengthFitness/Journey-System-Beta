@@ -51,7 +51,7 @@ contraindication is a thing that must not happen in the next ninety minutes.
   one was; `checkIn.bodyStates[]` as `{ region, state, dial, until? }` with
   `until` OMITTED rather than undefined. `sleepQuality`, `stressLevel`,
   `energyLevel` and `mood` are no longer written; Mood has no dial (the
-  trainer can see it). Old sessions are read through `features/rating/dial.ts`.
+  trainer can see it). Old sessions are read through `features/rating/scales.ts`.
 - **Heads ups** come from `useClientJournal().headsUpEntries`
   (`isHeadsUpLive`, `HEADS_UP_WINDOW_DAYS = 21`): elevated, unresolved, and
   either inside their `effectiveUntil` day or written in the last three weeks.

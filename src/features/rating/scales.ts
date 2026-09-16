@@ -49,7 +49,7 @@
  *   • Nothing a trainer rates is ever shown to them as a number. Words on
  *     screen; the number is for storage and the deep dive.
  *
- * Pure: no React, no Firestore. `dial.test.ts` pins every word set and every
+ * Pure: no React, no Firestore. `scales.test.ts` pins every word set and every
  * legacy conversion.
  */
 

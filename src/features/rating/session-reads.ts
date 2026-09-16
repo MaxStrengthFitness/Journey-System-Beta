@@ -18,7 +18,7 @@ import {
   dialFromStressLevel,
   isDialValue,
   type ReadinessKey,
-} from "./dial";
+} from "./scales";
 
 /** How the session landed: the Dial, else the legacy feel words, else null. */
 export function doseOf(s: Pick<WorkoutSession, "dose" | "clientFeel"> | null | undefined): DialValue | null {

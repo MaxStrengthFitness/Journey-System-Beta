@@ -11,7 +11,7 @@ import { StrictMode, act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Dial } from "./Dial";
 import { Loudness } from "./Loudness";
-import { DOSE_SCALE, FREQUENCY_SCALE, SLEEP_SCALE, type DialValue } from "./dial";
+import { DOSE_SCALE, FREQUENCY_SCALE, SLEEP_SCALE, type DialValue } from "./scales";
 import type { JournalImportance } from "../../types/journal";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;

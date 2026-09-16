@@ -25,7 +25,7 @@ import {
   tenToAbsolute,
   toDialValue,
   worstReadiness,
-} from "./dial";
+} from "./scales";
 
 describe("the Dial's shape", () => {
   it("has five positions with the centre at 0", () => {

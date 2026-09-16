@@ -27,7 +27,7 @@
  *
  * Pure: no React. `four-ps.test.ts` pins every conversion.
  */
-import { MASTERY_SCALE, dialWord, isDialValue, type DialValue } from "../rating/dial";
+import { MASTERY_SCALE, dialWord, isDialValue, type DialValue } from "../rating/scales";
 
 export const FOUR_PS = ["posture", "pace", "path", "purpose"] as const;
 export type PKey = (typeof FOUR_PS)[number];

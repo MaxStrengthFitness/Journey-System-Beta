@@ -52,7 +52,7 @@ export type SleepQuality = "poor" | "average" | "optimal";
 export type BodyRegionState = "stiff" | "prime";
 
 /**
- * One position on the Dial (features/rating/dial.ts): -2 … +2, where 0 is
+ * One position on the Dial (features/rating/scales.ts): -2 … +2, where 0 is
  * the centre — this client's usual, or the right dose. Left is always worse.
  * Absent means "not asked", never "as usual".
  */
@@ -128,7 +128,7 @@ export interface PreSessionCheckIn {
    * stress against this client's usual. Written by the briefing from this
    * round on; `sleepQuality`, `stressLevel`, `energyLevel` and `mood` are
    * no longer written and are read as legacy through
-   * features/rating/dial.ts (`dialFromSleepQuality` and friends).
+   * features/rating/scales.ts (`dialFromSleepQuality` and friends).
    */
   readiness?: SessionReadiness;
 }

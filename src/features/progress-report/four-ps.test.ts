@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DIAL_VALUES, MASTERY_SCALE } from "../rating/dial";
+import { DIAL_VALUES, MASTERY_SCALE } from "../rating/scales";
 import {
   FOUR_PS,
   UNRATED_SCORE,

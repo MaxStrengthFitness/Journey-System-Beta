@@ -18,7 +18,7 @@ import {
   dialFromSleepQuality,
   dialFromStressLevel,
   isDialValue,
-} from "../rating/dial";
+} from "../rating/scales";
 import type { EnergyLevel, MoodLevel, PostFeel, RegionDial, SessionFact, SessionReadinessFact, SetFact } from "./types";
 
 /* ------------------------------------------------------------------ *
@@ -148,7 +148,7 @@ function postFeelOf(v: unknown): PostFeel | null {
  * The briefing now writes `preSessionCheckIn.readiness` (−2 … +2 per
  * question), the post-session screen writes `session.dose`, and a body
  * region carries `dial`. Every session from before the round is read
- * through the legacy conversions in features/rating/dial.ts, so the deep
+ * through the legacy conversions in features/rating/scales.ts, so the deep
  * dive sees ONE axis: an August "poor" sleep and an October "A bit short"
  * both land at −1. Nothing here defaults an untouched dial to the centre —
  * absent means "not asked", which is what keeps the correlations honest.

@@ -1,7 +1,7 @@
 /**
  * THE DIAL — one control for every rating in the app.
  *
- * Reporting round, Sep 2026. See dial.ts for the anchor and the three rules.
+ * Reporting round, Sep 2026. See scales.ts for the anchor and the three rules.
  * This file is only the drawing:
  *
  *   ┌ ask ───────────────────────────────── word ┐
@@ -17,8 +17,8 @@
  * Rendering is pure: no effects, no measurement, nothing that could throw in
  * a layout effect. `Dial.render.test.tsx` mounts it.
  */
-import type { DialScale, DialValue } from "./dial";
-import { DIAL_VALUES, dialTone, dialWord } from "./dial";
+import type { DialScale, DialValue } from "./scales";
+import { DIAL_VALUES, dialTone, dialWord } from "./scales";
 import "./rating.css";
 
 export interface DialProps {

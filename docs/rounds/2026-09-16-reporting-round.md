@@ -46,7 +46,7 @@ hundred nights nobody asked about. Tapping the centre explicitly confirms
 "as usual", one tap, so exception-only logging still holds. Nothing a
 trainer rates is ever shown as a number.
 
-Code: `src/features/rating/` — `dial.ts` (scales, words, every legacy
+Code: `src/features/rating/` — `scales.ts` (scales, words, every legacy
 conversion), `Dial.tsx`, `Loudness.tsx`, `rating.css`, tests and a render
 test.
 
@@ -135,7 +135,7 @@ collections, no Mindbody, Cloud Function or rules changes.
 | `journalEntries/{id}` | `effectiveUntil` (exists) — now offered for any Heads up / Critical | the composer | `useClientJournal` (already honours it) |
 
 `sleepQuality`, `stressLevel`, `energyLevel`, `mood` and `clientFeel` are no
-longer written; they are read as legacy through `features/rating/dial.ts`.
+longer written; they are read as legacy through `features/rating/scales.ts`.
 
 ## Phases
 
@@ -151,7 +151,7 @@ longer written; they are read as legacy through `features/rating/dial.ts`.
 
 ## What landed, phase by phase
 
-Ten commits on `reporting-round`. Verified on the integrated branch: `tsc`
+Eleven commits on `reporting-round`. Verified on the integrated branch: `tsc`
 **11** errors (master was 13 — retiring the tonnage charts removed two
 pre-existing ones), **2,900 tests** at `TZ=America/New_York`, `vite build`
 clean, and every screen below rendered in a throwaway harness (fake
@@ -247,6 +247,15 @@ The renewal engine's "rough patch" flag, the session detail dialog and the
 Insights "has feel" metric read the Dial through `session-reads.ts`. This
 document, CLAUDE.md, ROADMAP.md, the rounds index, the iPad checklist,
 ARCHITECTURE Appendix C.
+
+### 11 · `fix(rating)` — `scales.ts`
+
+Applying the branch on AJ's PC found what the Linux container could not:
+`dial.ts` and `Dial.tsx` differ only by case, and Windows treats them as
+one file — `./dial` resolved to the component and the typecheck went red
+(16, not 11). The pure module is `scales.ts` now; every import and
+document follows. Recorded in CLAUDE.md with the one-line check
+(`git ls-files | tr A-Z a-z | sort | uniq -d`).
 
 ## Left for later
 

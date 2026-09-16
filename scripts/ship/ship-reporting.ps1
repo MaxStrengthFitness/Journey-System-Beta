@@ -11,7 +11,7 @@
   permanent copy at scripts\ship\ship-reporting.ps1.
 
   WHAT THIS SHIPS. The branch reporting-round is ALREADY IN this folder
-  (Claude applied it with git am). Ten commits, one per phase - see
+  (Claude applied it with git am). Eleven commits, one per phase - see
   docs\rounds\2026-09-16-reporting-round.md:
      1  the Dial and Loudness (features/rating) and the data types
      2  Update Pulse - the one-area quick-log
@@ -23,6 +23,7 @@
      8  the Client Progress Report: Pulse out, the 4 P's on the Dial
      9  the Kaizen Deep Dive
     10  the last legacy readers, the documents, and this script
+    11  scales.ts - a Windows-only fix (dial.ts and Dial.tsx were one file there)
 
   WHAT ELSE DEPLOYS. Nothing. No rules, no indexes, no Cloud Functions, no
   packages, no server change. Every new field is optional and on documents
@@ -63,7 +64,7 @@ $BaseSha = "a00af6f"
 $ReleaseBranch = "reporting-round"
 $ShipDir = Join-Path $RepoDir "backups\reporting-ship"
 $StateFile = Join-Path $ShipDir "checked.sha"
-$PhaseCount = 10
+$PhaseCount = 11
 # master had 13; this round retired two charts and their two errors with them.
 $TypecheckBaseline = 13
 $ExpectedTests = "2,903"

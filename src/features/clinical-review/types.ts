@@ -14,7 +14,7 @@
  *
  * THE REPORTING-ROUND CHANGE
  * --------------------------
- *  • Every subjective reading is on THE DIAL (features/rating/dial.ts):
+ *  • Every subjective reading is on THE DIAL (features/rating/scales.ts):
  *    `readiness` (sleep · energy · recovery · stress), `dose` (how the
  *    session landed) and `regionDials` (a body region's Pain … Recovered).
  *    Sessions from before the round are read through the legacy conversions
@@ -83,7 +83,7 @@ export interface SessionFact {
   /**
    * How the client arrived, −2 … +2 against their own usual. Read from
    * `preSessionCheckIn.readiness` when the briefing wrote it, else from the
-   * legacy words through `features/rating/dial.ts`. `null` = not asked.
+   * legacy words through `features/rating/scales.ts`. `null` = not asked.
    * Recovery has no legacy field, so it is null on every older session.
    */
   readiness: SessionReadinessFact;
