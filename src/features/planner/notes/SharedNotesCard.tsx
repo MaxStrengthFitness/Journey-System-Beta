@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { clientFirstName } from "../../../lib/client-name";
-import { NotebookPen, Pencil, Plus } from "lucide-react";
+import { ExternalLink, NotebookPen, Pencil, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { auth } from "../../../firebase";
 import type { Client, Trainer } from "../../../types";
@@ -10,6 +10,7 @@ import { useSharedNotes } from "./hooks";
 import { removeSharedNote } from "./mutations";
 import { noteErrorMessage, whenLabel } from "./notes";
 import { NOTE_KIND_LABEL, type NoteKind, type SharedNote } from "./types";
+import { NoteBody } from "./NoteBody";
 
 /**
  * PLANS FROM THE TEAM — the notes trainers have shared onto this client's
@@ -35,6 +36,7 @@ const KIND_DOT: Record<NoteKind, string> = {
   routine: "bg-emerald-500",
   retention: "bg-orange-500",
   injury: "bg-amber-500",
+  research: "bg-slate-600",
 };
 
 /** Long enough that it is worth folding. */
@@ -65,6 +67,13 @@ export function SharedNotesCard({ client, authTrainer, onOpenPlanner }: SharedNo
     requestPlanner({ kind: "new-note", client: { id: clientId, name }, noteKind: "plan" });
     onOpenPlanner();
   };
+  // Planner rework: add a line to the note being built about this client,
+  // without writing a plan yet.
+  const jot = () => {
+    if (!clientId || !onOpenPlanner) return;
+    requestPlanner({ kind: "jot", client: { id: clientId, name } });
+    onOpenPlanner();
+  };
   const editNote = (noteId: string) => {
     if (!onOpenPlanner) return;
     requestPlanner({ kind: "open-note", noteId });
@@ -90,14 +99,24 @@ export function SharedNotesCard({ client, authTrainer, onOpenPlanner }: SharedNo
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className={SUB}>Plans from the team</span>
         {onOpenPlanner && clientId && (
-          <button
-            type="button"
-            onClick={writePlan}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-sky-500/40 bg-sky-500/10 px-3 text-[11px] font-black uppercase tracking-widest text-sky-700 hover:bg-sky-500/15 dark:text-sky-300"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Write a plan
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={jot}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-border px-3 text-[11px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              <NotebookPen className="h-3.5 w-3.5" />
+              Jot a note
+            </button>
+            <button
+              type="button"
+              onClick={writePlan}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-sky-500/40 bg-sky-500/10 px-3 text-[11px] font-black uppercase tracking-widest text-sky-700 hover:bg-sky-500/15 dark:text-sky-300"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Write a plan
+            </button>
+          </div>
         )}
       </div>
 
@@ -117,7 +136,7 @@ export function SharedNotesCard({ client, authTrainer, onOpenPlanner }: SharedNo
         ) : (
           <ul className="flex flex-col gap-3">
             {notes.map((n) => {
-              const long = n.body.length > FOLD_AT || n.body.split("\n").length > 5;
+              const long = n.body.length > FOLD_AT || n.body.split("\n").length > 5 || n.links.length > 3;
               const open = expanded.has(n.id);
               const mine = Boolean(uid) && n.authorId === uid;
               const canTakeOff = !mine && canRemoveSharedNote(authTrainer, uid, n, studioId);
@@ -136,14 +155,32 @@ export function SharedNotesCard({ client, authTrainer, onOpenPlanner }: SharedNo
                     {n.title}
                   </p>
                   {n.body && (
-                    <p
+                    <div
                       className={cn(
-                        "mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-600 [overflow-wrap:anywhere] dark:text-slate-300",
-                        long && !open && "line-clamp-5",
+                        "mt-1 text-sm text-slate-600 dark:text-slate-300",
+                        long && !open && "max-h-32 overflow-hidden",
                       )}
                     >
-                      {n.body}
-                    </p>
+                      {/* Drawn, never injected: the safe subset in ./format.ts. */}
+                      <NoteBody body={n.body} />
+                    </div>
+                  )}
+                  {n.links.length > 0 && (!long || open) && (
+                    <ul className="mt-2 flex flex-col gap-1">
+                      {n.links.map((l) => (
+                        <li key={l.url}>
+                          <a
+                            href={l.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex min-h-10 items-center gap-1.5 text-[13px] font-bold text-sky-700 underline underline-offset-2 dark:text-sky-300"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                            {l.title}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
                   )}
 
                   {(long || (mine && onOpenPlanner) || canTakeOff) && (

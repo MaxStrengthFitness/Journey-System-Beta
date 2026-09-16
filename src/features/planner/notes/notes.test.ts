@@ -23,6 +23,11 @@ import {
   validFolderName,
   validateNoteDraft,
   whenLabel,
+  checkLink,
+  logEntry,
+  logFromDoc,
+  foldIntoBody,
+  logIsFull,
 } from "./notes";
 import { clearDraftStash, dropDraft, stashDraft, stashedDraft, stashedDrafts } from "./draft-stash";
 import type { NoteDraft, TrainerNote } from "./types";
@@ -37,6 +42,8 @@ const note = (id: string, over: Partial<TrainerNote> = {}): TrainerNote => ({
   clientNames: {},
   pinned: false,
   sharedWith: null,
+  links: [],
+  log: [],
   ...over,
 });
 
@@ -113,7 +120,10 @@ describe("noteFields / sharedFields", () => {
       kind: "injury",
       authorId: "u1",
       authorName: "A trainer",
+      // Sources travel with a published note (Planner rework); the log never does.
+      links: [],
     });
+    expect(Object.keys(s)).not.toContain("log");
     expect(Object.keys(s)).not.toContain("clientIds");
     expect(Object.keys(s)).not.toContain("clientNames");
   });
@@ -311,5 +321,83 @@ describe("draftChanged", () => {
     expect(draftChanged(jot, { ...jot, title: "Call physio" })).toBe(false);
     expect(draftChanged(jot, { ...jot, title: "Physio" })).toBe(true);
     expect(draftChanged(draft({ clientIds: ["a", "a"] }), draft({ clientIds: ["a"] }))).toBe(false);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Planner rework (Sep 2026): sources and the working log
+ * ------------------------------------------------------------------ */
+
+describe("sources", () => {
+  it("keeps only https links, named by their site when untitled", () => {
+    expect(checkLink(" https://www.pubmed.gov/abc ", "")).toEqual({
+      link: { url: "https://www.pubmed.gov/abc", title: "pubmed.gov" },
+    });
+    expect(checkLink("javascript:alert(1)", "x")).toEqual({ problem: expect.stringMatching(/https/) });
+    expect(checkLink("pubmed.gov", "x")).toEqual({ problem: expect.any(String) });
+  });
+
+  it("drops unsafe and repeated links from a draft, and caps them", () => {
+    const d = {
+      ...blankDraft(),
+      title: "t",
+      links: [
+        { url: "https://a.org", title: "A" },
+        { url: "https://a.org", title: "A again" },
+        { url: "javascript:x", title: "bad" },
+        ...Array.from({ length: 12 }, (_, i) => ({ url: `https://s${i}.org`, title: "" })),
+      ],
+    };
+    const f = noteFields(d, null);
+    expect(f.links[0]).toEqual({ url: "https://a.org/", title: "A" });
+    expect(f.links).toHaveLength(10);
+    expect(f.links.some((l) => l.url.startsWith("javascript"))).toBe(false);
+  });
+
+  it("reads an older note without sources or a log", () => {
+    const n = noteFromDoc("x", { title: "t", body: "b", kind: "research" });
+    expect(n.kind).toBe("research");
+    expect(n.links).toEqual([]);
+    expect(n.log).toEqual([]);
+  });
+});
+
+describe("the working log", () => {
+  it("makes a jot, or nothing from blank text", () => {
+    expect(logEntry("  knee pinched at 60°  ", "c1", 1000)).toMatchObject({ at: 1000, text: "knee pinched at 60°", clientId: "c1" });
+    expect(logEntry("   ", null)).toBeNull();
+  });
+
+  it("reads the log oldest first and drops odd entries", () => {
+    const log = logFromDoc([
+      { id: "b", at: 2, text: "second", clientId: null },
+      { id: "a", at: 1, text: "first" },
+      { id: "c", text: "no time" },
+      "junk",
+    ]);
+    expect(log.map((e) => e.id)).toEqual(["a", "b"]);
+    expect(log[0].clientId).toBeNull();
+  });
+
+  it("moves a jot into the body as a dated bullet", () => {
+    const at = Date.parse("2026-09-15T15:00:00-04:00");
+    expect(foldIntoBody("Plan so far\n\n", { at, text: "Seat back one notch" })).toBe(
+      "Plan so far\n- Sep 15: Seat back one notch",
+    );
+    expect(foldIntoBody("", { at, text: "line one\nline two" })).toBe("- Sep 15: line one\n  line two");
+  });
+
+  it("finds a note by what is in its log and its sources", () => {
+    const n = note("n", {
+      log: [{ id: "j", at: 1, text: "pinch at the top of the row", clientId: null }],
+      links: [{ url: "https://x.org", title: "Rotator cuff review" }],
+    });
+    expect(noteMatches(n, "pinch", () => "")).toBe(true);
+    expect(noteMatches(n, "rotator", () => "")).toBe(true);
+  });
+
+  it("knows when the log is full", () => {
+    expect(logIsFull(Array.from({ length: 100 }, (_, i) => ({ id: `${i}`, at: i, text: "x", clientId: null })))).toBe(true);
+    expect(logIsFull([])).toBe(false);
   });
 });

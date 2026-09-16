@@ -762,12 +762,23 @@ service cloud.firestore {
        trainer's OWN documents — privacy is the path, below — so a bad write
        from an old app version cannot leave a note the Planner cannot read. */
     function noteKindValid(k) {
-      return k in ['note', 'plan', 'routine', 'retention', 'injury'];
+      return k in ['note', 'plan', 'routine', 'retention', 'injury', 'research'];
+    }
+
+    /* Planner rework (Sep 2026): sources travel with a note; the working log
+       and the colleague-share marker live only on the private note. All
+       three are optional, so a note written by an older app still passes. */
+    function noteExtrasValid(d) {
+      return (!('links' in d) || (d.links is list && d.links.size() <= 10))
+          && (!('log' in d) || (d.log is list && d.log.size() <= 100))
+          && (!('teamShare' in d) || d.teamShare == null || d.teamShare is map);
     }
 
     function trainerNoteValid(d) {
       return d.keys().hasOnly(['title', 'body', 'kind', 'folderId', 'clientIds', 'clientNames',
-                               'pinned', 'sharedWith', 'createdAt', 'updatedAt'])
+                               'pinned', 'sharedWith', 'createdAt', 'updatedAt',
+                               'links', 'log', 'teamShare'])
+          && noteExtrasValid(d)
           && d.keys().hasAll(['title', 'body', 'kind', 'folderId', 'clientIds', 'clientNames',
                               'pinned', 'sharedWith', 'createdAt', 'updatedAt'])
           && d.title is string && d.title.size() > 0 && d.title.size() <= 160
@@ -798,7 +809,8 @@ service cloud.firestore {
        stamped with this write's time, so neither can be faked; the whole
        document is checked on every write (the app always overwrites it). */
     function sharedNoteValid(d, clientId) {
-      return d.keys().hasOnly(['clientId', 'title', 'body', 'kind', 'authorId', 'authorName', 'updatedAt'])
+      return d.keys().hasOnly(['clientId', 'title', 'body', 'kind', 'authorId', 'authorName', 'updatedAt', 'links'])
+          && (!('links' in d) || (d.links is list && d.links.size() <= 10))
           && d.keys().hasAll(['clientId', 'title', 'body', 'kind', 'authorId', 'authorName', 'updatedAt'])
           && d.clientId == clientId
           && d.title is string && d.title.size() > 0 && d.title.size() <= 160

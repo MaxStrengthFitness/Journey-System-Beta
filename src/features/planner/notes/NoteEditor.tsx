@@ -1,15 +1,23 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ExternalLink, Lock, Pin, Search, Share2, Trash2, UserPlus, X } from "lucide-react";
+import { ChevronLeft, ExternalLink, Eye, Lock, PenLine, Pin, Search, Send, Share2, Trash2, UserPlus, X } from "lucide-react";
 import type { Client, Trainer } from "../../../types";
 import { canShareOnto } from "./access";
 import type { StashedDraft } from "./draft-stash";
 import { useClientDoc, useClientSearch, useSharedCopy } from "./hooks";
-import { saveNote } from "./mutations";
+import { appendNoteLog, removeNoteLog, saveNote } from "./mutations";
+import { applyFormat, toggleCheck, type FormatAction } from "./format";
+import { NoteBody, NoteToolbar } from "./NoteBody";
+import { NoteSources } from "./NoteSources";
+import { WorkingLog } from "./WorkingLog";
 import {
   canShare,
   clientLabel,
   draftChanged,
   draftFromNote,
+  effectiveTitle,
+  foldIntoBody,
+  logEntry,
+  logIsFull,
   noteErrorMessage,
   validateNoteDraft,
   whenLabel,
@@ -23,6 +31,7 @@ import {
   NOTE_TITLE_MAX,
   type NoteDraft,
   type NoteFolder,
+  type NoteLogEntry,
   type TrainerNote,
 } from "./types";
 
@@ -65,6 +74,8 @@ export interface NoteEditorProps {
   /** Narrow screens: back to the list. */
   onBack?: () => void;
   onOpenClient?: (clientId: string) => void;
+  /** Arrived to jot something (from a client's profile): focus the log. */
+  focusJot?: boolean;
 }
 
 const fullName = (c: Pick<Client, "firstName" | "lastName">) => `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim();
@@ -107,6 +118,7 @@ export function NoteEditor({
   onDelete,
   onBack,
   onOpenClient,
+  focusJot = false,
 }: NoteEditorProps) {
   const baseline = useMemo(() => (saved ? draftFromNote(saved) : newBaseline), [saved, newBaseline]);
   const [draft, setDraft] = useState<NoteDraft>(() => restored?.draft ?? baseline);
@@ -116,6 +128,12 @@ export function NoteEditor({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [linking, setLinking] = useState(false);
   const restoredOnOpen = useRef(Boolean(restored));
+  // A saved note opens to be READ — its checklists tappable, its links live;
+  // a new one, or one with unsaved changes, opens to be written.
+  const [mode, setMode] = useState<"write" | "read">(() =>
+    saved && saved.body.trim() && !restored ? "read" : "write",
+  );
+  const [jotBusy, setJotBusy] = useState(false);
 
   // The saved note changed underneath — this trainer's own save coming back,
   // or an edit on another iPad. Follow it, unless something has been typed
@@ -210,22 +228,24 @@ export function NoteEditor({
 
   /* --------------------------- save/delete ------------------------- */
 
-  const save = async () => {
-    const issues = validateNoteDraft(draft);
+  /** Saves the draft — or `override`, when a caller has just changed it. */
+  const save = async (override?: NoteDraft): Promise<boolean> => {
+    const current = override ?? draft;
+    const issues = validateNoteDraft(current);
     // Starting to share needs a yes from the checks above. A note that is
     // already shared with this client just saves; the database has the last
     // word, and a refusal says to switch Share off.
     const continuing = sharedNow && saved?.sharedWith === onlyClientId;
-    if (draft.share && !continuing && shareBlocked && !issues.some((p) => p.field === "share")) {
+    if (current.share && !continuing && shareBlocked && !issues.some((p) => p.field === "share")) {
       issues.push({ field: "share", message: shareBlocked });
     }
     if (issues.length) {
       setProblems(issues);
-      return;
+      return false;
     }
     setBusy("save");
     setError(null);
-    const sent = draft;
+    const sent = current;
     try {
       const written = await saveNote({
         uid,
@@ -242,12 +262,84 @@ export function NoteEditor({
         setDraft(written);
         onDraftRef.current(null);
       }
+      return true;
     } catch (err) {
       console.warn("[notes] save failed:", err);
       setError(noteErrorMessage(err, "save"));
+      return false;
     } finally {
       setBusy(null);
     }
+  };
+
+  /* --------------------------- working log ------------------------- */
+
+  const linkedClients = draft.clientIds.map((id) => ({ id, name: clientLabel(id, draft, nameOf) }));
+
+  /**
+   * A jot is written at once. A note that has never been saved is saved
+   * first — titled after its client or the day if nothing has been typed —
+   * because a jot needs a note to hang on.
+   */
+  const addJot = async (text: string, clientId: string | null): Promise<boolean> => {
+    const entry = logEntry(text, clientId);
+    if (!entry) return false;
+    setError(null);
+    if (!saved) {
+      let first = draftRef.current;
+      if (!effectiveTitle(first)) {
+        const who = linkedClients.length === 1 ? linkedClients[0].name : "";
+        first = { ...first, title: who ? `${who} — working notes` : "Working notes" };
+        draftRef.current = first;
+        setDraft(first);
+      }
+      const ok = await save(first);
+      if (!ok) return false;
+    }
+    setJotBusy(true);
+    try {
+      await appendNoteLog(uid, noteId, entry);
+      return true;
+    } catch (err) {
+      console.warn("[notes] jot failed:", err);
+      setError(noteErrorMessage(err, "save"));
+      return false;
+    } finally {
+      setJotBusy(false);
+    }
+  };
+
+  const removeJot = async (entry: NoteLogEntry) => {
+    setJotBusy(true);
+    setError(null);
+    try {
+      await removeNoteLog(uid, noteId, entry);
+    } catch (err) {
+      console.warn("[notes] jot remove failed:", err);
+      setError(noteErrorMessage(err, "save"));
+    } finally {
+      setJotBusy(false);
+    }
+  };
+
+  const foldJot = (entry: NoteLogEntry) => {
+    edit({ body: foldIntoBody(draftRef.current.body, entry).slice(0, NOTE_BODY_MAX) });
+    setMode("write");
+  };
+
+  /* ---------------------------- formatting ------------------------- */
+
+  const format = (action: FormatAction) => {
+    const el = bodyRef.current;
+    const start = el?.selectionStart ?? draft.body.length;
+    const end = el?.selectionEnd ?? draft.body.length;
+    const r = applyFormat(draft.body, start, end, action);
+    edit({ body: r.text.slice(0, NOTE_BODY_MAX) });
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(r.selStart, r.selEnd);
+    });
   };
 
   const discard = () => {
@@ -311,7 +403,7 @@ export function NoteEditor({
           <button
             type="button"
             className="pl__btn pl__btn--primary"
-            onClick={save}
+            onClick={() => void save()}
             disabled={busy !== null || !dirty}
           >
             {busy === "save" ? "Saving…" : "Save"}
@@ -454,32 +546,85 @@ export function NoteEditor({
           )}
         </section>
 
-        <label className="ne__sr" htmlFor={`ne-body-${noteId}`}>
-          Note
-        </label>
-        <textarea
-          id={`ne-body-${noteId}`}
-          ref={bodyRef}
-          className="ne__body"
-          value={draft.body}
-          maxLength={NOTE_BODY_MAX}
-          placeholder={
-            draft.kind === "injury"
-              ? "What happened, what to avoid, what to load instead, and when to check again."
-              : draft.kind === "retention"
-                ? "What keeps them coming — and what might not. The next conversation to have."
-                : draft.kind === "routine"
-                  ? "What changes, on which machines, from when — and why."
-                  : "Write it down."
-          }
-          onChange={(e) => edit({ body: e.target.value })}
+        <WorkingLog
+          log={saved?.log ?? []}
+          clients={linkedClients}
+          busy={jotBusy || busy !== null}
+          full={logIsFull(saved?.log ?? [])}
+          autoFocus={focusJot}
+          onAdd={addJot}
+          onRemove={(e) => void removeJot(e)}
+          onFold={foldJot}
         />
+
+        <div className="ne__body-head">
+          <span className="ne__label">The note</span>
+          <div className="pk-seg ne__mode" role="group" aria-label="Write or read">
+            <button type="button" aria-pressed={mode === "write"} onClick={() => setMode("write")}>
+              <PenLine size={14} aria-hidden />
+              Write
+            </button>
+            <button type="button" aria-pressed={mode === "read"} onClick={() => setMode("read")}>
+              <Eye size={14} aria-hidden />
+              Read
+            </button>
+          </div>
+        </div>
+
+        {mode === "write" ? (
+          <>
+            <NoteToolbar onFormat={format} disabled={busy !== null} />
+            <label className="ne__sr" htmlFor={`ne-body-${noteId}`}>
+              Note
+            </label>
+            <textarea
+              id={`ne-body-${noteId}`}
+              ref={bodyRef}
+              className="ne__body"
+              value={draft.body}
+              maxLength={NOTE_BODY_MAX}
+              placeholder={
+                draft.kind === "injury"
+                  ? "What happened, what to avoid, what to load instead, and when to check again."
+                  : draft.kind === "retention"
+                    ? "What keeps them coming — and what might not. The next conversation to have."
+                    : draft.kind === "routine"
+                      ? "What changes, on which machines, from when — and why."
+                      : draft.kind === "research"
+                        ? "What you read, what it found, and what it means on the floor. Add the link below."
+                        : "Write it down. Use the toolbar for headings, checklists and links."
+              }
+              onChange={(e) => edit({ body: e.target.value })}
+            />
+          </>
+        ) : draft.body.trim() ? (
+          <div className="ne__read">
+            <NoteBody body={draft.body} onToggle={(line) => edit({ body: toggleCheck(draft.body, line) })} />
+          </div>
+        ) : (
+          <button type="button" className="ne__read ne__read--empty" onClick={() => setMode("write")}>
+            Nothing written yet — tap to write.
+          </button>
+        )}
         {draft.body.length > NOTE_BODY_MAX - 1000 && (
           <p className="ne__count">
             {draft.body.length.toLocaleString()} / {NOTE_BODY_MAX.toLocaleString()}
           </p>
         )}
         {problemFor("body") && <p className="ne__problem">{problemFor("body")}</p>}
+
+        <NoteSources links={draft.links} onChange={(links) => edit({ links })} disabled={busy !== null} />
+        {problemFor("links") && <p className="ne__problem">{problemFor("links")}</p>}
+
+        <div className="ne__publish-head">
+          <Send size={15} aria-hidden />
+          <div>
+            <h3 className="ne__publish-title">Publish</h3>
+            <p className="ne__publish-lede">
+              When it's ready, put it where the team works from it. Working notes always stay with you.
+            </p>
+          </div>
+        </div>
 
         <section className={`ne__share${draft.share ? " ne__share--on" : ""}`} aria-labelledby={`ne-share-${noteId}`}>
           <div className="ne__share-head">
@@ -505,7 +650,7 @@ export function NoteEditor({
                 This note is no longer on {firstName(onlyName)}'s record — a studio leader may have taken it off. Put it
                 back, or switch Share off and save to keep it private.
               </p>
-              <button type="button" className="pl__btn" onClick={save} disabled={busy !== null}>
+              <button type="button" className="pl__btn" onClick={() => void save()} disabled={busy !== null}>
                 Put it back on {firstName(onlyName)}'s record
               </button>
             </div>

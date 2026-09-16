@@ -18,6 +18,7 @@ import {
   collectionGroup,
   query,
   where,
+  arrayUnion,
 } from "firebase/firestore";
 import { describe, it, beforeAll, afterAll, beforeEach, expect } from "vitest";
 import * as fs from "fs";
@@ -1162,6 +1163,35 @@ describe("Firestore Security Rules", () => {
     // Shared means about exactly that one client.
     await assertFails(setDoc(ref, noteData({ sharedWith: "notesClient", clientIds: ["notesClient", "other"] })));
     await assertFails(setDoc(ref, noteData({ sharedWith: "other" })));
+  });
+
+  it("accepts research notes with sources and a working log, within their limits (Planner rework)", async () => {
+    await seedNotes();
+    const db = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const ref = doc(db, "trainers", "trainerA", "notes", "r1");
+    const jot = { id: "j1", at: 1, text: "pinch at the top", clientId: null };
+    await assertSucceeds(
+      setDoc(ref, noteData({ kind: "research", links: [{ url: "https://x.org/", title: "Review" }], log: [jot] })),
+    );
+    // A jot is one arrayUnion; the rest of the note is untouched and still valid.
+    await assertSucceeds(
+      updateDoc(ref, { log: arrayUnion({ ...jot, id: "j2", at: 2 }), updatedAt: serverTimestamp() }),
+    );
+    const tooMany = Array.from({ length: 101 }, (_, i) => ({ ...jot, id: `j${i}` }));
+    await assertFails(setDoc(doc(db, "trainers", "trainerA", "notes", "r2"), noteData({ log: tooMany })));
+    const links = Array.from({ length: 11 }, (_, i) => ({ url: `https://s${i}.org/`, title: "" }));
+    await assertFails(setDoc(doc(db, "trainers", "trainerA", "notes", "r3"), noteData({ links })));
+    // The shared copy may carry sources, not the log.
+    const batch = writeBatch(db);
+    batch.set(ref, noteData({ kind: "research", sharedWith: "notesClient" }));
+    batch.set(
+      doc(db, "clients", "notesClient", "sharedNotes", "r1"),
+      sharedData("trainerA", { kind: "research", links: [{ url: "https://x.org/", title: "Review" }] }),
+    );
+    await assertSucceeds(batch.commit());
+    await assertFails(
+      setDoc(doc(db, "clients", "notesClient", "sharedNotes", "r1"), sharedData("trainerA", { log: [jot] })),
+    );
   });
 
   it("shares a note onto the client's record in one batch, readable by the client's studio only", async () => {

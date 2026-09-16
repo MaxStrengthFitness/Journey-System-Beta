@@ -15,6 +15,7 @@ import {
   folderCounts,
   noteErrorMessage,
   noteListItems,
+  sortNotes,
   validFolderName,
   whenLabel,
   type NoteListItem,
@@ -22,6 +23,7 @@ import {
 } from "./notes";
 import { NOTE_KIND_LABEL, NOTE_KINDS, type NoteDraft, type NoteKind, type TrainerNote } from "./types";
 import { NoteEditor } from "./NoteEditor";
+import { checklistCount } from "./format";
 import "./notes.css";
 
 /**
@@ -41,6 +43,7 @@ const KIND_PLURAL: Record<NoteKind, string> = {
   routine: "Routine changes",
   retention: "Retention",
   injury: "Injury plans",
+  research: "Research",
 };
 
 /**
@@ -126,12 +129,35 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
   );
 
   // From a client's profile. Read once, on arrival.
+  const [jotFor, setJotFor] = useState<{ id: string; name: string } | null>(null);
+  const [focusJot, setFocusJot] = useState<string | null>(null);
   useEffect(() => {
     if (!intent) return;
     if (intent.kind === "new-note") startNew(intent.client, intent.noteKind ?? "plan");
     else if (intent.kind === "open-note") setSelected(intent.noteId);
+    else if (intent.kind === "jot") setJotFor(intent.client);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intent]);
+
+  // "Jot a note" (Planner rework): once the notes are in, open the note
+  // being built about this client — the newest private one that names them —
+  // or start one, with the working log focused.
+  useEffect(() => {
+    if (!jotFor || loading || !uid) return;
+    const building = sortNotes(notes.filter((n) => !n.sharedWith && n.clientIds.includes(jotFor.id)))[0];
+    if (building) {
+      setSelected(building.id);
+      setFocusJot(building.id);
+    } else {
+      const id = newNoteId(uid);
+      const baseline = blankDraft(jotFor);
+      baseline.title = `${jotFor.name} — working notes`;
+      setPendingNew({ id, baseline });
+      setSelected(id);
+      setFocusJot(id);
+    }
+    setJotFor(null);
+  }, [jotFor, loading, notes, uid, setSelected]);
 
   const saved = selected ? notes.find((n) => n.id === selected) ?? null : null;
   const restored = selected ? stashedDraft(uid, selected) : null;
@@ -324,8 +350,9 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
               <div className="pl__empty">
                 <p className="pl__empty-title">No notes yet</p>
                 <p className="pl__empty-body">
-                  Plans, routine changes, retention ideas, injury plans — write them here, link the clients they are
-                  about, and file them in folders. Nobody else sees them unless you share one.
+                  Plans, routine changes, retention ideas, injury plans, research — write them here, link the clients
+                  they are about, and file them in folders. Build a note over several sessions with working notes, then
+                  publish it when it's ready. Nobody else sees a note unless you share it.
                 </p>
               </div>
             ) : (
@@ -374,6 +401,7 @@ export function NotesPanel({ authTrainer, clients, onOpenClient, intent }: Notes
             onDelete={removeNote}
             onBack={() => setSelected(null)}
             onOpenClient={onOpenClient}
+            focusJot={focusJot === selected}
           />
         ) : (
           <div className="pn__placeholder">
@@ -414,6 +442,7 @@ const NoteList = memo(function NoteList({
       {items.map((item) => {
         const n = item.note;
         const names = n.clientIds.map((id) => clientLabel(id, n, nameOf));
+        const checks = checklistCount(n.body);
         return (
           <li key={item.id}>
             <button
@@ -435,6 +464,18 @@ const NoteList = memo(function NoteList({
               </span>
               <span className="pn__card-title">{n.title || "Untitled"}</span>
               {!item.isNew && n.body && <span className="pn__card-excerpt">{excerpt(n.body)}</span>}
+              {!item.isNew && (n.log.length > 0 || n.links.length > 0 || checks.total > 0) && (
+                <span className={`pn__stage${n.log.length > 0 && !n.sharedWith ? " pn__stage--building" : ""}`}>
+                  {[
+                    n.log.length > 0 && !n.sharedWith ? `Building · ${n.log.length} jot${n.log.length === 1 ? "" : "s"}` : null,
+                    n.log.length > 0 && n.sharedWith ? `${n.log.length} jot${n.log.length === 1 ? "" : "s"}` : null,
+                    checks.total > 0 ? `${checks.done} of ${checks.total} ticked` : null,
+                    n.links.length > 0 ? `${n.links.length} source${n.links.length === 1 ? "" : "s"}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              )}
               {(names.length > 0 || item.unsaved) && (
                 <span className="pn__card-foot">
                   {names.length > 0 && <span className="pn__card-clients">{names.join(" · ")}</span>}

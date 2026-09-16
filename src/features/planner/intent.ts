@@ -20,6 +20,9 @@ import type { NoteKind } from "./notes/types";
 export type PlannerIntent =
   | { kind: "new-note"; client: { id: string; name: string }; noteKind?: NoteKind }
   | { kind: "open-note"; noteId: string }
+  /* Planner rework: "Jot a note" on a profile — add to the note being built
+     about this client, or start one. */
+  | { kind: "jot"; client: { id: string; name: string } }
   /* Planner rework (Sep 2026): a notification about a team job opens it; a
      reminder opens My tasks; a colleague's shared note opens it in Notes. */
   | { kind: "open-job"; jobId: string }

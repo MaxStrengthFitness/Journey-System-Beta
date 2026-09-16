@@ -15,14 +15,22 @@ import {
   NOTE_BODY_MAX,
   NOTE_KIND_LABEL,
   NOTE_KINDS,
+  NOTE_LINK_TITLE_MAX,
+  NOTE_LINK_URL_MAX,
+  NOTE_LOG_MAX,
+  NOTE_LOG_TEXT_MAX,
   NOTE_MAX_CLIENTS,
+  NOTE_MAX_LINKS,
   NOTE_TITLE_MAX,
   type NoteDraft,
   type NoteFolder,
   type NoteKind,
+  type NoteLink,
+  type NoteLogEntry,
   type SharedNote,
   type TrainerNote,
 } from "./types";
+import { plainText, safeHref } from "./format";
 
 /** Which notes the list shows. */
 export type NotesView =
@@ -33,7 +41,7 @@ export type NotesView =
   | { kind: "folder"; folderId: string };
 
 export interface NoteProblem {
-  field: "title" | "body" | "kind" | "clients" | "share";
+  field: "title" | "body" | "kind" | "clients" | "share" | "links";
   message: string;
 }
 
@@ -55,7 +63,7 @@ export function canShare(clientIds: string[]): boolean {
 export function effectiveTitle(d: Pick<NoteDraft, "title" | "body">): string {
   const typed = d.title.replace(/\s+/g, " ").trim();
   if (typed) return clipText(typed, NOTE_TITLE_MAX);
-  const first = d.body.split("\n").map((l) => l.replace(/\s+/g, " ").trim()).find(Boolean) ?? "";
+  const first = plainText(d.body).split("\n").map((l) => l.replace(/\s+/g, " ").trim()).find(Boolean) ?? "";
   return first.length > 80 ? `${clipText(first, 79).trimEnd()}…` : first;
 }
 
@@ -82,7 +90,40 @@ export function validateNoteDraft(d: NoteDraft): NoteProblem[] {
     });
   }
   if (!NOTE_KINDS.includes(d.kind)) out.push({ field: "kind", message: "Pick what kind of note it is." });
+  if ((d.links ?? []).length > NOTE_MAX_LINKS) {
+    out.push({ field: "links", message: `A note can hold ${NOTE_MAX_LINKS} sources at most.` });
+  }
   return out;
+}
+
+/** A source as it will be stored, or a reason it can't be. */
+export function checkLink(url: string, title: string): { link: NoteLink } | { problem: string } {
+  const href = safeHref(url.trim());
+  if (!href) return { problem: "Paste a web address that starts with https://" };
+  if (href.length > NOTE_LINK_URL_MAX) return { problem: "That address is too long to keep." };
+  const t = title.replace(/\s+/g, " ").trim().slice(0, NOTE_LINK_TITLE_MAX);
+  return { link: { url: href, title: t || hostOf(href) } };
+}
+
+/** "pubmed.ncbi.nlm.nih.gov" — a source's name when it has no title. */
+export function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url.slice(0, 60);
+  }
+}
+
+function cleanLinks(links: NoteLink[] | undefined): NoteLink[] {
+  const seen = new Set<string>();
+  const out: NoteLink[] = [];
+  for (const l of links ?? []) {
+    const href = safeHref(l?.url ?? "");
+    if (!href || seen.has(href) || href.length > NOTE_LINK_URL_MAX) continue;
+    seen.add(href);
+    out.push({ url: href, title: (l.title ?? "").slice(0, NOTE_LINK_TITLE_MAX) || hostOf(href) });
+  }
+  return out.slice(0, NOTE_MAX_LINKS);
 }
 
 /** Trim, de-duplicate, and keep names only for linked clients. */
@@ -99,6 +140,7 @@ export function normaliseDraft(d: NoteDraft): NoteDraft {
     body: d.body.slice(0, NOTE_BODY_MAX),
     clientIds,
     clientNames,
+    links: cleanLinks(d.links),
   };
 }
 
@@ -106,7 +148,7 @@ export function normaliseDraft(d: NoteDraft): NoteDraft {
 export function noteFields(
   d: NoteDraft,
   sharedWith: string | null,
-): Omit<TrainerNote, "id" | "createdAt" | "updatedAt"> {
+): Omit<TrainerNote, "id" | "createdAt" | "updatedAt" | "log"> {
   const n = normaliseDraft(d);
   return {
     title: effectiveTitle(n),
@@ -117,12 +159,13 @@ export function noteFields(
     clientNames: n.clientNames,
     pinned: n.pinned,
     sharedWith,
+    links: n.links,
   };
 }
 
 /** The shared copy's fields, minus id and timestamps. Nothing about other clients. */
 export function sharedFields(
-  d: Pick<NoteDraft, "title" | "body" | "kind">,
+  d: Pick<NoteDraft, "title" | "body" | "kind"> & { links?: NoteLink[] },
   clientId: string,
   author: { id: string; name: string },
 ): Omit<SharedNote, "id" | "updatedAt"> {
@@ -133,6 +176,7 @@ export function sharedFields(
     kind: d.kind,
     authorId: author.id,
     authorName: (author.name || "A trainer").slice(0, 80),
+    links: cleanLinks(d.links),
   };
 }
 
@@ -184,9 +228,52 @@ export function noteFromDoc(id: string, d: Record<string, unknown> | undefined):
     clientNames,
     pinned: data.pinned === true,
     sharedWith,
+    links: cleanLinks(Array.isArray(data.links) ? (data.links as NoteLink[]) : []),
+    log: logFromDoc(data.log),
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   };
+}
+
+/** A note's working log, oldest first; odd entries are dropped, not thrown. */
+export function logFromDoc(v: unknown): NoteLogEntry[] {
+  if (!Array.isArray(v)) return [];
+  const out: NoteLogEntry[] = [];
+  for (const e of v) {
+    const x = e as Partial<NoteLogEntry> | null;
+    if (!x || typeof x.id !== "string" || typeof x.text !== "string" || typeof x.at !== "number") continue;
+    out.push({
+      id: x.id,
+      at: x.at,
+      text: x.text.slice(0, NOTE_LOG_TEXT_MAX),
+      clientId: typeof x.clientId === "string" ? x.clientId : null,
+    });
+  }
+  return out.sort((a, b) => a.at - b.at).slice(-NOTE_LOG_MAX);
+}
+
+/** A new jot, as it will be stored. The id is unique enough for one person's note. */
+export function logEntry(text: string, clientId: string | null, now: number = Date.now()): NoteLogEntry | null {
+  const t = text.trim().slice(0, NOTE_LOG_TEXT_MAX);
+  if (!t) return null;
+  return { id: `j${now.toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`, at: now, text: t, clientId };
+}
+
+/**
+ * A jot moved into the body: dated, as a bullet, after what is already
+ * there. "Add to the note" does this; the trainer then edits and saves.
+ */
+export function foldIntoBody(body: string, entry: Pick<NoteLogEntry, "at" | "text">): string {
+  const day = formatStudioDate(new Date(entry.at), { month: "short", day: "numeric" });
+  const lines = entry.text.split("\n");
+  const bullet = `- ${day}: ${lines[0]}${lines.length > 1 ? `\n  ${lines.slice(1).join("\n  ")}` : ""}`;
+  const trimmed = body.replace(/\s+$/, "");
+  return trimmed ? `${trimmed}\n${bullet}` : bullet;
+}
+
+/** Room left in the log; the rules refuse a note holding more than the limit. */
+export function logIsFull(log: NoteLogEntry[]): boolean {
+  return log.length >= NOTE_LOG_MAX;
 }
 
 export function folderFromDoc(id: string, d: Record<string, unknown> | undefined): NoteFolder {
@@ -203,6 +290,7 @@ export function sharedNoteFromDoc(id: string, d: Record<string, unknown> | undef
     kind: kindOf(data.kind),
     authorId: str(data.authorId, 200),
     authorName: str(data.authorName, 80) || "A trainer",
+    links: cleanLinks(Array.isArray(data.links) ? (data.links as NoteLink[]) : []),
     updatedAt: data.updatedAt,
   };
 }
@@ -247,9 +335,11 @@ export function noteMatches(
   const hay = norm(
     [
       note.title,
-      note.body,
+      plainText(note.body),
       NOTE_KIND_LABEL[note.kind] ?? "",
       ...note.clientIds.map((id) => nameOf(id) || note.clientNames[id] || ""),
+      ...(note.log ?? []).map((e) => e.text),
+      ...(note.links ?? []).map((l) => `${l.title} ${l.url}`),
     ].join(" "),
   );
   return words.every((w) => hay.includes(w));
@@ -315,7 +405,7 @@ export function folderCounts(
 
 /** The first bit of the body, on one line. */
 export function excerpt(body: string, max = 140): string {
-  const flat = body.replace(/\s+/g, " ").trim();
+  const flat = plainText(body).replace(/\s+/g, " ").trim();
   return flat.length > max ? `${flat.slice(0, max - 1).trimEnd()}…` : flat;
 }
 
@@ -367,7 +457,7 @@ export function noteListItems(
   const unsavedIds = new Set(drafts.map((d) => d.noteId));
   const standIns: TrainerNote[] = drafts
     .filter((d) => d.isNew && !savedIds.has(d.noteId))
-    .map((d) => ({ id: d.noteId, ...noteFields(d.draft, null), title: effectiveTitle(d.draft) || "New note" }));
+    .map((d) => ({ id: d.noteId, ...noteFields(d.draft, null), log: [], title: effectiveTitle(d.draft) || "New note" }));
   const newIds = new Set(standIns.map((n) => n.id));
   return notesInView([...saved, ...standIns], view, kind, query, nameOf, folderIds).map((note) => ({
     id: note.id,
@@ -439,6 +529,7 @@ export function blankDraft(client?: { id: string; name: string } | null): NoteDr
     clientNames: client ? { [client.id]: client.name } : {},
     pinned: false,
     share: false,
+    links: [],
   };
 }
 
@@ -453,6 +544,7 @@ export function draftFromNote(n: TrainerNote): NoteDraft {
     clientNames: { ...n.clientNames },
     pinned: n.pinned,
     share: Boolean(n.sharedWith),
+    links: (n.links ?? []).map((l) => ({ ...l })),
   };
 }
 

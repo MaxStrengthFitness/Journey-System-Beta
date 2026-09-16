@@ -12,6 +12,8 @@
  */
 
 import {
+  arrayRemove,
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -25,7 +27,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { cleanFolderName, draftFromNote, noteFields, sharePlan, sharedFields } from "./notes";
-import type { NoteDraft, NoteFolder, TrainerNote } from "./types";
+import type { NoteDraft, NoteFolder, NoteLogEntry, TrainerNote } from "./types";
 
 export function notesRef(uid: string) {
   return collection(db, "trainers", uid, "notes");
@@ -69,11 +71,20 @@ export async function saveNote({ uid, noteId, draft, before, author }: SaveNoteA
 
   // set(), not update(): a note deleted on another device while this one was
   // open comes back rather than failing with nowhere for the text to go.
-  batch.set(doc(notesRef(uid), noteId), {
-    ...fields,
-    createdAt: before?.createdAt ?? now,
-    updatedAt: now,
-  });
+  //
+  // mergeFields, not a plain set (Planner rework): the working log is written
+  // on its own, a jot at a time, possibly from another iPad while this one
+  // was open, so a save rewrites every field it owns — whole, maps included
+  // — and leaves `log` exactly as the server has it.
+  batch.set(
+    doc(notesRef(uid), noteId),
+    {
+      ...fields,
+      createdAt: before?.createdAt ?? now,
+      updatedAt: now,
+    },
+    { mergeFields: [...NOTE_OWN_FIELDS] },
+  );
   if (plan.write) {
     // A whole overwrite every time (see SharedNote in ./types.ts).
     batch.set(doc(sharedNotesRef(plan.write), noteId), {
@@ -84,7 +95,42 @@ export async function saveNote({ uid, noteId, draft, before, author }: SaveNoteA
   if (plan.remove) batch.delete(doc(sharedNotesRef(plan.remove), noteId));
 
   await batch.commit();
-  return draftFromNote({ id: noteId, ...fields });
+  return draftFromNote({ id: noteId, ...fields, log: [] });
+}
+
+/** Every field a save owns — all of a note but its working log. */
+const NOTE_OWN_FIELDS = [
+  "title",
+  "body",
+  "kind",
+  "folderId",
+  "clientIds",
+  "clientNames",
+  "pinned",
+  "sharedWith",
+  "links",
+  "createdAt",
+  "updatedAt",
+] as const;
+
+/**
+ * Adds a jot to a saved note's working log. One array element, added with
+ * arrayUnion, so a jot from another iPad a moment earlier is kept.
+ * Never touches the body or a shared copy: the log is always private.
+ */
+export async function appendNoteLog(uid: string, noteId: string, entry: NoteLogEntry): Promise<void> {
+  await updateDoc(doc(notesRef(uid), noteId), {
+    log: arrayUnion(entry),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/** Removes one jot. arrayRemove matches the whole entry as stored. */
+export async function removeNoteLog(uid: string, noteId: string, entry: NoteLogEntry): Promise<void> {
+  await updateDoc(doc(notesRef(uid), noteId), {
+    log: arrayRemove(entry),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 /** Deletes a note — and its copy on the client's record, if it was shared. */
