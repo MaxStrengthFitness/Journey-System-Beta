@@ -143,6 +143,22 @@ The full pass is `LEARNING-PLANNER-ROUND.md` §5. These are the ones most likely
 - [ ] **Offline:** open the Overview, a studio page and My tasks with the network off. *Expected:* "Loading…" or "Couldn't load…" — never "Nothing written here", "That page is gone" or "Nothing on your list today".
 - [ ] **Long lists keep their place.** Scroll far down All MSF machines, open a machine, come back up: you're where you were.
 
+### The Planner rework · *branch `planner-rework`*
+
+The round is `docs/rounds/2026-09-16-planner-rework.md`. Two iPads, one signed in as a head trainer, one as a trainer, both at the same studio.
+
+- [ ] **Post a job with three machines, for "anyone", with "Tell me when it's finished" on.** *Expected:* it shows on both iPads' Studio tab as **Up for grabs**; the glance band says "1 up for grabs".
+- [ ] **Both iPads tick a different part at the same moment.** *Expected:* both ticks stay. *If one vanishes:* something rewrote `parts` whole.
+- [ ] **The trainer taps I'll take it, then closes the job with a note.** *Expected:* the head trainer's bell rings "taken", then "finished"; the job moves to **Finished lately**.
+- [ ] **The head trainer switches to a studio they only visit.** *Expected:* no **Team** tab and no **Post a job** there.
+- [ ] **Team tab after an assigned task is left undone yesterday.** *Expected:* that person is at the top, with "Missed *task* on *day*". A task someone else finished is not held against them. Today's open tasks are never "missed".
+- [ ] **New reminder for 5 minutes from now, "5 min before".** Leave the app open on any screen. *Expected:* the bell rings once, even with the same trainer signed in on both iPads; the Calendar shows it in the strip above the month.
+- [ ] **Write a note over two sittings.** Add two working notes, close the app, reopen, add a third on the other iPad, then save the note on the first. *Expected:* all three jots are still there. Fold one in with **Add to the note**.
+- [ ] **Formatting:** a heading, a checklist and a link. *Expected:* read mode draws them; ticking a box saves; the link opens in a new tab.
+- [ ] **Share with one colleague "for a week".** *Expected:* their bell rings once; the note is under **From colleagues** on their iPad; they can **Save a copy** but not edit. Switch it off and save: it's gone from their list at once.
+- [ ] **Share a note that names a client coached at another studio.** *Expected:* the card says so and Save is refused.
+- [ ] **Old iPad (iPadOS 15/16) cold load.** *Expected:* the app opens (a regex the old Safari can't parse would blank the whole app).
+
 ### Calendar · *branch `calendar-redesign`*
 
 - [ ] **Month with a heavy Thursday** — row heights hold, no trainer names wrapping.

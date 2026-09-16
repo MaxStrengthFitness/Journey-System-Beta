@@ -18,7 +18,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 | Scheduled jobs | `server/cron-*.ts` (Render cron jobs, bundled by esbuild — they can import pure modules from `src/`). The nightly renewals job is `server/renewals-job.ts`, run by `server/cron-renewals.ts`; the weekly machine-trends job is `server/machine-trends-job.ts` (`src/features/machine-trends/` is its pure core — read that README first) |
 | FORD (Family, Occupation, Recreation, Dreams) | `src/features/ford/` — the Life section of the client profile, mid-session capture, the post-session sweep and the studio Delight queue. Read its `README.md` first |
 | Renewals and InBody | `src/features/renewals/` (engine, pipeline, outcomes — read its `README.md`), `src/features/admin/renewals/` (Operations → Renewals), `src/features/inbody/` |
-| Learning, Planner, machines, comments | `src/features/learning/` (the Learning tab: Overview, one search, links to any page), `src/features/planner/` (the Planner — was To-Do — and its private Notes in `notes/`), `src/features/machine-db/` (All MSF machines: sharing and adopting), `src/features/comments/` (comments with @tags). `docs/rounds/LEARNING-PLANNER-ROUND.md` is the round |
+| Learning, Planner, machines, comments | `src/features/learning/` (the Learning tab: Overview, one search, links to any page), `src/features/planner/` (the Planner — was To-Do — with team jobs in `jobs/`, the Team tab in `team/`, reminders in `reminders/` and private Notes in `notes/`), `src/features/machine-db/` (All MSF machines: sharing and adopting), `src/features/comments/` (comments with @tags). `docs/rounds/LEARNING-PLANNER-ROUND.md` is the round; the Planner rework is `docs/rounds/2026-09-16-planner-rework.md` |
 | Cloud Functions | `functions/src/` — `mindbodyWebhook`, trainer rollups, staff photos, nightly facility analytics |
 | Security rules | `firestore.rules`; tests in `tests/firestore.rules.test.ts`; indexes in `firestore.indexes.json` |
 | One-off scripts | `scripts/*.ts` — service-account auth, dry-run by default, `--commit` to write |
@@ -39,8 +39,8 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 | --- | --- | --- |
 | Install | `npm ci` | `npm install` fails with an `edgesOut` error |
 | Run locally | `npm run dev` | Port 3000 |
-| Typecheck | `npx tsc --noEmit` | Compare the error **count** to master's baseline (13 after the client-profile audit round removed dead code from ClientProfileView; 18 after the FORD round; 20 before that); don't expect zero |
-| Tests | `npx vitest run src` | 2,636 passing after the client-profile audit round (Sep 16); 2,128 after the cost round (Sep 16) — run it as `TZ=America/New_York npx vitest run src`, see the date trap below; 2,077 after the four-tab profile round; 2,046 after the FORD round; 2,027 after the fix round; 2,015 after the tracker round; 1,813 after the floor round |
+| Typecheck | `npx tsc --noEmit` | Compare the error **count** to master's baseline (13 after the client-profile audit round removed dead code from ClientProfileView, unchanged by the Planner rework; 18 after the FORD round; 20 before that); don't expect zero |
+| Tests | `npx vitest run src` | 2,763 passing after the Planner rework (Sep 16); 2,636 after the client-profile audit round (Sep 16); 2,128 after the cost round (Sep 16) — run it as `TZ=America/New_York npx vitest run src`, see the date trap below; 2,077 after the four-tab profile round; 2,046 after the FORD round; 2,027 after the fix round; 2,015 after the tracker round; 1,813 after the floor round |
 | Build | `npx vite build` | |
 | Rules tests | `npm run test:rules` | Needs JDK 21. "Port taken" means an old emulator still holds 8080 — stop it first |
 
@@ -56,7 +56,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 - Use the design tokens (`equipment.tokens.css`, and `admin.tokens.css` in admin screens); no raw hex. The red kaizen mark is reserved for rep quality.
 - Dates are the studio's Eastern day (`src/lib/studio-time.ts`).
 - Admin / Operations screens follow `src/features/admin/README.md` (dirty-tracked saves, only the diff is written, plain studio English).
-- The To-Do screen is the **Planner** (Studio · My tasks · Notes); its view id is still `studio-tasks`. Planner notes are private to their author; **Share** copies a one-client note onto that client's record.
+- The To-Do screen is the **Planner** (Studio · My tasks · Notes · Team — Team for leaders of the studio the iPad is in); its view id is still `studio-tasks`. AJ's brief suggested renaming it "Command" — kept as Planner (Planner rework, Sep 16). Planner notes are private to their author; **Share** copies a one-client note onto that client's record, and **Share with colleagues** copies it to `studios/{s}/noteShares` — sharing is always a copy, never a visibility flag.
 - Sharing between studios is the studio's choice, per machine and per tip or note (a "Share with all MSF studios" switch). Comments stay within the studio; a tag rings the tagged person's bell and nothing else.
 
 **Data**
@@ -76,7 +76,17 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 
 `ROLE_LABELS` in `src/types.ts` is the vocabulary: **Life Transformer** (a trainer), **Studio Leader** (`StudioLeader`, `HeadTrainer`), **Franchise Owner** (`Owner`, `StudioOwner`, `FranchiseOwner`), **Founder / Overseer**, **System Administrator**. The Operations (admin) dashboard is reachable by studio leaders and above. Details: `docs/business/roles-and-permissions.md`.
 
-## Known traps (as of Sep 16 2026, after the client-profile audit round)
+## Known traps (as of Sep 16 2026, after the Planner rework)
+
+- **The Planner rework (Sep 16) — read `docs/rounds/2026-09-16-planner-rework.md` and `src/features/planner/README.md` before touching the Planner.** The load-bearing parts:
+  - **Team jobs' parts are a MAP**, written one key at a time (`parts.<id>.doneBy`), and people join with `arrayUnion`. Never rewrite `parts` whole from the screen's copy — two iPads ticking at once would erase each other. Nothing locks a job to its names.
+  - **The Team tab counts only work with someone's name on it** (`team/accountability.ts`). Never charge unassigned shift work to "whoever was working", never judge today before the day is over, never count notes, never show a rate.
+  - **Leader-only Planner parts use `leadsHere(trainer, activeStudioId)`** (`planner/leads.ts`), which mirrors the `teamJobs` rules. `isStudioLeader` is role-only and would offer a visiting head trainer what the rules refuse. (The older studio-task Assign button still uses it; the task rules are the open hole below.)
+  - **Reminders ring from the trainer's own iPad** (`PlannerReminders`, mounted in `AppContent`), at the id `reminder__{templateId}__{dateKey}` so two iPads ring once. No push, ever. A reminder missed while every iPad was closed rings up to `LATE_GRACE_MINUTES` late.
+  - **A note save uses `mergeFields`** so the working log (`log`, written with `arrayUnion`) isn't overwritten by a save from another iPad. Add any new note field to `NOTE_OWN_FIELDS` or it is never saved.
+  - **Colleague-share expiry is NOT enforced by the rules** — the app hides an expired copy and its author's Planner deletes it. Ending a share by hand deletes it at once. Every client a shared note names must be coached at that studio (`useClientsAtStudio`).
+  - **Note formatting is plain text drawn by `notes/format.ts`** — never store or render HTML, and never use regex lookbehind (older iPadOS Safari throws on parse, which takes the whole bundle down).
+  - **Firestore refuses `undefined`.** `saveTaskTemplate` strips it (`withoutUndefined`); a new optional field written from a form needs the same.
 
 - **The client profile is FOUR tabs and each one is a question, not a screen name.** Journey (what has she done) · Programming (what is she supposed to do — Routines + Equipment) · Notes & Profile (what do we know — the FORD spine) · **Activity Archive** (what has already happened — Clinical + History; renamed from "Clinical History" in the audit round, tab id still `clinical`). **Where the trainer is is NOT a string**: it is a `ProfileLocation` — a tab AND a segment inside it — owned by one reducer in `src/features/client-profile/profile-nav.ts` and reached through `useProfileNav`. Never add a second copy of it. Every tab id the profile has ever used still resolves, through `legacyLocation()`; add to that map rather than chasing call sites. Read `docs/rounds/2026-09-15-four-tab-profile.md` before touching the profile's navigation.
 - **The sub-toggle is one component and its rules are load-bearing.** `ProfileSubnav` — sticky, 48px, segments as EQUAL fractions of the full width, brand blue (never hero orange, which is Start Session). The iPad is held and often not looked at: a segment is found by POSITION, so never size a segment to its text and never move the bar. **Never hide a segment** — Routine B with no B reads "OFF" and the switch to turn it on lives behind it.

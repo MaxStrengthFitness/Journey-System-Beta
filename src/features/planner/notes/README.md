@@ -17,7 +17,28 @@ For sharing, he chose **private, with a Share button**. Only the author reads a 
   - The author gets **Edit in your Planner**.
   - The studio's leaders get **Take off the record**.
 
-The kinds are Note, Plan, Routine change, Retention and Injury plan. They are a coloured dot beside the name, so the colour is never the only cue.
+The kinds are Note, Plan, Routine change, Retention, Injury plan and (rework) Research. They are a coloured dot beside the name, so the colour is never the only cue.
+
+### Added in the Planner rework (Sep 16 2026)
+
+AJ: notes "can be built about a client over time … and finally publish the plan or findings", research and articles to show a client on the iPad, and "share specific, advanced client notes temporarily with other trainers in the event of a vacation or handoff".
+
+- **Read first.** A saved note with a body opens to read (formatting drawn, checklist boxes tickable); **Edit** switches to writing.
+- **Formatting** (`format.ts`, `NoteBody.tsx`) is markdown-lite: `#`/`##` headings, `**bold**`, `*italic*`, `- ` and `1. ` lists, `- [ ]` checklists, `>` quotes, `---`, and links. Plain text in the database, never rendered as HTML — nothing to sanitize, no editor library. **No regex lookbehind** (older iPadOS can't parse it). Only http(s) links are made clickable (`safeHref`).
+- **Sources** (`NoteSources.tsx`): up to 10 links with an optional title. They travel with every copy.
+- **Working notes** (`WorkingLog.tsx`): dated jots in the note's `log`, added with `arrayUnion` and removed with `arrayRemove` so two iPads never erase each other. **Add to the note** folds a jot into the body. The log is private: it never travels to a copy. A jot on an unsaved note saves the note first (with a title from the jot).
+- **Saves merge only the note's own fields** (`mergeFields` in `saveNote`) so a jot added elsewhere survives a save here.
+- **Jot a note** on a client's shared-notes card opens the Planner with a new note about that client and its jot box focused (`jot` intent).
+- **Share with colleagues** (`team-share.ts`, `TeamShareCard.tsx`, `SharedNoteView.tsx`) — see below.
+
+### Sharing with colleagues
+
+- **A copy again**, at `studios/{s}/noteShares/{noteId}` — the note's id, so there is at most one per note. The private note keeps a `teamShare` marker (studio, audience, people, end date, message); a save writes, rewrites or removes the copy in the same batch.
+- **Audience:** named people (their Auth uids in `audienceIds`, ≤ 20 — the list query is `array-contains` my uid, which the rules can prove) or everyone who works at that studio (`audience == "team"`, a second query).
+- **Every client the note names must be coached at that studio** (`useClientsAtStudio`: `ok`, `elsewhere`, `unknown`, `checking`) — the copy shows their names to that studio's people. Anything but `ok` blocks the save.
+- **The end date is the app's, not the rules'.** An expired copy is hidden everywhere (`visibleShares`) and deleted by its author's Planner when it next opens (a module-level sweep, once per note per session). Turning the switch off and saving removes it at once. Deleting the note removes it too.
+- **Colleagues read it** under **From colleagues**; they can **Save a copy** into their own notes (a new private note — no link back). Only the author edits.
+- **Their bell rings once**, when they are first named (`newlyNamed`); a team share rings nobody.
 
 ## Where it lives
 
@@ -26,8 +47,9 @@ The kinds are Note, Plan, Routine change, Retention and Injury plan. They are a 
 | `trainers/{uid}/notes/{noteId}` | the note | the author only (uid in the path) |
 | `trainers/{uid}/noteFolders/{folderId}` | the folders | the author only |
 | `clients/{clientId}/sharedNotes/{noteId}` | a shared note's copy | read: whoever can open the client (like InBody). Write: the author, if they can edit the client. Delete: the author, the studio's leaders, administrators |
+| `studios/{studioId}/noteShares/{noteId}` | a copy shared with colleagues (rework) | read: the people named, the author, or — for a team share — anyone who works at the studio. Write: the author, at a studio they work at. Delete: the author (even when already gone), the studio's leaders, administrators |
 
-`uid` is the Firebase Auth uid (`auth.currentUser.uid`), never the trainer document's id, which differs on older accounts. The rules are in `firestore.rules`: `trainerNoteValid`, `noteFolderValid`, `sharedNoteValid`, and the `sharedNotes` match. They are tested in `tests/firestore.rules.test.ts`.
+`uid` is the Firebase Auth uid (`auth.currentUser.uid`), never the trainer document's id, which differs on older accounts. The rules are in `firestore.rules`: `trainerNoteValid`, `noteExtrasValid`, `noteFolderValid`, `sharedNoteValid`, `noteShareValid`, and the `sharedNotes` and `noteShares` matches. They are tested in `tests/firestore.rules.test.ts`.
 
 **Nothing new to deploy but the rules.** There are no new indexes: every query is a single-field order on one collection. The client search reuses the directory's two queries and their indexes.
 
@@ -64,8 +86,11 @@ The kinds are Note, Plan, Routine change, Retention and Injury plan. They are a 
 | `access.ts` + test | Who may share onto, or take off, a client's record (mirrors the rules) |
 | `mutations.ts` | Every write |
 | `hooks.ts` | Listeners, the copy check, the client search |
-| `NotesPanel.tsx` | The tab: folders, filters, list, and the two-pane layout |
-| `NoteEditor.tsx` | One open note, and the client linker |
-| `SharedNotesCard.tsx` | Goals → Plans from the team, in the client profile |
+| `NotesPanel.tsx` | The tab: folders, filters, list, From colleagues, and the two-pane layout |
+| `NoteEditor.tsx` | One open note (read / write), and the client linker |
+| `format.ts` + test, `NoteBody.tsx`, `note-body.css` | The formatting: parse, draw, toolbar |
+| `WorkingLog.tsx`, `NoteSources.tsx` | Working notes and sources |
+| `team-share.ts` + test, `TeamShareCard.tsx`, `SharedNoteView.tsx` | Sharing with colleagues: rules, the card in the editor, the colleague's view |
+| `SharedNotesCard.tsx` | Goals → Plans from the team, in the client profile (with Jot a note) |
 | `notes.css` | On the Studio Hub's `--st-*` tokens |
 | `../intent.ts` | The profile's request to open the Planner at a note |
