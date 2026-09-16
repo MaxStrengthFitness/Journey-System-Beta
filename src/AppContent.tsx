@@ -173,6 +173,7 @@ const ClientProgressReportView = lazy(() =>
 import { FeedbackProvider, FeedbackButton } from "./features/feedback";
 import { NotificationBell } from "./features/notifications";
 import { plannerIntentFromLink, requestPlanner } from "./features/planner/intent";
+import { PlannerReminders } from "./features/planner/reminders/PlannerReminders";
 // Type-only, and from the module rather than the barrel, so nothing about the
 // studio-tasks chunk is pulled into the initial bundle.
 import type { ClientTaskAction } from "./features/studio-tasks/types";
@@ -1848,6 +1849,8 @@ export default function AppContent({
       </Button>
       <ThemeToggle className={headerIconClass} />
       <FeedbackButton className={headerIconClass} />
+      {/* Rings the bell when one of your own Planner reminders comes due. */}
+      <PlannerReminders authTrainer={authTrainer ?? null} />
       <NotificationBell
         trainerId={authTrainer?.id}
         authTrainer={authTrainer}

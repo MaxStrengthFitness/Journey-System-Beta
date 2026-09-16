@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, ExternalLink, Plus, Repeat, UserCheck } from "lucide-react";
+import { Bell, BellPlus, CalendarClock, Check, ExternalLink, Plus, Repeat, UserCheck } from "lucide-react";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import { auth } from "../../firebase";
 import type { Client, Trainer } from "../../types";
@@ -14,6 +14,11 @@ import {
   type TaskTemplate,
 } from "../studio-tasks/types";
 import { myTaskBuckets, taskMeta } from "./my-tasks";
+import { upcomingTimed } from "./reminders/reminders";
+import { clockLabel, reminderPreset } from "../studio-tasks/task-wizard";
+import { dayWords } from "./jobs/jobs";
+import { addDays } from "../studio-tasks/recurrence";
+import { studioDateKey } from "../../lib/studio-time";
 import { isStudioLeader } from "../../lib/permissions";
 import { studioRoster } from "../studio-tasks/initiatives";
 import { useTeamJobs } from "./jobs/useTeamJobs";
@@ -83,8 +88,25 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
 
   const [managing, setManaging] = useState(false);
   const [intent, setIntent] = useState<
-    { mode: "new"; scope: "personal" } | { mode: "edit"; template: TaskTemplate } | null
+    | { mode: "new"; scope: "personal"; preset?: Partial<TaskTemplate> }
+    | { mode: "edit"; template: TaskTemplate }
+    | null
   >(null);
+
+  // Coming up: your timed tasks over the next week, after today (today's
+  // are in the list above, in time order).
+  const todayKey = studioDateKey(new Date()) ?? "";
+  const comingUp = useMemo(
+    () =>
+      todayKey
+        ? upcomingTimed(
+            templates.filter((t) => taskScopeOf(t) === "personal"),
+            addDays(todayKey, 1),
+            6,
+          )
+        : [],
+    [templates, todayKey],
+  );
 
   const nothingToday =
     !loading &&
@@ -92,7 +114,8 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
     buckets.open.length === 0 &&
     buckets.done.length === 0 &&
     buckets.assigned.length === 0 &&
-    myOpenJobs.length === 0;
+    myOpenJobs.length === 0 &&
+    comingUp.length === 0;
 
   const renderRow = (r: TaskRow) => {
     const done = r.status === "done";
@@ -113,7 +136,12 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
           {done && <Check size={16} aria-hidden />}
         </button>
         <div className="pl__task-main">
-          <span className="pl__task-title">{r.title}</span>
+          <span className="pl__task-title">
+            {r.title}
+            {typeof r.template.remindMinutesBefore === "number" && r.template.timeOfDay && (
+              <Bell size={13} className="pl__task-bell" aria-label="Reminder set" />
+            )}
+          </span>
           {meta && <span className="pl__task-meta">{meta}</span>}
           {r.template.detail && <span className="pl__task-detail">{r.template.detail}</span>}
         </div>
@@ -165,6 +193,18 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
               className="pl__btn"
               disabled={!ownerId || !activeStudioId}
               onClick={() => {
+                setIntent({ mode: "new", scope: "personal", preset: reminderPreset(todayKey, new Date()) });
+                setManaging(true);
+              }}
+            >
+              <BellPlus size={14} aria-hidden />
+              New reminder
+            </button>
+            <button
+              type="button"
+              className="pl__btn"
+              disabled={!ownerId || !activeStudioId}
+              onClick={() => {
                 setIntent(null);
                 setManaging(true);
               }}
@@ -184,7 +224,7 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
             <p className="pl__empty-body">
               Add what only you need to remember — “call Priya's physio”, “bring the
               InBody printouts”, “check Mark's seat height Thursday”. A task can
-              repeat, and it can point at a client.
+              repeat, point at a client, and ring your bell at a set time.
             </p>
           </div>
         ) : (
@@ -222,6 +262,39 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
                   close them — they also show under Studio.
                 </p>
                 <ul>{buckets.assigned.map(renderRow)}</ul>
+              </section>
+            )}
+
+            {comingUp.length > 0 && (
+              <section className="pl__list" aria-labelledby="pl-coming">
+                <h3 className="pl__list-head" id="pl-coming">
+                  <CalendarClock size={14} aria-hidden />
+                  Coming up <span className="pl__count">{comingUp.length}</span>
+                </h3>
+                <ul>
+                  {comingUp.slice(0, 12).map((u) => (
+                    <li key={u.key} className="pl__task pl__task--ahead">
+                      <span className="pl__when">
+                        <span className="pl__when-day">{dayWords(u.dateKey, todayKey)}</span>
+                        <span className="pl__when-time">{clockLabel(u.time)}</span>
+                      </span>
+                      <button
+                        type="button"
+                        className="pl__task-main pl__task-open"
+                        onClick={() => {
+                          setIntent({ mode: "edit", template: u.template });
+                          setManaging(true);
+                        }}
+                      >
+                        <span className="pl__task-title">
+                          {u.template.title}
+                          {u.reminds && <Bell size={13} className="pl__task-bell" aria-label="Reminder set" />}
+                        </span>
+                        {u.template.detail && <span className="pl__task-detail">{u.template.detail}</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </section>
             )}
 

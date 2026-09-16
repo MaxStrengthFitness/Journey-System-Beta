@@ -67,7 +67,9 @@ const TABS: { id: PlannerTab; label: string; icon: typeof Users; leadersOnly?: b
 
 /** Which tab an arrival request opens. */
 function tabFor(intent: PlannerIntent): PlannerTab {
-  return intent.kind === "open-job" ? "studio" : "notes";
+  if (intent.kind === "open-job") return "studio";
+  if (intent.kind === "open-tab") return intent.tab;
+  return "notes";
 }
 
 export function PlannerView({

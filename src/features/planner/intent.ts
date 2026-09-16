@@ -20,17 +20,23 @@ import type { NoteKind } from "./notes/types";
 export type PlannerIntent =
   | { kind: "new-note"; client: { id: string; name: string }; noteKind?: NoteKind }
   | { kind: "open-note"; noteId: string }
-  /* Planner rework (Sep 2026): a notification about a team job opens it. */
-  | { kind: "open-job"; jobId: string };
+  /* Planner rework (Sep 2026): a notification about a team job opens it; a
+     reminder opens My tasks; a colleague's shared note opens it in Notes. */
+  | { kind: "open-job"; jobId: string }
+  | { kind: "open-tab"; tab: "mine" }
+  | { kind: "open-share"; noteId: string };
 
 /**
  * A notification's `link.id` for the Planner, turned into a request.
- * "job:abc" opens a team job; anything else (older links carry a request id
- * or nothing) just opens the Planner.
+ * "job:abc" opens a team job, "mine" opens My tasks, "share:abc" opens a
+ * note a colleague shared; anything else (older links carry a request id or
+ * nothing) just opens the Planner.
  */
 export function plannerIntentFromLink(id: string | undefined): PlannerIntent | null {
   if (!id) return null;
   if (id.startsWith("job:") && id.length > 4) return { kind: "open-job", jobId: id.slice(4) };
+  if (id.startsWith("share:") && id.length > 6) return { kind: "open-share", noteId: id.slice(6) };
+  if (id === "mine") return { kind: "open-tab", tab: "mine" };
   return null;
 }
 

@@ -313,3 +313,47 @@
 @media (min-width: 1024px) {
   .pl__mast { padding: 0.5rem 1.5rem; }
 }
+
+/* ------------------------------------------------------------------ *
+ * My tasks — reminders and "coming up" (Planner rework, Sep 2026)
+ * ------------------------------------------------------------------ */
+
+.pl__task-title { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pl__task-bell { flex: none; color: var(--st-live); }
+
+/* The day and the time, in a fixed column, so a week of reminders reads
+   down the left edge like a diary. */
+.pl__when {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 5.5rem;
+  gap: 1px;
+}
+.pl__when-day {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--st-ink-muted);
+}
+.pl__when-time {
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--st-ink);
+}
+
+.pl__task-open {
+  min-height: 44px;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pl__task-open:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }

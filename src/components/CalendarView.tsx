@@ -4,6 +4,7 @@ import { ScheduleEntry, Trainer } from "../types";
 import { studioDateKey } from "../lib/studio-time";
 import { freshnessLabel } from "../lib/schedule-window";
 import { LoadingMark } from "./LoadingMark";
+import { ReminderStrip } from "../features/planner/reminders/ReminderStrip";
 import {
   DateNavigator,
   DayView,
@@ -454,6 +455,13 @@ export function CalendarView({
           </div>
         )}
       </header>
+
+      {/* Your own timed tasks for the days on screen (Planner rework). */}
+      <ReminderStrip
+        from={visibleRange(viewMode, selectedDate).from}
+        to={visibleRange(viewMode, selectedDate).to}
+        onOpenPlanner={setView ? () => setView("studio-tasks") : undefined}
+      />
 
       {viewMode === "month" && (
         <MonthView
