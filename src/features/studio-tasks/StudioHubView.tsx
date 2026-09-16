@@ -63,7 +63,8 @@ import { useTeamJobs } from "../planner/jobs/useTeamJobs";
 import { TeamJobsLane } from "../planner/jobs/TeamJobsLane";
 import { JobComposer } from "../planner/jobs/JobComposer";
 import { JobSheet } from "../planner/jobs/JobSheet";
-import { jobTopic } from "../planner/jobs/jobs";
+import { isOnJob, isUpForGrabs, jobTopic } from "../planner/jobs/jobs";
+import { GlanceBand, type GlanceCounts } from "../planner/GlanceBand";
 import type { TeamJob } from "../planner/jobs/types";
 import "./studio-tasks.css";
 import "./studio-hub.css";
@@ -267,14 +268,28 @@ export function StudioHubView({
 
   const showClients = topic === "all" || topic === "clients";
 
+  // The Studio tab's "at a glance" band (Planner rework): counts only, each
+  // from something this screen already holds.
+  const glance = useMemo<GlanceCounts>(() => {
+    const openJobs = teamJobs.jobs.filter((j) => j.status === "open");
+    const asks = openRequests.filter((r) => r.kind !== "initiative");
+    return {
+      shiftDone: visibleShiftRows.filter((r) => r.status !== "open").length,
+      shiftTotal: visibleShiftRows.length,
+      jobsOpen: openJobs.length,
+      jobsForGrabs: openJobs.filter((j) => isUpForGrabs(j) && !isOnJob(j, trainerId)).length,
+      jobsMine: openJobs.filter((j) => isOnJob(j, trainerId)).length,
+      requestsOpen: asks.length,
+      requestsUrgent: asks.filter((r) => r.priority === "urgent" || r.kind === "cover").length,
+    };
+  }, [teamJobs.jobs, openRequests, visibleShiftRows, trainerId]);
+
   return (
     <div className="st">
       <div className="st__scroll touch-pane">
         <header className={cn("st__head", embedded && "st__head--embedded")}>
           {embedded ? (
-            <p className="st__sub-title">
-              Shared with everyone at {activeStudio?.name ?? "this studio"}
-            </p>
+            <GlanceBand counts={glance} loading={loading && rows.length === 0} />
           ) : (
             <div>
               <h1 className="st__title">Studio hub</h1>
@@ -318,6 +333,7 @@ export function StudioHubView({
           Loading is said once, at the top, rather than as a spinner per lane.
           Four spinners on a tablet reads as four things going wrong.
         */}
+        <div id="planner-shift" />
         {loading && rows.length === 0 ? (
           <p className="sh__loading">Loading today…</p>
         ) : (
@@ -336,7 +352,7 @@ export function StudioHubView({
           />
         )}
 
-        <nav className="sh__chips" aria-label="Filter the board">
+        <nav className="sh__chips" aria-label="Filter the board" id="planner-board">
           {TOPICS.map((t) => (
             <button
               key={t}

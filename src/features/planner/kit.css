@@ -402,3 +402,75 @@
   pointer-events: none;
 }
 .pk-search > .pk-input { padding-left: 2.25rem; }
+
+/* ------------------------------------------------------------------ *
+ * At a glance — the Studio tab's top band (GlanceBand.tsx)
+ * ------------------------------------------------------------------ */
+
+.gb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+}
+.gb__tiles {
+  flex: 1 1 36rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+@media (max-width: 640px) {
+  .gb__tiles { grid-template-columns: 1fr; }
+}
+.gb__trailing { flex: none; display: flex; align-items: center; }
+
+.gb__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  min-height: 84px;
+  padding: 10px 14px;
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+  color: var(--st-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gb__tile:hover { border-color: var(--st-border-strong); }
+.gb__tile:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+.gb__tile--hero { box-shadow: inset 0 3px 0 var(--st-hero); }
+.gb__tile--flag { border-color: var(--st-flag-border); background: var(--st-flag-fill); }
+.gb__tile--done { border-color: var(--st-done); }
+.gb__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--st-ink-muted);
+}
+.gb__label svg { color: var(--st-live); }
+.gb__tile--hero .gb__label svg { color: var(--st-hero); }
+.gb__tile--flag .gb__label svg { color: var(--st-flag); }
+.gb__tile--done .gb__label svg { color: var(--st-done); }
+.gb__value {
+  font-size: 18px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.gb__tile--flag .gb__value { color: var(--st-flag); }
+.gb__note { font-size: 11px; font-weight: 600; line-height: 1.35; color: var(--st-ink-muted); }
+.gb__tile .pk-bar { margin: 2px 0; }
+
+/* Anchors the band scrolls to sit below the sticky header. */
+#planner-shift, #planner-jobs, #planner-board { scroll-margin-top: 110px; }

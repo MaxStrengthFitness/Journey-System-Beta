@@ -357,3 +357,8 @@
   cursor: pointer;
 }
 .pl__task-open:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+
+/* Planner rework: the embedded hub's header carries the "at a glance" band,
+   which is too tall to follow the scroll — it scrolls away with the page. */
+.st__head--embedded { position: static; padding: 0.875rem 0 0.75rem; border-bottom: 0; }
+.st__head--embedded .sh__head-actions { margin-left: auto; }
