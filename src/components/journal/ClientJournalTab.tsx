@@ -297,7 +297,9 @@ export function ClientJournalTab({
       {shows("check-in") && (
       <JournalArea
         id="check-in"
-        bare={false}
+        // Inside the record the section and the panel already say
+        // "Assessment" — a third heading is noise.
+        bare={composed}
         title="Assessment"
         blurb="A living record, filled in a piece at a time and saved as you go. Open one topic, answer it, come back next session."
       >

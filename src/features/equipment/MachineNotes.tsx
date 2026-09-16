@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Trash2, Wrench } from "lucide-react";
+import { Loader2, Trash2, TriangleAlert } from "lucide-react";
 import { addMachineNote, deleteMachineNote, type JournalContext, type MutationAuthor } from "./mutations";
 import type { EquipmentMachine } from "./types";
 
@@ -47,7 +47,7 @@ export function MachineNotes({
   journal,
   onSaved,
   onError,
-  flagLabel = "Flag for maintenance",
+  flagLabel = "Flag as important (maintenance or safety)",
 }: MachineNotesProps) {
   const [draft, setDraft] = useState("");
   const [isMaintenance, setIsMaintenance] = useState(false);
@@ -134,7 +134,10 @@ export function MachineNotes({
                   <div className="eq-note__meta">
                     {n.isImportant && (
                       <span className="eq-note__flag">
-                        <Wrench size={11} strokeWidth={2.8} aria-hidden /> Maintenance
+                        {/* One flag, two reasons to set it (see flagLabel): a
+                            worn pad or "hip pain if she goes too fast". The
+                            chip says what both have in common. */}
+                        <TriangleAlert size={11} strokeWidth={2.8} aria-hidden /> Important
                       </span>
                     )}
                     <span>{n.authorName}</span>

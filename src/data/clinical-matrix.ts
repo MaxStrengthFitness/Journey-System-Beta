@@ -344,7 +344,7 @@ export const CLINICAL_FLAGS_MATRIX: ClinicalSafetyFlag[] = [
   {
     id: "gen-blood-pressure",
     category: "Common constraints",
-    conditionName: "High blood pressure (managed)",
+    conditionName: "High blood pressure — managed",
     severity: "Moderate / Needs Modification",
     protocolHandling: [
       {
@@ -368,7 +368,7 @@ export const CLINICAL_FLAGS_MATRIX: ClinicalSafetyFlag[] = [
   {
     id: "gen-recent-surgery",
     category: "Common constraints",
-    conditionName: "Recent surgery (cleared to train)",
+    conditionName: "Recent surgery — cleared to train",
     severity: "Moderate / Needs Modification",
     protocolHandling: [
       {

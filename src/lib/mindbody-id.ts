@@ -38,3 +38,26 @@ export function mindbodyIdOf(client: MindbodyIdSource | null | undefined): strin
   const docId = String(client.id || "").trim();
   return /^\d{1,20}$/.test(docId) ? docId : null;
 }
+
+/**
+ * Two ids on one record that disagree — a reason to refuse a sync, never to
+ * pick one. Review round (Sep 2026): the old profile sync fell back to a NAME
+ * search when the id lookup found nothing and staged that result's id onto the
+ * record, so a client document can carry a namesake's Mindbody id. A
+ * one-tap Master Sync from such a record would write the namesake's name,
+ * birthday, contact and waiver onto it. Null when the ids agree or only one
+ * exists.
+ */
+export function mindbodyIdConflict(
+  client: MindbodyIdSource | null | undefined,
+): { ids: string[] } | null {
+  if (!client) return null;
+  const ids = new Set<string>();
+  const docId = String(client.id || "").trim();
+  if (/^\d{1,20}$/.test(docId)) ids.add(docId);
+  for (const v of [client.mindbodyClientId, client.mindbodyId]) {
+    const t = String(v ?? "").trim();
+    if (t) ids.add(t);
+  }
+  return ids.size > 1 ? { ids: [...ids] } : null;
+}

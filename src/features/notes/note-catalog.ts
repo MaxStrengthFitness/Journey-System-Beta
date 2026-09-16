@@ -165,6 +165,11 @@ export function noteCategoryOf(
   entry: Pick<JournalEntry, "kind" | "category" | "origin" | "isLegacy">,
 ): NoteCategory {
   if (entry.kind === "injury") return "injury";
+  // Personal detail is FORD / Life wherever it came from — including a dated
+  // high-priority event the journal keeps for the briefing.
+  if (entry.kind === "life") {
+    return entry.category === "Surgery" || entry.category === "Injury" ? "injury" : "ford";
+  }
   if (entry.kind === "consultation") return "admin";
   if (entry.isLegacy && IMPORT_ORIGINS.has(entry.origin)) return "admin";
   switch (entry.kind) {
@@ -177,8 +182,6 @@ export function noteCategoryOf(
     case "preference":
     case "general":
       return "preference";
-    case "life":
-      return entry.category === "Surgery" || entry.category === "Injury" ? "injury" : "ford";
     default:
       return "preference";
   }
@@ -348,4 +351,23 @@ export function catalogCoaches(
       });
   }
   return Array.from(map.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+/**
+ * Profile fields the record already shows (and edits) in their own section —
+ * medical history and constraints in Body, the why and the coach strategy in
+ * Goals, Mindbody's account notes in Who they are. The journal adapts them so
+ * other screens can read them as notes; the catalog on the SAME record leaves
+ * them out, or every one of them is read twice (review round, Sep 2026).
+ */
+export const SHOWN_ELSEWHERE_ON_RECORD: ReadonlySet<string> = new Set([
+  "legacy:profile:medicalHistory",
+  "legacy:profile:clinicalNotes",
+  "legacy:profile:globalNotes",
+  "legacy:profile:discoveryNotes",
+  "legacy:profile:mindbodyNotes",
+]);
+
+export function withoutRecordFields<T extends { id?: string }>(entries: readonly T[]): T[] {
+  return entries.filter((e) => !e.id || !SHOWN_ELSEWHERE_ON_RECORD.has(e.id));
 }

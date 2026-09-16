@@ -1061,6 +1061,34 @@ export function ClientProfileView({
     return () => unsubscribe();
   }, [clientId]);
 
+  // The report banner above the header shows on EVERY tab, but the shelf
+  // below only loads on two — so on the Journey (where the profile opens) the
+  // banner used to read an empty list and say "no progress report on file"
+  // for clients with several. One read per client answers the banner; until
+  // it lands (or if it fails) the banner says nothing.
+  const [reportProbe, setReportProbe] = useState<{ clientId: string; latest: ProgressReport | null } | null>(null);
+  useEffect(() => {
+    if (!clientId || hasQuotaError || !user) return;
+    let live = true;
+    getDocs(
+      query(
+        collection(db, "progressReports"),
+        where("clientId", "==", clientId),
+        orderBy("createdAt", "desc"),
+        limit(1),
+      ),
+    )
+      .then((snap) => {
+        if (!live) return;
+        const d = snap.docs[0];
+        setReportProbe({ clientId, latest: d ? ({ id: d.id, ...d.data() } as ProgressReport) : null });
+      })
+      .catch((err) => console.warn("[report banner] latest report read failed", err));
+    return () => {
+      live = false;
+    };
+  }, [clientId, hasQuotaError, user?.uid]);
+
   useEffect(() => {
     if (!clientId || hasQuotaError || !user) return;
     // The shelf lives in the Activity Archive; the record's Assessment section
@@ -1307,7 +1335,14 @@ export function ClientProfileView({
           );
         }
 
-        if (progressReports.length === 0) {
+        // The live shelf when it is loaded for this client, else the probe;
+        // neither yet means unknown, and unknown shows nothing.
+        const latestReport =
+          progressReports.find((r) => r.clientId === clientId) ??
+          (reportProbe?.clientId === clientId ? reportProbe.latest : undefined);
+        if (latestReport === undefined) return null;
+
+        if (latestReport === null) {
           // Only show "Report Required" if client is older than 3 months
           const clientCreatedAt =
             client.createdAt?.toDate?.() ||
@@ -1347,7 +1382,7 @@ export function ClientProfileView({
           );
         }
 
-        const lastDate = new Date(parseSessionDate(progressReports[0].date));
+        const lastDate = new Date(parseSessionDate(latestReport.date));
         const nextDueDate = new Date(lastDate);
         nextDueDate.setMonth(nextDueDate.getMonth() + 3);
 
@@ -1368,12 +1403,12 @@ export function ClientProfileView({
                 <AlertCircle className="w-6 h-6 shrink-0" />
                 <div>
                   <p className="text-xs font-bold uppercase tracking-tight">
-                    Report Due {isOverdue ? "Yesterday" : `Soon`}
+                    {isOverdue ? "Progress report overdue" : "Progress report due soon"}
                   </p>
                   <p className="text-[11px] font-bold opacity-80">
                     {isOverdue
-                      ? `The 3-month progress report was due on ${nextDueDate.toLocaleDateString()}.`
-                      : `The next progress report is due on ${nextDueDate.toLocaleDateString()} (in ${diffDays} days).`}
+                      ? `The 3-month progress report was due ${nextDueDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} (${-diffDays} day${diffDays === -1 ? "" : "s"} ago).`
+                      : `The next progress report is due ${nextDueDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} (in ${diffDays} day${diffDays === 1 ? "" : "s"}).`}
                   </p>
                 </div>
                 <Button

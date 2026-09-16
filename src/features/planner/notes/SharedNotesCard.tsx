@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { clientFirstName } from "../../../lib/client-name";
 import { NotebookPen, Pencil, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { auth } from "../../../firebase";
@@ -52,7 +53,7 @@ export function SharedNotesCard({ client, authTrainer, onOpenPlanner }: SharedNo
   const uid = auth.currentUser?.uid ?? null;
   const studioId = clientStudioId(client);
   const name = `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim() || "this client";
-  const first = client.firstName?.trim() || name;
+  const first = clientFirstName(client) || name;
 
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [confirming, setConfirming] = useState<string | null>(null);

@@ -149,9 +149,10 @@ export function GoalsPanel({ client, formData, updateField, authTrainer = null }
             </span>
           ) : null}
         </div>
-        <input
+        <textarea
           id="gf-goal"
           className="gf-input mt-2"
+          rows={2}
           value={goal}
           placeholder="e.g. Carry both grandkids up the stairs by Thanksgiving"
           onChange={(e) => updateField("smartGoal", e.target.value)}

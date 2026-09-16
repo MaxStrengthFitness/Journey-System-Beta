@@ -271,6 +271,11 @@
   background: color-mix(in srgb, var(--psub-flag) 12%, transparent);
   color: var(--psub-flag);
 }
+.ptab-strip__chip[data-tone="modify"] {
+  border-color: color-mix(in srgb, var(--eq-live) 45%, transparent);
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+}
 .ptab-strip__chip[data-tone="caution"] {
   border-color: color-mix(in srgb, var(--eq-warn) 45%, transparent);
   background: var(--eq-warn-fill);

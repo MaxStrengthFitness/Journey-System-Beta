@@ -40,6 +40,7 @@ import {
   User,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { useScrollerPad } from "../../features/client-profile/use-scroller-pad";
 import { mindbodyIdOf } from "../../lib/mindbody-id";
 import { waiverState } from "../../lib/client-waiver";
 import { clientLegalName } from "../../lib/client-name";
@@ -162,6 +163,8 @@ export function ClientDossier({
   onOpenPlanner,
 }: ClientDossierProps) {
   const pageScroll = scroll === "page";
+  const railRef = useRef<HTMLElement | null>(null);
+  useScrollerPad(railRef, pageScroll);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [activeSection, setActiveSection] = useState<DossierSection>(
     defaultSection || "general",
@@ -257,10 +260,12 @@ export function ClientDossier({
             the spine is now as long as the page, and a jump list that
             scrolls away at section two is no shortcut at all. */}
         <nav
+          ref={railRef}
           aria-label="Dossier sections"
+          style={pageScroll ? { top: "var(--scroll-pad-top, 0px)" } : undefined}
           className={cn(
             "shrink-0 border-b border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-950 md:w-52 md:border-b-0 md:border-r md:px-3 md:py-5 lg:w-56",
-            pageScroll && "md:sticky md:top-0 md:self-start md:max-h-dvh md:overflow-y-auto",
+            pageScroll && "md:sticky md:self-start md:max-h-dvh md:overflow-y-auto",
           )}
         >
           <span className="mb-2 hidden px-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-muted-foreground md:block">
@@ -541,14 +546,14 @@ export function ClientDossier({
                   label="Medical history"
                   value={val("medicalHistory")}
                   onChange={set("medicalHistory")}
-                  rows={5}
+                  rows={7}
                   placeholder="Surgeries, chronic conditions, anything a new coach must read before loading them."
                 />
                 <TextAreaField
                   label="Contraindications & constraints"
                   value={val("clinicalNotes")}
                   onChange={set("clinicalNotes")}
-                  rows={4}
+                  rows={5}
                   placeholder="What the load has to work around. Specific movements, ranges or machines to avoid."
                 />
               </FieldGroup>

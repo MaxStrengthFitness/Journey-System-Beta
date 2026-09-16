@@ -37,6 +37,25 @@ describe("client.events in the journal", () => {
     expect(out).toEqual([]);
   });
 
+  it("keeps a CURRENT high-priority personal event for the briefing, filed under FORD / Life", () => {
+    const day = (offset: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + offset);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    const out = adaptEventsToJournal(
+      client({
+        events: [
+          event({ id: "v", type: "Vacation", title: "Away until Oct 3", priority: "High", date: day(-3), endDate: day(10) }),
+          event({ id: "old", type: "Vacation", title: "Last spring", priority: "High", date: day(-200), endDate: day(-190) }),
+        ],
+      }),
+    );
+    expect(out.map((e) => [e.id, noteCategoryOf(e), e.importance])).toEqual([
+      ["legacy:clientEvents:v", "ford", "critical"],
+    ]);
+  });
+
   it("keeps what FORD drops: medical as Injury, the rest under Admin", () => {
     const out = adaptEventsToJournal(
       client({

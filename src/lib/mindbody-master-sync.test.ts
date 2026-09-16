@@ -526,6 +526,16 @@ describe("runMasterSync", () => {
     expect(result.message).toBe(`Up to date with Mindbody — ${result.changedFields.length} fields refreshed.`);
   });
 
+  it("refuses a record whose Mindbody ids disagree, before asking Mindbody", async () => {
+    const fetchMock = stubFetch(true, {});
+    const result = await runMasterSync({ client: { ...base, id: "12345", mindbodyClientId: "67890" }, studios });
+    expect(result.status).toBe("conflict");
+    expect(result.message).toContain("12345 and 67890");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(setDocMock).not.toHaveBeenCalled();
+    expect(updateDocMock).not.toHaveBeenCalled();
+  });
+
   it("says so when Mindbody has no such client, and writes nothing", async () => {
     stubFetch(true, { found: false, mindbodyClientId: "12345", siteId: "5746957", fetchedAt: "" });
     const result = await runMasterSync({ client: { ...base, id: "12345" }, studios });

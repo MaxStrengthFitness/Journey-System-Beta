@@ -141,12 +141,11 @@ export function JournalComposer({
   /** Which machine the note is about, if any, for the chosen kind. */
   const chosenMachine = (): string | null => {
     if (category === "equipment") return machineId || null;
-    if (
-      (category === "coaching" || category === "incident" || category === "injury") &&
-      defaultMachine &&
-      aboutMachine
-    ) {
-      return defaultMachine.id ?? null;
+    if (category === "coaching" || category === "incident" || category === "injury") {
+      // In a session the machine being performed is offered as a toggle; on
+      // the profile any machine can be picked (optional).
+      if (defaultMachine) return aboutMachine ? defaultMachine.id ?? null : null;
+      return machineId || null;
     }
     return null;
   };
@@ -258,9 +257,11 @@ export function JournalComposer({
               </div>
             )}
 
-            {category === "equipment" && (
+            {(category === "equipment" ||
+              ((category === "coaching" || category === "incident" || category === "injury") &&
+                !defaultMachine)) && (
               <label className="flex flex-col gap-1.5">
-                <span className="nc-kicker">Machine</span>
+                <span className="nc-kicker">{category === "equipment" ? "Machine" : "Machine (optional)"}</span>
                 <select
                   className="nc-input"
                   value={machineId}

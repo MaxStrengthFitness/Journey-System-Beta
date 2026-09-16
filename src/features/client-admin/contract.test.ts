@@ -77,7 +77,7 @@ describe("resolveContractTier", () => {
 });
 
 describe("buildContractHistory", () => {
-  const now = new Date("2026-09-15T12:00:00Z");
+  const now = "2026-09-15";
   const client = {
     mindbodyContracts: {
       old: { clientContractId: "old", status: "Active" as const, contractName: "48 Sessions - 2X Week", startDate: ts("2025-01-10T00:00:00Z"), endDate: ts("2025-06-30T00:00:00Z") },
@@ -110,6 +110,23 @@ describe("buildContractHistory", () => {
   it("orders ended terms by start, newest first", () => {
     const ended = buildContractHistory(client, now).filter((r) => r.status === "ended").map((r) => r.key);
     expect(ended).toEqual(["c-cur", "c-old", "s-p2"]);
+  });
+});
+
+describe("buildContractHistory reads days, not instants", () => {
+  const c = {
+    mindbodyContracts: {
+      a: { clientContractId: "a", status: "Active" as const, contractName: "X", startDate: ts("2025-09-16T00:00:00Z"), endDate: ts("2026-09-15T00:00:00Z") },
+      b: { clientContractId: "b", status: "Active" as const, contractName: "Y", startDate: ts("2026-09-16T00:00:00Z") },
+    },
+  };
+  it("keeps a contract active through its last day, and the next one upcoming until its first", () => {
+    const rows = buildContractHistory(c, "2026-09-15");
+    expect(rows.find((r) => r.key === "c-a")?.status).toBe("active");
+    expect(rows.find((r) => r.key === "c-b")?.status).toBe("upcoming");
+    const next = buildContractHistory(c, "2026-09-16");
+    expect(next.find((r) => r.key === "c-a")?.status).toBe("ended");
+    expect(next.find((r) => r.key === "c-b")?.status).toBe("active");
   });
 });
 

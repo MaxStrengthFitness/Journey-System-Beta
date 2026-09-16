@@ -183,7 +183,12 @@ export function EquipmentTab({
 
       <div className="eq-body">
         {showRail && (
-          <MachineRail machines={visible} selectedId={selectedId} onSelect={handleSelect} />
+          <MachineRail
+            machines={visible}
+            selectedId={selectedId}
+            onSelect={handleSelect}
+            clinicalFlags={client?.clinicalFlags}
+          />
         )}
         {showDetail && (
           <MachineDetailPanel

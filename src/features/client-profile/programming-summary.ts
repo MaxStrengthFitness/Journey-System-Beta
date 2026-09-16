@@ -4,8 +4,11 @@
  * and how many prescribed machines carry a clinical watch-out.
  *
  * Read from the lifetime rollup (client.machineStats) the profile already
- * holds — no history read. A client whose rollup has not been backfilled yet
- * has no stats at all, and then the count is UNKNOWN (null), not zero.
+ * holds — no history read. The rollup is only the whole story once the
+ * one-time backfill has run (`machineStatsBackfilledAt`, the same test
+ * useMachineStats uses): before that it holds only the sessions saved since
+ * the running total existed, so "3 of 40 performed" for a two-year client
+ * would be a confident wrong number. Until then the count is UNKNOWN (null).
  */
 
 import type { Client, Machine } from "../../types";
@@ -25,7 +28,7 @@ export function rosterCoverage(
   const ids = machines.map((m) => m.id).filter((id): id is string => !!id);
   const total = ids.length;
   const stats = client?.machineStats;
-  const known = !!stats && (Object.keys(stats).length > 0 || !!client?.machineStatsBackfilledAt);
+  const known = !!client?.machineStatsBackfilledAt;
   if (!known) return { total, performed: null, neverTried: null };
   const performed = ids.filter((id) => (Number(stats?.[id]?.timesPerformed) || 0) > 0).length;
   return { total, performed, neverTried: total - performed };

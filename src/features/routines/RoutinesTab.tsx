@@ -116,7 +116,7 @@ const Row = memo(function Row({ row, onSelect }: { row: RoutineRow; onSelect?: (
             )}
             {worst && (
               <span
-                className="rt-row__watch"
+                className="eq-watch-chip"
                 data-tone={worst}
                 title={row.watchOuts.map((w) => w.condition).join(", ")}
               >

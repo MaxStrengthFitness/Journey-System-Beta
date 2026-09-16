@@ -88,7 +88,7 @@ export function ContractPanel({ client, formData, updateField, studios, author, 
     [client, pendingOverride],
   );
   const detected = useMemo(() => resolveContractTier({ ...client, contractTierOverride: null }), [client]);
-  const history = useMemo(() => buildContractHistory(client), [client]);
+  const history = useMemo(() => buildContractHistory(client, today), [client, today]);
   const onHand = useMemo(() => sessionsOnHand(client), [client]);
   const contract = currentContract(client);
   const r = client.renewal ?? null;
@@ -332,7 +332,14 @@ export function ContractPanel({ client, formData, updateField, studios, author, 
           )}
           <div>
             <dt>Last commercial pull</dt>
-            <dd>{formatMindbodyDate(client.mindbodyCommercialSyncedAt) ?? "Never"}</dd>
+            {/* A server timestamp, not a Mindbody day: local time. */}
+            <dd>
+              {toDateSafe(client.mindbodyCommercialSyncedAt)?.toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              }) ?? "Never"}
+            </dd>
           </div>
         </dl>
         {acquisition}

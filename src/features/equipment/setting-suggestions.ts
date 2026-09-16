@@ -10,7 +10,7 @@
  * Two sources, both already paid for:
  *   1. The weekly machine-trends job (server/machine-trends-job.ts) stores,
  *      per machine, per setting, per value, how many clients use it AND how
- *      tall those clients are. "Most clients around 5'7" here use chest pad 6"
+ *      tall those clients are. "Around 5'7" here, the most common chest pad is 6"
  *      is one document read per machine.
  *   2. The catalog's body-type columns (shorter / taller stature), written by
  *      the MSF Academy evaluators — a tip, not a number.
@@ -103,7 +103,9 @@ export function suggestFromTrend(
       best = { key: valueKey, clients: inBand, overall };
     }
   }
-  if (!best || bandClients < MIN_CLIENTS) return null;
+  // The band needs MIN_CLIENTS people, and the offered value more than one of
+  // them — a single client's choice is an anecdote, not a starting point.
+  if (!best || bandClients < MIN_CLIENTS || best.clients < 2) return null;
   return {
     value: displayValue(best.key, options),
     clients: best.clients,

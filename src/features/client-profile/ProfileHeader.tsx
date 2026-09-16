@@ -315,7 +315,8 @@ export function ProfileHeader({
 
         <div className="min-w-0 flex-1 xl:max-w-[240px] 2xl:max-w-[320px]">
           <h1
-            className="text-2xl md:text-[26px] xl:text-[28px] font-black tracking-tight leading-none text-foreground truncate"
+            // Names are never truncated (CLAUDE.md): a long one wraps.
+            className="text-2xl md:text-[26px] xl:text-[28px] font-black tracking-tight leading-[1.05] text-foreground [overflow-wrap:anywhere]"
             title={nick ? `${displayName} (legal name ${legalName})` : displayName}
           >
             {displayName}
@@ -397,13 +398,16 @@ export function ProfileHeader({
             }
             aria-label={sync.busy ? "Syncing with Mindbody" : `Sync with Mindbody. ${sync.label}`}
             className={cn(
-              "shrink-0 inline-flex items-center gap-1.5 h-12 px-3 rounded-2xl border text-[11px] font-bold uppercase tracking-widest transition-colors",
-              "border-slate-200 dark:border-slate-800 text-muted-foreground hover:text-[#034a84] dark:hover:text-[#7cc0ee]",
+              "shrink-0 inline-flex items-center justify-center gap-1.5 h-12 min-w-12 px-3 rounded-2xl border text-[11px] font-bold uppercase tracking-widest transition-colors",
+              "border-slate-200 dark:border-slate-800 text-muted-foreground hover:text-foreground",
               "disabled:opacity-50 disabled:cursor-not-allowed",
             )}
           >
             <RefreshCw className={cn("w-4 h-4", sync.busy && "animate-spin")} aria-hidden />
-            <span className="hidden md:flex flex-col items-start leading-none">
+            {/* Icon-only until there is room: on a portrait iPad the three
+                buttons otherwise squeeze the client's identity line to a
+                single letter. The label is still the title and aria-label. */}
+            <span className="hidden 2xl:flex flex-col items-start leading-none">
               <span>{sync.busy ? "Syncing" : "Sync"}</span>
               <span className="mt-1 text-[9px] font-semibold normal-case tracking-normal opacity-80">{sync.label}</span>
             </span>

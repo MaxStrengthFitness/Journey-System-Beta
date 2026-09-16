@@ -190,3 +190,24 @@ describe("buildCatalog", () => {
     expect(list.map((e) => e.id)).toEqual(before);
   });
 });
+
+describe("withoutRecordFields", () => {
+  it("leaves out profile fields the record edits in its own sections, and keeps the rest", async () => {
+    const { withoutRecordFields } = await import("./note-catalog");
+    const ids = [
+      "legacy:profile:medicalHistory",
+      "legacy:profile:clinicalNotes",
+      "legacy:profile:globalNotes",
+      "legacy:profile:discoveryNotes",
+      "legacy:profile:mindbodyNotes",
+      "legacy:profile:priorityNote",
+      "legacy:profile:notes",
+      "native-1",
+    ].map((id) => ({ id }));
+    expect(withoutRecordFields(ids).map((e) => e.id)).toEqual([
+      "legacy:profile:priorityNote",
+      "legacy:profile:notes",
+      "native-1",
+    ]);
+  });
+});

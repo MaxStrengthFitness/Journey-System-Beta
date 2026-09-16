@@ -106,8 +106,14 @@ export function canManageFocus(
   focus: ClientFocus,
   viewerIds: readonly string[],
   role?: string | null,
+  /**
+   * The signed-in Auth uid. The rule compares `trainerId` to the Auth uid only
+   * (on older accounts the trainer document id differs), so ownership is
+   * decided on it when known.
+   */
+  authUid?: string | null,
 ): boolean {
   if (!isWritableFocus(focus)) return false;
-  if (viewerIds.includes(focus.trainerId)) return true;
+  if (authUid ? focus.trainerId === authUid : viewerIds.includes(focus.trainerId)) return true;
   return !!role && (SUPER_ROLES.has(role) || FRANCHISE_ROLES.has(role));
 }

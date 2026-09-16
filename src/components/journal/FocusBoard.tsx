@@ -24,6 +24,7 @@
  * `checkInCount`: a check-in by a trainer who does not own the focus cannot
  * bump that counter under the rules, so the entries are the truer number.
  */
+import { auth } from "../../firebase";
 import React, { useMemo, useState } from "react";
 import {
   Brain,
@@ -248,7 +249,7 @@ export function FocusBoard({
               thread={threads.get(focus.id) ?? []}
               machines={machines}
               isMine={viewerIds.includes(focus.trainerId)}
-              canManage={canManageFocus(focus, viewerIds, viewerRole)}
+              canManage={canManageFocus(focus, viewerIds, viewerRole, auth.currentUser?.uid ?? null)}
               onAchieve={onAchieve}
               onExtend={onExtend}
               onRetire={onRetire}

@@ -7,6 +7,7 @@ import { Client, Machine, ProgressReport, Trainer } from "../types";
 import type { DossierSection } from "../types/journal";
 import { useActiveStudio } from "../ActiveStudioContext";
 import { useToast } from "../contexts/ToastContext";
+import { useScrollerPad } from "../features/client-profile/use-scroller-pad";
 import { clientDisplayName } from "../lib/client-name";
 import { mindbodyIdOf } from "../lib/mindbody-id";
 import { Button } from "@/components/ui/button";
@@ -92,6 +93,8 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
   onNewReport,
 }) => {
   const inline = variant === "inline";
+  const saveBarRef = React.useRef<HTMLDivElement | null>(null);
+  useScrollerPad(saveBarRef, inline);
   const { success: toastSuccess, error: toastError } = useToast();
   const { availableStudios: studios } = useActiveStudio();
   const [formData, setFormData] = useState<Partial<Client>>({});
@@ -343,11 +346,15 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
 
       {/* Sticky Footer */}
       <div
+        ref={saveBarRef}
+        style={inline ? { bottom: "var(--scroll-pad-bottom, 0px)" } : undefined}
         className={
           inline
             // Sticky to the viewport bottom: the form is now as long as the
             // page, and Save must never be a scroll away.
-            ? "sticky bottom-0 z-20 rounded-b-2xl px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/90 backdrop-blur-sm mt-auto flex-none flex justify-end"
+            // Opaque, and pinned to the scroller's true bottom edge
+            // (use-scroller-pad.ts), or fields show through and below it.
+            ? "sticky z-20 rounded-b-2xl px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 mt-auto flex-none flex justify-end"
             : "p-4 md:px-10 md:py-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 mt-auto flex-none flex justify-end shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]"
         }
       >

@@ -578,9 +578,17 @@ export function adaptEventsToJournal(client: Client | null): JournalEntry[] {
   // Asked one event at a time, so an event with no id is still judged on
   // its own rather than by a shared synthetic id.
   const fordShows = (e: ClientEvent) => adaptFordEvents({ ...client, events: [e] }).length > 0;
+  // FORD entries carry no importance, so a HIGH-priority event FORD also shows
+  // ("Vacation — away until Oct 3") would fall out of the briefing's
+  // "Before you start". Those stay here while they are current (review
+  // round, Sep 2026), filed under FORD / Life.
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const stillCurrent = (e: ClientEvent) =>
+    (toDate(e.endDate || e.date)?.getTime() ?? 0) >= startOfToday.getTime();
   return (client.events as ClientEvent[])
     .filter((e) => e && e.date)
-    .filter((e) => !fordShows(e))
+    .filter((e) => !fordShows(e) || (e.priority === "High" && stillCurrent(e)))
     .map((e) => {
       const when = toDate(e.date) || new Date();
       const body = (e.notes ? `${e.title}\n${e.notes}` : e.title || "").trim();
@@ -588,7 +596,7 @@ export function adaptEventsToJournal(client: Client | null): JournalEntry[] {
         id: `legacy:clientEvents:${e.id || e.date + e.title}`,
         clientId: client.id || "",
         studioId: client.homeStudioId || "",
-        kind: e.type === "Medical" ? "injury" : "general",
+        kind: e.type === "Medical" ? "injury" : fordShows(e) ? "life" : "general",
         body,
         importance:
           e.priority === "High"

@@ -31,6 +31,7 @@ import {
   NOTE_CATEGORY_META,
   buildCatalog,
   catalogCoaches,
+  withoutRecordFields,
   type CatalogFilter,
   type NoteCategory,
 } from "./note-catalog";
@@ -61,8 +62,10 @@ export function NotesCatalog({
   onOpenFord,
 }: NotesCatalogProps) {
   const [filter, setFilter] = useState<CatalogFilter>(EMPTY_FILTER);
-  const catalog = useMemo(() => buildCatalog(entries, filter), [entries, filter]);
-  const coaches = useMemo(() => catalogCoaches(entries), [entries]);
+  // Fields the record shows in their own sections are not repeated here.
+  const listed = useMemo(() => withoutRecordFields(entries), [entries]);
+  const catalog = useMemo(() => buildCatalog(listed, filter), [listed, filter]);
+  const coaches = useMemo(() => catalogCoaches(listed), [listed]);
 
   const filtered = !!filter.category || !!filter.coachId || !!filter.search.trim();
   const clear = () => setFilter(EMPTY_FILTER);
@@ -104,7 +107,7 @@ export function NotesCatalog({
           />
           <input
             type="search"
-            className="nc-input pl-9"
+            className="nc-input nc-input--icon"
             value={filter.search}
             placeholder="Search every note…"
             aria-label="Search notes"

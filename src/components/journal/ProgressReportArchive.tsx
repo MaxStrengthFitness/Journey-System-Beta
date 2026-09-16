@@ -9,6 +9,17 @@ import { FileText, HeartPulse, Plus, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { ProgressReport } from "../../types";
 
+/** "2026-05-20" → "May 20, 2026", read as a calendar day (never through UTC). */
+export function reportDay(date: string | undefined): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(date || "");
+  if (!m) return date || "";
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export interface ProgressReportArchiveProps {
   reports: ProgressReport[];
   onSelect: (id: string) => void;
@@ -90,7 +101,7 @@ export function ProgressReportArchive({
                     </span>
                   </span>
                   <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {r.date} · {r.trainerInitials || r.trainerName || "Team"}
+                    {reportDay(r.date)} · {r.trainerInitials || r.trainerName || "Team"}
                     {/* The assessment: overall colour + red-flag count, from the cached summary. */}
                     {summary && (
                       <span

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mindbodyIdOf } from "./mindbody-id";
+import { mindbodyIdConflict, mindbodyIdOf } from "./mindbody-id";
 import { mindbodyIdOf as fromJobPlan } from "../features/renewals/job-plan";
 
 describe("mindbodyIdOf", () => {
@@ -43,5 +43,18 @@ describe("mindbodyIdOf", () => {
 
   it("is the same function the nightly job uses", () => {
     expect(fromJobPlan).toBe(mindbodyIdOf);
+  });
+});
+
+describe("mindbodyIdConflict", () => {
+  it("is null when the ids agree or only one exists", () => {
+    expect(mindbodyIdConflict({ id: "100", mindbodyClientId: "100", mindbodyId: "100" })).toBeNull();
+    expect(mindbodyIdConflict({ id: "Xk3pQ9aB2cD4eF6gH8iJ", mindbodyClientId: "100" })).toBeNull();
+    expect(mindbodyIdConflict({ id: "100" })).toBeNull();
+    expect(mindbodyIdConflict(null)).toBeNull();
+  });
+  it("flags a record whose ids disagree — the old name-search fallback's footprint", () => {
+    expect(mindbodyIdConflict({ id: "12345", mindbodyClientId: "67890" })?.ids).toEqual(["12345", "67890"]);
+    expect(mindbodyIdConflict({ id: "auto", mindbodyClientId: "1", mindbodyId: "2" })?.ids).toEqual(["1", "2"]);
   });
 });

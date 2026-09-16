@@ -1221,3 +1221,20 @@
   color: var(--eq-ink-muted);
 }
 .eq-watch__text { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.4; color: var(--eq-ink-2); }
+
+/* The watch-out chip on list rows (routine rows and the All Machines rail). */
+/* A clinical watch-out on this machine: the condition, in the matrix's tone. */
+.eq-watch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--eq-live-text);
+  background: var(--eq-live-fill);
+  white-space: nowrap;
+}
+.eq-watch-chip[data-tone="alert"] { color: var(--eq-alert); background: var(--eq-alert-fill); }
+.eq-watch-chip[data-tone="caution"] { color: var(--eq-warn); background: var(--eq-warn-fill); }

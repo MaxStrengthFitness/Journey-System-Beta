@@ -260,8 +260,8 @@ export function SettingsCard({
                     {suggestion && (
                       <span className="eq-suggest">
                         <span className="eq-suggest__text">
-                          Most clients around {suggestion.heightLabel} here use <b>{suggestion.value}</b>{" "}
-                          ({suggestion.clients} of {suggestion.bandClients})
+                          Around {suggestion.heightLabel} here, the most common setting is <b>{suggestion.value}</b>{" "}
+                          ({suggestion.clients} of {suggestion.bandClients} clients)
                         </span>
                         <button
                           type="button"

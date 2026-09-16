@@ -34,16 +34,8 @@
  * on. Hiding it is how the whole feature stops existing.
  */
 import { useCallback, useLayoutEffect, useRef } from "react";
+import { scrollParentOf } from "./use-scroller-pad";
 import "./profile-nav.css";
-
-/** The nearest ancestor that actually scrolls. */
-function scrollParentOf(el: HTMLElement): HTMLElement | null {
-  for (let p = el.parentElement; p; p = p.parentElement) {
-    const overflowY = getComputedStyle(p).overflowY;
-    if (overflowY === "auto" || overflowY === "scroll") return p;
-  }
-  return null;
-}
 
 export interface SubnavItem<T extends string> {
   id: T;

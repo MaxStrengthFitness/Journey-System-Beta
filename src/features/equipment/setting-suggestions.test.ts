@@ -61,6 +61,11 @@ describe("suggestFromTrend", () => {
     expect(suggestFromTrend(TREND, ["Seat"], 60)).toBeNull();
   });
 
+  it("never offers a value only one client in the band uses", () => {
+    const thin = { settings: { seat: { "3": v(1, { "67": 1 }), "4": v(1, { "67": 1 }), "5": v(1, { "66": 1 }), "7": v(1, { "68": 1 }), "9": v(1, { "69": 1 }) } } };
+    expect(suggestFromTrend(thin, ["Seat"], 67)).toBeNull();
+  });
+
   it("says nothing without a height, a trend or the field", () => {
     expect(suggestFromTrend(TREND, ["Seat"], null)).toBeNull();
     expect(suggestFromTrend(null, ["Seat"], 67)).toBeNull();

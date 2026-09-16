@@ -267,8 +267,12 @@ export function recordChanges(opts: {
     work.push(row);
     log = work;
   }
-  return log ?? source;
+  // A draft is one document: keep its trail bounded (oldest rows go first).
+  return log ? (log.length > MAX_CHANGE_LOG ? log.slice(-MAX_CHANGE_LOG) : log) : source;
 }
+
+/** Rows kept in one assessment's change log. */
+export const MAX_CHANGE_LOG = 200;
 
 /** The log with one row's note set (an empty note removes it). */
 export function withChangeNote(

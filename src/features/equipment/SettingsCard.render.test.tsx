@@ -97,7 +97,7 @@ describe("SettingsCard suggestions", () => {
       />,
     );
     // 5'0" = 60": no clients in ±2" → no suggestion, but the shorter-stature tip shows.
-    expect(el.textContent).not.toContain("Most clients around");
+    expect(el.textContent).not.toContain("the most common setting");
     expect(el.textContent).toContain("Raise seat one notch");
     expect((el.querySelector("input") as HTMLInputElement).value).toBe("");
   });
@@ -106,13 +106,13 @@ describe("SettingsCard suggestions", () => {
     const el = mount(
       <SettingsCard machine={machine()} clientId="c1" author={null} startEditing clientHeight={"5'7\""} />,
     );
-    expect(el.textContent).toContain("Most clients around 5'7\" here use 6");
+    expect(el.textContent).toContain("Around 5'7\" here, the most common setting is 6 (6 of 6 clients)");
     const input = el.querySelector("input") as HTMLInputElement;
     expect(input.value).toBe("");
     const use = [...el.querySelectorAll("button")].find((b) => b.textContent === "Use 6")!;
     act(() => use.click());
     expect((el.querySelector("input") as HTMLInputElement).value).toBe("6");
-    expect(el.textContent).not.toContain("Most clients around");
+    expect(el.textContent).not.toContain("the most common setting");
   });
 
   it("never reads trends for a configured machine or a client with no height", () => {

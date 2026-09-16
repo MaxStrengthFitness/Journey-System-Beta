@@ -1,6 +1,8 @@
 import { memo, useMemo } from "react";
 import { orderMachineSettings } from "../../lib/utils";
+import { ShieldAlert } from "lucide-react";
 import { NoteIndicator } from "./NoteIndicator";
+import { machineWatchOuts } from "../../lib/clinical-watchouts";
 import type { EquipmentMachine } from "./types";
 
 /**
@@ -16,9 +18,12 @@ interface RailItemProps {
   machine: EquipmentMachine;
   selected: boolean;
   onSelect: (id: string) => void;
+  /** The client's clinical flags — a machine they name gets a marker, as on the routine rows. */
+  clinicalFlags?: readonly string[];
 }
 
-const RailItem = memo(function RailItem({ machine, selected, onSelect }: RailItemProps) {
+const RailItem = memo(function RailItem({ machine, selected, onSelect, clinicalFlags }: RailItemProps) {
+  const watch = useMemo(() => machineWatchOuts(clinicalFlags, machine), [clinicalFlags, machine]);
   // Same normaliser the Entry HUD and the Journey Grid use, so "G 9 / S 8"
   // reads identically wherever a trainer sees it.
   const chips = useMemo(
@@ -54,6 +59,16 @@ const RailItem = memo(function RailItem({ machine, selected, onSelect }: RailIte
           >
             {pct > 0 ? "+" : ""}
             {pct}%
+          </span>
+        )}
+        {watch.length > 0 && (
+          <span
+            className="eq-watch-chip"
+            data-tone={watch[0].tone}
+            title={watch.map((w) => w.condition).join(", ")}
+          >
+            <ShieldAlert size={12} strokeWidth={2.6} aria-hidden />
+            <span className="sr-only">Clinical watch-out</span>
           </span>
         )}
         <NoteIndicator count={machine.notes.length} hasMaintenanceFlag={machine.hasMaintenanceFlag} />
@@ -93,9 +108,10 @@ export interface MachineRailProps {
   machines: EquipmentMachine[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  clinicalFlags?: readonly string[];
 }
 
-export function MachineRail({ machines, selectedId, onSelect }: MachineRailProps) {
+export function MachineRail({ machines, selectedId, onSelect, clinicalFlags }: MachineRailProps) {
   const { inUse, idle } = useMemo(() => {
     const a: EquipmentMachine[] = [];
     const b: EquipmentMachine[] = [];
@@ -125,7 +141,7 @@ export function MachineRail({ machines, selectedId, onSelect }: MachineRailProps
             <span>{inUse.length}</span>
           </div>
           {inUse.map((m) => (
-            <RailItem key={m.id} machine={m} selected={m.id === selectedId} onSelect={onSelect} />
+            <RailItem key={m.id} machine={m} selected={m.id === selectedId} onSelect={onSelect} clinicalFlags={clinicalFlags} />
           ))}
         </>
       )}
@@ -137,7 +153,7 @@ export function MachineRail({ machines, selectedId, onSelect }: MachineRailProps
             <span>{idle.length}</span>
           </div>
           {idle.map((m) => (
-            <RailItem key={m.id} machine={m} selected={m.id === selectedId} onSelect={onSelect} />
+            <RailItem key={m.id} machine={m} selected={m.id === selectedId} onSelect={onSelect} clinicalFlags={clinicalFlags} />
           ))}
         </>
       )}

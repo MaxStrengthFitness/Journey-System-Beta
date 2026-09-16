@@ -41,7 +41,7 @@ import {
   type MasterSyncPart,
   type MasterSyncResponse,
 } from "./mindbody-demographics-map";
-import { mindbodyIdOf } from "./mindbody-id";
+import { mindbodyIdConflict, mindbodyIdOf } from "./mindbody-id";
 
 export type {
   MasterSyncPart,
@@ -305,7 +305,7 @@ function listOf(items: string[]): string {
  * The one call the profile makes
  * ------------------------------------------------------------------ */
 
-export type MasterSyncStatus = "ok" | "not-found" | "no-id" | "partial" | "error";
+export type MasterSyncStatus = "ok" | "not-found" | "no-id" | "conflict" | "partial" | "error";
 
 export interface MasterSyncResult {
   status: MasterSyncStatus;
@@ -351,6 +351,14 @@ export async function runMasterSync(params: {
   }
   if (!client.id) {
     return result("error", "This client hasn't been saved yet.", { mindbodyClientId: id });
+  }
+  const clash = mindbodyIdConflict(client);
+  if (clash) {
+    return result(
+      "conflict",
+      `This record carries two different Mindbody IDs (${clash.ids.join(" and ")}). Nothing was synced — a leader needs to confirm which client this is first.`,
+      { mindbodyClientId: id },
+    );
   }
 
   // Only ever the client's OWN home studio's site: another studio's site

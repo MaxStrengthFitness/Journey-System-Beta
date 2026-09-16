@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useMachineCatalog } from "../../hooks/useMachineCatalog";
+import { clientDisplayName } from "../../lib/client-name";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import type { Client, ClientMachineSetting, ExerciseLog, Machine, Trainer, WorkoutSession } from "../../types";
@@ -120,7 +121,7 @@ function WindowBody({
   );
 
   const author = authorFromTrainer(authTrainer);
-  const clientName = client ? [client.firstName, client.lastName].filter(Boolean).join(" ") : "";
+  const clientName = client ? clientDisplayName(client, "") : "";
   const who = [client?.height, client?.gender].filter(Boolean).join(", ");
 
   return (

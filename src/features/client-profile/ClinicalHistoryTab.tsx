@@ -153,7 +153,7 @@ export function ClinicalHistoryTab({
             <span
               key={f.id}
               className="ptab-strip__chip"
-              data-tone={f.tone === "modify" ? undefined : f.tone}
+              data-tone={f.tone}
               title={f.full}
             >
               {f.name}

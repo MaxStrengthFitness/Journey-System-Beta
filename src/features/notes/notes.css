@@ -84,6 +84,9 @@
 .nc-input::placeholder { color: var(--eq-ink-faint); }
 .nc-input:focus { border-color: var(--eq-focus-ring); background: var(--eq-surface); }
 textarea.nc-input { resize: vertical; }
+/* Room for a leading icon. In the feature CSS, not a utility class: .nc-input's
+   padding would win over `pl-9` depending on layer order (CLAUDE.md). */
+.nc-input.nc-input--icon { padding-left: 2.25rem; }
 
 /* ------------------------------------------------------------------ */
 /* CATEGORY CHIPS                                                      */

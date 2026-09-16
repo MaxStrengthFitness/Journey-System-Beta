@@ -291,21 +291,6 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
   gap: 4px 8px;
   min-width: 0;
 }
-/* A clinical watch-out on this machine: the condition, in the matrix's tone. */
-.rt-row__watch {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 1px 6px;
-  border-radius: 6px;
-  font-size: 10.5px;
-  font-weight: 800;
-  color: var(--eq-live-text);
-  background: var(--eq-live-fill);
-  white-space: nowrap;
-}
-.rt-row__watch[data-tone="alert"] { color: var(--eq-alert); background: var(--eq-alert-fill); }
-.rt-row__watch[data-tone="caution"] { color: var(--eq-warn); background: var(--eq-warn-fill); }
 .rt-row__name {
   flex: 0 1 auto;
   min-width: 0;

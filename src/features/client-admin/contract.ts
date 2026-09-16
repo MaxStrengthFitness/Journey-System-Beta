@@ -24,6 +24,8 @@
 import { toDateSafe, type FirestoreDateLike } from "../../lib/mindbody-dates";
 import type { Client, ContractTierOverride, MindbodyContract, MindbodyService } from "../../types";
 import type { RenewalSnapshot } from "../renewals/types";
+import { mindbodyDayKey } from "../renewals/engine";
+import { studioTodayKey } from "../../lib/studio-time";
 
 export type CommitmentTerm = 6 | 12 | 18;
 export type PaymentKind = "monthly" | "pif" | "month-to-month" | "sessions-only";
@@ -196,10 +198,18 @@ export interface ContractTermRow {
   tier: { term: CommitmentTerm | null; payment: PaymentKind | null } | null;
 }
 
-function statusOf(start: Date | null, end: Date | null, cancelled: boolean, now: Date): TermStatus {
+/**
+ * Compared as DAYS, the way the renewal engine does: a Mindbody date is a UTC
+ * day (mindbodyDayKey) and today is the studio's day. Comparing instants made
+ * a contract ending Sep 15 read "Ended" at 9pm Eastern on Sep 14. The end day
+ * itself still counts as active.
+ */
+function statusOf(start: Date | null, end: Date | null, cancelled: boolean, today: string): TermStatus {
   if (cancelled) return "cancelled";
-  if (start && start.getTime() > now.getTime()) return "upcoming";
-  if (end && end.getTime() < now.getTime()) return "ended";
+  const s = start ? mindbodyDayKey(start) : null;
+  const e = end ? mindbodyDayKey(end) : null;
+  if (s && s > today) return "upcoming";
+  if (e && e < today) return "ended";
   return "active";
 }
 
@@ -212,7 +222,8 @@ function statusOf(start: Date | null, end: Date | null, cancelled: boolean, now:
  */
 export function buildContractHistory(
   client: Pick<Client, "mindbodyContracts" | "mindbodyServices"> | null | undefined,
-  now: Date = new Date(),
+  /** The studio's day, "YYYY-MM-DD" (studioTodayKey). */
+  today: string = studioTodayKey(),
 ): ContractTermRow[] {
   const rows: ContractTermRow[] = [];
   for (const c of Object.values(client?.mindbodyContracts || {})) {
@@ -225,7 +236,7 @@ export function buildContractHistory(
       kind: "contract",
       start,
       end,
-      status: statusOf(start, end, c.status === "Cancelled", now),
+      status: statusOf(start, end, c.status === "Cancelled", today),
       autoRenews: typeof c.isAutoRenewing === "boolean" ? c.isAutoRenewing : autopay ? autopay === "active" : null,
       sessions: null,
       boughtOnline: String(c.originationLocationId ?? "") === "98",
@@ -245,7 +256,7 @@ export function buildContractHistory(
       kind: "paid-in-full",
       start,
       end,
-      status: used ? "ended" : statusOf(start, end, false, now),
+      status: used ? "ended" : statusOf(start, end, false, today),
       autoRenews: null,
       sessions: { count: typeof s.count === "number" ? s.count : null, remaining },
       boughtOnline: false,

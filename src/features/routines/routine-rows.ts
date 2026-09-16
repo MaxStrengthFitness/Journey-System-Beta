@@ -113,7 +113,8 @@ export function buildRoutineRows(
 
   return routine.machineIds.map((machineId, i) => {
     const machine = byId.get(machineId);
-    const stat = client?.machineStats?.[machineId];
+    // Lifetime figures only once the backfill has run (programming-summary.ts).
+    const stat = client?.machineStatsBackfilledAt ? client.machineStats?.[machineId] : undefined;
     const metric = client?.currentMachineMetrics?.[machineId];
     const setting = clientSettings[machineId];
     const log = latestLog.get(machineId);
@@ -141,7 +142,9 @@ export function buildRoutineRows(
       startingWeight: num(setting?.startingWeight),
       note: routine.machineNotes?.[machineId]?.trim() || null,
       missing: !machine,
-      progressionPct: pctSince(num(stat?.firstWeight), weight ?? num(stat?.lastWeight)),
+      // The All Machines rail's figure exactly: first set ever → the
+      // prescribed current weight, else the last one lifted.
+      progressionPct: pctSince(num(stat?.firstWeight), num(setting?.currentWeight) ?? num(stat?.lastWeight)),
       timesPerformed: num(stat?.timesPerformed) ?? 0,
       watchOuts: machineWatchOuts(client?.clinicalFlags, { id: machineId, name: machine?.name, fullName: machine?.fullName }),
     };
