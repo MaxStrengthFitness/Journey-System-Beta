@@ -229,7 +229,7 @@ All of it is `currentView === "workouts"` inside `WorkoutTrackerView.tsx`.
 6. **Post-session** (`VictoryHUDScreen`): stat tiles from the session's logs, the Feel toggle, a closing note with priority, the optional quick check-in (`QuickCheckInDialog`, saves on its own), and the renewal `LogConversationDialog` (`studios/{s}/renewals/{cycle}` + `touches`). "Finalize & return to Hub" hands `{clientFeel, noteContent, notePriority}` back.
 7. **Finalize** (`finalizeEndSession`): flush all pending log writes, then `completeWorkoutSession` (`lib/sync-utils.ts`) completes the session, rewrites `clientMachineSettings.currentWeight` to what was performed and increments `client.trainerTally`; the session and client are cleared and the view returns to the Hub. Trainer rollups are written server-side by the `onSessionRollup` Cloud Function.
 
-### 2.5 The Operations dashboard — fourteen tabs
+### 2.5 The Operations dashboard — fifteen tabs
 
 Reaching it: the App Mode toggle (studio leaders and above) or the studio picker's admin button. Inside, `isFranchiseOwnerOrAdmin` (admin, or the role codes `FranchiseOwner` / `Owner` — not `StudioOwner`, which the roles page also calls a Franchise Owner) gates some tabs and `isAdmin` gates the System Backend group; the Firestore rules are the real enforcement.
 
@@ -243,6 +243,7 @@ Reaching it: the App Mode toggle (studio leaders and above) or the studio picker
 | | Catalog | `components/machines/AdminMachinesTab` | franchise owner or admin |
 | | Routines | `components/routines/AdminRoutineTemplatesTab` | everyone (authoring gated inside) |
 | | Insights | `features/admin/insights` | everyone |
+| | Machine fit | `features/admin/machine-fit` | everyone — **This studio**, live; the **All MSF studios** scope inside it is admin only (machine-fit round, Sep 17) |
 | | Exports | `features/admin-data` | franchise owner or admin |
 | Communications | Announcements | `features/admin/announcements` | franchise owner or admin |
 | System Backend | Mindbody | `features/admin/mindbody` | admin |
@@ -343,13 +344,13 @@ The ownership rule is fixed (`docs/business/data-sources.md`): **Mindbody owns i
 
 | Path | Holds | Owner | Read | Write | Status |
 | --- | --- | --- | --- | --- | --- |
-| `clients/{mindbodyClientId}` | `Client`: Mindbody mirrors, coaching fields, running totals, `renewal`, `inbodySummary`, `subjectiveSnapshot` | Mindbody (identity, commercial) · Journey (coaching) · job (`renewal`) | admins, franchise owners, trainers and leaders of the home studio, approved cross-train studios | create/update by admins or the home studio's trainers and leaders, never touching `renewal`; delete admins | canonical |
+| `clients/{mindbodyClientId}` | `Client`: Mindbody mirrors, coaching fields (incl. the optional `wingspan`, machine-fit round), running totals, `renewal`, `inbodySummary`, `subjectiveSnapshot` | Mindbody (identity, commercial) · Journey (coaching) · job (`renewal`) | admins, franchise owners, trainers and leaders of the home studio, approved cross-train studios | create/update by admins or the home studio's trainers and leaders, never touching `renewal`; delete admins | canonical |
 | `clients/{id}/inbodyScans/{id}` | one InBody 270S scan | InBody, typed in | anyone who can read the client | home-studio trainers and leaders, admins (rules also admit franchise owners); remove: enterer, leaders, admins | canonical |
 | `clients/{id}/sharedNotes/{id}` | a Planner note shared onto the client | Journey | anyone who can read the client | author; delete author, leaders, admins | canonical |
 | `journalEntries/{id}` | `JournalEntry` — the unified journal (notes, incidents, in-session notes, machine notes) | Journey | **any signed-in user** | any trainer, as author; author and client pinned | canonical |
 | `clientFocuses/{id}` | `ClientFocus` — the 4 P's focus model | Journey | any signed-in user | any trainer as owner; owner, admins, franchise owners update | canonical |
 | `progressReports/{id}` | `ProgressReport` incl. the check-in (`isCheckInOnly`), `.subjective` | Journey | **any signed-in user** — must never hold InBody numbers | any trainer; delete admins/owners (the profile's delete call is refused for others) | canonical |
-| `clientMachineSettings/{clientId}_{machineId}` | the client's dial settings and current weight per machine | Journey | any signed-in user | any trainer; delete any signed-in user | canonical; open read |
+| `clientMachineSettings/{clientId}_{machineId}` | the client's dial settings and current weight per machine; since the machine-fit round also `sources` (where each value came from: `typed` / `suggested` / `legacy`) and `fitAcks` ("right for this client" reviews, tied to the value) | Journey | any signed-in user | any trainer; delete any signed-in user | canonical; open read |
 | `routines/{id}` | `Routine` A / B for a client | Journey | any signed-in user | any trainer; delete admins/owners | canonical |
 | `routineAdjustments/{id}` | the audit trail of routine changes | Journey | any signed-in user | any trainer, create only | canonical, append-only |
 | `routinePresets/{id}` | `RoutinePreset`, tiers company / studio / trainer | Journey / config | any signed-in user | by tier: admins / the studio's leaders / any trainer | canonical |
@@ -375,6 +376,7 @@ The ownership rule is fixed (`docs/business/data-sources.md`): **Mindbody owns i
 | `machines/{id}/settingHistory/{id}` | setting-change audit | Journey | any signed-in user | **any signed-in user, all ops, no shape** | canonical; unguarded |
 | `studios/{s}/roster/{machineId}` | `StudioMachineRosterEntry` — which machines this studio owns, their order, status, standards, sharing | config (leaders) | any signed-in user; shared entries via a collection-group rule | admins, the studio's leaders; `studioId` must match the path | canonical — **the** per-studio floor; westlake and Willoughby still empty |
 | `studios/{s}/machineNotes/{machineId}` | a floor note on a machine | Journey | any signed-in user | trainers who write for that studio | canonical |
+| `studios/{s}/machineFit/{machineId}` | the machine-fit index (Sep 17): `rows.{clientId}` = settings (normalised), where they came from, reviews, saved-at. **No body data** — joined to the studio client list at read time | Journey (every settings save) + `scripts/rebuild-machine-fit.ts` | trainers who write for the studio | the same, **one row per write** (`rows.diff(...).affectedKeys().size() <= 1`), shape-checked; delete admins | a **copy** of `clientMachineSettings`; the write is caught, the script rebuilds it |
 | `studios/{s}/upkeepLog/{id}` | unscheduled upkeep | Journey | any signed-in user | trainers of the studio, create only | canonical, append-only |
 | `studioMachineSettings/{studioId}_{machineId}` | `StudioMachineSetting` (settingOptions, standards) | Journey | any signed-in user | any trainer | **legacy** → `roster`; 0 documents on Sep 12 2026; `StudioSetupCard` still reads and writes it |
 | `machineSettingChanges/{id}` | `MachineSettingChange` | Journey | any signed-in user | any trainer, create | **legacy** → `settingHistory` + `journalEntries`; no reader, writer removed |
@@ -404,7 +406,8 @@ The ownership rule is fixed (`docs/business/data-sources.md`): **Mindbody owns i
 | `system/health` | integration health | job | any signed-in user | server only | canonical |
 | `bug_reports/{id}` | bug reports from the feedback drawer | Journey | admins, the reporter | anyone creates; admins update | canonical |
 | `notificationQueue/{id}` | email / SMS queue | job | admins, owners | anyone creates; admins update | orphan — no consumer; outreach is parked |
-| `machineTrends/{machineId}` and `machineTrends/_summary` | `MachineTrendDocument` (`server/machine-trends-job.ts`) | the weekly job | any signed-in user | admins | no screen yet (cost round, Sep 2026): per machine, clients · sets · load distribution · settings by height · per studio. Aggregates only, never a client row. Replaced `leaderboards/*`, which nothing read; those documents are stale and can be deleted |
+| `machineTrends/{machineId}` and `machineTrends/_summary` | `MachineTrendDocument` (`server/machine-trends-job.ts`) | the weekly job | any signed-in user | admins | per machine, clients · sets · load distribution · settings by height · per studio (cost round, Sep 2026), plus `fit` — machine fit's company tier: anonymous height × gender cells → whole set-up → count, **k-anonymous at five** (machine-fit round). Aggregates only, never a client row. Read by the Settings card and the Setup screen through one cache. Replaced `leaderboards/*`, which nothing read; those documents are stale and can be deleted |
+| `kaizenReports/{machineId}` and `kaizenReports/_summary` | `KaizenReport` (`features/machine-fit/kaizen.ts`) — by height, by setting, what follows what, whole set-ups, per-studio counts | the weekly job | **admins and founders only** | nobody (Admin SDK) | Operations → Machine fit → All MSF studios. Names studios, never a client; every average is null under five clients |
 | `auditLogs/{id}` | `AuditLogEntry` | Journey | admins, owners | anyone creates | unknown — no visible writer |
 | `aggregations/{id}` | — | — | any signed-in user | admins | orphan |
 
@@ -597,7 +600,7 @@ Everything below is pre-alpha work: AJ is the only user, so the ceremony stays l
 
 ### 5.5 Later — architected for, not built
 
-Automated retention beyond flags (still in-app only); the InBody Web API with one key per studio, kept on the server; the badge and award system for client profiles; a CSV export of a client's full history; time-zone handling for a second zone; `strict` TypeScript (517 explicit `any` today); the Cloud Functions tests in CI; the Machine Trends screen over `machineTrends/*` (the data is built weekly since the cost round); the studio-leader Demo Mode track.
+Automated retention beyond flags (still in-app only); the InBody Web API with one key per studio, kept on the server; the badge and award system for client profiles; a CSV export of a client's full history; time-zone handling for a second zone; `strict` TypeScript (517 explicit `any` today); the Cloud Functions tests in CI; ~~the Machine Trends screen over `machineTrends/*`~~ (built as Operations → Machine fit in the machine-fit round, Sep 17 — settings by build; a LOAD-trends screen over the same documents is still open); the studio-leader Demo Mode track.
 
 ### 5.6 Not building
 
@@ -620,7 +623,7 @@ The eight questions Draft 2 opened were answered on Sep 12 (Appendix C, the "lat
 | `AppContent.tsx` | 3,126 lines, 45 imports, 28 `useState`, 7 `useEffect` |
 | Largest screens | `ClientProfileView.tsx` 180 KB · `WorkoutTrackerView.tsx` 160 KB · `ClientProgressReportView.tsx` 125 KB · `LegacyChartImporter.tsx` 65 KB · `ClientsView.tsx` 64 KB |
 | `View` ids declared / routed / dead | 23 / 17 / 6 |
-| Client profile tabs · Operations tabs | 7 · 14 |
+| Client profile tabs · Operations tabs | 7 · 15 |
 | Exported types in `src/types.ts` | 66 (52 KB) |
 | `firestore.rules` | 2,059 lines · 78 helpers (6 unused) · ~60 collection paths · 3 collection-group rules |
 | Composite indexes | 36 |

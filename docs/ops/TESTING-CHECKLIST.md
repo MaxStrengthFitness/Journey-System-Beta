@@ -349,6 +349,79 @@ two of these items change the client's session count on purpose.
   no alert. With it on, the alert may appear — tap Undo and confirm **nothing
   rolls back**. On a studio PC, Cmd+Z in a text field still works.
 
+## Round 9 — Machine fit · *Sep 17 2026 round, branch `machine-fit`*
+
+None of this has been on an iPad, and one piece — the docked keypad — can only
+really be judged on one. Use a **test client** for anything that saves.
+
+**At the keyboard first**
+
+- [ ] **Rules.** `npm run test:rules`, then
+  `firebase deploy --only firestore:rules`. *If you skip it:* saving still
+  works (the index write is caught), but the studio index never fills, so
+  suggestions and the check have nothing to read.
+- [ ] **Build the index once.** `npx tsx scripts/rebuild-machine-fit.ts` and
+  read what it prints per studio; then the same with `--commit`. *If the row
+  count looks low:* "skipped (client has no home studio)" is the usual reason.
+- [ ] **Build the company tier once.** `npx tsx scripts/run-machine-trends.ts`,
+  read the "Machine fit:" line (machines, set-ups pooled, held back), then
+  `--commit`. "Held back" is normal while the company is small: a height with
+  fewer than five clients is not published.
+
+**Programming → Setup, on the iPad**
+
+- [ ] **A client with nothing set up opens on Set up**, in the floor's order,
+  with suggestions as grey *placeholders* — never as values. One who is fully
+  set up opens on **Check**.
+- [ ] **The segment's line** reads "N of M set up · k to review". The dot is
+  there only when a machine in her routine has nothing set.
+- [ ] **Why.** Open it on one row: the ladder ("5'4" 2 clients, 5'3"–5'5"
+  7 clients"), the order it was worked out in, and the bars. Tap one value in
+  it: only that cell fills.
+- [ ] **Accept strong suggestions**, then **Undo accept**. Then accept again,
+  change one value by hand, and **Save**. Reopen the machine from All
+  Machines: the values are there, and the machine's history shows one entry.
+  *Nothing was written before Save* — leave the screen mid-way once to prove it.
+- [ ] **Type a seat by hand** on an empty machine: the pad offered for the
+  other cells should change to go with it.
+- [ ] **Similar to.** Switch on Wingspan for a client with none on file: the
+  panel says it is not on file and the suggestions still come. Add a wingspan
+  on her record (General, beside Height) and try again.
+- [ ] **Quick entry — the keypad.** Tap a cell: the pad docks at the bottom and
+  **the iPad's own keyboard stays down**. The row you are typing into is never
+  covered. First key replaces; a one-digit scale moves on by itself; **Next**
+  walks the chart top to bottom; **abc** brings the system keyboard up for that
+  one cell. *This is the item most likely to need a fix.*
+- [ ] **Quick entry — shorthand.** In a row's abc box type
+  `Gap:6, Handles:in, seat: up, Chest:3 PILLOW` on the Compound Row. The three
+  it can place fill in; PILLOW is kept as a note on the machine, not dropped.
+  Try `Gap  S- 8` — it must be **Seat 8 and no gap**.
+- [ ] **Paste a chart.** Several lines at once, machine names first. Anything
+  it could not match to a machine is listed, not lost.
+- [ ] **Check.** On a set-up client, change one seat to something absurd from
+  All Machines, come back: a plum diamond and one sentence. **Right for this
+  client** clears it; changing the value brings the question back. No bell, no
+  badge anywhere else.
+- [ ] **Portrait and landscape, light and dark.** Names wrap, never truncate.
+
+**Operations → Machine fit**
+
+- [ ] **This studio** opens on the first machine anyone is set up on, not an
+  empty one. By height, By setting and Set-ups seen together all read; a band
+  with under five clients says *not enough data yet*.
+- [ ] **Worth a look** names the client from the Check test above. Tap her: the
+  profile opens **on Programming → Setup, in Check**.
+- [ ] **As a studio leader** (not an administrator) the *All MSF studios* switch
+  is not there.
+- [ ] **As an administrator**, All MSF studios shows the weekly report: studios
+  named, no client named anywhere. Before the first `--commit` run it says
+  "No company report yet".
+
+**Two iPads**
+
+- [ ] Set up two different clients on the **same machine** at the same moment
+  and Save both. Both rows survive (Operations → Machine fit counts both).
+
 ---
 
 ## Findings log

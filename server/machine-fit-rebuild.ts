@@ -48,12 +48,30 @@ function millisOf(value: unknown): number {
   return 0;
 }
 
-async function commitInBatches(db: Firestore, writes: Array<(batch: WriteBatch) => void>) {
-  for (let i = 0; i < writes.length; i += BATCH_LIMIT) {
-    const batch = db.batch();
-    writes.slice(i, i + BATCH_LIMIT).forEach((w) => w(batch));
-    await batch.commit();
+interface QueuedWrite {
+  run: (batch: WriteBatch) => void;
+  bytes: number;
+}
+
+/** A commit may carry 10 MiB; an index document for a big studio is tens of KB. Cut by size as well as count. */
+const BATCH_BYTES = 4 * 1024 * 1024;
+
+async function commitInBatches(db: Firestore, writes: QueuedWrite[]) {
+  let batch = db.batch();
+  let count = 0;
+  let bytes = 0;
+  for (const w of writes) {
+    if (count > 0 && (count >= BATCH_LIMIT || bytes + w.bytes > BATCH_BYTES)) {
+      await batch.commit();
+      batch = db.batch();
+      count = 0;
+      bytes = 0;
+    }
+    w.run(batch);
+    count += 1;
+    bytes += w.bytes;
   }
+  if (count > 0) await batch.commit();
 }
 
 export async function rebuildMachineFit(options: FitRebuildOptions): Promise<FitRebuildSummary> {
@@ -93,7 +111,7 @@ export async function rebuildMachineFit(options: FitRebuildOptions): Promise<Fit
       `${plan.empty} skipped (nothing usable set).`,
   );
 
-  const writes: Array<(batch: WriteBatch) => void> = [];
+  const writes: QueuedWrite[] = [];
   let documentsWritten = 0;
   let documentsRemoved = 0;
   const rebuiltAt = now.toISOString();
@@ -108,16 +126,18 @@ export async function rebuildMachineFit(options: FitRebuildOptions): Promise<Fit
     for (const d of existing.docs) {
       if (machines.has(d.id)) continue;
       documentsRemoved += 1;
-      writes.push((batch) => batch.delete(d.ref));
+      writes.push({ run: (batch) => batch.delete(d.ref), bytes: 0 });
     }
     let studioRows = 0;
     for (const [machineId, rows] of machines) {
       documentsWritten += 1;
       studioRows += Object.keys(rows).length;
       // Written WHOLE: this is the one writer allowed to replace every row.
-      writes.push((batch) =>
-        batch.set(col.doc(machineId), { machineId, studioId, rows, rebuiltAt, updatedAt: FieldValue.serverTimestamp() }),
-      );
+      writes.push({
+        run: (batch) =>
+          batch.set(col.doc(machineId), { machineId, studioId, rows, rebuiltAt, updatedAt: FieldValue.serverTimestamp() }),
+        bytes: JSON.stringify(rows).length,
+      });
     }
     if (machines.size > 0 || existing.size > 0) {
       log(`  ${studioId}: ${machines.size} machines, ${studioRows} rows${existing.size ? ` (had ${existing.size} documents)` : ""}.`);
