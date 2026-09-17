@@ -131,6 +131,8 @@ export const CATEGORY_LABEL: Record<string, string> = {
   maintenance: "Maintenance",
   ops: "Operations",
   "client-service": "Client service",
+  /** Relay (Sep 2026): a trainer's own development, Mine's Growth lane. Personal tasks only. */
+  growth: "Growth",
 };
 
 /**

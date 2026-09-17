@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Bell, BellPlus, CalendarClock, Check, ExternalLink, Plus, Repeat, UserCheck } from "lucide-react";
+import { ArrowRightLeft, Bell, BellPlus, CalendarClock, Check, ExternalLink, Gift, Plus, Repeat, Sprout, UserCheck } from "lucide-react";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import { auth } from "../../firebase";
 import type { Client, Trainer } from "../../types";
@@ -21,6 +21,11 @@ import { addDays } from "../studio-tasks/recurrence";
 import { studioDateKey } from "../../lib/studio-time";
 import { leadsHere } from "./leads";
 import { useRelayMaybe } from "./relay/RelayContext";
+import { followUps, handedAsks, isGrowthRow } from "./relay/mine";
+import { useStudioRequests } from "../studio-tasks/useStudioRequests";
+import { resolveRequest } from "../studio-tasks/requests";
+import { notify } from "../notifications";
+import { useToast } from "../../contexts/ToastContext";
 import { studioRoster } from "../studio-tasks/initiatives";
 import { useTeamJobs } from "./jobs/useTeamJobs";
 import { TeamJobsLane } from "./jobs/TeamJobsLane";
@@ -81,7 +86,13 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
   const openJob = teamJobs.jobs.find((j) => j.id === openJobId) ?? null;
   const roster = useMemo(() => studioRoster(trainers ?? [], activeStudioId ?? null), [trainers, activeStudioId]);
 
-  const buckets = useMemo(() => myTaskBuckets(rows, trainerId), [rows, trainerId]);
+  const allBuckets = useMemo(() => myTaskBuckets(rows, trainerId), [rows, trainerId]);
+  // Relay: Growth is its own lane, kept out of Today (relay/mine.ts).
+  const buckets = useMemo(
+    () => ({ ...allBuckets, open: allBuckets.open.filter((r) => !isGrowthRow(r)), done: allBuckets.done.filter((r) => !isGrowthRow(r)) }),
+    [allBuckets],
+  );
+  const growth = useMemo(() => [...allBuckets.open, ...allBuckets.done].filter(isGrowthRow), [allBuckets]);
   const repeating = useMemo(
     () => templates.filter((t) => taskScopeOf(t) === "personal" && t.active !== false),
     [templates],
@@ -90,6 +101,37 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
   // Inside Relay the composer is Capture (relay/CaptureSheet); outside it,
   // the wizard. Editing an existing task stays with the wizard either way.
   const relay = useRelayMaybe();
+  const { success: toastSuccess, error: toastError } = useToast();
+
+  // HANDED TO YOU (Relay): asks a colleague passed to this person by name.
+  const { open: openRequests } = useStudioRequests(relay ? (activeStudioId ?? null) : null);
+  const handed = useMemo(() => handedAsks(openRequests, [ownerId, trainerId]), [openRequests, ownerId, trainerId]);
+  const closeHanded = async (r: (typeof handed)[number]) => {
+    if (!activeStudioId || !author) return;
+    try {
+      await resolveRequest({ studioId: activeStudioId, requestId: r.id, author });
+      await notify({
+        to: r.createdBy.id,
+        actor: author,
+        kind: "request-resolved",
+        title: `${author.name} closed "${r.title}"`,
+        studioId: activeStudioId,
+        link: { view: "studio-tasks" },
+      });
+      toastSuccess("Done — they'll see it on their card.");
+    } catch (err) {
+      console.warn("[relay] close hand-off failed:", err);
+      toastError("Could not close that. Check your connection.");
+    }
+  };
+
+  // FOLLOW-UPS (Relay): birthdays and FORD dates for this trainer's clients,
+  // from fields the roster already carries. No reads.
+  const todayKeyForFollowUps = studioDateKey(new Date()) ?? "";
+  const followUpRows = useMemo(
+    () => (relay ? followUps(clients ?? [], trainerId, todayKeyForFollowUps) : []),
+    [relay, clients, trainerId, todayKeyForFollowUps],
+  );
   const [managing, setManaging] = useState(false);
   const [intent, setIntent] = useState<
     | { mode: "new"; scope: "personal"; preset?: Partial<TaskTemplate> }
@@ -119,7 +161,10 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
     buckets.done.length === 0 &&
     buckets.assigned.length === 0 &&
     myOpenJobs.length === 0 &&
-    comingUp.length === 0;
+    comingUp.length === 0 &&
+    handed.length === 0 &&
+    followUpRows.length === 0 &&
+    growth.length === 0;
 
   const renderRow = (r: TaskRow) => {
     const done = r.status === "done";
@@ -162,6 +207,25 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
           >
             <ExternalLink size={14} aria-hidden />
             Open
+          </button>
+        )}
+        {relay && !done && taskScopeOf(r.template) === "personal" && (
+          <button
+            type="button"
+            className="pl__btn"
+            title="Send to the Floor — anyone at the studio can take it"
+            aria-label={`Send “${r.title}” to the Floor`}
+            onClick={() =>
+              relay.openCapture({
+                destination: "floor",
+                text: r.template.detail ? `${r.title}\n${r.template.detail}` : r.title,
+                client: clientId ? { id: clientId, name: clientNames[clientId] ?? "Client" } : null,
+                estMinutes: r.template.estMinutes ?? null,
+              })
+            }
+          >
+            <ArrowRightLeft size={14} aria-hidden />
+            Floor
           </button>
         )}
       </li>
@@ -251,6 +315,38 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
               </section>
             )}
 
+            {handed.length > 0 && (
+              <section className="pl__list" aria-labelledby="pl-handed">
+                <h3 className="pl__list-head" id="pl-handed">
+                  <ArrowRightLeft size={14} aria-hidden />
+                  Handed to you <span className="pl__count">{handed.length}</span>
+                </h3>
+                <p className="pl__list-note">A colleague passed these to you by name. Closing one tells them.</p>
+                <ul>
+                  {handed.map((r) => (
+                    <li className="pl__task" key={r.id}>
+                      <button type="button" className="pl__check" aria-label={`Mark “${r.title}” done`} onClick={() => void closeHanded(r)} />
+                      <div className="pl__task-main">
+                        <span className="pl__task-title">{r.title}</span>
+                        <span className="pl__task-meta">
+                          From {r.createdBy.name.split(" ")[0]}
+                          {r.dueOn ? ` · by ${dayWords(r.dueOn, todayKey)}` : ""}
+                          {typeof r.estMinutes === "number" ? ` · ~${r.estMinutes} min` : ""}
+                        </span>
+                        {r.detail && <span className="pl__task-detail">{r.detail}</span>}
+                      </div>
+                      {r.clientId && onOpenClientTask && (
+                        <button type="button" className="pl__btn" onClick={() => onOpenClientTask(r.clientId!)}>
+                          <ExternalLink size={14} aria-hidden />
+                          Open
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
             <TeamJobsLane
               jobs={teamJobs.jobs}
               loading={teamJobs.loading}
@@ -275,6 +371,50 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
                   close them — they also show under Studio.
                 </p>
                 <ul>{buckets.assigned.map(renderRow)}</ul>
+              </section>
+            )}
+
+            {followUpRows.length > 0 && (
+              <section className="pl__list" aria-labelledby="pl-followups">
+                <h3 className="pl__list-head" id="pl-followups">
+                  <Gift size={14} aria-hidden />
+                  Follow-ups <span className="pl__count">{followUpRows.length}</span>
+                </h3>
+                <p className="pl__list-note">Your clients' birthdays and dates they mentioned, in the next two weeks.</p>
+                <ul>
+                  {followUpRows.map((f) => (
+                    <li className="pl__task pl__task--ahead" key={f.key}>
+                      <span className="pl__when">
+                        <span className="pl__when-day">{dayWords(f.date, todayKey)}</span>
+                      </span>
+                      <div className="pl__task-main">
+                        <span className="pl__task-title">{f.clientName}</span>
+                        <span className="pl__task-meta">{f.label}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="pl__btn"
+                        onClick={() =>
+                          relay?.openCapture({
+                            destination: "me",
+                            text: f.kind === "birthday" ? `Birthday card for ${f.clientName.split(" ")[0]}` : `${f.clientName.split(" ")[0]}: ${f.label.split(" · ")[0]}`,
+                            client: { id: f.clientId, name: f.clientName },
+                            date: f.date === todayKey ? null : f.date,
+                          })
+                        }
+                      >
+                        <Plus size={14} aria-hidden />
+                        Task
+                      </button>
+                      {onOpenClientTask && (
+                        <button type="button" className="pl__btn" onClick={() => onOpenClientTask(f.clientId)}>
+                          <ExternalLink size={14} aria-hidden />
+                          Open
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </section>
             )}
 
@@ -308,6 +448,17 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
                     </li>
                   ))}
                 </ul>
+              </section>
+            )}
+
+            {growth.length > 0 && (
+              <section className="pl__list" aria-labelledby="pl-growth">
+                <h3 className="pl__list-head" id="pl-growth">
+                  <Sprout size={14} aria-hidden />
+                  Growth <span className="pl__count">{growth.length}</span>
+                </h3>
+                <p className="pl__list-note">Your own development — reading, a mastery series, a skill to practise. Never competes with Today.</p>
+                <ul>{growth.map(renderRow)}</ul>
               </section>
             )}
 
