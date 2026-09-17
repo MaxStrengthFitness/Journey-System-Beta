@@ -18,6 +18,8 @@ export interface SettingsDocInput {
   machineId?: string | null;
   settings?: Record<string, unknown> | null;
   sources?: Record<string, SettingSource | undefined> | null;
+  /** The "right for this client" reviews on the document; the ones that still apply ride along on the row. */
+  fitAcks?: Record<string, { value?: unknown } | undefined> | null;
   /** ms since epoch; 0 when the document never recorded it. */
   updatedAtMs: number;
 }
@@ -46,7 +48,7 @@ export function planRebuild(
       empty += 1;
       continue;
     }
-    const row = toFitRow(d.settings ?? null, d.sources ?? null, d.updatedAtMs);
+    const row = toFitRow(d.settings ?? null, d.sources ?? null, d.updatedAtMs, d.fitAcks ?? null);
     if (!row) {
       empty += 1;
       continue;

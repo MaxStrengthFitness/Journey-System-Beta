@@ -114,6 +114,7 @@ beforeEach(() => {
   spy.toasts.length = 0;
   reviews.length = 0;
   window.localStorage.clear();
+  window.sessionStorage.clear();
   delete (window as any).matchMedia;
 });
 afterEach(() => {
@@ -259,6 +260,15 @@ describe("the Setup screen", () => {
     click(key("8"));
     click(key("0"));
     expect(cell(el, "Leg Press load in pounds").value).toBe("80");
+  });
+
+  it("opens on Check when the Machine fit report sent the leader here, once", () => {
+    // Nothing prescribed is set up, so on its own this client would open in Set up.
+    window.sessionStorage.setItem("msf_fit_open_mode:judy", "check");
+    const el = mount();
+    expect(el.querySelector(".fit")?.getAttribute("data-mode")).toBe("check");
+    // Read once and removed: the next visit opens the ordinary way.
+    expect(window.sessionStorage.getItem("msf_fit_open_mode:judy")).toBeNull();
   });
 
   it("reads nothing until the segment has been opened", () => {

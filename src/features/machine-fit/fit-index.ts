@@ -2,7 +2,7 @@
  * MACHINE FIT — the two stores, as plain data.
  *
  *   studios/{studioId}/machineFit/{machineId}     THE STUDIO INDEX
- *       rows: { [clientId]: { s: settings, src?: sources, t: savedAt } }
+ *       rows: { [clientId]: { s: settings, src?: sources, a?: reviews, t: savedAt } }
  *
  *     One document per machine per studio: who is set to what. Written
  *     whenever a client's settings are saved (one row, one key — two iPads
@@ -35,7 +35,7 @@
 
 import { normalizeSettingKey, normalizeSnapshot } from "../machine-trends/trends.ts";
 import { factorsOf, type FitClientInput } from "./factors.ts";
-import type { FitSample, SettingSource } from "./types.ts";
+import type { FitAck, FitFactors, FitSample, SettingSource } from "./types.ts";
 
 /* ------------------------------------------------------------------ *
  * The studio index
@@ -46,8 +46,42 @@ export interface FitRowDoc {
   s: Record<string, string>;
   /** Normalised key → where the value came from. Only non-"typed" sources are stored. */
   src?: Record<string, Exclude<SettingSource, "typed">>;
+  /**
+   * "Right for this client" reviews that still apply: ack key → the value it
+   * was given for. A copy of clientMachineSettings.fitAcks, kept here so the
+   * studio-wide check (kaizen.ts) can leave reviewed settings alone without
+   * reading every client's settings document.
+   */
+  a?: Record<string, string>;
   /** When the settings were last saved, ms since epoch. */
   t: number;
+}
+
+/** The most reviews one row carries. A machine has a handful of fields; this is a guard, not a budget. */
+export const MAX_ROW_ACKS = 12;
+
+/**
+ * The reviews worth copying onto a row: the ones whose value is still the
+ * value on file. A review lapses when the setting changes (audit.ts), so a
+ * lapsed one is dead weight. A combination's key is "a+b" and its value
+ * "va+vb" (comboAckKey / comboAckValue, both sorted by key).
+ */
+export function liveAcks(
+  s: Record<string, string>,
+  acks: Record<string, { value?: unknown } | undefined> | null | undefined,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, ack] of Object.entries(acks ?? {})) {
+    const value = ack?.value;
+    if (typeof value !== "string" || !value) continue;
+    const parts = key.split("+");
+    const current = parts.map((k) => s[k]);
+    if (current.some((v) => v === undefined)) continue;
+    if (current.join("+") !== value) continue;
+    out[key] = value;
+    if (Object.keys(out).length >= MAX_ROW_ACKS) break;
+  }
+  return out;
 }
 
 export interface MachineFitDoc {
@@ -68,6 +102,7 @@ export function toFitRow(
   settings: Record<string, unknown> | null | undefined,
   sources: Record<string, SettingSource | undefined> | null | undefined,
   savedAt: number,
+  acks?: Record<string, { value?: unknown } | undefined> | null,
 ): FitRowDoc | null {
   const s = normalizeSnapshot(settings ?? null);
   if (!s) return null;
@@ -77,7 +112,11 @@ export function toFitRow(
     if (!key || !(key in s)) continue;
     if (source === "suggested" || source === "legacy") src[key] = source;
   }
-  return Object.keys(src).length > 0 ? { s, src, t: savedAt } : { s, t: savedAt };
+  const a = liveAcks(s, acks);
+  const row: FitRowDoc = { s, t: savedAt };
+  if (Object.keys(src).length > 0) row.src = src;
+  if (Object.keys(a).length > 0) row.a = a;
+  return row;
 }
 
 const EASTERN_DAY = new Intl.DateTimeFormat("en-CA", {
@@ -134,6 +173,44 @@ export function samplesFromFitDoc(
     const settings = verifiedSettings(row, client.machineStats?.[doc.machineId]?.lastPerformedDate);
     if (Object.keys(settings).length === 0) continue;
     out.push({ clientId, n: 1, settings, factors: factorsOf(client, now) });
+  }
+  return out;
+}
+
+/**
+ * One client's set-up as the studio-wide check reads it (kaizen.ts).
+ *
+ * Not the same thing as a sample. A SAMPLE is evidence, so a value that was
+ * only accepted from a suggestion is left out of it until she has trained on
+ * it. A SUBJECT is what is actually on file for her — every saved value,
+ * accepted ones included, because an accepted value is exactly the kind that
+ * deserves a second look.
+ */
+export interface FitAuditSubject {
+  clientId: string;
+  studioId: string | null;
+  settings: Record<string, string>;
+  factors: FitFactors;
+  /** Reviews on file, as the audit takes them. */
+  acks: Record<string, FitAck>;
+}
+
+export function subjectsFromFitDoc(
+  doc: (Pick<MachineFitDoc, "machineId" | "rows"> & { studioId?: string | null }) | null | undefined,
+  clientsById: ReadonlyMap<string, FitClientRecord>,
+  now: Date = new Date(),
+): FitAuditSubject[] {
+  const out: FitAuditSubject[] = [];
+  if (!doc?.rows) return out;
+  for (const [clientId, row] of Object.entries(doc.rows)) {
+    if (!row || typeof row !== "object" || !row.s || Object.keys(row.s).length === 0) continue;
+    const client = clientsById.get(clientId);
+    if (!client) continue;
+    const acks: Record<string, FitAck> = {};
+    for (const [key, value] of Object.entries(row.a ?? {})) {
+      if (typeof value === "string") acks[key] = { value, by: "", byName: "", at: "" };
+    }
+    out.push({ clientId, studioId: doc.studioId ?? null, settings: row.s, factors: factorsOf(client, now), acks });
   }
   return out;
 }

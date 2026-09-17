@@ -28,6 +28,22 @@ describe("rebuilding the studio index from the record", () => {
     expect(Object.keys(plan.studios.get("westlake")!.get("m-leg-press")!)).toEqual(["pat"]);
   });
 
+  it("carries a review over when it still applies, so the studio-wide check stays quiet about it", () => {
+    const plan = planRebuild(
+      [
+        {
+          clientId: "judy",
+          machineId: "m-abs",
+          settings: { Seat: "9", Gap: "0" },
+          fitAcks: { seat: { value: "9" }, gap: { value: "4" } },
+          updatedAtMs: 5,
+        },
+      ],
+      homes,
+    );
+    expect(plan.studios.get("solon")!.get("m-abs")!.judy).toEqual({ s: { seat: "9", gap: "0" }, a: { seat: "9" }, t: 5 });
+  });
+
   it("counts what it could not place instead of guessing a studio", () => {
     const plan = planRebuild(
       [

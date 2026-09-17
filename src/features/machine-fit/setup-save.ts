@@ -24,7 +24,7 @@ import { db } from "../../firebase";
 import { createJournalEntry } from "../../hooks/useClientJournal";
 import type { MachineNote } from "../../types";
 import type { JournalOrigin } from "../../types/journal";
-import { queueFitRow } from "./fit-store";
+import { ackFitRow, queueFitRow } from "./fit-store";
 import { describeFieldChanges, journalBodyFor, reasonFor, type SetupPlan } from "./setup-plan";
 
 export interface SetupAuthor {
@@ -47,6 +47,8 @@ export interface CommitSetupArgs {
   legacy: boolean;
   /** machineId → the notes already on the document, so a new one is appended rather than replacing them. */
   existingNotes: Record<string, MachineNote[] | undefined>;
+  /** machineId → the reviews already on the document (fitAcks), carried onto the rewritten index row. */
+  existingAcks?: Record<string, Record<string, { value?: unknown } | undefined> | null | undefined>;
   origin?: JournalOrigin;
 }
 
@@ -64,6 +66,7 @@ export async function commitSetupSave({
   reason,
   legacy,
   existingNotes,
+  existingAcks = {},
   origin = "profile",
 }: CommitSetupArgs): Promise<CommitSetupResult> {
   if (plan.entries.length === 0) return { machines: 0, indexed: true };
@@ -150,6 +153,7 @@ export async function commitSetupSave({
         clientId,
         settings: entry.settings,
         sources: entry.sources,
+        acks: existingAcks[entry.machineId] ?? null,
         at: now.getTime(),
       });
       if (done) after.push(done);
@@ -195,13 +199,15 @@ export async function commitSetupSave({
 /** A trainer's "this is right for her" — one field on one document, nothing else touched. */
 export async function acknowledgeFlag(args: {
   clientId: string;
+  /** The client's HOME studio: where her row in the machine-fit index lives. */
+  homeStudioId?: string | null;
   machineId: string;
   ackKey: string;
   value: string;
   author: SetupAuthor;
   note?: string;
 }): Promise<void> {
-  const { clientId, machineId, ackKey, value, author, note } = args;
+  const { clientId, homeStudioId, machineId, ackKey, value, author, note } = args;
   const ack: Record<string, string> = { value, by: author.id, byName: author.fullName, at: new Date().toISOString() };
   if (note?.trim()) ack.note = note.trim();
   await setDoc(
@@ -211,6 +217,8 @@ export async function acknowledgeFlag(args: {
     // leave every other review on the document where it is.
     { merge: true },
   );
+  // A copy for the studio-wide check (Operations → Machine fit). Caught inside.
+  void ackFitRow({ homeStudioId, machineId, clientId, ackKey, value });
 }
 
 export { describeFieldChanges };

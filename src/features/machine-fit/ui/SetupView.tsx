@@ -50,6 +50,7 @@ import { MatchPanel } from "./MatchPanel";
 import { PastePanel } from "./PastePanel";
 import { QuickPad, type PadCell } from "./QuickPad";
 import { SetupRow, WEIGHT_KEY, cellId } from "./SetupRow";
+import { takeSetupHint } from "./open-hint";
 import { auditSummary } from "./sentences";
 import { EMPTY_DRAFTS, countDrafts, setupDraftReducer, type SetupMode } from "./setup-draft";
 import { useSetupModel, type RowFilter, type SetupRowModel } from "./useSetupModel";
@@ -172,12 +173,14 @@ export function SetupView({
     setReason("");
     setFilter("all");
   }, [clientId]);
-  // …and it opens in the mode that client needs, once her settings have arrived.
+  // …and it opens in the mode that client needs, once her settings have
+  // arrived — unless the Machine fit report sent the leader here to look at a
+  // flagged setting, in which case it opens on Check (ui/open-hint.ts).
   const modeSetFor = useRef<string | null>(null);
   useEffect(() => {
     if (modeSetFor.current === clientId) return;
     modeSetFor.current = clientId;
-    setMode(opensIn);
+    setMode(takeSetupHint(clientId) ?? opensIn);
   }, [clientId, opensIn]);
 
   const model = useSetupModel({
@@ -403,6 +406,7 @@ export function SetupView({
     try {
       await acknowledgeFlag({
         clientId,
+        homeStudioId: client?.homeStudioId ?? null,
         machineId: row.machine.id,
         ackKey: flag.kind === "value" ? flag.key : comboAckKey(flag.keys[0], flag.keys[1]),
         value: flag.kind === "value" ? flag.value : comboAckValue(flag.keys, flag.values),
@@ -452,7 +456,11 @@ export function SetupView({
     setSaving(true);
     try {
       const existingNotes: Record<string, ClientMachineSetting["machineNotes"]> = {};
-      for (const e of plan.entries) existingNotes[e.machineId] = clientSettings[e.machineId]?.machineNotes;
+      const existingAcks: Record<string, ClientMachineSetting["fitAcks"]> = {};
+      for (const e of plan.entries) {
+        existingNotes[e.machineId] = clientSettings[e.machineId]?.machineNotes;
+        existingAcks[e.machineId] = clientSettings[e.machineId]?.fitAcks;
+      }
       const result = await commitSetupSave({
         clientId,
         homeStudioId: client?.homeStudioId ?? null,
@@ -462,6 +470,7 @@ export function SetupView({
         reason,
         legacy,
         existingNotes,
+        existingAcks,
       });
       toastSuccess(`Set-up saved — ${result.machines} ${result.machines === 1 ? "machine" : "machines"}.`);
       dispatch({ type: "reset" });

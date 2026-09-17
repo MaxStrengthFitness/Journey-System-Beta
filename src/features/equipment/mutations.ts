@@ -145,6 +145,8 @@ export interface SaveSettingsArgs {
   changedSources?: Record<string, SettingSource | undefined>;
   existingSources?: Record<string, SettingSource> | null;
   homeStudioId?: string | null;
+  /** The "right for this client" reviews already on the document, carried onto the rewritten index row. */
+  existingAcks?: Record<string, { value?: unknown } | undefined> | null;
 }
 
 export interface SaveSettingsResult {
@@ -174,6 +176,7 @@ export async function saveSettings({
   changedSources,
   existingSources,
   homeStudioId,
+  existingAcks,
 }: SaveSettingsArgs): Promise<SaveSettingsResult | null> {
   const changes = diffSettings(fields, saved, draft);
   if (changes.length === 0) return null;
@@ -203,7 +206,7 @@ export async function saveSettings({
 
   // The studio's machine-fit index: who is set to what. Never awaited into
   // the result and never thrown — the settings above are the record.
-  void upsertFitRow({ homeStudioId, machineId, clientId, settings, sources });
+  void upsertFitRow({ homeStudioId, machineId, clientId, settings, sources, acks: existingAcks });
 
   await writeHistory(machineId, {
     clientId,

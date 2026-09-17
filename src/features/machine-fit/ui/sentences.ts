@@ -14,14 +14,14 @@ import type { ClusterSuggestion, Cohort, FitFlag, FitTier, MachineAudit, NoSugge
 const clients = (n: number) => `${n} ${n === 1 ? "client" : "clients"}`;
 
 /** 5'6"–5'8", or 5'7" when the band is one height. */
-export function heightBand(cohort: Cohort): string | null {
+export function heightBand(cohort: Pick<Cohort, "bands">): string | null {
   const band = cohort.bands.height;
   if (!band) return null;
   return band.lo === band.hi ? formatInches(band.lo) : `${formatInches(band.lo)}–${formatInches(band.hi)}`;
 }
 
 /** Who the comparison group is: "clients 5'6"–5'8" at this studio". */
-export function cohortPhrase(cohort: Cohort, tier: FitTier | null): string {
+export function cohortPhrase(cohort: Pick<Cohort, "bands" | "used">, tier: FitTier | null): string {
   const parts: string[] = [];
   const height = heightBand(cohort);
   const who = cohort.used.includes("gender") ? "clients of the same gender" : "clients";
@@ -114,7 +114,7 @@ export function noSuggestionSentence(n: NoSuggestion): string {
 export function flagSentence(
   flag: FitFlag,
   show: { label: (key: string) => string; value: (key: string, value: string) => string },
-  cohort: Cohort | null,
+  cohort: Pick<Cohort, "bands" | "used"> | null,
   tier: FitTier | null,
 ): string {
   const who = cohort ? cohortPhrase(cohort, tier) : "similar clients";

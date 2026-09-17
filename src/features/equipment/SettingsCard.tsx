@@ -194,6 +194,7 @@ export function SettingsCard({
             .map(([k]) => [k, "suggested" as const]),
         ),
         homeStudioId: clientHomeStudioId,
+        existingAcks: machine.fitAcks ?? null,
       });
       if (result) onSaved?.(result, machine);
       setEditing(false);

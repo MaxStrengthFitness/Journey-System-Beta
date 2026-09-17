@@ -88,8 +88,8 @@ export function buildCohort(
   let ring = 0;
   let enough = false;
 
-  for (let r = 0; r <= maxRing; r += 1) {
-    members = pool.filter((s) => {
+  const membersAt = (r: number) =>
+    pool.filter((s) => {
       if (useGender && s.factors.gender !== target.gender) return false;
       for (const f of numericUsed) {
         const field = FACTOR_FIELD[f];
@@ -99,6 +99,9 @@ export function buildCohort(
       }
       return true;
     });
+
+  for (let r = 0; r <= maxRing; r += 1) {
+    members = membersAt(r);
     clients = sumClients(members);
     ring = r;
     ladder.push({ ring: r, clients });
@@ -115,5 +118,8 @@ export function buildCohort(
     bands[f] = { lo: centre - reach, hi: centre + reach };
   }
 
-  return { samples: members, clients, ring, enough, bands, ladder, used, missing };
+  // The last step of the ladder, for the audit's second opinion (see Cohort.wide).
+  const wide = ring < maxRing ? membersAt(maxRing) : members;
+
+  return { samples: members, wide, clients, ring, enough, bands, ladder, used, missing };
 }

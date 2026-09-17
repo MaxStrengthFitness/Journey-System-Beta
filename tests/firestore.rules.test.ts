@@ -1529,6 +1529,19 @@ describe("Firestore Security Rules", () => {
     const snap = await getDoc(ref);
     expect(Object.keys(snap.data()?.rows ?? {})).toEqual(["clientA"]);
     expect(snap.data()?.rows.clientA.s.seat).toBe("5");
+
+    // "Right for this client": one review copied onto her row, by nested path
+    // (fit-store ackFitRow). It touches one row, so the same rule allows it —
+    // and the rest of the row is left exactly as it was.
+    await assertSucceeds(updateDoc(ref, new FieldPath("rows", "clientA", "a", "seat"), "5", "updatedAt", serverTimestamp()));
+    const reviewed = (await getDoc(ref)).data();
+    expect(reviewed?.rows.clientA.a).toEqual({ seat: "5" });
+    expect(reviewed?.rows.clientA.s.seat).toBe("5");
+    expect(reviewed?.rows.clientA.src).toEqual({ seat: "suggested" });
+    const elsewhere = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(
+      updateDoc(doc(elsewhere, "studios", "studioA", "machineFit", "m-leg-press"), new FieldPath("rows", "clientA", "a", "seat"), "1", "updatedAt", serverTimestamp()),
+    );
   });
 
   it("refuses a machine-fit write that touches more than one row, names the wrong place, or adds a field", async () => {

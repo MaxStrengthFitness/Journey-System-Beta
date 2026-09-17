@@ -38,6 +38,7 @@ import {
   getDocs,
   serverTimestamp,
   setDoc,
+  updateDoc,
   type WriteBatch,
 } from "firebase/firestore";
 import { db } from "../../firebase";
@@ -120,11 +121,17 @@ export interface FitRowWrite {
   /** The settings as saved, in the machine's storage keys. */
   settings: Record<string, unknown> | null | undefined;
   sources?: Record<string, SettingSource | undefined> | null;
+  /**
+   * The reviews already on her settings document (fitAcks). The row is
+   * REPLACED on every save, so whoever saves passes them along or they are
+   * dropped from the index; toFitRow keeps only the ones that still apply.
+   */
+  acks?: Record<string, { value?: unknown } | undefined> | null;
   at?: number;
 }
 
-function rowPayload({ homeStudioId, machineId, clientId, settings, sources, at }: FitRowWrite) {
-  const row = toFitRow(settings, sources, at ?? Date.now());
+function rowPayload({ homeStudioId, machineId, clientId, settings, sources, acks, at }: FitRowWrite) {
+  const row = toFitRow(settings, sources, at ?? Date.now(), acks);
   return {
     row,
     ref: doc(db, "studios", homeStudioId as string, "machineFit", machineId),
@@ -163,6 +170,47 @@ export function queueFitRow(batch: WriteBatch, write: FitRowWrite): (() => void)
   batch.set(ref, data, options);
   // Called by the caller once the batch has committed.
   return () => foldIntoCache(write.homeStudioId as string, write.machineId, write.clientId, row);
+}
+
+/**
+ * Copy ONE review onto her row ("Right for this client"), so the studio-wide
+ * check stops listing a setting somebody has already looked at. One nested
+ * key, by path, so nothing else on the row moves. Caught, like every index
+ * write: the review itself lives on her settings document and is already
+ * saved by the time this runs; if the row is not there yet, the rebuild
+ * script carries the review over.
+ */
+export async function ackFitRow(write: {
+  homeStudioId: string | null | undefined;
+  machineId: string;
+  clientId: string;
+  ackKey: string;
+  value: string;
+}): Promise<boolean> {
+  const { homeStudioId, machineId, clientId, ackKey, value } = write;
+  if (!homeStudioId || !machineId || !clientId || !ackKey) return false;
+  try {
+    await updateDoc(
+      doc(db, "studios", homeStudioId, "machineFit", machineId),
+      new FieldPath("rows", clientId, "a", ackKey),
+      value,
+      "updatedAt",
+      serverTimestamp(),
+    );
+    const hit = studioCache.get(homeStudioId);
+    if (hit) {
+      hit.promise = hit.promise.then((fit) => {
+        const row = fit?.[machineId]?.rows[clientId];
+        if (!fit || !row) return fit;
+        const next: FitRowDoc = { ...row, a: { ...(row.a ?? {}), [ackKey]: value } };
+        return { ...fit, [machineId]: { ...fit[machineId], rows: { ...fit[machineId].rows, [clientId]: next } } };
+      });
+    }
+    return true;
+  } catch (err) {
+    console.warn("[machine fit] review not copied to the index", machineId, err);
+    return false;
+  }
 }
 
 /* ------------------------------------------------------------------ *

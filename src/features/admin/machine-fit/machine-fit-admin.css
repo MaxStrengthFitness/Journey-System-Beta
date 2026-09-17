@@ -1,0 +1,328 @@
+/*
+ * Operations → Machine fit.
+ *
+ * admin.tokens.css only — no hex below the token file (admin README). The
+ * plum (--adm-warn) marks "worth a look", the same mark the Setup screen
+ * uses; red stays with rep quality and is not used here.
+ *
+ * iPad first: nothing tappable under 40px, names wrap and are never
+ * truncated, and the two tables scroll sideways inside their panel rather
+ * than squeezing a column out of sight.
+ */
+
+.adm-fit-scope {
+  margin: -4px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--adm-ink-muted);
+}
+
+/* ---------- list + detail ------------------------------------------------ */
+
+.adm-fit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.adm-fit__list {
+  display: none;
+}
+
+.adm-fit__pick {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+@media (min-width: 1000px) {
+  .adm-fit {
+    grid-template-columns: minmax(230px, 280px) minmax(0, 1fr);
+  }
+  .adm-fit__list {
+    display: block;
+    position: sticky;
+    top: 0;
+    max-height: calc(100dvh - 140px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .adm-fit__pick {
+    display: none;
+  }
+}
+
+.adm-fit__detail {
+  min-width: 0;
+}
+
+/* A <button> centres its own text: alignment lives here, not in a utility. */
+.adm-fit__machine,
+.adm-fit-finding {
+  text-align: left;
+}
+
+.adm-fit__machine .adm-row__name,
+.adm-fit-finding .adm-row__name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.adm-fit__machine--on {
+  background: var(--adm-live-fill);
+  box-shadow: inset 3px 0 0 var(--adm-live);
+}
+
+.adm-fit__machine--on .adm-row__name {
+  color: var(--adm-live-text);
+}
+
+/* ---------- one machine --------------------------------------------------- */
+
+.adm-fit-report {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.adm-fit-report__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.adm-fit-report__name {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+
+.adm-fit-report__line {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--adm-ink-2);
+}
+
+.adm-fit-report__line:empty {
+  display: none;
+}
+
+.adm-fit-sentences {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--adm-ink);
+}
+
+.adm-fit-sentences--nested {
+  margin-top: 6px;
+  padding-left: 14px;
+  border-left: 2px solid var(--adm-border);
+  font-weight: 500;
+  color: var(--adm-ink-2);
+}
+
+.adm-fit-none {
+  margin: 0;
+  padding: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--adm-ink-muted);
+}
+
+/* ---------- worth a look -------------------------------------------------- */
+
+.adm-fit-finding {
+  box-shadow: inset 3px 0 0 var(--adm-warn);
+}
+
+.adm-fit-finding__why {
+  display: block;
+  white-space: normal;
+  line-height: 1.45;
+  color: var(--adm-ink-2);
+}
+
+.adm-fit-finding__go {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--adm-border-strong);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--adm-live-text);
+}
+
+/* ---------- tables -------------------------------------------------------- */
+
+.adm-fit-tablewrap {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.adm-fit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.adm-fit-table th,
+.adm-fit-table td {
+  padding: 10px 14px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.adm-fit-table thead th {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--adm-ink-muted);
+  border-bottom: 1px solid var(--adm-border);
+}
+
+.adm-fit-table tbody tr + tr th,
+.adm-fit-table tbody tr + tr td {
+  border-top: 1px solid var(--adm-border);
+}
+
+.adm-fit-table tbody th {
+  font-weight: 800;
+  white-space: nowrap;
+  color: var(--adm-ink);
+}
+
+.adm-fit-table tbody td {
+  font-weight: 600;
+  color: var(--adm-ink-2);
+}
+
+.adm-fit-table .adm-fit-table__num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.adm-fit-table__value {
+  font-size: 16px;
+}
+
+.adm-fit-table__thin {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--adm-ink-muted);
+}
+
+.adm-fit-table__who {
+  min-width: 220px;
+  line-height: 1.45;
+}
+
+.adm-fit-table .adm-fit-table__bar {
+  width: 22%;
+  min-width: 80px;
+  padding-left: 0;
+  vertical-align: middle;
+}
+
+.adm-fit-cell__top {
+  display: inline-block;
+  min-width: 1.6em;
+  margin-right: 8px;
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--adm-ink);
+}
+
+.adm-fit-cell__of {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--adm-ink-2);
+}
+
+.adm-fit-cell__next {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--adm-ink-muted);
+}
+
+.adm-fit-bar {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--adm-surface-2);
+  overflow: hidden;
+}
+
+.adm-fit-bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--adm-live);
+}
+
+/* The setting picker can hold six names: let it wrap instead of scrolling. */
+.adm-fit-fields {
+  flex-wrap: wrap;
+}
+
+/* ---------- whole set-ups ------------------------------------------------- */
+
+.adm-fit-cluster .adm-row__name {
+  white-space: normal;
+}
+
+.adm-fit-cluster .adm-row__meta {
+  white-space: normal;
+  line-height: 1.45;
+}
+
+.adm-fit-cluster__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.adm-fit-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--adm-surface-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--adm-ink-2);
+}
+
+.adm-fit-chip b {
+  font-weight: 900;
+  color: var(--adm-ink);
+}

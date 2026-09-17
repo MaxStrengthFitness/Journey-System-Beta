@@ -26,6 +26,16 @@
  *   · A LETTERED setting (Handles: In / Out) has no distance, so it is judged
  *     by SHARE alone, and only called rare when the group is big enough
  *     (twice the minimum) for "nobody" to mean something.
+ *   · RARE NEEDS A SECOND OPINION. The comparison group is the TIGHTEST band
+ *     with enough clients — often six or seven people. "None of the 6 clients
+ *     her exact height use Gap 4" is weak when one client in ten, at every
+ *     height, uses Gap 4: six people is simply too few to have met one. So a
+ *     value is only called rare when it is ALSO rare across the widest band
+ *     the ladder could reach (cohort.wide). A setting that follows height is
+ *     still rare out there (no 5'1" client is near Seat 1, and no 5'4" one
+ *     either); a setting that follows nothing is not, and is marked
+ *     `uncommon` — the faint dot — instead. A confident wrong mark is worse
+ *     than a missing one.
  *   · A COMBINATION: two values that are each common but that no similar
  *     client uses together — the interdependent-settings mistake (the seat
  *     was moved, the pad was not). Only raised when chance alone would have
@@ -142,6 +152,9 @@ export function auditMachine({
     }
     const mine = field.counts.get(value) ?? 0;
     const share = mine / field.total;
+    // The second opinion: is it still rare with the net cast as wide as it goes?
+    const wider = countField(cohort.wide, key);
+    const rareOutThere = wider.total === 0 || (wider.counts.get(value) ?? 0) / wider.total < RARE_SHARE;
     const base: Omit<FieldFlag, "level"> = {
       kind: "value",
       key,
@@ -164,13 +177,13 @@ export function auditMachine({
       const notch = fieldSteps[key] && fieldSteps[key]! > 0 ? fieldSteps[key]! : observedNotch(field.counts.keys());
       const scale = Math.max(weightedSpread(cohort.samples, key, median), notch);
       const z = Math.abs(myNumber - median) / scale;
-      if (z >= RARE_Z && share < RARE_SHARE) file({ ...base, level: "rare", median }, key, value);
+      if (z >= RARE_Z && share < RARE_SHARE && rareOutThere) file({ ...base, level: "rare", median }, key, value);
       else if (z >= UNCOMMON_Z && share < UNCOMMON_SHARE) file({ ...base, level: "uncommon", median }, key, value);
       else typical.push(key);
       continue;
     }
 
-    if (mine === 0 && field.total >= minClients * 2) file({ ...base, level: "rare" }, key, value);
+    if (mine === 0 && field.total >= minClients * 2 && rareOutThere) file({ ...base, level: "rare" }, key, value);
     else if (mine === 0 || (mine <= 1 && share < UNCOMMON_SHARE)) file({ ...base, level: "uncommon" }, key, value);
     else typical.push(key);
   }

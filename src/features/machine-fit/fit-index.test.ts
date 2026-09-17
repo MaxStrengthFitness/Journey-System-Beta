@@ -4,11 +4,13 @@ import {
   buildCompanyBlock,
   cellKey,
   easternDayOf,
+  liveAcks,
   parseCellKey,
   samplesFromCompanyBlock,
   samplesFromFitDoc,
   settingsOfSignature,
   signatureOf,
+  subjectsFromFitDoc,
   toFitRow,
   verifiedSettings,
   type FitClientRecord,
@@ -38,6 +40,30 @@ describe("toFitRow", () => {
     expect(toFitRow({}, null, SEP_17_NOON)).toBeNull();
     expect(toFitRow({ Seat: "", Gap: "-" }, null, SEP_17_NOON)).toBeNull();
     expect(toFitRow(null, null, SEP_17_NOON)).toBeNull();
+  });
+});
+
+describe("reviews on a row", () => {
+  it("copies a review only while it still applies to the value on file", () => {
+    const s = { seat: "9", gap: "0", chest: "3" };
+    expect(liveAcks(s, { seat: { value: "9" }, gap: { value: "2" }, pillow: { value: "1" } })).toEqual({ seat: "9" });
+  });
+
+  it("reads a combination's key and value the way the audit writes them", () => {
+    const s = { seat: "9", chest: "3" };
+    expect(liveAcks(s, { "chest+seat": { value: "3+9" } })).toEqual({ "chest+seat": "3+9" });
+    expect(liveAcks(s, { "chest+seat": { value: "3+8" } })).toEqual({});
+  });
+
+  it("ignores anything that is not a review", () => {
+    expect(liveAcks({ seat: "9" }, null)).toEqual({});
+    expect(liveAcks({ seat: "9" }, { seat: undefined, gap: { value: 9 } })).toEqual({});
+  });
+
+  it("rides along on the row, and is left off when there is none", () => {
+    const row = toFitRow({ Seat: "9", Gap: "0" }, null, SEP_17_NOON, { seat: { value: "9" } });
+    expect(row).toEqual({ s: { seat: "9", gap: "0" }, a: { seat: "9" }, t: SEP_17_NOON });
+    expect(toFitRow({ Seat: "9" }, null, SEP_17_NOON, { seat: { value: "4" } })).toEqual({ s: { seat: "9" }, t: SEP_17_NOON });
   });
 });
 
@@ -108,6 +134,21 @@ describe("samplesFromFitDoc", () => {
   it("survives a missing or malformed document", () => {
     expect(samplesFromFitDoc(null, clients)).toEqual([]);
     expect(samplesFromFitDoc({ machineId: "m", rows: { x: null as never } }, clients)).toEqual([]);
+  });
+
+  it("reads SUBJECTS as what is on file — an accepted value included, because it deserves the second look", () => {
+    const withReview: MachineFitDoc = {
+      ...doc,
+      rows: { ...doc.rows, judy: { ...doc.rows.judy, a: { seat: "4" } }, stub: { a: { seat: "1" } } as never },
+    };
+    const subjects = subjectsFromFitDoc(withReview, clients, new Date(2026, 8, 20));
+    expect(subjects.map((s) => s.clientId)).toEqual(["judy", "sam", "pat"]);
+    expect(subjects[0]).toMatchObject({ studioId: "solon", settings: { seat: "4", gap: "0" } });
+    expect(subjects[0].acks.seat.value).toBe("4");
+    expect(subjects[0].factors).toMatchObject({ heightIn: 64, gender: "f" });
+    // Sam's seat was only ever accepted: not evidence, but very much on file.
+    expect(subjects[1].settings).toEqual({ seat: "3" });
+    expect(subjectsFromFitDoc(null, clients)).toEqual([]);
   });
 });
 

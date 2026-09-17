@@ -4,7 +4,7 @@ import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, Sch
 // component file stays on disk in case it is revived; nothing imports it here.
 // import { RetentionDashboardView } from "./RetentionDashboardView";
 import { AdminLimboQueue } from "./AdminLimboQueue";
-import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Database, CalendarClock, Gift } from "lucide-react";
+import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Database, CalendarClock, Gift, Ruler } from "lucide-react";
 import { AdminRoutineTemplatesTab } from "./routines/AdminRoutineTemplatesTab";
 import { cn } from "@/lib/utils";
 import "../features/admin/admin.css";
@@ -21,6 +21,7 @@ import { AdminMindbodyTab } from "../features/admin/mindbody/AdminMindbodyTab";
 import { AdminBugReportsTab } from "../features/admin/bugs/AdminBugReportsTab";
 import { AdminInsightsTab } from "../features/admin/insights/AdminInsightsTab";
 import { AdminRenewalsTab } from "../features/admin/renewals/AdminRenewalsTab";
+import { AdminMachineFitTab } from "../features/admin/machine-fit/AdminMachineFitTab";
 import { DelightQueue } from "../features/ford/DelightQueue";
 
 interface Props {
@@ -102,6 +103,7 @@ export function AdminDashboardView({
     | "data"
     | "bugs"
     | "insights"
+    | "machine-fit"
     | "mindbody"
     | "system"
     | "limbo";
@@ -168,6 +170,10 @@ export function AdminDashboardView({
         { id: "machines", label: "Catalog", icon: <Dumbbell className="w-4 h-4" /> },
         { id: "routines", label: "Routines", icon: <ClipboardList className="w-4 h-4" /> },
         { id: "insights", label: "Insights", icon: <TrendingUp className="w-4 h-4" /> },
+        // Machine-fit round, Sep 2026. Where clients of each build are set on
+        // every machine. Every leader sees their own studio's, live; the
+        // company-wide report inside it is administrators only.
+        { id: "machine-fit", label: "Machine fit", icon: <Ruler className="w-4 h-4" /> },
         { id: "data", label: "Exports", icon: <Download className="w-4 h-4" /> },
       ],
     },
@@ -358,6 +364,16 @@ export function AdminDashboardView({
             studios={studios}
             trainers={trainers}
             activeStudioId={activeStudioId ?? null}
+          />
+        )}
+        {activeTab === "machine-fit" && (
+          <AdminMachineFitTab
+            machines={machines}
+            clients={clients}
+            studios={studios}
+            activeStudioId={activeStudioId ?? null}
+            isAdmin={isAdmin}
+            onNavigateProfile={onNavigateProfile}
           />
         )}
         {/* "retention" tab removed — see the commented import at the top. */}

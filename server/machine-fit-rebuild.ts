@@ -72,7 +72,7 @@ export async function rebuildMachineFit(options: FitRebuildOptions): Promise<Fit
 
   const settingsSnap = await db
     .collection("clientMachineSettings")
-    .select("clientId", "machineId", "settings", "sources", "updatedAt")
+    .select("clientId", "machineId", "settings", "sources", "fitAcks", "updatedAt")
     .get();
   const docs: SettingsDocInput[] = settingsSnap.docs.map((d) => {
     const data = d.data() as Record<string, unknown>;
@@ -81,6 +81,7 @@ export async function rebuildMachineFit(options: FitRebuildOptions): Promise<Fit
       machineId: typeof data.machineId === "string" ? data.machineId : null,
       settings: (data.settings as Record<string, unknown>) ?? null,
       sources: (data.sources as SettingsDocInput["sources"]) ?? null,
+      fitAcks: (data.fitAcks as SettingsDocInput["fitAcks"]) ?? null,
       updatedAtMs: millisOf(data.updatedAt),
     };
   });

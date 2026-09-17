@@ -96,6 +96,54 @@ describe("the passive audit", () => {
     expect(result.flags[0]).toMatchObject({ level: "rare", clients: 0 });
   });
 
+  describe("rare needs a second opinion from the widest band", () => {
+    // Sixty clients, 5'0"–5'9", six at each height. The GAP follows nothing:
+    // one client in six, at every height BUT hers, is on 4. The SEAT follows
+    // height: 9 for the shortest, down a notch every two inches.
+    const spread: FitSample[] = [];
+    for (let h = 60; h <= 69; h += 1) {
+      for (let i = 0; i < 6; i += 1) {
+        spread.push(client(h, { gap: i === 0 && h !== 64 ? "4" : "0", seat: String(9 - Math.floor((h - 60) / 2)) }));
+      }
+    }
+
+    it("does not call a value rare just because her six closest matches happen not to use it", () => {
+      const result = audit({ gap: "4", seat: "7" }, { heightIn: 64, samples: spread, fieldKeys: ["gap", "seat"] });
+      // Her cohort is the six clients at exactly 5'4": none on Gap 4 …
+      expect(result.cohort?.ring).toBe(0);
+      expect(result.cohort?.clients).toBe(6);
+      // … but one in seven of the clients within three inches is. A faint dot, not a mark.
+      expect(result.flags).toHaveLength(1);
+      expect(result.flags[0]).toMatchObject({ key: "gap", value: "4", level: "uncommon", clients: 0, outOf: 6 });
+      expect(countToReview([result])).toBe(0);
+    });
+
+    it("still calls it rare when nobody out there uses it either", () => {
+      const result = audit({ gap: "6", seat: "7" }, { heightIn: 64, samples: spread, fieldKeys: ["gap", "seat"] });
+      expect(result.flags[0]).toMatchObject({ key: "gap", value: "6", level: "rare" });
+    });
+
+    it("keeps a height-driven setting rare even though tall clients use that value all the time", () => {
+      // Seat 5 is what every 5'8"–5'9" client uses — but nobody within three
+      // inches of 5'0" is anywhere near it.
+      const result = audit({ gap: "0", seat: "5" }, { heightIn: 60, samples: spread, fieldKeys: ["gap", "seat"] });
+      expect(result.flags).toHaveLength(1);
+      expect(result.flags[0]).toMatchObject({ key: "seat", value: "5", level: "rare" });
+    });
+
+    it("applies the same second opinion to a lettered setting", () => {
+      const letters: FitSample[] = [];
+      for (let h = 60; h <= 69; h += 1) {
+        for (let i = 0; i < 12; i += 1) letters.push(client(h, { handles: i === 0 && h !== 64 ? "wide" : "in" }));
+      }
+      const result = audit({ handles: "wide" }, { heightIn: 64, samples: letters, fieldKeys: ["handles"] });
+      expect(result.cohort?.clients).toBe(12); // big enough for "nobody" to have meant something, on its own
+      expect(result.flags[0]).toMatchObject({ key: "handles", level: "uncommon" });
+      const never = audit({ handles: "neutral" }, { heightIn: 64, samples: letters, fieldKeys: ["handles"] });
+      expect(never.flags[0]).toMatchObject({ key: "handles", level: "rare" });
+    });
+  });
+
   it("judges a lettered setting by share, and only calls it rare in a group big enough to mean it", () => {
     // Six similar clients, five with handles set: "nobody" is a faint dot.
     const small = audit({ handles: "wide" });

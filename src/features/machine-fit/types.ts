@@ -133,6 +133,15 @@ export interface Band {
 
 export interface Cohort {
   samples: FitSample[];
+  /**
+   * Everyone the ladder COULD have reached — the band at its last step,
+   * whether or not the search stopped earlier. Suggestions never read it (the
+   * tightest trustworthy band is the point). The audit does: before it calls
+   * a value rare it checks that the value is still rare out here, so that
+   * "none of the 6 clients her exact height use Gap 4" cannot outvote "one
+   * client in ten, of every height, uses Gap 4".
+   */
+  wide: FitSample[];
   /** Distinct clients (Σ n). */
   clients: number;
   /** Which widening step produced this: 0 is the tightest. */

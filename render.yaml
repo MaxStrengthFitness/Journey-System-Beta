@@ -176,6 +176,14 @@ services:
   # and which settings clients of each height tend to use. No message, no
   # email, no text - just in-app data, recalculated once a week.
   #
+  # MACHINE FIT (Sep 17 2026). The same run also pools every studio's
+  # machineFit index into an anonymous `fit` block on each machineTrends
+  # document (what the Setup screen falls back on at a new studio) and writes
+  # the administrators-only kaizenReports/{machineId}. Same schedule, same
+  # command, a few dozen more reads. It reads every client now, not only the
+  # active ones (a past client's seat is still evidence); the trends
+  # themselves still use active clients only.
+  #
   # HISTORY. Until the cost round (Sep 2026) this was the nightly leaderboard
   # job: it read EVERY exercise log ever written, every night, to rank
   # clients by load - and nothing in the app read the result any more. The
