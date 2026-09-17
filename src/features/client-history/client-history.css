@@ -1072,3 +1072,139 @@
   text-transform: uppercase;
   color: var(--cal-ink-muted);
 }
+
+/* ── Log past session (Sep 17 2026) ────────────────────────────────────────
+   Three panes in one dialog, sized for an iPad held either way.
+
+   The machines pane is a two-column split above 820px — the sequence on the
+   left, the picker on the right — and stacks below it, picker first, because
+   in portrait the thing being done is "find the machine", and a list of
+   machines already added is a poor use of the top of the screen when it is
+   empty. Both columns scroll independently: the eight-machine rule the
+   Routine Builder is built around applies here too, and a page that scrolls
+   as one takes the picker off screen the moment the sequence gets long.
+
+   Colour comes from the calendar tokens (--cal-*) like the rest of this tab,
+   with the Routine Builder's own tokens (--rb-*) inside the two pieces
+   borrowed from it. No hex below this line. */
+
+.lps-head {
+  padding: 16px 18px 0;
+  background: var(--cal-surface-2);
+  border-bottom: 1px solid var(--cal-border);
+  text-align: left;
+}
+
+.lps-steps { display: flex; gap: 6px; margin-top: 12px; }
+.lps-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px 10px 0 0;
+  border: 1px solid var(--cal-border);
+  border-bottom: none;
+  background: var(--cal-surface);
+  color: var(--cal-ink-muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.lps-step:disabled { opacity: 0.4; }
+.lps-step--done { color: var(--cal-live-text); }
+.lps-step--on {
+  border-color: var(--cal-live);
+  background: var(--cal-live);
+  color: var(--cal-live-on);
+}
+.lps-step__n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.lps-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 18px; }
+
+.lps-when { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; max-width: 26rem; }
+@media (min-width: 640px) { .lps-when { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: none; } }
+
+.lps-warn {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--eq-alert);
+}
+
+.lps-machines { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.lps-inject { display: flex; flex-direction: column; gap: 6px; }
+.lps-inject__row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lps-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--cal-live);
+  background: var(--cal-live-fill);
+  color: var(--cal-live-text);
+  font-size: 11.5px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.lps-chip b { font-weight: 900; opacity: 0.75; }
+.lps-chip:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 2px; }
+
+.lps-cov { max-width: 22rem; }
+
+.lps-split { display: flex; flex-direction: column-reverse; gap: 12px; min-height: 0; }
+.lps-seq { min-width: 0; min-height: 0; }
+.lps-pick {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  max-height: 46vh;
+  padding: 10px;
+  border: 1px solid var(--cal-border);
+  border-radius: 12px;
+  background: var(--cal-surface-2);
+}
+
+@media (min-width: 820px) {
+  .lps-split {
+    flex-direction: row;
+    align-items: stretch;
+    /* The sequence gets the room; the picker is a fixed rail, so adding a
+       ninth machine never squeezes the names it is being read from. */
+    --lps-rail: 19rem;
+  }
+  .lps-seq { flex: 1 1 auto; overflow-y: auto; max-height: 52vh; }
+  .lps-pick { flex: 0 0 var(--lps-rail); max-height: 52vh; }
+}
+
+.lps-numbers { display: flex; flex-direction: column; gap: 10px; }
+.lps-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--cal-border);
+  border-radius: 12px;
+  background: var(--cal-surface);
+}
+/* Dashed, not crimson: a machine with no reps yet is unfinished, not wrong. */
+.lps-card--blank { border-style: dashed; border-color: var(--cal-border-strong, var(--cal-border)); }
+.lps-card__head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.lps-card__row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.lps-card__row .hsd-qbtns { flex: 1 1 14rem; min-width: 12rem; }
+.lps-card .lps-warn { margin-top: 0; }

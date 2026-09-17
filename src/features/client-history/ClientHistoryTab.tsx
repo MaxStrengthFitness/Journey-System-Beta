@@ -105,9 +105,11 @@ export function ClientHistoryTab({
         open={logPastOpen}
         onOpenChange={setLogPastOpen}
         clientId={clientId}
+        client={client}
         clientHomeStudioId={client?.homeStudioId}
         machines={machines}
         trainers={trainers}
+        routines={routines}
         timeZone={timeZone}
       />
     </>
