@@ -1714,7 +1714,6 @@ export type View =
   | "clients"
   | "machines"
   | "workouts"
-  | "history"
   | "calendar"
   | "trainer-hub"
   | "dashboard"

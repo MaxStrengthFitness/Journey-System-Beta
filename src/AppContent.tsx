@@ -134,11 +134,6 @@ import { AppHeader } from "./components/AppHeader";
 import { useTheme } from "./components/ThemeProvider";
 import { ClientsView } from "./components/ClientsView";
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
-const ClientHistoryView = lazy(() =>
-  import("./components/ClientHistoryView").then((m) => ({
-    default: m.ClientHistoryView,
-  })),
-);
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const WorkoutTrackerView = lazy(() =>
   import("./components/WorkoutTrackerView").then((m) => ({
@@ -754,9 +749,6 @@ export default function AppContent({
     };
   }, [selectedClientId]);
 
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
-    null,
-  );
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [selectedProfileTrainerId, setSelectedProfileTrainerId] = useState<
     string | null
@@ -2127,7 +2119,6 @@ export default function AppContent({
                     onSubmit={handleClientSubmit}
                     startEdit={startEditClient}
                     updateSessions={updateClientSessions}
-                    setSelectedSessionId={setSelectedSessionId}
                     onSelectTrainer={(id) => {
                       setSelectedProfileTrainerId(id);
                       setView("trainer-profile");
@@ -2205,17 +2196,6 @@ export default function AppContent({
                     rightControls={headerRightControls}
                     trainerDropdown={headerTrainerDropdown}
                     onStudioClick={() => setIsChangingStudio(true)}
-                  />
-                )}
-                {currentView === "history" && (
-                  <ClientHistoryView
-                    clientId={selectedClientId}
-                    clients={clients}
-                    machines={machines}
-                    trainers={trainers}
-                    setView={setCurrentView}
-                    selectedSessionId={selectedSessionId}
-                    user={user}
                   />
                 )}
                 {currentView === "profile" && (
@@ -2404,7 +2384,6 @@ export default function AppContent({
               <NavButton
                 active={[
                   "profile",
-                  "history",
                   "progress-report",
                   "client-directory",
                 ].includes(currentView)}

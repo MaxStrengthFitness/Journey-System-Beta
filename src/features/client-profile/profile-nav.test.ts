@@ -5,6 +5,7 @@ import {
   initialNavState,
   isLocation,
   legacyLocation,
+  openProfileAt,
   profileNavReducer,
   readStoredLocation,
   writeStoredLocation,
@@ -208,6 +209,16 @@ describe("stored location", () => {
     writeStoredLocation("marcus", { tab: "clinical", view: "trends" });
     expect(readStoredLocation("judy")).toEqual({ tab: "programming", view: "routine-b" });
     expect(readStoredLocation("marcus")).toEqual({ tab: "clinical", view: "trends" });
+  });
+
+  it("openProfileAt makes a freshly mounted profile land where it was pointed", () => {
+    // The Hub's History button: store the location, then switch to the profile.
+    // The profile mounts fresh and resumes what is stored (useProfileNav's lazy
+    // initialiser), so this read is exactly what it will open on.
+    writeStoredLocation("judy", { tab: "journey" });
+    openProfileAt("judy", { tab: "clinical", view: "sessions" });
+    expect(readStoredLocation("judy")).toEqual({ tab: "clinical", view: "sessions" });
+    expect(() => openProfileAt(null, { tab: "journey" })).not.toThrow();
   });
 
   it("returns null for an unknown client, no client, and rubbish", () => {

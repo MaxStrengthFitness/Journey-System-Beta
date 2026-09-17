@@ -63,6 +63,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { openProfileAt } from "../features/client-profile/profile-nav";
 
 /** Grid geometry. Row height is fixed so the NOW line can be placed in px. */
 const SLOT_MINUTES = 30;
@@ -154,7 +155,6 @@ export function ClientsView({
   formData,
   setFormData,
   onSubmit,
-  setSelectedSessionId,
   authTrainer,
   searchTerm,
   onSearchTermChange,
@@ -177,7 +177,6 @@ export function ClientsView({
   onSubmit: (e: React.FormEvent) => void;
   startEdit: (c: Client) => void;
   updateSessions: (id: string, current: number, delta: number) => void;
-  setSelectedSessionId: (id: string | null) => void;
   onSelectTrainer?: (id: string) => void;
   /** Search term owned by the app shell (the input lives in the header). */
   searchTerm: string;
@@ -1503,9 +1502,11 @@ export function ClientsView({
                               variant="outline"
                               className="h-20 w-20 rounded-2xl font-black flex flex-col gap-1 border-2 shadow-sm dark:shadow-none uppercase group-hover:border-primary/20"
                               onClick={() => {
-                                setSelectedSessionId(null);
+                                // The client's history lives on their profile:
+                                // Activity Archive -> Sessions.
                                 onSelectClient(client.id!);
-                                setView("history");
+                                openProfileAt(client.id!, { tab: "clinical", view: "sessions" });
+                                setView("profile");
                               }}
                             >
                               <History className="w-6 h-6" />
