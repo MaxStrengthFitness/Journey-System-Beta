@@ -102,7 +102,12 @@ export function chainSentence(
 
 /** Why nothing is offered. Never silence. */
 export function noSuggestionSentence(n: NoSuggestion): string {
+  if (n.reason === "unknown") return "What similar clients use could not be loaded just now.";
   if (n.reason === "no-height") return "Add a height to this client's record to see what similar clients use.";
+  if (n.reason === "no-agreement") {
+    const count = n.cohort?.clients ?? 0;
+    return `${clients(count)} of a similar build are set up on this, but no two of them use the same value — nothing to suggest from.`;
+  }
   if (n.reason === "thin") {
     const count = n.cohort?.clients ?? 0;
     return `Only ${clients(count)} of a similar build ${count === 1 ? "is" : "are"} set up on this so far — not enough to suggest from.`;
@@ -151,5 +156,7 @@ export function auditSummary(audits: readonly MachineAudit[], setUp: number, tot
         : ""
       : `${rare} ${rare === 1 ? "setting is" : "settings are"} worth a look.`;
   const thin = waiting > 0 ? ` ${waiting} ${waiting === 1 ? "machine has" : "machines have"} too few similar clients to check yet.` : "";
-  return `${head}. ${verdict}${thin}`.replace(/\s+/g, " ").trim();
+  // Could not be READ is its own sentence: it is neither "fine" nor "too few".
+  const unknown = audits.some((a) => a.state === "unknown") ? " What similar clients use could not be loaded just now, so not everything was checked." : "";
+  return `${head}. ${verdict}${thin}${unknown}`.replace(/\s+/g, " ").trim();
 }

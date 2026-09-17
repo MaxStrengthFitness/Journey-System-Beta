@@ -16,20 +16,31 @@ import type { MachineTrend } from "../machine-trends/trends";
 
 type TrendResult = MachineTrend | null;
 
-const cache = new Map<string, Promise<TrendResult>>();
+/** `failed` tells "could not be read" from "read fine, there is no document" — both have a null trend. */
+export interface TrendRead {
+  trend: TrendResult;
+  failed: boolean;
+}
 
-export function fetchMachineTrend(machineId: string): Promise<TrendResult> {
+const cache = new Map<string, Promise<TrendRead>>();
+
+/** The read with its outcome. Machine fit needs the difference: unknown is not empty. */
+export function fetchMachineTrendRead(machineId: string): Promise<TrendRead> {
   let hit = cache.get(machineId);
   if (!hit) {
     hit = getDoc(doc(db, "machineTrends", machineId))
-      .then((snap) => (snap.exists() ? (snap.data() as MachineTrend) : null))
+      .then((snap) => ({ trend: snap.exists() ? (snap.data() as MachineTrend) : null, failed: false }))
       .catch((err) => {
         console.warn("[machine trends] read failed", machineId, err);
-        return null;
+        return { trend: null, failed: true };
       });
     cache.set(machineId, hit);
   }
   return hit;
+}
+
+export function fetchMachineTrend(machineId: string): Promise<TrendResult> {
+  return fetchMachineTrendRead(machineId).then((r) => r.trend);
 }
 
 /** Test seam. */

@@ -150,7 +150,11 @@ export function useSetupModel({
       let suggestion: SuggestionResult | null = null;
       const offer: Record<string, Offer> = {};
       const hasEmpty = fields.some((f) => shown[f.key].trim() === "");
-      if (enabled && sources && fields.length > 0 && hasEmpty) {
+      // Only once BOTH tiers have answered: while they load, a row says nothing
+      // rather than "nobody is set up on this machine".
+      const ready = enabled && fit.status === "ready";
+      const savedNorm = normalizedValues(fields, machine.settings);
+      if (ready && sources && fields.length > 0 && hasEmpty) {
         suggestion = suggestForMachine({
           fieldKeys,
           target,
@@ -158,6 +162,7 @@ export function useSetupModel({
           sources,
           spec,
           pinned: normalizedValues(fields, shown),
+          saved: savedNorm,
         });
         if (suggestion.ok === true) {
           const byNk = new Map(fields.map((f) => [f.nk, f]));
@@ -176,9 +181,8 @@ export function useSetupModel({
         }
       }
 
-      const savedNorm = normalizedValues(fields, machine.settings);
       const audit =
-        enabled && sources && Object.keys(savedNorm).length > 0
+        ready && sources && Object.keys(savedNorm).length > 0
           ? auditForMachine({
               fieldKeys,
               settings: savedNorm,
@@ -203,7 +207,7 @@ export function useSetupModel({
         audit,
       };
     });
-  }, [equipment, drafts, fit.sources, enabled, target, clientId, spec, prescribed]);
+  }, [equipment, drafts, fit.sources, fit.status, enabled, target, clientId, spec, prescribed]);
 
   return useMemo<SetupModel>(() => {
     const rows = allRows.filter((r) =>

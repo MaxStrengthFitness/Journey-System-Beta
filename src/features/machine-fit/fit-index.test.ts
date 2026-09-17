@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { client } from "./fixtures";
+import { client, compoundRowStudio } from "./fixtures";
+
+const compoundRowStudioTimes = (times: number) => Array.from({ length: times }, () => compoundRowStudio()).flat();
 import {
   buildCompanyBlock,
   cellKey,
@@ -179,6 +181,7 @@ describe("the company block", () => {
         ["empty", noHeight],
       ]),
       "2026-09-13T07:00:00.000Z",
+      1, // this fixture is five people; the floor has its own tests below
     );
     expect(block.clients).toBe(5);
     expect(block.studios).toBe(2);
@@ -189,6 +192,41 @@ describe("the company block", () => {
     expect(samples.every((s) => s.clientId === undefined)).toBe(true);
     const at67 = samples.find((s) => s.factors.heightIn === 67);
     expect(at67).toMatchObject({ n: 3, settings: { seat: "4" }, factors: { gender: "f" } });
+  });
+
+  describe("no published cell describes fewer than five people", () => {
+    const many = (n: number, heightIn: number, gender: "m" | "f" | null, seat: string) =>
+      Array.from({ length: n }, () => client(heightIn, { seat }, { gender }));
+    const build = (samples: ReturnType<typeof many>) => buildCompanyBlock(new Map([["solon", samples]]), "now");
+    const groupSizes = (block: ReturnType<typeof build>) =>
+      Object.values(block.cells).map((signatures) => Object.values(signatures).reduce((a, b) => a + b, 0));
+
+    it("leaves out a height with too few clients altogether, and says how many it held back", () => {
+      const block = build([...many(6, 64, "f", "5"), ...many(1, 79, "m", "1")]);
+      expect(Object.keys(block.cells)).toEqual(["64|f"]);
+      expect(block).toMatchObject({ clients: 6, heldBack: 1 });
+      expect(JSON.stringify(block)).not.toContain("79");
+    });
+
+    it("pools a gender that is too small at a height with the unknowns", () => {
+      const block = build([...many(6, 64, "f", "5"), ...many(3, 64, "m", "4"), ...many(2, 64, null, "4")]);
+      expect(block.cells["64|f"]).toEqual({ "seat=5": 6 });
+      expect(block.cells["64|x"]).toEqual({ "seat=4": 5 });
+      expect(block.cells["64|m"]).toBeUndefined();
+      expect(block.heldBack).toBeUndefined();
+    });
+
+    it("pools the whole height when the pool itself would point at two people", () => {
+      const block = build([...many(6, 64, "f", "5"), ...many(2, 64, "m", "4")]);
+      expect(Object.keys(block.cells)).toEqual(["64|x"]);
+      expect(block.cells["64|x"]).toEqual({ "seat=5": 6, "seat=4": 2 });
+    });
+
+    it("holds for a whole studio: every group is five or more, and nobody is counted twice", () => {
+      const block = buildCompanyBlock(new Map([["solon", compoundRowStudioTimes(3)]]), "now");
+      expect(groupSizes(block).every((n) => n >= 5)).toBe(true);
+      expect(block.clients + (block.heldBack ?? 0)).toBe(72);
+    });
   });
 
   it("reads an empty or missing block as no samples", () => {

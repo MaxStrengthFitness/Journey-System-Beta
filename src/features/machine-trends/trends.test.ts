@@ -50,6 +50,15 @@ describe("setting normalisation", () => {
     expect(normalizeSettingValue("Seat 6", "Seat")).toBe("6");
     expect(normalizeSettingValue("B")).toBe("b");
     expect(normalizeSettingValue("6.5")).toBe("6_5");
+    // One number, one value, however it was typed.
+    expect(normalizeSettingValue("2.")).toBe("2");
+    expect(normalizeSettingValue("2.0")).toBe("2");
+    expect(normalizeSettingValue("02")).toBe("2");
+    expect(normalizeSettingValue("3.50")).toBe("3_5");
+    expect(normalizeSettingValue(".5")).toBe("0_5");
+    expect(normalizeSettingValue("0")).toBe("0");
+    expect(normalizeSettingValue("3-5")).toBe("3-5");
+    expect(normalizeSettingValue("p2")).toBe("p2");
     expect(normalizeSettingValue("")).toBeNull();
     expect(normalizeSettingValue("-")).toBeNull();
     expect(normalizeSettingValue("n/a")).toBeNull();

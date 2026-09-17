@@ -1544,6 +1544,20 @@ describe("Firestore Security Rules", () => {
     );
   });
 
+  it("lets a client's row be removed from a machine that has no index document yet", async () => {
+    // Clearing every setting on a machine nobody has indexed: the app writes a
+    // delete for her row, which creates the document with no `rows` at all.
+    // Refusing it used to fail the Setup screen's whole index batch.
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const ref = doc(trainer, "studios", "studioA", "machineFit", "m-never-indexed");
+    const gone = fitWrite("clientA", deleteField(), { machineId: "m-never-indexed" });
+    await assertSucceeds(setDoc(ref, gone.data, gone.options));
+    // …and the next real row lands on that document like on any other.
+    const row = fitWrite("clientB", fitRow("4"), { machineId: "m-never-indexed" });
+    await assertSucceeds(setDoc(ref, row.data, row.options));
+    expect(Object.keys((await getDoc(ref)).data()?.rows ?? {})).toEqual(["clientB"]);
+  });
+
   it("refuses a machine-fit write that touches more than one row, names the wrong place, or adds a field", async () => {
     await testEnv.withSecurityRulesDisabled(async (context) => {
       await setDoc(doc(context.firestore(), "studios", "studioA", "machineFit", "m-leg-press"), {

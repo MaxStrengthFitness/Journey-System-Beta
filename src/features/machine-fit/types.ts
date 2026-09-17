@@ -212,7 +212,17 @@ export interface ClusterSuggestion {
 export interface NoSuggestion {
   tier: FitTier | null;
   cohort: Cohort | null;
-  reason: "no-height" | "no-data" | "thin";
+  reason:
+    /** Nothing on her record to match on (no height, or every factor switched on is missing). */
+    | "no-height"
+    /** Read fine, and nobody is set up on this machine. */
+    | "no-data"
+    /** Fewer similar clients than the minimum. */
+    | "thin"
+    /** Enough similar clients, but no two of them share a value. */
+    | "no-agreement"
+    /** Neither tier could be READ. Unknown — never "nobody". */
+    | "unknown";
 }
 
 export type SuggestionResult =
@@ -279,5 +289,6 @@ export interface MachineAudit {
   acknowledged: FitFlag[];
   /** Fields that could not be checked: fewer than the minimum similar clients have them set. */
   unchecked: string[];
-  state: "checked" | "no-height" | "not-enough";
+  /** "unknown": neither tier could be read — not the same as too few similar clients. */
+  state: "checked" | "no-height" | "not-enough" | "unknown";
 }

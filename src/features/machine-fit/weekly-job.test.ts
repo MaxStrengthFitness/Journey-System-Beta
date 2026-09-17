@@ -81,13 +81,13 @@ function fakeDb(collections: Record<string, Docs>, opts: { failOn?: string } = {
 const NOW = new Date("2026-09-20T07:00:00.000Z");
 const T = Date.UTC(2026, 8, 17, 16, 0, 0);
 
-const heights = ["5'2\"", "5'3\"", "5'4\"", "5'4\"", "5'5\"", "5'6\"", "5'7\"", "5'8\""];
+// Eight women of one height: a published cell must describe at least five people.
 const clients: Docs = {};
 const rows: Record<string, unknown> = {};
-heights.forEach((height, i) => {
-  clients[`c${i}`] = { isActive: i !== 7, height, gender: i % 2 ? "Male" : "Female", homeStudioId: "solon" };
+for (let i = 0; i < 8; i += 1) {
+  clients[`c${i}`] = { isActive: i !== 7, height: "5'4\"", gender: "Female", homeStudioId: "solon" };
   rows[`c${i}`] = { s: { seat: String(6 - Math.floor(i / 3)), gap: "0" }, t: T };
-});
+}
 
 const base = (): Record<string, Docs> => ({
   clients,
@@ -117,7 +117,7 @@ describe("the weekly job — machine trends plus machine fit", () => {
     const legPress = store.machineTrends["m-leg-press"] as { sets: number; fit: { clients: number; cells: Record<string, unknown> } };
     expect(legPress.sets).toBe(1);
     expect(legPress.fit.clients).toBe(8); // rebuilt, not last week's 99
-    expect(legPress.fit.cells["64|f"]).toEqual({ "gap=0;seat=6": 1 });
+    expect(legPress.fit.cells["64|f"]).toEqual({ "gap=0;seat=6": 3, "gap=0;seat=5": 3, "gap=0;seat=4": 2 });
 
     const abs = store.machineTrends["m-abs"] as { sets: number; load: unknown; fit: { clients: number } };
     expect(abs).toMatchObject({ sets: 0, clients: 0, load: null });

@@ -872,7 +872,11 @@ service cloud.firestore {
       return d.keys().hasOnly(['machineId', 'studioId', 'rows', 'updatedAt', 'rebuiltAt'])
           && d.machineId == machineId
           && d.studioId == studioId
-          && d.rows is map;
+          // `get`, not `d.rows`: REMOVING a client's row from a machine that
+          // has no index document yet creates one with no `rows` at all, and
+          // reading a missing property is an error, which refused the write --
+          // and, inside the Setup screen's batch, every other row with it.
+          && d.get('rows', {}) is map;
     }
 
     /* A NOTE SHARED WITH COLLEAGUES (Planner rework, Sep 2026). Signed by
@@ -1786,13 +1790,13 @@ service cloud.firestore {
         allow create: if isAuthenticated()
                       && isAnyAuthenticatedTrainer()
                       && machineFitValid(request.resource.data, studioId, machineId)
-                      && request.resource.data.rows.size() <= 1
+                      && request.resource.data.get('rows', {}).size() <= 1
                       && writesForStudio(studioId);
 
         allow update: if isAuthenticated()
                       && isAnyAuthenticatedTrainer()
                       && machineFitValid(request.resource.data, studioId, machineId)
-                      && request.resource.data.rows.diff(resource.data.get('rows', {})).affectedKeys().size() <= 1
+                      && request.resource.data.get('rows', {}).diff(resource.data.get('rows', {})).affectedKeys().size() <= 1
                       && writesForStudio(studioId);
 
         allow delete: if isSuperAdmin();

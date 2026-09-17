@@ -82,6 +82,18 @@ const words = (s: string): string[] =>
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
 const singular = (s: string): string => (s.length > 3 && s.endsWith("s") ? s.slice(0, -1) : s);
+/**
+ * A label as one token, with only its LAST WORD made singular ("Thigh Pads" →
+ * "thighpad"). Never the joined string: "Gap S" joins to "gaps", and making
+ * THAT singular turned an empty printed Gap plus the S of "S- 8" into a label
+ * called "gap" — which then took the seat's 8.
+ */
+const labelToken = (label: string): string => {
+  const parts = words(label);
+  if (parts.length === 0) return "";
+  parts[parts.length - 1] = singular(parts[parts.length - 1]);
+  return parts.join("");
+};
 
 interface FieldNames {
   field: ShorthandField;
@@ -98,7 +110,7 @@ function namesOf(field: ShorthandField): FieldNames {
   for (const r of raw) {
     const parts = words(r);
     if (parts.length === 0) continue;
-    names.add(singular(parts.join("")));
+    names.add(labelToken(r));
     if (parts.length > 1) {
       initials.add(parts.map((p) => p[0]).join(""));
       // "Chest Pad" also answers to "chest": the first word is how charts say it.
@@ -119,7 +131,7 @@ export function matchField(
   fields: readonly ShorthandField[],
   strict = false,
 ): { field: ShorthandField | null; ambiguous: boolean } {
-  const token = singular(norm(label));
+  const token = labelToken(label);
   if (!token) return { field: null, ambiguous: false };
 
   let bestScore = 0;
@@ -294,6 +306,22 @@ export function parseShorthand(text: string, fields: readonly ShorthandField[]):
         // single letter is only trusted as a label when a NUMBER follows it.
         const loose = w.length <= 2 && NUMBER.test(next);
         const one = matchField(w, fields, !loose).field;
+        // The grid prints a label even when the setting is empty — "Gap  S- 8"
+        // is an empty gap and a seat of 8. So a "value" that is itself a label
+        // (it carries a separator, it is the load's label, or it names another
+        // of this machine's settings) is not a value: this label is empty.
+        if (one) {
+          const other = matchField(next, fields, true).field;
+          const nextIsLabel = afterNext === SEP || WEIGHT_LABEL.test(next) || (other !== null && other.key !== one.key);
+          if (nextIsLabel) {
+            // Printed furniture is dropped, like FileMaker's empty "S-". A word
+            // in a sentence ("no seat pad") is kept: nothing is thrown away.
+            const printed = afterNext === SEP || (afterNext !== undefined && NUMBER.test(afterNext)) || WEIGHT_LABEL.test(next);
+            if (!printed) leftovers.push(w);
+            i += 1;
+            continue;
+          }
+        }
         if (one && looksLikeValue(next, one)) {
           if (!place(w, next, !loose)) leftovers.push(`${w} ${next}`);
           i += 2;

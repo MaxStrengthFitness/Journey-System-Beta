@@ -42,7 +42,7 @@ import {
   type WriteBatch,
 } from "firebase/firestore";
 import { db } from "../../firebase";
-import { fetchMachineTrend } from "../equipment/useMachineTrend";
+import { fetchMachineTrendRead } from "../equipment/useMachineTrend";
 import {
   samplesFromCompanyBlock,
   samplesFromFitDoc,
@@ -244,7 +244,8 @@ export function useFitData(
   enabled: boolean,
 ): FitData {
   const [studioFit, setStudioFit] = useState<StudioFit | null | undefined>(undefined);
-  const [company, setCompany] = useState<Record<string, CompanyFitBlock | null>>({});
+  // machineId → the block, null when the document has none, or "failed" when it could not be READ.
+  const [company, setCompany] = useState<Record<string, CompanyFitBlock | null | "failed">>({});
   const idsKey = useMemo(() => [...machineIds].sort().join("|"), [machineIds]);
 
   useEffect(() => {
@@ -268,7 +269,9 @@ export function useFitData(
     const ids = idsKey.split("|");
     Promise.all(
       ids.map((id) =>
-        fetchMachineTrend(id).then((trend) => [id, (trend as { fit?: CompanyFitBlock } | null)?.fit ?? null] as const),
+        fetchMachineTrendRead(id).then(
+          (read) => [id, read.failed ? ("failed" as const) : ((read.trend as { fit?: CompanyFitBlock } | null)?.fit ?? null)] as const,
+        ),
       ),
     ).then((pairs) => {
       if (live) setCompany(Object.fromEntries(pairs));
@@ -287,9 +290,11 @@ export function useFitData(
     const studioCounts: Record<string, number> = {};
     for (const id of idsKey ? idsKey.split("|") : []) {
       const studio = studioFit ? samplesFromFitDoc(studioFit[id] ?? { machineId: id, rows: {} }, byId, now) : null;
+      const block = company[id];
       sources[id] = {
         studio,
-        company: id in company ? samplesFromCompanyBlock(company[id]) : null,
+        // A failed read is unknown (null), never "no company data" ([]).
+        company: !(id in company) || block === "failed" ? null : samplesFromCompanyBlock(block),
       };
       studioCounts[id] = studio?.length ?? 0;
     }

@@ -88,8 +88,12 @@ function chooseTier(
     ? { tier: "company", cohort: buildCohort(sources.company, target, companySpec(spec)), everyone: sources.company }
     : null;
 
-  const sOk = !!studio?.cohort.enough;
-  const cOk = !!company?.cohort.enough;
+  // A tier only QUALIFIES when it matched on something. With height switched
+  // off (or no height on file) the company tier has nothing left to match on:
+  // its "cohort" is every client there is, which reaches the minimum at ring 0
+  // and used to beat a studio cohort that had really matched on weight.
+  const sOk = !!studio?.cohort.enough && studio.cohort.used.length > 0;
+  const cOk = !!company?.cohort.enough && company.cohort.used.length > 0;
   let chosen: TierChoice | null = null;
   if (sOk && (!cOk || studio!.cohort.ring <= STUDIO_PREFERRED_RING || studio!.cohort.ring <= company!.cohort.ring)) {
     chosen = studio;
@@ -113,6 +117,12 @@ export interface SuggestArgs {
   spec: MatchSpec;
   /** Normalised values already set by the trainer (saved, or typed into the draft). */
   pinned?: Record<string, string>;
+  /**
+   * What is SAVED for her on this machine, normalised. She may already be in
+   * the company block with these; one client like her is taken out of it so
+   * her own half-finished set-up is not evidence for the rest of it.
+   */
+  saved?: Record<string, string>;
   /** Fields not to suggest. */
   skip?: readonly string[];
 }
@@ -124,15 +134,28 @@ export function suggestForMachine({
   sources,
   spec,
   pinned = {},
+  saved = {},
   skip = [],
 }: SuggestArgs): SuggestionResult {
-  if (!sources.studio && !sources.company) return { ok: false, tier: null, cohort: null, reason: "no-data" };
+  // Neither tier could be READ. That is not "nobody is set up": say unknown.
+  if (!sources.studio && !sources.company) return { ok: false, tier: null, cohort: null, reason: "unknown" };
 
-  const { chosen, thin } = chooseTier(sources, target, spec, targetClientId);
+  const fair: FitSources =
+    sources.company && Object.keys(saved).length > 0
+      ? { studio: sources.studio, company: withoutSelf(sources.company, target, saved) }
+      : sources;
+  const { chosen, thin } = chooseTier(fair, target, spec, targetClientId);
   const alreadySet = [...skip, ...Object.keys(pinned)];
 
   if (chosen && chosen.cohort.used.length > 0) {
-    const cluster = suggestCluster({ fieldKeys, cohort: chosen.cohort.samples, everyone: chosen.everyone, pinned, skip });
+    const cluster = suggestCluster({
+      fieldKeys,
+      cohort: chosen.cohort.samples,
+      everyone: chosen.everyone,
+      pinned,
+      skip,
+      minClients: spec.minClients,
+    });
     // Fields the similar clients could not speak for may still have a value
     // nearly everyone uses.
     const covered = new Set(cluster.picks.map((p) => p.key));
@@ -183,39 +206,66 @@ export function suggestForMachine({
     ok: false,
     tier: thin?.tier ?? null,
     cohort: thin?.cohort ?? null,
-    reason: noFactor ? "no-height" : thin && thin.cohort.clients > 0 ? "thin" : "no-data",
+    reason: noFactor
+      ? "no-height"
+      : !thin || thin.cohort.clients === 0
+        ? "no-data"
+        : // Enough similar clients, and still nothing to offer: no two of them agree.
+          thin.cohort.enough
+          ? "no-agreement"
+          : "thin",
   };
 }
 
 /**
  * At the company tier a client cannot be removed by id — the cells are
- * anonymous. But she may well be IN her own cell (same height, same gender,
- * same settings), which would let an odd set-up vouch for itself. So one
- * client is taken out of the cell that looks exactly like her. If the weekly
- * build has not seen her yet, that cell does not exist and nothing changes.
+ * anonymous. But she may well be IN the block (same height, same settings),
+ * which would let an odd set-up vouch for itself. So one client who looks
+ * like her is taken out.
+ *
+ * "LOOKS LIKE HER" IS NOT "EQUALS HER". The block was built from her
+ * VERIFIED settings (an accepted, untrained value is left out) and from every
+ * key on her row, while a screen passes the machine's own fields only — so
+ * the two rarely match exactly, and an exact test quietly removed nobody. A
+ * cell matches when it is at her height, in her gender's cell or the pooled
+ * one, shares at least one setting with her and disagrees on none. The cell
+ * sharing the MOST settings wins. If it is not actually her it is someone
+ * indistinguishable from her on those settings, and removing one such client
+ * is the same correction. If the weekly build has not seen her yet (or she has
+ * changed a value since) nothing matches and nothing changes.
  */
 export function withoutSelf(
   company: readonly FitSample[],
   target: FitFactors,
   settings: Record<string, string>,
 ): FitSample[] {
-  const mine = Object.entries(settings);
-  let removed = false;
-  const out: FitSample[] = [];
-  for (const s of company) {
-    const same =
-      !removed &&
-      s.factors.heightIn === target.heightIn &&
-      (s.factors.gender ?? null) === (target.gender ?? null) &&
-      Object.keys(s.settings).length === mine.length &&
-      mine.every(([k, v]) => s.settings[k] === v);
-    if (!same) {
-      out.push(s);
-      continue;
+  let at = -1;
+  let bestShared = 0;
+  let bestExtra = Infinity;
+  company.forEach((s, i) => {
+    if (s.n <= 0 || s.factors.heightIn !== target.heightIn) return;
+    const gender = s.factors.gender ?? null;
+    if (gender !== null && gender !== (target.gender ?? null)) return;
+    let shared = 0;
+    let extra = 0;
+    for (const [k, v] of Object.entries(s.settings)) {
+      if (!(k in settings)) extra += 1;
+      else if (settings[k] === v) shared += 1;
+      else return; // disagrees with her on a setting both have: not her
     }
-    removed = true;
-    if (s.n > 1) out.push({ ...s, n: s.n - 1 });
-  }
+    if (shared === 0) return;
+    if (shared > bestShared || (shared === bestShared && extra < bestExtra)) {
+      at = i;
+      bestShared = shared;
+      bestExtra = extra;
+    }
+  });
+  if (at < 0) return [...company];
+  const out: FitSample[] = [];
+  company.forEach((s, i) => {
+    if (i !== at) out.push(s);
+    else if (s.n > 1) out.push({ ...s, n: s.n - 1 });
+  });
   return out;
 }
 
@@ -240,6 +290,9 @@ export function auditForMachine({
   acks,
   fieldSteps,
 }: AuditForMachineArgs): MachineAudit {
+  if (!sources.studio && !sources.company) {
+    return { tier: null, cohort: null, flags: [], acknowledged: [], unchecked: [...fieldKeys], state: "unknown" };
+  }
   const hasAny = fieldKeys.some((k) => settings[k] !== undefined && settings[k] !== "");
   const fair: FitSources = {
     studio: sources.studio,

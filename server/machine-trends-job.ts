@@ -95,12 +95,45 @@ export interface MachineTrendsSummaryDocument {
   machines: Record<string, { clients: number; sets: number; sessions: number; fitClients?: number }>;
 }
 
-async function commitInBatches(db: Firestore, writes: Array<(batch: WriteBatch) => void>) {
-  for (let i = 0; i < writes.length; i += BATCH_LIMIT) {
-    const batch = db.batch();
-    writes.slice(i, i + BATCH_LIMIT).forEach((w) => w(batch));
-    await batch.commit();
+/** A queued write and roughly how big it is. */
+interface QueuedWrite {
+  run: (batch: WriteBatch) => void;
+  bytes: number;
+}
+
+/** A commit may carry 10 MiB. Stay well under it: the size here is an estimate (JSON, not protobuf). */
+const BATCH_BYTES = 4 * 1024 * 1024;
+
+const sizeOf = (doc: unknown): number => {
+  try {
+    return JSON.stringify(doc)?.length ?? 0;
+  } catch {
+    return 0;
   }
+};
+
+/**
+ * By count AND by size. The trend documents were a few KB each, so 400 to a
+ * batch was safe; with a company fit block and a Kaizen report per machine a
+ * batch is cut early when it gets heavy, so one large commit cannot take the
+ * whole run — the trends included — down with it.
+ */
+async function commitInBatches(db: Firestore, writes: QueuedWrite[]) {
+  let batch = db.batch();
+  let count = 0;
+  let bytes = 0;
+  for (const w of writes) {
+    if (count > 0 && (count >= BATCH_LIMIT || bytes + w.bytes > BATCH_BYTES)) {
+      await batch.commit();
+      batch = db.batch();
+      count = 0;
+      bytes = 0;
+    }
+    w.run(batch);
+    count += 1;
+    bytes += w.bytes;
+  }
+  if (count > 0) await batch.commit();
 }
 
 export async function runMachineTrends(options: MachineTrendsRunOptions): Promise<MachineTrendsRunSummary> {
@@ -183,6 +216,7 @@ export async function runMachineTrends(options: MachineTrendsRunOptions): Promis
       `Machine fit: ${blockIds.length} machines, ` +
         `${blockIds.reduce((sum, id) => sum + company!.blocks[id].clients, 0)} client set-ups pooled` +
         (company.rowsSkipped ? `, ${company.rowsSkipped} rows skipped (client not at that studio)` : "") +
+        (company.heldBack ? `, ${company.heldBack} held back (fewer than five clients at that height — kept out so no cell describes a person)` : "") +
         `; ${Object.keys(company.reports).length} Kaizen reports.`,
     );
   } catch (err) {
@@ -222,16 +256,16 @@ export async function runMachineTrends(options: MachineTrendsRunOptions): Promis
     ),
   };
 
-  const writes: Array<(batch: WriteBatch) => void> = [];
+  const writes: QueuedWrite[] = [];
   for (const id of documentIds) {
     const doc: MachineTrendDocument = { ...(machines[id] ?? emptyTrend(id)), windowDays, windowStart, windowEnd, computedAt };
     if (blocks[id]) doc.fit = blocks[id];
-    writes.push((batch) => batch.set(db.collection("machineTrends").doc(id), doc));
+    writes.push({ run: (batch) => batch.set(db.collection("machineTrends").doc(id), doc), bytes: sizeOf(doc) });
   }
   for (const id of retire) {
-    writes.push((batch) => batch.delete(db.collection("machineTrends").doc(id)));
+    writes.push({ run: (batch) => batch.delete(db.collection("machineTrends").doc(id)), bytes: 0 });
   }
-  writes.push((batch) => batch.set(db.collection("machineTrends").doc("_summary"), summaryDoc));
+  writes.push({ run: (batch) => batch.set(db.collection("machineTrends").doc("_summary"), summaryDoc), bytes: sizeOf(summaryDoc) });
 
   // 6. The Kaizen reports (administrators only). Replaced whole; a machine
   //    nobody is set up on any more loses its report. Skipped entirely when
@@ -242,15 +276,15 @@ export async function runMachineTrends(options: MachineTrendsRunOptions): Promis
     const reportIds = Object.keys(company.reports);
     for (const id of reportIds) {
       const report = company.reports[id];
-      writes.push((batch) => batch.set(db.collection("kaizenReports").doc(id), report));
+      writes.push({ run: (batch) => batch.set(db.collection("kaizenReports").doc(id), report), bytes: sizeOf(report) });
     }
     for (const d of reportsSnap.docs) {
       if (d.id === "_summary" || company.reports[d.id]) continue;
       reportsRetired += 1;
-      writes.push((batch) => batch.delete(d.ref));
+      writes.push({ run: (batch) => batch.delete(d.ref), bytes: 0 });
     }
     const kaizenSummary = company.summary;
-    writes.push((batch) => batch.set(db.collection("kaizenReports").doc("_summary"), kaizenSummary));
+    writes.push({ run: (batch) => batch.set(db.collection("kaizenReports").doc("_summary"), kaizenSummary), bytes: sizeOf(kaizenSummary) });
   }
 
   if (!dryRun) await commitInBatches(db, writes);

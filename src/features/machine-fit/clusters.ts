@@ -36,6 +36,7 @@
  * combination, because that is the number a trainer trusts.
  */
 
+import { MIN_CLIENTS } from "../machine-trends/trends.ts";
 import { sumClients } from "./cohort.ts";
 import type { FieldPick, FitSample, Strength } from "./types.ts";
 
@@ -149,7 +150,13 @@ export function modeOf(
       if (median !== null) {
         const na = numericOf(a);
         const nb = numericOf(b);
-        if (na !== null && nb !== null && na !== nb) return Math.abs(na - median) - Math.abs(nb - median);
+        if (na !== null && nb !== null) {
+          const nearer = Math.abs(na - median) - Math.abs(nb - median);
+          // 3 and 4 are equally far from a middle of 3.5: fall THROUGH to plain
+          // ordering. Returning 0 here left the answer to the order the rows
+          // happened to arrive in.
+          if (Math.abs(nearer) > 1e-9) return nearer;
+        }
       }
       return a < b ? -1 : a > b ? 1 : 0;
     });
@@ -157,8 +164,17 @@ export function modeOf(
   return { value: best[0], clients: bestCount };
 }
 
-function strengthOf(support: number, outOf: number): Strength {
-  return support >= STRONG_SUPPORT && outOf > 0 && support / outOf >= STRONG_SHARE ? "strong" : "fair";
+/**
+ * "Strong" is what a bulk accept fills in, so it carries the named minimum as
+ * well: the value needs STRONG_SUPPORT clients and STRONG_SHARE of its group,
+ * AND at least `minClients` of the similar clients must have this field set
+ * at all (`fieldClients`). Three clients who all agree are a good sign, not
+ * yet a rule: offered, never bulk-accepted.
+ */
+function strengthOf(support: number, outOf: number, fieldClients: number, minClients: number): Strength {
+  return support >= STRONG_SUPPORT && outOf > 0 && support / outOf >= STRONG_SHARE && fieldClients >= minClients
+    ? "strong"
+    : "fair";
 }
 
 function matchesAll(sample: FitSample, wanted: Record<string, string>): boolean {
@@ -177,6 +193,8 @@ export interface ClusterArgs {
   pinned?: Record<string, string>;
   /** Fields not to suggest (already filled, or an absolute standard). */
   skip?: readonly string[];
+  /** The spec's named minimum: a pick is only "strong" when this many similar clients have the field set. */
+  minClients?: number;
 }
 
 export interface ClusterResult {
@@ -187,7 +205,14 @@ export interface ClusterResult {
   pinned: Record<string, string>;
 }
 
-export function suggestCluster({ fieldKeys, cohort, everyone, pinned = {}, skip = [] }: ClusterArgs): ClusterResult {
+export function suggestCluster({
+  fieldKeys,
+  cohort,
+  everyone,
+  pinned = {},
+  skip = [],
+  minClients = MIN_CLIENTS,
+}: ClusterArgs): ClusterResult {
   const known = new Set(fieldKeys);
   const pinnedHere: Record<string, string> = {};
   for (const [k, v] of Object.entries(pinned)) if (known.has(k) && v) pinnedHere[k] = v;
@@ -216,20 +241,30 @@ export function suggestCluster({ fieldKeys, cohort, everyone, pinned = {}, skip 
   let narrowing = true;
 
   while (remaining.length > 0) {
-    // The field the group agrees on most goes next: it is the safest thing to
-    // narrow by, and narrowing by a coin-flip first would split the group for
-    // nothing.
-    let choice: { at: number; key: string; value: string; support: number; outOf: number } | null = null;
+    // The field the group AGREES ON most goes next — by share, not by head
+    // count: it is the safest thing to narrow by, and narrowing by a coin-flip
+    // first (six on Seat 3, six on Seat 4) would split the group for nothing
+    // and let the order of the rows decide the answer. Share alone would let
+    // a field only two clients have filled in ("2 of 2") jump the queue, so
+    // fields that at least half the group has set are ranked first; the rest
+    // follow, by the same rule. Ties go to the larger count, then to the
+    // machine's own field order — never to chance.
+    const groupSize = sumClients(current);
+    let choice: { at: number; key: string; value: string; support: number; outOf: number; covered: boolean } | null = null;
     for (let i = 0; i < remaining.length; i += 1) {
       const key = remaining[i];
       const field = countField(current, key);
       const mode = modeOf(field, current, key, countField(cohort, key));
       if (!mode || mode.clients < MIN_FIELD_SUPPORT) continue;
+      const covered = field.total * 2 >= groupSize;
+      const share = mode.clients / field.total;
       const better =
         !choice ||
-        mode.clients > choice.support ||
-        (mode.clients === choice.support && mode.clients / field.total > choice.support / choice.outOf);
-      if (better) choice = { at: i, key, value: mode.value, support: mode.clients, outOf: field.total };
+        (covered && !choice.covered) ||
+        (covered === choice.covered &&
+          (share > choice.support / choice.outOf + 1e-9 ||
+            (Math.abs(share - choice.support / choice.outOf) <= 1e-9 && mode.clients > choice.support)));
+      if (better) choice = { at: i, key, value: mode.value, support: mode.clients, outOf: field.total, covered };
     }
     if (!choice) break;
 
@@ -239,7 +274,7 @@ export function suggestCluster({ fieldKeys, cohort, everyone, pinned = {}, skip 
       support: choice.support,
       outOf: choice.outOf,
       given: { ...given },
-      strength: strengthOf(choice.support, choice.outOf),
+      strength: strengthOf(choice.support, choice.outOf, countField(cohort, choice.key).total, minClients),
     });
     remaining.splice(choice.at, 1);
 

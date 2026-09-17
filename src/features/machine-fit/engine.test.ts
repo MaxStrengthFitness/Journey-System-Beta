@@ -6,8 +6,12 @@ import { DEFAULT_MATCH_SPEC, withFactor } from "./match-spec";
 import type { FitSample } from "./types";
 
 const studio = compoundRowStudio();
-/** The same clients as the rest of the company sees them: anonymous cells. */
-const company = samplesFromCompanyBlock(buildCompanyBlock(new Map([["solon", studio]]), "2026-09-13T07:00:00.000Z"));
+/**
+ * The same clients as the rest of the company sees them: anonymous cells.
+ * Built with a cell floor of 1 so that 24 people stay 24 cells — the real
+ * floor of five is tested in fit-index.test.ts.
+ */
+const company = samplesFromCompanyBlock(buildCompanyBlock(new Map([["solon", studio]]), "2026-09-13T07:00:00.000Z", 1));
 
 const suggest = (args: Partial<Parameters<typeof suggestForMachine>[0]> & { heightIn?: number | null }) =>
   suggestForMachine({
@@ -100,13 +104,22 @@ describe("when there is little to go on", () => {
     expect(result.picks.find((p) => p.key === "seat")?.universal).toBeUndefined();
   });
 
-  it("has nothing to say with no data at all", () => {
-    expect(suggest({ sources: { studio: null, company: null } })).toMatchObject({ ok: false, reason: "no-data" });
+  it("tells 'could not be read' from 'nobody is set up'", () => {
+    // Neither tier could be READ: unknown, never "nobody".
+    expect(suggest({ sources: { studio: null, company: null } })).toMatchObject({ ok: false, reason: "unknown" });
+    // Read fine, and empty: that IS nobody.
     expect(suggest({ sources: { studio: [], company: [] } })).toMatchObject({ ok: false, reason: "no-data" });
     expect(suggest({ heightIn: null, sources: { studio: [], company: null } })).toMatchObject({
       ok: false,
       reason: "no-height",
     });
+  });
+
+  it("says 'no two agree' — not 'too few' — when there are enough similar clients and nothing in common", () => {
+    const scattered = ["1", "2", "3", "4", "5", "6"].map((seat) => client(67, { seat }));
+    const result = suggest({ fieldKeys: ["seat"], sources: { studio: scattered, company: null } });
+    expect(result).toMatchObject({ ok: false, reason: "no-agreement" });
+    expect(!result.ok && result.cohort?.clients).toBe(6);
   });
 
   it("never suggests over a value the trainer already set", () => {
@@ -115,7 +128,98 @@ describe("when there is little to go on", () => {
   });
 });
 
+describe("a tier has to have matched on something to answer", () => {
+  // Height switched off, weight on: the company tier (height and gender only)
+  // has nothing left to match on, so "everyone" reaches the minimum at ring 0.
+  const byWeight = withFactor(withFactor(DEFAULT_MATCH_SPEC, "height", { on: false }), "weight", { on: true });
+  const weighed = studio.map((s, i) => ({ ...s, factors: { ...s.factors, weightLb: 120 + i * 4 } }));
+  const target = body(67, { weightLb: 160 });
+
+  it("does not let an unmatched company crowd beat a studio cohort that really matched", () => {
+    const result = suggestForMachine({ fieldKeys: ROW_FIELDS, target, sources: { studio: weighed, company }, spec: byWeight });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.tier).toBe("studio");
+    expect(result.cohort.used).toEqual(["weight"]);
+  });
+
+  it("checks her against that studio cohort too, instead of reporting 'no height'", () => {
+    const result = auditForMachine({
+      fieldKeys: ROW_FIELDS,
+      settings: { seat: "9" },
+      target,
+      sources: { studio: weighed, company },
+      spec: byWeight,
+    });
+    expect(result.state).toBe("checked");
+    expect(result.tier).toBe("studio");
+  });
+
+  it("falls back to what nearly everyone uses, from the fuller tier, when she has no height", () => {
+    const six = studio.slice(0, 6);
+    const result = suggestForMachine({ fieldKeys: ROW_FIELDS, target: body(null), sources: { studio: six, company }, spec: DEFAULT_MATCH_SPEC });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.tier).toBe("company");
+    expect(result.picks.map((p) => `${p.key}=${p.value}`)).toEqual(["gap=0"]);
+    expect(result.picks[0].universal).toBe(true);
+  });
+});
+
 describe("auditing against the company", () => {
+  it("still finds her when the block holds less than the screen knows about her", () => {
+    // The weekly build left her accepted-but-untrained Gap out, so her cell is
+    // "seat=9" while the screen audits { gap, seat }. An exact match removed nobody.
+    const cells: FitSample[] = [
+      { settings: { seat: "9" }, n: 1, factors: { heightIn: 64, gender: "f" } },
+      { settings: { gap: "0", seat: "4" }, n: 5, factors: { heightIn: 64, gender: "f" } },
+      { settings: { gap: "0", seat: "5" }, n: 3, factors: { heightIn: 64, gender: "f" } },
+    ];
+    const her = body(64, { gender: "f" });
+    expect(withoutSelf(cells, her, { gap: "0", seat: "9" }).map((c) => c.settings.seat)).toEqual(["4", "5"]);
+    const result = auditForMachine({
+      fieldKeys: ["gap", "seat"],
+      settings: { gap: "0", seat: "9" },
+      target: her,
+      sources: { studio: [], company: cells },
+      spec: DEFAULT_MATCH_SPEC,
+    });
+    expect(result.flags).toHaveLength(1);
+    expect(result.flags[0]).toMatchObject({ key: "seat", value: "9", level: "rare", clients: 0, outOf: 8 });
+  });
+
+  it("prefers the cell that shares the most with her, and one that disagrees with her is somebody else", () => {
+    const cells: FitSample[] = [
+      { settings: { gap: "0" }, n: 4, factors: { heightIn: 64, gender: "f" } },
+      { settings: { gap: "0", seat: "9" }, n: 1, factors: { heightIn: 64, gender: "f" } },
+      { settings: { gap: "2", seat: "9" }, n: 1, factors: { heightIn: 64, gender: "f" } },
+    ];
+    const out = withoutSelf(cells, body(64, { gender: "f" }), { gap: "0", seat: "9" });
+    expect(out.map((c) => `${c.settings.gap}/${c.settings.seat ?? "-"}:${c.n}`)).toEqual(["0/-:4", "2/9:1"]);
+  });
+
+  it("looks in the pooled cell as well as her gender's", () => {
+    const cells: FitSample[] = [{ settings: { seat: "9" }, n: 2, factors: { heightIn: 64, gender: null } }];
+    expect(withoutSelf(cells, body(64, { gender: "f" }), { seat: "9" })[0].n).toBe(1);
+    // …but never in the other gender's.
+    const men: FitSample[] = [{ settings: { seat: "9" }, n: 2, factors: { heightIn: 64, gender: "m" } }];
+    expect(withoutSelf(men, body(64, { gender: "f" }), { seat: "9" })[0].n).toBe(2);
+  });
+
+  it("takes her out of the company cohort for SUGGESTIONS too, once something is saved for her", () => {
+    // Four clients her height on the company side, plus her own cell: five only if she counts herself.
+    const cells: FitSample[] = [
+      { settings: { gap: "0", seat: "4" }, n: 4, factors: { heightIn: 67, gender: "f" } },
+      { settings: { gap: "0" }, n: 1, factors: { heightIn: 67, gender: "f" } },
+    ];
+    const exact = withFactor(DEFAULT_MATCH_SPEC, "height", { maxSteps: 0 });
+    const args = { fieldKeys: ["gap", "seat"], target: body(67, { gender: "f" as const }), sources: { studio: [], company: cells }, spec: exact };
+    expect(suggestForMachine({ ...args, pinned: { gap: "0" } }).ok).toBe(true);
+    const fair = suggestForMachine({ ...args, pinned: { gap: "0" }, saved: { gap: "0" } });
+    expect(fair).toMatchObject({ ok: false, reason: "thin" });
+  });
+
+
   it("takes one client out of the cell that looks exactly like her", () => {
     const cells: FitSample[] = [
       { settings: { seat: "9" }, n: 1, factors: { heightIn: 67, gender: "f" } },

@@ -197,6 +197,22 @@ describe("fieldReport — one setting, by value and by height", () => {
     expect(seat.links.map((l) => l.factor)).toEqual(["height"]);
   });
 
+  it("treats weight as a shadow even when height's own link is too weak to report", () => {
+    // Height and weight both barely move with the seat; weight scrapes over
+    // the reporting line, height scrapes under it. Neither is a finding.
+    const noisy: FitSample[] = [];
+    const seats = ["3", "4", "5", "4", "3", "5", "4", "4", "3", "5", "4", "3", "5", "4", "4", "5", "3", "4", "5", "3"];
+    seats.forEach((seat, i) => {
+      const h = 60 + (i % 10) + (Number(seat) - 4);
+      noisy.push({ clientId: `n${i}`, n: 1, settings: { seat }, factors: { heightIn: h, weightLb: 100 + h * 2 + (i % 3) } });
+    });
+    const seat = fieldReport("seat", noisy, heightBands(noisy));
+    const tested = Object.fromEntries(seat.tested.map((t) => [t.factor, t.clients]));
+    expect(tested).toEqual({ height: 20, weight: 20 });
+    // Whatever height's r is here, weight's is within the margin of it: never "follows weight" on its own.
+    expect(seat.links.some((l) => l.factor === "weight")).toBe(false);
+  });
+
   it("does report a second measure that beats height", () => {
     // Height says nothing here (shuffled); the seat tracks wingspan.
     const byWingspan = studio.map((s, i) => ({

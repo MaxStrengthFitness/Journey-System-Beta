@@ -46,7 +46,7 @@
  * dot inside the row. Plum, never red — the red mark is rep quality's.
  */
 
-import { countField, medianOfPoints, numericOf, numericPoints, weightedMedian } from "./clusters.ts";
+import { MIN_FIELD_SUPPORT, countField, medianOfPoints, numericOf, numericPoints, weightedMedian } from "./clusters.ts";
 import type {
   Cohort,
   ComboFlag,
@@ -76,9 +76,23 @@ export function weightedSpread(samples: readonly FitSample[], key: string, media
   return mad === null ? 0 : mad * MAD_TO_SIGMA;
 }
 
-/** The smallest step between two values anyone uses — "one notch" when the catalog does not say. */
-export function observedNotch(values: Iterable<string>): number {
-  const nums = [...values].map(numericOf).filter((n): n is number => n !== null).sort((a, b) => a - b);
+/**
+ * "One notch", when the catalog does not give a step: the smallest gap
+ * between two values that EACH have more than one client on them.
+ *
+ * The support rule is the point. One client on Seat 3.75 among a group on 4
+ * used to make a notch of 0.25 — and with it a client on 5 looked four
+ * notches away from a group she was one notch from. A half-step is only a
+ * notch once the machine's half-steps are actually in use.
+ */
+export function observedNotch(counts: ReadonlyMap<string, number>): number {
+  const nums: number[] = [];
+  for (const [value, clients] of counts) {
+    if (clients < MIN_FIELD_SUPPORT) continue;
+    const n = numericOf(value);
+    if (n !== null) nums.push(n);
+  }
+  nums.sort((a, b) => a - b);
   let notch = Infinity;
   for (let i = 1; i < nums.length; i += 1) {
     const gap = nums[i] - nums[i - 1];
@@ -174,7 +188,7 @@ export function auditMachine({
         unchecked.push(key);
         continue;
       }
-      const notch = fieldSteps[key] && fieldSteps[key]! > 0 ? fieldSteps[key]! : observedNotch(field.counts.keys());
+      const notch = fieldSteps[key] && fieldSteps[key]! > 0 ? fieldSteps[key]! : observedNotch(field.counts);
       const scale = Math.max(weightedSpread(cohort.samples, key, median), notch);
       const z = Math.abs(myNumber - median) / scale;
       if (z >= RARE_Z && share < RARE_SHARE && rareOutThere) file({ ...base, level: "rare", median }, key, value);

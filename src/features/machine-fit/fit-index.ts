@@ -219,9 +219,28 @@ export function subjectsFromFitDoc(
  * The company block
  * ------------------------------------------------------------------ */
 
+/**
+ * The smallest group of clients a published cell may describe.
+ *
+ * A cell is a height, a gender and a whole set-up, so in a small company
+ * nearly every cell is ONE PERSON — "the 6'7" man: Gap 0, Seat 1" — in a
+ * document any signed-in trainer at any studio can read. No id, no studio,
+ * but a row about a person all the same, and machineTrends is aggregates
+ * only. So the block is k-anonymous on the two things that could point at
+ * someone: every published (height, gender) group holds at least this many
+ * clients. A gender too small at a height is pooled with the unknowns ("x");
+ * if that pool is still too small the whole height is pooled; a height with
+ * too few clients altogether is left out. What is left out comes back by
+ * itself as the company grows — and a height with four clients was never
+ * going to reach the ladder's minimum of five anyway.
+ */
+export const CELL_MIN_CLIENTS = 5;
+
 export interface CompanyFitBlock {
   /** Clients contributing (verified settings and a height on file). */
   clients: number;
+  /** Clients left out because their height had fewer than CELL_MIN_CLIENTS company-wide. */
+  heldBack?: number;
   /** Studios those clients belong to. */
   studios: number;
   /** cell ("67|f") → signature ("gap=4;seat=3") → clients. */
@@ -260,13 +279,54 @@ export function settingsOfSignature(signature: string): Record<string, string> {
   return out;
 }
 
-/** Pool studio samples into anonymous cells. Samples with no height are left out — they match nothing. */
+/**
+ * Pool studio samples into anonymous cells. Samples with no height are left
+ * out — they match nothing. `minCell` is CELL_MIN_CLIENTS everywhere but the
+ * tests that need a small fixture to stay small.
+ */
 export function buildCompanyBlock(
   samplesByStudio: ReadonlyMap<string, readonly FitSample[]>,
   builtAt: string,
+  minCell: number = CELL_MIN_CLIENTS,
 ): CompanyFitBlock {
+  type Gender = "m" | "f" | "x";
+  const genderOf = (s: FitSample): Gender => (s.factors.gender === "m" || s.factors.gender === "f" ? s.factors.gender : "x");
+
+  // Pass 1: how many clients at each height, and of each gender there.
+  const perHeight = new Map<number, Record<Gender, number>>();
+  for (const samples of samplesByStudio.values()) {
+    for (const s of samples) {
+      const h = s.factors.heightIn;
+      if (typeof h !== "number" || !signatureOf(s.settings)) continue;
+      const row = perHeight.get(h) ?? { m: 0, f: 0, x: 0 };
+      row[genderOf(s)] += s.n;
+      perHeight.set(h, row);
+    }
+  }
+
+  // Which cell each gender at each height is published in: its own, the pooled one, or none.
+  const cellFor = new Map<number, Record<Gender, Gender | null>>();
+  for (const [h, row] of perHeight) {
+    const total = row.m + row.f + row.x;
+    if (total < minCell) {
+      cellFor.set(h, { m: null, f: null, x: null });
+      continue;
+    }
+    const own = { m: row.m >= minCell, f: row.f >= minCell };
+    const pooled = row.x + (own.m ? 0 : row.m) + (own.f ? 0 : row.f);
+    // A pool that is itself too small would point at the few people in it
+    // ("the two men at 5'4\""): pool the whole height instead.
+    const poolAll = pooled > 0 && pooled < minCell;
+    cellFor.set(h, {
+      m: own.m && !poolAll ? "m" : "x",
+      f: own.f && !poolAll ? "f" : "x",
+      x: "x",
+    });
+  }
+
   const cells: CompanyFitBlock["cells"] = {};
   let clients = 0;
+  let heldBack = 0;
   let studios = 0;
   for (const samples of samplesByStudio.values()) {
     let contributed = false;
@@ -275,7 +335,12 @@ export function buildCompanyBlock(
       if (typeof h !== "number") continue;
       const signature = signatureOf(s.settings);
       if (!signature) continue;
-      const key = cellKey(h, s.factors.gender);
+      const publishAs = cellFor.get(h)?.[genderOf(s)] ?? null;
+      if (publishAs === null) {
+        heldBack += s.n;
+        continue;
+      }
+      const key = cellKey(h, publishAs === "x" ? null : publishAs);
       const cell = (cells[key] ??= {});
       cell[signature] = (cell[signature] ?? 0) + s.n;
       clients += s.n;
@@ -283,7 +348,7 @@ export function buildCompanyBlock(
     }
     if (contributed) studios += 1;
   }
-  return { clients, studios, cells, builtAt };
+  return heldBack > 0 ? { clients, heldBack, studios, cells, builtAt } : { clients, studios, cells, builtAt };
 }
 
 /** The company block back as samples the engine can run on. */

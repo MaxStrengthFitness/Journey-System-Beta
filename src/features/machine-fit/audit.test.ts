@@ -28,11 +28,14 @@ function audit(
 const ack = (value: string): FitAck => ({ value, by: "uid-1", byName: "Alex S", at: "2026-09-17T14:00:00.000Z" });
 
 describe("helpers", () => {
-  it("reads one notch off the values in use", () => {
-    expect(observedNotch(["3", "4", "6"])).toBe(1);
-    expect(observedNotch(["3", "3_5", "5"])).toBe(0.5);
-    expect(observedNotch(["4"])).toBe(1);
-    expect(observedNotch(["in", "out"])).toBe(1);
+  it("reads one notch off the values in use — the ones more than one client is on", () => {
+    const counts = (pairs: [string, number][]) => new Map(pairs);
+    expect(observedNotch(counts([["3", 2], ["4", 5], ["6", 2]]))).toBe(1);
+    expect(observedNotch(counts([["3", 4], ["3_5", 2], ["5", 3]]))).toBe(0.5);
+    expect(observedNotch(counts([["4", 9]]))).toBe(1);
+    expect(observedNotch(counts([["in", 5], ["out", 5]]))).toBe(1);
+    // One client on a quarter-step does not make quarter-steps the machine's notch.
+    expect(observedNotch(counts([["4", 5], ["3_75", 1]]))).toBe(1);
   });
 
   it("measures spread as a sigma from the median distance", () => {
@@ -74,6 +77,11 @@ describe("the passive audit", () => {
     expect(two.flags[0].level).toBe("uncommon");
     // The faint dot is never counted anywhere.
     expect(countToReview([two])).toBe(0);
+  });
+
+  it("does not let one client's quarter-step shrink the notch and mark the next seat along", () => {
+    const group = ["4", "4", "4", "4", "4", "3_75"].map((seat) => client(67, { seat }));
+    expect(audit({ seat: "5" }, { samples: group, fieldKeys: ["seat"] }).flags).toEqual([]);
   });
 
   it("does not let a tight group make the next notch look extreme", () => {

@@ -11,6 +11,7 @@ import {
 } from "./clusters";
 import { ROW_FIELDS, body, client, compoundRowStudio } from "./fixtures";
 import { DEFAULT_MATCH_SPEC } from "./match-spec";
+import type { FitSample } from "./types";
 
 const studio = compoundRowStudio();
 const bandFor = (heightIn: number) => buildCohort(studio, body(heightIn), DEFAULT_MATCH_SPEC).samples;
@@ -142,6 +143,64 @@ describe("setting clusters", () => {
     const lonely = [client(66, { seat: "4", pillow: "yes" }), client(66, { seat: "4" }), client(66, { seat: "4" })];
     const result = suggestCluster({ fieldKeys: ["seat", "pillow"], cohort: lonely, everyone: lonely });
     expect(result.picks.map((p) => p.key)).toEqual(["seat"]);
+  });
+
+  describe("the order of the rows never decides the answer", () => {
+    // Twelve clients. The seat is a coin-flip (six on 3, six on 4); the pad is
+    // not: five of the seven who have one are on 2, all of them at Seat 4.
+    const seatThree = Array.from({ length: 6 }, (_, i) => client(66, i < 2 ? { seat: "3", pad: "5" } : { seat: "3" }));
+    const seatFour = Array.from({ length: 6 }, (_, i) => client(66, i < 5 ? { seat: "4", pad: "2" } : { seat: "4" }));
+    const run = (rows: FitSample[]) => suggestCluster({ fieldKeys: ["seat", "pad"], cohort: rows, everyone: rows });
+
+    it("narrows by the field the group agrees on most, not the one most clients filled in", () => {
+      const result = run([...seatThree, ...seatFour]);
+      expect(result.picks.map((p) => `${p.key}=${p.value}`)).toEqual(["seat=4", "pad=2"]);
+      expect(result.seenTogether).toBe(5);
+      // The pad went first (5 of 7), and the seat was read among those five.
+      expect(result.picks.find((p) => p.key === "seat")).toMatchObject({ support: 5, outOf: 5, given: { pad: "2" } });
+    });
+
+    it("gives the same answer whichever way round the rows arrive", () => {
+      const forward = run([...seatThree, ...seatFour]);
+      const backward = run([...seatFour, ...seatThree].reverse());
+      expect(backward.picks).toEqual(forward.picks);
+      expect(backward.seenTogether).toBe(forward.seenTogether);
+    });
+
+    it("settles a dead heat by plain ordering, not by whichever row came first", () => {
+      const heat = (order: string[]) => order.flatMap((seat) => [client(66, { seat }), client(66, { seat }), client(66, { seat })]);
+      const a = suggestCluster({ fieldKeys: ["seat"], cohort: heat(["3", "4"]), everyone: [] });
+      const b = suggestCluster({ fieldKeys: ["seat"], cohort: heat(["4", "3"]), everyone: [] });
+      expect(a.picks[0].value).toBe("3");
+      expect(b.picks[0].value).toBe("3");
+    });
+
+    it("does not let a field two clients filled in jump the queue on '2 of 2'", () => {
+      const rows = [
+        ...Array.from({ length: 8 }, (_, i) => client(66, { seat: i < 6 ? "4" : "5" })),
+        client(66, { seat: "5", pin: "7" }),
+        client(66, { seat: "5", pin: "7" }),
+      ];
+      const result = suggestCluster({ fieldKeys: ["pin", "seat"], cohort: rows, everyone: rows });
+      // Seat (6 of 10) is read first, from everyone; the pin is read among the Seat-4 clients, who have none.
+      expect(result.picks.map((p) => p.key)).toEqual(["seat"]);
+      expect(result.picks[0]).toMatchObject({ value: "4", given: {} });
+    });
+  });
+
+  it("only calls a pick strong when the named minimum of similar clients have that field set at all", () => {
+    const three = [client(66, { seat: "4" }), client(66, { seat: "4" }), client(66, { seat: "4" }), client(66, {}), client(66, {})];
+    expect(suggestCluster({ fieldKeys: ["seat"], cohort: three, everyone: three }).picks[0]).toMatchObject({
+      support: 3,
+      outOf: 3,
+      strength: "fair",
+    });
+    const five = [...three, client(66, { seat: "4" }), client(66, { seat: "5" })];
+    expect(suggestCluster({ fieldKeys: ["seat"], cohort: five, everyone: five }).picks[0]).toMatchObject({
+      support: 4,
+      outOf: 5,
+      strength: "strong",
+    });
   });
 
   it("returns the picks in the machine's own field order, however they were reasoned", () => {

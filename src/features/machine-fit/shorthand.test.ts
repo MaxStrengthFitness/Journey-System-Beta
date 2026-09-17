@@ -68,6 +68,20 @@ describe("the FileMaker grid's own forms", () => {
     expect(parseShorthand("Seat- Gap- 4", LEG_PRESS).values).toEqual({ Gap: "4" });
     // An empty seat printed beside a filled gap: "Gap" is the next label, not the seat's value.
     expect(parseShorthand("S-  Gap 9", LEG_PRESS)).toEqual({ values: { Gap: "9" }, leftovers: [], notes: [] });
+    // The grid prints Gap WITHOUT a dash, so an empty gap sits straight in
+    // front of the next label. It must not take that label's value.
+    expect(parseShorthand("Gap  S- 8", LEG_PRESS)).toEqual({ values: { Seat: "8" }, leftovers: [], notes: [] });
+    expect(parseShorthand("Gap  P- 2  S- 3.75", LEG_PRESS)).toEqual({ values: { Pads: "2", Seat: "3.75" }, leftovers: [], notes: [] });
+    expect(parseShorthand("Seat Gap 9", LEG_PRESS)).toEqual({ values: { Gap: "9" }, leftovers: [], notes: [] });
+    expect(parseShorthand("Gap WEIG", LEG_PRESS)).toEqual({ values: {}, leftovers: [], notes: [] });
+  });
+
+  it("never reads one setting's name as another setting's value, and keeps the words of a sentence", () => {
+    const r = parseShorthand("no seat pad, gap 2", LEG_PRESS);
+    expect(r.values).toEqual({ Gap: "2" });
+    expect(r.leftovers).toEqual(["no", "seat", "pad"]);
+    // A real word value is still a value.
+    expect(parseShorthand("seat up", LEG_PRESS).values).toEqual({ Seat: "up" });
   });
 
   it("reads run-together shorthand", () => {

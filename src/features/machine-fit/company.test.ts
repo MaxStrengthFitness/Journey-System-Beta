@@ -5,20 +5,24 @@ import type { FitRowDoc } from "./fit-index";
 const NOW = new Date(2026, 8, 20, 12, 0, 0);
 const T = Date.UTC(2026, 8, 17, 16, 0, 0);
 
-const heights = ["5'2\"", "5'3\"", "5'4\"", "5'4\"", "5'5\"", "5'6\"", "5'7\"", "5'8\"", "5'10\"", "6'0\"", "6'1\"", "6'2\""];
-const seatFor = (i: number) => String(6 - Math.floor(i / 3));
+// Four builds, three clients of each at every studio: six per height and
+// gender across the two studios, so every published cell clears the floor of five.
+const BUILDS: [height: string, gender: string, seat: string][] = [
+  ["5'2\"", "Female", "6"],
+  ["5'4\"", "Female", "5"],
+  ["5'10\"", "Male", "3"],
+  ["6'0\"", "Male", "2"],
+];
 
 function studioOf(studioId: string, prefix: string): { clients: (CompanyClientRecord & { id: string })[]; rows: Record<string, FitRowDoc> } {
-  const clients = heights.map((height, i) => ({
-    id: `${prefix}-SECRET-${i}`,
-    height,
-    gender: i % 2 ? "Male" : "Female",
-    homeStudioId: studioId,
-  }));
+  const clients: (CompanyClientRecord & { id: string })[] = [];
   const rows: Record<string, FitRowDoc> = {};
-  clients.forEach((c, i) => {
-    rows[c.id] = { s: { seat: seatFor(i), gap: "0" }, t: T };
-  });
+  for (let i = 0; i < 12; i += 1) {
+    const [height, gender, seat] = BUILDS[i % BUILDS.length];
+    const id = `${prefix}-SECRET-${i}`;
+    clients.push({ id, height, gender, homeStudioId: studioId });
+    rows[id] = { s: { seat, gap: "0" }, t: T };
+  }
   return { clients, rows };
 }
 
@@ -36,7 +40,9 @@ describe("buildCompany — the weekly job's machine-fit step", () => {
     const block = blocks["m-leg-press"];
     expect(block.clients).toBe(24);
     expect(block.studios).toBe(2);
-    expect(block.cells["64|f"]).toEqual({ "gap=0;seat=6": 2 });
+    expect(block.cells["64|f"]).toEqual({ "gap=0;seat=5": 6 });
+    // Every published group is five or more people.
+    for (const cell of Object.values(block.cells)) expect(Object.values(cell).reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(5);
     const text = JSON.stringify(block);
     expect(text).not.toContain("SECRET");
     expect(text).not.toContain("solon");
@@ -71,10 +77,23 @@ describe("buildCompany — the weekly job's machine-fit step", () => {
     const rows = { ...solon.rows };
     const id = solon.clients[2].id;
     rows[id] = { s: { seat: "5" }, src: { seat: "suggested" }, t: T };
-    const { blocks, reports } = buildCompany([{ studioId: "solon", docs: [{ machineId: "m", rows }] }], solon.clients, NOW);
-    expect(blocks.m.clients).toBe(11);
+    const { blocks, reports } = buildCompany(
+      [
+        { studioId: "solon", docs: [{ machineId: "m", rows }] },
+        { studioId: "westlake", docs: [{ machineId: "m", rows: westlake.rows }] },
+      ],
+      clients,
+      NOW,
+    );
+    expect(blocks.m.clients).toBe(23);
+    expect(reports.m.onFile).toBe(24);
+    expect(reports.m.clients).toBe(23);
+  });
+
+  it("publishes no block for a machine whose every height is too thin to stay anonymous — the report still counts them", () => {
+    const { blocks, reports } = buildCompany([{ studioId: "solon", docs: [{ machineId: "m", rows: solon.rows }] }], solon.clients, NOW);
+    expect(blocks.m).toBeUndefined();
     expect(reports.m.onFile).toBe(12);
-    expect(reports.m.clients).toBe(11);
   });
 
   it("makes nothing of a studio with no readable rows", () => {

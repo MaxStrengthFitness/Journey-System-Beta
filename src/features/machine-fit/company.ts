@@ -56,6 +56,12 @@ export interface CompanyBuild {
   summary: KaizenSummary;
   /** Rows left out because the client is not (or is no longer) at that studio. */
   rowsSkipped: number;
+  /**
+   * Client set-ups kept OUT of the published blocks so that no cell describes
+   * fewer than CELL_MIN_CLIENTS people (fit-index.ts). They are still counted
+   * in the administrators' reports.
+   */
+  heldBack: number;
 }
 
 export function buildCompany(
@@ -96,12 +102,14 @@ export function buildCompany(
   }
 
   const blocks: CompanyBuild["blocks"] = {};
+  let heldBack = 0;
   const reports: CompanyBuild["reports"] = {};
   const summary: KaizenSummary = { builtAt, studios: contributing.size, machines: {} };
 
   for (const machineId of [...subjectsOf.keys()].sort()) {
     const perStudio = samplesOf.get(machineId) ?? new Map<string, FitSample[]>();
     const block = buildCompanyBlock(perStudio, builtAt);
+    heldBack += block.heldBack ?? 0;
     if (block.clients > 0) blocks[machineId] = block;
 
     const samples: KaizenSample[] = [];
@@ -119,5 +127,5 @@ export function buildCompany(
     };
   }
 
-  return { blocks, reports, summary, rowsSkipped };
+  return { blocks, reports, summary, rowsSkipped, heldBack };
 }

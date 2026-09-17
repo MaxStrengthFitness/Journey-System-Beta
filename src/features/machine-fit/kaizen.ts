@@ -446,15 +446,19 @@ export function fieldReport(
   const tested: FieldReport["tested"] = [];
   if (numeric) {
     const found: FactorLink[] = [];
+    // Height's link whether or not it is strong enough to REPORT: a weight
+    // link of 0.36 beside a height link of 0.34 is still height's shadow, and
+    // "follows weight, does not follow height" would be a story about noise.
+    let height: FactorLink | null = null;
     for (const factor of LINK_FACTORS) {
       const link = linkOf(withField, key, factor);
       if (!link) continue;
       tested.push({ factor, clients: link.clients });
+      if (factor === "height") height = link;
       if (Math.abs(link.r) >= LINK_LOOSE) found.push(link);
     }
-    const height = found.find((l) => l.factor === "height");
     for (const link of found) {
-      const shadow = height && link.factor !== "height" && Math.abs(link.r) < Math.abs(height.r) + SHADOW_MARGIN;
+      const shadow = height !== null && link.factor !== "height" && Math.abs(link.r) < Math.abs(height.r) + SHADOW_MARGIN;
       if (!shadow) links.push(link);
     }
     links.sort((a, b) => Math.abs(b.r) - Math.abs(a.r));

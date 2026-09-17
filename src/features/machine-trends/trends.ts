@@ -159,6 +159,13 @@ export function normalizeSettingValue(value: unknown, key?: string): string | nu
     if (label && text.startsWith(label + " ")) text = text.slice(label.length + 1).trim();
   }
   text = text.replace(/[^a-z0-9.\- ]+/g, "").trim().replace(/ /g, "_");
+  // A number is ONE value however it was typed: "2.", "2.0" and "02" are 2,
+  // "3.50" is 3.5. Left as typed they were different values to every count —
+  // and "2." became "2_", which is not a number at all (machine fit, Sep 17).
+  if (/^-?(?:\d+\.?\d*|\.\d+)$/.test(text)) {
+    const n = Number(text);
+    if (Number.isFinite(n)) text = String(n);
+  }
   if (!text || text.length > MAX_VALUE_KEY_LENGTH) return null;
   // Firestore map keys: "." is fine in a map literal, but keep keys plain anyway.
   return text.replace(/\./g, "_");
