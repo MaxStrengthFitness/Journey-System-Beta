@@ -4,7 +4,7 @@ import { ScheduleEntry, Trainer } from "../types";
 import { studioDateKey } from "../lib/studio-time";
 import { freshnessLabel } from "../lib/schedule-window";
 import { LoadingMark } from "./LoadingMark";
-import { ReminderStrip } from "../features/planner/reminders/ReminderStrip";
+import { RelayStrip } from "../features/planner/relay/RelayStrip";
 import {
   DateNavigator,
   DayView,
@@ -456,8 +456,12 @@ export function CalendarView({
         )}
       </header>
 
-      {/* Your own timed tasks for the days on screen (Planner rework). */}
-      <ReminderStrip
+      {/* The Relay layer: reminders, timed studio tasks, jobs, initiatives
+          and hand-offs on the days on screen (Relay, Sep 2026; was the
+          reminders strip of the Planner rework). */}
+      <RelayStrip
+        studioId={activeStudioId ?? null}
+        trainerId={authTrainer?.id ?? null}
         from={visibleRange(viewMode, selectedDate).from}
         to={visibleRange(viewMode, selectedDate).to}
         onOpenPlanner={setView ? () => setView("studio-tasks") : undefined}

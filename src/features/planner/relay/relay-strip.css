@@ -1,0 +1,25 @@
+/* THE RELAY LAYER ON THE CALENDAR (RelayStrip.tsx) — on the reminders strip's .rs-* base. */
+.rls { flex-wrap: wrap; align-items: flex-start; }
+.rls__filter { display: inline-flex; gap: 4px; }
+.rls__chip {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--st-border-strong);
+  border-radius: 999px;
+  background: var(--st-surface);
+  color: var(--st-ink-2);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.rls__chip[aria-pressed="true"] { background: var(--st-ink); border-color: var(--st-ink); color: var(--st-surface); }
+.rls__chip--mine[aria-pressed="true"] { background: var(--st-live); border-color: var(--st-live); }
+.rls__days { flex: 1 1 100%; list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
+.rls__day { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rls__dayname { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--st-ink-muted); }
+.rls__item--floor { box-shadow: inset 3px 0 0 var(--st-hero); }
+.rls__item--mine { box-shadow: inset 3px 0 0 var(--st-live); }
+.rls__sub { font-size: 11px; color: var(--st-ink-muted); }

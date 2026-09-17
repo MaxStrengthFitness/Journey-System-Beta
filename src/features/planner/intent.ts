@@ -26,7 +26,7 @@ export type PlannerIntent =
   /* Planner rework (Sep 2026): a notification about a team job opens it; a
      reminder opens My tasks; a colleague's shared note opens it in Notes. */
   | { kind: "open-job"; jobId: string }
-  | { kind: "open-tab"; tab: "mine" }
+  | { kind: "open-tab"; tab: "mine" | "floor" }
   | { kind: "open-share"; noteId: string };
 
 /**
