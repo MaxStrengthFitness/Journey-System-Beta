@@ -673,3 +673,88 @@ button.nb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offset
 @media (prefers-reduced-motion: reduce) { .sr__ring--closed .sr__svg { animation: none; } .sr__fill { transition: none; } }
 .sr__label { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
 .sr__count { font-size: 12px; font-weight: 800; color: var(--st-ink); font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------------ *
+ * The Floor Map (FloorMap.tsx)
+ * ------------------------------------------------------------------ */
+
+.fm { margin-top: 0.5rem; }
+.fm__group { margin-bottom: 0.75rem; }
+.fm__group-title {
+  margin: 0 0 0.375rem;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--st-ink-muted);
+}
+.fm__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 0.5rem;
+}
+.fm__tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 72px;
+  padding: 0.5rem 0.625rem 0.625rem;
+  border: 1px solid var(--st-border);
+  border-radius: 12px;
+  background: var(--st-surface);
+  color: var(--st-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 500ms ease-out, border-color 300ms;
+}
+.fm__tile:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+/* The tile warms with touches: the hub's flag colour at low heat, the hero at high. */
+.fm__tile--heat1 { background: color-mix(in srgb, var(--st-flag) 12%, var(--st-surface)); }
+.fm__tile--heat2 { background: color-mix(in srgb, var(--st-hero) 18%, var(--st-surface)); border-color: color-mix(in srgb, var(--st-hero) 40%, var(--st-border)); }
+.fm__tile--heat3 { background: color-mix(in srgb, var(--st-hero) 32%, var(--st-surface)); border-color: var(--st-hero); }
+.fm__tile--flagged { border-color: var(--st-flag); box-shadow: inset 3px 0 0 var(--st-flag); }
+.fm__name { font-size: 12px; font-weight: 800; line-height: 1.25; }
+.fm__facts { display: flex; align-items: center; gap: 6px; margin-top: auto; }
+.fm__touches {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px; height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--st-surface-2);
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.fm__tile--heat2 .fm__touches, .fm__tile--heat3 .fm__touches { background: var(--st-hero); color: #fff; }
+.fm__flag { color: var(--st-flag); }
+.fm__deep { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--st-surface-3); }
+.fm__deep-fill { display: block; height: 100%; background: var(--st-live); transition: width 500ms ease-out; }
+.fm__tile--deep .fm__deep-fill { background: var(--st-flag); }
+
+.fm__sheet { display: flex; flex-direction: column; gap: 0.75rem; }
+.fm__heat { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 800; }
+.fm__heat--2, .fm__heat--3 { color: var(--st-hero); }
+.fm__line { margin: 0; font-size: 13px; color: var(--st-ink-2); }
+.fm__line--due { color: var(--st-flag); font-weight: 700; }
+.fm__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.fm__actions .pl__btn { min-height: 48px; }
+.fm__flagbox {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  padding: 0.75rem;
+  border: 1px solid var(--st-flag-border);
+  border-radius: 12px;
+  background: var(--st-flag-fill);
+  color: var(--st-flag);
+  font-size: 13px;
+}
+.fm__flagbox > div { flex: 1; min-width: 0; }
+.fm__flagbox p { margin: 2px 0 0; color: var(--st-ink-2); white-space: pre-wrap; }
+.fm__flagform { display: flex; flex-direction: column; gap: 0.5rem; }
+.fm__rows { display: flex; flex-direction: column; gap: 0.375rem; }

@@ -1452,6 +1452,55 @@ describe("Firestore Security Rules", () => {
     await assertSucceeds(deleteDoc(doc(owner, "studios", "studioA", "teamJobs", "j1")));
   });
 
+  // ── MACHINE CARE (Relay, Sep 2026) ───────────────────────────────────────
+  //
+  // studios/{s}/machineCare/{machineId}: written from the Floor Map by
+  // anyone who works at the studio, read by anyone signed in.
+
+  const careData = (over: Record<string, unknown> = {}) => ({
+    machineId: "m-leg-press",
+    lastWipedAt: 1_758_000_000_000,
+    lastWipedBy: { id: "trainerA", name: "Trainer A" },
+    updatedAt: serverTimestamp(),
+    ...over,
+  });
+
+  it("lets the studio's people record care, and nobody else", async () => {
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const ref = doc(trainer, "studios", "studioA", "machineCare", "m-leg-press");
+    await assertSucceeds(setDoc(ref, careData(), { merge: true }));
+    await assertSucceeds(
+      setDoc(ref, { machineId: "m-leg-press", lastDeepCleanAt: 1_758_000_100_000, lastDeepCleanBy: { id: "trainerA", name: "Trainer A" }, updatedAt: serverTimestamp() }, { merge: true }),
+    );
+    // Wrong machine in the body, a stray key, a non-numeric time.
+    await assertFails(setDoc(doc(trainer, "studios", "studioA", "machineCare", "m-row"), careData()));
+    await assertFails(setDoc(doc(trainer, "studios", "studioA", "machineCare", "m-chest"), careData({ machineId: "m-chest", status: "broken" })));
+    await assertFails(setDoc(doc(trainer, "studios", "studioA", "machineCare", "m-chest"), careData({ machineId: "m-chest", lastWipedAt: "yesterday" })));
+    // Someone from another studio.
+    const elsewhere = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(setDoc(doc(elsewhere, "studios", "studioA", "machineCare", "m-chest"), careData({ machineId: "m-chest", lastWipedBy: { id: "trainerB", name: "B" } })));
+    await assertSucceeds(getDoc(doc(elsewhere, "studios", "studioA", "machineCare", "m-leg-press")));
+  });
+
+  it("signs a new flag with the caller, and lets a wipe merge over someone else's flag", async () => {
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const ref = doc(trainer, "studios", "studioA", "machineCare", "m-leg-press");
+    const flag = { note: "Pad torn", by: { id: "trainerA", name: "Trainer A" }, at: 1_758_000_200_000 };
+    await assertSucceeds(setDoc(ref, { machineId: "m-leg-press", flag, updatedAt: serverTimestamp() }, { merge: true }));
+    // In someone else's name, or with no note.
+    await assertFails(setDoc(ref, { machineId: "m-leg-press", flag: { ...flag, by: { id: "ownerA", name: "O" } }, updatedAt: serverTimestamp() }, { merge: true }));
+    await assertFails(setDoc(ref, { machineId: "m-leg-press", flag: { ...flag, note: "" }, updatedAt: serverTimestamp() }, { merge: true }));
+    // The owner wipes it: the merged document still carries A's flag, untouched.
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(
+      setDoc(doc(owner, "studios", "studioA", "machineCare", "m-leg-press"), { machineId: "m-leg-press", lastWipedAt: 1_758_000_300_000, lastWipedBy: { id: "ownerA", name: "Owner A" }, updatedAt: serverTimestamp() }, { merge: true }),
+    );
+    // Anyone at the studio may clear a flag; the floor may not delete the record.
+    await assertSucceeds(setDoc(doc(owner, "studios", "studioA", "machineCare", "m-leg-press"), { machineId: "m-leg-press", flag: null, updatedAt: serverTimestamp() }, { merge: true }));
+    await assertFails(deleteDoc(ref));
+    await assertSucceeds(deleteDoc(doc(owner, "studios", "studioA", "machineCare", "m-leg-press")));
+  });
+
   // ── THE MSF MACHINE DATABASE: studio content, sharing, and the lists ────
   //
   // Round: Learning + Planner, Sep 2026. Also closes the hole where any

@@ -838,6 +838,32 @@ service cloud.firestore {
           && (!('dueOn' in d) || d.dueOn == null || d.dueOn is string);
     }
 
+    /* MACHINE CARE (Relay, Sep 2026). Shape only; limits match
+       src/features/planner/relay/machine-care.ts. Times are millisecond
+       numbers (they sit inside merged writes, where serverTimestamp would
+       be fine but a number compares in the app without a round trip). */
+    function careActorValid(a) {
+      return a == null || (a is map && a.id is string && a.name is string && a.name.size() <= 80);
+    }
+    function machineCareValid(d, machineId) {
+      return d.keys().hasOnly(['machineId', 'lastWipedAt', 'lastWipedBy', 'lastDeepCleanAt',
+                               'lastDeepCleanBy', 'flag', 'updatedAt'])
+          && d.machineId == machineId
+          && (!('lastWipedAt' in d) || d.lastWipedAt == null || d.lastWipedAt is number)
+          && (!('lastDeepCleanAt' in d) || d.lastDeepCleanAt == null || d.lastDeepCleanAt is number)
+          && (!('lastWipedBy' in d) || careActorValid(d.lastWipedBy))
+          && (!('lastDeepCleanBy' in d) || careActorValid(d.lastDeepCleanBy))
+          && (!('flag' in d) || d.flag == null
+              || (d.flag is map
+                  && d.flag.note is string && d.flag.note.size() > 0 && d.flag.note.size() <= 500
+                  && d.flag.by is map && d.flag.by.id is string
+                  && d.flag.at is number
+                  /* A new flag is signed by the caller; a wipe merged over
+                     someone else's standing flag leaves it as it was. */
+                  && (d.flag.by.id == request.auth.uid
+                      || (resource != null && resource.data.get('flag', null) == d.flag))));
+    }
+
     /* A NOTE SHARED WITH COLLEAGUES (Planner rework, Sep 2026). Signed by
        the caller and stamped with this write's time; limits match
        src/features/planner/notes/team-share.ts and notes/types.ts. */
@@ -1685,6 +1711,24 @@ service cloud.firestore {
       //
       // Entries are not editable after the fact — an accountability log that
       // can be rewritten is not one — but a manager can delete a mistake.
+      /*
+       * MACHINE CARE (Relay, Sep 2026) -- one document per machine: when it
+       * was last wiped and deep cleaned, by whom, and a flag. Written from
+       * the Floor Map's care sheet by anyone who works at the studio; a wipe
+       * is also appended to upkeepLog below, which Operations reads. A flag
+       * is a note to the floor, never a roster status change.
+       */
+      match /machineCare/{machineId} {
+        allow read: if isAuthenticated();
+
+        allow create, update: if isAuthenticated()
+                              && isAnyAuthenticatedTrainer()
+                              && writesForStudio(studioId)
+                              && machineCareValid(request.resource.data, machineId);
+
+        allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
+      }
+
       match /upkeepLog/{entryId} {
         allow read: if isAuthenticated();
         allow create: if isAuthenticated() && isAnyAuthenticatedTrainer()

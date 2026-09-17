@@ -67,6 +67,7 @@ import { isOnJob, isUpForGrabs, jobTopic } from "../planner/jobs/jobs";
 import { GlanceBand, type GlanceCounts } from "../planner/GlanceBand";
 import { NextUpQueue } from "../planner/relay/NextUpQueue";
 import { ShiftRings } from "../planner/relay/ShiftRings";
+import { FloorMap } from "../planner/relay/FloorMap";
 import { publishPulse, pulseEvents } from "../planner/relay/pulse";
 import { leadsHere } from "../planner/leads";
 import { useRelayMaybe } from "../planner/relay/RelayContext";
@@ -393,6 +394,8 @@ export function StudioHubView({
             onAssign={canAssign ? setAssignGroup : undefined}
           />
         )}
+
+        {relay && <FloorMap rows={shiftRows} actions={actions} />}
 
         <nav className="sh__chips" aria-label="Filter the board" id="planner-board">
           {TOPICS.map((t) => (

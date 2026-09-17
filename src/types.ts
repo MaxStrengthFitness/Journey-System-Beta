@@ -1643,6 +1643,8 @@ export interface Studio {
    * or malformed fields fall back to 5:30 / 10:00 / 16:00 / 20:00.
    */
   shiftHours?: { open?: string; mid?: string; closing?: string; close?: string };
+  /** Relay: how often a machine wants a deep clean, for the Floor Map's bar. Default 14. */
+  deepCleanIntervalDays?: number;
   /** MindBody Site ID for external API synchronization */
   mindbodySiteId?: string;
   /** MindBody Location ID for location-specific filtering when site IDs are shared */
