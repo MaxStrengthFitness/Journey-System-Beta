@@ -83,6 +83,7 @@ import {
   peekLiveSessionId,
 } from "./lib/live-session";
 import { afterOverlayClose } from "./lib/scroll-lock";
+import { installShakeUndoGuard } from "./lib/shake-undo";
 import { useToast } from "./contexts/ToastContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import AccessRequestView from "./components/AccessRequestView";
@@ -613,6 +614,19 @@ export default function AppContent({
    *  - It sets the authentication flags exactly as the picker's own
    *    onSelectTrainer does, so it grants nothing the manual path would not.
    */
+  /**
+   * SHAKE TO UNDO, off (Sep 17 2026).
+   *
+   * An iPad carried across the floor gets read as a shake, and iOS puts up
+   * "Undo Typing" over whatever the trainer was doing — one tap from rolling
+   * back the weight, the note or the name they last typed. The alert belongs
+   * to iOS and a web page cannot suppress it, but it can refuse the undo when
+   * it is tapped, which is what this does. Installs on iPads only, so Cmd+Z
+   * still works on a studio PC. See src/lib/shake-undo.ts; the complete fix is
+   * Settings -> Accessibility -> Touch -> Shake to Undo, off, on each iPad.
+   */
+  useEffect(() => installShakeUndoGuard(), []);
+
   useEffect(() => {
     if (activeStudioId || isChangingStudio) return;
     if (!authTrainer || studios.length === 0) return;
