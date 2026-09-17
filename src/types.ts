@@ -1710,19 +1710,14 @@ export interface HubAnnouncement {
 }
 
 export type View =
-  | "trainers"
   | "clients"
-  | "machines"
   | "workouts"
   | "calendar"
   | "trainer-hub"
-  | "dashboard"
   | "profile"
-  | "chart"
   | "progress-report"
   | "trainer-profile"
   | "consultation-wizard"
-  | "machine-knowledge"
   | "machine-anatomy"
   /* The MSF Academy, its own tab since the Wiki Redesign (Sep 2026). It used
      to be a pane rendered inside "machine-anatomy". */
@@ -1734,8 +1729,7 @@ export type View =
   | "client-directory"
   | "chart-importer"
   | "admin-dashboard"
-  | "franchise-dashboard"
-  | "mindbody";
+  | "franchise-dashboard";
 
 export interface AuditLogEntry {
   id?: string;

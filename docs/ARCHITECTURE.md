@@ -272,7 +272,7 @@ Every screen either prepares a session, records one, or reads what sessions prod
 
 ### 2.7 Dead ends and duplicates (connect or delete — invariant 11)
 
-- Six `View` ids never routed: `trainers`, `machines`, `dashboard`, `chart`, `machine-knowledge`, `mindbody`.
+- ~~Six `View` ids never routed: `trainers`, `machines`, `dashboard`, `chart`, `machine-knowledge`, `mindbody`~~ — removed from the `View` union in the beta-prep trim (Sep 17 2026), with the two `currentView === "dashboard"` checks in `AppContent` that nothing could ever satisfy. The union is 16 live ids.
 - ~~`history` (legacy `ClientHistoryView`) still routed from the Hub~~ — deleted in the beta-prep trim (Sep 17 2026). The Hub's History button opens the profile at Activity Archive → Sessions. It also took with it a "Generate Mock Data" button that every trainer could see and that wrote eight fake sessions onto a real client, and one of the last two writers of the legacy `sessionNotes` collection (the other is `ConsultationWizard`).
 - `ClientProfileView`'s two hidden panes (`statistics_disabled`, `details_disabled`) with live handlers inside.
 - `handleTrainerLogin` in `AppContent` is defined and never called; a second identical `AccessRequestView` branch is unreachable.
