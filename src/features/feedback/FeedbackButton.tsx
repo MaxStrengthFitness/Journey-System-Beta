@@ -10,7 +10,6 @@
  * later is missing the only details that would have made it reproducible.
  */
 
-import React from "react";
 import { Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFeedback } from "./FeedbackProvider";

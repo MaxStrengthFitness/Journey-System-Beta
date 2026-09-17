@@ -14,8 +14,8 @@
  * different about THIS unit.
  */
 
-import React, { useMemo, useState } from "react";
-import { collection, doc, getDocs, serverTimestamp, setDoc, writeBatch } from "firebase/firestore";
+import { useMemo, useState } from "react";
+import { collection, doc, getDocs, serverTimestamp, writeBatch } from "firebase/firestore";
 import { Dumbbell, Sparkles, Wrench } from "lucide-react";
 import { auth, db } from "../../../firebase";
 import type { Studio, Trainer } from "../../../types";
@@ -31,7 +31,6 @@ import {
   AdminBadge,
   AdminButton,
   AdminEmpty,
-  AdminNotice,
   AdminPanel,
   AdminRow,
   AdminRows,

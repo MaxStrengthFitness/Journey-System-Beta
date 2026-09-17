@@ -2,19 +2,10 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   ChevronLeft,
   Dumbbell,
-  Settings,
-  X,
-  Plus,
-  ArrowRight,
-  TrendingUp,
-  History,
   Activity,
-  UserCircle,
-  Clock,
   AlertCircle,
   Star,
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
 import {
   collection,
   query,
@@ -28,27 +19,14 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { db, auth } from "../firebase";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
-  LineChart,
-  Line,
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
-  XAxis,
   AreaChart,
   Area,
 } from "recharts";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import {
   Client,
   Machine,
@@ -499,9 +477,6 @@ export function WorkoutChartGrid({
                 const totalRecords = Math.max(
                   clientObj?.sessionCount || 0,
                   sessions.length,
-                );
-                const globalIndexIdx = sessions.findIndex(
-                  (sess) => sess.id === session.id,
                 );
                 const sessionNum = totalRecords - sessions.length + idx + 1;
                 return (

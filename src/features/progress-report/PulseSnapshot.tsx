@@ -12,7 +12,6 @@
  * Three states, honestly: still reading; couldn't read (unknown, never
  * "none"); read — with a Pulse or without one.
  */
-import React from "react";
 import { HeartPulse } from "lucide-react";
 import {
   SubjectiveDashboard,

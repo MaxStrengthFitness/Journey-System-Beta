@@ -226,7 +226,6 @@ function Screen({ onStart = () => {}, last = lastSession as WorkoutSession | nul
       onClose={() => {}}
       machines={machines}
       routines={routines}
-      sessionNotes={[]}
       trainers={[trainer]}
     />
   );

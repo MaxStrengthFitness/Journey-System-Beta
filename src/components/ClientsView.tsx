@@ -15,8 +15,6 @@ import {
   where,
   limit,
   getDocs,
-  updateDoc,
-  doc,
 } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { queryStudioIds } from "../lib/tenancy";
@@ -36,7 +34,6 @@ import {
 import {
   safeToDate,
   getMillis,
-  isSessionValid,
   parseSessionDate,
 } from "../lib/utils";
 
@@ -55,14 +52,6 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { openProfileAt } from "../features/client-profile/profile-nav";
 
 /** Grid geometry. Row height is fixed so the NOW line can be placed in px. */
@@ -143,7 +132,6 @@ function DayStat({
 
 export function ClientsView({
   clients,
-  trainers,
   sortedTrainers,
   activeStudioId,
   onSelectClient,
@@ -157,7 +145,6 @@ export function ClientsView({
   onSubmit,
   authTrainer,
   searchTerm,
-  onSearchTermChange,
   rosterLoading = false,
 }: {
   clients: Client[];
@@ -514,20 +501,6 @@ export function ClientsView({
     return clients.find((c) => c.id && String(c.id).trim() === target) || null;
   };
 
-  const hasUnassignedAnywhereInGrid =
-    todaysSchedules.some(
-      (s) =>
-        !s.trainerName ||
-        s.trainerName.toLowerCase().includes("select") ||
-        s.trainerName === "",
-    ) ||
-    sessions.some(
-      (s) =>
-        s.status === "In-Progress" &&
-        (s as any).isUnassigned &&
-        isSessionValid(s),
-    ); // check for active unassigned sessions
-
   const getClientSessions = (client: Client) => {
     const clientName = `${client.firstName} ${client.lastName}`;
     const next = schedules
@@ -635,7 +608,6 @@ export function ClientsView({
     dateKey: calendarLabelKey(selectedDate),
   });
   const openTaskCount = Math.max(0, taskCounts.total - taskCounts.done);
-
 
   return (
     <motion.div

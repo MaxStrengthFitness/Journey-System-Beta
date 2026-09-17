@@ -7,7 +7,6 @@
  * drifted within a fortnight.
  */
 
-import React from "react";
 import {
   Users,
   Briefcase,

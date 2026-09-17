@@ -10,7 +10,7 @@
  * Read-only on purpose. A rail that let you edit notes in place would give the
  * studio two editors for the same record and, sooner or later, two answers.
  */
-import React, { useState } from "react";
+import { useState } from "react";
 import { ChevronDown, NotebookPen } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { JournalEntryCard } from "../journal/JournalEntryCard";

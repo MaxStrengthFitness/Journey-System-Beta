@@ -29,7 +29,7 @@
  * piece of feedback that would have made the leak visible on day one.
  */
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { Megaphone, Send, Users } from "lucide-react";
 import { db } from "../../../firebase";

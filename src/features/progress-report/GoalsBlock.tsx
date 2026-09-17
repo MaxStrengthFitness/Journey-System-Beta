@@ -6,7 +6,6 @@
  * and two or three checkpoints. The follow-up date is what the trainer
  * chases in 90 days — it is the retention hook.
  */
-import React from "react";
 import type { GoalOutcome, ReportGoals } from "../../types";
 import { GOAL_OUTCOME_LABELS } from "./steps";
 

@@ -1,6 +1,6 @@
 import { collection, query, where, getDocs, doc, writeBatch, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
-import { WorkoutSession, ExerciseLog, CurrentMachineMetric, Client } from '../types';
+import { WorkoutSession, ExerciseLog, CurrentMachineMetric } from '../types';
 
 /**
  * Robust one-time execution script to retroactively fix all legacy data.

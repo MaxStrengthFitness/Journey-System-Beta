@@ -21,7 +21,7 @@
  * would not be on clients or sessions.
  */
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query } from "firebase/firestore";
 import { Megaphone } from "lucide-react";
 import { db } from "../../../firebase";

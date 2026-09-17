@@ -39,7 +39,7 @@ export interface LegacyImportDeps {
 }
 
 export function useLegacyImport(deps: LegacyImportDeps) {
-  const { machines, activeStudioId, authTrainer } = deps;
+  const { activeStudioId, authTrainer } = deps;
 
   const [isLegacyImporting, setIsLegacyImporting] = useState(false);
   const [legacyStats, setLegacyStats] = useState<{

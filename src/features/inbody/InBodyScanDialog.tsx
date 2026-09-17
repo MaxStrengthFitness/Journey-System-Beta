@@ -8,7 +8,7 @@
  * a typo shows up here rather than on next quarter's trend line.
  */
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Scale, Trash2 } from "lucide-react";
 import {
   Dialog,

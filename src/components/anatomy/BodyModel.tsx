@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import Body, { type ExtendedBodyPart, type Slug } from "react-muscle-highlighter";
 import { MuscleId, toBodySlugs } from "../../types/machines";
 

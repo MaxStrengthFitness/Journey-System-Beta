@@ -14,7 +14,7 @@
  * removing follow features/inbody/access.ts, which mirrors firestore.rules.
  */
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { auth } from "../../firebase";

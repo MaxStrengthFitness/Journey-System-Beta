@@ -37,7 +37,7 @@
  * An empty log now says it is empty.
  */
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,

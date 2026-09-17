@@ -1,10 +1,8 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
-  collection,
   doc,
   updateDoc,
   deleteDoc,
-  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { Button } from "@/components/ui/button";
@@ -21,11 +19,8 @@ import {
 import {
   UserCog,
   Plus,
-  RefreshCcw,
   User,
   Trash2,
-  Link,
-  Trophy,
 } from "lucide-react";
 import { Trainer, Studio } from "../types";
 import { cn, getRoleColor, getRoleDisplayName } from "@/lib/utils";
@@ -43,16 +38,12 @@ interface Props {
 export function FranchiseTeamManagement({
   trainers,
   studios,
-  authTrainer,
   isAdmin,
-  activeStudioId,
 }: Props) {
   const { success: toastSuccess, error: toastError } = useToast();
   const [trainerSearchQuery, setTrainerSearchQuery] = useState("");
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
   const [trainerToDelete, setTrainerToDelete] = useState<Trainer | null>(null);
-  const [isSyncingAll, setIsSyncingAll] = useState(false);
-  const [syncingTrainerId, setSyncingTrainerId] = useState<string | null>(null);
 
   const [editingIcalId, setEditingIcalId] = useState<string | null>(null);
   const [newIcalUrl, setNewIcalUrl] = useState("");

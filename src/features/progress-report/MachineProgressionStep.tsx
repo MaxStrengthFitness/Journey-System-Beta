@@ -6,7 +6,7 @@
  * lets the trainer tick which rows the client sees. Rows are captured onto
  * the report at tick time so the printed copy never changes after the fact.
  */
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { TrendingDown, TrendingUp, Minus } from "lucide-react";
 import type { MachineProgression, MachineProgressionRow } from "../../types";
 

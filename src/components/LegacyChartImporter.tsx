@@ -1,30 +1,24 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Upload, 
-  X, 
   Maximize, 
   CheckCircle2, 
   AlertTriangle, 
   History, 
   FileText, 
   ArrowRight,
-  Edit2,
   Trash2,
-  Calendar,
-  User,
-  Activity,
   Dumbbell,
-  Copy,
   Plus,
   ArrowLeft
 } from 'lucide-react';
 import { Client, Machine, Trainer, WorkoutSession, ExerciseLog } from '../types';
-import { processLegacyChart, extractMachineSettingsFromImage, OCRMachineSetting, ValidationSession, ValidationLog, sanitizeImportedSessions, OCRResult } from '../services/geminiService';
+import { processLegacyChart, extractMachineSettingsFromImage, OCRMachineSetting, ValidationSession, sanitizeImportedSessions, OCRResult } from '../services/geminiService';
 import { db } from '../firebase';
 import { useActiveStudio } from '../ActiveStudioContext';
 import { useToast } from '../contexts/ToastContext';
-import { collection, writeBatch, doc, serverTimestamp, getDocs, query, where, increment } from 'firebase/firestore';
+import { collection, writeBatch, doc, serverTimestamp, increment } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -42,8 +36,6 @@ interface ImporterProps {
   initialClientId?: string;
   onComplete?: () => void;
 }
-
-
 
 const legacyMachineMap:Record<string, string>={
   "cx":"4 Way Neck",
@@ -321,25 +313,6 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
           if (l.id !== logId) return l;
           return { ...l, [field]: value };
         })
-      };
-    }));
-  };
-
-  const duplicateLog = (sessionId: string, logId: string) => {
-    setValidationSessions(prev => prev.map(s => {
-      if (s.id !== sessionId) return s;
-      const logToDup = s.machines.find(l => l.id === logId);
-      if (!logToDup) return s;
-      
-      const newLog = { 
-        ...logToDup, 
-        id: `v-log-dup-${Date.now()}-${Math.random()}`,
-        name: logToDup.name.includes('(Set 2)') ? logToDup.name : `${logToDup.name} (Set 2)`
-      };
-      
-      return {
-        ...s,
-        machines: [...s.machines, newLog]
       };
     }));
   };

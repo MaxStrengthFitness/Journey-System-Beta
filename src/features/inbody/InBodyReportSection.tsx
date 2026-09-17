@@ -11,7 +11,6 @@
  * MachineProgressionCard: white ink, translucent surfaces, the orange rule.
  */
 
-import React from "react";
 import { Scale } from "lucide-react";
 import { studioDayKeyOf, studioTodayKey } from "../../lib/studio-time";
 import { useInBodyScans } from "./useInBodyScans";

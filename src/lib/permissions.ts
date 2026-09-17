@@ -1,4 +1,4 @@
-import { Trainer, Studio, FranchiseNetwork, Client, UserRole } from "../types";
+import { Trainer, Studio, FranchiseNetwork, Client } from "../types";
 
 export type PermissionAction =
   | "view_all_studios"

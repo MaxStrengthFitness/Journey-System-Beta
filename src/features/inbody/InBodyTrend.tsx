@@ -8,7 +8,6 @@
  * `minSpan`, or 0.3 lb of noise would fill the whole box.
  */
 
-import React from "react";
 import { cn } from "../../lib/utils";
 import { formatMeasure, scanDateLabel, type MeasureKey, type TrendPoint } from "./scans";
 

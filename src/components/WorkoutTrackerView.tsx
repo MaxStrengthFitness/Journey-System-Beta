@@ -2,11 +2,9 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Search,
   Users,
-  Plus,
   AlertCircle,
   Trash2,
   ChevronRight,
-  Check,
   Sparkles,
   MessageSquare,
   Zap,
@@ -16,10 +14,6 @@ import {
   PlusCircle,
   History,
   Loader2,
-  Timer,
-  ClipboardPenLine,
-  Wrench,
-  TriangleAlert,
   HeartPulse,
   X,
 } from "lucide-react";
@@ -54,8 +48,6 @@ import {
   ExerciseLog,
   ClientMachineSetting,
   SessionType,
-  FocusRecord,
-  SessionNote,
   Routine,
   PreSessionCheckIn,
 } from "../types";
@@ -88,11 +80,6 @@ const LOG_WRITE_MAX_WAIT_MS = 2500;
 /** The soft-lock heartbeat is a liveness signal; per-keystroke is pointless. */
 const HEARTBEAT_MIN_INTERVAL_MS = 30_000;
 import {
-  matchesRoutineLetter,
-  routineLetterOf,
-  findRoutineByLetter,
-} from "../lib/routine-utils";
-import {
   parseSessionDate,
   safeToDate,
   orderMachineSettings,
@@ -105,7 +92,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -258,7 +244,6 @@ function ClientSelectionDialog({
   );
 }
 
-
 function PerformanceEntryDialog({
   machine,
   currentWeight,
@@ -385,7 +370,6 @@ function PerformanceEntryDialog({
     prevW > 0 ? ((weightDelta / prevW) * 100).toFixed(1) : "0.0";
 
   const settings = machineSettings?.settings || {};
-  const hasSettings = Object.keys(settings).length > 0;
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -944,33 +928,6 @@ function toMillisOrNull(value: any): number | null {
   return isNaN(ms) ? null : ms;
 }
 
-/**
- * Tracker grid column widths (iPad-first).
- *
- * Every column is a fixed width and the FILLER between the History grid and
- * the input columns is the only flexible cell, so WEIGHT / REPS / QUALITY are
- * always pinned to the right edge — under the trainer's right thumb — no
- * matter how many history cells a machine has. The widths step up with the
- * viewport so the whole row fits without sideways scrolling on iPad portrait
- * (md), landscape (lg) and 12.9" landscape (xl).
- */
-const TRACKER_COL = {
-  seq: "w-12 shrink-0",
-  notes: "w-10 shrink-0",
-  exercise: "w-40 md:w-44 lg:w-56 xl:w-64 shrink-0",
-  /** Starting Weight / Last Weight Performed — reference only, centered. */
-  reference: "w-14 lg:w-16 shrink-0 text-center",
-  spacer: "w-3 shrink-0",
-  history: "w-12 lg:w-15 shrink-0",
-  /** Absorbs ALL leftover width; never capped. */
-  filler: "flex-1 min-w-0",
-  /** WEIGHT / REPS / QUALITY — the thumb columns. */
-  input: "w-16 lg:w-20 xl:w-24 shrink-0",
-} as const;
-
-/** The two OLDEST history columns hide on iPad portrait to keep the row on-screen. */
-const historyVisibility = (i: number) => (i >= 3 ? "hidden lg:flex" : "flex");
-
 export function WorkoutTrackerView({
   clientId,
   clients,
@@ -982,8 +939,6 @@ export function WorkoutTrackerView({
   showClientPicker,
   setShowClientPicker,
   onStartNewClientOnboarding,
-  setClientFormData,
-  onOpenInfo,
   authTrainer,
   isSyncing,
   setIsSyncing,
@@ -1014,7 +969,7 @@ export function WorkoutTrackerView({
   trainerDropdown?: React.ReactNode;
   onStudioClick?: () => void;
 }) {
-  const { activeStudioId: contextActiveStudioId, activeStudio } =
+  const { activeStudioId: contextActiveStudioId } =
     useActiveStudio();
   // Per-studio machine display order (Aug 2026) — same resolution chain
   // as the Client Profile Journey grid: studio override, else the shared
@@ -1035,7 +990,7 @@ export function WorkoutTrackerView({
   // unrostered machine yields undefined and falls back to the code default.
   const { byId: studioFloorById } = useStudioMachines(contextActiveStudioId);
 
-  const { error: toastError, success: toastSuccess } = useToast();
+  const { error: toastError } = useToast();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [logs, setLogs] = useState<Record<string, ExerciseLog>>({});
   const [routines, setRoutines] = useState<Routine[]>([]);
@@ -1049,26 +1004,10 @@ export function WorkoutTrackerView({
   // <thead> date columns AND the machine rows below can read the exact
   // same 5 sessions. Sessions is already sorted newest-first, so this is
   // simply the 5 most recent past sessions, excluding the in-progress one.
-  // IMPORTANT: this must stay above every early `return` in this component
-  // (Rules of Hooks) — it was previously declared right before the main
-  // JSX return, after several conditional returns, which crashed with
-  // "Rendered more hooks than during the previous render" the first time a
-  // render's hook count differed (e.g. transitioning from no-client to
-  // client-selected). Fixed Aug 29 by moving it here, below the sessions/
-  // currentSession state it reads.
-  const recentSessions = useMemo(
-    () =>
-      sessions
-        .filter((s) => (currentSession ? s.id !== currentSession.id : true))
-        .slice(0, 5),
-    [sessions, currentSession],
-  );
   const [activeMachineIds, setActiveMachineIds] = useState<string[]>([]);
   const [clientMachineSettings, setClientMachineSettings] = useState<
     Record<string, ClientMachineSetting>
   >({});
-  const [focusRecords, setFocusRecords] = useState<FocusRecord[]>([]);
-  const [sessionNotes, setSessionNotes] = useState<SessionNote[]>([]);
   const [currentSessionNotes, setCurrentSessionNotes] = useState<string>("");
 
   /**
@@ -1108,8 +1047,6 @@ export function WorkoutTrackerView({
 
   /* Mirror of `logs` for the write path, kept in sync below. */
   const logsRef = React.useRef<Record<string, ExerciseLog>>({});
-
-  const [isEditingRoutine, setIsEditingRoutine] = useState(false);
   const [showRoutinePicker, setShowRoutinePicker] = useState(false);
   // Which machine the unified sheet is open on. One piece of state, because
   // there is now one sheet: it used to be two (settings, notes) and a
@@ -1159,21 +1096,9 @@ export function WorkoutTrackerView({
   }, [editingWeightMachineId, clientMachineSettings, logs]);
   const [isStaticHoldOverride, setIsStaticHoldOverride] = useState(false);
   const [historyMachineId, setHistoryMachineId] = useState<string | null>(null);
-  const [isSettingUpRoutine, setIsSettingUpRoutine] = useState(false);
   const [showAllMachines, setShowAllMachines] = useState(false);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
-  const [lastRoutineLogs, setLastRoutineLogs] = useState<
-    Record<string, ExerciseLog>
-  >({});
   const [isPreSessionMode, setIsPreSessionMode] = useState(false);
-  const [isAdjustingProtocol, setIsAdjustingProtocol] = useState(false);
-  const [adjustmentNote, setAdjustmentNote] = useState("");
-  const [adjustmentScope, setAdjustmentScope] = useState<"once" | "permanent">(
-    "once",
-  );
-  const [adjustedMachineIds, setAdjustedMachineIds] = useState<string[]>([]);
-  const [preSessionSelectedRoutine, setPreSessionSelectedRoutine] =
-    useState<RoutineType>("A");
   const [targetRoutine, setTargetRoutine] = useState<Routine | null>(null);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -1414,10 +1339,6 @@ export function WorkoutTrackerView({
     );
   };
 
-  const handleSaveSessionMachineIds = (newIds: string[]) => {
-    applySessionMachineIds(newIds);
-  };
-
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
@@ -1529,16 +1450,6 @@ export function WorkoutTrackerView({
         where("clientId", "==", clientId),
       );
 
-      const notesQuery = query(
-        collection(db, "sessionNotes"),
-        where("clientId", "==", clientId),
-      );
-
-      const focusQuery = query(
-        collection(db, "focusRecords"),
-        where("clientId", "==", clientId),
-      );
-
       const unsubscribeSessions = onSnapshot(
         sessionsQuery,
         async (snapshot) => {
@@ -1598,38 +1509,10 @@ export function WorkoutTrackerView({
         },
       );
 
-      const unsubscribeNotes = onSnapshot(
-        notesQuery,
-        (snapshot) => {
-          const notesData = snapshot.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as SessionNote,
-          );
-          setSessionNotes(notesData);
-        },
-        (error) => {
-          handleFirestoreError(error, OperationType.GET, "sessionNotes");
-        },
-      );
-
-      const unsubscribeFocus = onSnapshot(
-        focusQuery,
-        (snapshot) => {
-          const focusData = snapshot.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as FocusRecord,
-          );
-          setFocusRecords(focusData);
-        },
-        (error) => {
-          handleFirestoreError(error, OperationType.GET, "focusRecords");
-        },
-      );
-
       return () => {
         unsubscribeSettings();
         unsubscribeRoutines();
         unsubscribeSessions();
-        unsubscribeNotes();
-        unsubscribeFocus();
       };
     }
   }, [clientId, user?.uid, clients]);
@@ -2487,9 +2370,6 @@ export function WorkoutTrackerView({
     setSelectedClientId(null);
     setView("clients");
   };
-
-  const [selectedSessionType, setSelectedSessionType] =
-    useState<SessionType>("Standard");
   const [editingWeightSide, setEditingWeightSide] = useState<
     "Left" | "Right" | undefined
   >(undefined);
@@ -2726,25 +2606,6 @@ export function WorkoutTrackerView({
     }
   };
 
-  const toggleMachine = async (machineId: string) => {
-    if (currentSession) return; // Disable during active session
-
-    const newActiveIds = activeMachineIds.includes(machineId)
-      ? activeMachineIds.filter((id) => id !== machineId)
-      : [...activeMachineIds, machineId];
-
-    setActiveMachineIds(newActiveIds);
-  };
-
-  const cancelActiveSession = async () => {
-    if (!currentSession) {
-      setSelectedClientId(null);
-      setView("clients");
-      return;
-    }
-    setShowCancelConfirmation(true);
-  };
-
   const [isDeletingSession, setIsDeletingSession] = useState(false);
 
   const confirmScrapSession = async () => {
@@ -2762,18 +2623,6 @@ export function WorkoutTrackerView({
     } finally {
       setIsDeletingSession(false);
     }
-  };
-
-  const getSuggestedWeight = (machine: Machine, client: Client) => {
-    // Basic safety baseline: 20% of body weight as safe start if no history exists
-    if (client.weight) {
-      const bw = parseFloat(client.weight);
-      if (!isNaN(bw)) {
-        return Math.round(bw * 0.2).toString();
-      }
-    }
-
-    return "0";
   };
 
   /* ------------------------------------------------------------------ *
@@ -3207,11 +3056,6 @@ export function WorkoutTrackerView({
   }
 
   if (screen === "briefing" && selectedClient) {
-    const completedSessionsCount = sessions.filter(
-      (s) => s.status === "Completed",
-    ).length;
-    const totalSessionsCount = sessions.length;
-    const hasRoutines = routines.length > 0;
 
     const shouldShowWizard =
       selectedClient.requiresConsultation === true &&
@@ -3222,17 +3066,6 @@ export function WorkoutTrackerView({
         <ConsultationSetupWizard
           clientName={clientFirstName(selectedClient)}
           onComplete={async (setupData) => {
-            // setupData.routine is [{name: 'Leg Press', ...}]
-            const machineNames = setupData.routine.map((r: any) => r.name);
-            const customMachineIds = machineNames
-              .map((name: string) => {
-                const m = machines.find(
-                  (mac) => mac.name === name || mac.fullName === name,
-                );
-                return m?.id;
-              })
-              .filter(Boolean) as string[];
-
             // Optional: update client with gender/age setup
             await updateDoc(doc(db, "clients", selectedClient.id!), {
               gender: setupData.gender || selectedClient.gender,
@@ -3290,8 +3123,6 @@ export function WorkoutTrackerView({
         }}
         machines={machines}
         routines={routines}
-        focusRecords={focusRecords}
-        sessionNotes={sessionNotes}
         trainers={trainers}
         logs={
           Object.values(logs).filter(
@@ -3305,44 +3136,6 @@ export function WorkoutTrackerView({
       />
     );
   }
-
-  const clientNameDisplay = selectedClient
-    ? clientDisplayName(selectedClient)
-    : "Open Session";
-  const lastSession = sessions.length > 0 ? sessions[0] : null;
-  const previousSession = sessions.length > 1 ? sessions[1] : null;
-
-  // Suggested routine from targetRoutine state
-  const getSuggestedType = (rt: Routine | null): "A" | "B" | "Free" =>
-    routineLetterOf(rt) ?? (rt ? "Free" : "A");
-
-  const suggestedRoutineType = (() => {
-    if (routines.length === 0) return "A";
-    if (routines.length === 1)
-      return (
-        matchesRoutineLetter(routines[0], "B") ? "B" : "A"
-      ) as RoutineType;
-
-    // If we have both, alternate based on last session
-    if (!lastSession || !lastSession.routineId) return "A";
-
-    const lastR = routines.find((r) => r.id === lastSession.routineId);
-    if (!lastR) return "A";
-
-    return matchesRoutineLetter(lastR, "A") ? "B" : "A";
-  })();
-  const isRoutineBActive = selectedClient?.isRoutineBActive || false;
-
-  // Check for rest days (3 days recommended)
-  const daysSinceLastSession = lastSession?.date
-    ? Math.floor(
-        (new Date().getTime() - parseSessionDate(lastSession.date)) /
-          (1000 * 60 * 60 * 24),
-      )
-    : null;
-  const needsRest = daysSinceLastSession !== null && daysSinceLastSession < 3;
-
-  const hasActiveHeader = !!(selectedClient || currentSession);
 
   return (
     <motion.div

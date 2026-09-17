@@ -10,7 +10,7 @@
  * Phase 1. What is left here is the three streams and the props.
  */
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query } from "firebase/firestore";
 import { db } from "../firebase";
 import type {

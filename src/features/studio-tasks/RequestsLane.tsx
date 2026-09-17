@@ -54,7 +54,6 @@ import {
   REQUEST_KIND_HINT,
   REQUEST_KIND_LABEL,
   REQUEST_REACTIONS,
-  resolveRequest,
   setRequestClaim,
   toggleRequestReaction,
   type ExpiryChoice,

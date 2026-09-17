@@ -1,7 +1,4 @@
-import React, { useState, useEffect } from "react";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "../firebase";
-import { hashPin } from "../lib/auth-utils";
+import { useState, useEffect } from "react";
 import { authedFetch } from "../lib/authed-fetch";
 import { generateSearchTokens } from "@/lib/utils";
 import { Trainer, Studio, UserRole } from "../types";

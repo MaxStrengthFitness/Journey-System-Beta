@@ -28,7 +28,7 @@
  *      passed in, so three sections of journal UI cost one set of Firestore
  *      listeners rather than three.
  */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Crosshair,
   Heart,

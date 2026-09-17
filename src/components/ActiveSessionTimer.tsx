@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from "react";
+import { useState, useEffect, memo } from "react";
 import { Play, Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
 

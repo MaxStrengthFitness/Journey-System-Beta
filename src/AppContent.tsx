@@ -45,7 +45,6 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import {
   collection,
-  addDoc,
   updateDoc,
   deleteDoc,
   doc,
@@ -53,7 +52,6 @@ import {
   setDoc,
   getDocs,
   getDoc,
-  Timestamp,
 } from "firebase/firestore";
 import {
   GoogleAuthProvider,
@@ -69,7 +67,6 @@ import {
   Client,
   View,
   Machine,
-  TrainerFocus,
   Studio,
   FranchiseNetwork,
 } from "./types";
@@ -523,7 +520,6 @@ export const getMachineImageUrl = (machineId?: string): string => {
 
 import { useActiveStudio } from "./ActiveStudioContext";
 
-
 import { useAutoSync } from "./features/admin/useAutoSync";
 import { useTrainers } from "./hooks/useTrainers";
 import { useStudios } from "./hooks/useStudios";
@@ -864,7 +860,6 @@ export default function AppContent({
     submitClientFormData,
     updateClientSessions,
     handleDeleteClient,
-    isMutating,
   } = useClientMutations(
     authTrainer,
     activeStudioId,
@@ -1212,22 +1207,6 @@ export default function AppContent({
       }
     }
   }, [trainers.length, authTrainer?.id, user?.email, tokenRole]);
-
-  const handleTrainerLogin = (trainer: Trainer) => {
-    // Admin Override: If logged in as claims admin, elevate profile role
-    const isClaimsAdmin =
-      tokenRole === "Admin" ||
-      tokenRole === "Founder" ||
-      tokenRole === "Overseer";
-    if (
-      isClaimsAdmin &&
-      (trainer.role === "Trainer" || trainer.role === "LifeTransformer")
-    ) {
-      trainer.role = "Admin";
-    }
-    setAuthTrainer(trainer);
-    localStorage.setItem("max_strength_trainer_id", trainer.id!);
-  };
 
   const handleTrainerLock = () => {
     setAuthTrainer(null);

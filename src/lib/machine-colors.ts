@@ -1,4 +1,3 @@
-import { cn } from "./utils";
 
 type MovementCategory = "Neck" | "Push" | "Pull" | "Core" | "Lower Body";
 

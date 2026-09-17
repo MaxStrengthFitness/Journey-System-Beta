@@ -4,7 +4,6 @@
  * Demoted to a sidebar card: it is a reference shelf, not a daily read, and it
  * was previously competing for vertical space with the timeline.
  */
-import React from "react";
 import { FileText, HeartPulse, Plus, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { ProgressReport } from "../../types";

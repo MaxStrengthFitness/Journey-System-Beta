@@ -19,7 +19,7 @@
  * placeholder rather than being quietly implied by the button that exists.
  */
 
-import React, { useRef } from "react";
+import { useRef } from "react";
 import {
   Database,
   Download,

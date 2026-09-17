@@ -7,10 +7,10 @@
  * check.
  */
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { History, Sparkles } from "lucide-react";
-import { auth, db } from "../../../firebase";
+import { db } from "../../../firebase";
 import type { Trainer } from "../../../types";
 import { studioDateKey } from "../../../lib/studio-time";
 import { useToast } from "../../../contexts/ToastContext";

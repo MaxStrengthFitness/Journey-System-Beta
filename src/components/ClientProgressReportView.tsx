@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
-  TrendingUp,
   CheckCircle2,
   ArrowLeft,
   Calendar,
@@ -8,24 +7,18 @@ import {
   Target,
   Printer,
   Mail,
-  ChevronRight,
   Award,
-  ChevronDown,
   LayoutGrid,
   FileText,
   User,
   Quote,
-  Flame,
-  Binary,
   Map as MapIcon,
-  Crosshair,
   Dumbbell,
-  Info,
   Search,
   ShieldAlert,
   Activity,
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import {
   collection,
   addDoc,
@@ -46,22 +39,11 @@ import {
   Trainer,
   Machine,
   ProgressReport,
-  ExerciseLog,
 } from "../types";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,

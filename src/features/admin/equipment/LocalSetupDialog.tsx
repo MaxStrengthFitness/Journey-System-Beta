@@ -11,7 +11,7 @@
  * value is not stored, because storing it would silently freeze that field.
  */
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../../../firebase";
 import type { MachineCatalogEntry, StudioMachineRosterEntry } from "../../../types/machines";

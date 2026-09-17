@@ -1,4 +1,3 @@
-import React from "react";
 import { Dumbbell, Info } from "lucide-react";
 import { AdminMachineCreator } from "./AdminMachineCreator";
 import {

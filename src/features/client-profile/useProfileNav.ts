@@ -20,7 +20,6 @@ import {
   writeStoredLocation,
   type ClinicalView,
   type ProfileLocation,
-  type ProfileNavAction,
   type ProfileTab,
   type ProgrammingView,
 } from "./profile-nav";
