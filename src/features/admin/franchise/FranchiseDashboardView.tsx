@@ -12,24 +12,24 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../../../firebase";
 import type {
   Client,
   FranchiseNetwork,
   HubAnnouncement,
   Studio,
   Trainer,
-} from "../types";
-import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
-import { FranchiseHub } from "../features/admin/franchise/FranchiseHub";
-import { AnnouncementComposer } from "../features/admin/announcements/AnnouncementComposer";
+} from "../../../types";
+import { OperationType, handleFirestoreError } from "../../../lib/firestore-errors";
+import { FranchiseHub } from "./FranchiseHub";
+import { AnnouncementComposer } from "../announcements/AnnouncementComposer";
 import {
   millis,
   type AnnouncementScope,
   type NetworkOption,
-} from "../features/admin/announcements/audience";
+} from "../announcements/audience";
 import { FranchiseTeamManagement } from "./FranchiseTeamManagement";
-import "../features/admin/admin.css";
+import "../admin.css";
 
 interface FranchiseDashboardViewProps {
   authTrainer: Trainer;

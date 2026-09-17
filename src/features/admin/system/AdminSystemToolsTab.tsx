@@ -29,8 +29,8 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { httpsCallable } from "firebase/functions";
-import { functions } from "../firebase";
-import { useToast } from "../contexts/ToastContext";
+import { functions } from "../../../firebase";
+import { useToast } from "../../../contexts/ToastContext";
 import {
   AdminButton,
   AdminHeader,
@@ -38,7 +38,7 @@ import {
   AdminRow,
   AdminRows,
   AdminScreen,
-} from "../features/admin/primitives";
+} from "../primitives";
 
 export interface AdminSystemToolsTabProps {
   onRestoreMachines?: () => void;

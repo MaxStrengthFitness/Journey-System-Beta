@@ -9,7 +9,7 @@
  *
  * Both are maintained at the moment a completed session is written — finishing
  * a live session (lib/sync-utils.ts) and the legacy CSV import
- * (components/LegacyChartImporter.tsx) — and unwound when a session is deleted
+ * (features/admin/import/LegacyChartImporter.tsx) — and unwound when a session is deleted
  * from the History tab. Everything in this file is PURE: it takes plain data
  * and returns the Firestore update object. The callers add `increment()` /
  * `serverTimestamp()` through the small `FieldOps` seam so the maths here can

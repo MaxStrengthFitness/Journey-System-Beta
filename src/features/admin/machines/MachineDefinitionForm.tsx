@@ -25,8 +25,8 @@ import {
   MuscleId,
   TurnaroundRule,
   settingFieldKey,
-} from "../../types/machines";
-import { MuscleSelector } from "../anatomy";
+} from "../../../types/machines";
+import { MuscleSelector } from "../../../components/anatomy";
 
 /**
  * MACHINE DEFINITION FORM

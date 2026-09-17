@@ -193,9 +193,9 @@ Seventeen `View` values are routed. Rank is the floor-loop rank from §1.4 the s
 | `learning` / `machine-anatomy` / `academy` | **Learning** (`features/learning/LearningView.tsx` → LearningHome, `features/catalog/CatalogWikiView`, `features/academy/AcademyWikiView`) | 4 | Front page and one search; the Catalog (the studio's floor, all MSF machines, notes, tips, playbook, comments); the Academy (generated corpus, lazy chunks) | `machines`, `studios/{s}/roster`, `machineNotes`, `playbook`, `wiki`, `comments` (per README); `studioMachineSettings` via its hook | the same studio paths (per README) | each other |
 | `trainer-profile` | **Trainer profile** (`features/trainer-profile/TrainerProfileView.tsx`) | 4 | Coaching-load rollups, about, studio access, Kaizen Roster, upcoming and recently coached | live `trainers` doc; `sessions` by trainer (per README) | `trainers/{uid}.kaizenRoster`, bio and certifications via `EditTrainerModal` (per README) | unverified |
 | `trainer-hub` | **Trainer settings** (`features/settings/TrainerSettingsView.tsx`) | 4 | The gear-icon settings screen (bug report, the little that is left after the RBAC teardown) | unverified | unverified | unverified |
-| `chart-importer` | **Legacy chart importer** (`components/LegacyChartImporter.tsx`) | 4 | CSV / chart import of a client's FileMaker history | unverified | session history and `client.trainerTally` (per README) | profile or clients |
-| `admin-dashboard` | **Operations dashboard** (`components/AdminDashboardView.tsx`, a pure tab router) | 4 | Fourteen tabs in three groups (§2.5). Also renders with no active studio selected | none in the shell; tab components not staged | via props: `studios` update, `clients` update, refresh reads, the demo-client seeder (`clients`, `routines`, `sessions`, `exerciseLogs`), machine restore (`machines`), the wipe | profile, studio-tasks |
-| `franchise-dashboard` | **Franchise dashboard** (`components/FranchiseDashboardView.tsx`) | 4 | Network-level view for owners and admins | unverified | unverified | none |
+| `chart-importer` | **Legacy chart importer** (`features/admin/import/LegacyChartImporter.tsx`) | 4 | CSV / chart import of a client's FileMaker history | unverified | session history and `client.trainerTally` (per README) | profile or clients |
+| `admin-dashboard` | **Operations dashboard** (`features/admin/AdminDashboardView.tsx`, a pure tab router) | 4 | Fourteen tabs in three groups (§2.5). Also renders with no active studio selected | none in the shell; tab components not staged | via props: `studios` update, `clients` update, refresh reads, the demo-client seeder (`clients`, `routines`, `sessions`, `exerciseLogs`), machine restore (`machines`), the wipe | profile, studio-tasks |
+| `franchise-dashboard` | **Franchise dashboard** (`features/admin/franchise/FranchiseDashboardView.tsx`) | 4 | Network-level view for owners and admins | unverified | unverified | none |
 
 **Declared in `View` but never routed** (nothing renders them; `dashboard` appears only in a className test and a no-op style ternary): `trainers`, `machines`, `dashboard`, `chart`, `machine-knowledge`, `mindbody`. Delete the six ids (§2.7).
 
@@ -240,15 +240,15 @@ Reaching it: the App Mode toggle (studio leaders and above) or the studio picker
 | | Studios | `features/admin/studios` | everyone |
 | | Staff & Roles | `features/admin/staff` | franchise owner or admin |
 | | Clients | `features/admin/clients` | everyone |
-| | Catalog | `components/machines/AdminMachinesTab` | franchise owner or admin |
-| | Routines | `components/routines/AdminRoutineTemplatesTab` | everyone (authoring gated inside) |
+| | Catalog | `features/admin/machines/AdminMachinesTab` | franchise owner or admin |
+| | Routines | `features/admin/routines/AdminRoutineTemplatesTab` | everyone (authoring gated inside) |
 | | Insights | `features/admin/insights` | everyone |
 | | Exports | `features/admin-data` | franchise owner or admin |
 | Communications | Announcements | `features/admin/announcements` | franchise owner or admin |
 | System Backend | Mindbody | `features/admin/mindbody` | admin |
-| | Limbo | `components/AdminLimboQueue` | admin |
+| | Limbo | `features/admin/limbo/AdminLimboQueue` | admin |
 | | Bug Reports | `features/admin/bugs` | admin |
-| | System Tools | `components/AdminSystemToolsTab` | admin |
+| | System Tools | `features/admin/system/AdminSystemToolsTab` | admin |
 
 "Retention" and "Integrations" tabs are gone (the first deleted, the second folded into Mindbody).
 

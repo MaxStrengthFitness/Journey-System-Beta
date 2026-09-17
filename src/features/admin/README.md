@@ -12,6 +12,36 @@ fragmented the first time.
 
 ---
 
+## Where each Operations tab lives
+
+Every Operations screen is in this folder since the beta-prep trim (Sep 17
+2026). Before it, eight of them still sat in the old `src/components/` folder,
+which made Operations look like two projects.
+
+| Tab (group) | Folder or file |
+| --- | --- |
+| The shell - the sidebar and which tab is showing | `AdminDashboardView.tsx` |
+| Overview | `AdminOverviewTab.tsx`, `overview.ts` |
+| Renewals | `renewals/` (the engine is `src/features/renewals/`) |
+| Delight queue | `src/features/ford/` (drawn by the shell) |
+| Studios | `studios/`, `equipment/`, `upkeep/` |
+| Staff & Roles | `staff/`, `provisional/` |
+| Clients | `clients/` |
+| Catalog | `machines/` |
+| Routines | `routines/` |
+| Insights | `insights/` |
+| Exports | `src/features/admin-data/` |
+| Announcements | `announcements/` |
+| Mindbody | `mindbody/`, `useAutoSync.ts`, `syncPolicy.ts` |
+| Limbo | `limbo/` |
+| Bug Reports | `bugs/` |
+| System Tools | `system/` |
+| Franchise dashboard (its own screen, not a tab) | `franchise/` |
+| Legacy chart importer (its own screen) | `import/` |
+
+The kit every tab composes: `primitives.tsx`, `formState.ts`,
+`useDirtyForm.ts`, `admin.css`, `admin.tokens.css`.
+
 ## The twelve, settled
 
 | Axis | Old state | House answer |

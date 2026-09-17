@@ -4,7 +4,7 @@ import {
   AdminHeader,
   AdminNotice,
   AdminScreen,
-} from "../../features/admin/primitives";
+} from "../primitives";
 
 /**
  * MACHINE CATALOG — the global default set every studio picks from.

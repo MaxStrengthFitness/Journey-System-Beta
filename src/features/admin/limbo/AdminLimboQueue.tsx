@@ -8,18 +8,18 @@ import {
   User,
   X,
 } from "lucide-react";
-import { Client, LimboEntry, Studio } from "../types";
+import { Client, LimboEntry, Studio } from "../../../types";
 import {
   dismissLimboEntry,
   fetchOpenLimboEntries,
   releaseLimboBooking,
   releaseLimboClient,
-} from "../lib/mindbody-limbo";
+} from "../../../lib/mindbody-limbo";
 import {
   wallClockToInstant,
   isValidTimeZone,
   DEFAULT_TIME_ZONE,
-} from "../lib/studio-time";
+} from "../../../lib/studio-time";
 import {
   AdminBadge,
   AdminButton,
@@ -29,7 +29,7 @@ import {
   AdminScreen,
   AdminSelect,
   ConfirmDialog,
-} from "../features/admin/primitives";
+} from "../primitives";
 
 interface Props {
   key?: any;

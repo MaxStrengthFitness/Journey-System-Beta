@@ -103,7 +103,7 @@ const CalendarView = lazy(() =>
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const LegacyChartImporter = lazy(() =>
-  import("./components/LegacyChartImporter").then((m) => ({
+  import("./features/admin/import/LegacyChartImporter").then((m) => ({
     default: m.LegacyChartImporter,
   })),
 );
@@ -145,13 +145,13 @@ const ConsultationWizard = lazy(() =>
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const AdminDashboardView = lazy(() =>
-  import("./components/AdminDashboardView").then((m) => ({
+  import("./features/admin/AdminDashboardView").then((m) => ({
     default: m.AdminDashboardView,
   })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const FranchiseDashboardView = lazy(() =>
-  import("./components/FranchiseDashboardView").then((m) => ({
+  import("./features/admin/franchise/FranchiseDashboardView").then((m) => ({
     default: m.FranchiseDashboardView,
   })),
 );

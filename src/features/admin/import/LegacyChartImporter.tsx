@@ -13,21 +13,21 @@ import {
   Plus,
   ArrowLeft
 } from 'lucide-react';
-import { Client, Machine, Trainer, WorkoutSession, ExerciseLog } from '../types';
-import { processLegacyChart, extractMachineSettingsFromImage, OCRMachineSetting, ValidationSession, sanitizeImportedSessions, OCRResult } from '../services/geminiService';
-import { db } from '../firebase';
-import { useActiveStudio } from '../ActiveStudioContext';
-import { useToast } from '../contexts/ToastContext';
+import { Client, Machine, Trainer, WorkoutSession, ExerciseLog } from '../../../types';
+import { processLegacyChart, extractMachineSettingsFromImage, OCRMachineSetting, ValidationSession, sanitizeImportedSessions, OCRResult } from '../../../services/geminiService';
+import { db } from '../../../firebase';
+import { useActiveStudio } from '../../../ActiveStudioContext';
+import { useToast } from '../../../contexts/ToastContext';
 import { collection, writeBatch, doc, serverTimestamp, increment } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { cn, parseSessionDate, parseMachineSettings } from '../lib/utils';
-import { planLegacyImport } from '../lib/legacy-import-utils';
-import { importedSessionsRollup } from '../lib/client-rollups';
-import { importedOutcome } from '../lib/set-outcome';
+import { cn, parseSessionDate, parseMachineSettings } from '../../../lib/utils';
+import { planLegacyImport } from '../../../lib/legacy-import-utils';
+import { importedSessionsRollup } from '../../../lib/client-rollups';
+import { importedOutcome } from '../../../lib/set-outcome';
 
 interface ImporterProps {
   clients: Client[];

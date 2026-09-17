@@ -26,7 +26,7 @@ import {
   OperationType,
   handleFirestoreError,
 } from "../../../lib/firestore-errors";
-import { StudioInventoryManager } from "../../../components/machines/StudioInventoryManager";
+import { StudioInventoryManager } from "../machines/StudioInventoryManager";
 import {
   AdminBadge,
   AdminButton,

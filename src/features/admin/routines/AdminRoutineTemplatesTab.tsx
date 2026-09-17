@@ -5,12 +5,12 @@ import {
 import {
   Building2, ClipboardList, Globe2, Pencil, Plus, Trash2, Upload,
 } from "lucide-react";
-import { auth, db } from "../../firebase";
-import { RoutinePreset, RoutinePresetTier, Studio, Trainer } from "../../types";
-import { useMachineCatalog } from "../../hooks/useMachineCatalog";
-import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
-import { canAuthorTier, normalizeRoutinePreset } from "../../lib/routine-templates";
-import { useToast } from "../../contexts/ToastContext";
+import { auth, db } from "../../../firebase";
+import { RoutinePreset, RoutinePresetTier, Studio, Trainer } from "../../../types";
+import { useMachineCatalog } from "../../../hooks/useMachineCatalog";
+import { OperationType, handleFirestoreError } from "../../../lib/firestore-errors";
+import { canAuthorTier, normalizeRoutinePreset } from "../../../lib/routine-templates";
+import { useToast } from "../../../contexts/ToastContext";
 import { RoutineTemplateForm, emptyRoutineTemplate } from "./RoutineTemplateForm";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -25,7 +25,7 @@ import {
   AdminRows,
   AdminScreen,
   AdminSelect,
-} from "../../features/admin/primitives";
+} from "../primitives";
 
 /**
  * ROUTINE TEMPLATES — the admin hub's programming section.

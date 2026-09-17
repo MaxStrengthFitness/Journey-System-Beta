@@ -1,27 +1,27 @@
 import React, { useState } from "react";
-import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, ScheduleEntry } from "../types";
+import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, ScheduleEntry } from "../../types";
 // Deprecated (Sep 2026 UI overhaul): the Retention route is unmounted. The
 // component file stays on disk in case it is revived; nothing imports it here.
 // import { RetentionDashboardView } from "./RetentionDashboardView";
-import { AdminLimboQueue } from "./AdminLimboQueue";
+import { AdminLimboQueue } from "./limbo/AdminLimboQueue";
 import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Database, CalendarClock, Gift } from "lucide-react";
 import { AdminRoutineTemplatesTab } from "./routines/AdminRoutineTemplatesTab";
 import { cn } from "@/lib/utils";
-import "../features/admin/admin.css";
+import "./admin.css";
 
 import { AdminMachinesTab } from "./machines/AdminMachinesTab";
-import { AdminDataReportsTab } from "../features/admin-data";
-import { AdminSystemToolsTab } from "./AdminSystemToolsTab";
-import { AdminOverviewTab } from "../features/admin/AdminOverviewTab";
-import { AdminStudiosTab } from "../features/admin/studios/AdminStudiosTab";
-import { AdminStaffTab } from "../features/admin/staff/AdminStaffTab";
-import { AdminClientsTab } from "../features/admin/clients/AdminClientsTab";
-import { AdminAnnouncementsTab } from "../features/admin/announcements/AdminAnnouncementsTab";
-import { AdminMindbodyTab } from "../features/admin/mindbody/AdminMindbodyTab";
-import { AdminBugReportsTab } from "../features/admin/bugs/AdminBugReportsTab";
-import { AdminInsightsTab } from "../features/admin/insights/AdminInsightsTab";
-import { AdminRenewalsTab } from "../features/admin/renewals/AdminRenewalsTab";
-import { DelightQueue } from "../features/ford/DelightQueue";
+import { AdminDataReportsTab } from "../admin-data";
+import { AdminSystemToolsTab } from "./system/AdminSystemToolsTab";
+import { AdminOverviewTab } from "./AdminOverviewTab";
+import { AdminStudiosTab } from "./studios/AdminStudiosTab";
+import { AdminStaffTab } from "./staff/AdminStaffTab";
+import { AdminClientsTab } from "./clients/AdminClientsTab";
+import { AdminAnnouncementsTab } from "./announcements/AdminAnnouncementsTab";
+import { AdminMindbodyTab } from "./mindbody/AdminMindbodyTab";
+import { AdminBugReportsTab } from "./bugs/AdminBugReportsTab";
+import { AdminInsightsTab } from "./insights/AdminInsightsTab";
+import { AdminRenewalsTab } from "./renewals/AdminRenewalsTab";
+import { DelightQueue } from "../ford/DelightQueue";
 
 interface Props {
   authTrainer: Trainer;

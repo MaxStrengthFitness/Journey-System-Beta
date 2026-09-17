@@ -24,8 +24,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { db, auth } from "../../firebase";
-import { isStandardSetMachine } from "../../features/admin/studios/registry";
+import { db, auth } from "../../../firebase";
+import { isStandardSetMachine } from "../studios/registry";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -39,11 +39,11 @@ import {
   Plus, Search, Loader2, Wrench, CheckCircle2, Sparkles, ShieldAlert,
   ArrowUpDown, GripVertical, RotateCcw, Check, X,
 } from "lucide-react";
-import { useStudioMachines } from "../../hooks/useStudioMachines";
-import { useToast } from "../../contexts/ToastContext";
+import { useStudioMachines } from "../../../hooks/useStudioMachines";
+import { useToast } from "../../../contexts/ToastContext";
 import {
   MachineDefinition, RosterStatus, studioMachineId,
-} from "../../types/machines";
+} from "../../../types/machines";
 import { MachineDefinitionForm, emptyMachineDefinition } from "./MachineDefinitionForm";
 
 /**

@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { RoutineBuilder } from "../../features/routine-builder";
-import type { Machine, RoutinePreset } from "../../types";
-import type { MachineCatalogEntry } from "../../types/machines";
+import { RoutineBuilder } from "../../routine-builder";
+import type { Machine, RoutinePreset } from "../../../types";
+import type { MachineCatalogEntry } from "../../../types/machines";
 
 /**
  * The routine template editor.

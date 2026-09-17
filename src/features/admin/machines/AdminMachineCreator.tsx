@@ -3,7 +3,7 @@ import {
   collectionGroup, doc, getCountFromServer, query, serverTimestamp,
   setDoc, updateDoc, where,
 } from "firebase/firestore";
-import { db, auth } from "../../firebase";
+import { db, auth } from "../../../firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -15,11 +15,11 @@ import {
 import {
   Plus, Search, Archive, Pencil, ShieldAlert, Loader2, RotateCcw,
 } from "lucide-react";
-import { useMachineCatalog } from "../../hooks/useMachineCatalog";
-import { useToast } from "../../contexts/ToastContext";
+import { useMachineCatalog } from "../../../hooks/useMachineCatalog";
+import { useToast } from "../../../contexts/ToastContext";
 import {
   MachineCatalogEntry, MachineDefinition,
-} from "../../types/machines";
+} from "../../../types/machines";
 import {
   MachineDefinitionForm,
   emptyMachineDefinition,

@@ -4,7 +4,7 @@ import {
   updateDoc,
   deleteDoc,
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../../../firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,10 +22,10 @@ import {
   User,
   Trash2,
 } from "lucide-react";
-import { Trainer, Studio } from "../types";
+import { Trainer, Studio } from "../../../types";
 import { cn, getRoleColor, getRoleDisplayName } from "@/lib/utils";
-import { DocumentIdMissingError, OperationType } from "../lib/firestore-errors";
-import { useToast } from "../contexts/ToastContext";
+import { DocumentIdMissingError, OperationType } from "../../../lib/firestore-errors";
+import { useToast } from "../../../contexts/ToastContext";
 
 interface Props {
   trainers: Trainer[];
