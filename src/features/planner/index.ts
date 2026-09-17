@@ -3,4 +3,4 @@
  * lazy-loads PlannerView from here. See README.md.
  */
 
-export { PlannerView, type PlannerTab, type PlannerViewProps } from "./PlannerView";
+export { PlannerView } from "./PlannerView";

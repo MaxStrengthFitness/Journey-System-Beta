@@ -8,17 +8,4 @@
  * into the first download.
  */
 
-export { LearningView, type LearningViewId, type LearningViewProps } from "./LearningView";
-export {
-  LEARNING_KIND_LABEL,
-  learningRefKey,
-  learningRefLabel,
-  learningSectionOf,
-  parseLearningRef,
-  refForWikiTarget,
-  sameLearningRef,
-  toStoredLearningRef,
-  type LearningRef,
-  type LearningRefKind,
-  type StoredLearningRef,
-} from "./ref";
+export { LearningView } from "./LearningView";

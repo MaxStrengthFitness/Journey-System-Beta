@@ -5,7 +5,5 @@
  * defined, and its header explains "capture now, tag at teardown".
  */
 export * from "./note-catalog";
-export { NoteCategoryChips, NoteCategoryIcon, categoryDotClass } from "./NoteCategoryChips";
-export { NotesCatalog, type NotesCatalogProps } from "./NotesCatalog";
-export { NoteSweep, type NoteSweepProps } from "./NoteSweep";
+export { NoteSweep } from "./NoteSweep";
 export { fileUnfiledEntry, discardUnfiledEntry } from "./file-unfiled";

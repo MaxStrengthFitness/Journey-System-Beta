@@ -4,6 +4,5 @@ export * from "./analytics";
 export * from "./pulse-trend";
 export * from "./insights";
 export * from "./report";
-export { useClinicalReport, type ClinicalReportState, type ReportData } from "./useClinicalReport";
-export { ClinicalDashboard, type ClinicalDashboardProps } from "./ClinicalDashboard";
-export { ClinicalReviewTab, RANGE_PRESETS, type ClinicalReviewTabProps } from "./ClinicalReviewTab";
+export { useClinicalReport } from "./useClinicalReport";
+export { ClinicalReviewTab } from "./ClinicalReviewTab";

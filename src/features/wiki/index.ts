@@ -21,15 +21,13 @@
 
 import "./wiki.css";
 
-export { WikiShell, type WikiCrumb, type WikiShellProps } from "./WikiShell";
+export { WikiShell, type WikiCrumb } from "./WikiShell";
 
 // The Learning tab's Catalog | Academy switch. AppContent imports this from
 // "./features/wiki/sections" directly, NOT from this barrel: the barrel pulls
 // the whole wiki (and wiki.css) into the first download.
 export {
   WikiSectionsProvider,
-  useWikiSections,
-  type WikiSectionTab,
   type WikiSectionsValue,
 } from "./sections";
 
@@ -41,8 +39,6 @@ export {
   WikiCues,
   WikiBlocks,
   WikiBadge,
-  type WikiArticleProps,
-  type WikiBadgeTone,
 } from "./WikiArticle";
 
 export {
@@ -50,7 +46,6 @@ export {
   InfoboxGroup,
   InfoboxRows,
   InfoboxMuscles,
-  type InfoboxProps,
 } from "./Infobox";
 
 export {
@@ -58,9 +53,7 @@ export {
   WikiContents,
   WikiGroup,
   WikiRow,
-  type WikiStat,
   type WikiContentsCard,
-  type WikiRowProps,
 } from "./WikiIndex";
 
 export {
@@ -68,82 +61,50 @@ export {
   WikiLinkCard,
   WikiChips,
   type WikiChip,
-  type WikiLinkCardProps,
 } from "./WikiLinks";
 
 export {
   WikiSearch,
   type WikiSearchGroup,
-  type WikiSearchItem,
-  type WikiSearchProps,
 } from "./WikiSearch";
 
 export {
-  ACCENTS,
   ACCENT_ICON,
-  ACADEMY_ACCENT,
-  accentVar,
-  accentFillVar,
   accentStyle,
   accentForPattern,
-  accentForAcademyCategory,
   accentForGroupKey,
   groupElementId,
   type WikiAccent,
-  type WikiIcon,
 } from "./categories";
 
 export {
   buildGlossaryMatcher,
   linkGlossary,
-  type GlossaryMatcher,
   type GlossaryTerm,
 } from "./glossary-links";
 
 /* ── the studio's own content ─────────────────────────────────────── */
 
 export {
-  PAGE_SECTIONS,
   PAGE_SECTION_LABEL,
-  WIKI_BLOCK_MAX,
-  WIKI_BODY_MAX,
-  WIKI_SUMMARY_MAX,
-  WIKI_TITLE_MAX,
-  isOverlayFor,
-  pagesInSection,
-  parseBlocks,
   readingMinutes,
   searchStudioWiki,
   serialiseBlocks,
-  targetDocId,
-  validateDraft,
   whenLabel,
   type StudioWikiDoc,
-  type StudioWikiDraft,
-  type StudioWikiHit,
-  type WikiBlock,
-  type WikiBlockKind,
-  type WikiDocKind,
-  type WikiDraftProblem,
-  type WikiPageSection,
-  type WikiTargetType,
 } from "./studio-wiki";
 
-export { useStudioWiki, type UseStudioWikiResult } from "./useStudioWiki";
+export { useStudioWiki } from "./useStudioWiki";
 
 export {
   saveStudioWikiDoc,
   retireStudioWikiDoc,
-  restoreStudioWikiDoc,
 } from "./studio-wiki-mutations";
 
 export {
   WikiEditor,
-  type WikiEditorProps,
-  type WikiEditorValues,
 } from "./WikiEditor";
 
 export {
   StudioWikiPanel,
-  type StudioWikiPanelProps,
 } from "./StudioWikiPanel";

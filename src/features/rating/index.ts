@@ -1,4 +1,4 @@
 export * from "./scales";
-export { Dial, type DialProps } from "./Dial";
-export { Loudness, LOUDNESS_LEVELS, type LoudnessProps } from "./Loudness";
+export { Dial } from "./Dial";
+export { Loudness } from "./Loudness";
 export { doseOf, readinessDial, regionDial } from "./session-reads";

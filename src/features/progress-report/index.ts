@@ -1,9 +1,9 @@
 export * from "./steps";
 export { ReportStepper, ReportStepNav } from "./ReportStepper";
-export { MachineProgressionStep, rowsFromHistory } from "./MachineProgressionStep";
+export { MachineProgressionStep } from "./MachineProgressionStep";
 export { GoalsBlock } from "./GoalsBlock";
 export { MachineProgressionCard, GoalsCard, FourPsCards } from "./ClientReportSections";
-export { FourPsStep, type PerformanceMatrix } from "./FourPsStep";
+export { FourPsStep } from "./FourPsStep";
 export { PulseSnapshot, type PulseSnapshotState } from "./PulseSnapshot";
 export * from "./four-ps";
 export { AccoladeCards, AccoladeSlotEditor, FocusHistoryPanel, FocusSnapshotCard } from "./AccoladeViews";
