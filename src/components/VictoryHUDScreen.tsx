@@ -18,7 +18,7 @@ import { safeToDate } from "../lib/utils";
 import { PulseQuickLogDialog } from "../features/subjective-report";
 import { FordSweep } from "../features/ford/FordSweep";
 import { useClientFord } from "../features/ford/useClientFord";
-import { NoteSweep, discardUnfiledEntry, fileUnfiledEntry, isUnfiled } from "../features/notes";
+import { NoteSweep, discardUnfiledEntry, fileUnfiledEntry, isUnfiled } from "../features/client-notes";
 import { Dial, DOSE_SCALE, Loudness } from "../features/rating";
 import { ArrowLeft, CalendarCheck2, CalendarX2, Check, HeartPulse, MessageSquareText, Star } from "lucide-react";
 import {

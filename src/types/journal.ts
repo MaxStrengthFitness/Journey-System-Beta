@@ -18,7 +18,7 @@
  * What KIND of thing this is. Drives the card's colour family and icon.
  *
  * The notes catalog (Sep 2026) files every kind under one of seven
- * categories — see `noteCategoryOf` in features/notes/note-catalog.ts, which
+ * categories — see `noteCategoryOf` in features/client-notes/note-catalog.ts, which
  * is the one place that mapping lives. No kind is ever removed: old entries
  * keep the kind they were written with and are mapped at read time.
  */
@@ -426,7 +426,7 @@ export const IMPORTANCE_META: Record<
  * one. Existing `general` entries render under "Preferences & other".
  *
  * The labels, icons and order the screens show live in
- * features/notes/note-catalog.ts; this list is only the kinds.
+ * features/client-notes/note-catalog.ts; this list is only the kinds.
  */
 export const COMPOSER_KINDS: JournalKind[] = [
   "coaching",

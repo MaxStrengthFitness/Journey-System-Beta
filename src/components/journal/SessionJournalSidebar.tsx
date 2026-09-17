@@ -55,9 +55,9 @@ import { JournalComposer } from "./JournalComposer";
 import { JournalEntryCard } from "./JournalEntryCard";
 import { FordQuickCapture } from "../../features/ford/FordQuickCapture";
 import { useClientFord } from "../../features/ford/useClientFord";
-import { NoteSweep } from "../../features/notes/NoteSweep";
-import { discardUnfiledEntry, fileUnfiledEntry } from "../../features/notes/file-unfiled";
-import { splitUnfiled } from "../../features/notes/note-catalog";
+import { NoteSweep } from "../../features/client-notes/NoteSweep";
+import { discardUnfiledEntry, fileUnfiledEntry } from "../../features/client-notes/file-unfiled";
+import { splitUnfiled } from "../../features/client-notes/note-catalog";
 import { PulseQuickLog } from "../../features/subjective-report";
 
 export interface SessionJournalSidebarProps {

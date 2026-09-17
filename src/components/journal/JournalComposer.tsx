@@ -25,7 +25,7 @@
  * the record alike, so a note feels the same wherever it is written — and
  * the button reads "Save — file later" until one is picked. An untagged save
  * writes `kind: "general"` and comes back as a card in the To-file tray
- * (`features/notes/NoteSweep`), where one tap files it. On the record the
+ * (`features/client-notes/NoteSweep`), where one tap files it. On the record the
  * trainer has time, so a quiet line says so.
  *
  * FORD / Life never writes a journal entry: `journalEntries` is readable by
@@ -50,13 +50,13 @@ import {
   NOTE_CATEGORY_META,
   type FilingCategory,
   type NoteCategory,
-} from "../../features/notes/note-catalog";
-import { NoteCategoryChips } from "../../features/notes/NoteCategoryChips";
+} from "../../features/client-notes/note-catalog";
+import { NoteCategoryChips } from "../../features/client-notes/NoteCategoryChips";
 import { Loudness } from "../../features/rating";
 import { FordQuickCapture } from "../../features/ford/FordQuickCapture";
 import type { FordAuthor } from "../../features/ford/ford-write";
 import type { FordOrigin } from "../../features/ford/types";
-import "../../features/notes/notes.css";
+import "../../features/client-notes/notes.css";
 
 const PLACEHOLDERS: Record<FilingCategory, string> = {
   coaching: "e.g. “Stop dumping the last two reps — cue ‘own the bottom’ at rep 8.”",

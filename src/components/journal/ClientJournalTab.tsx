@@ -8,7 +8,7 @@
  *                          history of every past focus.
  *   4. NOTES             — the category-first composer, then the catalog:
  *                          critical & pinned, search, seven category tiles,
- *                          and a shelf per category (features/notes).
+ *                          and a shelf per category (features/client-notes).
  *
  * SINCE THE PROFILE MERGE (Sep 2026) THIS IS NOT A TAB
  * ---------------------------------------------------
@@ -54,7 +54,7 @@ import { FocusBoard } from "./FocusBoard";
 import { JournalComposer } from "./JournalComposer";
 import { ProgressReportArchive } from "./ProgressReportArchive";
 import { ClientCheckInPanel } from "./ClientCheckInPanel";
-import { NotesCatalog } from "../../features/notes/NotesCatalog";
+import { NotesCatalog } from "../../features/client-notes/NotesCatalog";
 
 /** The areas, by id. */
 export type JournalAreaId = "progress-reports" | "check-in" | "focus" | "notes";

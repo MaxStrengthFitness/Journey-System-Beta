@@ -671,7 +671,7 @@ export function ClientDossier({
             >
               {/* Notes catalog round, Sep 2026: a category-first composer and
                   a catalog (tiles, shelves, search) instead of one feed. FORD /
-                  Life notes hand off to the Life section. See features/notes. */}
+                  Life notes hand off to the Life section. See features/client-notes. */}
               <ClientJournalTab
                 areas={["notes"]}
                 journal={journal}
