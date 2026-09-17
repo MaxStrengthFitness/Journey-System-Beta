@@ -1162,6 +1162,27 @@ export interface WorkoutSession {
   clientClinicalProfile?: string[];
   legacy_filemaker_id?: string;
   legacy_notes?: string;
+  /**
+   * EDITED AFTER THE FACT (history-editing round, Sep 17 2026). Present only
+   * on a session someone changed from the History tab — a set's numbers, a
+   * machine added or removed, the notes. `editedAt` is the mark the History
+   * tab reads to draw its "Edited" badge; the name is the LAST editor's, the
+   * count is every edit the session has had.
+   */
+  editedAt?: any;
+  editedById?: string | null;
+  editedByName?: string | null;
+  editedByInitials?: string | null;
+  editCount?: number;
+  /**
+   * A manually entered past session that DID increment the client's counters
+   * (sessionCount, completedSessions, the trainer tally, machineStats).
+   * Written from Sep 17 2026. Backfills before that never counted and carry
+   * no flag, so `ownsClientCounters` in
+   * features/client-history/session-edits.ts is the ONE place that tells the
+   * two apart — deleting an old one must not take back a count it never gave.
+   */
+  countsTowardTotals?: boolean;
   createdAt?: any;
 }
 

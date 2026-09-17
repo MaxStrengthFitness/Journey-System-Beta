@@ -1356,7 +1356,19 @@ service cloud.firestore {
                                 || namedClientIsReadable(
                                      resource.data.get('clientId', '')))));
 
-      allow delete: if isSuperAdmin() || isFranchiseOwner();
+      /* Deleting a session is the same reach as editing one (Sep 17 2026).
+         It was super-admin-and-owner only, which meant a trainer who logged a
+         past session onto the wrong client could not take it back off, and the
+         History tab's Delete button failed halfway through its batch. Same
+         three tests as `update`, read off the STORED document. */
+      allow delete: if isSuperAdmin()
+                    || isFranchiseOwner()
+                    || (isAnyAuthenticatedTrainer()
+                        && (resource.data.get('trainerId', '') == request.auth.uid
+                            || isTrainerOfStudio(
+                                 resource.data.get('hostedAtStudioId', ''))
+                            || namedClientIsReadable(
+                                 resource.data.get('clientId', ''))));
 
       // The logs hang off a session whose parent rule has already been
       // evaluated to reach this path in the UI, but a client can address them
@@ -1376,7 +1388,15 @@ service cloud.firestore {
         resource.data.get('sessionId', null) == request.resource.data.get('sessionId', null) &&
         resource.data.get('clientId', null) == request.resource.data.get('clientId', null)
       );
-      allow delete: if isSuperAdmin() || isFranchiseOwner();
+      /* HISTORY EDITING (Sep 17 2026). Taking a machine off a session that
+         already happened means deleting its set, and only a super admin or a
+         franchise owner could — so "remove this machine", and the History
+         tab's own Delete Session, both failed for the people who work the
+         floor. The update rule above already lets any signed-in trainer blank
+         any log, so delete grants no reach update did not; it just stops
+         leaving an empty row behind where a machine used to be. */
+      allow delete: if isSuperAdmin() || isFranchiseOwner()
+                    || (isAuthenticated() && isAnyAuthenticatedTrainer());
     }
 
     // CALENDAR SCHEDULES

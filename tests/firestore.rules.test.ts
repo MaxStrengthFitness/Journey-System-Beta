@@ -1960,4 +1960,40 @@ describe("Firestore Security Rules", () => {
     const claimedTrainer = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com", role: "LifeTransformer" }).firestore();
     await assertFails(setDoc(doc(claimedTrainer, "machineTrends", "claim-test-2"), { machineId: "claim-test-2" }));
   });
+
+  // ── HISTORY EDITING (Sep 17 2026) ───────────────────────────────────────
+  // Taking a machine off a session that already happened deletes its set, and
+  // correcting a past session logged onto the wrong client deletes the session.
+  // Both were super-admin-and-owner only, so the History tab's own buttons
+  // failed for every trainer who would ever press them.
+  it("lets a trainer delete an exercise log — removing a machine from a past session", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "exerciseLogs", "logToDrop"), {
+        sessionId: "sessionA",
+        machineId: "chest-press",
+        clientId: "clientA",
+      });
+    });
+    const a = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(deleteDoc(doc(a, "exerciseLogs", "logToDrop")));
+  });
+
+  it("refuses an exercise log delete to a signed-in user who is not a trainer", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "exerciseLogs", "logToKeep"), {
+        sessionId: "sessionA",
+        machineId: "chest-press",
+        clientId: "clientA",
+      });
+    });
+    const stranger = testEnv.authenticatedContext("no-trainer-doc", { email: "nobody@test.com" }).firestore();
+    await assertFails(deleteDoc(doc(stranger, "exerciseLogs", "logToKeep")));
+  });
+
+  it("lets a trainer of the session's studio delete the session, and refuses one from another studio", async () => {
+    const b = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(deleteDoc(doc(b, "sessions", "sessionA")));
+    const a = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(deleteDoc(doc(a, "sessions", "sessionA")));
+  });
 });

@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import type { Client, ExerciseLog, Machine, Routine, Trainer } from "../../types";
+import { useActiveStudio } from "../../ActiveStudioContext";
 import { HistoryView, type HistoryViewMode } from "./HistoryView";
 import { LogPastSessionDialog } from "./LogPastSessionDialog";
 import { SessionDetailDialog } from "./SessionDetailDialog";
@@ -49,6 +50,7 @@ export function ClientHistoryTab({
   onViewChange,
   hideHeader = false,
 }: ClientHistoryTabProps) {
+  const { activeStudioId } = useActiveStudio();
   const history = useSessionHistory(clientId, !disabled);
   const { logsBySession, request, replace } = useSessionLogs(seedLogs);
   const [opened, setOpened] = useState<{ key: number; sessions: HistorySession[] } | null>(null);
@@ -93,6 +95,9 @@ export function ClientHistoryTab({
           routineNameFor={routineNameFor}
           timeZone={timeZone}
           onLogsChanged={replace}
+          trainers={trainers}
+          activeStudioId={activeStudioId}
+          clientHomeStudioId={client?.homeStudioId}
         />
       )}
 
