@@ -243,7 +243,7 @@ Reaching it: the App Mode toggle (studio leaders and above) or the studio picker
 | | Catalog | `features/admin/machines/AdminMachinesTab` | franchise owner or admin |
 | | Routines | `features/admin/routines/AdminRoutineTemplatesTab` | everyone (authoring gated inside) |
 | | Insights | `features/admin/insights` | everyone |
-| | Exports | `features/admin-data` | franchise owner or admin |
+| | Exports | `features/admin/data` | franchise owner or admin |
 | Communications | Announcements | `features/admin/announcements` | franchise owner or admin |
 | System Backend | Mindbody | `features/admin/mindbody` | admin |
 | | Limbo | `features/admin/limbo/AdminLimboQueue` | admin |

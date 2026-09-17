@@ -30,7 +30,7 @@ which made Operations look like two projects.
 | Catalog | `machines/` |
 | Routines | `routines/` |
 | Insights | `insights/` |
-| Exports | `src/features/admin-data/` |
+| Exports | `data/` |
 | Announcements | `announcements/` |
 | Mindbody | `mindbody/`, `useAutoSync.ts`, `syncPolicy.ts` |
 | Limbo | `limbo/` |

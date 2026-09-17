@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import "./admin.css";
 
 import { AdminMachinesTab } from "./machines/AdminMachinesTab";
-import { AdminDataReportsTab } from "../admin-data";
+import { AdminDataReportsTab } from "./data";
 import { AdminSystemToolsTab } from "./system/AdminSystemToolsTab";
 import { AdminOverviewTab } from "./AdminOverviewTab";
 import { AdminStudiosTab } from "./studios/AdminStudiosTab";

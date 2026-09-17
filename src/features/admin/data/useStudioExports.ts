@@ -28,16 +28,16 @@ import {
   where,
   Timestamp,
 } from "firebase/firestore";
-import { db } from "../../firebase";
-import { useToast } from "../../contexts/ToastContext";
+import { db } from "../../../firebase";
+import { useToast } from "../../../contexts/ToastContext";
 import {
   Client,
   ScheduleEntry,
   Studio,
   Trainer,
   WorkoutSession,
-} from "../../types";
-import { studioDateKey, studioTodayKey } from "../../lib/studio-time";
+} from "../../../types";
+import { studioDateKey, studioTodayKey } from "../../../lib/studio-time";
 
 export interface StudioExportDeps {
   trainers: Trainer[];

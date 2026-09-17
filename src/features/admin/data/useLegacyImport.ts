@@ -28,9 +28,9 @@ import {
   writeBatch,
   Timestamp,
 } from "firebase/firestore";
-import { db } from "../../firebase";
-import { Client, Machine, Trainer } from "../../types";
-import { parseMachineSettings } from "../../lib/utils";
+import { db } from "../../../firebase";
+import { Client, Machine, Trainer } from "../../../types";
+import { parseMachineSettings } from "../../../lib/utils";
 
 export interface LegacyImportDeps {
   machines: Machine[];

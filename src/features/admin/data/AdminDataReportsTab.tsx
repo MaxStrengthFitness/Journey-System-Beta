@@ -27,7 +27,7 @@ import {
   HardDriveUpload,
   Users,
 } from "lucide-react";
-import { Client, Machine, Studio, Trainer } from "../../types";
+import { Client, Machine, Studio, Trainer } from "../../../types";
 import {
   AdminBadge,
   AdminButton,
@@ -38,7 +38,7 @@ import {
   AdminNotice,
   AdminPanel,
   AdminScreen,
-} from "../admin/primitives";
+} from "../primitives";
 import { useStudioExports } from "./useStudioExports";
 import { useLegacyImport } from "./useLegacyImport";
 
