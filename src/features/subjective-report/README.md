@@ -287,7 +287,7 @@ progressReports/{id}.subjective
   a saved assessment with log rows for an area never also gets a derived row
   for it.
 - `finalizedSubjective` builds the stored block for both the draft's
-  finalize and `saveQuickCheckIn`, so neither can drop the log.
+  finalize, so it cannot drop the log. (`saveQuickCheckIn`, the second caller this was written for, went with the retired QuickCheckInDialog - deleted in the beta-prep trim, Sep 17 2026.)
 - `loadAssessmentHistory` is the same `clientId + createdAt desc` read as
   `loadPreviousCheckIn` with a 25-report window; the panel's hook uses it
   instead of that read (no extra query, no new index, no rule change). The

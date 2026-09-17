@@ -338,5 +338,3 @@ export function AdminLimboQueue({ studios, clients = [] }: Props) {
     </AdminScreen>
   );
 }
-
-export default AdminLimboQueue;

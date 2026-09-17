@@ -5,27 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export const getAnnouncementStyle = (
-  type: string | undefined,
-  priority: string | undefined,
-): string => {
-  if (priority === "high") {
-    return "bg-rose-50 border-rose-500/50 text-rose-900 dark:bg-rose-950/30 dark:border-rose-500/50 dark:text-rose-100 ring-1 ring-rose-500/20";
-  }
-
-  switch (type) {
-    case "shout-out":
-      return "bg-emerald-50 border-emerald-500/50 text-emerald-900 dark:bg-emerald-950/30 dark:border-emerald-500/50 dark:text-emerald-100";
-    case "event":
-      return "bg-amber-50 border-amber-500/50 text-amber-900 dark:bg-amber-950/30 dark:border-amber-500/50 dark:text-amber-100";
-    case "tip":
-      return "bg-sky-50 border-sky-500/50 text-sky-900 dark:bg-sky-950/30 dark:border-sky-500/50 dark:text-sky-100";
-    case "news":
-    default:
-      return "bg-indigo-50 border-indigo-500/50 text-indigo-900 dark:bg-indigo-950/30 dark:border-indigo-500/50 dark:text-indigo-100";
-  }
-};
-
 export const getRoleColor = (role: string | undefined): string => {
   switch (role) {
     case "Founder":
