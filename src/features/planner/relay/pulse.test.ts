@@ -69,7 +69,7 @@ describe("pulseEvents", () => {
 describe("the store", () => {
   beforeEach(() => resetPulseStore());
   it("keeps the last published list per studio and ignores an identical republish", () => {
-    const a = [{ id: "x", at: 1, whoId: "m", who: "Marina", what: "x" }];
+    const a = [{ id: "x", at: 1, whoId: "m", who: "Marina", what: "x", target: null, kudos: undefined }];
     publishPulse("s1", a);
     expect(readPulse("s1")).toBe(a);
     publishPulse("s1", [{ ...a[0] }]);

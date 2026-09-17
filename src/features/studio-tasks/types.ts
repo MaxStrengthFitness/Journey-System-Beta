@@ -415,6 +415,8 @@ export interface TaskInstance {
 
   /** Denormalized so a completed instance still reads correctly after the
    *  template is renamed or deleted. */
+  /** Relay (Sep 2026): one tap of thanks per person, { [uid]: true }. */
+  kudos?: Record<string, true>;
   title: string;
   category: TaskCategory;
   kind: TaskKind;

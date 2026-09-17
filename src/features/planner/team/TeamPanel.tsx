@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, ClipboardList, Hand, Plus, ShieldCheck, Users } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardList, Hand, Heart, Plus, ShieldCheck, Users } from "lucide-react";
 import { useActiveStudio } from "../../../ActiveStudioContext";
 import { auth } from "../../../firebase";
 import { studioDateKey } from "../../../lib/studio-time";
@@ -21,6 +21,7 @@ import { Avatar } from "../kit";
 import { useRelayMaybe } from "../relay/RelayContext";
 import { CohortPanel, OpenLoops, StandardsHours, WhosInToday } from "../relay/TeamCockpit";
 import { VaultPanel } from "../relay/VaultPanel";
+import { kudosReceived } from "../relay/kudos";
 import { useStudioMachines } from "../../../hooks/useStudioMachines";
 import { teamRecord, teamSummary, type PersonRecord } from "./accountability";
 import { useInitiativeProgress } from "./useInitiativeProgress";
@@ -92,6 +93,11 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
     [roster, todayKey, compliance.instances, templates, teamJobs.jobs, openRequests, initiatives],
   );
   const summary = useMemo(() => teamSummary(records, teamJobs.jobs, todayKey), [records, teamJobs.jobs, todayKey]);
+  // Relay: kudos received this week, per person, from what this tab already reads.
+  const kudosByPerson = useMemo(
+    () => kudosReceived({ instances: compliance.instances, jobs: teamJobs.jobs, requests: openRequests }),
+    [compliance.instances, teamJobs.jobs, openRequests],
+  );
 
   const relay = useRelayMaybe();
   const [composing, setComposing] = useState<Partial<JobDraft> | null>(null);
@@ -224,6 +230,7 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
                   <PersonCard
                     record={r}
                     role={roleOf.get(r.person.id)}
+                    kudos={kudosByPerson.get(r.person.id) ?? 0}
                     isMe={r.person.id === author?.id}
                     onOpenJob={setOpenJobId}
                     onPostFor={() =>
@@ -343,12 +350,15 @@ const STANDING_LABEL: Record<PersonRecord["standing"], string> = {
 function PersonCard({
   record,
   role,
+  kudos = 0,
   isMe,
   onOpenJob,
   onPostFor,
 }: {
   record: PersonRecord;
   role?: string;
+  /** Relay: kudos received this week. Shown, never ranked. */
+  kudos?: number;
   isMe: boolean;
   onOpenJob: (jobId: string) => void;
   onPostFor: () => void;
@@ -365,6 +375,11 @@ function PersonCard({
           </span>
           {role && <span className="tm-card__role">{role}</span>}
         </span>
+        {kudos > 0 && (
+          <span className="pk-tag tm-card__kudos" aria-label={`${kudos} kudos this week`}>
+            <Heart size={12} aria-hidden /> {kudos}
+          </span>
+        )}
         <span
           className={`pk-tag${
             record.standing === "behind" ? " pk-tag--flag" : record.standing === "on-track" ? " pk-tag--done" : ""

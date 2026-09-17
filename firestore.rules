@@ -2086,7 +2086,7 @@ service cloud.firestore {
                            (
                              request.resource.data.diff(resource.data).affectedKeys()
                                .hasOnly(['parts', 'assignees', 'assigneeIds', 'status', 'closedOn',
-                                         'closingNote', 'completedBy', 'completedAt', 'updatedAt'])
+                                         'closingNote', 'completedBy', 'completedAt', 'updatedAt', 'kudos'])
                              && request.resource.data.status != 'cancelled'
                              && resource.data.status != 'cancelled'
                              && writesForStudio(studioId)

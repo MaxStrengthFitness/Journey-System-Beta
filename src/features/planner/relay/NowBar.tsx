@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Heart } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import type { ScheduleEntry, Trainer } from "../../../types";
 import { studioTodayKey } from "../../../lib/studio-time";
@@ -16,6 +16,8 @@ import {
   type ShiftHours,
 } from "./now-context";
 import { usePulse, type PulseEvent } from "./pulse";
+import { useRelayMaybe } from "./RelayContext";
+import { hasKudosFrom, kudosCount, toggleKudos } from "./kudos";
 
 /**
  * THE NOW BAR — pinned under the masthead on every Relay tab.
@@ -176,20 +178,54 @@ const TICK_MS = 6000;
 
 export function PulseTicker({ studioId }: { studioId: string | null }) {
   const events = usePulse(studioId);
+  const relay = useRelayMaybe();
   const [i, setI] = useState(0);
+  const [paused, setPaused] = useState(false);
   useEffect(() => {
-    if (events.length < 2) return;
+    if (events.length < 2 || paused) return;
     const id = setInterval(() => setI((v) => v + 1), TICK_MS);
     return () => clearInterval(id);
-  }, [events.length]);
+  }, [events.length, paused]);
   const ev: PulseEvent | undefined = events.length ? events[i % events.length] : undefined;
+  const me = relay?.uid ? { id: relay.uid, name: relay.authTrainer?.fullName ?? "A trainer" } : null;
+  const mine = Boolean(ev && me && ev.whoId === me.id);
+  const thanked = hasKudosFrom(ev?.kudos, me?.id ?? null);
+
+  const thank = async () => {
+    if (!ev?.target || !me || !studioId) return;
+    try {
+      await toggleKudos({ studioId, target: ev.target, from: me, to: ev.whoId ? { id: ev.whoId, name: ev.who } : null, on: !thanked, what: ev.what });
+    } catch (err) {
+      console.warn("[relay] kudos failed:", err);
+    }
+  };
+
   return (
-    <div className="pt" aria-live="off">
+    <div className="pt" aria-live="off" onPointerEnter={() => setPaused(true)} onPointerLeave={() => setPaused(false)}>
       <span className="pt__label">Pulse</span>
       {ev ? (
-        <span className="pt__line" key={ev.id}>
-          <span className="pt__who">{ev.who}</span> {ev.what}
-        </span>
+        <>
+          <span className="pt__line" key={ev.id}>
+            <span className="pt__who">{ev.who}</span> {ev.what}
+          </span>
+          {ev.target && me && !mine && (
+            <button
+              type="button"
+              className={cn("pt__kudos", thanked && "pt__kudos--on")}
+              aria-pressed={thanked}
+              aria-label={thanked ? "Take back your kudos" : `Send kudos to ${ev.who}`}
+              onClick={() => void thank()}
+            >
+              <Heart size={13} aria-hidden />
+              {kudosCount(ev.kudos) > 0 && <span className="pt__kudos-n">{kudosCount(ev.kudos)}</span>}
+            </button>
+          )}
+          {ev.target && mine && kudosCount(ev.kudos) > 0 && (
+            <span className="pt__kudos pt__kudos--mine" aria-label={`${kudosCount(ev.kudos)} kudos for you`}>
+              <Heart size={13} aria-hidden /> <span className="pt__kudos-n">{kudosCount(ev.kudos)}</span>
+            </span>
+          )}
+        </>
       ) : (
         <span className="pt__line pt__quiet">Quiet so far today</span>
       )}

@@ -17,6 +17,7 @@ import { useSyncExternalStore } from "react";
 import type { TaskRequest } from "../../studio-tasks/requests";
 import type { TaskRow } from "../../studio-tasks/types";
 import type { TeamJob } from "../jobs/types";
+import type { KudosTarget } from "./kudos";
 
 export interface PulseEvent {
   id: string;
@@ -25,6 +26,9 @@ export interface PulseEvent {
   whoId: string | null;
   who: string;
   what: string;
+  /** The document a kudos lands on, and the thanks already on it. */
+  target: KudosTarget | null;
+  kudos: Record<string, true> | undefined;
 }
 
 export const PULSE_MAX = 20;
@@ -57,7 +61,7 @@ export function pulseEvents(input: {
   const since = input.now - PULSE_WINDOW_MS;
   const out: PulseEvent[] = [];
 
-  const groups = new Map<string, { who: string; whoId: string; title: string; count: number; at: number }>();
+  const groups = new Map<string, { who: string; whoId: string; title: string; count: number; at: number; instanceId: string; kudos: Record<string, true> | undefined }>();
   for (const r of input.rows) {
     const inst = r.instance;
     if (!inst || inst.status !== "done" || !inst.completedBy) continue;
@@ -67,9 +71,13 @@ export function pulseEvents(input: {
     const g = groups.get(key);
     if (g) {
       g.count += 1;
-      g.at = Math.max(g.at, at);
+      if (at > g.at) {
+        g.at = at;
+        g.instanceId = inst.id;
+        g.kudos = inst.kudos;
+      }
     } else {
-      groups.set(key, { who: inst.completedBy.name, whoId: inst.completedBy.id, title: r.title, count: 1, at });
+      groups.set(key, { who: inst.completedBy.name, whoId: inst.completedBy.id, title: r.title, count: 1, at, instanceId: inst.id, kudos: inst.kudos });
     }
   }
   for (const [key, g] of groups) {
@@ -79,6 +87,8 @@ export function pulseEvents(input: {
       whoId: g.whoId,
       who: firstName(g.who),
       what: g.count > 1 ? `${g.title.toLowerCase()} × ${g.count}` : g.title.toLowerCase(),
+      target: { kind: "instance", id: g.instanceId },
+      kudos: g.kudos,
     });
   }
 
@@ -86,19 +96,19 @@ export function pulseEvents(input: {
     if (j.status !== "done" || !j.completedBy) continue;
     const at = millisOf(j.completedAt);
     if (!at || at < since) continue;
-    out.push({ id: `job:${j.id}`, at, whoId: j.completedBy.id, who: firstName(j.completedBy.name), what: `finished "${j.title}"` });
+    out.push({ id: `job:${j.id}`, at, whoId: j.completedBy.id, who: firstName(j.completedBy.name), what: `finished "${j.title}"`, target: { kind: "job", id: j.id }, kudos: j.kudos });
   }
 
   for (const r of input.requests) {
     if (r.status === "resolved" && r.resolvedBy) {
       const at = millisOf(r.resolvedAt);
       if (at && at >= since) {
-        out.push({ id: `ask:${r.id}`, at, whoId: r.resolvedBy.id, who: firstName(r.resolvedBy.name), what: `closed "${r.title}"` });
+        out.push({ id: `ask:${r.id}`, at, whoId: r.resolvedBy.id, who: firstName(r.resolvedBy.name), what: `closed "${r.title}"`, target: { kind: "request", id: r.id }, kudos: r.kudos });
       }
     } else if (r.status === "open" && r.claimedBy) {
       const at = millisOf(r.claimedAt);
       if (at && at >= since) {
-        out.push({ id: `claim:${r.id}`, at, whoId: r.claimedBy.id, who: firstName(r.claimedBy.name), what: `is on "${r.title}"` });
+        out.push({ id: `claim:${r.id}`, at, whoId: r.claimedBy.id, who: firstName(r.claimedBy.name), what: `is on "${r.title}"`, target: null, kudos: undefined });
       }
     }
   }
@@ -110,13 +120,19 @@ export function pulseEvents(input: {
  * The store
  * ------------------------------------------------------------------ */
 
+const kudosKey = (k: Record<string, true> | undefined) => (k ? Object.keys(k).sort().join(",") : "");
 const stores = new Map<string, PulseEvent[]>();
 const listeners = new Set<() => void>();
 const EMPTY: PulseEvent[] = [];
 
 export function publishPulse(studioId: string, events: PulseEvent[]): void {
   const prev = stores.get(studioId);
-  if (prev && prev.length === events.length && prev.every((e, i) => e.id === events[i].id && e.at === events[i].at)) return;
+  if (
+    prev &&
+    prev.length === events.length &&
+    prev.every((e, i) => e.id === events[i].id && e.at === events[i].at && kudosKey(e.kudos) === kudosKey(events[i].kudos))
+  )
+    return;
   stores.set(studioId, events);
   for (const l of listeners) l();
 }
