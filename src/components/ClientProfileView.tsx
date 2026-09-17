@@ -51,7 +51,6 @@ import {
   Search,
   Loader2,
 } from "lucide-react";
-import { generateMockClientWithHistory } from "../lib/mockDataGenerator";
 import { motion, AnimatePresence } from "motion/react";
 import {
   AreaChart,
@@ -228,7 +227,6 @@ export function ClientProfileView({
     Record<string, ClientMachineSetting>
   >({});
   const [progressReports, setProgressReports] = useState<ProgressReport[]>([]);
-  const [showMockConfirm, setShowMockConfirm] = useState(false);
 
   /*
    * KAIZEN ROSTER.
@@ -257,22 +255,6 @@ export function ClientProfileView({
       handleFirestoreError(err, OperationType.DELETE, "progressReports");
     } finally {
       setReportToDelete(null);
-    }
-  };
-
-  const performMockGeneration = async () => {
-    if (!authTrainer) return;
-    try {
-      const { clientName } = await generateMockClientWithHistory(
-        authTrainer.id!,
-        authTrainer.initials,
-      );
-      toastSuccess(`Success: Created ${clientName}`);
-      window.location.reload();
-    } catch (err: any) {
-      toastError(err.message);
-    } finally {
-      setShowMockConfirm(false);
     }
   };
 
@@ -1957,15 +1939,6 @@ export function ClientProfileView({
         confirmationPhrase="DELETE REPORT"
         onConfirm={performReportDelete}
         onCancel={() => setReportToDelete(null)}
-      />
-
-      <StrongConfirmationModal
-        isOpen={showMockConfirm}
-        title="Provision Mock Client Data"
-        description="Are you sure you want to generate a new mock client with 60 days of historical workout data? This will create a temporary member record for validation."
-        confirmationPhrase="GENERATE MOCK"
-        onConfirm={performMockGeneration}
-        onCancel={() => setShowMockConfirm(false)}
       />
     </motion.div>
   );
