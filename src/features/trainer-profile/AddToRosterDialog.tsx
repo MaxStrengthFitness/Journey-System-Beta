@@ -15,6 +15,7 @@ import {
   type KaizenReason,
 } from "../../types";
 import { NOTE_MAX } from "./roster";
+import { NAME_SEARCH_PROPS } from "../../lib/name-search-input";
 
 /**
  * Add a client to the roster: find them, say why, optionally set a date to
@@ -107,6 +108,7 @@ export function AddToRosterDialog({
                     value={term}
                     onChange={(e) => setTerm(e.target.value)}
                     placeholder="Search by name"
+                    {...NAME_SEARCH_PROPS}
                     style={{ paddingLeft: 32 }}
                   />
                 </div>

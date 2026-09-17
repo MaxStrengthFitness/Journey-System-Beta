@@ -24,6 +24,7 @@ import {
 import { checkMerge, rankCandidates, type Candidate } from "./reconcile";
 import { mergeProvisionalClient, type MergeProgress } from "./mergeClient";
 import { provisionalAgeDays } from "./provisional";
+import { NAME_SEARCH_PROPS } from "../../../lib/name-search-input";
 
 export interface ReconcileDialogProps {
   temp: Client;
@@ -142,6 +143,7 @@ export function ReconcileDialog({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search every client by name or email"
+              {...NAME_SEARCH_PROPS}
             />
           </div>
 

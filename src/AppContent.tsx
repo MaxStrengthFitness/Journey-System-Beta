@@ -178,6 +178,7 @@ import { PlannerReminders } from "./features/planner/reminders/PlannerReminders"
 // Type-only, and from the module rather than the barrel, so nothing about the
 // studio-tasks chunk is pulled into the initial bundle.
 import type { ClientTaskAction } from "./features/studio-tasks/types";
+import { NAME_SEARCH_PROPS } from "./lib/name-search-input";
 /**
  * Relay (Relay round, Sep 2026; the Planner before that) — what was the To-Do
  * screen: the studio hub as its Studio tab, plus My tasks and Notes. The view
@@ -1821,6 +1822,7 @@ export default function AppContent({
           }}
           placeholder="Search clients"
           aria-label="Search clients"
+          {...NAME_SEARCH_PROPS}
           className="h-10 pl-8 pr-8 rounded-lg bg-slate-100/80 dark:bg-slate-800/60 border border-transparent text-sm font-medium text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-cyan/60 focus-visible:border-cyan/40 focus-visible:bg-white dark:focus-visible:bg-slate-900"
         />
         {hubSearchTerm && (

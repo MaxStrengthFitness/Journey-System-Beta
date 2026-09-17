@@ -45,6 +45,7 @@ import {
   summarisePage,
   type ReadBudget,
 } from "./clientQuery";
+import { NAME_SEARCH_PROPS } from "../../../lib/name-search-input";
 
 /** Long enough that a name is finished, short enough not to feel laggy. */
 const SEARCH_DEBOUNCE_MS = 400;
@@ -222,6 +223,7 @@ export function AdminClientsTab({
               value={rawSearch}
               onChange={(e) => setRawSearch(e.target.value)}
               placeholder="Search"
+              {...NAME_SEARCH_PROPS}
             />
           </div>
           <div className="adm-field" style={{ flex: "0 1 220px" }}>

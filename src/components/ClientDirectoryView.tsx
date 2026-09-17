@@ -20,6 +20,7 @@ import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import SyncStatusBadge from "./mindbody/SyncStatusBadge";
 import { KaizenToggle } from "../features/trainer-profile/KaizenToggle";
 import { studioDateKey } from "../lib/studio-time";
+import { NAME_SEARCH_PROPS } from "../lib/name-search-input";
 
 interface Props {
   clients: Client[];
@@ -470,6 +471,7 @@ export function ClientDirectoryView({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search clients..."
+              {...NAME_SEARCH_PROPS}
               className="w-full bg-card border border-border text-card-foreground placeholder:text-muted-foreground h-12 pl-12 rounded-xl text-base font-medium focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary shadow-sm transition-all"
             />
           </div>

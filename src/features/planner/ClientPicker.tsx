@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, Search, X } from "lucide-react";
 import type { Client, Trainer } from "../../types";
 import { useClientSearch } from "./notes/hooks";
+import { NAME_SEARCH_PROPS } from "../../lib/name-search-input";
 
 /**
  * PICK CLIENTS — today's roster first, then a name search at this studio.
@@ -79,6 +80,7 @@ export function ClientPicker({
           onChange={(e) => setTerm(e.target.value)}
           placeholder="Search clients by name"
           aria-label="Search clients by name"
+          {...NAME_SEARCH_PROPS}
         />
       </label>
       <p className="pk-hint">

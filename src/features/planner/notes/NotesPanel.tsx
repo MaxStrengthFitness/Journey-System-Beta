@@ -29,6 +29,7 @@ import { NOTE_KIND_LABEL, NOTE_KINDS, type NoteDraft, type NoteKind, type Traine
 import { NoteEditor } from "./NoteEditor";
 import { checklistCount } from "./format";
 import "./notes.css";
+import { NAME_SEARCH_PROPS } from "../../../lib/name-search-input";
 
 /**
  * NOTES — the Planner's third tab. A trainer's own notes, in folders, linked
@@ -359,6 +360,7 @@ export function NotesPanel({ authTrainer, trainers, clients, onOpenClient, inten
               onChange={(e) => setQueryText(e.target.value)}
               placeholder="Search notes or clients"
               aria-label="Search notes, or the clients they are about"
+              {...NAME_SEARCH_PROPS}
             />
             {queryText && (
               <button type="button" className="pn__search-x" onClick={() => setQueryText("")} aria-label="Clear search">

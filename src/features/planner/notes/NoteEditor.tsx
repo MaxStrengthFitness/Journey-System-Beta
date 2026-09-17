@@ -39,6 +39,7 @@ import {
   type NoteLogEntry,
   type TrainerNote,
 } from "./types";
+import { NAME_SEARCH_PROPS } from "../../../lib/name-search-input";
 
 /**
  * ONE NOTE, OPEN — title, kind, the clients it is about, the body, and Share.
@@ -878,6 +879,7 @@ function ClientLinker({
           onChange={(e) => setTerm(e.target.value)}
           onKeyDown={(e) => e.key === "Escape" && onClose()}
           placeholder="Search clients by name"
+          {...NAME_SEARCH_PROPS}
           aria-label="Search clients by name"
         />
         <button type="button" className="ne__linker-close" onClick={onClose} aria-label="Close client search">
