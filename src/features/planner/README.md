@@ -1,4 +1,15 @@
-# features/planner — the Planner (was the To-Do screen)
+# features/planner — Relay (was the Planner, was the To-Do screen)
+
+**Relay (Sep 16 2026)** rebuilt the Planner as the studio's asynchronous
+board and each trainer's second brain: the Now Bar, one Capture composer,
+Next up and the Floor Map on the Floor, Mine's four lanes, the two-pane note
+editor, the Team cockpit and the vault, the Network tab, the Calendar layer,
+kudos. Everything Relay added lives in `relay/` (its own README there); the
+round is `docs/rounds/2026-09-16-relay.md`. The folder keeps its name because
+thirty imports point at it, and the view id stays `studio-tasks`.
+
+The tabs are now **Floor · Mine · Notes · Team · Network**; the table below
+describes what each one was before Relay and still holds.
 
 Round: Learning + Planner, Sep 2026. AJ's brief:
 

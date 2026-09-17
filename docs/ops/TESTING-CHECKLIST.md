@@ -159,6 +159,26 @@ The round is `docs/rounds/2026-09-16-planner-rework.md`. Two iPads, one signed i
 - [ ] **Share a note that names a client coached at another studio.** *Expected:* the card says so and Save is refused.
 - [ ] **Old iPad (iPadOS 15/16) cold load.** *Expected:* the app opens (a regex the old Safari can't parse would blank the whole app).
 
+### Relay · *branch `relay` (Sep 16)*
+
+The round is `docs/rounds/2026-09-16-relay.md`. Two iPads at the same studio, one signed in as a head trainer, one as a trainer, both with sessions on today's schedule. Try portrait and landscape: the Context Panel is a right column in landscape and a bottom sheet in portrait.
+
+- [ ] **Open Relay between two sessions.** *Expected:* the Now Bar names the shift phase, your next client and the minutes free; the meter fills to an hour; tapping it unfolds the day strip with your sessions as blocks and a line at now. *If it says "No sessions on your schedule" while the Calendar shows them:* the row's trainer name didn't match — send the trainer's name as Mindbody spells it.
+- [ ] **Capture, one tap.** Tap the orange button, type "Deep-clean the leg press", tap Relay it. *Expected:* it lands on your own list (Mine → Today) and the toast says so. Now the same with **The Floor**: *Expected:* an ask on the board that the other iPad sees under Requests within a second. The head trainer's iPad also offers **A studio task**; the trainer's does not.
+- [ ] **Hand it to someone.** Capture → Someone → the other person → Relay it. *Expected:* their bell rings once ("handed you"), the card is at the top of THEIR Next up in the blue colour and under Mine → Handed to you; they close it with the tick and YOUR bell rings.
+- [ ] **Next up, Do it, swipe.** On a card, tap Do it. *Expected:* a shift group opens in the panel with its rows to tick; an ask is claimed and opens with a Done at the foot; a job opens its sheet. Swipe a card right: it closes. Swipe left: it disappears for this shift phase and is back after the next phase starts (or a restart).
+- [ ] **The rings.** Tick all of the Opening work. *Expected:* the Opening ring closes with a sweep and a green dot appears on the Now Bar for the rest of the day.
+- [ ] **The Floor Map after a session.** Finish a session on two machines, then open the Floor. *Expected:* those two tiles show 1 and read warmer than the rest. Tap one, tap Wiped: the tile cools, today's cleaning row for that machine ticks, and Operations → Equipment shows a "Cleaned" entry. Flag one with a note: the flag shows on the tile and under Team → Open loops; the head trainer's bell rings once.
+- [ ] **Mine's lanes.** *Expected:* Follow-ups lists your clients with a birthday or a FORD date in the next two weeks, with a Task button that opens Capture pre-filled; a personal task filed under Growth (Capture → More → File under Growth) sits under Growth, not Today; the Floor button on a personal task opens Capture addressed to the studio.
+- [ ] **A note in two panes.** Open a note in landscape. *Expected:* working notes on the left, the note on the right; Lift into the note carries a jot across; the kind under File it reads as suggested once you link a client and write "shoulder pain" (Injury plan), and stays put once you tap a kind yourself. In portrait, the Log / Note switch under the bar swaps panes.
+- [ ] **Publish audiences.** Share with one colleague and tick Hand it off. *Expected:* their copy has a **Take it over** button. A franchise owner also sees **All MSF studios**: sharing there shows the note under From colleagues on an iPad at ANOTHER studio.
+- [ ] **The client's record.** Open a client → Notes & Profile. *Expected:* "Your working notes" under Plans from the team shows your last jots about them; adding one there appears in the Planner note's log; the other iPad (a different trainer) does not see it.
+- [ ] **Team tab as the head trainer.** *Expected:* Who's in today lists each person with a load bar from the schedule; This month shows counts for the five cohorts; Route to team on Renewals due posts a team job with one part per client that the trainer's iPad sees; The studio's day saves shift hours and the Now Bar's phase follows them on both iPads; the vault logs an incident that the trainer's iPad cannot read (switch to it: no vault section).
+- [ ] **Kudos.** On the other iPad's Pulse line about your work, tap the heart. *Expected:* your bell rings once ("sent kudos"); the heart shows 1; the Team tab's card for you shows a heart with 1. You cannot kudos your own line.
+- [ ] **The Calendar.** *Expected:* the strip above the month says Relay and shows a timed studio task on every day it falls, a team job on its due day with initials, a hand-off in blue; Mine narrows it to yours; a tap lands in Relay on the right tab.
+- [ ] **Network as a franchise owner.** *Expected:* the Network tab; setting a focus shows a banner on the Floor of every studio; Launch an initiative shows under Initiatives on each studio's board; Studios lists a number per studio (a dash on loops means the index is still building).
+- [ ] **Old iPad (iPadOS 15/16) cold load.** *Expected:* the app opens and Relay draws (color-mix and the swipe rows degrade gracefully; no blank app).
+
 ### Hub sync fixes · *branch `hub-sync-fixes` (Sep 16)*
 
 The round is `docs/rounds/2026-09-16-hub-sync-fixes.md`.
