@@ -19,7 +19,7 @@ In the order agreed in `docs/ARCHITECTURE.md` §5.2. AJ is the only user, so the
 5. **FileMaker migration prep** — field mapping to the data dictionary (§3.2), the importer in the `scripts/migrate-machine-id.ts` shape, blanks imported as *Skipped: unknown (FileMaker)*; and the Mindbody notes import, which comes first.
 6. **The ops queue** — Render Blueprint sync for `journey-cron-renewals` (+ `FIREBASE_SERVICE_ACCOUNT`, Mindbody vars); the renewals dry-run; Operations → Renewals settings matched to the Mindbody package names; the collision-checker batching fix; the `hub_announcements` delete rule and the role-helper sweep.
 7. **Credential rotation** — the Mindbody sandbox credentials in the public repo's history. Twenty minutes.
-8. **Held by choice** — the 136 remaining card/panel recipes; admin editability of Catalog and Learning content; Demo Mode (cherry-pick per `docs/rounds/DEMO-MODE-BRANCH.md`); the root `components/` + `lib/` merge with the `@/*` alias repoint.
+8. **Held by choice** — the 136 remaining card/panel recipes; admin editability of Catalog and Learning content; Demo Mode (cherry-pick per `docs/rounds/DEMO-MODE-BRANCH.md`); ~~the root `components/` + `lib/` merge with the `@/*` alias repoint~~ (done on `beta-prep`, Sep 17 2026).
 
 ## Next — Gate B, before beta (`docs/ARCHITECTURE.md` §5.3)
 
@@ -131,7 +131,7 @@ Things the roadmap does not currently account for, in rough order of how much th
 
 ## 🧹 Repo and code hygiene
 
-- [ ] **Two `utils` modules, both live, both exporting `cn()`.** `lib/utils.ts` (97 lines, reached via the `@/*` alias) and `src/lib/utils.ts` (406 lines, reached via relative imports). Roughly 45 files import one and 49 import the other, and **which `cn` you get depends purely on how you wrote the import path.** This is the single most confusing thing in the codebase. Merge them.
+- [x] ~~**Two `utils` modules, both live, both exporting `cn()`.**~~ *Done in the beta-prep trim, Sep 17 2026: the root `lib/utils.ts` is merged into `src/lib/utils.ts`, the root `components/ui/` moved to `src/components/ui/`, and `@/*` now points at `src/` (tsconfig, vite, knip). No import line had to change.*
 - [ ] **Two different `ROUTINE_TEMPLATES` with the same name and incompatible shapes** — `src/constants.ts:2` is an object keyed by type; `src/data/routine-templates.ts:16` is an array. Both are consumed. Plus `src/lib/routine-templates.ts` and `src/data/routine-presets.ts`: **four files for one concept.**
 - [ ] Four overlapping machine hooks (`useMachines`, `useStudioMachines`, `useMachineCatalog`, `features/catalog/useCatalogMachines`) plus the dead `useSessionMachines`. It is a layered stack rather than pure duplication, but nothing tells you which is the correct entry point.
 - [ ] Two session-note sidebars (`SessionNotesSidebar` for history, `journal/SessionJournalSidebar` for the tracker) and two consultation wizards (`ConsultationWizard`, `ConsultationSetupWizard`) — one consumer each, likely divergent copies.
