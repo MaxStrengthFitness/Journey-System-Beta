@@ -316,7 +316,6 @@ src/features/journey-grid/
   GridToolbar.tsx           section caption + density + legend
   JourneyGrid.tsx           the sticky grid (header, sections, rows, scroll logic)
   RecentJourneyView.tsx     profile → Journey tab
-  ActiveSessionView.tsx     live tracker + useLiveSession() state hook
   index.ts
 ```
 
@@ -370,7 +369,7 @@ Firestore ──► adapters.ts ──► JourneyRow[] + JourneySession[] ──
    />
    ```
    `orderedMachines` is the list already sorted by `resolveMachineOrder`. If the profile page must keep scrolling as a whole, pass `layout="auto" maxHeight="…"` instead.
-3. In `WorkoutTrackerView.tsx`, feed `ActiveSessionView` the same rows plus `useLiveSession(routineMachineIds, existingLogsAsLiveSets)`, and write `live.values` back through your existing `updateLog` on change (debounced) or on Finish.
+3. ~~In `WorkoutTrackerView.tsx`, feed `ActiveSessionView` the same rows…~~ **Not how it was built.** The tracker mounts `JourneyGrid` directly and keeps its own log state; `ActiveSessionView` and `useLiveSession` were never wired and were deleted in the beta-prep trim (Sep 17 2026).
 4. Delete `lib/machine-colors.ts` once nothing else imports it. Movement groups now come from `movementGroupFor()` in `adapters.ts` (same rules, no colours).
 5. Optional: expose the semantic tokens to Tailwind by adding to `@theme inline` in `index.css`:
    ```css

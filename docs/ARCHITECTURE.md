@@ -276,7 +276,7 @@ Every screen either prepares a session, records one, or reads what sessions prod
 - `history` (legacy `ClientHistoryView`) still routed from the Hub while the profile has its own History tab — two screens for one job.
 - `ClientProfileView`'s two hidden panes (`statistics_disabled`, `details_disabled`) with live handlers inside.
 - `handleTrainerLogin` in `AppContent` is defined and never called; a second identical `AccessRequestView` branch is unreachable.
-- `features/journey-grid/ActiveSessionView.tsx` is not imported by the tracker (which uses `JourneyGrid` directly) — importer unknown.
+- ~~`features/journey-grid/ActiveSessionView.tsx` is not imported by the tracker~~ — deleted in the beta-prep trim (Sep 17 2026); nothing imported it.
 - `useSessionMachines` (hooks) is dead per the roadmap; four machine hooks overlap (`useMachines`, `useStudioMachines`, `useMachineCatalog`, `features/catalog/useCatalogMachines`) with nothing saying which is the entry point.
 - The Insights tab reports "who is not writing notes" (per the Sep 7 round notes; `features/admin/insights` was not staged — verify) — a metric §1.5 says not to track.
 
