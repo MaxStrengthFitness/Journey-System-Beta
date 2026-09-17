@@ -1501,6 +1501,23 @@ describe("Firestore Security Rules", () => {
     await assertSucceeds(deleteDoc(doc(owner, "studios", "studioA", "machineCare", "m-leg-press")));
   });
 
+  // ── THE VAULT (Relay, Sep 2026) ──────────────────────────────────────────
+
+  it("keeps the vault to the studio's leaders", async () => {
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    const entry = { studioId: "studioA", kind: "incident", title: "Slip by the water cooler", body: "", onDate: "2026-09-16", people: "", status: "open", createdBy: { id: "ownerA", name: "Owner A" }, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+    await assertSucceeds(setDoc(doc(owner, "studios", "studioA", "vault", "v1"), entry));
+    await assertSucceeds(getDocs(collection(owner, "studios", "studioA", "vault")));
+    await assertSucceeds(updateDoc(doc(owner, "studios", "studioA", "vault", "v1"), { status: "closed", updatedAt: serverTimestamp() }));
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertFails(getDocs(collection(trainer, "studios", "studioA", "vault")));
+    await assertFails(getDoc(doc(trainer, "studios", "studioA", "vault", "v1")));
+    await assertFails(setDoc(doc(trainer, "studios", "studioA", "vault", "v2"), { ...entry, createdBy: { id: "trainerA", name: "A" } }));
+    // A leader of another studio is the floor here.
+    await assertFails(getDocs(collection(owner, "studios", "studioB", "vault")));
+    await assertSucceeds(deleteDoc(doc(owner, "studios", "studioA", "vault", "v1")));
+  });
+
   // ── THE MSF MACHINE DATABASE: studio content, sharing, and the lists ────
   //
   // Round: Learning + Planner, Sep 2026. Also closes the hole where any

@@ -19,6 +19,9 @@ import { useTeamJobs } from "../jobs/useTeamJobs";
 import type { JobDraft } from "../jobs/types";
 import { Avatar } from "../kit";
 import { useRelayMaybe } from "../relay/RelayContext";
+import { CohortPanel, OpenLoops, StandardsHours, WhosInToday } from "../relay/TeamCockpit";
+import { VaultPanel } from "../relay/VaultPanel";
+import { useStudioMachines } from "../../../hooks/useStudioMachines";
 import { teamRecord, teamSummary, type PersonRecord } from "./accountability";
 import { useInitiativeProgress } from "./useInitiativeProgress";
 import "../kit.css";
@@ -100,6 +103,12 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
   >(null);
 
   const flaggedRows = useMemo(() => rows.filter((r) => r.instance?.flagged), [rows]);
+  // Relay's cockpit names machines on the open-loops list.
+  const { machines: floorMachines } = useStudioMachines(relay ? studioId : null, { bridgeWhenRosterEmpty: true });
+  const machineNames = useMemo(() => {
+    const m = new Map(floorMachines.map((x) => [x.machineId, x.name] as const));
+    return (id: string) => m.get(id) ?? "";
+  }, [floorMachines]);
   const loading = compliance.loading || teamJobs.loading;
   const readError = compliance.error ?? teamJobs.error;
 
@@ -188,6 +197,14 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
           </p>
         )}
 
+        {relay && (
+          <>
+            <WhosInToday roster={roster} jobs={teamJobs.jobs} />
+            <OpenLoops requests={openRequests} jobs={teamJobs.jobs} machineNames={machineNames} />
+            <CohortPanel roster={roster} />
+          </>
+        )}
+
         <section aria-labelledby="tm-people" className="tm-people">
           <h3 className="pl__list-head" id="tm-people">
             <Users size={14} aria-hidden />
@@ -221,6 +238,8 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
           )}
         </section>
 
+        {relay && <StandardsHours />}
+
         <section className="tm-manage" aria-labelledby="tm-manage">
           <h3 className="pl__list-head" id="tm-manage">
             The studio's standards
@@ -247,6 +266,8 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
             }}
           />
         </section>
+
+        {relay && <VaultPanel />}
       </div>
 
       <TaskManager

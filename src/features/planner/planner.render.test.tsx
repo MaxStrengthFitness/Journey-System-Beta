@@ -157,6 +157,12 @@ describe("Relay", () => {
     expect(h.textContent).toContain("New note");
     await click(tab("Team"));
     expect(h.textContent).toContain("Your team");
+    expect(h.textContent).toContain("Who's in today");
+    expect(h.textContent).toContain("Open loops");
+    expect(h.textContent).toContain("This month");
+    expect(h.textContent).toContain("Renewals due");
+    expect(h.textContent).toContain("The studio's day");
+    expect(h.textContent).toContain("The vault");
     expect(h.textContent).toContain("Only work with someone's name on it counts");
     await click(tab("Floor"));
     expect(h.textContent).toContain("Next up");

@@ -1712,6 +1712,17 @@ service cloud.firestore {
       // Entries are not editable after the fact — an accountability log that
       // can be rewritten is not one — but a manager can delete a mistake.
       /*
+       * THE VAULT (Relay, Sep 2026) -- leadership notes: incidents and
+       * partners. Its own collection because rules apply to whole
+       * documents: nothing the floor may read sits beside these. Read and
+       * written by the studio's leaders, franchise owners and administrators.
+       */
+      match /vault/{entryId} {
+        allow read, create, update, delete:
+          if isSuperAdmin() || isFranchiseOwnerOnly() || isStudioOwnerOrHeadTrainer(studioId);
+      }
+
+      /*
        * MACHINE CARE (Relay, Sep 2026) -- one document per machine: when it
        * was last wiped and deep cleaned, by whom, and a flag. Written from
        * the Floor Map's care sheet by anyone who works at the studio; a wipe
