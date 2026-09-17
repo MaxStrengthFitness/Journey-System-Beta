@@ -28,7 +28,7 @@ import {
 import { db } from "../../../firebase";
 import { notify } from "../../notifications";
 import { cleanFolderName, draftFromNote, noteFields, sharePlan, sharedFields } from "./notes";
-import { newlyNamed, noteShareFields, teamSharePlan, type NoteShare } from "./team-share";
+import { newlyNamed, noteShareFields, shareStudios, teamSharePlan, type NoteShare } from "./team-share";
 import type { NoteDraft, NoteFolder, NoteLogEntry, TrainerNote } from "./types";
 
 export function notesRef(uid: string) {
@@ -104,13 +104,15 @@ export async function saveNote({ uid, noteId, draft, before, author }: SaveNoteA
   // The colleague copy (Planner rework): rewritten whole with the note, or
   // taken down, in the same batch — so the marker and the copy agree.
   const team = teamSharePlan(before?.teamShare, fields.teamShare);
-  if (team.write && fields.teamShare) {
-    batch.set(doc(noteSharesRef(team.write), noteId), {
-      ...noteShareFields({ noteId, ...fields }, fields.teamShare, author),
-      updatedAt: now,
-    });
+  if (fields.teamShare) {
+    for (const studioId of team.write) {
+      batch.set(doc(noteSharesRef(studioId), noteId), {
+        ...noteShareFields({ noteId, ...fields }, fields.teamShare, author, studioId),
+        updatedAt: now,
+      });
+    }
   }
-  if (team.remove) batch.delete(doc(noteSharesRef(team.remove), noteId));
+  for (const studioId of team.remove) batch.delete(doc(noteSharesRef(studioId), noteId));
 
   await batch.commit();
 
@@ -143,7 +145,7 @@ export async function endTeamShare(uid: string, note: Pick<TrainerNote, "id" | "
   if (!note.teamShare) return;
   const batch = writeBatch(db);
   batch.update(doc(notesRef(uid), note.id), { teamShare: null, updatedAt: serverTimestamp() });
-  batch.delete(doc(noteSharesRef(note.teamShare.studioId), note.id));
+  for (const studioId of shareStudios(note.teamShare)) batch.delete(doc(noteSharesRef(studioId), note.id));
   await batch.commit();
 }
 
@@ -218,7 +220,7 @@ export async function deleteNote(
   // The rules let the author delete a copy that is already gone (a leader may
   // have removed it), so this never blocks deleting the note itself.
   if (note.sharedWith) batch.delete(doc(sharedNotesRef(note.sharedWith), note.id));
-  if (note.teamShare) batch.delete(doc(noteSharesRef(note.teamShare.studioId), note.id));
+  for (const studioId of shareStudios(note.teamShare)) batch.delete(doc(noteSharesRef(studioId), note.id));
   await batch.commit();
 }
 

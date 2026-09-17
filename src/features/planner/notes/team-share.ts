@@ -37,7 +37,16 @@
 import { addDays } from "../../studio-tasks/recurrence";
 import { NOTE_BODY_MAX, NOTE_KINDS, NOTE_MAX_CLIENTS, NOTE_TITLE_MAX, type NoteKind, type NoteLink } from "./types";
 
-export type ShareAudience = "people" | "team";
+/**
+ * "people" and "team" are what the copies store (the rules allow only those
+ * two). "network" (Relay, Sep 2026) is a MARKER audience on the author's
+ * note: the same copy is written to every studio in `studioIds`, each as a
+ * "team" share at that studio. Franchise and super roles can write at every
+ * studio, which is who the option is offered to.
+ */
+export type ShareAudience = "people" | "team" | "network";
+export type CopyAudience = "people" | "team";
+export const SHARE_MAX_STUDIOS = 20;
 
 export const SHARE_MAX_PEOPLE = 20;
 export const SHARE_MESSAGE_MAX = 300;
@@ -56,6 +65,8 @@ export interface TeamShare {
   /** Studio-local 'YYYY-MM-DD' (last day it shows), or null for "until I stop it". */
   expiresOn: string | null;
   message: string;
+  /** "network" only: every studio the copy was written to (studioId among them). */
+  studioIds?: string[];
 }
 
 /** studios/{studioId}/noteShares/{noteId} — the copy colleagues read. */
@@ -71,7 +82,7 @@ export interface NoteShare {
   links: NoteLink[];
   clientIds: string[];
   clientNames: Record<string, string>;
-  audience: ShareAudience;
+  audience: CopyAudience;
   audienceIds: string[];
   expiresOn: string | null;
   message: string;
@@ -91,13 +102,19 @@ export function cleanTeamShare(t: TeamShare | null | undefined): TeamShare | nul
     seen.add(p.id);
     people.push({ id: p.id, name: (p.name || "A trainer").slice(0, 80) });
   }
+  const audience: ShareAudience = t.audience === "team" ? "team" : t.audience === "network" ? "network" : "people";
+  const studioIds =
+    audience === "network"
+      ? [...new Set([t.studioId, ...(t.studioIds ?? [])].filter((id): id is string => typeof id === "string" && id.length > 0))].slice(0, SHARE_MAX_STUDIOS)
+      : undefined;
   return {
     studioId: t.studioId,
     studioName: (t.studioName || "").slice(0, 80),
-    audience: t.audience === "team" ? "team" : "people",
-    people: t.audience === "team" ? [] : people.slice(0, SHARE_MAX_PEOPLE),
+    audience,
+    people: audience === "people" ? people.slice(0, SHARE_MAX_PEOPLE) : [],
     expiresOn: typeof t.expiresOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(t.expiresOn) ? t.expiresOn : null,
     message: (t.message || "").trim().slice(0, SHARE_MESSAGE_MAX),
+    ...(studioIds ? { studioIds } : {}),
   };
 }
 
@@ -108,10 +125,11 @@ export function teamShareFromDoc(v: unknown): TeamShare | null {
   return cleanTeamShare({
     studioId: d.studioId,
     studioName: typeof d.studioName === "string" ? d.studioName : "",
-    audience: d.audience === "team" ? "team" : "people",
+    audience: d.audience === "team" ? "team" : d.audience === "network" ? "network" : "people",
     people: Array.isArray(d.people) ? (d.people as SharePerson[]) : [],
     expiresOn: typeof d.expiresOn === "string" ? d.expiresOn : null,
     message: typeof d.message === "string" ? d.message : "",
+    studioIds: Array.isArray(d.studioIds) ? (d.studioIds as string[]) : undefined,
   });
 }
 
@@ -134,18 +152,25 @@ export function shareExpired(t: { expiresOn: string | null }, todayKey: string):
   return Boolean(t.expiresOn && todayKey && t.expiresOn < todayKey);
 }
 
+/** The studios a marker's copies live at: one, or every studio for "network". */
+export function shareStudios(t: TeamShare | null | undefined): string[] {
+  if (!t) return [];
+  if (t.audience === "network") return [...new Set([t.studioId, ...(t.studioIds ?? [])])];
+  return [t.studioId];
+}
+
 /**
- * What a save has to do to the colleague copy.
- *   write   the studio to (re)write it at, or null
- *   remove  the studio to delete it from, or null
+ * What a save has to do to the colleague copies.
+ *   write   the studios to (re)write it at
+ *   remove  the studios to delete it from
  */
 export function teamSharePlan(
   before: TeamShare | null | undefined,
   after: TeamShare | null | undefined,
-): { write: string | null; remove: string | null } {
-  const was = before?.studioId ?? null;
-  const next = after?.studioId ?? null;
-  return { write: next, remove: was && was !== next ? was : null };
+): { write: string[]; remove: string[] } {
+  const next = shareStudios(after);
+  const was = shareStudios(before);
+  return { write: next, remove: was.filter((id) => !next.includes(id)) };
 }
 
 /** The copy's fields, minus id and timestamp. */
@@ -161,11 +186,13 @@ export function noteShareFields(
   },
   share: TeamShare,
   author: SharePerson,
+  /** The studio this copy is for — the marker's, unless a network share fans out. */
+  studioId: string = share.studioId,
 ): Omit<NoteShare, "id" | "updatedAt"> {
   const clientIds = note.clientIds.slice(0, NOTE_MAX_CLIENTS);
   return {
     noteId: note.noteId,
-    studioId: share.studioId,
+    studioId,
     authorId: author.id,
     authorName: (author.name || "A trainer").slice(0, 80),
     title: note.title.slice(0, NOTE_TITLE_MAX),
@@ -174,7 +201,8 @@ export function noteShareFields(
     links: note.links.slice(0, 10),
     clientIds,
     clientNames: Object.fromEntries(clientIds.map((id) => [id, (note.clientNames[id] ?? "").slice(0, 80)])),
-    audience: share.audience,
+    // A network share is a "team" copy at each studio: the rules know two audiences.
+    audience: share.audience === "people" ? "people" : "team",
     audienceIds: share.audience === "people" ? share.people.map((p) => p.id) : [],
     expiresOn: share.expiresOn,
     message: share.message,
@@ -256,7 +284,9 @@ export function teamShareSentence(
   opts: { dayWords: (key: string) => string; saved: boolean },
 ): string {
   const who =
-    t.audience === "team"
+    t.audience === "network"
+      ? `everyone at every MSF studio (${shareStudios(t).length})`
+      : t.audience === "team"
       ? `everyone who works at ${t.studioName || "this studio"}`
       : t.people.length === 0
         ? "nobody yet"

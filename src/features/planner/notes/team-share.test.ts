@@ -96,11 +96,22 @@ describe("expiry", () => {
 
 describe("teamSharePlan", () => {
   it("writes where it is shared and removes where it was", () => {
-    expect(teamSharePlan(null, share())).toEqual({ write: "s1", remove: null });
-    expect(teamSharePlan(share(), null)).toEqual({ write: null, remove: "s1" });
-    expect(teamSharePlan(share(), share({ studioId: "s2" }))).toEqual({ write: "s2", remove: "s1" });
-    expect(teamSharePlan(share(), share())).toEqual({ write: "s1", remove: null });
-    expect(teamSharePlan(null, null)).toEqual({ write: null, remove: null });
+    expect(teamSharePlan(null, share())).toEqual({ write: ["s1"], remove: [] });
+    expect(teamSharePlan(share(), null)).toEqual({ write: [], remove: ["s1"] });
+    expect(teamSharePlan(share(), share({ studioId: "s2" }))).toEqual({ write: ["s2"], remove: ["s1"] });
+    expect(teamSharePlan(share(), share())).toEqual({ write: ["s1"], remove: [] });
+    expect(teamSharePlan(null, null)).toEqual({ write: [], remove: [] });
+  });
+
+  it("a network share fans out to every studio and pulls back what it left (Relay)", () => {
+    const network = share({ audience: "network", studioIds: ["s1", "s2", "s3"] });
+    expect(teamSharePlan(null, network)).toEqual({ write: ["s1", "s2", "s3"], remove: [] });
+    expect(teamSharePlan(network, share())).toEqual({ write: ["s1"], remove: ["s2", "s3"] });
+    expect(teamSharePlan(network, null)).toEqual({ write: [], remove: ["s1", "s2", "s3"] });
+    // The marker keeps no people, and always counts its home studio.
+    expect(cleanTeamShare({ ...network, studioIds: ["s2"], people: [{ id: "x", name: "X" }] })).toMatchObject({ audience: "network", people: [], studioIds: ["s1", "s2"] });
+    // The copy at each studio is a "team" share there — the rules know two audiences.
+    expect(noteShareFields({ noteId: "n", title: "t", body: "", kind: "note", links: [], clientIds: [], clientNames: {} }, network, { id: "u", name: "U" }, "s2")).toMatchObject({ studioId: "s2", audience: "team", audienceIds: [] });
   });
 });
 

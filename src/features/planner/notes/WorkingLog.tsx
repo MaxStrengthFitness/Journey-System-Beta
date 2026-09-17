@@ -126,7 +126,7 @@ export function WorkingLog({
               <span className="wl__actions">
                 <button type="button" className="wl__btn" onClick={() => onFold(e)} disabled={busy}>
                   <ArrowDownToLine size={13} aria-hidden />
-                  Add to the note
+                  Lift into the note
                 </button>
                 {confirming === e.id ? (
                   <>

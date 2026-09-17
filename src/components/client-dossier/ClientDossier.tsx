@@ -64,6 +64,7 @@ import { BodyWatchOuts } from "../../features/clinical-flags/BodyWatchOuts";
 import { ContractPanel } from "../../features/client-admin/ContractPanel";
 import { InBodyCard } from "../../features/inbody/InBodyCard";
 import { SharedNotesCard } from "../../features/planner/notes/SharedNotesCard";
+import { ClientJotStrip } from "../../features/planner/notes/ClientJotStrip";
 import { ClientSnapshot } from "./ClientSnapshot";
 import { JournalRail } from "./JournalRail";
 import { ClientJournalTab } from "../journal/ClientJournalTab";
@@ -620,6 +621,10 @@ export function ClientDossier({
                 authTrainer={authTrainer ?? null}
                 onOpenPlanner={onOpenPlanner}
               />
+
+              {/* Relay, Sep 2026: the trainer's OWN working notes about this
+                  client, private by path, with a box to jot from here. */}
+              <ClientJotStrip client={client} onOpenPlanner={onOpenPlanner} />
 
               {(longTermGoal || otherIndexes.length > 0) && (
                 <FieldGroup title="Mindbody client indexes">

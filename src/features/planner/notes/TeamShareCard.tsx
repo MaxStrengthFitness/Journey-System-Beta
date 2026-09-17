@@ -46,6 +46,7 @@ export function TeamShareCard({
   todayKey,
   disabled,
   problem,
+  networkStudios,
 }: {
   value: TeamShare | null;
   savedValue: TeamShare | null;
@@ -59,6 +60,11 @@ export function TeamShareCard({
   todayKey: string;
   disabled?: boolean;
   problem?: string;
+  /**
+   * Relay (Sep 2026): every studio this person can write at. Given (and more
+   * than one), "All MSF studios" is offered — franchise and super roles.
+   */
+  networkStudios?: { id: string; name: string }[];
 }) {
   const on = Boolean(value);
   const [pickDate, setPickDate] = useState(false);
@@ -81,6 +87,18 @@ export function TeamShareCard({
   };
 
   const set = (patch: Partial<TeamShare>) => value && onChange({ ...value, ...patch });
+  const network = (networkStudios ?? []).length > 1;
+  const isHandoff = Boolean(value && value.audience === "people" && /^hand-off\b/i.test(value.message));
+  const choose = (audience: TeamShare["audience"]) => {
+    if (!value) return;
+    if (audience === "network") {
+      set({ audience, people: [], studioIds: (networkStudios ?? []).map((s) => s.id) });
+    } else {
+      const { studioIds: _drop, ...rest } = value;
+      void _drop;
+      onChange({ ...rest, audience, people: audience === "people" ? value.people : [] });
+    }
+  };
 
   return (
     <section className={`ne__share ne__team${on ? " ne__share--on" : ""}`} aria-labelledby="ne-team-title">
@@ -118,19 +136,47 @@ export function TeamShareCard({
               options={[
                 { value: "people", label: "Specific people" },
                 { value: "team", label: `Everyone at ${at?.name ?? "the studio"}` },
+                ...(network || value.audience === "network" ? [{ value: "network" as const, label: "All MSF studios" }] : []),
               ]}
-              onChange={(audience) => set({ audience })}
+              onChange={choose}
             />
 
             {value.audience === "people" && (
-              <PeoplePicker
-                label="Share with"
-                people={people}
-                selected={value.people}
-                onChange={(sel) => set({ people: sel })}
-                emptyText="Nobody else works at this studio yet."
-                max={20}
-              />
+              <>
+                <PeoplePicker
+                  label="Share with"
+                  people={people}
+                  selected={value.people}
+                  onChange={(sel) => set({ people: sel })}
+                  emptyText="Nobody else works at this studio yet."
+                  max={20}
+                />
+                {value.people.length === 1 && (
+                  <label className="ne__handoff">
+                    <input
+                      type="checkbox"
+                      checked={isHandoff}
+                      onChange={(e) =>
+                        set({
+                          message: e.target.checked
+                            ? `Hand-off — ${value.message.replace(/^hand-off\s*[—-]?\s*/i, "")}`.trimEnd()
+                            : value.message.replace(/^hand-off\s*[—-]?\s*/i, ""),
+                        })
+                      }
+                    />
+                    <span>
+                      <strong>Hand it off to {value.people[0].name.split(" ")[0]}</strong>
+                      <span className="ne__hint">They get a Take it over button that makes their own copy. This one stays yours until you delete it.</span>
+                    </span>
+                  </label>
+                )}
+              </>
+            )}
+
+            {value.audience === "network" && (
+              <p className="ne__hint">
+                A copy goes to {(networkStudios ?? []).map((s) => s.name).join(", ")} — everyone at each studio reads it in their Notes.
+              </p>
             )}
 
             <div className="ne__team-row">

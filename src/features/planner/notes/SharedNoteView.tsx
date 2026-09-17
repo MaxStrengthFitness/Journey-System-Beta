@@ -62,7 +62,7 @@ export function SharedNoteView({
         <div className="ne__bar-actions">
           <button type="button" className="pl__btn pl__btn--primary" onClick={() => void copy()} disabled={busy}>
             <Copy size={14} aria-hidden />
-            {busy ? "Saving…" : "Save a copy to my notes"}
+            {busy ? "Saving…" : /^hand-off\b/i.test(share.message) ? "Take it over" : "Save a copy to my notes"}
           </button>
         </div>
       </div>

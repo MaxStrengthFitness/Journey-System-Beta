@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ExternalLink, Eye, Lock, PenLine, Pin, Search, Send, Share2, Trash2, UserPlus, X } from "lucide-react";
+import { ChevronLeft, ExternalLink, Eye, FolderOpen, Lock, NotebookPen, PenLine, Pin, Search, Send, Share2, Sparkles, Trash2, UserPlus, X } from "lucide-react";
 import type { Client, Trainer } from "../../../types";
 import { canShareOnto } from "./access";
 import type { StashedDraft } from "./draft-stash";
@@ -12,6 +12,8 @@ import { applyFormat, toggleCheck, type FormatAction } from "./format";
 import { NoteBody, NoteToolbar } from "./NoteBody";
 import { NoteSources } from "./NoteSources";
 import { WorkingLog } from "./WorkingLog";
+import { suggestKind } from "./suggest-kind";
+import { Seg } from "../kit";
 import {
   canShare,
   clientLabel,
@@ -83,6 +85,8 @@ export interface NoteEditorProps {
   onOpenClient?: (clientId: string) => void;
   /** Arrived to jot something (from a client's profile): focus the log. */
   focusJot?: boolean;
+  /** Relay: every studio this person can write at, for "All MSF studios". */
+  networkStudios?: { id: string; name: string }[];
 }
 
 const fullName = (c: Pick<Client, "firstName" | "lastName">) => `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim();
@@ -128,6 +132,7 @@ export function NoteEditor({
   onBack,
   onOpenClient,
   focusJot = false,
+  networkStudios,
 }: NoteEditorProps) {
   const baseline = useMemo(() => (saved ? draftFromNote(saved) : newBaseline), [saved, newBaseline]);
   const [draft, setDraft] = useState<NoteDraft>(() => restored?.draft ?? baseline);
@@ -143,6 +148,13 @@ export function NoteEditor({
     saved && saved.body.trim() && !restored ? "read" : "write",
   );
   const [jotBusy, setJotBusy] = useState(false);
+  // Two panes (Relay): the working log on the left, the note on the right.
+  // Portrait shows one at a time; arriving to jot opens the log.
+  const [pane, setPane] = useState<"log" | "note">(focusJot ? "log" : "note");
+  // Classify after writing (Relay): the kind is suggested from the links and
+  // the words until the author picks one. A new note follows the suggestion
+  // live; a saved one is offered it.
+  const [kindChosen, setKindChosen] = useState<boolean>(() => Boolean(saved && saved.kind !== "note"));
 
   // The saved note changed underneath — this trainer's own save coming back,
   // or an edit on another iPad. Follow it, unless something has been typed
@@ -153,6 +165,12 @@ export function NoteEditor({
     prevBaseline.current = baseline;
     if (prev !== baseline) setDraft((cur) => (draftChanged(cur, prev) ? cur : baseline));
   }, [baseline]);
+
+  const suggested = suggestKind(draft, saved?.log ?? []);
+  useEffect(() => {
+    if (saved || kindChosen) return;
+    setDraft((d) => (d.kind === suggested ? d : { ...d, kind: suggested }));
+  }, [suggested, saved, kindChosen]);
 
   const dirty = draftChanged(draft, baseline);
   const draftRef = useRef(draft);
@@ -427,8 +445,78 @@ export function NoteEditor({
         ? `Saved · ${whenLabel(saved.updatedAt)}`
         : "New note";
 
+  const kindsBlock = (
+    <section className="ne__file" aria-labelledby={`ne-file-${noteId}`}>
+      <h3 className="ne__label" id={`ne-file-${noteId}`}>
+        <FolderOpen size={13} aria-hidden /> File it
+      </h3>
+      {!kindChosen && suggested !== "note" && (
+        <p className="ne__suggest">
+          <Sparkles size={13} aria-hidden />
+          {saved && draft.kind !== suggested ? (
+            <>
+              Reads like {aOrAn(NOTE_KIND_LABEL[suggested])} <strong>{NOTE_KIND_LABEL[suggested].toLowerCase()}</strong>.{" "}
+              <button type="button" className="ne__suggest-use" onClick={() => edit({ kind: suggested })}>
+                Use it
+              </button>
+            </>
+          ) : (
+            <>
+              Filed as {aOrAn(NOTE_KIND_LABEL[draft.kind])} <strong>{NOTE_KIND_LABEL[draft.kind].toLowerCase()}</strong> — suggested from what you wrote. Tap another to change it.
+            </>
+          )}
+        </p>
+      )}
+      <div className="ne__kinds" role="group" aria-label="What kind of note">
+        {NOTE_KINDS.map((k) => (
+          <button
+            key={k}
+            type="button"
+            className={`ne__kind ne__kind--${k}`}
+            aria-pressed={draft.kind === k}
+            onClick={() => {
+              setKindChosen(true);
+              edit({ kind: k });
+            }}
+          >
+            {NOTE_KIND_LABEL[k]}
+          </button>
+        ))}
+      </div>
+      <div className="ne__row">
+        <label className="ne__field">
+          <span className="ne__label">Folder</span>
+          <select
+            className="ne__select"
+            value={draft.folderId ?? ""}
+            onChange={(e) => edit({ folderId: e.target.value || null })}
+          >
+            <option value="">Unfiled</option>
+            {folders.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+            {draft.folderId && !folders.some((f) => f.id === draft.folderId) && (
+              <option value={draft.folderId}>A folder since deleted</option>
+            )}
+          </select>
+        </label>
+        <button
+          type="button"
+          className="ne__pin"
+          aria-pressed={draft.pinned}
+          onClick={() => edit({ pinned: !draft.pinned })}
+        >
+          <Pin size={15} aria-hidden />
+          {draft.pinned ? "Pinned to the top" : "Pin to the top"}
+        </button>
+      </div>
+    </section>
+  );
+
   return (
-    <article className="ne" aria-label={saved ? `Note: ${saved.title}` : "New note"}>
+    <article className="ne" aria-label={saved ? `Note: ${saved.title}` : "New note"} data-pane={pane}>
       <div className="ne__bar">
         {onBack && (
           <button type="button" className="ne__back" onClick={onBack}>
@@ -451,316 +539,301 @@ export function NoteEditor({
             onClick={() => void save()}
             disabled={busy !== null || !dirty}
           >
-            {busy === "save" ? "Saving…" : "Save"}
+            {busy === "save" ? "Saving…" : saved?.sharedWith || saved?.teamShare ? "Save & republish" : "Save"}
           </button>
         </div>
       </div>
 
-      <div className="ne__scroll touch-pane">
-        {error && (
-          <p className="ne__error" role="alert">
-            {error}
-          </p>
-        )}
-
-        <label className="ne__sr" htmlFor={`ne-title-${noteId}`}>
-          Title
-        </label>
-        <input
-          id={`ne-title-${noteId}`}
-          className="ne__title"
-          value={draft.title}
-          maxLength={NOTE_TITLE_MAX}
-          placeholder="Title — or just start writing below"
-          onChange={(e) => edit({ title: e.target.value })}
-          aria-invalid={Boolean(problemFor("title"))}
+      {/* Portrait: one pane at a time. Landscape hides this and shows both. */}
+      <div className="ne__pane-switch">
+        <Seg<"log" | "note">
+          value={pane}
+          options={[
+            { value: "log", label: `Working notes${saved?.log?.length ? ` · ${saved.log.length}` : ""}` },
+            { value: "note", label: "The note" },
+          ]}
+          onChange={setPane}
+          label="Which pane"
         />
-        {problemFor("title") && <p className="ne__problem">{problemFor("title")}</p>}
+      </div>
 
-        <div className="ne__kinds" role="group" aria-label="What kind of note">
-          {NOTE_KINDS.map((k) => (
-            <button
-              key={k}
-              type="button"
-              className={`ne__kind ne__kind--${k}`}
-              aria-pressed={draft.kind === k}
-              onClick={() => edit({ kind: k })}
-            >
-              {NOTE_KIND_LABEL[k]}
-            </button>
-          ))}
-        </div>
+      <div className="ne__panes">
+        <aside className="ne__rail touch-pane" aria-label="Working notes">
+          <WorkingLog
+            log={saved?.log ?? []}
+            clients={linkedClients}
+            busy={jotBusy || busy !== null}
+            full={logIsFull(saved?.log ?? [])}
+            autoFocus={focusJot}
+            onAdd={addJot}
+            onRemove={(e) => void removeJot(e)}
+            onFold={(e) => {
+              foldJot(e);
+              setPane("note");
+            }}
+          />
+        </aside>
 
-        <div className="ne__row">
-          <label className="ne__field">
-            <span className="ne__label">Folder</span>
-            <select
-              className="ne__select"
-              value={draft.folderId ?? ""}
-              onChange={(e) => edit({ folderId: e.target.value || null })}
-            >
-              <option value="">Unfiled</option>
-              {folders.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-              {draft.folderId && !folders.some((f) => f.id === draft.folderId) && (
-                <option value={draft.folderId}>A folder since deleted</option>
-              )}
-            </select>
-          </label>
-          <button
-            type="button"
-            className="ne__pin"
-            aria-pressed={draft.pinned}
-            onClick={() => edit({ pinned: !draft.pinned })}
-          >
-            <Pin size={15} aria-hidden />
-            {draft.pinned ? "Pinned to the top" : "Pin to the top"}
-          </button>
-        </div>
-
-        <section className="ne__clients" aria-labelledby={`ne-clients-${noteId}`}>
-          <h3 className="ne__label" id={`ne-clients-${noteId}`}>
-            About
-          </h3>
-          <div className="ne__chips">
-            {draft.clientIds.map((id) => {
-              const name = clientLabel(id, draft, nameOf);
-              return (
-                <span className="ne__chip" key={id}>
-                  {onOpenClient ? (
-                    <button
-                      type="button"
-                      className="ne__chip-open"
-                      onClick={() => onOpenClient(id)}
-                      aria-label={`Open ${name}'s profile`}
-                    >
-                      {name}
-                      <ExternalLink size={13} aria-hidden />
-                    </button>
-                  ) : (
-                    <span className="ne__chip-name">{name}</span>
-                  )}
-                  {clientsLocked ? (
-                    <span className="ne__chip-lock" title="Shared — switch Share off to change">
-                      <Lock size={13} aria-label="Locked while shared" />
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="ne__chip-x"
-                      onClick={() => unlink(id)}
-                      aria-label={`Unlink ${name}`}
-                    >
-                      <X size={14} aria-hidden />
-                    </button>
-                  )}
-                </span>
-              );
-            })}
-            {!clientsLocked && draft.clientIds.length < NOTE_MAX_CLIENTS && (
-              <button
-                type="button"
-                className="ne__link-btn"
-                aria-expanded={linking}
-                onClick={() => setLinking((v) => !v)}
-              >
-                <UserPlus size={15} aria-hidden />
-                {draft.clientIds.length === 0 ? "Link a client" : "Link another"}
-              </button>
-            )}
-          </div>
-          {clientsLocked && (
-            <p className="ne__hint">Shared on {firstName(onlyName)}'s record — switch Share off to change who this is about.</p>
-          )}
-          {problemFor("clients") && <p className="ne__problem">{problemFor("clients")}</p>}
-          {linking && !clientsLocked && (
-            <ClientLinker
-              roster={roster}
-              linked={draft.clientIds}
-              authTrainer={authTrainer}
-              activeStudioId={activeStudioId}
-              onPick={(c) => {
-                link(c);
-                setLinking(false);
-              }}
-              onClose={() => setLinking(false)}
-            />
-          )}
-        </section>
-
-        <WorkingLog
-          log={saved?.log ?? []}
-          clients={linkedClients}
-          busy={jotBusy || busy !== null}
-          full={logIsFull(saved?.log ?? [])}
-          autoFocus={focusJot}
-          onAdd={addJot}
-          onRemove={(e) => void removeJot(e)}
-          onFold={foldJot}
-        />
-
-        <div className="ne__body-head">
-          <span className="ne__label">The note</span>
-          <div className="pk-seg ne__mode" role="group" aria-label="Write or read">
-            <button type="button" aria-pressed={mode === "write"} onClick={() => setMode("write")}>
-              <PenLine size={14} aria-hidden />
-              Write
-            </button>
-            <button type="button" aria-pressed={mode === "read"} onClick={() => setMode("read")}>
-              <Eye size={14} aria-hidden />
-              Read
-            </button>
-          </div>
-        </div>
-
-        {mode === "write" ? (
-          <>
-            <NoteToolbar onFormat={format} disabled={busy !== null} />
-            <label className="ne__sr" htmlFor={`ne-body-${noteId}`}>
-              Note
-            </label>
-            <textarea
-              id={`ne-body-${noteId}`}
-              ref={bodyRef}
-              className="ne__body"
-              value={draft.body}
-              maxLength={NOTE_BODY_MAX}
-              placeholder={
-                draft.kind === "injury"
-                  ? "What happened, what to avoid, what to load instead, and when to check again."
-                  : draft.kind === "retention"
-                    ? "What keeps them coming — and what might not. The next conversation to have."
-                    : draft.kind === "routine"
-                      ? "What changes, on which machines, from when — and why."
-                      : draft.kind === "research"
-                        ? "What you read, what it found, and what it means on the floor. Add the link below."
-                        : "Write it down. Use the toolbar for headings, checklists and links."
-              }
-              onChange={(e) => edit({ body: e.target.value })}
-            />
-          </>
-        ) : draft.body.trim() ? (
-          <div className="ne__read">
-            <NoteBody body={draft.body} onToggle={(line) => edit({ body: toggleCheck(draft.body, line) })} />
-          </div>
-        ) : (
-          <button type="button" className="ne__read ne__read--empty" onClick={() => setMode("write")}>
-            Nothing written yet — tap to write.
-          </button>
-        )}
-        {draft.body.length > NOTE_BODY_MAX - 1000 && (
-          <p className="ne__count">
-            {draft.body.length.toLocaleString()} / {NOTE_BODY_MAX.toLocaleString()}
-          </p>
-        )}
-        {problemFor("body") && <p className="ne__problem">{problemFor("body")}</p>}
-
-        <NoteSources links={draft.links} onChange={(links) => edit({ links })} disabled={busy !== null} />
-        {problemFor("links") && <p className="ne__problem">{problemFor("links")}</p>}
-
-        <div className="ne__publish-head">
-          <Send size={15} aria-hidden />
-          <div>
-            <h3 className="ne__publish-title">Publish</h3>
-            <p className="ne__publish-lede">
-              When it's ready, put it where the team works from it. Working notes always stay with you.
+        <div className="ne__scroll touch-pane">
+          {error && (
+            <p className="ne__error" role="alert">
+              {error}
             </p>
-          </div>
-        </div>
+          )}
 
-        <section className={`ne__share${draft.share ? " ne__share--on" : ""}`} aria-labelledby={`ne-share-${noteId}`}>
-          <div className="ne__share-head">
-            <Share2 size={16} aria-hidden />
-            <h3 className="ne__share-title" id={`ne-share-${noteId}`}>
-              {onlyClientId ? `Share on ${firstName(onlyName)}'s record` : "Share on the client's record"}
+          <label className="ne__sr" htmlFor={`ne-title-${noteId}`}>
+            Title
+          </label>
+          <input
+            id={`ne-title-${noteId}`}
+            className="ne__title"
+            value={draft.title}
+            maxLength={NOTE_TITLE_MAX}
+            placeholder="Title — or just start writing below"
+            onChange={(e) => edit({ title: e.target.value })}
+            aria-invalid={Boolean(problemFor("title"))}
+          />
+          {problemFor("title") && <p className="ne__problem">{problemFor("title")}</p>}
+
+          <section className="ne__clients" aria-labelledby={`ne-clients-${noteId}`}>
+            <h3 className="ne__label" id={`ne-clients-${noteId}`}>
+              About
             </h3>
-            <button
-              type="button"
-              role="switch"
-              className="ne__switch"
-              aria-checked={draft.share}
-              aria-labelledby={`ne-share-${noteId}`}
-              disabled={shareSwitchDisabled}
-              onClick={() => edit({ share: !draft.share })}
-            >
-              <span className="ne__switch-knob" aria-hidden />
-            </button>
-          </div>
-          {sharedNow && draft.share && copy === "missing" ? (
-            <div className="ne__warn" role="note">
-              <p>
-                This note is no longer on {firstName(onlyName)}'s record — a studio leader may have taken it off. Put it
-                back, or switch Share off and save to keep it private.
-              </p>
-              <button type="button" className="pl__btn" onClick={() => void save()} disabled={busy !== null}>
-                Put it back on {firstName(onlyName)}'s record
+            <div className="ne__chips">
+              {draft.clientIds.map((id) => {
+                const name = clientLabel(id, draft, nameOf);
+                return (
+                  <span className="ne__chip" key={id}>
+                    {onOpenClient ? (
+                      <button
+                        type="button"
+                        className="ne__chip-open"
+                        onClick={() => onOpenClient(id)}
+                        aria-label={`Open ${name}'s profile`}
+                      >
+                        {name}
+                        <ExternalLink size={13} aria-hidden />
+                      </button>
+                    ) : (
+                      <span className="ne__chip-name">{name}</span>
+                    )}
+                    {clientsLocked ? (
+                      <span className="ne__chip-lock" title="Shared — switch Share off to change">
+                        <Lock size={13} aria-label="Locked while shared" />
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="ne__chip-x"
+                        onClick={() => unlink(id)}
+                        aria-label={`Unlink ${name}`}
+                      >
+                        <X size={14} aria-hidden />
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
+              {!clientsLocked && draft.clientIds.length < NOTE_MAX_CLIENTS && (
+                <button
+                  type="button"
+                  className="ne__link-btn"
+                  aria-expanded={linking}
+                  onClick={() => setLinking((v) => !v)}
+                >
+                  <UserPlus size={15} aria-hidden />
+                  {draft.clientIds.length === 0 ? "Link a client" : "Link another"}
+                </button>
+              )}
+            </div>
+            {clientsLocked && (
+              <p className="ne__hint">Shared on {firstName(onlyName)}'s record — switch Share off to change who this is about.</p>
+            )}
+            {problemFor("clients") && <p className="ne__problem">{problemFor("clients")}</p>}
+            {linking && !clientsLocked && (
+              <ClientLinker
+                roster={roster}
+                linked={draft.clientIds}
+                authTrainer={authTrainer}
+                activeStudioId={activeStudioId}
+                onPick={(c) => {
+                  link(c);
+                  setLinking(false);
+                }}
+                onClose={() => setLinking(false)}
+              />
+            )}
+          </section>
+
+          <div className="ne__body-head">
+            <span className="ne__label">
+              <NotebookPen size={13} aria-hidden /> The note
+            </span>
+            <div className="pk-seg ne__mode" role="group" aria-label="Write or read">
+              <button type="button" aria-pressed={mode === "write"} onClick={() => setMode("write")}>
+                <PenLine size={14} aria-hidden />
+                Write
+              </button>
+              <button type="button" aria-pressed={mode === "read"} onClick={() => setMode("read")}>
+                <Eye size={14} aria-hidden />
+                Read
               </button>
             </div>
-          ) : sharedNow && draft.share && copy === "unreadable" ? (
-            <p className="ne__warn" role="note">
-              You can't open {firstName(onlyName)}'s record any more, so the copy there can't be updated. Switch Share
-              off and save to take it down.
-            </p>
+          </div>
+
+          {mode === "write" ? (
+            <>
+              <NoteToolbar onFormat={format} disabled={busy !== null} />
+              <label className="ne__sr" htmlFor={`ne-body-${noteId}`}>
+                Note
+              </label>
+              <textarea
+                id={`ne-body-${noteId}`}
+                ref={bodyRef}
+                className="ne__body"
+                value={draft.body}
+                maxLength={NOTE_BODY_MAX}
+                placeholder={
+                  draft.kind === "injury"
+                    ? "What happened, what to avoid, what to load instead, and when to check again."
+                    : draft.kind === "retention"
+                      ? "What keeps them coming — and what might not. The next conversation to have."
+                      : draft.kind === "routine"
+                        ? "What changes, on which machines, from when — and why."
+                        : draft.kind === "research"
+                          ? "What you read, what it found, and what it means on the floor. Add the link below."
+                          : "Write it down. Lift a working note in from the left, or use the toolbar for headings, checklists and links."
+                }
+                onChange={(e) => edit({ body: e.target.value })}
+              />
+            </>
+          ) : draft.body.trim() ? (
+            <div className="ne__read">
+              <NoteBody body={draft.body} onToggle={(line) => edit({ body: toggleCheck(draft.body, line) })} />
+            </div>
           ) : (
-            <p className="ne__share-body">
-              {shareSentence({ sharedNow, share: draft.share, blocked: shareBlocked, first: firstName(onlyName) })}
+            <button type="button" className="ne__read ne__read--empty" onClick={() => setMode("write")}>
+              Nothing written yet — tap to write.
+            </button>
+          )}
+          {draft.body.length > NOTE_BODY_MAX - 1000 && (
+            <p className="ne__count">
+              {draft.body.length.toLocaleString()} / {NOTE_BODY_MAX.toLocaleString()}
             </p>
           )}
-          {problemFor("share") && <p className="ne__problem">{problemFor("share")}</p>}
-        </section>
+          {problemFor("body") && <p className="ne__problem">{problemFor("body")}</p>}
 
-        <TeamShareCard
-          value={draft.teamShare}
-          savedValue={saved?.teamShare ?? null}
-          onChange={(teamShare) => edit({ teamShare })}
-          studio={activeStudioId ? { id: activeStudioId, name: activeStudioName || "this studio" } : null}
-          people={colleagues}
-          canShareHere={canShareHere}
-          clientCheck={clientCheck.state}
-          clientCount={draft.clientIds.length}
-          todayKey={todayKey}
-          disabled={busy !== null}
-          problem={problemFor("team")}
-        />
+          <NoteSources links={draft.links} onChange={(links) => edit({ links })} disabled={busy !== null} />
+          {problemFor("links") && <p className="ne__problem">{problemFor("links")}</p>}
 
-        {saved && (
-          <div className="ne__danger">
-            {confirmDelete ? (
-              <div className="ne__confirm" role="alertdialog" aria-label="Delete this note?">
-                <p>
-                  Delete “{saved.title}” for good?
-                  {saved.sharedWith ? ` It also comes off ${firstName(onlyName)}'s record.` : ""}
-                  {saved.teamShare ? " Colleagues you shared it with lose it too." : ""}
-                </p>
-                <div className="ne__confirm-actions">
-                  <button type="button" className="pl__btn pl__btn--danger" onClick={() => onDelete(saved)} disabled={busy !== null}>
-                    Delete note
-                  </button>
-                  <button
-                    type="button"
-                    className="pl__btn"
-                    onClick={() => setConfirmDelete(false)}
-                    disabled={busy !== null}
-                    autoFocus
-                  >
-                    Keep it
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button type="button" className="ne__delete" onClick={() => setConfirmDelete(true)}>
-                <Trash2 size={15} aria-hidden />
-                Delete note
-              </button>
-            )}
+          {kindsBlock}
+
+          <div className="ne__publish-head">
+            <Send size={15} aria-hidden />
+            <div>
+              <h3 className="ne__publish-title">Publish</h3>
+              <p className="ne__publish-lede">
+                Private until you say otherwise. Choose who reads it; saving publishes, and every save republishes. Working notes always stay with you.
+              </p>
+            </div>
           </div>
-        )}
+
+          <section className={`ne__share${draft.share ? " ne__share--on" : ""}`} aria-labelledby={`ne-share-${noteId}`}>
+            <div className="ne__share-head">
+              <Share2 size={16} aria-hidden />
+              <h3 className="ne__share-title" id={`ne-share-${noteId}`}>
+                {onlyClientId ? `On ${firstName(onlyName)}'s record` : "On the client's record"}
+              </h3>
+              <button
+                type="button"
+                role="switch"
+                className="ne__switch"
+                aria-checked={draft.share}
+                aria-labelledby={`ne-share-${noteId}`}
+                disabled={shareSwitchDisabled}
+                onClick={() => edit({ share: !draft.share })}
+              >
+                <span className="ne__switch-knob" aria-hidden />
+              </button>
+            </div>
+            {sharedNow && draft.share && copy === "missing" ? (
+              <div className="ne__warn" role="note">
+                <p>
+                  This note is no longer on {firstName(onlyName)}'s record — a studio leader may have taken it off. Put it
+                  back, or switch Share off and save to keep it private.
+                </p>
+                <button type="button" className="pl__btn" onClick={() => void save()} disabled={busy !== null}>
+                  Put it back on {firstName(onlyName)}'s record
+                </button>
+              </div>
+            ) : sharedNow && draft.share && copy === "unreadable" ? (
+              <p className="ne__warn" role="note">
+                You can't open {firstName(onlyName)}'s record any more, so the copy there can't be updated. Switch Share
+                off and save to take it down.
+              </p>
+            ) : (
+              <p className="ne__share-body">
+                {shareSentence({ sharedNow, share: draft.share, blocked: shareBlocked, first: firstName(onlyName) })}
+              </p>
+            )}
+            {problemFor("share") && <p className="ne__problem">{problemFor("share")}</p>}
+          </section>
+
+          <TeamShareCard
+            value={draft.teamShare}
+            savedValue={saved?.teamShare ?? null}
+            onChange={(teamShare) => edit({ teamShare })}
+            studio={activeStudioId ? { id: activeStudioId, name: activeStudioName || "this studio" } : null}
+            people={colleagues}
+            canShareHere={canShareHere}
+            clientCheck={clientCheck.state}
+            clientCount={draft.clientIds.length}
+            todayKey={todayKey}
+            disabled={busy !== null}
+            problem={problemFor("team")}
+            networkStudios={networkStudios}
+          />
+
+          {saved && (
+            <div className="ne__danger">
+              {confirmDelete ? (
+                <div className="ne__confirm" role="alertdialog" aria-label="Delete this note?">
+                  <p>
+                    Delete “{saved.title}” for good?
+                    {saved.sharedWith ? ` It also comes off ${firstName(onlyName)}'s record.` : ""}
+                    {saved.teamShare ? " Colleagues you shared it with lose it too." : ""}
+                  </p>
+                  <div className="ne__confirm-actions">
+                    <button type="button" className="pl__btn pl__btn--danger" onClick={() => onDelete(saved)} disabled={busy !== null}>
+                      Delete note
+                    </button>
+                    <button
+                      type="button"
+                      className="pl__btn"
+                      onClick={() => setConfirmDelete(false)}
+                      disabled={busy !== null}
+                      autoFocus
+                    >
+                      Keep it
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button type="button" className="ne__delete" onClick={() => setConfirmDelete(true)}>
+                  <Trash2 size={15} aria-hidden />
+                  Delete note
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </article>
   );
+}
+
+function aOrAn(word: string): string {
+  return /^[aeiou]/i.test(word) ? "an" : "a";
 }
 
 /* ------------------------------------------------------------------ *

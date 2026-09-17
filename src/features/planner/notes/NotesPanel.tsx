@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Folder, FolderPlus, Pin, Plus, Search, Share2, StickyNote, Users, X } from "lucide-react";
 import { useActiveStudio } from "../../../ActiveStudioContext";
+import { isEveryStudioRole } from "../../renewals/permissions";
 import { auth } from "../../../firebase";
 import type { Client, Trainer } from "../../../types";
 import type { PlannerIntent } from "../intent";
@@ -88,7 +89,12 @@ export interface NotesPanelProps {
 export function NotesPanel({ authTrainer, trainers, clients, onOpenClient, intent }: NotesPanelProps) {
   // The Firebase Auth uid: notes live at trainers/{uid}/notes, private by path.
   const uid = auth.currentUser?.uid ?? null;
-  const { activeStudioId, activeStudio } = useActiveStudio();
+  const { activeStudioId, activeStudio, availableStudios } = useActiveStudio();
+  // Relay: "All MSF studios" is offered to the people whose role reaches every studio.
+  const networkStudios = useMemo(
+    () => (isEveryStudioRole(authTrainer) ? availableStudios.filter((s) => s.id).map((s) => ({ id: s.id!, name: s.name })) : []),
+    [authTrainer, availableStudios],
+  );
   const { notes, folders, loading, error } = useTrainerNotes(uid);
   // Notes colleagues shared here (Planner rework).
   const withMe = useNotesSharedWithMe(uid, activeStudioId);
@@ -482,6 +488,7 @@ export function NotesPanel({ authTrainer, trainers, clients, onOpenClient, inten
             onDelete={removeNote}
             onBack={() => setSelected(null)}
             onOpenClient={onOpenClient}
+            networkStudios={networkStudios}
             focusJot={focusJot === selected}
           />
         ) : (

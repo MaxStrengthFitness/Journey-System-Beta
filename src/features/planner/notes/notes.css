@@ -1146,3 +1146,106 @@
 .sv__clients { margin-top: 0.75rem; }
 .sv__foot { margin-top: 1rem; }
 .ne__status svg { display: inline; vertical-align: -2px; }
+
+/* ==========================================================================
+   RELAY (Sep 2026) — two panes: the working log beside the note
+   --------------------------------------------------------------------------
+   Landscape (>= 900px): a 300px rail on the left that scrolls on its own,
+   the note on the right. Portrait: one pane at a time, switched by the
+   segmented control under the bar (data-pane on .ne).
+   ========================================================================== */
+
+.ne__panes {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+}
+.ne__rail {
+  flex: none;
+  width: 300px;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.875rem 0.875rem 4rem;
+  border-right: 1px solid var(--st-border);
+  background: var(--st-surface-2);
+}
+.ne__rail .wl { margin-top: 0; border-style: solid; background: var(--st-surface); }
+.ne__panes > .ne__scroll { flex: 1; min-width: 0; }
+.ne__pane-switch { display: none; flex: none; padding: 0.5rem 1rem 0; }
+
+@media (max-width: 899px) {
+  .ne__pane-switch { display: block; }
+  .ne__rail { width: 100%; border-right: 0; }
+  .ne[data-pane="note"] .ne__rail { display: none; }
+  .ne[data-pane="log"] .ne__panes > .ne__scroll { display: none; }
+}
+
+/* File it — the kind, suggested after writing */
+.ne__file { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.25rem; }
+.ne__file .ne__label { display: inline-flex; align-items: center; gap: 0.375rem; }
+.ne__suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  background: var(--st-live-fill);
+  color: var(--st-ink-2);
+  font-size: 12px;
+}
+.ne__suggest svg { color: var(--st-live); }
+.ne__suggest-use {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--st-live);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--st-live);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.ne__body-head .ne__label { display: inline-flex; align-items: center; gap: 0.375rem; }
+
+/* The hand-off checkbox in Share with colleagues */
+.ne__handoff {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--st-border);
+  border-radius: 10px;
+  background: var(--st-surface);
+  font-size: 13px;
+  cursor: pointer;
+}
+.ne__handoff input { width: 20px; height: 20px; margin-top: 2px; flex: none; }
+.ne__handoff > span { display: flex; flex-direction: column; gap: 2px; }
+
+/* The jot strip on a client's record (ClientJotStrip.tsx) */
+.jot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--st-border-strong, #a9b2b9);
+  border-radius: 14px;
+}
+.jot__head { display: flex; flex-direction: column; gap: 2px; }
+.jot__title { display: inline-flex; align-items: center; gap: 0.375rem; font-size: 10px; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; }
+.jot__sub { font-size: 11px; opacity: 0.7; }
+.jot__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.jot__item { display: flex; align-items: baseline; gap: 0.5rem; font-size: 13px; }
+.jot__when { flex: none; font-size: 11px; font-weight: 700; opacity: 0.6; min-width: 5rem; }
+.jot__text { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.jot__open { flex: none; min-height: 32px; padding: 0 10px; border: 1px solid currentColor; border-radius: 999px; background: transparent; color: inherit; font: inherit; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; opacity: 0.8; }
+.jot__box { display: flex; gap: 0.5rem; align-items: stretch; }
+.jot__input { flex: 1; min-width: 0; padding: 0.5rem 0.625rem; border: 1px solid var(--st-border, #d3dadf); border-radius: 10px; background: transparent; color: inherit; font: inherit; font-size: 13px; line-height: 1.45; resize: vertical; }
+.jot__add { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--st-live, #0a548b); color: #fff; font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+.jot__add:disabled { opacity: 0.5; cursor: default; }
+.jot__error { margin: 0; font-size: 12px; color: var(--st-flag, #8a5300); }
