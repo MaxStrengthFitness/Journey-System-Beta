@@ -112,18 +112,90 @@ hatch, with the away event that explains them.
   pins sticky boxes inside the scroller's padding, so against `<main>`'s `p-6`
   a plain `top: 0` stuck 24px down; `HistoryView` measures the padding.
 
-## 7. Files
+## 7. Editing a session after the fact (Sep 17 2026)
+
+Round: `docs/rounds/2026-09-17-history-editing.md`. Two surfaces changed and
+one pure module appeared; the rest of this document still describes the tab.
+
+### The session pop-up
+
+Edit mode could change the numbers on a set and nothing else. It now also
+**adds** machines (the Routine Builder's own `MachinePicker`, opened inline
+— a sheet over a dialog leaves an iPad two Back gestures deep) and
+**removes** them, and every save **stamps** the session.
+
+Three rules:
+
+- **Nothing is written until Save.** Added machines and removed sets are
+  drafts on screen; one batch at the end.
+- **A removed set is struck through, not hidden.** The bin becomes an undo
+  arrow. A row that vanishes on a mis-tap cannot be put back by someone who
+  does not already know what was in it.
+- **An edited session says so.** `editedAt`, `editedById` (the Auth uid),
+  `editedByName`, `editedByInitials`, `editCount` on the session document; an
+  **Edited** badge in the header and "Edited by AJ on Sep 17" under the date.
+  AJ chose the stamp over a field-by-field change log.
+
+**Rep quality can be cleared** here and in the entry form — tapping the one
+that is on unsets it. On a session rebuilt weeks later "I do not remember" is
+a real answer, and the red kaizen mark drives the Deep Dive.
+
+### "Log past session"
+
+Three panes: **When** (date, trainer) · **Machines** · **Numbers**. The
+middle one is the Routine Builder's picker, coverage strip and sortable row,
+with a chip per routine that injects the whole thing in a tap. A trainer
+reconstructing a session from memory is doing what they do when they build a
+routine, so the screen that helps them do it well already exists — and "no
+upper-body push" is a good prompt that a machine has been forgotten.
+
+**It counts** (AJ's call, Sep 17): `sessionCount`, `completedSessions`, the
+trainer tally and `machineStats` through `completedSessionRollup`, plus
+`countsTowardTotals: true` on the document. A machine left with no reps is
+written as a skipped machine, never as a performed set of zero, and the footer
+says how many before Save.
+
+### The two pieces of arithmetic
+
+Both in `session-edits.ts`, both pure, both tested:
+
+- **`machineVoteDelta(before, after)`** — `machineStats.<id>.timesPerformed`
+  is a running total kept at write time (one vote per machine per completed
+  session, performed sets only), so an edit has to move it. It takes the
+  session's whole set list on both sides, not the added and removed rows,
+  because a machine with two sets can lose its vote while staying in the
+  session. First/last dates are not recomputed — the same trade the delete
+  path makes, for the same reason.
+- **`ownsClientCounters(session)`** — the one place that decides whether a
+  session owns the client's counters. A completed live session does; a
+  backfill written from Sep 17 2026 does (the flag says so); **an older
+  backfill does not.** It incremented nothing, so deleting it must decrement
+  nothing — the old path decremented every backfill and pulled the client's
+  counters one lower than the truth each time.
+
+### Rules
+
+`exerciseLogs` and `sessions` can be deleted by trainers now, each scoped like
+that collection's own `update` rule. Both were super-admin-and-franchise-owner
+only, so the Delete Session button in this dialog had never worked for a Life
+Transformer or a Studio Leader. **Needs a rules deploy.**
+
+## 8. Files
 
 ```
 model.ts               pure: day keys, cadence, calendar + list models, summaries (36 tests)
+session-edits.ts       pure: the edit stamp, the machine-vote delta, who owns the
+                       client's counters, the shape of a set added by hand (25 tests)
 trainers.ts            session → TrainerRef, same tones as the Calendar tab
 useSessionHistory.ts   the listener and the per-session set loader
 HistoryView.tsx        the tab, from props only (the harness renders this)
 HistoryCalendar.tsx    years → month cards → day cells
 HistoryStats.tsx       four tiles, the on-a-break notice, the legend
 HistoryList.tsx        month cards, session rows, break rows
-SessionDetailDialog.tsx  one session in full, edit / delete (moved, re-coloured)
-LogPastSessionDialog.tsx the backfill form (moved)
+SessionDetailDialog.tsx  one session in full: edit, add and remove machines, the
+                       stamp, delete (+ a render test of edit mode)
+LogPastSessionDialog.tsx the three-pane manual entry form (+ a render test that
+                       walks the whole flow)
 ClientHistoryTab.tsx   container: hooks + dialogs
 client-history.css     layout; tokens come from calendar, journey-grid, equipment
 ```

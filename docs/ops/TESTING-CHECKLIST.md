@@ -31,6 +31,8 @@ The "if it fails" half matters more than the tick box. Most of these were writte
 - [ ] **Add `"test": "vitest run"` to `package.json` and run it once.** *If suites fail:* note which. Twenty-five suites already exist; whatever they say is your real starting position.
 - [ ] **Copy the live rules back into `firestore.staging.rules`** so the repo is the source of truth again.
 - [ ] **Delete `_to_delete/` and `.env.bak`.** 65 MB and a copy of every live secret.
+- [ ] **On each studio iPad: Settings → Accessibility → Touch → Shake to Undo, OFF.** *Why:* an iPad carried across the floor gets read as a shake and iOS offers to undo the last thing typed — a weight, a note, a client's name. The app refuses the undo itself (`src/lib/shake-undo.ts`, Sep 17 2026) so the data is safe either way, but only this setting stops the alert appearing over a session. *If you cannot find it:* it is under Touch, not under Motion.
+
 - [ ] **Have the console open on the iPad session.** Safari → Settings → Advanced → Web Inspector, then attach from a Mac. *If you cannot:* at minimum watch for the app's own toasts, but know you are testing half-blind — and note that quota errors are currently captured and never displayed at all.
 
 ---
@@ -300,6 +302,55 @@ You cannot reach any of these from the UI, so they are decisions rather than tes
 
 ---
 
+## Round 8 — Editing history and logging a past session · *Sep 17 2026 round*
+
+None of this has been on an iPad. Do it on a **test client**, not a real one —
+two of these items change the client's session count on purpose.
+
+- [ ] **Rules first.** `npm run test:rules`, then
+  `firebase deploy --only firestore:rules`. *If you skip it:* Remove and
+  Delete session both fail with a permission error, because until Sep 17 only
+  a super admin or a franchise owner could delete a set or a session.
+- [ ] **Open a past session → Edit → Add a machine to this session.** The
+  Routine Builder's picker opens inside the dialog. Add one; it appears as a
+  dashed "New" card. Give it a weight and reps, Save. *If it fails:* the batch
+  writes the set, the stamp and the machine count together — a permission
+  error on any one of them rolls back all three.
+- [ ] **The header says "Edited by ‹you› on ‹today›"** and carries an **Edited**
+  badge, immediately, without a reload. Reopen the session: it still does.
+- [ ] **Edit → bin on a set.** It goes struck-through and faded, not hidden,
+  and the bin turns into an undo arrow. Tap the arrow: it comes back. Bin it
+  again and Save: the set is gone.
+- [ ] **Programming tab → the machine you added.** Its "performed N times"
+  went up by one; the one you removed went down by one. *If they didn't:*
+  `client.machineStats` is only adjusted for a session that ever cast those
+  votes — check `ownsClientCounters` and whether the session is an old
+  backfill.
+- [ ] **Cancel drops everything.** Edit, add a machine, bin another, Cancel.
+  Nothing changed and no stamp appeared.
+- [ ] **Log past session, all three panes.** A date last week, a trainer, then
+  *Start from → Routine A* — all its machines arrive in order. Drag one to
+  reorder. Add one more from the picker. Next: fill weight and reps on some
+  and leave one blank. The footer counts them ("4 of 5 machines with
+  numbers") and the blank card says it will be saved as not done.
+- [ ] **Leave a quality unset on purpose**, and set then unset another. Neither
+  should end up with a rep quality on the saved session.
+- [ ] **The saved session counts.** The client's session count went up by one,
+  and the session shows on the calendar on the day you chose (not the day
+  before — that was the old UTC bug). Delete it: the count goes back down.
+- [ ] **An OLD backfill still must not decrement.** Find a session logged
+  before Sep 17 2026 with "Logged later" in its sub-line, note the client's
+  session count, delete it, and confirm the count did **not** move.
+- [ ] **Autocorrect is off** in the header search, the client directory and
+  Relay's client picker: type a name the keyboard used to mangle and watch it
+  stay as typed. *If it still corrects:* the field is missing
+  `NAME_SEARCH_PROPS`.
+- [ ] **Shake the iPad while typing in a note.** With the device setting off,
+  no alert. With it on, the alert may appear — tap Undo and confirm **nothing
+  rolls back**. On a studio PC, Cmd+Z in a text field still works.
+
+---
+
 ## Findings log
 
 Copy a block per finding. This is what goes back into the roadmap.
@@ -331,4 +382,5 @@ Screenshot:
 | 5 — Failure modes | 8 | | |
 | 6 — Performance | 4 | | |
 | 7 — Cleanup decisions | 9 | | |
-| **Total** | **102** | | |
+| 8 — History editing (Sep 17) | 12 | | |
+| **Total** | **115** | | |

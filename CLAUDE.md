@@ -25,6 +25,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 | Security rules | `firestore.rules`; tests in `tests/firestore.rules.test.ts`; indexes in `firestore.indexes.json` |
 | One-off scripts | `scripts/*.ts` — service-account auth, dry-run by default, `--commit` to write |
 | Architecture | `docs/ARCHITECTURE.md` - purpose and scope, the screen map, the data dictionary, the code SOP and the roadmap. **Read it before proposing anything** |
+| Client history and past-session entry | `src/features/client-history/` — the History tab, the session pop-up (edit, add and remove machines, the edit stamp) and the three-pane "Log past session" form. `session-edits.ts` is the pure half: the stamp, the machine-vote delta and `ownsClientCounters`. Read its `README.md` first; `docs/rounds/2026-09-17-history-editing.md` is the round |
 | Round documents | `docs/rounds/` (index in `docs/rounds/README.md`; the full journal in `docs/rounds/CHANGELOG.md`). `ROADMAP.md` is the short working list; `docs/ops/TESTING-CHECKLIST.md` is the iPad walkthrough; runbooks in `docs/ops/` |
 | Training method source text | `docs/msf-academy/` |
 
@@ -41,8 +42,8 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 | --- | --- | --- |
 | Install | `npm ci` | `npm install` fails with an `edgesOut` error |
 | Run locally | `npm run dev` | Port 3000 |
-| Typecheck | `npx tsc --noEmit` | Compare the error **count** to master's baseline (11 after the reporting round retired two charts, unchanged by Relay; 13 after the client-profile audit round removed dead code from ClientProfileView, unchanged by the Planner rework and the hub sync fixes; 18 after the FORD round; 20 before that); don't expect zero |
-| Tests | `npx vitest run src` | 2,977 passing after Relay (Sep 16); 2,903 after the reporting round (Sep 16); 2,787 after the hub sync fixes (Sep 16); 2,763 after the Planner rework (Sep 16); 2,636 after the client-profile audit round (Sep 16); 2,128 after the cost round (Sep 16) — run it as `TZ=America/New_York npx vitest run src`, see the date trap below; 2,077 after the four-tab profile round; 2,046 after the FORD round; 2,027 after the fix round; 2,015 after the tracker round; 1,813 after the floor round |
+| Typecheck | `npx tsc --noEmit` | Compare the error **count** to master's baseline (**12 measured on this working copy after the history-editing round**, one of which comes from the untracked `Claude outputs/` folder and so moves with what is on disk; 11 after the reporting round retired two charts, unchanged by Relay; 13 after the client-profile audit round removed dead code from ClientProfileView, unchanged by the Planner rework and the hub sync fixes; 18 after the FORD round; 20 before that); don't expect zero |
+| Tests | `npx vitest run src` | **2,856 in 175 files after the history-editing round (Sep 17)** — the number below for Relay counts the rules suite as well, `vitest run src` alone gives this; 2,977 after Relay (Sep 16); 2,903 after the reporting round (Sep 16); 2,787 after the hub sync fixes (Sep 16); 2,763 after the Planner rework (Sep 16); 2,636 after the client-profile audit round (Sep 16); 2,128 after the cost round (Sep 16) — run it as `TZ=America/New_York npx vitest run src`, see the date trap below; 2,077 after the four-tab profile round; 2,046 after the FORD round; 2,027 after the fix round; 2,015 after the tracker round; 1,813 after the floor round |
 | Build | `npx vite build` | |
 | Rules tests | `npm run test:rules` | Needs JDK 21. "Port taken" means an old emulator still holds 8080 — stop it first |
 
@@ -80,7 +81,21 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 
 `ROLE_LABELS` in `src/types.ts` is the vocabulary: **Life Transformer** (a trainer), **Studio Leader** (`StudioLeader`, `HeadTrainer`), **Franchise Owner** (`Owner`, `StudioOwner`, `FranchiseOwner`), **Founder / Overseer**, **System Administrator**. The Operations (admin) dashboard is reachable by studio leaders and above. Details: `docs/business/roles-and-permissions.md`.
 
-## Known traps (as of Sep 16 2026, after the Relay round)
+## Known traps (as of Sep 17 2026, after the history-editing round)
+
+- **History editing (Sep 17) — read `docs/rounds/2026-09-17-history-editing.md` and `src/features/client-history/README.md` before touching a session after the fact.** The load-bearing parts:
+  - **`ownsClientCounters(session)` is the ONE test for whether a session owns the client's counters** (`features/client-history/session-edits.ts`). A completed live session does; a "Log past session" backfill written from Sep 17 2026 does, because `countsTowardTotals: true` says so on the document; **an older backfill does not** — it incremented nothing, so deleting it must decrement nothing. Never go back to `isBackfilledSession()` for this question.
+  - **`machineStats.<id>.timesPerformed` moves with the sets.** It is a running total kept at write time, so adding a performed machine to a past session casts its vote and removing one takes it back (`machineVoteDelta`, which takes the session's WHOLE set list on both sides — a machine with two sets can lose its vote while staying in the session). First/last dates are NOT recomputed, the same trade the delete path makes.
+  - **Nothing in the session dialog is written until Save.** Added machines and removed sets are drafts on screen and one batch at the end; a half-finished edit interrupted by a client walking in leaves the record as it was.
+  - **A removed set is struck through, not hidden**, and the bin becomes an undo. A row that vanishes on a mis-tap cannot be put back by someone who does not already know what was in it.
+  - **Rep quality can be CLEARED** in both dialogs — tapping the one that is on unsets it. "I don't remember" is a real answer on a session rebuilt weeks later, and the red kaizen mark drives the Deep Dive.
+  - **A machine typed in with no reps is `outcome: "skipped"`, not a performed set of zero** (`newSetDoc` decides it in one place, for both dialogs).
+  - **`exerciseLogs` and `sessions` can now be deleted by trainers** (Sep 17), each scoped like that collection's own `update` rule. Before that both were super-admin-and-franchise-owner only, so the dialog's Delete Session button had never worked for anyone who would press it. **Needs a rules deploy.**
+  - **The edit stamp is `editedAt` / `editedById` (the Auth uid) / `editedByName` / `editedByInitials` / `editCount`** on the session. `editStampOf` treats a missing `editedAt` AND a zero `editCount` as "never edited" — a 0 is not an edit.
+
+- **Shake to undo is refused, not disabled (Sep 17).** `src/lib/shake-undo.ts` cancels the `beforeinput` whose `inputType` is `historyUndo`/`historyRedo`, so the alert may flash but nothing rolls back. It installs **on iPads only** (`looksLikeIpad` reads `maxTouchPoints`, because iPadOS 13+ calls itself a Mac) so Cmd+Z still works on a studio PC. The complete fix is the device setting: Settings → Accessibility → Touch → Shake to Undo, off. `enableShakeMotionWatch` (blur the field on a shake) is written and deliberately NOT called — it needs the iOS motion-permission prompt behind a user gesture.
+
+- **A field that searches for a person spreads `NAME_SEARCH_PROPS`** (`src/lib/name-search-input.ts`, Sep 17): autocorrect, autocapitalise, autocomplete and spellcheck all off, because the iPad keyboard "corrects" client names into an empty result list. Add it to any new person-search input; never to anything written in sentences, where a correction is wanted.
 
 - **Relay (Sep 16) — read `docs/rounds/2026-09-16-relay.md` and `src/features/planner/relay/README.md` before touching the board.** The load-bearing parts:
   - **Capture follows the rules, not the form.** Only leaders create studio task templates and team jobs; any trainer posts a request. So a trainer's "The Floor" is an ask and their "Someone" is a hand-off — a request with `forId` — while `relay.canLead` unlocks Studio task and Team job. Don't offer a form the rules will refuse.
