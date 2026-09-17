@@ -27,7 +27,6 @@ import {
   ListOrdered,
   RotateCcw,
   TriangleAlert,
-  UserPlus,
 } from "lucide-react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../firebase";
@@ -42,7 +41,6 @@ import {
 } from "../features/admin/primitives";
 
 export interface AdminSystemToolsTabProps {
-  onSeedDemoClient?: () => void;
   onRestoreMachines?: () => void;
   onReorderTrainers?: () => void;
   onAppCleanse?: () => void;
@@ -87,7 +85,6 @@ function ToolRow({
 }
 
 export function AdminSystemToolsTab({
-  onSeedDemoClient,
   onRestoreMachines,
   onReorderTrainers,
   onAppCleanse,
@@ -133,18 +130,11 @@ export function AdminSystemToolsTab({
       <AdminHeader
         icon={<Database className="w-5 h-5" />}
         title="System tools"
-        subtitle="Seed, restore and reset. The last one cannot be undone."
+        subtitle="Restore and reset. The last one cannot be undone."
       />
 
       <AdminPanel title="Everyday" flush>
         <AdminRows>
-        <ToolRow
-          icon={UserPlus}
-          title="Seed a demo client"
-          detail="Creates a demo client with sessions and logs, for training staff and for walking through the app without touching a real record."
-          action="Create"
-          onClick={onSeedDemoClient}
-        />
         <ToolRow
           icon={ListOrdered}
           title="Reorder trainers"

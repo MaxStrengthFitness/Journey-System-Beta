@@ -26,7 +26,7 @@ In the order agreed in `docs/ARCHITECTURE.md` §5.2. AJ is the only user, so the
 - **The franchise partition in the rules** — moved up from Gate C on Sep 12 because select franchisees join the beta alongside corporate: `networkIds` and `ownedStudioIds` cached on the trainer document, every `isFranchiseOwnerOnly()` grant scoped to "of this studio".
 - The iPad walkthrough (`docs/ops/TESTING-CHECKLIST.md`), Rank 1 first — two iPads on one client, an occupied machine, a practice set, a skipped machine with a reason, Wi-Fi dropped mid-set.
 - CI as a required check on `master` once green for a week; the rules suite promoted from advisory when stable.
-- The wipe and the demo seeder off the browser (or behind an environment guard and an admin-only server route); an environment badge outside production.
+- The wipe off the browser (or behind an environment guard and an admin-only server route); an environment badge outside production. *The demo seeder ("John Demo") was deleted in the beta-prep trim, Sep 17 2026 — it wrote a fake client into whatever real studio was active; Demo Mode gets a real seeder.*
 - A written rollback plan for rules, functions and the front end.
 - Firestore offline persistence decided and tested.
 - The "Mindbody is down / walk-in not in Mindbody" decision.

@@ -58,7 +58,6 @@ interface Props {
    * implemented here because they act on the app as a whole and their
    * confirmation modals already live in AppContent.
    */
-  onSeedDemoClient?: () => void;
   onRestoreMachines?: () => void;
   onReorderTrainers?: () => void;
   onAppCleanse?: () => void;
@@ -83,7 +82,6 @@ export function AdminDashboardView({
   onUpdateClient,
   onNavigateProfile,
   activeStudioId = null,
-  onSeedDemoClient,
   onRestoreMachines,
   onReorderTrainers,
   onAppCleanse,
@@ -396,7 +394,6 @@ export function AdminDashboardView({
 
         {activeTab === "system" && (
           <AdminSystemToolsTab
-            onSeedDemoClient={onSeedDemoClient}
             onRestoreMachines={onRestoreMachines}
             onReorderTrainers={onReorderTrainers}
             onAppCleanse={onAppCleanse}
