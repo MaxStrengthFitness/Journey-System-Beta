@@ -1,33 +1,24 @@
 /**
  * features/catalog — the barrel AppContent lazy-loads.
  *
- * ROLLBACK IS ONE LINE, AND IT IS THIS ONE
- * ----------------------------------------
- * AppContent imports `CatalogView` from here and knows nothing else about
- * this feature. The Wiki Redesign (Sep 2026) therefore ships as a re-point:
- * `CatalogView` now resolves to CatalogWikiView, and the previous screen is
- * still on disk, still compiling, exported as `LegacyCatalogView`.
+ * `CatalogView` IS CatalogWikiView (Wiki Redesign, Sep 10 2026). The pre-wiki
+ * screen was kept compiling for a week as a one-line rollback
+ * (`LegacyCatalogView`) and nobody imported it; the beta-prep trim deleted it
+ * on Sep 17 2026 - CatalogView.tsx, CatalogLanding.tsx, MachineDetail.tsx,
+ * MachinePicker.tsx, MachinePickerBar.tsx, AnatomyStage.tsx,
+ * ClinicalWarnings.tsx, Section.tsx, useLayoutMode.ts, accents.ts, and the old
+ * Academy pane (features/academy/AcademyView.tsx + academy.css). The rollback
+ * is now `git revert` of that commit.
  *
- * To go back to the old Catalog, swap the two lines below. No other file in
- * the app needs to change, and nothing has been deleted to make room.
- *
- * Once the new one has been used on the floor for a couple of weeks, delete
- * CatalogView.tsx, CatalogLanding.tsx, MachineDetail.tsx, MachinePicker.tsx,
- * MachinePickerBar.tsx, AnatomyStage.tsx, ClinicalWarnings.tsx, Section.tsx,
- * useLayoutMode.ts, catalog.css and catalog.tokens.css — and move the
- * `@import` at the top of features/academy/academy.css onto
- * features/wiki/wiki.tokens.css, which is the one thing outside this folder
- * that still depends on the old token file.
+ * catalog.css and catalog.tokens.css STAY: main.tsx loads them for the whole
+ * app, and StudioSetupCard and StudioNotesCard (both drawn by CatalogWikiView)
+ * are styled by them.
  */
 
 export { CatalogWikiView as CatalogView } from "./CatalogWikiView";
 export type { CatalogWikiViewProps as CatalogViewProps } from "./CatalogWikiView";
 
-/** The pre-wiki screen. Kept compiling as the rollback. See above. */
-export { CatalogView as LegacyCatalogView } from "./CatalogView";
-
 export type { CatalogMachine } from "./types";
-export { CatalogLanding } from "./CatalogLanding";
 export {
   GROUPING_LABEL,
   GROUPING_MODES,

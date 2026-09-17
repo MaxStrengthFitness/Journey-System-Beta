@@ -1,5 +1,22 @@
 # Catalog — anatomy-first redesign
 
+> **Read this first (Sep 17 2026).** This document is the spec and build notes
+> for the **pre-wiki** Catalog screen. The Wiki Redesign (Sep 10 2026) replaced
+> that screen with `CatalogWikiView` + `MachineArticle` on the shared
+> `features/wiki` shell, and the beta-prep trim (Sep 17 2026) deleted the old
+> files: `CatalogView`, `CatalogLanding`, `MachineDetail`, `MachinePicker`,
+> `MachinePickerBar`, `AnatomyStage`, `ClinicalWarnings`, `Section`,
+> `useLayoutMode`, `accents`. Sections 2–5 and 9–10 below describe components
+> that **no longer exist**; they are kept as design history.
+>
+> **Still true and still load-bearing:** §1.1 and §11.1 (studio notes are
+> studio-scoped, never written to the shared `machines/{id}` doc), §4.1 (the
+> adapter), §6 (the anatomy model as a shared component), and the files that
+> survive in this folder — `adapters.ts`, `anatomy.ts`, `grouping.ts`,
+> `machine-identity.ts`, `mutations.ts`, `useCatalogMachines.ts`,
+> `useStudioMachineNotes.ts`, `StudioSetupCard`, `StudioNotesCard`,
+> `MachineFigure`, `catalog.css` and `catalog.tokens.css`.
+
 Round: **Catalog Redesign, Sep 2026.** Branch `catalog-redesign`, one commit per phase.
 **Built.** Sections 1–9 below are the spec as written before the work; §11 records
 where the build deliberately departed from it, and what it found on the way.
