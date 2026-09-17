@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MACHINE_DATABASE, calculateStartingWeight } from "./machine-database";
+import { MACHINE_DATABASE } from "./machine-database";
 import { CANONICAL_TO_DB_KEY } from "../features/catalog/machine-identity";
 
 /**
@@ -30,33 +30,8 @@ describe("the neck machine resolves to the documented exercise", () => {
   });
 });
 
-describe("calculateStartingWeight respects a stated Academy load", () => {
-  // "Most clients will start with 20 pounds, the lightest increment available
-  // on this exercise." — Comprehensive Equipment Overview / Cervical Extension
-  it("never exceeds 20 lb on the Cervical Extension, at any age or level", () => {
-    for (const gender of ["Male", "Female"]) {
-      for (const age of [25, 35, 50, 70]) {
-        for (const skill of ["Novice", "Intermediate", "Advanced"]) {
-          const w = calculateStartingWeight("cervical_extension", gender, age, skill);
-          expect(w).toBeLessThanOrEqual(20);
-        }
-      }
-    }
-  });
-
-  it("REGRESSION: a young male novice used to be given 36 lb", () => {
-    expect(calculateStartingWeight("cervical_extension", "Male", 35, "Novice")).toBe(20);
-  });
-
-  it("leaves machines with no stated load to the heuristic", () => {
-    // 160 base * 1.2 young * 1.0 novice = 192
-    expect(calculateStartingWeight("leg_press", "Male", 35, "Novice")).toBe(192);
-  });
-
-  it("still returns 0 for a machine it does not know", () => {
-    expect(calculateStartingWeight("not-a-machine", "Male", 35, "Novice")).toBe(0);
-  });
-});
+// calculateStartingWeight's Academy pins moved with the function's rule to
+// src/lib/consultation-utils.test.ts (beta-prep trim, Sep 17 2026).
 
 describe("warnings the Academy states are actually present", () => {
   const has = (id: string, needle: string) =>

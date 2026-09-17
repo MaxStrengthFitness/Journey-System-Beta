@@ -40,11 +40,41 @@ export const MACHINE_DICTIONARY: Record<string, MachineData> = {
 };
 
 /**
+ * STARTING LOADS THE ACADEMY STATES OUTRIGHT.
+ *
+ * The multipliers in calculateStartingWeight are a reasonable heuristic for
+ * most of the floor, but they are not doctrine. Where an Academy document
+ * states the starting load, the document wins:
+ *
+ *   ceiling - the heuristic may never suggest more than this
+ *   floor   - nor less, when the stated load is also the lightest increment
+ *             the machine offers (a lighter number cannot be set on it)
+ *
+ * Keyed by the same machine NAME as MACHINE_DICTIONARY. Add to this only with
+ * a quotable sentence from docs/msf-academy/.
+ *
+ * History (beta-prep trim, Sep 17 2026): this rule was first written into a
+ * second calculateStartingWeight in data/machine-database.ts that nothing
+ * called, so the app kept suggesting 28-46 lb on the one exercise the Academy
+ * says is never taken to failure. There is ONE function now - this one.
+ */
+export const ACADEMY_STARTING_WEIGHT: Record<string, { ceiling: number; floor?: number }> = {
+  // "Most clients will start with 20 pounds, the lightest increment available
+  // on this exercise." - Comprehensive Equipment Overview / Cervical Extension.
+  // The studio's equipment list calls the machine "CX (4 WAY NECK)"; Cx is the
+  // Academy's abbreviation for Cervical Extension (see data/machine-database.ts).
+  "CX (4 way neck)": { ceiling: 20, floor: 20 },
+};
+
+/**
  * Calculates the suggested starting weight for a client based on MSF baseline metrics.
- * 
+ *
  * Age Multipliers: Under 40 (x1.2), 40-60 (x1.0), Over 60 (x0.8).
  * Skill Multipliers: Advanced (x1.3), Intermediate (x1.0), Novice (x0.8).
- * 
+ *
+ * A load the Academy states outright (ACADEMY_STARTING_WEIGHT) overrides the
+ * heuristic.
+ *
  * @returns The calculated weight rounded to the nearest 2 lbs (even number)
  */
 export function calculateStartingWeight(
@@ -72,5 +102,13 @@ export function calculateStartingWeight(
   const calculatedWeight = baseWeight * ageMultiplier * skillMultiplier;
   
   // Round to nearest 2 (nearest even number)
-  return Math.round(calculatedWeight / 2) * 2;
+  const rounded = Math.round(calculatedWeight / 2) * 2;
+
+  const stated = ACADEMY_STARTING_WEIGHT[machineName];
+  if (stated) {
+    const capped = Math.min(rounded, stated.ceiling);
+    return stated.floor !== undefined ? Math.max(capped, stated.floor) : capped;
+  }
+
+  return rounded;
 }
