@@ -9,7 +9,7 @@ import { leadsHere } from "../leads";
  * Round: Relay, Sep 2026. Two tiers above the floor:
  *
  *   leads    studio leaders and head trainers OF THE STUDIO THE iPAD IS IN
- *            (planner/leads.ts, the same answer the teamJobs rules give);
+ *            (relay/leads.ts, the same answer the teamJobs rules give);
  *   network  franchise owners, founders and administrators — the people whose
  *            role reaches every studio.
  *

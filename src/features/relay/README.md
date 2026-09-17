@@ -4,9 +4,10 @@
 board and each trainer's second brain: the Now Bar, one Capture composer,
 Next up and the Floor Map on the Floor, Mine's four lanes, the two-pane note
 editor, the Team cockpit and the vault, the Network tab, the Calendar layer,
-kudos. Everything Relay added lives in `relay/` (its own README there); the
-round is `docs/rounds/2026-09-16-relay.md`. The folder keeps its name because
-thirty imports point at it, and the view id stays `studio-tasks`.
+kudos. Everything Relay added lives in `board/` (its own README there; it was
+`planner/relay/` until the beta-prep trim renamed this folder from
+`features/planner/` to `features/relay/` on Sep 17 2026); the round is
+`docs/rounds/2026-09-16-relay.md`. The view id stays `studio-tasks`.
 
 The tabs are now **Floor · Mine · Notes · Team · Network**; the table below
 describes what each one was before Relay and still holds.
@@ -72,7 +73,7 @@ this.
 | `MyTasksPanel.tsx` + `my-tasks.ts` | My tasks, and its pure sorting |
 | `jobs/` | Team jobs: `types.ts`, `jobs.ts` (+ test), `mutations.ts`, `useTeamJobs.ts`, `JobComposer`, `JobSheet`, `TeamJobsLane` |
 | `team/` | The Team tab: `accountability.ts` (+ test), `useInitiativeProgress.ts`, `TeamPanel` |
-| `reminders/` | `reminders.ts` (+ test), `useReminderBell.ts`, `PlannerReminders` (the watcher). The Calendar's strip is `relay/RelayStrip` since the Relay round; the older `ReminderStrip` was deleted, unused, in the beta-prep trim (Sep 17 2026) |
+| `reminders/` | `reminders.ts` (+ test), `useReminderBell.ts`, `PlannerReminders` (the watcher). The Calendar's strip is `board/RelayStrip` since the Relay round; the older `ReminderStrip` was deleted, unused, in the beta-prep trim (Sep 17 2026) |
 | `notes/` | The Notes tab — see `notes/README.md` |
 | `kit.tsx`, `kit.css`, `ClientPicker.tsx` | Shared pieces |
 | `leads.ts` | Who leads the studio the iPad is in |

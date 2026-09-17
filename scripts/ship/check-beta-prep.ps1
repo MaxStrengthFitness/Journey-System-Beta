@@ -56,6 +56,10 @@ $LiveBranch = "master"
 $BaseSha = "33ad0ed"
 $TypecheckBaseline = 11
 $ExpectedTests = "2,982"
+# Where -Stage look started from, so -Stage back returns there (master unless
+# you were somewhere else). backups\ is gitignored, so this survives a switch.
+$CameFromFile = Join-Path $RepoDir "backups\beta-prep\came-from.txt"
+$BackHint = "You are on $WorkBranch now; run -Stage back to return to where you were."
 
 # npm 10.9+ ships npx.ps1 / npm.ps1 shims that PowerShell prefers over the
 # .cmd files, and the shims re-parse the calling line. Call the .cmd directly.
@@ -112,6 +116,9 @@ function Invoke-Look {
   $branchNow = Get-BranchNow
   if ($branchNow -ne $WorkBranch) {
     Assert-Clean
+    $cameDir = Split-Path -Parent $CameFromFile
+    if (-not (Test-Path -LiteralPath $cameDir)) { New-Item -ItemType Directory -Path $cameDir | Out-Null }
+    Set-Content -LiteralPath $CameFromFile -Value $branchNow -Encoding ascii
     $sw = Run git @("checkout", $WorkBranch)
     if ($sw.Code -ne 0) { Say $sw.Text "Red"; Die "could not switch to $WorkBranch. Nothing was changed." }
   } else {
@@ -138,10 +145,16 @@ function Invoke-Look {
   Say "This takes a minute."
   $tsc = Run $NpxExe @("tsc", "--noEmit")
   $count = ([regex]::Matches($tsc.Text, "error TS")).Count
+  # No "error TS" lines AND a failing exit code means tsc never ran (npx could
+  # not find it, node_modules is missing...). That is not a pass.
+  if ($count -eq 0 -and $tsc.Code -ne 0) {
+    Say $tsc.Text "Red"
+    Die "the typecheck did not run at all (no TypeScript output, exit code $($tsc.Code)). Is node_modules installed? Try: npm ci   $BackHint"
+  }
   Say "$LiveBranch has $TypecheckBaseline. This branch has $count (it should read $TypecheckBaseline)."
   if ($count -gt $TypecheckBaseline) {
     Say $tsc.Text "Red"
-    Die "the typecheck got WORSE ($TypecheckBaseline -> $count). If the extra errors are in 'Claude outputs' or 'harness', those folders are scratch on this PC and not part of the branch. Otherwise send Claude the log (check-beta-prep.log)."
+    Die "the typecheck got WORSE ($TypecheckBaseline -> $count). If the extra errors are in 'Claude outputs' or 'harness', those folders are scratch on this PC and not part of the branch. Otherwise send Claude the log (check-beta-prep.log). $BackHint"
   }
   Say "No new typecheck errors." "Green"
 
@@ -166,7 +179,7 @@ function Invoke-Look {
   $b = Run $NpmExe @("run", "build")
   if ($b.Code -ne 0) {
     Say $b.Text "Red"
-    Die "the production build failed. Send Claude the log (check-beta-prep.log)."
+    Die "the production build failed. Send Claude the log (check-beta-prep.log). $BackHint"
   }
   Say "Build clean." "Green"
 
@@ -181,14 +194,24 @@ function Invoke-Look {
 # --------------------------------------------------------------------- back
 
 function Invoke-Back {
-  Head "Switching back to $LiveBranch"
+  # Back to where -Stage look started from; master if that was never recorded
+  # or the branch has since gone.
+  $goTo = $LiveBranch
+  if (Test-Path -LiteralPath $CameFromFile) {
+    $recorded = (Get-Content -LiteralPath $CameFromFile -Raw).Trim()
+    if ($recorded -and $recorded -ne $WorkBranch) {
+      $there = (Run git @("branch", "--list", $recorded)).Text.Trim()
+      if ($there) { $goTo = $recorded }
+    }
+  }
+  Head "Switching back to $goTo"
   Assert-NoLock
   $branchNow = Get-BranchNow
-  if ($branchNow -eq $LiveBranch) { Say "Already on $LiveBranch." "Green"; return }
+  if ($branchNow -eq $goTo) { Say "Already on $goTo." "Green"; return }
   Assert-Clean
-  $sw = Run git @("checkout", $LiveBranch)
-  if ($sw.Code -ne 0) { Say $sw.Text "Red"; Die "could not switch to $LiveBranch." }
-  Say "On $LiveBranch. $WorkBranch is untouched and still here." "Green"
+  $sw = Run git @("checkout", $goTo)
+  if ($sw.Code -ne 0) { Say $sw.Text "Red"; Die "could not switch to $goTo." }
+  Say "On $goTo. $WorkBranch is untouched and still here." "Green"
 }
 
 switch ($Stage) {

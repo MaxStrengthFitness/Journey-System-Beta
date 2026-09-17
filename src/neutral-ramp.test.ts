@@ -248,11 +248,18 @@ function countBarePaletteUtilities(): number {
  * Sep 12 2026 consistency round. The always-dark screens above are excluded
  * and account for a further ~306 that are legitimately pinned.
  *
+ * Sep 17 2026 (beta-prep trim): 311 -> 258. The real count had already
+ * fallen to 273 on master without the budget following it, and deleting the
+ * legacy History view took out 15 more. A budget above the real count lets
+ * that many NEW theme-ignoring colours land without a red test, which is the
+ * opposite of a ratchet - so it is set to the count again before the polish
+ * step starts.
+ *
  * Lower it whenever you bring the number down — that is the point of a
  * ratchet. Raising it should take a sentence in the commit message saying
  * what is deliberately hardcoded and why.
  */
-const BARE_PALETTE_BUDGET = 311;
+const BARE_PALETTE_BUDGET = 258;
 
 describe("colour drift does not creep back", () => {
   it(`has at most ${BARE_PALETTE_BUDGET} non-theme-aware palette utilities`, () => {

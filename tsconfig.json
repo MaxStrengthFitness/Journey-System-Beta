@@ -30,5 +30,9 @@
   // baseline on one PC only. That failed a release whose actual change was
   // clean. A folder git does not track must never be able to fail the
   // typecheck.
-  "exclude": ["functions", "node_modules", "dist", "harness"]
+  // `Claude outputs` and `backups` are the same kind of folder: gitignored
+  // scratch that exists on AJ's PC only. A stray file in `Claude outputs`
+  // had been adding one phantom error there for a week (11 in the cloud, 12
+  // on the PC), which is exactly the trap described above.
+  "exclude": ["functions", "node_modules", "dist", "harness", "Claude outputs", "backups"]
 }

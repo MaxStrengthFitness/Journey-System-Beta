@@ -169,7 +169,7 @@ export function StudioHubView({
   /*
    * TEAM JOBS (Planner rework, Sep 2026) — one piece of work several people
    * share. Posting is a leader's act — of THIS studio, as the teamJobs rules
-   * check it (planner/leads.ts); taking one that is up for grabs, ticking
+   * check it (relay/leads.ts); taking one that is up for grabs, ticking
    * parts and closing it are the floor's.
    */
   const leadsJobs = leadsHere(authTrainer, activeStudioId);

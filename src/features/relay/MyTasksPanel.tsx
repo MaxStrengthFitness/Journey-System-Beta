@@ -87,7 +87,7 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
   const roster = useMemo(() => studioRoster(trainers ?? [], activeStudioId ?? null), [trainers, activeStudioId]);
 
   const allBuckets = useMemo(() => myTaskBuckets(rows, trainerId), [rows, trainerId]);
-  // Relay: Growth is its own lane, kept out of Today (relay/mine.ts).
+  // Relay: Growth is its own lane, kept out of Today (board/mine.ts).
   const buckets = useMemo(
     () => ({ ...allBuckets, open: allBuckets.open.filter((r) => !isGrowthRow(r)), done: allBuckets.done.filter((r) => !isGrowthRow(r)) }),
     [allBuckets],

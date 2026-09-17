@@ -193,6 +193,8 @@ What broke, why, and the rule that came out of it. **Before you touch an area, r
 
 - On AJ's PC, Claude's Linux shell reaches the project folder again (Sep 16): it can run git (delete permission needed for the lock files) and `tsc`, but **not** `vitest` or `vite` — the Windows `node_modules` has no Linux rolldown binding. The cloud container **can** `npm ci`, typecheck, run the suite and both builds; it cannot run `test:rules` (the emulator jar's host is blocked), so **AJ's `test:rules` run is the one that counts.** The file bridge (stage and commit files) works either way.
 
+- **On AJ's PC, use `git --no-optional-locks` for every read-only git command** (beta-prep trim, Sep 17 2026). Claude's shell reaches the project folder through a mount that cannot delete files until AJ grants delete permission for the session. A plain `git status` refreshes the index: it creates `.git/index.lock`, then cannot remove it, and AJ's NEXT git command - in PowerShell or GitHub Desktop - fails with "Another git process seems to be running". `--no-optional-locks` skips that refresh. If a lock is left behind, move it aside with `mv` (renames are allowed) and say so. The same mount makes `git fetch` leave `tmp_pack_*` files in `.git/objects/pack` that it could not unlink (harmless; move them aside), and a `maintenance.lock` from Sep 2 had been silently blocking git's auto-maintenance there for two weeks. To deliver a branch without touching `master` or the working tree: `git bundle create x.bundle master..<branch>` in the cloud, commit the file into `backups\`, then on the PC `git fetch x.bundle <branch>:<branch>` - a new bundle file name each time, because re-using an outputs path can land the previous bytes.
+
 <a id="baselines"></a>
 
 ## Baselines by round

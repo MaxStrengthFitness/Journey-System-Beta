@@ -241,11 +241,6 @@ export function WorkoutTrackerView({
     null,
   );
 
-  // The 5-session window that drives the Active Session table's History
-  // grid — hoisted up here (round: global date headers) so both the
-  // <thead> date columns AND the machine rows below can read the exact
-  // same 5 sessions. Sessions is already sorted newest-first, so this is
-  // simply the 5 most recent past sessions, excluding the in-progress one.
   const [activeMachineIds, setActiveMachineIds] = useState<string[]>([]);
   const [clientMachineSettings, setClientMachineSettings] = useState<
     Record<string, ClientMachineSetting>

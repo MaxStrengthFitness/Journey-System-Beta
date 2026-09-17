@@ -133,8 +133,13 @@ Finished code with no control - "settings with no way to interact with them":
 - **Routine-template tiers.** `visibleToStudio`, `highestAuthorableTier`,
   `TIER_LABEL` are written and unused: the global / studio template
   visibility AJ asked for on Sep 12 is half built.
-- **The trainer PIN.** Edit Trainer can SET one (`hashPin`); nothing ever
-  checks it (`comparePin` has no caller). A setting with no effect.
+- **The trainer PIN is a stub.** Edit Trainer writes a `requiresPinReset`
+  flag, and that is all there is: `hashPin` and `comparePin`
+  (`src/lib/auth-utils.ts`) have no caller at all - on master `hashPin` was
+  imported by Edit Trainer and never called. Nothing in the app sets, asks for
+  or checks a PIN. A control with no effect: finish the feature or remove the
+  control. (`auth-utils.ts` is now unreachable and was left for this
+  decision; so is the unused shadcn `src/components/ui/slider.tsx`.)
 - **Props handed down and ignored.** `AppContent` passes props that their
   screens never read (`trainers`, `onSearchTermChange` to the Hub;
   `authTrainer`, `activeStudioId` to Franchise team management;
@@ -161,8 +166,9 @@ Finished code with no control - "settings with no way to interact with them":
   in the app; `ConsultationSetupWizard`). **Question for AJ:** two different
   moments, or an old and a new version of one thing?
 - Drift counted on Sep 16: 367 raw hex colours in 39 files, 21 files with a
-  hand-rolled spinner beside `LoadingMark`, 311 colour classes that ignore
-  the theme (the `neutral-ramp` budget), 136 card recipes.
+  hand-rolled spinner beside `LoadingMark`, **258** colour classes that ignore
+  the theme (the `neutral-ramp` guard; its budget was still 311, so it is now
+  lowered to the real count and the ratchet bites again), 136 card recipes.
 
 ### Costs the trim removed without being asked
 
