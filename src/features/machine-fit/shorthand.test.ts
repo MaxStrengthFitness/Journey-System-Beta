@@ -129,6 +129,12 @@ describe("it would rather place too little than guess", () => {
     expect(r.leftovers).toEqual(["PILLOW", "under", "knees"]);
   });
 
+  it("does not swallow the label after a stray word", () => {
+    const r = parseShorthand("S:3 C:2 PILLOW WT:112", ROW);
+    expect(r).toMatchObject({ values: { seat: "3", "chest-pad": "2" }, weight: "112", leftovers: ["PILLOW"] });
+    expect(parseShorthand("foam Chest Pad: 4", ROW)).toMatchObject({ values: { "chest-pad": "4" }, leftovers: ["foam"] });
+  });
+
   it("leaves a range alone — 3-5 is a value, not a label and a number", () => {
     expect(parseShorthand("Seat: 3-5", LEG_PRESS).values).toEqual({ Seat: "3-5" });
   });

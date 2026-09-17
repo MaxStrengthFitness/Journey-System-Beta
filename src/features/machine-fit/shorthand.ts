@@ -239,7 +239,11 @@ export function parseShorthand(text: string, fields: readonly ShorthandField[]):
       }
 
       // "Back Pad : 6" / "Seat : 5" — an explicit separator.
-      const twoWordLabel = chunk[i + 2] === SEP && chunk[i + 1] !== SEP;
+      // Two words before the separator are only a label when a field answers
+      // to both of them; otherwise the first is a stray word ("PILLOW WT:112")
+      // and the label is the word beside the separator.
+      const twoWordLabel =
+        chunk[i + 2] === SEP && chunk[i + 1] !== SEP && matchField(`${w} ${chunk[i + 1]}`, fields).field !== null;
       const oneWordLabel = chunk[i + 1] === SEP;
       if (twoWordLabel || oneWordLabel) {
         const label = twoWordLabel ? `${w} ${chunk[i + 1]}` : w;

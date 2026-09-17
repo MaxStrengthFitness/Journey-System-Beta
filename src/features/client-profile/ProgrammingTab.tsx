@@ -7,11 +7,14 @@
  * the Routines round deliberately rebuilt the prescription rows in the
  * Equipment rail's vocabulary. Two tabs for one sentence.
  *
- * One tab now, three segments:
+ * One tab now, four segments:
  *
  *   ROUTINE A      the prescription, full width, one at a time
  *   ROUTINE B      the same, and the switch that turns it on
  *   ALL MACHINES   the roster — every machine, its settings, its history
+ *   SETUP          every machine's settings on ONE list: check them, fill them
+ *                  in from what similar clients use, or copy a FileMaker chart
+ *                  (machine fit round, Sep 2026 — features/machine-fit)
  *
  * Three decisions worth stating:
  *
@@ -31,6 +34,11 @@
  *      would turn a free switch into a reload. It is hidden, not unmounted.
  *      The two routine panels are cheap and are unmounted normally.
  *
+ *   4. SO DOES SETUP, for a stronger reason: it holds UNSAVED DRAFTS. A
+ *      trainer half way down a FileMaker chart who glances at Routine A must
+ *      find the chart where they left it. It reads nothing until it is first
+ *      opened (its own `active` gate), so an unopened Setup costs nothing.
+ *
  * All the Firestore writes still belong to ClientProfileView. This shell owns
  * one piece of state — which segment is showing — and it does not even own
  * that: the profile's nav reducer does, so the choice survives a trip to the
@@ -49,6 +57,7 @@ import type {
   WorkoutSession,
 } from "../../types";
 import { EquipmentTab } from "../equipment";
+import { SetupView } from "../machine-fit/ui/SetupView";
 import { RoutinesTab } from "../routines";
 import { relativeTime, type RoutineName } from "../routines/routine-rows";
 import { useRoutinesModel } from "../routines/useRoutinesModel";
@@ -67,6 +76,11 @@ export interface ProgrammingTabProps {
   sessions: WorkoutSession[];
   adjustments: RoutineAdjustment[];
   trainers: Trainer[];
+  /**
+   * The studio roster the app already holds. Setup joins the studio's
+   * machine-fit rows to it, so "clients built like her" costs no client reads.
+   */
+  studioClients?: readonly Client[];
   authTrainer?: Trainer | null;
   activeStudioId?: string | null;
   selectedRoutineTodayId: string | null;
@@ -91,6 +105,7 @@ export function ProgrammingTab({
   sessions,
   adjustments,
   trainers,
+  studioClients = [],
   authTrainer,
   activeStudioId,
   selectedRoutineTodayId,
@@ -115,10 +130,21 @@ export function ProgrammingTab({
   useEffect(() => {
     if (view === "machines") setRosterSeen(true);
   }, [view]);
+  // Setup keeps the same "alive from first use" rule (decision 4). It is NOT
+  // reset on a new client: SetupView drops its own drafts when the client
+  // changes, and unmounting it here would only cost the catalog listener twice.
+  const [setupSeen, setSetupSeen] = useState(view === "setup");
+  useEffect(() => {
+    if (view === "setup") setSetupSeen(true);
+  }, [view]);
+  /** Settings worth a look, reported by Setup once it has loaded. Null until then. */
+  const [toReview, setToReview] = useState<number | null>(null);
+
   const lastClient = useRef(clientId);
   if (lastClient.current !== clientId) {
     lastClient.current = clientId;
     if (rosterSeen && view !== "machines") setRosterSeen(false);
+    if (toReview !== null) setToReview(null);
   }
 
   // Computed here and handed down, so the context line and the routine panel
@@ -145,6 +171,22 @@ export function ProgrammingTab({
     }
     return ids.size;
   }, [model, isBActive]);
+
+  // How much of the floor has any setting saved — from what the profile
+  // already holds, so the segment can say it before Setup is ever opened.
+  const setup = useMemo(() => {
+    const has = (id?: string) => {
+      const saved = id ? clientSettings[id]?.settings : undefined;
+      return !!saved && Object.values(saved).some((v) => String(v ?? "").trim() !== "");
+    };
+    const prescribedIds = new Set<string>();
+    for (const r of [...model.rowsA, ...(isBActive ? model.rowsB : [])]) prescribedIds.add(r.machineId);
+    return {
+      total: machines.length,
+      done: machines.filter((m) => has(m.id)).length,
+      prescribedMissing: [...prescribedIds].filter((id) => !has(id)).length,
+    };
+  }, [machines, clientSettings, model, isBActive]);
 
   const items = useMemo<SubnavItem<ProgrammingView>[]>(
     () => [
@@ -181,8 +223,19 @@ export function ProgrammingTab({
             : `${coverage.performed} of ${coverage.total} performed`,
         flag: false,
       },
+      {
+        id: "setup",
+        label: "Setup",
+        // The check is PASSIVE: what it found is said quietly here, in words,
+        // and nowhere else in the app. The dot is kept for the one thing that
+        // is a job to do — a machine she is prescribed with no settings saved.
+        meta:
+          `${setup.done} of ${setup.total} set up` +
+          (toReview !== null && toReview > 0 ? ` \u00b7 ${toReview} to review` : ""),
+        flag: setup.prescribedMissing > 0,
+      },
     ],
-    [model, isBActive, coverage],
+    [model, isBActive, coverage, setup, toReview],
   );
 
   const context = (
@@ -286,6 +339,26 @@ export function ProgrammingTab({
           authTrainer={authTrainer}
         />
       </div>
+      )}
+
+      {/* Mounted from the first time Setup is opened, hidden after that:
+          it holds unsaved drafts (decision 4 in the header). */}
+      {setupSeen && (
+        <div className="ptab-pane" hidden={view !== "setup"}>
+          <SetupView
+            client={client}
+            clientId={clientId}
+            machines={machines}
+            clientSettings={clientSettings}
+            routines={routines}
+            isBActive={isBActive}
+            studioClients={studioClients}
+            authTrainer={authTrainer}
+            activeStudioId={activeStudioId}
+            active={view === "setup"}
+            onReviewCount={setToReview}
+          />
+        </div>
       )}
     </div>
   );

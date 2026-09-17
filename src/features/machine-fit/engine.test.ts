@@ -156,3 +156,26 @@ describe("auditing against the company", () => {
     expect(result.state).toBe("checked");
   });
 });
+
+describe("a strong set-up is one most similar clients actually hold", () => {
+  it("does not call a set-up strong when each step is a majority but the whole is rare", () => {
+    // Twelve clients at her height. Seat 4 is 7 of 12; among those Chest 3 is 4 of 7;
+    // among those Pad B is 2 of 4 — every step at least half, the whole only 2 in 12.
+    const rows: FitSample[] = [
+      ...Array.from({ length: 2 }, () => client(67, { seat: "4", chest: "3", pad: "b" })),
+      ...Array.from({ length: 2 }, () => client(67, { seat: "4", chest: "3", pad: "c" })),
+      ...Array.from({ length: 3 }, () => client(67, { seat: "4", chest: "2", pad: "a" })),
+      ...Array.from({ length: 5 }, () => client(67, { seat: "5", chest: "4", pad: "d" })),
+    ];
+    const result = suggestForMachine({
+      fieldKeys: ["seat", "chest", "pad"],
+      target: body(67),
+      sources: { studio: rows, company: null },
+      spec: DEFAULT_MATCH_SPEC,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.seenTogether).toBeLessThan(result.cohort.clients * 0.3);
+    expect(result.strength).toBe("fair");
+  });
+});

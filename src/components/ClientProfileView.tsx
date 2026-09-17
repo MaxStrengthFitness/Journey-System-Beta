@@ -1582,6 +1582,7 @@ export function ClientProfileView({
             sessions={sessions}
             adjustments={routineAdjustments}
             trainers={trainers}
+            studioClients={clients}
             authTrainer={authTrainer}
             activeStudioId={activeStudioId}
             selectedRoutineTodayId={selectedRoutineTodayId}

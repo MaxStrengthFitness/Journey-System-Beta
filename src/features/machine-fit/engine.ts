@@ -41,6 +41,15 @@ import type {
 /** A studio cohort found this close to the client always wins over company data. */
 export const STUDIO_PREFERRED_RING = 1;
 
+/**
+ * For a set-up of several fields to be "strong" (and so eligible for a bulk
+ * accept), at least this share of the similar clients must hold the WHOLE
+ * combination. Each link of the chain can be a majority while the chain as a
+ * whole is rare — four 50% steps is one client in sixteen — and "most similar
+ * clients sit like this" has to be true of the set-up, not just of its parts.
+ */
+export const STRONG_TOGETHER_SHARE = 0.3;
+
 /** The company tier only knows height and gender; everything else is switched off for it. */
 export function companySpec(spec: MatchSpec): MatchSpec {
   const numeric = { ...spec.numeric };
@@ -132,10 +141,10 @@ export function suggestForMachine({
     const picks = [...cluster.picks, ...extras].sort((a, b) => (order.get(a.key) ?? 0) - (order.get(b.key) ?? 0));
     if (picks.length > 0) {
       const banded = cluster.picks;
+      const together =
+        cluster.seenTogether >= 2 && cluster.seenTogether >= chosen.cohort.clients * STRONG_TOGETHER_SHARE;
       const strength: Strength =
-        banded.length > 0 &&
-        banded.every((p) => p.strength === "strong") &&
-        (banded.length === 1 || cluster.seenTogether >= 2)
+        banded.length > 0 && banded.every((p) => p.strength === "strong") && (banded.length === 1 || together)
           ? "strong"
           : "fair";
       return {

@@ -52,8 +52,12 @@ import type { DossierSection } from "../../types/journal";
 
 export type ProfileTab = "journey" | "programming" | "record" | "clinical";
 
-/** Programming's segments: the two prescriptions, then the whole roster. */
-export type ProgrammingView = "routine-a" | "routine-b" | "machines";
+/**
+ * Programming's segments: the two prescriptions, the whole roster, and the
+ * set-up — every machine's settings on one list, with what similar clients
+ * use and a passive check of what is saved (machine fit round, Sep 2026).
+ */
+export type ProgrammingView = "routine-a" | "routine-b" | "machines" | "setup";
 
 /**
  * Activity Archive's segments (tab id "clinical").
@@ -129,6 +133,11 @@ export function legacyLocation(id: string | null | undefined): ProfileLocation {
     case "equipment":
     case "machines":
       return { tab: "programming", view: "machines" };
+    case "setup":
+    case "set-up":
+    case "setup-check":
+    case "fit":
+      return { tab: "programming", view: "setup" };
 
     case "journal":
     case "notes":
@@ -324,7 +333,10 @@ export function isLocation(v: unknown): v is ProfileLocation {
       return true;
     case "programming":
       return (
-        loc.view === "routine-a" || loc.view === "routine-b" || loc.view === "machines"
+        loc.view === "routine-a" ||
+        loc.view === "routine-b" ||
+        loc.view === "machines" ||
+        loc.view === "setup"
       );
     case "clinical":
       return (

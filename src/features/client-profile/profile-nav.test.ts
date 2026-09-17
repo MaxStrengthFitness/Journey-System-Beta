@@ -19,6 +19,8 @@ describe("legacyLocation", () => {
   it("sends the two old programming tabs into Programming", () => {
     expect(legacyLocation("routines")).toEqual({ tab: "programming", view: "routine-a" });
     expect(legacyLocation("equipment")).toEqual({ tab: "programming", view: "machines" });
+    expect(legacyLocation("setup")).toEqual({ tab: "programming", view: "setup" });
+    expect(legacyLocation("setup-check")).toEqual({ tab: "programming", view: "setup" });
   });
 
   it("sends the journal and the dossier sections into the record", () => {
@@ -164,6 +166,7 @@ describe("isLocation", () => {
   it("accepts the real shapes", () => {
     expect(isLocation({ tab: "journey" })).toBe(true);
     expect(isLocation({ tab: "programming", view: "machines" })).toBe(true);
+    expect(isLocation({ tab: "programming", view: "setup" })).toBe(true);
     expect(isLocation({ tab: "clinical", view: "trends" })).toBe(true);
     expect(isLocation({ tab: "record" })).toBe(true);
     expect(isLocation({ tab: "record", section: "goals" })).toBe(true);
