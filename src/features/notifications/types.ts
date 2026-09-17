@@ -53,7 +53,11 @@ export type NotificationKind =
   | "note-shared"
   /* One of your own reminders came due. Written by your own iPad, to
      yourself, so it is the one kind whose actor is the recipient. */
-  | "reminder";
+  | "reminder"
+  /* Relay (Sep 2026). A colleague handed you a piece of work by name; a
+     teammate tapped kudos on something you closed. */
+  | "handoff"
+  | "kudos";
 
 /** Where tapping the notification should land. */
 export interface NotificationLink {

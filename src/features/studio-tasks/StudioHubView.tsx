@@ -66,6 +66,7 @@ import { JobSheet } from "../planner/jobs/JobSheet";
 import { isOnJob, isUpForGrabs, jobTopic } from "../planner/jobs/jobs";
 import { GlanceBand, type GlanceCounts } from "../planner/GlanceBand";
 import { leadsHere } from "../planner/leads";
+import { useRelayMaybe } from "../planner/relay/RelayContext";
 import type { TeamJob } from "../planner/jobs/types";
 import "./studio-tasks.css";
 import "./studio-hub.css";
@@ -168,6 +169,7 @@ export function StudioHubView({
    */
   const leadsJobs = leadsHere(authTrainer, activeStudioId);
   const teamJobs = useTeamJobs(activeStudioId ?? null);
+  const relay = useRelayMaybe();
   const [composingJob, setComposingJob] = useState(false);
   const [openJobKey, setOpenJobKey] = useState<string | null>(null);
   const openJob: TeamJob | null = useMemo(
@@ -380,7 +382,7 @@ export function StudioHubView({
             me={author}
             mineOnly={mineOnly}
             canPost={leadsJobs}
-            onPost={() => setComposingJob(true)}
+            onPost={() => (relay ? relay.openCapture({ destination: "someone", someoneForm: "job" }) : setComposingJob(true))}
             onOpen={(job) => setOpenJobKey(job.id)}
             onError={toastError}
           />

@@ -40,6 +40,8 @@ import {
   TriangleAlert,
   StickyNote,
   UserCheck,
+  ArrowRightLeft,
+  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -72,6 +74,8 @@ const ICON: Record<NotificationKind, typeof Bell> = {
   "job-done": ClipboardCheck,
   "note-shared": StickyNote,
   reminder: BellRing,
+  handoff: ArrowRightLeft,
+  kudos: Heart,
 };
 
 function ago(v: unknown): string {

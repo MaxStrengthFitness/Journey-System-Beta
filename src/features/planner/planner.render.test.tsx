@@ -186,11 +186,44 @@ describe("Relay", () => {
 
     await click(tab("Mine"));
     await click([...h.querySelectorAll("button")].find((b) => b.textContent?.includes("New reminder")));
-    expect(document.body.textContent).toContain("New reminder");
-    expect(document.body.textContent).toContain("1. What");
+    expect(document.body.textContent).toContain("Capture");
+    expect(document.body.textContent).toContain("Relay it");
+    // A reminder preset lands with a time, so the bell choices are in view.
+    expect(document.body.textContent).toContain("Your bell");
+    expect(document.body.textContent).toContain("At the time");
+  });
 
-    await click(tab("Floor"));
-    await click([...document.querySelectorAll("button")].find((b) => b.textContent?.includes("Post a job")));
-    expect(document.body.textContent).toContain("Post a team job");
+  it("captures: the sentence follows the destination and the chips", async () => {
+    const h = await mount(lead);
+    await click(h.querySelector(".cf"));
+    const sheet = document.body;
+    expect(sheet.textContent).toContain("Say what it is, then who it's for.");
+    const text = sheet.querySelector<HTMLTextAreaElement>(".cs__text");
+    expect(text).toBeTruthy();
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+      setter.call(text, "Deep-clean the leg press");
+      text!.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await settle();
+    expect(sheet.textContent).toContain("For you, today. Only you see it.");
+
+    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "The Floor"));
+    expect(sheet.textContent).toContain("Anyone at Solon can take it.");
+    // A leader is offered the studio-task form and the ask kinds.
+    expect(sheet.textContent).toContain("A studio task");
+    expect(sheet.textContent).toContain("Heads-up");
+
+    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "Someone"));
+    expect(sheet.textContent).toContain("Hand it to one person");
+
+    // Relay it with nobody named: the problem shows, nothing is written.
+    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "Relay it"));
+    expect(sheet.textContent).toContain("Name who it goes to.");
+
+    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent?.includes("~min")));
+    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "~10 min"));
+    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "The Floor"));
+    expect(sheet.textContent).toContain("About 10 min.");
   });
 });

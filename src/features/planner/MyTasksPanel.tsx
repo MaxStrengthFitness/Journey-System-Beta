@@ -20,6 +20,7 @@ import { dayWords } from "./jobs/jobs";
 import { addDays } from "../studio-tasks/recurrence";
 import { studioDateKey } from "../../lib/studio-time";
 import { leadsHere } from "./leads";
+import { useRelayMaybe } from "./relay/RelayContext";
 import { studioRoster } from "../studio-tasks/initiatives";
 import { useTeamJobs } from "./jobs/useTeamJobs";
 import { TeamJobsLane } from "./jobs/TeamJobsLane";
@@ -86,6 +87,9 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
     [templates],
   );
 
+  // Inside Relay the composer is Capture (relay/CaptureSheet); outside it,
+  // the wizard. Editing an existing task stays with the wizard either way.
+  const relay = useRelayMaybe();
   const [managing, setManaging] = useState(false);
   const [intent, setIntent] = useState<
     | { mode: "new"; scope: "personal"; preset?: Partial<TaskTemplate> }
@@ -181,6 +185,10 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
               className="pl__btn"
               disabled={!ownerId || !activeStudioId}
               onClick={() => {
+                if (relay) {
+                  relay.openCapture({ destination: "me" });
+                  return;
+                }
                 setIntent({ mode: "new", scope: "personal" });
                 setManaging(true);
               }}
@@ -193,7 +201,12 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
               className="pl__btn"
               disabled={!ownerId || !activeStudioId}
               onClick={() => {
-                setIntent({ mode: "new", scope: "personal", preset: reminderPreset(todayKey, new Date()) });
+                const preset = reminderPreset(todayKey, new Date());
+                if (relay) {
+                  relay.openCapture({ destination: "me", time: preset.timeOfDay ?? null, remindMinutesBefore: 0 });
+                  return;
+                }
+                setIntent({ mode: "new", scope: "personal", preset });
                 setManaging(true);
               }}
             >

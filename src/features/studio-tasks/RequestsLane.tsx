@@ -44,6 +44,7 @@ import {
   X,
  ClipboardCheck, ArrowRightLeft } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
+import { useRelayMaybe } from "../planner/relay/RelayContext";
 import {
   addRequestReply,
   createRequest,
@@ -173,6 +174,9 @@ export function RequestsLane({
   );
   const openRequests = useMemo(() => cards.map((c) => c.request), [cards]);
 
+  // Inside Relay, asks are posted through Capture (planner/relay); the inline
+  // composer below stays for the hub mounted anywhere else.
+  const relay = useRelayMaybe();
   const [composing, setComposing] = useState(false);
   const [kind, setKind] = useState<RequestKind>("cover");
   const [expiry, setExpiry] = useState<ExpiryChoice>("none");
@@ -380,7 +384,7 @@ export function RequestsLane({
         <button
           type="button"
           className="stq__new"
-          onClick={() => setComposing((v) => !v)}
+          onClick={() => (relay ? relay.openCapture({ destination: "floor", askKind: "help" }) : setComposing((v) => !v))}
           aria-expanded={composing}
         >
           {composing ? <X size={13} aria-hidden /> : <Send size={13} aria-hidden />}

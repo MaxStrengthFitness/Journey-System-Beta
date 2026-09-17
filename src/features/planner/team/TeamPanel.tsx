@@ -18,6 +18,7 @@ import { JobSheet } from "../jobs/JobSheet";
 import { useTeamJobs } from "../jobs/useTeamJobs";
 import type { JobDraft } from "../jobs/types";
 import { Avatar } from "../kit";
+import { useRelayMaybe } from "../relay/RelayContext";
 import { teamRecord, teamSummary, type PersonRecord } from "./accountability";
 import { useInitiativeProgress } from "./useInitiativeProgress";
 import "../kit.css";
@@ -89,6 +90,7 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
   );
   const summary = useMemo(() => teamSummary(records, teamJobs.jobs, todayKey), [records, teamJobs.jobs, todayKey]);
 
+  const relay = useRelayMaybe();
   const [composing, setComposing] = useState<Partial<JobDraft> | null>(null);
   const [openJobId, setOpenJobId] = useState<string | null>(null);
   const openJob = teamJobs.jobs.find((j) => j.id === openJobId) ?? null;
@@ -113,7 +115,12 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
             </p>
           </div>
           <div className="pl__panel-actions">
-            <button type="button" className="pl__btn pl__btn--primary" onClick={() => setComposing({})} disabled={!studioId}>
+            <button
+              type="button"
+              className="pl__btn pl__btn--primary"
+              onClick={() => (relay ? relay.openCapture({ destination: "someone", someoneForm: "job" }) : setComposing({}))}
+              disabled={!studioId}
+            >
               <ClipboardList size={14} aria-hidden />
               Post a job
             </button>
@@ -202,7 +209,11 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
                     role={roleOf.get(r.person.id)}
                     isMe={r.person.id === author?.id}
                     onOpenJob={setOpenJobId}
-                    onPostFor={() => setComposing({ assignees: [r.person], openToAll: false })}
+                    onPostFor={() =>
+                      relay
+                        ? relay.openCapture({ destination: "someone", someoneForm: "job", people: [r.person], openToAll: false })
+                        : setComposing({ assignees: [r.person], openToAll: false })
+                    }
                   />
                 </li>
               ))}

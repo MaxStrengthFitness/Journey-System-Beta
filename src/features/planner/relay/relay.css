@@ -452,3 +452,45 @@ button.nb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offset
 }
 .rl-prompt__text { flex: 1 1 14rem; min-width: 0; }
 .rl-prompt__title { display: block; font-weight: 800; color: var(--st-ink); }
+
+/* ------------------------------------------------------------------ *
+ * The Capture sheet (CaptureSheet.tsx)
+ * ------------------------------------------------------------------ */
+
+.cs__body { gap: 0.875rem; }
+.cs__text {
+  min-height: 72px;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.cs__chips .pk-chip { min-height: 40px; gap: 5px; }
+.cs__picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--st-border);
+  border-radius: 12px;
+  background: var(--st-surface-2);
+}
+.cs__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--st-ink-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: left;
+}
+.cs__more-hint { font-weight: 600; color: var(--st-ink-faint); }
+.cs__sentence { font-size: 13px; }
+.cs__go--ready { animation: cs-pulse 700ms ease-out 1; }
+@keyframes cs-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.04); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .cs__go--ready { animation: none; } }
