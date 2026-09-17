@@ -72,7 +72,7 @@ this.
 | `MyTasksPanel.tsx` + `my-tasks.ts` | My tasks, and its pure sorting |
 | `jobs/` | Team jobs: `types.ts`, `jobs.ts` (+ test), `mutations.ts`, `useTeamJobs.ts`, `JobComposer`, `JobSheet`, `TeamJobsLane` |
 | `team/` | The Team tab: `accountability.ts` (+ test), `useInitiativeProgress.ts`, `TeamPanel` |
-| `reminders/` | `reminders.ts` (+ test), `useReminderBell.ts`, `PlannerReminders` (the watcher), `ReminderStrip` (the Calendar) |
+| `reminders/` | `reminders.ts` (+ test), `useReminderBell.ts`, `PlannerReminders` (the watcher). The Calendar's strip is `relay/RelayStrip` since the Relay round; the older `ReminderStrip` was deleted, unused, in the beta-prep trim (Sep 17 2026) |
 | `notes/` | The Notes tab — see `notes/README.md` |
 | `kit.tsx`, `kit.css`, `ClientPicker.tsx` | Shared pieces |
 | `leads.ts` | Who leads the studio the iPad is in |
