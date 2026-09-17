@@ -19,6 +19,9 @@ import { db } from "../../firebase";
 import { createJournalEntry } from "../../hooks/useClientJournal";
 import type { JournalOrigin } from "../../types/journal";
 import type { MachineNote } from "../../types";
+import { upsertFitRow } from "../machine-fit/fit-store";
+import { nextSettings, nextSources } from "../machine-fit/settings-write";
+import type { SettingSource } from "../machine-fit/types";
 import type { SettingFieldSpec } from "./types";
 
 export interface MutationAuthor {
@@ -112,19 +115,6 @@ export function diffSettings(
   return changes;
 }
 
-/** Drop empty values so a cleared field disappears rather than saving "". */
-function cleanSettings(
-  fields: SettingFieldSpec[],
-  draft: Record<string, string>,
-): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const f of fields) {
-    const v = (draft[f.key] ?? "").toString().trim();
-    if (v) out[f.key] = v;
-  }
-  return out;
-}
-
 async function writeHistory(
   machineId: string,
   entry: Record<string, unknown>,
@@ -145,6 +135,16 @@ export interface SaveSettingsArgs {
   /** Machine name, for a journal entry that reads on its own. */
   machineName: string;
   journal?: JournalContext;
+  /**
+   * Machine fit (Sep 2026). `changedSources` says where each CHANGED value
+   * came from ("suggested" when the trainer tapped Use and left it alone);
+   * `existingSources` is what the document already holds. `homeStudioId` is
+   * the client's home studio: with it, the studio's machine-fit index gets
+   * this client's row — caught, so it can never fail the save.
+   */
+  changedSources?: Record<string, SettingSource | undefined>;
+  existingSources?: Record<string, SettingSource> | null;
+  homeStudioId?: string | null;
 }
 
 export interface SaveSettingsResult {
@@ -171,6 +171,9 @@ export async function saveSettings({
   isInitialSetup,
   machineName,
   journal,
+  changedSources,
+  existingSources,
+  homeStudioId,
 }: SaveSettingsArgs): Promise<SaveSettingsResult | null> {
   const changes = diffSettings(fields, saved, draft);
   if (changes.length === 0) return null;
@@ -178,17 +181,29 @@ export async function saveSettings({
   const summary = describeChanges(changes);
   const actualReason = reason.trim() || (isInitialSetup ? "Initial setup" : "Settings update");
 
+  const settings = nextSettings(fields, saved, draft);
+  const sources = nextSources(fields, saved, settings, existingSources, changedSources);
+
+  // `mergeFields`, not `merge: true`. A merge walks INTO a map, so a cleared
+  // field was never actually removed — it came back on the next load. Naming
+  // the fields replaces `settings` and `sources` whole and still leaves the
+  // weights, the notes and the fit reviews on the document alone.
   await setDoc(
     doc(db, "clientMachineSettings", `${clientId}_${machineId}`),
     {
       clientId,
       machineId,
-      settings: cleanSettings(fields, draft),
+      settings,
+      sources,
       updatedAt: new Date(),
       updatedBy: author.id,
     },
-    { merge: true },
+    { mergeFields: ["clientId", "machineId", "settings", "sources", "updatedAt", "updatedBy"] },
   );
+
+  // The studio's machine-fit index: who is set to what. Never awaited into
+  // the result and never thrown — the settings above are the record.
+  void upsertFitRow({ homeStudioId, machineId, clientId, settings, sources });
 
   await writeHistory(machineId, {
     clientId,

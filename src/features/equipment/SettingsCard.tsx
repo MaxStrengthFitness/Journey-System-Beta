@@ -110,6 +110,12 @@ export interface SettingsCardProps {
   clientHeight?: string | null;
   /** The client's gender, for the catalog's stature baseline. */
   clientGender?: string | null;
+  /**
+   * The client's HOME studio. With it, a save also updates that studio's
+   * machine-fit index (features/machine-fit); without it the index is simply
+   * not touched and the rebuild script picks the row up later.
+   */
+  clientHomeStudioId?: string | null;
 }
 
 export function SettingsCard({
@@ -122,16 +128,22 @@ export function SettingsCard({
   journal,
   clientHeight = null,
   clientGender = null,
+  clientHomeStudioId = null,
 }: SettingsCardProps) {
   const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState<Record<string, string>>(() => seedDraft(machine));
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
+  // Field key → the value "Use" put there. While the draft still holds that
+  // value the field is saved as "suggested", which keeps it out of other
+  // clients' evidence until this client has performed the machine with it.
+  const [used, setUsed] = useState<Record<string, string>>({});
 
   // Selecting another machine must not carry the previous machine's draft.
   useEffect(() => {
     setDraft(seedDraft(machine));
     setReason("");
+    setUsed({});
     setEditing(startEditing);
   }, [machine.id, startEditing]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -175,10 +187,18 @@ export function SettingsCard({
         isInitialSetup,
         machineName: machine.name,
         journal,
+        existingSources: machine.sources,
+        changedSources: Object.fromEntries(
+          Object.entries(used)
+            .filter(([k, v]) => (draft[k] ?? "").trim() === v)
+            .map(([k]) => [k, "suggested" as const]),
+        ),
+        homeStudioId: clientHomeStudioId,
       });
       if (result) onSaved?.(result, machine);
       setEditing(false);
       setReason("");
+      setUsed({});
     } catch (err) {
       console.error(err);
       onError?.("Failed to save machine settings.");
@@ -266,7 +286,10 @@ export function SettingsCard({
                         <button
                           type="button"
                           className="eq-suggest__use"
-                          onClick={() => setDraft((d) => ({ ...d, [f.key]: suggestion.value }))}
+                          onClick={() => {
+                            setDraft((d) => ({ ...d, [f.key]: suggestion.value }));
+                            setUsed((u) => ({ ...u, [f.key]: suggestion.value }));
+                          }}
                           aria-label={`Use ${suggestion.value} for ${f.label}`}
                         >
                           Use {suggestion.value}
@@ -299,6 +322,7 @@ export function SettingsCard({
                 onClick={() => {
                   setDraft(seedDraft(machine));
                   setReason("");
+                  setUsed({});
                   setEditing(false);
                 }}
                 disabled={saving}

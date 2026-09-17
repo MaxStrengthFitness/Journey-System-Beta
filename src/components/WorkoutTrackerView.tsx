@@ -3629,6 +3629,7 @@ export function WorkoutTrackerView({
           sessionId={currentSession?.id || null}
           onClose={() => setSetupPromptMachineId(null)}
           onError={toastError}
+          clientHomeStudioId={selectedClient?.homeStudioId ?? null}
         />
       )}
 

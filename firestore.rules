@@ -864,6 +864,17 @@ service cloud.firestore {
                       || (resource != null && resource.data.get('flag', null) == d.flag))));
     }
 
+    /* THE MACHINE-FIT INDEX (machine fit, Sep 2026): who at a studio is set
+       to what on one machine. Shape only -- a row is keyed by a client id the
+       rules cannot enumerate, so what a write may TOUCH is checked at the
+       match block (one row at a time). */
+    function machineFitValid(d, studioId, machineId) {
+      return d.keys().hasOnly(['machineId', 'studioId', 'rows', 'updatedAt', 'rebuiltAt'])
+          && d.machineId == machineId
+          && d.studioId == studioId
+          && d.rows is map;
+    }
+
     /* A NOTE SHARED WITH COLLEAGUES (Planner rework, Sep 2026). Signed by
        the caller and stamped with this write's time; limits match
        src/features/planner/notes/team-share.ts and notes/types.ts. */
@@ -1440,6 +1451,17 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
+    // THE KAIZEN REPORT (machine fit, Sep 2026) -- the weekly job's company-wide
+    // view of how each machine is set up: every studio beside the company, and
+    // how many of a studio's set-ups sit far from what similar clients use.
+    // That is management information about named studios, so unlike
+    // machineTrends it is for administrators, founders and overseers only.
+    // Counts only, never a client row. Written by the job (Admin SDK).
+    match /kaizenReports/{machineId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
     match /leaderboards/{docId} {
       allow read: if isAuthenticated();
       allow write: if isSuperAdmin();
@@ -1740,6 +1762,40 @@ service cloud.firestore {
       match /vault/{entryId} {
         allow read, create, update, delete:
           if isSuperAdmin() || isFranchiseOwnerOnly() || isStudioOwnerOrHeadTrainer(studioId);
+      }
+
+      /*
+       * MACHINE FIT (Sep 2026) -- one document per machine: which of this
+       * studio's clients is set to what (rows keyed by client id). It is the
+       * index behind set-up suggestions and the set-up check; the client's
+       * own clientMachineSettings stay the record, and
+       * scripts/rebuild-machine-fit.ts can rebuild this from them.
+       *
+       * Read: the people who work at the studio -- the same people who can
+       * already open these clients. NOT every signed-in trainer: a row is a
+       * client id beside her settings.
+       * Write: the same people, ONE ROW PER WRITE. The app only ever touches
+       * the row of the client whose settings it just saved, and holding it to
+       * that means a bad client cannot rewrite a studio's evidence in one go.
+       * It holds no body data (no height, nothing from InBody): rows are
+       * joined to the client record when they are read.
+       */
+      match /machineFit/{machineId} {
+        allow read: if isAuthenticated() && writesForStudio(studioId);
+
+        allow create: if isAuthenticated()
+                      && isAnyAuthenticatedTrainer()
+                      && machineFitValid(request.resource.data, studioId, machineId)
+                      && request.resource.data.rows.size() <= 1
+                      && writesForStudio(studioId);
+
+        allow update: if isAuthenticated()
+                      && isAnyAuthenticatedTrainer()
+                      && machineFitValid(request.resource.data, studioId, machineId)
+                      && request.resource.data.rows.diff(resource.data.get('rows', {})).affectedKeys().size() <= 1
+                      && writesForStudio(studioId);
+
+        allow delete: if isSuperAdmin();
       }
 
       /*

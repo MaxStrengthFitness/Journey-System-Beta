@@ -51,7 +51,7 @@ export interface MachineDetailPanelProps {
    * clinical watch-outs on this machine and the height-based setting
    * suggestions. Optional — without it neither appears.
    */
-  client?: Pick<Client, "height" | "gender" | "clinicalFlags"> | null;
+  client?: Pick<Client, "height" | "gender" | "clinicalFlags"> & Partial<Pick<Client, "homeStudioId">> | null;
 }
 
 export function MachineDetailPanel({
@@ -139,6 +139,7 @@ export function MachineDetailPanel({
         journal={journal}
         clientHeight={client?.height ?? null}
         clientGender={client?.gender ?? gender ?? null}
+        clientHomeStudioId={client?.homeStudioId ?? null}
       />
 
       <MachineNotes

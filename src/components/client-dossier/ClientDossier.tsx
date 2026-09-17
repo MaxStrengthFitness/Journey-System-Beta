@@ -571,6 +571,13 @@ export function ClientDossier({
 
               <FieldGroup title="Biometrics & recovery" cols={3}>
                 <TextField label="Height" value={val("height")} onChange={set("height")} placeholder={`e.g. 5'4"`} hint="Used for machine set-up suggestions." />
+                <TextField
+                  label="Wingspan"
+                  value={val("wingspan")}
+                  onChange={set("wingspan")}
+                  placeholder={`inches, e.g. 66`}
+                  hint="Optional. Fingertip to fingertip, arms out. Sharpens set-up suggestions on rows, presses and pulldowns."
+                />
                 <TextField label="Weight" value={val("weight")} onChange={set("weight")} placeholder="lbs" />
                 <SelectField
                   label="Recovery between sessions"

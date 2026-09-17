@@ -139,6 +139,10 @@ export interface EquipmentMachine {
   startingWeight: number | null;
   currentWeight: number | null;
   settings: Record<string, string>;
+  /** Where each saved value came from, keyed like `settings`. Absent = typed. (Machine fit, Sep 2026.) */
+  sources?: Record<string, "typed" | "suggested" | "legacy">;
+  /** A trainer's "this is right for her" on a value the set-up check marked, by normalised field key. */
+  fitAcks?: Record<string, { value: string; by: string; byName: string; at: string; note?: string }>;
   notes: MachineNote[];
   /** A note someone ticked "Flag for Maintenance" on. */
   hasMaintenanceFlag: boolean;

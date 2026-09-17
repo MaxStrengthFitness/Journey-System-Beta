@@ -419,6 +419,8 @@ export function toEquipmentMachines({
       startingWeight,
       currentWeight,
       settings,
+      sources: setting?.sources,
+      fitAcks: setting?.fitAcks,
       notes,
       hasMaintenanceFlag: notes.some((n) => n?.isImportant),
       loggedSetCount,

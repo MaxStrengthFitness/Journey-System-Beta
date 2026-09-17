@@ -648,6 +648,12 @@ export interface Client {
   dateOfBirth?: string;
   gender?: "Male" | "Female" | "Other" | string;
   height: string; // e.g., "5'10\""
+  /**
+   * Fingertip to fingertip, typed like height: "66", "66 in" or 5'6".
+   * Optional. One of the things a machine set-up can be matched on
+   * (machine fit round, Sep 2026 — src/features/machine-fit/factors.ts).
+   */
+  wingspan?: string;
   weight?: string;
   age?: number;
   phone?: string;
@@ -1298,6 +1304,20 @@ export interface ClientMachineSetting {
   startingWeight?: number;
   startingWeightDate?: any;
   currentWeight?: number;
+  /**
+   * Where each saved value came from, keyed like `settings` (machine fit
+   * round, Sep 2026). "typed" by a trainer, "suggested" and accepted, or
+   * "legacy" — copied from the FileMaker chart. Absent means typed. An
+   * accepted suggestion is not counted as evidence for other clients until
+   * the machine has been performed since (features/machine-fit/fit-index.ts).
+   */
+  sources?: Record<string, "typed" | "suggested" | "legacy">;
+  /**
+   * "This is right for her": a trainer's review of a value the set-up check
+   * marked, keyed by the NORMALISED field key. Tied to the value — change the
+   * value and the mark may come back (features/machine-fit/audit.ts).
+   */
+  fitAcks?: Record<string, { value: string; by: string; byName: string; at: string; note?: string }>;
 }
 
 /**

@@ -19,6 +19,8 @@ import {
   query,
   where,
   arrayUnion,
+  deleteField,
+  FieldPath,
 } from "firebase/firestore";
 import { describe, it, beforeAll, afterAll, beforeEach, expect } from "vitest";
 import * as fs from "fs";
@@ -1499,6 +1501,105 @@ describe("Firestore Security Rules", () => {
     await assertSucceeds(setDoc(doc(owner, "studios", "studioA", "machineCare", "m-leg-press"), { machineId: "m-leg-press", flag: null, updatedAt: serverTimestamp() }, { merge: true }));
     await assertFails(deleteDoc(ref));
     await assertSucceeds(deleteDoc(doc(owner, "studios", "studioA", "machineCare", "m-leg-press")));
+  });
+
+  // ── MACHINE FIT (Sep 2026) ───────────────────────────────────────────────
+  //
+  // studios/{s}/machineFit/{machineId}: who at the studio is set to what, one
+  // row per client. Written the way the app writes it: one row, by field path.
+
+  const fitWrite = (clientId: string, row: unknown, over: Record<string, unknown> = {}) => ({
+    data: { machineId: "m-leg-press", studioId: "studioA", rows: { [clientId]: row }, updatedAt: serverTimestamp(), ...over },
+    options: { mergeFields: ["machineId", "studioId", "updatedAt", new FieldPath("rows", clientId)] },
+  });
+  const fitRow = (seat: string) => ({ s: { seat, gap: "0" }, t: 1_758_000_000_000 });
+
+  it("lets the studio's people keep the machine-fit index, one row at a time", async () => {
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const ref = doc(trainer, "studios", "studioA", "machineFit", "m-leg-press");
+    const first = fitWrite("clientA", fitRow("4"));
+    await assertSucceeds(setDoc(ref, first.data, first.options));
+    // A second client's row leaves the first alone, and a row can be replaced and removed.
+    const second = fitWrite("clientB", fitRow("6"));
+    await assertSucceeds(setDoc(ref, second.data, second.options));
+    const moved = fitWrite("clientA", { ...fitRow("5"), src: { seat: "suggested" } });
+    await assertSucceeds(setDoc(ref, moved.data, moved.options));
+    const gone = fitWrite("clientB", deleteField());
+    await assertSucceeds(setDoc(ref, gone.data, gone.options));
+    const snap = await getDoc(ref);
+    expect(Object.keys(snap.data()?.rows ?? {})).toEqual(["clientA"]);
+    expect(snap.data()?.rows.clientA.s.seat).toBe("5");
+  });
+
+  it("refuses a machine-fit write that touches more than one row, names the wrong place, or adds a field", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "studios", "studioA", "machineFit", "m-leg-press"), {
+        machineId: "m-leg-press",
+        studioId: "studioA",
+        rows: { clientA: fitRow("4"), clientB: fitRow("6") },
+      });
+    });
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const ref = doc(trainer, "studios", "studioA", "machineFit", "m-leg-press");
+    // The whole map at once: every row would be "affected".
+    await assertFails(setDoc(ref, { machineId: "m-leg-press", studioId: "studioA", rows: {}, updatedAt: serverTimestamp() }));
+    await assertFails(
+      setDoc(ref, { machineId: "m-leg-press", studioId: "studioA", rows: { clientA: fitRow("1"), clientB: fitRow("1") }, updatedAt: serverTimestamp() }),
+    );
+    // A new document arriving with a studio's worth of rows.
+    await assertFails(
+      setDoc(doc(trainer, "studios", "studioA", "machineFit", "m-row"), {
+        machineId: "m-row",
+        studioId: "studioA",
+        rows: { clientA: fitRow("1"), clientB: fitRow("1") },
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // The wrong machine or studio in the body, and a stray field (body data does not belong here).
+    const wrongMachine = fitWrite("clientC", fitRow("4"), { machineId: "m-row" });
+    await assertFails(setDoc(ref, wrongMachine.data, wrongMachine.options));
+    const wrongStudio = fitWrite("clientC", fitRow("4"), { studioId: "studioB" });
+    await assertFails(setDoc(ref, wrongStudio.data, wrongStudio.options));
+    await assertFails(setDoc(ref, { ...fitWrite("clientC", fitRow("4")).data, heights: { clientC: 67 } }, { merge: true }));
+    // The floor cannot delete the index; it is rebuilt by script.
+    await assertFails(deleteDoc(ref));
+  });
+
+  it("keeps a studio's machine-fit index to that studio's people", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "studios", "studioA", "machineFit", "m-leg-press"), {
+        machineId: "m-leg-press",
+        studioId: "studioA",
+        rows: { clientA: fitRow("4") },
+      });
+      await setDoc(doc(context.firestore(), "trainers", "adminFit"), { fullName: "Admin", initials: "AD", role: "Admin" });
+    });
+    const elsewhere = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(getDoc(doc(elsewhere, "studios", "studioA", "machineFit", "m-leg-press")));
+    await assertFails(getDocs(collection(elsewhere, "studios", "studioA", "machineFit")));
+    const write = fitWrite("clientZ", fitRow("4"));
+    await assertFails(setDoc(doc(elsewhere, "studios", "studioA", "machineFit", "m-leg-press"), write.data, write.options));
+
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(getDocs(collection(trainer, "studios", "studioA", "machineFit")));
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(getDoc(doc(owner, "studios", "studioA", "machineFit", "m-leg-press")));
+    const admin = testEnv.authenticatedContext("adminFit", { email: "adminfit@test.com" }).firestore();
+    await assertSucceeds(getDocs(collection(admin, "studios", "studioA", "machineFit")));
+    await assertSucceeds(deleteDoc(doc(admin, "studios", "studioA", "machineFit", "m-leg-press")));
+  });
+
+  it("keeps the company Kaizen report to administrators, and nobody writes it from the app", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "kaizenReports", "m-leg-press"), { machineId: "m-leg-press", clients: 40 });
+      await setDoc(doc(context.firestore(), "trainers", "adminFit"), { fullName: "Admin", initials: "AD", role: "Admin" });
+    });
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertFails(getDoc(doc(owner, "kaizenReports", "m-leg-press")));
+    const admin = testEnv.authenticatedContext("adminFit", { email: "adminfit@test.com" }).firestore();
+    await assertSucceeds(getDoc(doc(admin, "kaizenReports", "m-leg-press")));
+    await assertSucceeds(getDocs(collection(admin, "kaizenReports")));
+    await assertFails(setDoc(doc(admin, "kaizenReports", "m-leg-press"), { clients: 1 }));
   });
 
   // ── THE VAULT (Relay, Sep 2026) ──────────────────────────────────────────

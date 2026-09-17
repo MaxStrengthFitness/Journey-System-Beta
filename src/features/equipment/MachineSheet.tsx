@@ -251,6 +251,7 @@ export function MachineSheet({
               onError={onError}
               clientHeight={client?.height ?? null}
               clientGender={client?.gender ?? null}
+              clientHomeStudioId={client?.homeStudioId ?? null}
             />
 
             {/* 4. Reference, folded away. */}

@@ -37,6 +37,8 @@ export interface SetupPromptDialogProps {
   /** Fired after a successful save, so the caller can continue into the HUD. */
   onSaved?: () => void;
   onError?: (message: string) => void;
+  /** The client's home studio, so the save also reaches that studio's machine-fit index. */
+  clientHomeStudioId?: string | null;
 }
 
 export function SetupPromptDialog({
@@ -49,6 +51,7 @@ export function SetupPromptDialog({
   onClose,
   onSaved,
   onError,
+  clientHomeStudioId = null,
 }: SetupPromptDialogProps) {
   const { byId: catalogById } = useMachineCatalog();
   const { activeStudio, activeStudioId } = useActiveStudio();
@@ -102,6 +105,7 @@ export function SetupPromptDialog({
                 onClose();
               }}
               onError={onError}
+              clientHomeStudioId={clientHomeStudioId}
             />
 
             {equipment.guide && <SetupGuide guide={equipment.guide} defaultOpen />}
