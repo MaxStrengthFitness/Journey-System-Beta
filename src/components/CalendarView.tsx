@@ -4,7 +4,7 @@ import { ScheduleEntry, Trainer } from "../types";
 import { studioDateKey } from "../lib/studio-time";
 import { freshnessLabel } from "../lib/schedule-window";
 import { LoadingMark } from "./LoadingMark";
-import { RelayStrip } from "../features/planner/relay/RelayStrip";
+import { RelayStrip } from "../features/relay/board/RelayStrip";
 import {
   DateNavigator,
   DayView,

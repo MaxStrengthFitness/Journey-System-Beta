@@ -1,4 +1,4 @@
-# features/planner/relay — Relay's own pieces
+# features/relay/board — Relay's own pieces
 
 Round: Relay, Sep 16 2026 (`docs/rounds/2026-09-16-relay.md`). Pure logic in
 `.ts` with a `.test.ts` beside it; screens in `.tsx`. Everything reads the

@@ -44,7 +44,7 @@ import {
   X,
  ClipboardCheck, ArrowRightLeft } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
-import { useRelayMaybe } from "../planner/relay/RelayContext";
+import { useRelayMaybe } from "../relay/board/RelayContext";
 import {
   addRequestReply,
   createRequest,
@@ -173,7 +173,7 @@ export function RequestsLane({
   );
   const openRequests = useMemo(() => cards.map((c) => c.request), [cards]);
 
-  // Inside Relay, asks are posted through Capture (planner/relay); the inline
+  // Inside Relay, asks are posted through Capture (relay/board); the inline
   // composer below stays for the hub mounted anywhere else.
   const relay = useRelayMaybe();
   const [composing, setComposing] = useState(false);

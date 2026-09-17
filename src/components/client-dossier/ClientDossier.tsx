@@ -63,8 +63,8 @@ import { ClinicalFlagPicker } from "../../features/clinical-flags/ClinicalFlagPi
 import { BodyWatchOuts } from "../../features/clinical-flags/BodyWatchOuts";
 import { ContractPanel } from "../../features/client-admin/ContractPanel";
 import { InBodyCard } from "../../features/inbody/InBodyCard";
-import { SharedNotesCard } from "../../features/planner/notes/SharedNotesCard";
-import { ClientJotStrip } from "../../features/planner/notes/ClientJotStrip";
+import { SharedNotesCard } from "../../features/relay/notes/SharedNotesCard";
+import { ClientJotStrip } from "../../features/relay/notes/ClientJotStrip";
 import { ClientSnapshot } from "./ClientSnapshot";
 import { JournalRail } from "./JournalRail";
 import { ClientJournalTab } from "../journal/ClientJournalTab";
@@ -615,7 +615,7 @@ export function ClientDossier({
               </FieldGroup>
 
               {/* Learning + Planner round, Sep 2026: plans trainers shared
-                  from their Planner. Read-only here — see features/planner/notes. */}
+                  from their Planner. Read-only here — see features/relay/notes. */}
               <SharedNotesCard
                 client={client}
                 authTrainer={authTrainer ?? null}

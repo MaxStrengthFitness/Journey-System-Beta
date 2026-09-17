@@ -164,8 +164,8 @@ const ClientProgressReportView = lazy(() =>
 );
 import { FeedbackProvider, FeedbackButton } from "./features/feedback";
 import { NotificationBell } from "./features/notifications";
-import { plannerIntentFromLink, requestPlanner } from "./features/planner/intent";
-import { PlannerReminders } from "./features/planner/reminders/PlannerReminders";
+import { plannerIntentFromLink, requestPlanner } from "./features/relay/intent";
+import { PlannerReminders } from "./features/relay/reminders/PlannerReminders";
 // Type-only, and from the module rather than the barrel, so nothing about the
 // studio-tasks chunk is pulled into the initial bundle.
 import type { ClientTaskAction } from "./features/studio-tasks/types";
@@ -176,7 +176,7 @@ import type { ClientTaskAction } from "./features/studio-tasks/types";
  * trainers' bells link to it.
  */
 const PlannerView = lazy(() =>
-  import("./features/planner").then((m) => ({
+  import("./features/relay").then((m) => ({
     default: m.PlannerView,
   })),
 );

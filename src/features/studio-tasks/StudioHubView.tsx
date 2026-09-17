@@ -59,20 +59,20 @@ import { useTaskActions } from "./useTaskActions";
 import { confirmPlaybookEntry, retirePlaybookEntry } from "./playbook-mutations";
 import type { PlaybookEntry } from "./playbook";
 import { RenewalsLane } from "../renewals/RenewalsLane";
-import { useTeamJobs } from "../planner/jobs/useTeamJobs";
-import { TeamJobsLane } from "../planner/jobs/TeamJobsLane";
-import { JobComposer } from "../planner/jobs/JobComposer";
-import { JobSheet } from "../planner/jobs/JobSheet";
-import { isOnJob, isUpForGrabs, jobTopic } from "../planner/jobs/jobs";
-import { GlanceBand, type GlanceCounts } from "../planner/GlanceBand";
-import { NextUpQueue } from "../planner/relay/NextUpQueue";
-import { ShiftRings } from "../planner/relay/ShiftRings";
-import { FloorMap } from "../planner/relay/FloorMap";
-import { FocusBanner } from "../planner/relay/FocusBanner";
-import { publishPulse, pulseEvents } from "../planner/relay/pulse";
-import { leadsHere } from "../planner/leads";
-import { useRelayMaybe } from "../planner/relay/RelayContext";
-import type { TeamJob } from "../planner/jobs/types";
+import { useTeamJobs } from "../relay/jobs/useTeamJobs";
+import { TeamJobsLane } from "../relay/jobs/TeamJobsLane";
+import { JobComposer } from "../relay/jobs/JobComposer";
+import { JobSheet } from "../relay/jobs/JobSheet";
+import { isOnJob, isUpForGrabs, jobTopic } from "../relay/jobs/jobs";
+import { GlanceBand, type GlanceCounts } from "../relay/GlanceBand";
+import { NextUpQueue } from "../relay/board/NextUpQueue";
+import { ShiftRings } from "../relay/board/ShiftRings";
+import { FloorMap } from "../relay/board/FloorMap";
+import { FocusBanner } from "../relay/board/FocusBanner";
+import { publishPulse, pulseEvents } from "../relay/board/pulse";
+import { leadsHere } from "../relay/leads";
+import { useRelayMaybe } from "../relay/board/RelayContext";
+import type { TeamJob } from "../relay/jobs/types";
 import "./studio-tasks.css";
 import "./studio-hub.css";
 
@@ -139,7 +139,7 @@ export function StudioHubView({
    * toggle in this header, open to everyone "until RBAC lands" — while the
    * rules only ever let leaders write what it edits. The standing task list,
    * the seven-day table, initiatives and flags now live on the Planner's
-   * Team tab, which only studio leaders see (features/planner/team).
+   * Team tab, which only studio leaders see (features/relay/team).
    */
 
   const clientNames = useMemo(() => {

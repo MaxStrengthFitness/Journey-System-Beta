@@ -1,4 +1,4 @@
-# features/planner/notes — the Planner's Notes tab
+# features/relay/notes — the Planner's Notes tab
 
 Round: Learning + Planner, Sep 2026. AJ asked for:
 

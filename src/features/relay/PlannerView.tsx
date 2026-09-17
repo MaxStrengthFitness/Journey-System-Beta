@@ -10,19 +10,19 @@ import { MyTasksPanel } from "./MyTasksPanel";
 import { NotesPanel } from "./notes/NotesPanel";
 import { TeamPanel } from "./team/TeamPanel";
 import { clearPlannerIntent, peekPlannerIntent, type PlannerIntent } from "./intent";
-import { RelayProvider, type PanelContent, type RelayContextValue } from "./relay/RelayContext";
-import { reachesTier } from "./relay/RoleGate";
-import { NowBar, useNowContext } from "./relay/NowBar";
-import { ContextPanel } from "./relay/ContextPanel";
-import { CaptureSheet } from "./relay/CaptureSheet";
-import { NetworkView } from "./relay/NetworkView";
-import type { CapturePreset } from "./relay/capture";
-import { useClosedRings } from "./relay/rings";
+import { RelayProvider, type PanelContent, type RelayContextValue } from "./board/RelayContext";
+import { reachesTier } from "./board/RoleGate";
+import { NowBar, useNowContext } from "./board/NowBar";
+import { ContextPanel } from "./board/ContextPanel";
+import { CaptureSheet } from "./board/CaptureSheet";
+import { NetworkView } from "./board/NetworkView";
+import type { CapturePreset } from "./board/capture";
+import { useClosedRings } from "./board/rings";
 import "../studio-tasks/studio-tasks.css";
 import "../studio-tasks/studio-hub.css";
 import "./kit.css";
 import "./planner.css";
-import "./relay/relay.css";
+import "./board/relay.css";
 
 /**
  * RELAY — the Planner, rebuilt as the studio's asynchronous board and each
@@ -54,9 +54,12 @@ import "./relay/relay.css";
  * clock in.
  *
  * The view id stays "studio-tasks": notifications already stored in
- * trainers' bells link to it. The folder stays features/planner for the
- * same reason a person keeps a postcode after a street is renamed — thirty
- * imports point here and none of them care what the sign says.
+ * trainers' bells link to it. The FOLDER was features/planner until the
+ * beta-prep trim (Sep 17 2026) renamed it features/relay - a cleanup round
+ * is the one time a rename is cheap, and only 23 import paths had to follow.
+ * File and class names inside still say Planner (PlannerView, planner.css);
+ * the Floor tab and the task data layer stay in features/studio-tasks, which
+ * matches the view id and is imported by the Catalog and Operations too.
  */
 
 export type PlannerTab = "floor" | "mine" | "notes" | "team" | "network";

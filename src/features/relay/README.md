@@ -1,4 +1,4 @@
-# features/planner — Relay (was the Planner, was the To-Do screen)
+# features/relay — Relay (was the Planner, was the To-Do screen)
 
 **Relay (Sep 16 2026)** rebuilt the Planner as the studio's asynchronous
 board and each trainer's second brain: the Now Bar, one Capture composer,

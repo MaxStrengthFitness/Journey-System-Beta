@@ -2,7 +2,7 @@ import { Bell, Building2, Clock, Dumbbell, Trash2, UsersRound } from "lucide-rea
 import type { ReactNode } from "react";
 import type { Client } from "../../types";
 import type { ResolvedMachine } from "../../types/machines";
-import { Seg, Toggle } from "../planner/kit";
+import { Seg, Toggle } from "../relay/kit";
 import {
   normaliseTime,
   problemsFor,
@@ -27,7 +27,7 @@ import {
   type TaskShift,
   type TaskTemplate,
 } from "./types";
-import "../planner/kit.css";
+import "../relay/kit.css";
 
 /**
  * THE TASK WIZARD — three short steps instead of one long form.
