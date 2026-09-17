@@ -129,12 +129,14 @@ afterEach(() => {
 });
 
 describe("Relay", () => {
-  it("mounts the Floor with the Now Bar, the glance band and an empty team-jobs lane", async () => {
+  it("mounts the Floor with the Now Bar, Next up, the shift rings and an empty team-jobs lane", async () => {
     const h = await mount(lead);
     expect(h.textContent).toContain("Relay");
     expect(h.textContent).toContain("Pulse");
     expect(h.textContent).toContain("No sessions on your schedule");
-    expect(h.textContent).toContain("Today's shift");
+    expect(h.textContent).toContain("Next up");
+    expect(h.textContent).toContain("Nothing waiting on the Floor.");
+    expect(h.querySelectorAll(".sr__ring")).toHaveLength(3);
     expect(h.textContent).toContain("Team jobs");
     expect(h.textContent).toContain("Post a job");
   });
@@ -156,7 +158,7 @@ describe("Relay", () => {
     expect(h.textContent).toContain("Your team");
     expect(h.textContent).toContain("Only work with someone's name on it counts");
     await click(tab("Floor"));
-    expect(h.textContent).toContain("Today's shift");
+    expect(h.textContent).toContain("Next up");
   });
 
   it("offers the Network tab only to a franchise or super role", async () => {

@@ -65,6 +65,9 @@ import { JobComposer } from "../planner/jobs/JobComposer";
 import { JobSheet } from "../planner/jobs/JobSheet";
 import { isOnJob, isUpForGrabs, jobTopic } from "../planner/jobs/jobs";
 import { GlanceBand, type GlanceCounts } from "../planner/GlanceBand";
+import { NextUpQueue } from "../planner/relay/NextUpQueue";
+import { ShiftRings } from "../planner/relay/ShiftRings";
+import { publishPulse, pulseEvents } from "../planner/relay/pulse";
 import { leadsHere } from "../planner/leads";
 import { useRelayMaybe } from "../planner/relay/RelayContext";
 import type { TeamJob } from "../planner/jobs/types";
@@ -159,7 +162,7 @@ export function StudioHubView({
     clientNames,
   });
   const { categories } = useStudioTaskCategories(activeStudioId);
-  const { open: openRequests } = useStudioRequests(activeStudioId ?? null);
+  const { open: openRequests, recentlyResolved } = useStudioRequests(activeStudioId ?? null);
   const { search, stale } = usePlaybook(activeStudioId ?? null);
   /*
    * TEAM JOBS (Planner rework, Sep 2026) — one piece of work several people
@@ -289,11 +292,26 @@ export function StudioHubView({
     };
   }, [teamJobs.jobs, openRequests, visibleShiftRows, trainerId]);
 
+  /*
+   * THE PULSE (Relay, Sep 2026). What teammates did, from the documents this
+   * screen already listens to, published for the Now Bar's ticker. Nothing
+   * is read for it.
+   */
+  useEffect(() => {
+    if (!activeStudioId || !relay) return;
+    publishPulse(
+      activeStudioId,
+      pulseEvents({ rows, jobs: teamJobs.jobs, requests: [...openRequests, ...recentlyResolved], now: Date.now() }),
+    );
+  }, [activeStudioId, relay, rows, teamJobs.jobs, openRequests, recentlyResolved]);
+
   return (
     <div className="st">
       <div className="st__scroll touch-pane">
         <header className={cn("st__head", embedded && "st__head--embedded")}>
-          {embedded ? (
+          {embedded && relay ? (
+            <p className="st__sub-title">Shared with everyone at {activeStudio?.name ?? "the studio"}</p>
+          ) : embedded ? (
             <GlanceBand counts={glance} loading={loading && rows.length === 0} />
           ) : (
             <div>
@@ -338,7 +356,26 @@ export function StudioHubView({
           Loading is said once, at the top, rather than as a spinner per lane.
           Four spinners on a tablet reads as four things going wrong.
         */}
+        {relay && (
+          <NextUpQueue
+            rows={rows}
+            jobs={teamJobs.jobs}
+            requests={openRequests}
+            actions={actions}
+            author={author}
+            onOpenJob={(job) => setOpenJobKey(job.id)}
+            onOpenClientTask={onOpenClientTask}
+            loading={loading && rows.length === 0}
+          />
+        )}
         <div id="planner-shift" />
+        {relay && !(loading && rows.length === 0) && (
+          <ShiftRings
+            rows={visibleShiftRows}
+            onOpen={() => document.getElementById("planner-strip")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          />
+        )}
+        <div id="planner-strip" />
         {loading && rows.length === 0 ? (
           <p className="sh__loading">Loading today…</p>
         ) : (

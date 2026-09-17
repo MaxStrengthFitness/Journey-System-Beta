@@ -83,6 +83,10 @@ export interface TeamJob {
   parts: Record<string, JobPart>;
 
   /** Studio-local 'YYYY-MM-DD', or null for "whenever". */
+  /** Relay (Sep 2026): about how long, for Next up's gap fitting. Optional. */
+  estMinutes?: number;
+  /** Relay: one tap of thanks per person, { [uid]: true }. */
+  kudos?: Record<string, true>;
   dueOn: string | null;
   /** Closing the job needs a closing message — "what did you find?" */
   requiresNote: boolean;
