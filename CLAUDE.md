@@ -72,6 +72,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 - **Don't change the Mindbody integration, Cloud Functions or the Firestore structure without an explicit OK.**
 
 **How we work**
+- **Beta prep (from Sep 17 2026): nothing goes to `master`.** The cleanup, the polish, Demo Mode and the tutorials all land on one long-lived branch, `beta-prep` - one commit per item, a tag at the end of each step. `master` stays at `33ad0ed` (what is live) until AJ says otherwise: no `golive`, no `git push origin master`, no `firebase deploy` from this work. Pushing `beta-prep` itself to GitHub is a safe backup, because Render builds only `master`. The round is `docs/rounds/2026-09-17-beta-prep-trim.md`.
 - Big changes: a proposal document when asked for one, then one branch with one commit per phase, each phase typechecked on its own so it can be reverted alone.
 - Explain changes in plain language as you go, and give click-by-click Windows / PowerShell steps for anything that has to be run on the PC.
 - Never print a secret. `.env` and `service-account.json` stay out of git. The GitHub repo belongs to the MaxStrengthFitness organization.
