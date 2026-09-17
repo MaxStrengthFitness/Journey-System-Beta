@@ -1,0 +1,227 @@
+/**
+ * MACHINE FIT — the two stores, as plain data.
+ *
+ *   studios/{studioId}/machineFit/{machineId}     THE STUDIO INDEX
+ *       rows: { [clientId]: { s: settings, src?: sources, t: savedAt } }
+ *
+ *     One document per machine per studio: who is set to what. Written
+ *     whenever a client's settings are saved (one row, one key — two iPads
+ *     never overwrite each other), readable by the people who work at that
+ *     studio, and rebuilt whole by scripts/rebuild-machine-fit.ts.
+ *
+ *     IT HOLDS NO BODY DATA. No height, no weight, nothing from InBody. A row
+ *     is joined to the client's record AT READ TIME, from the studio roster
+ *     the app already holds in memory (useStudioRoster). Three things follow:
+ *     a corrected height is right everywhere at once, with nothing to
+ *     re-index; health data is never copied out of the client record; and the
+ *     document stays small (a few dozen bytes a client).
+ *
+ *   machineTrends/{machineId}.fit                 THE COMPANY BLOCK
+ *       cells: { "67|f": { "gap=4;seat=3": 12, … } }
+ *
+ *     Every studio pooled by the weekly job, ANONYMOUS: a cell is a height, a
+ *     gender and a count. "Never a client row" (machine-trends README) still
+ *     holds — which is also why the company tier can only match on height and
+ *     gender.
+ *
+ * WHAT COUNTS AS EVIDENCE. A value a trainer typed, or copied from the
+ * FileMaker chart, is evidence the day it is saved: a person chose it for
+ * that body. A value that was only ACCEPTED from a suggestion is not — until
+ * the client has actually performed that machine since. Without that rule the
+ * engine would learn from its own guesses: suggest Seat 3, see Seat 3
+ * accepted, grow more sure of Seat 3, for ever. `verifiedSettings` is that
+ * rule, in one place, for both tiers.
+ */
+
+import { normalizeSettingKey, normalizeSnapshot } from "../machine-trends/trends.ts";
+import { factorsOf, type FitClientInput } from "./factors.ts";
+import type { FitSample, SettingSource } from "./types.ts";
+
+/* ------------------------------------------------------------------ *
+ * The studio index
+ * ------------------------------------------------------------------ */
+
+export interface FitRowDoc {
+  /** Normalised settings. */
+  s: Record<string, string>;
+  /** Normalised key → where the value came from. Only non-"typed" sources are stored. */
+  src?: Record<string, Exclude<SettingSource, "typed">>;
+  /** When the settings were last saved, ms since epoch. */
+  t: number;
+}
+
+export interface MachineFitDoc {
+  machineId: string;
+  studioId: string;
+  rows: Record<string, FitRowDoc>;
+  updatedAt?: unknown;
+  /** Set by scripts/rebuild-machine-fit.ts when it replaced the document whole. */
+  rebuiltAt?: string;
+}
+
+/**
+ * The row for one client's saved settings, or null when nothing usable is
+ * set (the caller then deletes the row). `settings` and `sources` arrive in
+ * the machine's STORAGE keys ("Back Pad" or "back-pad"); both leave normalised.
+ */
+export function toFitRow(
+  settings: Record<string, unknown> | null | undefined,
+  sources: Record<string, SettingSource | undefined> | null | undefined,
+  savedAt: number,
+): FitRowDoc | null {
+  const s = normalizeSnapshot(settings ?? null);
+  if (!s) return null;
+  const src: NonNullable<FitRowDoc["src"]> = {};
+  for (const [rawKey, source] of Object.entries(sources ?? {})) {
+    const key = normalizeSettingKey(rawKey);
+    if (!key || !(key in s)) continue;
+    if (source === "suggested" || source === "legacy") src[key] = source;
+  }
+  return Object.keys(src).length > 0 ? { s, src, t: savedAt } : { s, t: savedAt };
+}
+
+const EASTERN_DAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/New_York",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** The studio's (Eastern) calendar day of an instant, YYYY-MM-DD — the form machineStats dates use. */
+export function easternDayOf(ms: number): string {
+  return EASTERN_DAY.format(new Date(ms));
+}
+
+/** What the engine needs from a client to verify a row: the machine's last performed day. */
+export interface FitClientRecord extends FitClientInput {
+  machineStats?: Record<string, { lastPerformedDate?: string | null } | undefined> | null;
+}
+
+/**
+ * The part of a row that counts as evidence (see the header). A "suggested"
+ * value is kept only when the client has performed the machine on or after
+ * the day the row was saved.
+ */
+export function verifiedSettings(
+  row: FitRowDoc,
+  lastPerformedDay: string | null | undefined,
+): Record<string, string> {
+  const suggested = Object.entries(row.src ?? {}).filter(([, v]) => v === "suggested");
+  if (suggested.length === 0) return row.s;
+  const performedSince = !!lastPerformedDay && lastPerformedDay >= easternDayOf(row.t);
+  if (performedSince) return row.s;
+  const out = { ...row.s };
+  for (const [key] of suggested) delete out[key];
+  return out;
+}
+
+/**
+ * One machine's studio index, joined to the client records the app holds.
+ * A row whose client is not in `clientsById` (moved studio, not loaded) is
+ * left out: a set-up with no body attached is not evidence about any build.
+ */
+export function samplesFromFitDoc(
+  doc: Pick<MachineFitDoc, "machineId" | "rows"> | null | undefined,
+  clientsById: ReadonlyMap<string, FitClientRecord>,
+  now: Date = new Date(),
+): FitSample[] {
+  const out: FitSample[] = [];
+  if (!doc?.rows) return out;
+  for (const [clientId, row] of Object.entries(doc.rows)) {
+    if (!row || typeof row !== "object" || !row.s) continue;
+    const client = clientsById.get(clientId);
+    if (!client) continue;
+    const settings = verifiedSettings(row, client.machineStats?.[doc.machineId]?.lastPerformedDate);
+    if (Object.keys(settings).length === 0) continue;
+    out.push({ clientId, n: 1, settings, factors: factorsOf(client, now) });
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * The company block
+ * ------------------------------------------------------------------ */
+
+export interface CompanyFitBlock {
+  /** Clients contributing (verified settings and a height on file). */
+  clients: number;
+  /** Studios those clients belong to. */
+  studios: number;
+  /** cell ("67|f") → signature ("gap=4;seat=3") → clients. */
+  cells: Record<string, Record<string, number>>;
+  builtAt: string;
+}
+
+export function cellKey(heightIn: number, gender: "m" | "f" | null | undefined): string {
+  return `${heightIn}|${gender ?? "x"}`;
+}
+
+export function parseCellKey(key: string): { heightIn: number; gender: "m" | "f" | null } | null {
+  const m = /^(\d{2,3})\|([mfx])$/.exec(key);
+  if (!m) return null;
+  return { heightIn: Number(m[1]), gender: m[2] === "x" ? null : (m[2] as "m" | "f") };
+}
+
+/**
+ * "gap=4;seat=3" — the settings, keys in order. Normalised keys and values
+ * are [a-z0-9_-] only, so "=" and ";" can never appear inside one.
+ */
+export function signatureOf(settings: Record<string, string>): string {
+  return Object.keys(settings)
+    .sort()
+    .map((k) => `${k}=${settings[k]}`)
+    .join(";");
+}
+
+export function settingsOfSignature(signature: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const part of signature.split(";")) {
+    const at = part.indexOf("=");
+    if (at <= 0) continue;
+    out[part.slice(0, at)] = part.slice(at + 1);
+  }
+  return out;
+}
+
+/** Pool studio samples into anonymous cells. Samples with no height are left out — they match nothing. */
+export function buildCompanyBlock(
+  samplesByStudio: ReadonlyMap<string, readonly FitSample[]>,
+  builtAt: string,
+): CompanyFitBlock {
+  const cells: CompanyFitBlock["cells"] = {};
+  let clients = 0;
+  let studios = 0;
+  for (const samples of samplesByStudio.values()) {
+    let contributed = false;
+    for (const s of samples) {
+      const h = s.factors.heightIn;
+      if (typeof h !== "number") continue;
+      const signature = signatureOf(s.settings);
+      if (!signature) continue;
+      const key = cellKey(h, s.factors.gender);
+      const cell = (cells[key] ??= {});
+      cell[signature] = (cell[signature] ?? 0) + s.n;
+      clients += s.n;
+      contributed = true;
+    }
+    if (contributed) studios += 1;
+  }
+  return { clients, studios, cells, builtAt };
+}
+
+/** The company block back as samples the engine can run on. */
+export function samplesFromCompanyBlock(block: CompanyFitBlock | null | undefined): FitSample[] {
+  const out: FitSample[] = [];
+  for (const [key, signatures] of Object.entries(block?.cells ?? {})) {
+    const cell = parseCellKey(key);
+    if (!cell) continue;
+    for (const [signature, n] of Object.entries(signatures)) {
+      const count = Number(n);
+      if (!Number.isFinite(count) || count <= 0) continue;
+      const settings = settingsOfSignature(signature);
+      if (Object.keys(settings).length === 0) continue;
+      out.push({ settings, n: count, factors: { heightIn: cell.heightIn, gender: cell.gender } });
+    }
+  }
+  return out;
+}
