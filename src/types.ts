@@ -166,6 +166,8 @@ export interface FranchiseNetwork {
   state?: string; // e.g. "Ohio"
   studioIds: string[]; // List of Studio IDs included in this network
   createdAt?: any;
+  /** Relay (Sep 2026): the quarter's focus, shown on every studio's Floor. */
+  relayFocus?: { mastery?: string; machine?: string; note?: string; setBy?: { id: string; name: string }; setAt?: any };
 }
 
 export interface Network {

@@ -24,7 +24,8 @@ vi.mock("../../ActiveStudioContext", () => ({
   useActiveStudio: () => ({
     activeStudioId: "s1",
     activeStudio: { id: "s1", name: "Solon" },
-    availableStudios: [],
+    availableStudios: [{ id: "s1", name: "Solon" }, { id: "s2", name: "Westlake" }],
+    network: { id: "n1", name: "MSF Ohio", studioIds: ["s1", "s2"] },
     setActiveStudioId: () => {},
     isChangingStudio: false,
   }),
@@ -58,6 +59,7 @@ vi.mock("firebase/firestore", () => {
       return () => clearTimeout(t);
     },
     getDocs: async () => emptySnap,
+    getCountFromServer: async () => ({ data: () => ({ count: 0 }) }),
     getDoc: async () => emptyDoc,
     setDoc: async () => {},
     updateDoc: async () => {},
@@ -168,10 +170,14 @@ describe("Relay", () => {
     expect(h.textContent).toContain("Next up");
   });
 
-  it("offers the Network tab only to a franchise or super role", async () => {
-    await mount({ ...(lead as object), role: "FranchiseOwner" });
+  it("offers the Network tab only to a franchise or super role, and it mounts", async () => {
+    const h = await mount({ ...(lead as object), role: "FranchiseOwner" });
     expect(tab("Network")).toBeTruthy();
     expect(tab("Team")).toBeTruthy();
+    await click(tab("Network"));
+    expect(h.textContent).toContain("The network");
+    expect(h.textContent).toContain("Launch an initiative");
+    expect(h.textContent).toContain("Studios are ranked here; people never are.");
   });
 
   it("never offers the Team tab to a trainer", async () => {

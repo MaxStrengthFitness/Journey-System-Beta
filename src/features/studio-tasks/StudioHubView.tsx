@@ -68,6 +68,7 @@ import { GlanceBand, type GlanceCounts } from "../planner/GlanceBand";
 import { NextUpQueue } from "../planner/relay/NextUpQueue";
 import { ShiftRings } from "../planner/relay/ShiftRings";
 import { FloorMap } from "../planner/relay/FloorMap";
+import { FocusBanner } from "../planner/relay/FocusBanner";
 import { publishPulse, pulseEvents } from "../planner/relay/pulse";
 import { leadsHere } from "../planner/leads";
 import { useRelayMaybe } from "../planner/relay/RelayContext";
@@ -357,6 +358,7 @@ export function StudioHubView({
           Loading is said once, at the top, rather than as a spinner per lane.
           Four spinners on a tablet reads as four things going wrong.
         */}
+        {relay && <FocusBanner />}
         {relay && (
           <NextUpQueue
             rows={rows}

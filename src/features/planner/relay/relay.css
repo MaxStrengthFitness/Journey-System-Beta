@@ -912,3 +912,31 @@ button.nb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offset
 .nu__card--mine { animation: nu-handed 320ms ease-out 1; }
 @keyframes nu-handed { from { transform: translateX(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .nu__card--mine, .pt__kudos--on svg { animation: none; } }
+
+/* ------------------------------------------------------------------ *
+ * Network (NetworkView.tsx) and the focus banner
+ * ------------------------------------------------------------------ */
+
+.nw__boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.75rem; }
+.nw__board { list-style: none; margin: 0; padding: 0.5rem 0.75rem; border: 1px solid var(--st-border); border-radius: 12px; background: var(--st-surface); }
+.nw__board-title { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--st-ink-muted); padding: 0.25rem 0 0.5rem; }
+.nw__row { display: grid; grid-template-columns: 2rem 1fr auto; align-items: center; gap: 0.5rem; min-height: 40px; font-size: 13px; }
+.nw__rank { font-weight: 900; color: var(--st-ink-faint); }
+.nw__name { font-weight: 800; }
+.nw__n { font-weight: 900; font-variant-numeric: tabular-nums; }
+.nw__row:first-of-type .nw__rank { color: var(--st-hero); }
+
+.fb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.75rem;
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  background: var(--st-live-fill);
+  color: var(--st-ink-2);
+  font-size: 12px;
+}
+.fb svg { color: var(--st-live); }
+.fb__what { font-weight: 800; color: var(--st-ink); }
