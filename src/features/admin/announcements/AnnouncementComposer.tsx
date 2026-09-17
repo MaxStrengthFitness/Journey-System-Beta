@@ -33,7 +33,7 @@ import { useMemo, useState } from "react";
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { Megaphone, Send, Users } from "lucide-react";
 import { db } from "../../../firebase";
-import { useActiveStudio } from "../../../ActiveStudioContext";
+import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
 import { LEARNING_KIND_LABEL, learningRefLabel, parseLearningRef } from "../../learning/ref";
 import { LearningLinkPicker } from "./LearningLinkPicker";
 import type { HubAnnouncement, Studio } from "../../../types";

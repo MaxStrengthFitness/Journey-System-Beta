@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMachineCatalog } from "../../hooks/useMachineCatalog";
 import { useToast } from "../../contexts/ToastContext";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import type { Machine, ClientMachineSetting, ExerciseLog, Client, Trainer, WorkoutSession } from "../../types";
 import { summarise, toEquipmentMachines } from "./adapters";
 import { useMachineStats } from "./useMachineStats";

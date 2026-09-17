@@ -46,7 +46,7 @@ import {
   type WikiSearchGroup,
 } from "../wiki";
 import { CommentsPanel } from "../comments";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import {
   ACADEMY_INDEX,

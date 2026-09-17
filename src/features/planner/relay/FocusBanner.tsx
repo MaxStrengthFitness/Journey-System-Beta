@@ -1,5 +1,5 @@
 import { Sparkles } from "lucide-react";
-import { useActiveStudio } from "../../../ActiveStudioContext";
+import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
 import { focusOf } from "./NetworkView";
 
 /** The network's focus this quarter, as a quiet line on the Floor. */

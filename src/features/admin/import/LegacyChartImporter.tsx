@@ -16,7 +16,7 @@ import {
 import { Client, Machine, Trainer, WorkoutSession, ExerciseLog } from '../../../types';
 import { processLegacyChart, extractMachineSettingsFromImage, OCRMachineSetting, ValidationSession, sanitizeImportedSessions, OCRResult } from '../../../services/geminiService';
 import { db } from '../../../firebase';
-import { useActiveStudio } from '../../../ActiveStudioContext';
+import { useActiveStudio } from '../../../contexts/ActiveStudioContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { collection, writeBatch, doc, serverTimestamp, increment } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Globe, LayoutGrid, NotebookPen, Plus, StickyNote, UserRound, Users, Zap } from "lucide-react";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { auth } from "../../firebase";
 import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
 import type { Client, Machine, ScheduleEntry, Trainer, WorkoutSession } from "../../types";

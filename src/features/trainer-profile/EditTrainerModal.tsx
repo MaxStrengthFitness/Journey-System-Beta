@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { authedFetch } from "../lib/authed-fetch";
+import { authedFetch } from "../../lib/authed-fetch";
 import { generateSearchTokens } from "@/lib/utils";
-import { Trainer, Studio, UserRole } from "../types";
+import { Trainer, Studio, UserRole } from "../../types";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +31,7 @@ import {
   Mail,
   UserIcon,
 } from "lucide-react";
-import { useToast } from "../contexts/ToastContext";
+import { useToast } from "../../contexts/ToastContext";
 
 interface Props {
   trainer: Trainer | null;

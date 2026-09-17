@@ -27,7 +27,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { UserRound, Users } from "lucide-react";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import { auth } from "../../firebase";
 import { studioDateKey, formatStudioDate } from "../../lib/studio-time";

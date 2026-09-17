@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { collection, doc, getCountFromServer, query, serverTimestamp, Timestamp, updateDoc, where } from "firebase/firestore";
 import { Globe, Sparkles, Target, Trophy } from "lucide-react";
 import { db } from "../../../firebase";
-import { useActiveStudio } from "../../../ActiveStudioContext";
+import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
 import { useToast } from "../../../contexts/ToastContext";
 import { addDays } from "../../studio-tasks/recurrence";
 import { createRequest } from "../../studio-tasks/requests";

@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Folder, FolderPlus, Pin, Plus, Search, Share2, StickyNote, Users, X } from "lucide-react";
-import { useActiveStudio } from "../../../ActiveStudioContext";
+import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
 import { isEveryStudioRole } from "../../renewals/permissions";
 import { auth } from "../../../firebase";
 import type { Client, Trainer } from "../../../types";

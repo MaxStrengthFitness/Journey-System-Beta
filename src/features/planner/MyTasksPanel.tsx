@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ArrowRightLeft, Bell, BellPlus, CalendarClock, Check, ExternalLink, Gift, Plus, Repeat, Sprout, UserCheck } from "lucide-react";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { auth } from "../../firebase";
 import type { Client, Trainer } from "../../types";
 import { useStudioTasks } from "../studio-tasks/useStudioTasks";

@@ -5,14 +5,14 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { Studio, Trainer, FranchiseNetwork } from "./types";
-import { setActiveTimeZone } from "./lib/studio-time";
-import { getDefaultStudioId, setDefaultStudioId } from "./lib/default-studio";
+import { Studio, Trainer, FranchiseNetwork } from "../types";
+import { setActiveTimeZone } from "../lib/studio-time";
+import { getDefaultStudioId, setDefaultStudioId } from "../lib/default-studio";
 import {
   hasPermission as hasPermissionHelper,
   PermissionAction,
   PermissionContext,
-} from "./lib/permissions";
+} from "../lib/permissions";
 
 interface ActiveStudioContextType {
   activeStudioId: string | null;

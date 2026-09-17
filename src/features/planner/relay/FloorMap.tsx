@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Check, Flag, FlagOff, Sparkles, Droplets } from "lucide-react";
-import { useActiveStudio } from "../../../ActiveStudioContext";
+import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
 import { useToast } from "../../../contexts/ToastContext";
 import { useStudioMachines } from "../../../hooks/useStudioMachines";
 import { cn } from "../../../lib/utils";

@@ -48,7 +48,7 @@ vi.mock("../../hooks/useMachineCatalog", async () => {
     },
   };
 });
-vi.mock("../../ActiveStudioContext", () => ({
+vi.mock("../../contexts/ActiveStudioContext", () => ({
   useActiveStudio: () => ({ activeStudio: null, activeStudioId: "westlake" }),
 }));
 vi.mock("../../contexts/ToastContext", () => ({

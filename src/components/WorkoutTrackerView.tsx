@@ -101,7 +101,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-import { useActiveStudio } from "../ActiveStudioContext";
+import { useActiveStudio } from "../contexts/ActiveStudioContext";
 import { SetupPromptDialog } from "../features/equipment";
 import { useStudioMachines } from "../hooks/useStudioMachines";
 import { resolveMachineOrder } from "../data/machine-display-order";

@@ -20,7 +20,7 @@ vi.mock("../../firebase", () => ({
   functions: {},
 }));
 
-vi.mock("../../ActiveStudioContext", () => ({
+vi.mock("../../contexts/ActiveStudioContext", () => ({
   useActiveStudio: () => ({
     activeStudioId: "s1",
     activeStudio: { id: "s1", name: "Solon" },

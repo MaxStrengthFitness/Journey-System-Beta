@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { collectionGroup, limit, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebase";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { resolveMachine } from "../../lib/resolve-machine";
 import type { RosterEntryCustom } from "../../types/machines";
 import { fromResolvedMachine } from "../catalog/adapters";

@@ -3,7 +3,7 @@ import { AlertTriangle, ArrowRight, Clock, Flag, Hand, Users } from "lucide-reac
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../../firebase";
-import { useActiveStudio } from "../../../ActiveStudioContext";
+import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
 import { useToast } from "../../../contexts/ToastContext";
 import { cn } from "../../../lib/utils";
 import { createRequest, type TaskRequest } from "../../studio-tasks/requests";

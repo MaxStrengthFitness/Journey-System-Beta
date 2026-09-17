@@ -484,7 +484,7 @@ The vocabulary in `types.ts` grew one round at a time, so the same idea has seve
 | `src/lib/` | Pure helpers: tenancy, permissions, studio time, Mindbody sync and mapping, rollups, machine resolution | 51 files (14 are tests) | Healthy, except the duplicate `utils.ts` at the repo root |
 | `src/data/` | Code-default data: the machine database, anatomy map, display order, clinical matrix | 11 files; `machine-database.ts` is 76 KB | Fine; know that `machines/` in Firestore is merged over it by id |
 | `src/types.ts`, `src/types/` | The shared vocabulary: 66 exported types in `types.ts` (52 KB), plus `journal.ts`, `machines.ts` and `images.d.ts` | 4 files | Growing by accretion; §3.6 |
-| `src/contexts/`, `src/ActiveStudioContext.tsx`, `src/services/` | Toast, Mindbody health, the active studio; the Gemini client | 4 files | Fine |
+| `src/contexts/` (Toast, Mindbody health, the active studio - `ActiveStudioContext.tsx` moved in here in the beta-prep trim), `src/services/` | Toast, Mindbody health, the active studio; the Gemini client | 4 files | Fine |
 | `server.ts`, `server/` | Express on Render: serves the build, the Mindbody proxy, the Gemini endpoints, the cron jobs and worker | — | Fine; needs a staff sign-in on every Mindbody route |
 | `functions/src/` | Cloud Functions: the Mindbody webhook, trainer rollups, staff photos, nightly facility analytics | — | Tests never run in CI (no test script there) |
 | `firestore.rules`, `tests/`, `firestore.indexes.json` | Security rules, their emulator tests (JDK 21), composite indexes | 2,059 lines | The only complete map of the database until §3 |

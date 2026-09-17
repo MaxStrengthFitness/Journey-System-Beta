@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Machine } from "../../types";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { WikiSearch, type WikiSearchGroup } from "../wiki";
 import { learningRefKey, type LearningRef } from "./ref";
 import { searchLearning, type LearningSearchGroupKey } from "./search";

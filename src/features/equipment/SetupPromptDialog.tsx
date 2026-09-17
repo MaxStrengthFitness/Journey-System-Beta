@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useMachineCatalog } from "../../hooks/useMachineCatalog";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import type { Machine, ClientMachineSetting } from "../../types";
 import { toEquipmentMachines } from "./adapters";
 import { SettingsCard } from "./SettingsCard";

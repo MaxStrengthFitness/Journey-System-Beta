@@ -4,7 +4,7 @@ import { cn } from "../../lib/utils";
 import { mindbodyIdOf } from "../../lib/mindbody-id";
 import { formatMindbodyDate, toDateSafe } from "../../lib/mindbody-dates";
 import { studioTodayKey } from "../../lib/studio-time";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import type { Client, Studio } from "../../types";
 import { chipText, dayLabel, paceSentence, SITUATION_TONE } from "../renewals/sentences";
 import {

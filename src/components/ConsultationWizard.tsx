@@ -38,7 +38,7 @@ import {
 import { db } from "../firebase";
 import { Client, Machine, Trainer } from "../types";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
-import { useActiveStudio } from "../ActiveStudioContext";
+import { useActiveStudio } from "../contexts/ActiveStudioContext";
 import { useToast } from "../contexts/ToastContext";
 import { studioTodayKey } from "../lib/studio-time";
 

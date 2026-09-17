@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Sparkles, TriangleAlert, X } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useMachineCatalog } from "../../hooks/useMachineCatalog";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import type { Client, ClientMachineSetting, Machine } from "../../types";
 import { toEquipmentMachines } from "./adapters";
 import { SettingsCard } from "./SettingsCard";

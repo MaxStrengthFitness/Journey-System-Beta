@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, ClipboardList, Hand, Heart, Plus, ShieldCheck, Users } from "lucide-react";
-import { useActiveStudio } from "../../../ActiveStudioContext";
+import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
 import { auth } from "../../../firebase";
 import { studioDateKey } from "../../../lib/studio-time";
 import type { Client, Trainer } from "../../../types";

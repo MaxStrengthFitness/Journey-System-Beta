@@ -10,7 +10,7 @@ import type {
   Trainer,
   WorkoutSession,
 } from "../../types";
-import { EditTrainerModal } from "../../components/EditTrainerModal";
+import { EditTrainerModal } from "./EditTrainerModal";
 import { IdentityBar } from "./IdentityBar";
 import { AboutPanel } from "./AboutPanel";
 import { StudioAccessPanel } from "./StudioAccessPanel";

@@ -25,7 +25,7 @@
  * the ids actually in flight, so the row you touched is the row that waits.
  */
 import { useCallback, useRef, useState } from "react";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import {
   setManyTaskAssignments,

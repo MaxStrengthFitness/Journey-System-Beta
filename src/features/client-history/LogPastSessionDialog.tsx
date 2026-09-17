@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { EARLIEST_PLACEABLE_DAY, todayKey } from "./model";
 import { BACKFILL_NOTE } from "./HistoryList";
 
