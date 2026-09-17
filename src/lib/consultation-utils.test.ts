@@ -3,6 +3,7 @@ import {
   ACADEMY_STARTING_WEIGHT,
   MACHINE_DICTIONARY,
   calculateStartingWeight,
+  statedStartingWeight,
   type Gender,
   type SkillLevel,
 } from "./consultation-utils";
@@ -52,5 +53,21 @@ describe("calculateStartingWeight respects a stated Academy load", () => {
 
   it("still returns 0 for a machine it does not know", () => {
     expect(calculateStartingWeight("not-a-machine", "Male", 35, "Novice")).toBe(0);
+  });
+
+  it("finds the stated load whatever the casing of the machine's name", () => {
+    // data/default-machines.ts names it in capitals; the rule must still apply.
+    expect(statedStartingWeight("CX (4 WAY NECK)")).toEqual({ ceiling: 20, floor: 20 });
+    expect(statedStartingWeight("  cx (4 way neck) ")).toEqual({ ceiling: 20, floor: 20 });
+    expect(statedStartingWeight("Leg Press")).toBeUndefined();
+  });
+
+  it("KNOWN, left as found: the heuristic's own lookup is exact, so a standard machine's UPPERCASE name gets 0", () => {
+    // This is why the tracker's first-time seed has never suggested a weight.
+    // If you make the lookup case-insensitive you are turning those
+    // suggestions ON for every machine - decide that on purpose, and keep the
+    // ceiling test above green.
+    expect(calculateStartingWeight("LEG PRESS", "Male", 35, "Novice")).toBe(0);
+    expect(calculateStartingWeight("CX (4 WAY NECK)", "Male", 35, "Advanced")).toBe(0);
   });
 });
