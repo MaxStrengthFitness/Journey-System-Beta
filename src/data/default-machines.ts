@@ -279,3 +279,35 @@ export const DEFAULT_MACHINES: Machine[] = [
     ],
   },
 ];
+
+/**
+ * A stock photo per standard machine, for the machine info dialog. Moved here
+ * from AppContent.tsx with the list above (beta-prep trim, Sep 17 2026).
+ */
+export const getMachineImageUrl = (machineId?: string): string => {
+  const map: Record<string, string> = {
+    "m-neck": "1534438327276-14e5300c3a48", // Using back/shoulder for neck
+    "m-overhead-press": "1581009146145-b5ef050c2e1e", // pressing
+    "m-lateral-raise": "1581009146145-b5ef050c2e1e", // shoulders
+    "m-pulldown": "1526506114805-4f329971bc30", // back/pull-up
+    "m-pullover": "1526506114805-4f329971bc30", // back
+    "m-compound-row": "1534438327276-14e5300c3a48", // rowing
+    "m-simple-row": "1534438327276-14e5300c3a48", // rowing
+    "m-chest-press": "1574680096145-d05b474e2155", // chest press
+    "m-chest-fly": "1574680096145-d05b474e2155", // chest
+    "m-bicep": "1581009137042-c56a8411b229", // biceps
+    "m-tricep-ext": "1581009137042-c56a8411b229", // arms
+    "m-dip": "1574680096145-d05b474e2155", // chest/arms
+    "m-abs": "1517836357463-d25dfeac3438", // abs
+    "m-lumbar": "1584466977773-e35492d52dc7", // core/stretch
+    "m-torso-rotation": "1517836357463-d25dfeac3438", // abs
+    "m-hip-abd": "1599058917212-d750089bc07e", // lower body
+    "m-hip-add": "1599058917212-d750089bc07e", // lower body
+    "m-leg-press": "1540497077202-7c8a3999166f", // leg press
+    "m-ext": "1540497077202-7c8a3999166f", // legs
+    "m-leg-curl": "1599058917212-d750089bc07e", // hamstrings
+  };
+  const unsplashId =
+    machineId && map[machineId] ? map[machineId] : "1518611012118-696072aa579a";
+  return `https://images.unsplash.com/photo-${unsplashId}?auto=format&fit=crop&w=800&h=450&q=80`;
+};
