@@ -42,7 +42,7 @@ import {
   Sparkles,
   Target,
   X,
-} from "lucide-react";
+ ClipboardCheck, ArrowRightLeft } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
 import {
   addRequestReply,
@@ -80,6 +80,8 @@ const KIND_ICON: Record<RequestKind, typeof MessageSquare> = {
   help: HandHelping,
   initiative: Target,
   other: MessageSquare,
+  todo: ClipboardCheck,
+  handoff: ArrowRightLeft,
 };
 
 /*

@@ -1636,6 +1636,13 @@ export interface Studio {
   phone?: string;
   address?: string;
   timezone: string;
+  /**
+   * Relay (Sep 2026): the studio's day as four clock times ("HH:MM"), set by
+   * a leader under Team → Standards. The Now Bar names the phase (Opening /
+   * Mid / Closing) and the shift rings group recurring work by it. Missing
+   * or malformed fields fall back to 5:30 / 10:00 / 16:00 / 20:00.
+   */
+  shiftHours?: { open?: string; mid?: string; closing?: string; close?: string };
   /** MindBody Site ID for external API synchronization */
   mindbodySiteId?: string;
   /** MindBody Location ID for location-specific filtering when site IDs are shared */

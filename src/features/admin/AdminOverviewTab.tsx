@@ -354,7 +354,7 @@ export function AdminOverviewTab({
         <div className="adm-ov__stack">
           <AdminPanel
             title="Studio tasks"
-            subtitle="Today's shared list. Creating and scheduling tasks lives in the Planner."
+            subtitle="Today's shared list. Creating and scheduling tasks lives in Relay."
             icon={<ClipboardList className="w-3.5 h-3.5" />}
             actions={
               onOpenStudioTasks && (
@@ -374,7 +374,7 @@ export function AdminOverviewTab({
               <div className="p-4">
                 <AdminEmpty title={tasks.counts.total === 0 ? "No tasks today" : "All done"}>
                   {tasks.counts.total === 0
-                    ? "Recurring cleaning and maintenance tasks show up here once they are set in the Planner."
+                    ? "Recurring cleaning and maintenance tasks show up here once they are set in Relay."
                     : `All ${tasks.counts.total} of today's tasks are marked complete.`}
                 </AdminEmpty>
               </div>

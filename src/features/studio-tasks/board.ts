@@ -72,6 +72,8 @@ export function topicOf(r: TaskRequest): Exclude<BoardTopic, "all"> {
   if (r.clientId) return "clients";
   if (r.machineId) return "equipment";
   if (r.kind === "cover" || r.kind === "help") return "help";
+  // Relay: a to-do or a hand-off with nothing attached is still a hand asked for.
+  if (r.kind === "todo" || r.kind === "handoff") return "help";
   // A question with no entity attached is still someone asking for a read.
   if (r.kind === "question") return "help";
   return "initiatives";
@@ -402,6 +404,8 @@ const KIND_RANK: Record<RequestKind | "initiative", number> = {
   question: 3,
   "heads-up": 4,
   other: 5,
+  handoff: 1,
+  todo: 4,
 };
 
 /**

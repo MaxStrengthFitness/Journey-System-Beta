@@ -178,7 +178,7 @@ import { PlannerReminders } from "./features/planner/reminders/PlannerReminders"
 // studio-tasks chunk is pulled into the initial bundle.
 import type { ClientTaskAction } from "./features/studio-tasks/types";
 /**
- * The Planner (Learning + Planner round, Sep 2026) — what was the To-Do
+ * Relay (Relay round, Sep 2026; the Planner before that) — what was the To-Do
  * screen: the studio hub as its Studio tab, plus My tasks and Notes. The view
  * id is still "studio-tasks", because notifications already stored in
  * trainers' bells link to it.
@@ -2173,6 +2173,9 @@ export default function AppContent({
                         authTrainer={authTrainer}
                         clients={clients}
                         trainers={trainers}
+                        schedules={schedules}
+                        sessions={sessions}
+                        machines={machines}
                         onOpenClientTask={openClientTask}
                       />
                     );
@@ -2453,7 +2456,7 @@ export default function AppContent({
                 active={currentView === "studio-tasks"}
                 onClick={() => setCurrentView("studio-tasks")}
                 icon={<NotebookPen className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="Planner"
+                label="Relay"
               />
               <NavButton
                 active={currentView === "calendar"}

@@ -81,7 +81,11 @@ export type RequestKind =
   | "heads-up"
   | "help"
   | "initiative"
-  | "other";
+  | "other"
+  /** Relay (Sep 2026): a piece of work anyone can pick up and finish. */
+  | "todo"
+  /** Relay (Sep 2026): handed to ONE named colleague (forId), rings their bell. */
+  | "handoff";
 
 export const REQUEST_KIND_LABEL: Record<RequestKind, string> = {
   cover: "Cover",
@@ -90,6 +94,8 @@ export const REQUEST_KIND_LABEL: Record<RequestKind, string> = {
   help: "Help",
   initiative: "Initiative",
   other: "Other",
+  todo: "To do",
+  handoff: "Handed",
 };
 
 export const REQUEST_KIND_HINT: Record<RequestKind, string> = {
@@ -99,6 +105,8 @@ export const REQUEST_KIND_HINT: Record<RequestKind, string> = {
   help: "A hand with something physical or right now",
   initiative: "Something I need the whole team to do",
   other: "Anything else",
+  todo: "Something anyone can pick up and finish",
+  handoff: "Passed to one person by name",
 };
 
 export type RequestPriority = "low" | "normal" | "urgent";
@@ -223,6 +231,20 @@ export interface TaskRequest {
   /** Studio-local 'YYYY-MM-DD', for cover requests. */
   sessionDate?: string;
 
+  /*
+   * RELAY (Sep 2026). A hand-off names ONE person; the board still shows it
+   * and anyone may still close it — a name is a request, never a lock. dueOn
+   * puts the ask on the Calendar; estMinutes lets Next up fit it to a gap;
+   * notifyOnDone rings the author's bell when it closes.
+   */
+  forId?: string;
+  forName?: string;
+  dueOn?: string;
+  estMinutes?: number;
+  notifyOnDone?: boolean;
+  /** One tap of thanks per person: { [uid]: true }. */
+  kudos?: Record<string, true>;
+
   createdBy: TaskAuthor;
   createdAt?: unknown;
 
@@ -309,6 +331,12 @@ export interface CreateRequestInput {
   priority?: RequestPriority;
   /** Defaults to "none" - most asks stand until dealt with. */
   expiry?: ExpiryChoice;
+  /** Relay: see TaskRequest. */
+  forId?: string;
+  forName?: string;
+  dueOn?: string;
+  estMinutes?: number;
+  notifyOnDone?: boolean;
 }
 
 export async function createRequest(input: CreateRequestInput): Promise<string> {
@@ -329,6 +357,10 @@ export async function createRequest(input: CreateRequestInput): Promise<string> 
     // Only on an initiative. Writing an empty target on a question would make
     // every request look like one to topicOf().
     ...(kind === "initiative" && input.target ? { target: input.target } : {}),
+    ...(input.forId && input.forName ? { forId: input.forId, forName: input.forName } : {}),
+    ...(input.dueOn ? { dueOn: input.dueOn } : {}),
+    ...(typeof input.estMinutes === "number" ? { estMinutes: input.estMinutes } : {}),
+    ...(input.notifyOnDone ? { notifyOnDone: true } : {}),
 
     createdBy: author,
     createdAt: serverTimestamp(),

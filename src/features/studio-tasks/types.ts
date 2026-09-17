@@ -303,6 +303,11 @@ export interface TaskTemplate {
    */
   remindMinutesBefore?: number | null;
   /** Completion is blocked until a note is written. For maintenance checks. */
+  /**
+   * Relay (Sep 2026): about how long it takes, so Next up can fit it to the
+   * gap before a trainer's next session. Unset means "unknown".
+   */
+  estMinutes?: number;
   requiresNote?: boolean;
 
   /**

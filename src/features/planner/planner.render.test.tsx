@@ -128,17 +128,26 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-describe("the Planner", () => {
-  it("mounts the Studio tab with the glance band and an empty team-jobs lane", async () => {
+describe("Relay", () => {
+  it("mounts the Floor with the Now Bar, the glance band and an empty team-jobs lane", async () => {
     const h = await mount(lead);
+    expect(h.textContent).toContain("Relay");
+    expect(h.textContent).toContain("Pulse");
+    expect(h.textContent).toContain("No sessions on your schedule");
     expect(h.textContent).toContain("Today's shift");
     expect(h.textContent).toContain("Team jobs");
     expect(h.textContent).toContain("Post a job");
   });
 
-  it("shows the Team tab to a leader and walks all four tabs without throwing", async () => {
+  it("unfolds the day strip from the gap meter", async () => {
     const h = await mount(lead);
-    await click(tab("My tasks"));
+    await click(h.querySelector('[aria-controls="relay-daystrip"]'));
+    expect(h.textContent).toContain("The whole day is a gap");
+  });
+
+  it("shows the Team tab to a leader and walks every tab without throwing", async () => {
+    const h = await mount(lead);
+    await click(tab("Mine"));
     expect(h.textContent).toContain("Your list");
     expect(h.textContent).toContain("New reminder");
     await click(tab("Notes"));
@@ -146,8 +155,14 @@ describe("the Planner", () => {
     await click(tab("Team"));
     expect(h.textContent).toContain("Your team");
     expect(h.textContent).toContain("Only work with someone's name on it counts");
-    await click(tab("Studio"));
+    await click(tab("Floor"));
     expect(h.textContent).toContain("Today's shift");
+  });
+
+  it("offers the Network tab only to a franchise or super role", async () => {
+    await mount({ ...(lead as object), role: "FranchiseOwner" });
+    expect(tab("Network")).toBeTruthy();
+    expect(tab("Team")).toBeTruthy();
   });
 
   it("never offers the Team tab to a trainer", async () => {
@@ -169,12 +184,12 @@ describe("the Planner", () => {
     expect(document.body.textContent).toContain("Working notes");
     expect(document.body.textContent).toContain("Share with colleagues");
 
-    await click(tab("My tasks"));
+    await click(tab("Mine"));
     await click([...h.querySelectorAll("button")].find((b) => b.textContent?.includes("New reminder")));
     expect(document.body.textContent).toContain("New reminder");
     expect(document.body.textContent).toContain("1. What");
 
-    await click(tab("Studio"));
+    await click(tab("Floor"));
     await click([...document.querySelectorAll("button")].find((b) => b.textContent?.includes("Post a job")));
     expect(document.body.textContent).toContain("Post a team job");
   });

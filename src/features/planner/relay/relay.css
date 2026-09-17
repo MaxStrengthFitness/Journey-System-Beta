@@ -1,0 +1,454 @@
+/* ==========================================================================
+   RELAY — the shell around the Planner's tabs
+   --------------------------------------------------------------------------
+   Round: Relay, Sep 2026. On the Studio Hub's --st-* tokens; nothing here
+   writes a hex value. Two semantic colours are added so a card's ORIGIN reads
+   without a label: --rl-floor (the studio's shared work, the brand orange the
+   hub already uses for "now") and --rl-mine (a trainer's own, the brand blue).
+
+   Held-iPad rules the whole file follows:
+     - nothing tappable under 44px, primary actions at the foot / right thumb;
+     - the Now Bar is pinned; the tab content scrolls under it;
+     - the Context Panel is a right column in landscape (>= 900px wide) and a
+       bottom sheet in portrait — the board never disappears behind a modal.
+   ========================================================================== */
+
+.pl {
+  --rl-floor: var(--st-hero);
+  --rl-floor-fill: color-mix(in srgb, var(--st-hero) 12%, transparent);
+  --rl-mine: var(--st-live);
+  --rl-mine-fill: var(--st-live-fill);
+  --rl-bar-h: 56px;
+  --rl-panel-w: 360px;
+  position: relative;
+}
+
+/* ------------------------------------------------------------------ *
+ * The Now Bar — pinned under the masthead on every tab
+ * ------------------------------------------------------------------ */
+
+.nb {
+  flex: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: 0.75rem;
+  min-height: var(--rl-bar-h);
+  padding: 0.375rem 1rem;
+  background: var(--st-surface);
+  border-bottom: 1px solid var(--st-border);
+}
+
+.nb__where,
+.nb__gap,
+.nb__pulse {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.nb__gap { flex-direction: column; align-items: stretch; gap: 4px; }
+button.nb__gap { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+button.nb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; border-radius: 6px; }
+.nb__pulse { justify-content: flex-end; }
+
+.nb__phase {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--st-surface-2);
+  color: var(--st-ink-2);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.nb__phase-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--st-ink-faint); }
+.nb__phase--opening .nb__phase-dot { background: var(--rl-floor); }
+.nb__phase--mid .nb__phase-dot { background: var(--st-done); }
+.nb__phase--closing .nb__phase-dot { background: var(--st-flag); }
+
+.nb__next {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.25;
+}
+.nb__next-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--st-ink-muted);
+}
+.nb__next-who { font-size: 13px; font-weight: 800; color: var(--st-ink); overflow-wrap: anywhere; }
+
+.nb__gap-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--st-ink);
+  white-space: nowrap;
+}
+.nb__gap-sub { font-size: 11px; font-weight: 700; color: var(--st-ink-muted); }
+
+/* The gap meter: how much of an hour is free. Fills from the left. */
+.nb__meter {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--st-surface-3);
+  overflow: hidden;
+}
+.nb__meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--st-done);
+  transition: width 400ms ease-out;
+}
+.nb__meter--tight .nb__meter-fill { background: var(--st-flag); }
+.nb__meter--busy .nb__meter-fill { background: var(--rl-floor); }
+
+/* Rings that closed today stay on the bar as dots (the shift, ShiftRings). */
+.nb__rings { display: inline-flex; gap: 4px; }
+.nb__ring-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid var(--st-border-strong);
+}
+.nb__ring-dot--closed { border-color: var(--st-done); background: var(--st-done); }
+
+.nb__toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px; height: 44px;
+  border: 0; border-radius: 10px;
+  background: transparent;
+  color: var(--st-ink-muted);
+  cursor: pointer;
+}
+.nb__toggle[aria-expanded="true"] { background: var(--st-surface-2); color: var(--st-ink); }
+.nb__toggle:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+
+/* The Pulse: a slow ticker of what teammates did. One line, fades between. */
+.pt {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--st-ink-2);
+}
+.pt__label {
+  flex: none;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--st-ink-muted);
+}
+.pt__line {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation: pt-in 500ms ease-out;
+}
+.pt__who { font-weight: 800; color: var(--st-ink); }
+.pt__quiet { color: var(--st-ink-faint); font-style: italic; }
+@keyframes pt-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pt__line { animation: none; } }
+
+/* The day strip: the trainer's sessions as a ribbon, gaps drawn as slots. */
+.ds {
+  flex: none;
+  padding: 0.5rem 1rem 0.75rem;
+  background: var(--st-surface);
+  border-bottom: 1px solid var(--st-border);
+}
+.ds__ribbon {
+  position: relative;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--st-surface-2);
+  overflow: hidden;
+}
+.ds__block {
+  position: absolute;
+  top: 6px; bottom: 6px;
+  border-radius: 7px;
+  background: var(--rl-mine);
+  color: var(--st-surface);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 32px;
+  padding: 0 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ds__block--done { opacity: 0.45; }
+.ds__block--now { outline: 2px solid var(--rl-floor); outline-offset: 1px; }
+.ds__now {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: var(--rl-floor);
+}
+.ds__hours {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--st-ink-faint);
+}
+.ds__empty { font-size: 12px; color: var(--st-ink-muted); padding: 0.25rem 0; }
+
+/* Portrait: where + gap on one row, the pulse folds to a dot with a sheet. */
+@media (max-width: 899px) {
+  .nb { grid-template-columns: minmax(0, 1fr) auto; }
+  .nb__pulse { display: none; }
+  .nb__gap { min-width: 9rem; }
+  .nb__next-label { display: none; }
+}
+@media (max-width: 640px) {
+  .nb { padding: 0.375rem 0.75rem; }
+  .nb__gap { min-width: 7.5rem; }
+}
+
+/* ------------------------------------------------------------------ *
+ * The frame: content + context panel
+ * ------------------------------------------------------------------ */
+
+.pl__frame {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+}
+.pl__frame > .pl__body { flex: 1; min-width: 0; }
+
+/* Landscape: a right column that slides in. */
+.cp {
+  flex: none;
+  width: var(--rl-panel-w);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--st-surface);
+  border-left: 1px solid var(--st-border);
+  box-shadow: -8px 0 24px var(--st-shadow);
+  animation: cp-in 220ms ease-out;
+}
+@keyframes cp-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.cp__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 52px;
+  padding: 0.5rem 0.75rem 0.5rem 1rem;
+  border-bottom: 1px solid var(--st-border);
+}
+.cp__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.cp__kicker {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--st-ink-muted);
+}
+.cp__close {
+  flex: none;
+  width: 44px; height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 10px;
+  background: transparent; color: var(--st-ink-muted);
+  cursor: pointer;
+}
+.cp__close:focus-visible { outline: 2px solid var(--st-live); }
+.cp__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+.cp__foot {
+  flex: none;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--st-border);
+  background: var(--st-surface);
+}
+.cp__foot > * { flex: 1; }
+.cp__foot .pl__btn { min-height: 48px; }
+
+/* Portrait: the same panel rides up from the bottom, two detents. */
+@media (max-width: 899px) {
+  .pl__frame { position: relative; }
+  .cp {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    width: auto;
+    max-height: 90%;
+    height: 55%;
+    border-left: 0;
+    border-top: 1px solid var(--st-border);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -10px 30px var(--st-shadow);
+    animation: cp-up 220ms ease-out;
+    z-index: 5;
+  }
+  .cp--tall { height: 90%; }
+  @keyframes cp-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cp__grip {
+    display: block;
+    width: 44px; height: 5px;
+    margin: 8px auto 0;
+    border-radius: 999px;
+    background: var(--st-border-strong);
+  }
+}
+@media (min-width: 900px) { .cp__grip { display: none; } }
+@media (prefers-reduced-motion: reduce) { .cp { animation: none; } }
+
+/* ------------------------------------------------------------------ *
+ * Capture — the one floating button, under the right thumb
+ * ------------------------------------------------------------------ */
+
+.cf {
+  position: absolute;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 0 1.25rem 0 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--rl-floor);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 24px var(--st-shadow);
+  cursor: pointer;
+}
+.cf:focus-visible { outline: 3px solid var(--st-live); outline-offset: 2px; }
+.cf:active { transform: scale(0.97); }
+@media (max-width: 640px) { .cf__label { display: none; } .cf { padding: 0; width: 56px; justify-content: center; } }
+
+/* Room for the button at the foot of every scroller in Relay. */
+.pl .st__scroll,
+.pl .pl__scroll { padding-bottom: 6rem; }
+
+/* ------------------------------------------------------------------ *
+ * Shared card anatomy: origin colour, duration, loop state
+ * ------------------------------------------------------------------ */
+
+.rl-origin {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.rl-origin::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.rl-origin--floor { color: var(--rl-floor); }
+.rl-origin--mine { color: var(--rl-mine); }
+
+.rl-dur {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--st-surface-2);
+  color: var(--st-ink-2);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.rl-dur--fits { background: var(--st-done-fill); color: var(--st-done); }
+.rl-dur--tight { background: var(--st-flag-fill); color: var(--st-flag); }
+
+.rl-loop {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--st-ink-muted);
+}
+.rl-loop::before { content: ""; width: 7px; height: 7px; border-radius: 50%; border: 2px solid currentColor; }
+.rl-loop--open { color: var(--st-ink-muted); }
+.rl-loop--onit { color: var(--st-live); }
+.rl-loop--closed { color: var(--st-done); }
+.rl-loop--closed::before { background: currentColor; }
+
+/* A section heading inside a Relay tab. */
+.rl-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 1rem 0 0.5rem;
+}
+.rl-h__title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--st-ink-2);
+}
+.rl-h__sub { font-size: 12px; color: var(--st-ink-muted); }
+
+/* Empty states are prompts, not apologies. */
+.rl-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border: 1px dashed var(--st-border-strong);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+  font-size: 13px;
+  color: var(--st-ink-2);
+}
+.rl-prompt__text { flex: 1 1 14rem; min-width: 0; }
+.rl-prompt__title { display: block; font-weight: 800; color: var(--st-ink); }

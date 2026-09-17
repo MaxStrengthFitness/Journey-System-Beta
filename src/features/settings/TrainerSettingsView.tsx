@@ -317,8 +317,8 @@ export function TrainerSettingsView({
           />
           <LinkRow
             icon={ClipboardList}
-            label="Planner"
-            hint="Studio tasks, your own tasks and notes"
+            label="Relay"
+            hint="The studio board, your own list and your notes"
             onClick={setView ? () => setView("studio-tasks") : undefined}
           />
         </div>
