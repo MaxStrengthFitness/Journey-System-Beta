@@ -24,6 +24,48 @@ a handful of screens that refuse to read totals the app is faithfully keeping.
 | First link to close | **Note / machine ↔ catalog page.** |
 | Session linkage | AJ: *"audit it and tell me."* — §3. |
 
+### Round two of decisions (AJ, Sep 17, evening)
+
+| Question | Decision |
+| --- | --- |
+| The session-count edit | **An offset the reconciler adds to**, not a total it overwrites. Recorded as `client.priorHistory` — a count with a date range, a source and a note, not a bare number. See §0. |
+| Booked vs started | **Build it.** Surface on the session card and the client's history, as a per-client attendance read, and as a trainer-side read. The Operations surface waits for AJ's own audit. |
+| Studio vs client machine notes | **Two linked boxes, one direction.** A client's machine notes ALSO show the studio's notes for that machine; the catalog shows only studio notes and never client notes. |
+| FORD entries | Gain a **calendar presence** (a marker on the day AND a cue in that day's briefing), an **effective window** (starts/stops mattering), and a **Loudness**, like the rest of the app. |
+| Quick capture | Must be **non-invasive** — always reachable, never in the way. |
+
+---
+
+## 0. The context everything else sits inside
+
+**Journey is not a fresh start.** The original studio has been open over twelve
+years — longer than the FileMaker system being replaced, which itself replaced
+something earlier. The rollout is a migration measured in months: beta at a few
+studios, then studio by studio, then FileMaker is discontinued. Throughout that
+period a roster is a mix of brand-new clients, clients with fifty sessions
+behind them, and clients with several hundred. The FileMaker export has been
+requested and not yet received, so how much history can be imported "within
+reason" is unknown.
+
+This is now `docs/business/migration-and-prior-history.md` and is pointed at
+from the top of `CLAUDE.md`, because it is the assumption most likely to make a
+screen lie. The rule it forces:
+
+> A client's history did not begin when Journey first saw them. An empty
+> Journey history means "we have no detail here", never "this never happened".
+
+It also settles §3.6, the session-count question. The manual edit and the
+reconciler were fighting over one field. They now own different things:
+`client.priorHistory` owns what Journey cannot see, the reconciler owns what it
+can, and `total = journey count + (sessions − importedCount)`. Any importer of
+historical sessions must raise `importedCount`, which is how an import stops
+being double-counted without anyone re-doing arithmetic.
+
+**It reopens §3.2 as something larger than a bug.** "Never tried" on the
+Programming tab is unsafe during migration for a second reason: even with
+`machineStats` read correctly, a client may have used a machine four hundred
+times in FileMaker. There is no machine-level prior history record yet.
+
 ---
 
 ## 1. Opening a client — why it wasn't landing on the newest session
@@ -220,25 +262,47 @@ One branch, `fluidity-round`, one commit per phase, each typechecked alone so
 any phase can be reverted on its own.
 
 - **Phase 1 — done.** A client always opens on Journey, pinned to the newest
-  session. Four causes, §1. Typecheck at the 12-error baseline.
-- **Phase 2 — one-tap capture.** The header capture control, context-aware
-  default category, `machineId` and `sessionId` attached automatically. Retire
-  the `sessionNotes` write path so nothing new is created read-only.
-- **Phase 3 — machine ↔ catalog.** Thread `openLearning` into the profile and
-  the machine window; make every machine reference a link; give the catalog
-  page its client-side back-references.
-- **Phase 4 — session ↔ note.** Render `sessionId`: a note says which session,
-  a session lists its notes. Make the Pulse pain-point links navigable.
-- **Phase 5 — the counter gaps.** §3.1 (wrap-up note into the journal), §3.2
+  session. Four causes, §1.
+- **Phase 2 — done.** The migration written into the knowledge base: the
+  business page, and the pointers from `CLAUDE.md`.
+- **Phase 3 — done.** `client.priorHistory`: the session count is an offset,
+  not a fight. Pure module `src/lib/prior-history.ts` with `totalSessions`,
+  `recordImportedSessions` (the importer's contract) and `historyCoverage`
+  (which names "unknown" — a long-standing client nobody has recorded, which
+  looks exactly like a new one). The profile's dialog asks for sessions
+  *before* Journey rather than a total, and the header carries the split.
+- **Phase 4 — one-tap capture.** The header capture control, context-aware
+  default category, `machineId` and `sessionId` attached automatically.
+  Non-invasive: reachable from every tab, never covering the grid or the
+  Start Session button. Retire the `sessionNotes` write path.
+- **Phase 5 — machine ↔ catalog, and the two linked note boxes.** Thread
+  `openLearning` into the profile and the machine window; make every machine
+  reference a link. A client's machine notes also show the studio's notes for
+  that machine, so a leader warns everyone once ("machine has been squeaky")
+  instead of writing on every client — and the catalog stays free of client
+  notes, which is not what a trainer reading the catalog wants.
+- **Phase 6 — session ↔ note.** Render `sessionId`: a note says which session,
+  a session lists its notes. Make Pulse pain-point links navigable.
+- **Phase 7 — booked vs started.** `bookingStartTime` and
+  `startedLateByMinutes` are already computed and thrown away. Surface them on
+  the session card, as a per-client attendance read, and on the trainer
+  profile — recognition, never ranking. Operations waits for AJ's audit.
+- **Phase 8 — FORD grows up.** An effective window (starts / stops mattering),
+  a Loudness matching the rest of the app, and a calendar presence: a quiet
+  marker on the day in the Calendar view AND a cue in that day's briefing.
+- **Phase 9 — the counter gaps.** §3.1 (wrap-up note into the journal), §3.2
   (stop gating on backfill markers when the totals are live), §3.3 (walk-in
-  assignment), §3.4/§3.5 (post-session reads live totals). Each of these
-  touches client rollups, so this phase gets its own careful pass.
+  assignment), §3.4/§3.5 (post-session reads live totals). Each touches client
+  rollups, so this phase gets its own careful pass.
 
 ### Open, needs AJ
 
-- **§3.6** — should a trainer's manual session-count edit win over the
-  reconciler, or should the edit be removed? It cannot be both.
-- **§3.9** — `startedLateByMinutes` is computed and discarded. Surface it, or
-  stop computing it?
-- **Studio vs client machine notes** — one box with a "this client / whole
-  studio" switch, or two boxes that link to each other?
+- **Machine-level prior history.** A client may have four hundred sessions on a
+  machine that `machineStats` says they have never tried. Does the FileMaker
+  export carry per-machine history, or does "never tried" need to become
+  "nothing recorded here" for anyone with a prior record?
+- **§3.9** — `startedLateByMinutes` is answered (Phase 7). The other dead
+  fields (`clientAge`, `clientOccupation`, `clientIsRetired`,
+  `clientActivityLevel`, `clientClinicalProfile` on the session document) were
+  presumably meant as a snapshot of who the client was at the time. Keep them
+  as history, or stop writing them?
