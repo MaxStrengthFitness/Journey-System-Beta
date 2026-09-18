@@ -4,6 +4,8 @@ Journey is the coaching app for **Max Strength Fitness** studios: trainers recor
 
 How the business works (packages, renewals, roles, where data lives) is in **`docs/business/`**. Read the relevant page before building anything that touches clients' packages, renewals or permissions.
 
+**What a session is** — twenty minutes, one set to failure on five to eight machines, an iPad in the non-dominant hand that is set down at every machine and looked at twice per machine. The trainer's clicker counts reps; the app is a guide for set-up and a log for outcomes, never a coach, and never suggests a progression. Read **`docs/business/the-floor.md`** before touching the Active Session, the Now Bar, the briefing or the post-session screen.
+
 **Journey is not a fresh start.** The studios are mid-migration off FileMaker, and a roster during that period is a mix of brand-new clients and clients with several hundred sessions behind them. A client's history did not begin when Journey first saw them: an empty Journey history means "no detail here", never "this never happened". Read **`docs/business/migration-and-prior-history.md`** before building anything that counts, dates, averages or trends a client's history.
 
 ---
