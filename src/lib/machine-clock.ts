@@ -95,9 +95,17 @@ export function resetMachine(state: MachineClocks, id: string, now = Date.now())
 export interface MachineTimeFields {
   /** Whole seconds the trainer spent on this machine (time on machine). */
   timeSpent: string;
-  /** Seconds under load: the trainer's stopwatch if they used it, else time on machine. */
-  totalTimeUnderLoad: number;
-  machineDurationSeconds: number;
+  /**
+   * Seconds under load — ONLY when the trainer's stopwatch measured them.
+   * Absent otherwise. Time on machine includes getting in, the briefing and
+   * getting out, and every TUT reader (`tutOf`, the Equipment tab's average,
+   * the clinical review) takes these two fields as muscular time — so the
+   * old fallback was publishing two minutes of walking and belting-in as a
+   * set's time under tension. The floor is explicit: time on machine is
+   * "never as TUT" (docs/business/the-floor.md, the three timers).
+   */
+  totalTimeUnderLoad?: number;
+  machineDurationSeconds?: number;
   machineEndedAt: number;
   averageTimePerRep?: number;
 }
@@ -110,13 +118,14 @@ export function machineTimeFields(params: {
   now?: number;
 }): MachineTimeFields {
   const { onMachineSeconds, manualSeconds, reps, isStatic, now = Date.now() } = params;
-  const under = manualSeconds > 0 ? manualSeconds : onMachineSeconds;
   const fields: MachineTimeFields = {
     timeSpent: String(onMachineSeconds),
-    totalTimeUnderLoad: under,
-    machineDurationSeconds: under,
     machineEndedAt: now,
   };
-  if (!isStatic && reps > 0 && under > 0) fields.averageTimePerRep = parseFloat((under / reps).toFixed(1));
+  if (manualSeconds > 0) {
+    fields.totalTimeUnderLoad = manualSeconds;
+    fields.machineDurationSeconds = manualSeconds;
+    if (!isStatic && reps > 0) fields.averageTimePerRep = parseFloat((manualSeconds / reps).toFixed(1));
+  }
   return fields;
 }

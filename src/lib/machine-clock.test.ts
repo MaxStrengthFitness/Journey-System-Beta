@@ -68,14 +68,26 @@ describe("machineTimeFields", () => {
     expect(f.averageTimePerRep).toBeUndefined();
   });
 
-  it("falls back to time on machine and derives seconds per rep", () => {
+  it("never passes time on machine off as time under load", () => {
+    // 80 seconds on the machine includes getting in, the briefing and
+    // getting out. Without a stopwatch there is NO time under load to
+    // record — publishing the 80 would make every TUT reader call two
+    // minutes of set-up a set (docs/business/the-floor.md).
     const f = machineTimeFields({ onMachineSeconds: 80, manualSeconds: 0, reps: 8, isStatic: false });
+    expect(f.timeSpent).toBe("80");
+    expect(f.totalTimeUnderLoad).toBeUndefined();
+    expect(f.machineDurationSeconds).toBeUndefined();
+    expect(f.averageTimePerRep).toBeUndefined();
+  });
+
+  it("derives seconds per rep only from the stopwatch", () => {
+    const f = machineTimeFields({ onMachineSeconds: 240, manualSeconds: 80, reps: 8, isStatic: false });
     expect(f.totalTimeUnderLoad).toBe(80);
     expect(f.averageTimePerRep).toBe(10);
   });
 
-  it("writes no per-rep figure when there is no time to divide", () => {
-    const f = machineTimeFields({ onMachineSeconds: 0, manualSeconds: 0, reps: 8, isStatic: false });
-    expect(f.averageTimePerRep).toBeUndefined();
+  it("writes no per-rep figure for a hold, or with nothing to divide", () => {
+    expect(machineTimeFields({ onMachineSeconds: 0, manualSeconds: 0, reps: 8, isStatic: false }).averageTimePerRep).toBeUndefined();
+    expect(machineTimeFields({ onMachineSeconds: 90, manualSeconds: 60, reps: 0, isStatic: true }).averageTimePerRep).toBeUndefined();
   });
 });
