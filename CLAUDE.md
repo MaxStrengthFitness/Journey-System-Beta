@@ -4,6 +4,8 @@ Journey is the coaching app for **Max Strength Fitness** studios: trainers recor
 
 How the business works (packages, renewals, roles, where data lives) is in **`docs/business/`**. Read the relevant page before building anything that touches clients' packages, renewals or permissions.
 
+**Journey is not a fresh start.** The studios are mid-migration off FileMaker, and a roster during that period is a mix of brand-new clients and clients with several hundred sessions behind them. A client's history did not begin when Journey first saw them: an empty Journey history means "no detail here", never "this never happened". Read **`docs/business/migration-and-prior-history.md`** before building anything that counts, dates, averages or trends a client's history.
+
 ---
 
 ## Where things are
@@ -56,6 +58,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 - iPad-first, portrait and landscape. Nothing tappable under 40px; hover is never the only way to find something; names are never truncated.
 - **Sentences, not scores.** Every claim a screen makes has a named minimum sample, and below it the screen says "not enough data yet".
 - A confident wrong number is worse than a missing one (the "In Journey since" rule).
+- **Prior history is real history.** `client.priorHistory` records what a client did before the cutover (`src/lib/prior-history.ts`); `total = journey count + (sessions - importedCount)`. The reconciler owns what Journey can see, the prior record owns what it cannot, and they never write the same field. Any importer of historical sessions MUST raise `importedCount`. Never call a client new, draw a trend as their whole story, or say "never tried" off a low Journey count during migration.
 - **Nothing contacts clients or trainers** — no email, SMS or push outreach. In-app only.
 - Use the design tokens (`equipment.tokens.css`, and `admin.tokens.css` in admin screens); no raw hex. The red kaizen mark is reserved for rep quality.
 - Dates are the studio's Eastern day (`src/lib/studio-time.ts`).
