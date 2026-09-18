@@ -295,14 +295,37 @@ any phase can be reverted on its own.
   assignment), §3.4/§3.5 (post-session reads live totals). Each touches client
   rollups, so this phase gets its own careful pass.
 
-### Open, needs AJ
+### Both open questions, answered (AJ, Sep 17)
 
-- **Machine-level prior history.** A client may have four hundred sessions on a
-  machine that `machineStats` says they have never tried. Does the FileMaker
-  export carry per-machine history, or does "never tried" need to become
-  "nothing recorded here" for anyone with a prior record?
-- **§3.9** — `startedLateByMinutes` is answered (Phase 7). The other dead
-  fields (`clientAge`, `clientOccupation`, `clientIsRetired`,
-  `clientActivityLevel`, `clientClinicalProfile` on the session document) were
-  presumably meant as a snapshot of who the client was at the time. Keep them
-  as history, or stop writing them?
+**Machine-level prior history is not coming across.** So the app never claims a
+client has not used a machine. A client with history before their studio's
+`journeyCutoverDate` gets **"nothing recorded"**; a client who started on
+Journey gets **"never attempted"**; unknown gets the cautious wording, because
+during migration unknown and partial look identical. Done in Phase 5, which
+also retired `machineStatsBackfilledAt` as a gate and so closed §3.2.
+
+**The session's demographic snapshot stays, and needs a reader.** It is the
+substrate for cohort analytics — what weight people of a similar age and
+activity level actually start at, which machines suit whom, pace, and the
+studio's own claims. It lives on the session because those facts change. The
+standing rule it produced:
+
+> **Every number has a reader.** A field we write must be read by at least one
+> screen, report or job. A write with no reader is a bug to fix, not a field to
+> delete.
+
+`docs/business/data-and-metrics.md`. §3.9 is therefore a work list, not a delete
+list — and it grows: height, wingspan and gender are NOT on the snapshot,
+although machine fit already treats height and gender as the axes that matter.
+
+### Still open
+
+- **Each studio's `journeyCutoverDate` has to be set as that studio goes live.**
+  Until it is, that studio's clients all read as unknown — safe, but it means
+  no client anywhere gets "never attempted" or a quoted lifetime figure until
+  the first date is entered. There is no UI for it yet; Operations is the
+  natural home, so it waits for AJ's audit.
+- **Where the cohort reader lives.** Phase 9 or a round of its own. The fields
+  have been accumulating since August and cannot be backfilled, so there is no
+  rush — but nothing reads them yet, which is exactly what the rule above says
+  not to leave alone.
