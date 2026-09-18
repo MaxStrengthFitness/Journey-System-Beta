@@ -104,11 +104,41 @@ the client would recognise.
   yet" over a confident figure until somebody records the prior history.
 - **Genuinely new client:** say so plainly. Session 1 means session 1.
 
+## The cutover date, and the two things a screen may say
+
+Machine-level prior history will not be imported — a client may have used a
+machine four hundred times in FileMaker and Journey's `machineStats` will say
+zero. So the app never claims they have not, for anyone whose history predates
+their studio moving onto Journey. AJ, Sep 2026:
+
+| The client | What a screen says about a machine |
+| --- | --- |
+| Started on Journey (whole history is here) | **"Never attempted"** — a real fact about them |
+| Has history before the cutover | **"Nothing recorded"** — a fact about our records, not about them |
+| Nobody has said which | **"Nothing recorded"** — the cautious wording wins |
+
+**`studios/{id}.journeyCutoverDate`** is the studio's day it moved onto Journey
+(yyyy-mm-dd). It is per studio because the rollout is staggered, and it is
+expected to be pushed while beta runs — an example date AJ gave is
+`2027-09-18`. A client whose first session predates their studio's cutover is a
+**migration client**; everything before that day is in FileMaker and Journey
+knows it does not have it.
+
+Absent a cutover date, every client is "unknown" and gets the cautious wording.
+That is the right default: during migration, unknown and migration look
+identical and only one of the two wordings is safe.
+
+This also retires `machineStatsBackfilledAt` as a gate. That marker existed
+because `machineStats` only counts sessions since the running total existed —
+true for a migration client, and those clients no longer get a number quoted at
+them at all. For a client whose whole history postdates the cutover the rollup
+IS the whole story, so the number is quoted without waiting for a backfill
+somebody has to remember to run.
+
 ## Open
 
-- The FileMaker export's shape decides how much can be imported and whether
-  per-machine history comes with it. Until it arrives, `importedCount` stays 0
-  everywhere and every prior history is a bare number.
-- Machine-level prior history has no record yet. A client may have used a
-  machine four hundred times and Journey's `machineStats` will say zero. The
-  Programming tab's "never tried" is unsafe during migration for this reason.
+- The FileMaker export's shape decides how many whole sessions can be imported.
+  Until it arrives, `importedCount` stays 0 everywhere and every prior history
+  is a bare number.
+- Each studio's `journeyCutoverDate` has to be set when that studio goes live.
+  Until it is set, that studio's clients all read as "unknown".
